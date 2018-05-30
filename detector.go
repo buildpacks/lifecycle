@@ -15,17 +15,16 @@ const (
 	CodeDetectPass = iota
 	CodeDetectFail
 	CodeDetectError
-
-	buildpacksDir = "/var/lib/buildpacks"
 )
 
 type Buildpack struct {
+	ID   string
 	Name string
-	ID string
+	Dir  string
 }
 
 func (bp Buildpack) Path() string {
-	return filepath.Join(buildpacksDir, bp.ID)
+	return filepath.Join(DefaultBuildpacksDir, bp.Dir)
 }
 
 func (bp Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Logger) int {
@@ -50,8 +49,8 @@ func (bp Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Lo
 type BuildpackGroup []Buildpack
 
 func (bg BuildpackGroup) Detect(appDir string, l *log.Logger) bool {
-	buffers := [len(bg)]bytes.Buffer{}
-	codes := [len(bg)]int{}
+	buffers := make([]bytes.Buffer, len(bg))
+	codes := make([]int, len(bg))
 	wg := sync.WaitGroup{}
 	wg.Add(len(bg))
 	for i := range bg {
