@@ -9,3 +9,7 @@
 [[constraint]]
   name = "github.com/sclevine/spec"
   branch = "master"
+
+[[constraint]]
+  name = "github.com/golang/mock"
+  version = "1.1.1"
