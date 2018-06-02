@@ -23,14 +23,10 @@ type Buildpack struct {
 	Dir  string
 }
 
-func (bp Buildpack) Path() string {
-	return filepath.Join(DefaultBuildpacksDir, bp.Dir)
-}
-
 func (bp Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Logger) int {
 	stderr := &bytes.Buffer{}
 	defer l.Println(stderr.String())
-	cmd := exec.Command(filepath.Join(bp.Path(), "bin", "detect"))
+	cmd := exec.Command(filepath.Join(bp.Dir, "bin", "detect"))
 	cmd.Dir = appDir
 	cmd.Stdin = in
 	cmd.Stdout = out

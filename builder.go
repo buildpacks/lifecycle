@@ -19,6 +19,7 @@ type Builder struct {
 
 type Env interface {
 	AppendDirs(baseDir string) error
+	AddEnvDir(envDir string) error
 	SetEnvDir(envDir string) error
 	List() []string
 }
@@ -45,10 +46,11 @@ func (b *Builder) Build(appDir, launchDir, cacheDir string, env Env) (*BuildMeta
 		if err := os.MkdirAll(bpCacheDir, 0777); err != nil {
 			return nil, err
 		}
-		cmd := exec.Command(
-			filepath.Join(bp.Path(), "bin", "build"),
-			bpLaunchDir, bpCacheDir, b.PlatformDir,
-		)
+		buildPath, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "build"))
+		if err != nil {
+			return nil, err
+		}
+		cmd := exec.Command(buildPath, bpLaunchDir, bpCacheDir, b.PlatformDir)
 		cmd.Env = env.List()
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out
@@ -84,7 +86,7 @@ func (b *Builder) Develop(appDir, cacheDir string, env Env) (*DevelopMetadata, e
 			return nil, err
 		}
 		cmd := exec.Command(
-			filepath.Join(bp.Path(), "bin", "develop"),
+			filepath.Join(bp.Dir, "bin", "develop"),
 			bpCacheDir, b.PlatformDir,
 		)
 		cmd.Env = env.List()
@@ -97,7 +99,7 @@ func (b *Builder) Develop(appDir, cacheDir string, env Env) (*DevelopMetadata, e
 		if err := setupEnv(env, bpCacheDir); err != nil {
 			return nil, err
 		}
-		var develop LaunchTOML
+		var develop DevelopTOML
 		if _, err := toml.DecodeFile(filepath.Join(bpCacheDir, "develop.toml"), &develop); err != nil {
 			return nil, err
 		}
@@ -113,27 +115,32 @@ func setupEnv(env Env, cacheDir string) error {
 	if err != nil {
 		return err
 	}
-	for _, f := range cacheFiles {
-		if !f.IsDir() {
-			continue
-		}
-		layerDir := filepath.Join(cacheDir, f.Name())
-		if err := env.AppendDirs(layerDir); err != nil {
-			return err
-		}
+	if err := eachDir(cacheFiles, func(layer os.FileInfo) error {
+		return env.AppendDirs(filepath.Join(cacheDir, layer.Name()))
+	}); err != nil {
+		return err
 	}
-	for _, f := range cacheFiles {
+	if err := eachDir(cacheFiles, func(layer os.FileInfo) error {
+		return env.SetEnvDir(filepath.Join(cacheDir, layer.Name(), "env", "set"))
+	}); err != nil {
+		return err
+	}
+	return eachDir(cacheFiles, func(layer os.FileInfo) error {
+		return env.AddEnvDir(filepath.Join(cacheDir, layer.Name(), "env", "add"))
+	})
+}
+
+func eachDir(files []os.FileInfo, fn func(os.FileInfo) error) error {
+	for _, f := range files {
 		if !f.IsDir() {
 			continue
 		}
-		envDir := filepath.Join(cacheDir, f.Name(), "env")
-		if err := env.SetEnvDir(envDir); err != nil {
+		if err := fn(f); err != nil {
 			return err
 		}
 	}
 	return nil
 }
-
 
 type processMap map[string]Process
 

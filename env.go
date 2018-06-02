@@ -1,11 +1,9 @@
 package lifecycle
 
 import (
-	"path/filepath"
-	"os"
-	"strings"
 	"io/ioutil"
-	"fmt"
+	"os"
+	"path/filepath"
 )
 
 var envMap = map[string][]string{
@@ -28,8 +26,8 @@ var envMap = map[string][]string{
 }
 
 type POSIXEnv struct {
-	Getenv func(key string) string
-	Setenv func(key, value string) error
+	Getenv  func(key string) string
+	Setenv  func(key, value string) error
 	Environ func() []string
 }
 
@@ -55,7 +53,7 @@ func (p *POSIXEnv) AppendDirs(baseDir string) error {
 }
 
 func suffix(s, suffix string) string {
-	if strings.TrimSpace(s) == "" {
+	if s == "" {
 		return ""
 	} else {
 		return s + suffix
@@ -63,19 +61,33 @@ func suffix(s, suffix string) string {
 }
 
 func (p *POSIXEnv) SetEnvDir(envDir string) error {
-	envFiles, err := ioutil.ReadDir(envDir)
-	if err != nil {
+	return eachEnvFile(envDir, func(k, v string) error {
+		return p.Setenv(k, v)
+	})
+}
+
+func (p *POSIXEnv) AddEnvDir(envDir string) error {
+	return eachEnvFile(envDir, func(k, v string) error {
+		return p.Setenv(k, suffix(p.Getenv(k), ":")+string(v))
+	})
+}
+
+func eachEnvFile(dir string, fn func(k, v string) error) error {
+	files, err := ioutil.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
 		return err
 	}
-	for _, f := range envFiles {
+	for _, f := range files {
 		if f.IsDir() {
-			return fmt.Errorf("unexpected directory '%s'", f.Name())
+			continue
 		}
-		value, err := ioutil.ReadFile(filepath.Join(envDir, f.Name()))
+		value, err := ioutil.ReadFile(filepath.Join(dir, f.Name()))
 		if err != nil {
 			return err
 		}
-		if err := p.Setenv(f.Name(), string(value)); err != nil {
+		if err := fn(f.Name(), string(value)); err != nil {
 			return err
 		}
 	}
