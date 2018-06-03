@@ -9,8 +9,9 @@ platform_dir=$3
 echo "STDOUT${ID}"
 >&2 echo "STDERR${ID}"
 
-cp -a "launch-buildpack${ID}/." "$launch_dir"
-cp -a "cache-buildpack${ID}/." "$cache_dir"
+[[ -d "launch-buildpack${ID}" ]] && cp -a "launch-buildpack${ID}/." "$launch_dir"
+[[ -d "cache-buildpack${ID}" ]] && cp -a "cache-buildpack${ID}/." "$cache_dir"
+
 cp -a "$platform_dir/env" "./env-buildpack${ID}"
 
 cat > "$launch_dir/launch.toml" <<EOF
