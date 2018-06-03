@@ -26,15 +26,19 @@ func TestBuilder(t *testing.T) {
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		builder        *lifecycle.Builder
-		env            *testmock.MockEnv
-		mockCtrl       *gomock.Controller
-		tmpDir         string
-		platformDir    string
-		stdout, stderr *bytes.Buffer
+		builder             *lifecycle.Builder
+		mockCtrl            *gomock.Controller
+		env                 *testmock.MockEnv
+		stdout, stderr      *bytes.Buffer
+		tmpDir, platformDir string
 	)
 
 	it.Before(func() {
+		mockCtrl = gomock.NewController(t)
+		env = testmock.NewMockEnv(mockCtrl)
+		env.EXPECT().List().Return([]string{"ID=1"})
+		env.EXPECT().List().Return([]string{"ID=2"})
+
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
 		if err != nil {
@@ -43,19 +47,16 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		platformDir = filepath.Join(tmpDir, "platform")
 		mkdirs(t, filepath.Join(platformDir, "env"))
 
-		mockCtrl = gomock.NewController(t)
-		env = testmock.NewMockEnv(mockCtrl)
-		env.EXPECT().List().Return([]string{"ID=1"})
-		env.EXPECT().List().Return([]string{"ID=2"})
-
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
+		buildpackDir := filepath.Join("testdata", "buildpack")
 		builder = &lifecycle.Builder{
 			PlatformDir: platformDir,
 			Buildpacks: lifecycle.BuildpackGroup{
-				{ID: "buildpack1-id", Name: "buildpack1-name", Dir: filepath.Join("testdata", "buildpack")},
-				{ID: "buildpack2-id", Name: "buildpack2-name", Dir: filepath.Join("testdata", "buildpack")},
+				{ID: "buildpack1-id", Name: "buildpack1-name", Dir: buildpackDir},
+				{ID: "buildpack2-id", Name: "buildpack2-name", Dir: buildpackDir},
 			},
-			Out: io.MultiWriter(stdout, it.Out()), Err: io.MultiWriter(stderr, it.Out()),
+			Out: io.MultiWriter(stdout, it.Out()),
+			Err: io.MultiWriter(stderr, it.Out()),
 		}
 	})
 
@@ -87,7 +88,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(appDir, "cache-buildpack2", "cache-layer3"),
 				filepath.Join(appDir, "cache-buildpack2", "cache-layer4"),
 			)
-
 			gomock.InOrder(
 				env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
 				env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
@@ -103,9 +103,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "add")),
 				env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "add")),
 			)
-
-			_, err := builder.Build(appDir, launchDir, cacheDir, env)
-			if err != nil {
+			if _, err := builder.Build(appDir, launchDir, cacheDir, env); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 		})
@@ -117,9 +115,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(appDir, "launch-buildpack1", "launch-layer1"),
 				filepath.Join(appDir, "launch-buildpack2", "launch-layer2"),
 			)
-
-			_, err := builder.Build(appDir, launchDir, cacheDir, env)
-			if err != nil {
+			if _, err := builder.Build(appDir, launchDir, cacheDir, env); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			testExists(t,
@@ -148,8 +144,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			mkfiles(t, "some-data",
 				filepath.Join(platformDir, "env", "SOME_VAR"),
 			)
-			_, err := builder.Build(appDir, launchDir, cacheDir, env)
-			if err != nil {
+			if _, err := builder.Build(appDir, launchDir, cacheDir, env); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			testExists(t,
@@ -159,8 +154,90 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should connect stdout and stdin to the terminal", func() {
-			_, err := builder.Build(appDir, launchDir, cacheDir, env)
+			if _, err := builder.Build(appDir, launchDir, cacheDir, env); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			if stdout.String() != "STDOUT1\nSTDOUT2\n" {
+				t.Fatalf("Unexpected: %s", stdout)
+			}
+			if stderr.String() != "STDERR1\nSTDERR2\n" {
+				t.Fatalf("Unexpected: %s", stderr)
+			}
+		})
+	})
+
+	when("#Develop", func() {
+		var (
+			appDir   string
+			cacheDir string
+		)
+
+		it.Before(func() {
+			cacheDir = filepath.Join(tmpDir, "cache")
+			appDir = filepath.Join(tmpDir, "app")
+			mkdirs(t, cacheDir, appDir)
+		})
+
+		it("should ensure each cache dir exists and process it", func() {
+			mkdirs(t,
+				filepath.Join(cacheDir, "buildpack1-id"),
+
+				filepath.Join(appDir, "cache-buildpack1", "cache-layer1"),
+				filepath.Join(appDir, "cache-buildpack1", "cache-layer2"),
+				filepath.Join(appDir, "cache-buildpack2", "cache-layer3"),
+				filepath.Join(appDir, "cache-buildpack2", "cache-layer4"),
+			)
+			gomock.InOrder(
+				env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
+				env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
+				env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "set")),
+				env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "set")),
+				env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "add")),
+				env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "add")),
+
+				env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3")),
+				env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4")),
+				env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "set")),
+				env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "set")),
+				env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "add")),
+				env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "add")),
+			)
+			if _, err := builder.Develop(appDir, cacheDir, env); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+		})
+
+		it("should return development metadata", func() {
+			metadata, err := builder.Develop(appDir, cacheDir, env)
 			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			if !reflect.DeepEqual(metadata, &lifecycle.DevelopMetadata{
+				Processes: []lifecycle.Process{
+					{Type: "override-type", Command: "process2-command"},
+					{Type: "process1-type", Command: "process1-command"},
+					{Type: "process2-type", Command: "process2-command"},
+				},
+			}) {
+				t.Fatalf("Unexpected:\n%+v\n", metadata)
+			}
+		})
+
+		it("should provide the platform dir", func() {
+			mkfiles(t, "some-data",
+				filepath.Join(platformDir, "env", "SOME_VAR"),
+			)
+			if _, err := builder.Develop(appDir, cacheDir, env); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			testExists(t,
+				filepath.Join(appDir, "env-buildpack1", "SOME_VAR"),
+				filepath.Join(appDir, "env-buildpack2", "SOME_VAR"),
+			)
+		})
+
+		it("should connect stdout and stdin to the terminal", func() {
+			if _, err := builder.Develop(appDir, cacheDir, env); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			if stdout.String() != "STDOUT1\nSTDOUT2\n" {

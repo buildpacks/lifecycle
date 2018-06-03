@@ -62,7 +62,7 @@ func (b *Builder) Build(appDir, launchDir, cacheDir string, env Env) (*BuildMeta
 			return nil, err
 		}
 		var launch LaunchTOML
-		if _, err := toml.DecodeFile(filepath.Join(bpLaunchDir, "launch.toml"), &launch); err != nil {
+		if _, err := toml.DecodeFile(filepath.Join(b.PlatformDir, "launch.toml"), &launch); err != nil {
 			return nil, err
 		}
 		procMap.add(launch.Processes)
@@ -85,10 +85,11 @@ func (b *Builder) Develop(appDir, cacheDir string, env Env) (*DevelopMetadata, e
 		if err := os.MkdirAll(bpCacheDir, 0777); err != nil {
 			return nil, err
 		}
-		cmd := exec.Command(
-			filepath.Join(bp.Dir, "bin", "develop"),
-			bpCacheDir, b.PlatformDir,
-		)
+		developPath, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "develop"))
+		if err != nil {
+			return nil, err
+		}
+		cmd := exec.Command(developPath, bpCacheDir, b.PlatformDir)
 		cmd.Env = env.List()
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out
@@ -100,7 +101,7 @@ func (b *Builder) Develop(appDir, cacheDir string, env Env) (*DevelopMetadata, e
 			return nil, err
 		}
 		var develop DevelopTOML
-		if _, err := toml.DecodeFile(filepath.Join(bpCacheDir, "develop.toml"), &develop); err != nil {
+		if _, err := toml.DecodeFile(filepath.Join(b.PlatformDir, "develop.toml"), &develop); err != nil {
 			return nil, err
 		}
 		procMap.add(develop.Processes)

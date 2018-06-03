@@ -41,6 +41,7 @@ func main() {
 		Setenv:  os.Setenv,
 		Environ: os.Environ,
 	}
+	// TODO: create flags for these
 	metadata, err := builder.Build(
 		lifecycle.DefaultAppDir,
 		lifecycle.DefaultLaunchDir,

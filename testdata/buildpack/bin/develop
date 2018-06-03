@@ -2,19 +2,17 @@
 
 set -eu
 
-launch_dir=$1
-cache_dir=$2
-platform_dir=$3
+cache_dir=$1
+platform_dir=$2
 
 echo "STDOUT${ID}"
 >&2 echo "STDERR${ID}"
 
-[[ -d "launch-buildpack${ID}" ]] && cp -a "launch-buildpack${ID}/." "$launch_dir"
 [[ -d "cache-buildpack${ID}" ]] && cp -a "cache-buildpack${ID}/." "$cache_dir"
 
 cp -a "$platform_dir/env" "./env-buildpack${ID}"
 
-cat > "$platform_dir/launch.toml" <<EOF
+cat > "$platform_dir/develop.toml" <<EOF
 [[processes]]
 type = "process${ID}-type"
 command = "process${ID}-command"
