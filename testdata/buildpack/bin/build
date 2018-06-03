@@ -6,21 +6,19 @@ launch_dir=$1
 cache_dir=$2
 platform_dir=$3
 
-echo STDOUT
->&2 echo STDERR
+echo "STDOUT${ID}"
+>&2 echo "STDERR${ID}"
 
-mkdir "$cache_dir/cache1" "$cache_dir/cache2"
-mkdir "$launch_dir/launch1" "$launch_dir/launch2"
-
-echo * > "$launch_dir/launch1/app-dir"
-( cd "$platform_dir/env" && echo * > "$launch_dir/launch1/env-dir" )
+cp -a "launch-buildpack${ID}/." "$launch_dir"
+cp -a "cache-buildpack${ID}/." "$cache_dir"
+cp -a "$platform_dir/env" "./env-buildpack${ID}"
 
 cat > "$launch_dir/launch.toml" <<EOF
 [[processes]]
-type = "${PROCESS}-type"
-command = "${PROCESS}-command"
+type = "process${ID}-type"
+command = "process${ID}-command"
 
 [[processes]]
 type = "override-type"
-command = "${PROCESS}-command"
+command = "process${ID}-command"
 EOF
