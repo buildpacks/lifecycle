@@ -35,7 +35,7 @@ type LaunchTOML struct {
 
 type BuildMetadata LaunchTOML
 
-func (b *Builder) Build(appDir, launchDir, cacheDir string, env Env) (*BuildMetadata, error) {
+func (b *Builder) Build(appDir, cacheDir, launchDir string, env Env) (*BuildMetadata, error) {
 	procMap := processMap{}
 	for _, bp := range b.Buildpacks {
 		bpLaunchDir := filepath.Join(launchDir, bp.ID)
@@ -50,7 +50,7 @@ func (b *Builder) Build(appDir, launchDir, cacheDir string, env Env) (*BuildMeta
 		if err != nil {
 			return nil, err
 		}
-		cmd := exec.Command(buildPath, bpLaunchDir, bpCacheDir, b.PlatformDir)
+		cmd := exec.Command(buildPath, b.PlatformDir, bpCacheDir, bpLaunchDir)
 		cmd.Env = env.List()
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out
@@ -89,7 +89,7 @@ func (b *Builder) Develop(appDir, cacheDir string, env Env) (*DevelopMetadata, e
 		if err != nil {
 			return nil, err
 		}
-		cmd := exec.Command(developPath, bpCacheDir, b.PlatformDir)
+		cmd := exec.Command(developPath, b.PlatformDir, bpCacheDir)
 		cmd.Env = env.List()
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out

@@ -2,8 +2,8 @@
 
 set -eu
 
-cache_dir=$1
-platform_dir=$2
+platform_dir=$1
+cache_dir=$2
 
 echo "STDOUT${ID}"
 >&2 echo "STDERR${ID}"

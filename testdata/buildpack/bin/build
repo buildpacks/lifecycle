@@ -2,9 +2,9 @@
 
 set -eu
 
-launch_dir=$1
+platform_dir=$1
 cache_dir=$2
-platform_dir=$3
+launch_dir=$3
 
 echo "STDOUT${ID}"
 >&2 echo "STDERR${ID}"
