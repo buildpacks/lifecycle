@@ -1,0 +1,15 @@
+[[constraint]]
+  branch = "master"
+  name = "code.cloudfoundry.org/buildpackapplifecycle"
+
+[[constraint]]
+  name = "code.cloudfoundry.org/cli"
+  version = "=6.37.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/sclevine/spec"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/google/go-containerregistry"

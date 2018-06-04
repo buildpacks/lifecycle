@@ -15,6 +15,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/sclevine/packs"
+  packages = ["."]
+  revision = "c3c775750abec968868bfed089dc1a3cf3473eee"
+
+[[projects]]
+  branch = "master"
   name = "github.com/sclevine/spec"
   packages = [
     ".",
@@ -31,6 +37,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3e3b7599c28442d1798e8b2dbe911a813a977deffadc57bf5908844be0022bfb"
+  inputs-digest = "f23d3f9f3ac8579483721abafb42549ff22a87f7e8eda496bf360e9662813464"
   solver-name = "gps-cdcl"
   solver-version = 1
