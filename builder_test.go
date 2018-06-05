@@ -202,7 +202,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			var appendErr error
-			each(it, "should error when modifying the env fails", []func(){
+			each(it, []func(){
 				func() {
 					env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
 				},
@@ -215,7 +215,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
 					env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 				},
-			}, func(mock func()) {
+			}, "should error when modifying the env fails", func(mock func()) {
 				appendErr = errors.New("some error")
 				env.EXPECT().List().Return([]string{"ID=1"})
 				mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
@@ -345,7 +345,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			var appendErr error
-			each(it, "should error when modifying the env fails", []func(){
+			each(it, []func(){
 				func() {
 					env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
 				},
@@ -358,7 +358,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
 					env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 				},
-			}, func(mock func()) {
+			}, "should error when modifying the env fails", func(mock func()) {
 				appendErr = errors.New("some error")
 				env.EXPECT().List().Return([]string{"ID=1"})
 				mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
@@ -415,7 +415,7 @@ func testExists(t *testing.T, paths ...string) {
 	}
 }
 
-func each(it spec.S, text string, ops []func(), test func(func())) {
+func each(it spec.S, ops []func(), text string, test func(func())) {
 	for i, op := range ops {
 		it(fmt.Sprintf("%s #%d", text, i), func() { test(op) })
 	}
