@@ -2,22 +2,20 @@ package lifecycle_test
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"reflect"
-
-	"os/exec"
-
-	"errors"
-	"fmt"
 
 	"github.com/sclevine/lifecycle"
 	"github.com/sclevine/lifecycle/testmock"
@@ -204,7 +202,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			var appendErr error
-			for n, mock := range []func(){
+			each(it, "should error when modifying the env fails", []func(){
 				func() {
 					env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
 				},
@@ -217,17 +215,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
 					env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 				},
-			} {
+			}, func(mock func()) {
 				appendErr = errors.New("some error")
-				each(it, "should error when modifying the env fails", n, mock, func(mock func()) {
-					env.EXPECT().List().Return([]string{"ID=1"})
-					mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
-					mock()
-					if _, err := builder.Build(appDir, cacheDir, launchDir, env); err != appendErr {
-						t.Fatalf("Incorrect error: %s\n", err)
-					}
-				})
-			}
+				env.EXPECT().List().Return([]string{"ID=1"})
+				mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
+				mock()
+				if _, err := builder.Build(appDir, cacheDir, launchDir, env); err != appendErr {
+					t.Fatalf("Incorrect error: %s\n", err)
+				}
+			})
 
 			it("should error when launch.toml is not writable", func() {
 				env.EXPECT().List().Return([]string{"ID=1"})
@@ -349,7 +345,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			var appendErr error
-			for n, mock := range []func(){
+			each(it, "should error when modifying the env fails", []func(){
 				func() {
 					env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
 				},
@@ -362,17 +358,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
 					env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 				},
-			} {
+			}, func(mock func()) {
 				appendErr = errors.New("some error")
-				each(it, "should error when modifying the env fails", n, mock, func(mock func()) {
-					env.EXPECT().List().Return([]string{"ID=1"})
-					mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
-					mock()
-					if _, err := builder.Develop(appDir, cacheDir, env); err != appendErr {
-						t.Fatalf("Incorrect error: %s\n", err)
-					}
-				})
-			}
+				env.EXPECT().List().Return([]string{"ID=1"})
+				mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
+				mock()
+				if _, err := builder.Develop(appDir, cacheDir, env); err != appendErr {
+					t.Fatalf("Incorrect error: %s\n", err)
+				}
+			})
 
 			it("should error when develop.toml is not writable", func() {
 				env.EXPECT().List().Return([]string{"ID=1"})
@@ -403,6 +397,15 @@ func mkfile(t *testing.T, data string, paths ...string) {
 	}
 }
 
+func read(t *testing.T, path string) string {
+	t.Helper()
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Error: %s\n", err)
+	}
+	return strings.TrimSpace(string(b))
+}
+
 func testExists(t *testing.T, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
@@ -412,6 +415,8 @@ func testExists(t *testing.T, paths ...string) {
 	}
 }
 
-func each(it spec.S, text string, i int, op func(), test func(func())) {
-	it(fmt.Sprintf("%s #%d", text, i), func() { test(op) })
+func each(it spec.S, text string, ops []func(), test func(func())) {
+	for i, op := range ops {
+		it(fmt.Sprintf("%s #%d", text, i), func() { test(op) })
+	}
 }

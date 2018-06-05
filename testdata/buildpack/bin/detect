@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -eu
+
+i=$(cat -)
+expr $(<add) + ${i:-0} | tee result
+[[ -f error ]] && exit 1
+(( $(<result) > $(<last) )) && exit 100 || exit 0
