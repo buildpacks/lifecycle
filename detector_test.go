@@ -21,8 +21,6 @@ func TestDetector(t *testing.T) {
 	spec.Run(t, "Detector", testDetector, spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination testmock/env.go github.com/sclevine/lifecycle Env
-
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	var (
 		list   lifecycle.BuildpackList
