@@ -14,12 +14,17 @@ import (
 var startCommand string
 
 const launcher = `
-if compgen -G "$1/*/profile.d/*" > /dev/null; then
-  for script in $1/*/profile.d/*; do
+if compgen -G "$1/*/*/profile.d/*" > /dev/null; then
+  for script in "$1"/*/*/profile.d/*; do
     [[ ! -f $script ]] && continue
     source "$script"
   done
 fi
+
+if [[ -f .profile ]]; then
+  source .profile
+fi
+
 shift
 exec bash -c "$@"
 `
