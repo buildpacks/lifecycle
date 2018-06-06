@@ -3,6 +3,7 @@
 set -eu
 
 i=$(cat -)
-expr $(<add) + ${i:-0} | tee result
+let r=$(<add)+${i:-0}
+echo "$r" | tee >(cat >&2)
 [[ -f error ]] && exit 1
-(( $(<result) > $(<last) )) && exit 100 || exit 0
+(( $r > $(<last) )) && exit 100 || exit 0

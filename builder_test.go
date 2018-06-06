@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -201,28 +200,33 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			var appendErr error
-			each(it, []func(){
-				func() {
-					env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
-				},
-				func() {
-					env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
-					env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
-				},
-				func() {
-					env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
-					env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
-					env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
-				},
-			}, "should error when modifying the env fails", func(mock func()) {
-				appendErr = errors.New("some error")
-				env.EXPECT().List().Return([]string{"ID=1"})
-				mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
-				mock()
-				if _, err := builder.Build(appDir, cacheDir, launchDir, env); err != appendErr {
-					t.Fatalf("Incorrect error: %s\n", err)
-				}
+			when("modifying the env fails", func() {
+				var appendErr error
+
+				it.Before(func() {
+					appendErr = errors.New("some error")
+				})
+
+				each(it, []func(){
+					func() {
+						env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
+					},
+					func() {
+						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
+					},
+					func() {
+						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
+						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
+					},
+				}, "should error", func() {
+					env.EXPECT().List().Return([]string{"ID=1"})
+					mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
+					if _, err := builder.Build(appDir, cacheDir, launchDir, env); err != appendErr {
+						t.Fatalf("Incorrect error: %s\n", err)
+					}
+				})
 			})
 
 			it("should error when launch.toml is not writable", func() {
@@ -344,28 +348,33 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			var appendErr error
-			each(it, []func(){
-				func() {
-					env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
-				},
-				func() {
-					env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
-					env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
-				},
-				func() {
-					env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
-					env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
-					env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
-				},
-			}, "should error when modifying the env fails", func(mock func()) {
-				appendErr = errors.New("some error")
-				env.EXPECT().List().Return([]string{"ID=1"})
-				mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
-				mock()
-				if _, err := builder.Develop(appDir, cacheDir, env); err != appendErr {
-					t.Fatalf("Incorrect error: %s\n", err)
-				}
+			when("modifying the env fails", func() {
+				var appendErr error
+
+				it.Before(func() {
+					appendErr = errors.New("some error")
+				})
+
+				each(it, []func(){
+					func() {
+						env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
+					},
+					func() {
+						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
+					},
+					func() {
+						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
+						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
+					},
+				}, "should error", func() {
+					env.EXPECT().List().Return([]string{"ID=1"})
+					mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
+					if _, err := builder.Develop(appDir, cacheDir, env); err != appendErr {
+						t.Fatalf("Incorrect error: %s\n", err)
+					}
+				})
 			})
 
 			it("should error when develop.toml is not writable", func() {
@@ -397,15 +406,6 @@ func mkfile(t *testing.T, data string, paths ...string) {
 	}
 }
 
-func read(t *testing.T, path string) string {
-	t.Helper()
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		t.Fatalf("Error: %s\n", err)
-	}
-	return strings.TrimSpace(string(b))
-}
-
 func testExists(t *testing.T, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
@@ -415,8 +415,8 @@ func testExists(t *testing.T, paths ...string) {
 	}
 }
 
-func each(it spec.S, ops []func(), text string, test func(func())) {
-	for i, op := range ops {
-		it(fmt.Sprintf("%s #%d", text, i), func() { test(op) })
+func each(it spec.S, befores []func(), text string, test func()) {
+	for i, before := range befores {
+		it(fmt.Sprintf("%s #%d", text, i), func() { before(); test() })
 	}
 }

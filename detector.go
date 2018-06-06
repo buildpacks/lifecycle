@@ -55,24 +55,9 @@ func (bp Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Lo
 type BuildpackGroup []Buildpack
 
 func (bg BuildpackGroup) Detect(appDir string, l *log.Logger) bool {
-	buffers := make([]bytes.Buffer, len(bg))
-	codes := make([]int, len(bg))
-	wg := sync.WaitGroup{}
-	wg.Add(len(bg))
-	for i := range bg {
-		go func(i int) {
-			var last io.Reader
-			if i > 0 {
-				last = &buffers[i-1]
-			}
-			codes[i] = bg[i].Detect(appDir, last, &buffers[i], l)
-			wg.Done()
-		}(i)
-	}
-	wg.Wait()
 	summary := "Group:"
 	detected := true
-	for i, code := range codes {
+	for i, code := range bg.pDetect(appDir, l) {
 		if i > 0 {
 			summary += " |"
 		}
@@ -89,6 +74,34 @@ func (bg BuildpackGroup) Detect(appDir string, l *log.Logger) bool {
 	}
 	l.Println(summary)
 	return detected
+}
+
+func (bg BuildpackGroup) pDetect(appDir string, l *log.Logger) []int {
+	codes := make([]int, len(bg))
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
+	wg.Add(len(bg))
+	var lastIn io.ReadCloser
+	defer func() {
+		if lastIn != nil {
+			lastIn.Close()
+		}
+	}()
+	for i := range bg {
+		in, out := io.Pipe()
+		go func(i int, r io.ReadCloser) {
+			defer wg.Done()
+			defer out.Close()
+			if r != nil {
+				defer r.Close()
+			}
+			w := &bytes.Buffer{}
+			codes[i] = bg[i].Detect(appDir, r, w, l)
+			io.Copy(out, w)
+		}(i, lastIn)
+		lastIn = in
+	}
+	return codes
 }
 
 type BuildpackList []BuildpackGroup

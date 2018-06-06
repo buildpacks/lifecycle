@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -58,19 +59,47 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		os.RemoveAll(tmpDir)
 	})
 
-	when.Pend("#Detect", func() {
+	when("#Detect", func() {
 		it("should return the first matching group", func() {
-			// FIXME: data race on read-only app dir
 			mkfile(t, "1", filepath.Join(tmpDir, "add"))
 			mkfile(t, "3", filepath.Join(tmpDir, "last"))
 			out := &bytes.Buffer{}
-			l := log.New(io.MultiWriter(out, it.Out()), "", log.LstdFlags)
+			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
 			if group := list.Detect(tmpDir, l); !reflect.DeepEqual(group, list[1]) {
 				t.Fatalf("Unexpected group: %#v\n", group)
 			}
+			if strings.HasSuffix(out.String(),
+				"3\nGroup: buildpack1-name: pass | buildpack2-name: pass | buildpack3-name: pass",
+			) {
+				t.Fatalf("Unexpected log: %s\n", out)
+			}
+		})
 
-			if result := read(t, filepath.Join(tmpDir, "result")); result != "3" {
-				t.Fatalf("Unexpected result: %s\n", result)
+		it("should return empty if no groups match", func() {
+			mkfile(t, "1", filepath.Join(tmpDir, "add"))
+			mkfile(t, "1", filepath.Join(tmpDir, "last"))
+			out := &bytes.Buffer{}
+			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
+			if group := list.Detect(tmpDir, l); len(group) > 0 {
+				t.Fatalf("Unexpected group: %#v\n", group)
+			}
+			if strings.HasSuffix(out.String(),
+				"2\nGroup: buildpack1-name: pass | buildpack2-name: fail",
+			) {
+				t.Fatalf("Unexpected log: %s\n", out)
+			}
+		})
+
+		it("should return empty there is an error", func() {
+			out := &bytes.Buffer{}
+			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
+			if group := list.Detect(tmpDir, l); len(group) > 0 {
+				t.Fatalf("Unexpected group: %#v\n", group)
+			}
+			if strings.HasSuffix(out.String(),
+				"No such file or directory\nGroup: buildpack1-name: error (1) | buildpack2-name: error (1)",
+			) {
+				t.Fatalf("Unexpected log: %s\n", out)
 			}
 		})
 	})
