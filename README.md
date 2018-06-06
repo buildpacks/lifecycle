@@ -1,5 +1,8 @@
 # Lifecycle
 
+[![Build Status](https://travis-ci.org/sclevine/lifecycle.svg?branch=master)](https://travis-ci.org/sclevine/lifecycle)
+[![GoDoc](https://godoc.org/github.com/sclevine/lifecycle?status.svg)](https://godoc.org/github.com/sclevine/lifecycle)
+
 A reference implementation of Buildpack API v3.
 
 ## Commands
