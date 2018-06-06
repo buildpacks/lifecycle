@@ -1,6 +1,7 @@
 package lifecycle_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,9 +10,10 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/sclevine/lifecycle"
 	"io/ioutil"
 	"strings"
+
+	"github.com/sclevine/lifecycle"
 )
 
 func TestPOSIXEnv(t *testing.T) {
@@ -38,7 +40,7 @@ func testPOSIXEnv(t *testing.T, when spec.G, it spec.S) {
 				return result[key]
 			},
 			Setenv: func(key, value string) error {
-				result[key] = strings.Replace(value, tmpDir, "/tmpDir",-1)
+				result[key] = strings.Replace(value, tmpDir, "/tmpDir", -1)
 				return retErr
 			},
 			Environ: func() (out []string) {
@@ -110,6 +112,70 @@ func testPOSIXEnv(t *testing.T, when spec.G, it spec.S) {
 				"PKG_CONFIG_PATH":    "/tmpDir/pkgconfig",
 			}) {
 				t.Fatalf("Unexpected env: %+v\n", result)
+			}
+		})
+
+		it("should return an error when setenv fails", func() {
+			retErr = errors.New("some error")
+			mkdir(t, filepath.Join(tmpDir, "bin"))
+			if err := env.AddRootDir(tmpDir); err != retErr {
+				t.Fatalf("Unexpected error: %s\n", err)
+			}
+		})
+	})
+
+	when("#AddEnvDir", func() {
+		it("should append env vars as filename=file-contents", func() {
+			mkdir(t, filepath.Join(tmpDir, "some-dir"))
+			mkfile(t, "some-value1", filepath.Join(tmpDir, "SOME_VAR1"))
+			mkfile(t, "some-value2", filepath.Join(tmpDir, "SOME_VAR2"))
+			result = map[string]string{
+				"SOME_VAR1": "some-value",
+			}
+			if err := env.AddEnvDir(tmpDir); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			if !reflect.DeepEqual(result, map[string]string{
+				"SOME_VAR1": "some-value:some-value1",
+				"SOME_VAR2": "some-value2",
+			}) {
+				t.Fatalf("Unexpected env: %+v\n", result)
+			}
+		})
+
+		it("should return an error when setenv fails", func() {
+			retErr = errors.New("some error")
+			mkfile(t, "some-value", filepath.Join(tmpDir, "SOME_VAR"))
+			if err := env.AddEnvDir(tmpDir); err != retErr {
+				t.Fatalf("Unexpected error: %s\n", err)
+			}
+		})
+	})
+
+	when("#SetEnvDir", func() {
+		it("should append env vars as filename=file-contents", func() {
+			mkdir(t, filepath.Join(tmpDir, "some-dir"))
+			mkfile(t, "some-value1", filepath.Join(tmpDir, "SOME_VAR1"))
+			mkfile(t, "some-value2", filepath.Join(tmpDir, "SOME_VAR2"))
+			result = map[string]string{
+				"SOME_VAR1": "some-value",
+			}
+			if err := env.SetEnvDir(tmpDir); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			if !reflect.DeepEqual(result, map[string]string{
+				"SOME_VAR1": "some-value1",
+				"SOME_VAR2": "some-value2",
+			}) {
+				t.Fatalf("Unexpected env: %+v\n", result)
+			}
+		})
+
+		it("should return an error when setenv fails", func() {
+			retErr = errors.New("some error")
+			mkfile(t, "some-value", filepath.Join(tmpDir, "SOME_VAR"))
+			if err := env.SetEnvDir(tmpDir); err != retErr {
+				t.Fatalf("Unexpected error: %s\n", err)
 			}
 		})
 	})
