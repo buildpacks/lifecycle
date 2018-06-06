@@ -16,13 +16,13 @@ import (
 	"github.com/sclevine/lifecycle"
 )
 
-func TestPOSIXEnv(t *testing.T) {
-	spec.Run(t, "POSIX Env", testPOSIXEnv, spec.Report(report.Terminal{}))
+func TestEnv(t *testing.T) {
+	spec.Run(t, "Env", testEnv, spec.Report(report.Terminal{}))
 }
 
-func testPOSIXEnv(t *testing.T, when spec.G, it spec.S) {
+func testEnv(t *testing.T, when spec.G, it spec.S) {
 	var (
-		env    *lifecycle.POSIXEnv
+		env    *lifecycle.Env
 		result map[string]string
 		retErr error
 		tmpDir string
@@ -35,7 +35,7 @@ func testPOSIXEnv(t *testing.T, when spec.G, it spec.S) {
 			t.Fatalf("Error: %s\n", err)
 		}
 		result = map[string]string{}
-		env = &lifecycle.POSIXEnv{
+		env = &lifecycle.Env{
 			Getenv: func(key string) string {
 				return result[key]
 			},
@@ -49,6 +49,15 @@ func testPOSIXEnv(t *testing.T, when spec.G, it spec.S) {
 				}
 				return out
 			},
+			Map: map[string][]string{
+				"bin": {
+					"PATH",
+				},
+				"lib": {
+					"LD_LIBRARY_PATH",
+					"LIBRARY_PATH",
+				},
+			},
 		}
 	})
 
@@ -61,31 +70,19 @@ func testPOSIXEnv(t *testing.T, when spec.G, it spec.S) {
 			mkdir(t,
 				filepath.Join(tmpDir, "bin"),
 				filepath.Join(tmpDir, "lib"),
-				filepath.Join(tmpDir, "include"),
-				filepath.Join(tmpDir, "pkgconfig"),
 			)
 			result = map[string]string{
-				"PATH":               "some",
-				"LD_LIBRARY_PATH":    "some-ld",
-				"LIBRARY_PATH":       "some-library",
-				"CPATH":              "some-cpath",
-				"C_INCLUDE_PATH":     "some-c-include",
-				"CPLUS_INCLUDE_PATH": "cplus-include",
-				"OBJC_INCLUDE_PATH":  "objc-include",
-				"PKG_CONFIG_PATH":    "pkg-config",
+				"PATH":            "some",
+				"LD_LIBRARY_PATH": "some-ld",
+				"LIBRARY_PATH":    "some-library",
 			}
 			if err := env.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			if !reflect.DeepEqual(result, map[string]string{
-				"PATH":               "some:/tmpDir/bin",
-				"LD_LIBRARY_PATH":    "some-ld:/tmpDir/lib",
-				"LIBRARY_PATH":       "some-library:/tmpDir/lib",
-				"CPATH":              "some-cpath:/tmpDir/include",
-				"C_INCLUDE_PATH":     "some-c-include:/tmpDir/include",
-				"CPLUS_INCLUDE_PATH": "cplus-include:/tmpDir/include",
-				"OBJC_INCLUDE_PATH":  "objc-include:/tmpDir/include",
-				"PKG_CONFIG_PATH":    "pkg-config:/tmpDir/pkgconfig",
+				"PATH":            "some:/tmpDir/bin",
+				"LD_LIBRARY_PATH": "some-ld:/tmpDir/lib",
+				"LIBRARY_PATH":    "some-library:/tmpDir/lib",
 			}) {
 				t.Fatalf("Unexpected env: %+v\n", result)
 			}
@@ -95,21 +92,14 @@ func testPOSIXEnv(t *testing.T, when spec.G, it spec.S) {
 			mkdir(t,
 				filepath.Join(tmpDir, "bin"),
 				filepath.Join(tmpDir, "lib"),
-				filepath.Join(tmpDir, "include"),
-				filepath.Join(tmpDir, "pkgconfig"),
 			)
 			if err := env.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			if !reflect.DeepEqual(result, map[string]string{
-				"PATH":               "/tmpDir/bin",
-				"LD_LIBRARY_PATH":    "/tmpDir/lib",
-				"LIBRARY_PATH":       "/tmpDir/lib",
-				"CPATH":              "/tmpDir/include",
-				"C_INCLUDE_PATH":     "/tmpDir/include",
-				"CPLUS_INCLUDE_PATH": "/tmpDir/include",
-				"OBJC_INCLUDE_PATH":  "/tmpDir/include",
-				"PKG_CONFIG_PATH":    "/tmpDir/pkgconfig",
+				"PATH":            "/tmpDir/bin",
+				"LD_LIBRARY_PATH": "/tmpDir/lib",
+				"LIBRARY_PATH":    "/tmpDir/lib",
 			}) {
 				t.Fatalf("Unexpected env: %+v\n", result)
 			}

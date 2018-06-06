@@ -44,10 +44,11 @@ func build() error {
 		Out:         os.Stdout,
 		Err:         os.Stderr,
 	}
-	env := &lifecycle.POSIXEnv{
+	env := &lifecycle.Env{
 		Getenv:  os.Getenv,
 		Setenv:  os.Setenv,
 		Environ: os.Environ,
+		Map:     lifecycle.POSIXBuildEnv,
 	}
 	metadata, err := builder.Build(
 		lifecycle.DefaultAppDir,

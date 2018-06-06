@@ -24,7 +24,7 @@ func TestBuilder(t *testing.T) {
 	spec.Run(t, "Builder", testBuilder, spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination testmock/env.go github.com/sclevine/lifecycle Env
+//go:generate mockgen -package mocks -destination testmock/env.go github.com/sclevine/lifecycle BuildEnv
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (

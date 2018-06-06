@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-var envMap = map[string][]string{
+var POSIXBuildEnv = map[string][]string{
 	"bin": {
 		"PATH",
 	},
@@ -25,22 +25,28 @@ var envMap = map[string][]string{
 	},
 }
 
-type POSIXEnv struct {
+var POSIXLaunchEnv = map[string][]string{
+	"bin": {"PATH"},
+	"lib": {"LD_LIBRARY_PATH"},
+}
+
+type Env struct {
 	Getenv  func(key string) string
 	Setenv  func(key, value string) error
 	Environ func() []string
+	Map     map[string][]string
 }
 
-func (p *POSIXEnv) AddRootDir(baseDir string) error {
+func (p *Env) AddRootDir(baseDir string) error {
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {
 		return err
 	}
-	for dir, vars := range envMap {
+	for dir, vars := range p.Map {
 		newDir := filepath.Join(absBaseDir, dir)
 		if _, err := os.Stat(newDir); err == nil {
 			for _, key := range vars {
-				value := suffix(p.Getenv(key), ":") + newDir
+				value := suffix(p.Getenv(key), os.PathListSeparator) + newDir
 				if err := p.Setenv(key, value); err != nil {
 					return err
 				}
@@ -52,23 +58,23 @@ func (p *POSIXEnv) AddRootDir(baseDir string) error {
 	return nil
 }
 
-func suffix(s, suffix string) string {
+func suffix(s string, suffix byte) string {
 	if s == "" {
 		return ""
 	} else {
-		return s + suffix
+		return s + string(suffix)
 	}
 }
 
-func (p *POSIXEnv) SetEnvDir(envDir string) error {
+func (p *Env) SetEnvDir(envDir string) error {
 	return eachEnvFile(envDir, func(k, v string) error {
 		return p.Setenv(k, v)
 	})
 }
 
-func (p *POSIXEnv) AddEnvDir(envDir string) error {
+func (p *Env) AddEnvDir(envDir string) error {
 	return eachEnvFile(envDir, func(k, v string) error {
-		return p.Setenv(k, suffix(p.Getenv(k), ":")+string(v))
+		return p.Setenv(k, suffix(p.Getenv(k), os.PathListSeparator)+string(v))
 	})
 }
 
@@ -94,6 +100,6 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 	return nil
 }
 
-func (p *POSIXEnv) List() []string {
+func (p *Env) List() []string {
 	return p.Environ()
 }

@@ -28,9 +28,9 @@ A reference implementation of Buildpack API v3.
 
 ## Notes
 
-Only the `detector` and `builder` are currently implemented.
+Only the `detector`, `builder`, and `launcher` are currently implemented here.
 
 The `analyzer` and `exporter` are partially implemented in [packs](https://github.com/sclevine/packs).
 
 Cache implementations (`restorer` and `cacher`) are intended to be interchangable and platform-specific.
-A platform may choose not to deduplicate cache layers for efficiency.
+A platform may choose not to deduplicate cache layers.

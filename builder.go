@@ -17,7 +17,7 @@ type Builder struct {
 	Out, Err    io.Writer
 }
 
-type Env interface {
+type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string) error
 	SetEnvDir(envDir string) error
@@ -35,7 +35,7 @@ type LaunchTOML struct {
 
 type BuildMetadata LaunchTOML
 
-func (b *Builder) Build(appDir, cacheDir, launchDir string, env Env) (*BuildMetadata, error) {
+func (b *Builder) Build(appDir, cacheDir, launchDir string, env BuildEnv) (*BuildMetadata, error) {
 	procMap := processMap{}
 	for _, bp := range b.Buildpacks {
 		bpLaunchDir := filepath.Join(launchDir, bp.ID)
@@ -78,7 +78,7 @@ type DevelopTOML struct {
 
 type DevelopMetadata DevelopTOML
 
-func (b *Builder) Develop(appDir, cacheDir string, env Env) (*DevelopMetadata, error) {
+func (b *Builder) Develop(appDir, cacheDir string, env BuildEnv) (*DevelopMetadata, error) {
 	procMap := processMap{}
 	for _, bp := range b.Buildpacks {
 		bpCacheDir := filepath.Join(cacheDir, bp.ID)
@@ -111,7 +111,7 @@ func (b *Builder) Develop(appDir, cacheDir string, env Env) (*DevelopMetadata, e
 	}, nil
 }
 
-func setupEnv(env Env, cacheDir string) error {
+func setupEnv(env BuildEnv, cacheDir string) error {
 	cacheFiles, err := ioutil.ReadDir(cacheDir)
 	if err != nil {
 		return err
