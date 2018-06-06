@@ -95,15 +95,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(appDir, "cache-buildpack2", "cache-layer4"),
 				)
 				gomock.InOrder(
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "set")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "set")),
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "add")),
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "add")),
 
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3")),
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "set")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "set")),
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "add")),
@@ -209,14 +209,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				each(it, []func(){
 					func() {
-						env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
-						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
-						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
 						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 					},
@@ -267,15 +267,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(appDir, "cache-buildpack2", "cache-layer4"),
 				)
 				gomock.InOrder(
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "set")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "set")),
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "add")),
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "add")),
 
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3")),
-					env.EXPECT().AppendDirs(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3")),
+					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "set")),
 					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "set")),
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "add")),
@@ -357,14 +357,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				each(it, []func(){
 					func() {
-						env.EXPECT().AppendDirs(gomock.Any()).Return(appendErr)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
-						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
-						env.EXPECT().AppendDirs(gomock.Any()).Return(nil)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
 						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 					},

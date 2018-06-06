@@ -31,7 +31,7 @@ type POSIXEnv struct {
 	Environ func() []string
 }
 
-func (p *POSIXEnv) AppendDirs(baseDir string) error {
+func (p *POSIXEnv) AddRootDir(baseDir string) error {
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {
 		return err

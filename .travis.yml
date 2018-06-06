@@ -1,0 +1,12 @@
+sudo: required
+language: go
+services:
+- docker
+go:
+- 1.10.x
+go_import_path: github.com/sclevine/lifecycle
+install:
+- set -e
+script:
+- test -z "$(bin/format | tee >(cat >&2))"
+- go test -v

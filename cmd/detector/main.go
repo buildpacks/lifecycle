@@ -53,4 +53,5 @@ func detect() error {
 	if err := json.NewEncoder(groupFile).Encode(group); err != nil {
 		return packs.FailErr(err, "write buildpack group")
 	}
+	return nil
 }

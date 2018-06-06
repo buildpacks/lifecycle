@@ -44,16 +44,16 @@ func (mr *MockEnvMockRecorder) AddEnvDir(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEnvDir", reflect.TypeOf((*MockEnv)(nil).AddEnvDir), arg0)
 }
 
-// AppendDirs mocks base method
-func (m *MockEnv) AppendDirs(arg0 string) error {
-	ret := m.ctrl.Call(m, "AppendDirs", arg0)
+// AddRootDir mocks base method
+func (m *MockEnv) AddRootDir(arg0 string) error {
+	ret := m.ctrl.Call(m, "AddRootDir", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AppendDirs indicates an expected call of AppendDirs
-func (mr *MockEnvMockRecorder) AppendDirs(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AppendDirs", reflect.TypeOf((*MockEnv)(nil).AppendDirs), arg0)
+// AddRootDir indicates an expected call of AddRootDir
+func (mr *MockEnvMockRecorder) AddRootDir(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRootDir", reflect.TypeOf((*MockEnv)(nil).AddRootDir), arg0)
 }
 
 // List mocks base method

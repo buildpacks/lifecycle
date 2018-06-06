@@ -18,7 +18,7 @@ type Builder struct {
 }
 
 type Env interface {
-	AppendDirs(baseDir string) error
+	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string) error
 	SetEnvDir(envDir string) error
 	List() []string
@@ -117,7 +117,7 @@ func setupEnv(env Env, cacheDir string) error {
 		return err
 	}
 	if err := eachDir(cacheFiles, func(layer os.FileInfo) error {
-		return env.AppendDirs(filepath.Join(cacheDir, layer.Name()))
+		return env.AddRootDir(filepath.Join(cacheDir, layer.Name()))
 	}); err != nil {
 		return err
 	}
