@@ -415,8 +415,8 @@ func testExists(t *testing.T, paths ...string) {
 	}
 }
 
-func each(it spec.S, befores []func(), text string, test func()) {
+func each(it spec.S, befores []func(), text string, f func()) {
 	for i, before := range befores {
-		it(fmt.Sprintf("%s #%d", text, i), func() { before(); test() })
+		it(fmt.Sprintf("%s #%d", text, i), func() { before(); f() })
 	}
 }

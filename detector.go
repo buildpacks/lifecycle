@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"encoding/json"
 )
 
 const (
@@ -23,7 +24,15 @@ type Buildpack struct {
 	Dir  string
 }
 
-func (bp Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Logger) int {
+func (bp *Buildpack) UnmarshalJSON(b []byte) error {
+	if err := json.Unmarshal(b, bp); err == nil {
+		return nil
+	}
+	*bp = Buildpack{}
+	return json.Unmarshal(b, &bp.ID)
+}
+
+func (bp *Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Logger) int {
 	path, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "detect"))
 	if err != nil {
 		l.Print("Error: ", err)
@@ -52,7 +61,8 @@ func (bp Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Lo
 	return CodeDetectPass
 }
 
-type BuildpackGroup []Buildpack
+
+type BuildpackGroup []*Buildpack
 
 func (bg BuildpackGroup) Detect(appDir string, l *log.Logger) bool {
 	summary := "Group:"
@@ -104,10 +114,10 @@ func (bg BuildpackGroup) pDetect(appDir string, l *log.Logger) []int {
 	return codes
 }
 
-type BuildpackList []BuildpackGroup
+type BuildpackOrder []BuildpackGroup
 
-func (bl BuildpackList) Detect(appDir string, l *log.Logger) BuildpackGroup {
-	for _, group := range bl {
+func (bo BuildpackOrder) Detect(appDir string, l *log.Logger) BuildpackGroup {
+	for _, group := range bo {
 		if group.Detect(appDir, l) {
 			return group
 		}

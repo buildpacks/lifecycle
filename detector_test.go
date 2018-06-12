@@ -23,7 +23,7 @@ func TestDetector(t *testing.T) {
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	var (
-		list   lifecycle.BuildpackList
+		list   lifecycle.BuildpackOrder
 		tmpDir string
 	)
 
@@ -34,7 +34,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			t.Fatalf("Error: %s\n", err)
 		}
 		buildpackDir := filepath.Join("testdata", "buildpack")
-		list = lifecycle.BuildpackList{
+		list = lifecycle.BuildpackOrder{
 			{
 				{Name: "buildpack1-name", Dir: buildpackDir},
 				{Name: "buildpack2-name", Dir: buildpackDir},
