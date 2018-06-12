@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
-	"encoding/json"
 )
 
 const (
@@ -22,14 +21,6 @@ type Buildpack struct {
 	ID   string
 	Name string
 	Dir  string
-}
-
-func (bp *Buildpack) UnmarshalJSON(b []byte) error {
-	if err := json.Unmarshal(b, bp); err == nil {
-		return nil
-	}
-	*bp = Buildpack{}
-	return json.Unmarshal(b, &bp.ID)
 }
 
 func (bp *Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Logger) int {
@@ -60,7 +51,6 @@ func (bp *Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.L
 	}
 	return CodeDetectPass
 }
-
 
 type BuildpackGroup []*Buildpack
 
