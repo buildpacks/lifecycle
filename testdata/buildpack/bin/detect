@@ -2,8 +2,8 @@
 
 set -eu
 
-i=$(cat -)
+i=$(cat -|grep -Eo '[0-9]'|tail -n1)
 let r=$(<add)+${i:-0}
-echo "$r" | tee >(cat >&2)
+echo -e "$r = true" | tee >(cat >&2)
 [[ -f error ]] && exit 1
 (( $r > $(<last) )) && exit 100 || exit 0

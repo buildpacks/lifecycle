@@ -63,11 +63,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "3", filepath.Join(tmpDir, "last"))
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
-			if group := list.Detect(tmpDir, l); !reflect.DeepEqual(group, list[1]) {
+
+			if info, group := list.Detect(l, tmpDir); !reflect.DeepEqual(group, list[1]) {
 				t.Fatalf("Unexpected group: %#v\n", group)
+			} else if s := string(info); s != "1 = true\n2 = true\n3 = true\n" {
+				t.Fatalf("Unexpected info: %s\n", s)
 			}
-			if strings.HasSuffix(out.String(),
-				"3\nGroup: buildpack1-name: pass | buildpack2-name: pass | buildpack3-name: pass",
+
+			if !strings.HasSuffix(out.String(),
+				"3 = true\nGroup: buildpack1-name: pass | buildpack2-name: pass | buildpack3-name: pass\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", out)
 			}
@@ -78,24 +82,34 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "1", filepath.Join(tmpDir, "last"))
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
-			if group := list.Detect(tmpDir, l); len(group) > 0 {
+
+			if info, group := list.Detect(l, tmpDir); len(group) > 0 {
 				t.Fatalf("Unexpected group: %#v\n", group)
+			} else if len(info) > 0 {
+				t.Fatalf("Unexpected info: %s\n", string(info))
 			}
-			if strings.HasSuffix(out.String(),
-				"2\nGroup: buildpack1-name: pass | buildpack2-name: fail",
+
+			if !strings.HasSuffix(out.String(),
+				"2 = true\nGroup: buildpack1-name: pass | buildpack2-name: fail\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", out)
 			}
 		})
 
 		it("should return empty there is an error", func() {
+			mkfile(t, "1", filepath.Join(tmpDir, "add"))
+			mkfile(t, "error", filepath.Join(tmpDir, "error"))
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
-			if group := list.Detect(tmpDir, l); len(group) > 0 {
+
+			if info, group := list.Detect(l, tmpDir); len(group) > 0 {
 				t.Fatalf("Unexpected group: %#v\n", group)
+			} else if len(info) > 0 {
+				t.Fatalf("Unexpected info: %s\n", string(info))
 			}
-			if strings.HasSuffix(out.String(),
-				"No such file or directory\nGroup: buildpack1-name: error (1) | buildpack2-name: error (1)",
+
+			if !strings.HasSuffix(out.String(),
+				"2 = true\nGroup: buildpack1-name: error (1) | buildpack2-name: error (1)\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", out)
 			}

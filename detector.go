@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"syscall"
+
+	"github.com/BurntSushi/toml"
 )
 
 const (
@@ -23,7 +26,7 @@ type Buildpack struct {
 	Dir  string
 }
 
-func (bp *Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.Logger) int {
+func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.Writer) int {
 	path, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "detect"))
 	if err != nil {
 		l.Print("Error: ", err)
@@ -54,10 +57,11 @@ func (bp *Buildpack) Detect(appDir string, in io.Reader, out io.Writer, l *log.L
 
 type BuildpackGroup []*Buildpack
 
-func (bg BuildpackGroup) Detect(appDir string, l *log.Logger) bool {
+func (bg BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok bool) {
 	summary := "Group:"
 	detected := true
-	for i, code := range bg.pDetect(appDir, l) {
+	info, codes := bg.pDetect(l, appDir)
+	for i, code := range codes {
 		if i > 0 {
 			summary += " |"
 		}
@@ -73,44 +77,74 @@ func (bg BuildpackGroup) Detect(appDir string, l *log.Logger) bool {
 		}
 	}
 	l.Println(summary)
-	return detected
+	return info, detected
 }
 
-func (bg BuildpackGroup) pDetect(appDir string, l *log.Logger) []int {
-	codes := make([]int, len(bg))
+func (bg BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, codes []int) {
+	codes = make([]int, len(bg))
 	wg := sync.WaitGroup{}
 	defer wg.Wait()
 	wg.Add(len(bg))
 	var lastIn io.ReadCloser
-	defer func() {
-		if lastIn != nil {
-			lastIn.Close()
-		}
-	}()
 	for i := range bg {
 		in, out := io.Pipe()
-		go func(i int, r io.ReadCloser) {
+		go func(i int, last io.ReadCloser) {
 			defer wg.Done()
 			defer out.Close()
-			if r != nil {
-				defer r.Close()
+			add := &bytes.Buffer{}
+			if last != nil {
+				defer last.Close()
+				orig := &bytes.Buffer{}
+				last := io.TeeReader(last, orig)
+				codes[i] = bg[i].Detect(l, appDir, last, add)
+				ioutil.ReadAll(last)
+				mergeTOML(l, out, orig, add)
+			} else {
+				codes[i] = bg[i].Detect(l, appDir, nil, add)
+				mergeTOML(l, out, add)
 			}
-			w := &bytes.Buffer{}
-			codes[i] = bg[i].Detect(appDir, r, w, l)
-			io.Copy(out, w)
 		}(i, lastIn)
 		lastIn = in
 	}
-	return codes
+	if lastIn != nil {
+		defer lastIn.Close()
+		if i, err := ioutil.ReadAll(lastIn); err != nil {
+			l.Print("Warning: ", err)
+		} else {
+			info = i
+		}
+	}
+	return info, codes
+}
+
+func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
+	result := map[string]interface{}{}
+	for _, r := range in {
+		var m map[string]interface{}
+		if _, err := toml.DecodeReader(r, &m); err != nil {
+			l.Print("Warning: ", err)
+			continue
+		}
+		for k, v := range m {
+			if _, ok := result[k]; ok {
+				l.Printf("Warning: %s is already present", k)
+				continue
+			}
+			result[k] = v
+		}
+	}
+	if err := toml.NewEncoder(out).Encode(result); err != nil {
+		l.Print("Warning: ", err)
+	}
 }
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(appDir string, l *log.Logger) BuildpackGroup {
+func (bo BuildpackOrder) Detect(l *log.Logger, appDir string) (info []byte, group BuildpackGroup) {
 	for _, group := range bo {
-		if group.Detect(appDir, l) {
-			return group
+		if info, ok := group.Detect(l, appDir); ok {
+			return info, group
 		}
 	}
-	return nil
+	return nil, nil
 }

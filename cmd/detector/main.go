@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -11,12 +10,14 @@ import (
 	"github.com/sclevine/packs"
 
 	"github.com/sclevine/lifecycle"
+	"io/ioutil"
 )
 
 var (
 	listPath  string
 	orderPath string
 	groupPath string
+	infoPath  string
 
 	list []lifecycle.Buildpack
 )
@@ -25,6 +26,7 @@ func init() {
 	packs.InputListPath(&listPath)
 	packs.InputOrderPath(&orderPath)
 	packs.InputGroupPath(&groupPath)
+	packs.InputDetectInfoPath(&infoPath)
 }
 
 func main() {
@@ -39,26 +41,30 @@ func detect() error {
 	flag.Parse()
 
 	if _, err := toml.DecodeFile(listPath, &list); err != nil {
-		return packs.FailErr(err, "read buildpackRef list")
+		return packs.FailErr(err, "read buildpack list")
 	}
 
 	var order buildpackRefOrder
 	if _, err := toml.DecodeFile(orderPath, &order); err != nil {
-		return packs.FailErr(err, "read buildpackRef order")
+		return packs.FailErr(err, "read buildpack order")
 	}
 
-	group := order.order().Detect(lifecycle.DefaultAppDir, log.New(os.Stderr, "", log.LstdFlags))
+	info, group := order.order().Detect(log.New(os.Stderr, "", log.LstdFlags), lifecycle.DefaultAppDir)
 	if len(group) == 0 {
 		return packs.FailCode(packs.CodeFailedDetect, "detect")
 	}
 
 	groupFile, err := os.Create(groupPath)
 	if err != nil {
-		return packs.FailErr(err, "create buildpackRef group file")
+		return packs.FailErr(err, "create buildpack group file")
 	}
 	defer groupFile.Close()
 	if err := toml.NewEncoder(groupFile).Encode(group); err != nil {
-		return packs.FailErr(err, "write buildpackRef group")
+		return packs.FailErr(err, "write buildpack group")
+	}
+
+	if err := ioutil.WriteFile(infoPath, info, 0666); err != nil {
+		return packs.FailErr(err, "write detect info")
 	}
 
 	return nil
@@ -84,7 +90,7 @@ func (bp *buildpackRef) UnmarshalText(b []byte) error {
 
 type buildpackRefGroup []buildpackRef
 
-func (bps buildpackRefGroup) group() (lifecycle.BuildpackGroup) {
+func (bps buildpackRefGroup) group() lifecycle.BuildpackGroup {
 	var group lifecycle.BuildpackGroup
 	for _, bp := range bps {
 		group = append(group, bp.Buildpack)
