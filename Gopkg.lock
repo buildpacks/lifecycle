@@ -17,7 +17,7 @@
   branch = "master"
   name = "github.com/sclevine/packs"
   packages = ["."]
-  revision = "c3c775750abec968868bfed089dc1a3cf3473eee"
+  revision = "3bd3ac7a88f20749ecac6cfe1ee32690bc89554e"
 
 [[projects]]
   branch = "master"
@@ -32,7 +32,7 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "1e491301e022f8f977054da4c2d852decd59571f"
+  revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
 
 [solve-meta]
   analyzer-name = "dep"

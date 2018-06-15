@@ -16,11 +16,13 @@ const (
 	EnvAppMemory = "PACK_APP_MEM"
 	EnvAppFds    = "PACK_APP_FDS"
 
-	EnvDropletPath  = "PACK_DROPLET_PATH"
-	EnvSlugPath     = "PACK_SLUG_PATH"
-	EnvMetadataPath = "PACK_METADATA_PATH"
-	EnvGroupPath    = "PACK_GROUP_PATH"
-	EnvListPath     = "PACK_LIST_PATH"
+	EnvDropletPath    = "PACK_DROPLET_PATH"
+	EnvSlugPath       = "PACK_SLUG_PATH"
+	EnvMetadataPath   = "PACK_METADATA_PATH"
+	EnvBPListPath     = "PACK_BP_LIST_PATH"
+	EnvBPOrderPath    = "PACK_BP_ORDER_PATH"
+	EnvBPGroupPath    = "PACK_BP_GROUP_PATH"
+	EnvDetectInfoPath = "PACK_DETECT_INFO_PATH"
 
 	EnvStackName = "PACK_STACK_NAME"
 	EnvUseDaemon = "PACK_USE_DAEMON"
@@ -38,12 +40,20 @@ func InputMetadataPath(path *string) {
 	flag.StringVar(path, "metadata", os.Getenv(EnvMetadataPath), "file containing build metadata")
 }
 
-func InputGroupPath(path *string) {
-	flag.StringVar(path, "group", os.Getenv(EnvGroupPath), "file containing buildpack group")
+func InputBPListPath(path *string) {
+	flag.StringVar(path, "list", os.Getenv(EnvBPListPath), "file containing list of buildpacks")
 }
 
-func InputListPath(path *string) {
-	flag.StringVar(path, "list", os.Getenv(EnvListPath), "file containing list of buildpack groups")
+func InputBPOrderPath(path *string) {
+	flag.StringVar(path, "order", os.Getenv(EnvBPOrderPath), "file containing detection order")
+}
+
+func InputBPGroupPath(path *string) {
+	flag.StringVar(path, "group", os.Getenv(EnvBPGroupPath), "file containing a buildpack group")
+}
+
+func InputDetectInfoPath(path *string) {
+	flag.StringVar(path, "info", os.Getenv(EnvDetectInfoPath), "file containing detection info")
 }
 
 func InputStackName(name *string) {
