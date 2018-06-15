@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/sclevine/packs"
 
 	"github.com/sclevine/lifecycle"
-	"io/ioutil"
 )
 
 var (
@@ -23,9 +23,9 @@ var (
 )
 
 func init() {
-	packs.InputListPath(&listPath)
-	packs.InputOrderPath(&orderPath)
-	packs.InputGroupPath(&groupPath)
+	packs.InputBPListPath(&listPath)
+	packs.InputBPOrderPath(&orderPath)
+	packs.InputBPGroupPath(&groupPath)
 	packs.InputDetectInfoPath(&infoPath)
 }
 
