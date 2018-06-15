@@ -28,7 +28,6 @@ func main() {
 }
 
 func build() error {
-	flag.Parse()
 	groupFile, err := os.Open(groupPath)
 	if err != nil {
 		return packs.FailErr(err, "open group file")

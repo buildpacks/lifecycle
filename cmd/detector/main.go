@@ -38,8 +38,6 @@ func main() {
 }
 
 func detect() error {
-	flag.Parse()
-
 	if _, err := toml.DecodeFile(listPath, &list); err != nil {
 		return packs.FailErr(err, "read buildpack list")
 	}
