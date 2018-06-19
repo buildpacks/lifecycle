@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
@@ -13,7 +14,8 @@ import (
 
 type Builder struct {
 	PlatformDir string
-	Buildpacks  BuildpackGroup
+	Buildpacks  []*Buildpack
+	In          []byte
 	Out, Err    io.Writer
 }
 
@@ -53,6 +55,7 @@ func (b *Builder) Build(appDir, cacheDir, launchDir string, env BuildEnv) (*Buil
 		cmd := exec.Command(buildPath, b.PlatformDir, bpCacheDir, bpLaunchDir)
 		cmd.Env = env.List()
 		cmd.Dir = appDir
+		cmd.Stdin = bytes.NewBuffer(b.In)
 		cmd.Stdout = b.Out
 		cmd.Stderr = b.Err
 		if err := cmd.Run(); err != nil {
@@ -121,13 +124,8 @@ func setupEnv(env BuildEnv, cacheDir string) error {
 	}); err != nil {
 		return err
 	}
-	if err := eachDir(cacheFiles, func(layer os.FileInfo) error {
-		return env.SetEnvDir(filepath.Join(cacheDir, layer.Name(), "env", "set"))
-	}); err != nil {
-		return err
-	}
 	return eachDir(cacheFiles, func(layer os.FileInfo) error {
-		return env.AddEnvDir(filepath.Join(cacheDir, layer.Name(), "env", "add"))
+		return env.AddEnvDir(filepath.Join(cacheDir, layer.Name(), "env"))
 	})
 }
 

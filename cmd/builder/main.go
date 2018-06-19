@@ -3,43 +3,57 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"os"
 
-	"github.com/sclevine/lifecycle"
+	"github.com/BurntSushi/toml"
 	"github.com/sclevine/packs"
+
+	"github.com/sclevine/lifecycle"
 )
 
 var (
-	groupPath    string
-	metadataPath string
+	buildpackPath string
+	groupPath     string
+	infoPath      string
+	metadataPath  string
 )
 
 func init() {
-	packs.InputGroupPath(&groupPath)
+	packs.InputBPPath(&buildpackPath)
+	packs.InputBPGroupPath(&groupPath)
+	packs.InputDetectInfoPath(&infoPath)
+
 	packs.InputMetadataPath(&metadataPath)
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() != 0 || groupPath == "" || metadataPath == "" {
+	if flag.NArg() != 0 || groupPath == "" || infoPath == "" || metadataPath == "" {
 		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments"))
 	}
 	packs.Exit(build())
 }
 
 func build() error {
-	groupFile, err := os.Open(groupPath)
+	buildpacks, err := lifecycle.NewBuildpackMap(buildpackPath)
 	if err != nil {
-		return packs.FailErr(err, "open group file")
+		return packs.FailErr(err, "read buildpack directory")
 	}
-	defer groupFile.Close()
-	var group lifecycle.BuildpackGroup
-	if err := json.NewDecoder(groupFile).Decode(&group); err != nil {
+	var group struct {
+		Buildpacks []string
+	}
+	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
 		return packs.FailErr(err, "read group")
+	}
+	info, err := ioutil.ReadFile(infoPath)
+	if err != nil {
+		return packs.FailErr(err, "read detect info")
 	}
 	builder := &lifecycle.Builder{
 		PlatformDir: lifecycle.DefaultPlatformDir,
-		Buildpacks:  group,
+		Buildpacks:  buildpacks.FromList(group.Buildpacks),
+		In:          info,
 		Out:         os.Stdout,
 		Err:         os.Stderr,
 	}

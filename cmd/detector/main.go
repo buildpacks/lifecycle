@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/sclevine/packs"
@@ -14,32 +15,37 @@ import (
 )
 
 var (
-	listPath  string
-	orderPath string
-	groupPath string
-	infoPath  string
+	buildpackPath string
+	orderPath     string
+	groupPath     string
+	infoPath      string
 
-	list []lifecycle.Buildpack
+	buildpacks lifecycle.BuildpackMap
 )
 
 func init() {
-	packs.InputBPListPath(&listPath)
+	packs.InputBPPath(&buildpackPath)
 	packs.InputBPOrderPath(&orderPath)
+
 	packs.InputBPGroupPath(&groupPath)
 	packs.InputDetectInfoPath(&infoPath)
+
+	buildpacks = lifecycle.BuildpackMap{}
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() != 0 || listPath == "" || groupPath == "" {
+	if flag.NArg() != 0 || buildpackPath == "" || orderPath == "" || groupPath == "" || infoPath == "" {
 		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments"))
 	}
 	packs.Exit(detect())
 }
 
 func detect() error {
-	if _, err := toml.DecodeFile(listPath, &list); err != nil {
-		return packs.FailErr(err, "read buildpack list")
+	var err error
+	buildpacks, err = lifecycle.NewBuildpackMap(buildpackPath)
+	if err != nil {
+		return packs.FailErr(err, "read buildpack directory")
 	}
 
 	var order buildpackRefOrder
@@ -47,8 +53,9 @@ func detect() error {
 		return packs.FailErr(err, "read buildpack order")
 	}
 
-	info, group := order.order().Detect(log.New(os.Stderr, "", log.LstdFlags), lifecycle.DefaultAppDir)
-	if len(group) == 0 {
+	log := log.New(os.Stderr, "", log.LstdFlags)
+	info, group := order.order().Detect(log, lifecycle.DefaultAppDir)
+	if len(group.Buildpacks) == 0 {
 		return packs.FailCode(packs.CodeFailedDetect, "detect")
 	}
 
@@ -57,7 +64,13 @@ func detect() error {
 		return packs.FailErr(err, "create buildpack group file")
 	}
 	defer groupFile.Close()
-	if err := toml.NewEncoder(groupFile).Encode(group); err != nil {
+	if err := toml.NewEncoder(groupFile).Encode(struct {
+		Buildpacks []string `toml:"buildpacks"`
+		Repository string   `toml:"repository"`
+	}{
+		Buildpacks: group.List(),
+		Repository: group.Repository,
+	}); err != nil {
 		return packs.FailErr(err, "write buildpack group")
 	}
 
@@ -73,26 +86,31 @@ type buildpackRef struct {
 }
 
 func (bp *buildpackRef) UnmarshalText(b []byte) error {
-	var id string
-	if err := toml.Unmarshal(b, &id); err != nil {
+	var ref string
+	if err := toml.Unmarshal(b, &ref); err != nil {
 		return err
 	}
-	for i := range list {
-		if list[i].ID == id {
-			bp.Buildpack = &list[i]
-			return nil
-		}
+	if !strings.Contains(ref, "@") {
+		ref = ref + "@latest"
 	}
-	return fmt.Errorf("invalid buildpackRef ID: %s", id)
+	var ok bool
+	if bp.Buildpack, ok = buildpacks[ref]; !ok {
+		return fmt.Errorf("invalid buildpack reference: %s", ref)
+	}
+	return nil
 }
 
-type buildpackRefGroup []buildpackRef
+type buildpackRefGroup struct {
+	Buildpacks []buildpackRef
+	Repository string
+}
 
 func (bps buildpackRefGroup) group() lifecycle.BuildpackGroup {
 	var group lifecycle.BuildpackGroup
-	for _, bp := range bps {
-		group = append(group, bp.Buildpack)
+	for _, bp := range bps.Buildpacks {
+		group.Buildpacks = append(group.Buildpacks, bp.Buildpack)
 	}
+	group.Repository = bps.Repository
 	return group
 }
 

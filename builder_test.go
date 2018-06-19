@@ -51,7 +51,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		buildpackDir := filepath.Join("testdata", "buildpack")
 		builder = &lifecycle.Builder{
 			PlatformDir: platformDir,
-			Buildpacks: lifecycle.BuildpackGroup{
+			Buildpacks: []*lifecycle.Buildpack{
 				{ID: "buildpack1-id", Dir: buildpackDir},
 				{ID: "buildpack2-id", Dir: buildpackDir},
 			},
@@ -97,17 +97,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				gomock.InOrder(
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "set")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "set")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "add")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "add")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env")),
 
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3")),
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "set")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "set")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "add")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "add")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env")),
 				)
 				if _, err := builder.Build(appDir, cacheDir, launchDir, env); err != nil {
 					t.Fatalf("Error: %s\n", err)
@@ -213,16 +209,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 					func() {
 						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
 						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 					},
 				}, "should error", func() {
 					env.EXPECT().List().Return([]string{"ID=1"})
-					mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
+					mkdir(t,
+						filepath.Join(appDir, "cache-buildpack1", "cache-layer1"),
+						filepath.Join(appDir, "cache-buildpack1", "cache-layer2"),
+					)
 					if _, err := builder.Build(appDir, cacheDir, launchDir, env); err != appendErr {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
@@ -269,17 +268,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				gomock.InOrder(
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1")),
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "set")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "set")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env", "add")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env", "add")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer1", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack1-id", "cache-layer2", "env")),
 
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3")),
 					env.EXPECT().AddRootDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "set")),
-					env.EXPECT().SetEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "set")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env", "add")),
-					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env", "add")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env")),
 				)
 				if _, err := builder.Develop(appDir, cacheDir, env); err != nil {
 					t.Fatalf("Error: %s\n", err)
@@ -361,16 +356,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 					func() {
 						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().SetEnvDir(gomock.Any()).Return(appendErr)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
 						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().SetEnvDir(gomock.Any()).Return(nil)
+						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 					},
 				}, "should error", func() {
 					env.EXPECT().List().Return([]string{"ID=1"})
-					mkdir(t, filepath.Join(appDir, "cache-buildpack1", "cache-layer1"))
+					mkdir(t,
+						filepath.Join(appDir, "cache-buildpack1", "cache-layer1"),
+						filepath.Join(appDir, "cache-buildpack1", "cache-layer2"),
+					)
 					if _, err := builder.Develop(appDir, cacheDir, env); err != appendErr {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}

@@ -36,19 +36,28 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		buildpackDir := filepath.Join("testdata", "buildpack")
 		list = lifecycle.BuildpackOrder{
 			{
-				{Name: "buildpack1-name", Dir: buildpackDir},
-				{Name: "buildpack2-name", Dir: buildpackDir},
-				{Name: "buildpack3-name", Dir: buildpackDir},
-				{Name: "buildpack4-name", Dir: buildpackDir},
+				Buildpacks: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Dir: buildpackDir},
+					{Name: "buildpack2-name", Dir: buildpackDir},
+					{Name: "buildpack3-name", Dir: buildpackDir},
+					{Name: "buildpack4-name", Dir: buildpackDir},
+				},
+				Repository: "repository1",
 			},
 			{
-				{Name: "buildpack1-name", Dir: buildpackDir},
-				{Name: "buildpack2-name", Dir: buildpackDir},
-				{Name: "buildpack3-name", Dir: buildpackDir},
+				Buildpacks: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Dir: buildpackDir},
+					{Name: "buildpack2-name", Dir: buildpackDir},
+					{Name: "buildpack3-name", Dir: buildpackDir},
+				},
+				Repository: "repository2",
 			},
 			{
-				{Name: "buildpack1-name", Dir: buildpackDir},
-				{Name: "buildpack2-name", Dir: buildpackDir},
+				Buildpacks: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Dir: buildpackDir},
+					{Name: "buildpack2-name", Dir: buildpackDir},
+				},
+				Repository: "repository3",
 			},
 		}
 	})
@@ -64,7 +73,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
 
-			if info, group := list.Detect(l, tmpDir); !reflect.DeepEqual(group, list[1]) {
+			if info, group := list.Detect(l, tmpDir); !reflect.DeepEqual(*group, list[1]) {
 				t.Fatalf("Unexpected group: %#v\n", group)
 			} else if s := string(info); s != "1 = true\n2 = true\n3 = true\n" {
 				t.Fatalf("Unexpected info: %s\n", s)
@@ -83,7 +92,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
 
-			if info, group := list.Detect(l, tmpDir); len(group) > 0 {
+			if info, group := list.Detect(l, tmpDir); group != nil {
 				t.Fatalf("Unexpected group: %#v\n", group)
 			} else if len(info) > 0 {
 				t.Fatalf("Unexpected info: %s\n", string(info))
@@ -102,7 +111,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
 
-			if info, group := list.Detect(l, tmpDir); len(group) > 0 {
+			if info, group := list.Detect(l, tmpDir); group != nil {
 				t.Fatalf("Unexpected group: %#v\n", group)
 			} else if len(info) > 0 {
 				t.Fatalf("Unexpected info: %s\n", string(info))

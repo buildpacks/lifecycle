@@ -21,9 +21,10 @@ const (
 )
 
 type Buildpack struct {
-	ID   string
-	Name string
-	Dir  string
+	ID      string
+	Name    string
+	Version string
+	Dir     string
 }
 
 func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.Writer) int {
@@ -55,9 +56,12 @@ func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.W
 	return CodeDetectPass
 }
 
-type BuildpackGroup []*Buildpack
+type BuildpackGroup struct {
+	Buildpacks []*Buildpack
+	Repository string
+}
 
-func (bg BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok bool) {
+func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok bool) {
 	summary := "Group:"
 	detected := true
 	info, codes := bg.pDetect(l, appDir)
@@ -67,12 +71,12 @@ func (bg BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok b
 		}
 		switch code {
 		case CodeDetectPass:
-			summary += fmt.Sprintf(" %s: pass", bg[i].Name)
+			summary += fmt.Sprintf(" %s: pass", bg.Buildpacks[i].Name)
 		case CodeDetectFail:
-			summary += fmt.Sprintf(" %s: fail", bg[i].Name)
+			summary += fmt.Sprintf(" %s: fail", bg.Buildpacks[i].Name)
 			detected = false
 		default:
-			summary += fmt.Sprintf(" %s: error (%d)", bg[i].Name, code)
+			summary += fmt.Sprintf(" %s: error (%d)", bg.Buildpacks[i].Name, code)
 			detected = false
 		}
 	}
@@ -80,13 +84,13 @@ func (bg BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok b
 	return info, detected
 }
 
-func (bg BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, codes []int) {
-	codes = make([]int, len(bg))
+func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, codes []int) {
+	codes = make([]int, len(bg.Buildpacks))
 	wg := sync.WaitGroup{}
 	defer wg.Wait()
-	wg.Add(len(bg))
+	wg.Add(len(bg.Buildpacks))
 	var lastIn io.ReadCloser
-	for i := range bg {
+	for i := range bg.Buildpacks {
 		in, out := io.Pipe()
 		go func(i int, last io.ReadCloser) {
 			defer wg.Done()
@@ -96,11 +100,11 @@ func (bg BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, cod
 				defer last.Close()
 				orig := &bytes.Buffer{}
 				last := io.TeeReader(last, orig)
-				codes[i] = bg[i].Detect(l, appDir, last, add)
+				codes[i] = bg.Buildpacks[i].Detect(l, appDir, last, add)
 				ioutil.ReadAll(last)
 				mergeTOML(l, out, orig, add)
 			} else {
-				codes[i] = bg[i].Detect(l, appDir, nil, add)
+				codes[i] = bg.Buildpacks[i].Detect(l, appDir, nil, add)
 				mergeTOML(l, out, add)
 			}
 		}(i, lastIn)
@@ -140,10 +144,10 @@ func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(l *log.Logger, appDir string) (info []byte, group BuildpackGroup) {
-	for _, group := range bo {
-		if info, ok := group.Detect(l, appDir); ok {
-			return info, group
+func (bo BuildpackOrder) Detect(l *log.Logger, appDir string) ([]byte, *BuildpackGroup) {
+	for i := range bo {
+		if info, ok := bo[i].Detect(l, appDir); ok {
+			return info, &bo[i]
 		}
 	}
 	return nil, nil

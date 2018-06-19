@@ -2,16 +2,12 @@ package main
 
 import (
 	"os"
-
 	"strings"
-
 	"syscall"
 
 	"github.com/sclevine/lifecycle"
 	"github.com/sclevine/packs"
 )
-
-var startCommand string
 
 const launcher = `
 if compgen -G "$1/*/*/profile.d/*" > /dev/null; then
@@ -28,6 +24,8 @@ fi
 shift
 exec bash -c "$@"
 `
+
+var startCommand string
 
 func main() {
 	if len(os.Args) < 2 {
