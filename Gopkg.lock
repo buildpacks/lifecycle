@@ -17,7 +17,7 @@
   branch = "master"
   name = "github.com/sclevine/packs"
   packages = ["."]
-  revision = "3bd3ac7a88f20749ecac6cfe1ee32690bc89554e"
+  revision = "4b4d46b73a3a30d6560f50ff9df2b0d37bbaddba"
 
 [[projects]]
   branch = "master"

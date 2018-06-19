@@ -19,29 +19,30 @@ const (
 	EnvDropletPath    = "PACK_DROPLET_PATH"
 	EnvSlugPath       = "PACK_SLUG_PATH"
 	EnvMetadataPath   = "PACK_METADATA_PATH"
-	EnvBPListPath     = "PACK_BP_LIST_PATH"
+	EnvBPPath         = "PACK_BP_PATH"
 	EnvBPOrderPath    = "PACK_BP_ORDER_PATH"
 	EnvBPGroupPath    = "PACK_BP_GROUP_PATH"
 	EnvDetectInfoPath = "PACK_DETECT_INFO_PATH"
 
-	EnvStackName = "PACK_STACK_NAME"
-	EnvUseDaemon = "PACK_USE_DAEMON"
+	EnvStackName  = "PACK_STACK_NAME"
+	EnvUseDaemon  = "PACK_USE_DAEMON"
+	EnvUseHelpers = "PACK_USE_HELPERS"
 )
 
 func InputDropletPath(path *string) {
-	flag.StringVar(path, "droplet", os.Getenv(EnvDropletPath), "file containing compressed droplet")
+	flag.StringVar(path, "droplet", os.Getenv(EnvDropletPath), "file containing droplet")
 }
 
 func InputSlugPath(path *string) {
-	flag.StringVar(path, "slug", os.Getenv(EnvSlugPath), "file containing compressed slug")
+	flag.StringVar(path, "slug", os.Getenv(EnvSlugPath), "file containing slug")
 }
 
 func InputMetadataPath(path *string) {
-	flag.StringVar(path, "metadata", os.Getenv(EnvMetadataPath), "file containing build metadata")
+	flag.StringVar(path, "metadata", os.Getenv(EnvMetadataPath), "file containing artifact metadata")
 }
 
-func InputBPListPath(path *string) {
-	flag.StringVar(path, "list", os.Getenv(EnvBPListPath), "file containing list of buildpacks")
+func InputBPPath(path *string) {
+	flag.StringVar(path, "buildpacks", os.Getenv(EnvBPPath), "directory containing buildpacks")
 }
 
 func InputBPOrderPath(path *string) {
@@ -62,4 +63,8 @@ func InputStackName(name *string) {
 
 func InputUseDaemon(use *bool) {
 	flag.BoolVar(use, "daemon", BoolEnv(EnvUseDaemon), "export to docker daemon")
+}
+
+func InputUseHelpers(use *bool) {
+	flag.BoolVar(use, "helpers", BoolEnv(EnvUseHelpers), "use credential helpers")
 }
