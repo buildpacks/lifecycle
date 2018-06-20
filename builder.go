@@ -65,7 +65,13 @@ func (b *Builder) Build(appDir, cacheDir, launchDir string, env BuildEnv) (*Buil
 			return nil, err
 		}
 		var launch LaunchTOML
-		if _, err := toml.DecodeFile(filepath.Join(b.PlatformDir, "launch.toml"), &launch); err != nil {
+		tomlPath := filepath.Join(b.PlatformDir, "launch.toml")
+		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		if err := os.Remove(tomlPath); err != nil {
 			return nil, err
 		}
 		procMap.add(launch.Processes)
@@ -104,7 +110,13 @@ func (b *Builder) Develop(appDir, cacheDir string, env BuildEnv) (*DevelopMetada
 			return nil, err
 		}
 		var develop DevelopTOML
-		if _, err := toml.DecodeFile(filepath.Join(b.PlatformDir, "develop.toml"), &develop); err != nil {
+		tomlPath := filepath.Join(b.PlatformDir, "develop.toml")
+		if _, err := toml.DecodeFile(tomlPath, &develop); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		if err := os.Remove(tomlPath); err != nil {
 			return nil, err
 		}
 		procMap.add(develop.Processes)

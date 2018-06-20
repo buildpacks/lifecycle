@@ -126,7 +126,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 
-			it("should return launch metadata", func() {
+			it("should return build metadata when processes are present", func() {
 				metadata, err := builder.Build(appDir, cacheDir, launchDir, env)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
@@ -138,6 +138,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{Type: "process2-type", Command: "process2-command"},
 					},
 				}) {
+					t.Fatalf("Unexpected:\n%+v\n", metadata)
+				}
+			})
+
+			it("should return build metadata when processes are not present", func() {
+				mkfile(t, "test", filepath.Join(appDir, "skip-processes"))
+				metadata, err := builder.Build(appDir, cacheDir, launchDir, env)
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				if !reflect.DeepEqual(metadata, &lifecycle.BuildMetadata{}) {
 					t.Fatalf("Unexpected:\n%+v\n", metadata)
 				}
 			})
@@ -281,7 +292,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should return development metadata", func() {
+			it("should return development metadata when processes are present", func() {
 				metadata, err := builder.Develop(appDir, cacheDir, env)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
@@ -293,6 +304,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{Type: "process2-type", Command: "process2-command"},
 					},
 				}) {
+					t.Fatalf("Unexpected:\n%+v\n", metadata)
+				}
+			})
+
+			it("should return development metadata when processes are not present", func() {
+				mkfile(t, "test", filepath.Join(appDir, "skip-processes"))
+				metadata, err := builder.Develop(appDir, cacheDir, env)
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				if !reflect.DeepEqual(metadata, &lifecycle.DevelopMetadata{}) {
 					t.Fatalf("Unexpected:\n%+v\n", metadata)
 				}
 			})

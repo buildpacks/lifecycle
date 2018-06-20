@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -eu
+set -eo pipefail
 
 platform_dir=$1
 cache_dir=$2
@@ -9,10 +9,19 @@ launch_dir=$3
 echo "STDOUT${ID}"
 >&2 echo "STDERR${ID}"
 
-[[ -d "launch-buildpack${ID}" ]] && cp -a "launch-buildpack${ID}/." "$launch_dir"
-[[ -d "cache-buildpack${ID}" ]] && cp -a "cache-buildpack${ID}/." "$cache_dir"
+if [[ -d launch-buildpack${ID} ]]; then
+  cp -a "launch-buildpack${ID}/." "$launch_dir"
+fi
+
+if [[ -d cache-buildpack${ID} ]]; then
+  cp -a "cache-buildpack${ID}/." "$cache_dir"
+fi
 
 cp -a "$platform_dir/env" "./env-buildpack${ID}"
+
+if [[ -f skip-processes ]] || [[ -f $platform_dir/launch.toml ]]; then
+ exit 0
+fi
 
 cat > "$platform_dir/launch.toml" <<EOF
 [[processes]]
