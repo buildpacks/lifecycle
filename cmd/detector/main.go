@@ -86,12 +86,9 @@ type buildpackRef struct {
 }
 
 func (bp *buildpackRef) UnmarshalText(b []byte) error {
-	var ref string
-	if err := toml.Unmarshal(b, &ref); err != nil {
-		return err
-	}
+	ref := string(b)
 	if !strings.Contains(ref, "@") {
-		ref = ref + "@latest"
+		ref += "@latest"
 	}
 	var ok bool
 	if bp.Buildpack, ok = buildpacks[ref]; !ok {
