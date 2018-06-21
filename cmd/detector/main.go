@@ -101,24 +101,26 @@ func (bp *buildpackRef) UnmarshalText(b []byte) error {
 }
 
 type buildpackRefGroup struct {
-	Buildpacks []buildpackRef
-	Repository string
+	Buildpacks []buildpackRef `toml:"buildpacks"`
+	Repository string         `toml:"repository"`
 }
 
-func (bps buildpackRefGroup) group() lifecycle.BuildpackGroup {
+func (bg buildpackRefGroup) group() lifecycle.BuildpackGroup {
 	var group lifecycle.BuildpackGroup
-	for _, bp := range bps.Buildpacks {
+	for _, bp := range bg.Buildpacks {
 		group.Buildpacks = append(group.Buildpacks, bp.Buildpack)
 	}
-	group.Repository = bps.Repository
+	group.Repository = bg.Repository
 	return group
 }
 
-type buildpackRefOrder []buildpackRefGroup
+type buildpackRefOrder struct {
+	Groups []buildpackRefGroup `toml:"groups"`
+}
 
-func (gs buildpackRefOrder) order() lifecycle.BuildpackOrder {
+func (bo buildpackRefOrder) order() lifecycle.BuildpackOrder {
 	var order lifecycle.BuildpackOrder
-	for _, g := range gs {
+	for _, g := range bo.Groups {
 		order = append(order, g.group())
 	}
 	return order
