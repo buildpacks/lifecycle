@@ -12,7 +12,7 @@ import (
 const launcher = `
 if compgen -G "$1/*/*/profile.d/*" > /dev/null; then
   for script in "$1"/*/*/profile.d/*; do
-    [[ ! -f $script ]] && continue
+    [[ $script == $1/app/* ]] || [[ ! -f $script ]] && continue
     source "$script"
   done
 fi

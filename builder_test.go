@@ -148,7 +148,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
-				if !reflect.DeepEqual(metadata, &lifecycle.BuildMetadata{}) {
+				if !reflect.DeepEqual(metadata, &lifecycle.BuildMetadata{
+					Processes: []lifecycle.Process{},
+				}) {
 					t.Fatalf("Unexpected:\n%+v\n", metadata)
 				}
 			})
@@ -241,7 +243,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should error when launch.toml is not writable", func() {
 				env.EXPECT().List().Return([]string{"ID=1"})
-				mkdir(t, filepath.Join(platformDir, "launch.toml"))
+				mkdir(t, filepath.Join(launchDir, "buildpack1-id", "launch.toml"))
 				if _, err := builder.Build(appDir, cacheDir, launchDir, env); err == nil {
 					t.Fatal("Expected error")
 				}
@@ -314,7 +316,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
-				if !reflect.DeepEqual(metadata, &lifecycle.DevelopMetadata{}) {
+				if !reflect.DeepEqual(metadata, &lifecycle.DevelopMetadata{
+					Processes: []lifecycle.Process{},
+				}) {
 					t.Fatalf("Unexpected:\n%+v\n", metadata)
 				}
 			})
@@ -399,7 +403,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should error when develop.toml is not writable", func() {
 				env.EXPECT().List().Return([]string{"ID=1"})
-				mkdir(t, filepath.Join(platformDir, "develop.toml"))
+				mkdir(t, filepath.Join(cacheDir, "buildpack1-id", "develop.toml"))
 				if _, err := builder.Develop(appDir, cacheDir, env); err == nil {
 					t.Fatal("Expected error")
 				}

@@ -14,11 +14,11 @@ fi
 
 cp -a "$platform_dir/env" "./env-buildpack${ID}"
 
-if [[ -f skip-processes ]] || [[ -f $platform_dir/develop.toml ]]; then
+if [[ -f skip-processes ]]; then
  exit 0
 fi
 
-cat > "$platform_dir/develop.toml" <<EOF
+cat > "$cache_dir/develop.toml" <<EOF
 [[processes]]
 type = "process${ID}-type"
 command = "process${ID}-command"
