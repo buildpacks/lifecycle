@@ -29,8 +29,6 @@ func init() {
 
 	packs.InputBPGroupPath(&groupPath)
 	packs.InputDetectInfoPath(&infoPath)
-
-	buildpacks = lifecycle.BuildpackMap{}
 }
 
 func main() {

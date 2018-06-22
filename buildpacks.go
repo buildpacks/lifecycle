@@ -19,7 +19,7 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 	for _, bpTOML := range files {
 		buildpackDir := filepath.Dir(bpTOML)
 		base, version := filepath.Split(buildpackDir)
-		_, id := filepath.Split(base)
+		_, id := filepath.Split(filepath.Clean(base))
 		var buildpack Buildpack
 		if _, err := toml.DecodeFile(bpTOML, &buildpack); err != nil {
 			return nil, err
@@ -34,7 +34,7 @@ func (m BuildpackMap) FromList(l []string) []*Buildpack {
 	var out []*Buildpack
 	for _, ref := range l {
 		if !strings.Contains(ref, "@") {
-			ref = ref + "@latest"
+			ref += "@latest"
 		}
 		if bp, ok := m[ref]; ok {
 			out = append(out, bp)
