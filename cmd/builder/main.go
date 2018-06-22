@@ -64,8 +64,8 @@ func build() error {
 	}
 	metadata, err := builder.Build(
 		lifecycle.DefaultAppDir,
-		lifecycle.DefaultLaunchDir,
 		lifecycle.DefaultCacheDir,
+		lifecycle.DefaultLaunchDir,
 		env,
 	)
 	if err != nil {
