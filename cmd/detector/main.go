@@ -72,8 +72,10 @@ func detect() error {
 		return packs.FailErr(err, "write buildpack group")
 	}
 
-	if err := ioutil.WriteFile(infoPath, info, 0666); err != nil {
-		return packs.FailErr(err, "write detect info")
+	if len(info) > 0 {
+		if err := ioutil.WriteFile(infoPath, info, 0666); err != nil {
+			return packs.FailErr(err, "write detect info")
+		}
 	}
 
 	return nil

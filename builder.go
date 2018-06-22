@@ -167,7 +167,7 @@ func (m processMap) list() []Process {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	var procs []Process
+	procs := []Process{}
 	for _, key := range keys {
 		procs = append(procs, m[key])
 	}

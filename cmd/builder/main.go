@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"io/ioutil"
 	"os"
@@ -77,7 +76,7 @@ func build() error {
 		return packs.FailErr(err, "create metadata file")
 	}
 	defer mdFile.Close()
-	if err := json.NewEncoder(mdFile).Encode(metadata); err != nil {
+	if err := toml.NewEncoder(mdFile).Encode(metadata); err != nil {
 		return packs.FailErr(err, "write metadata")
 	}
 	return nil
