@@ -20,15 +20,16 @@ func (p *Env) AddRootDir(baseDir string) error {
 	}
 	for dir, vars := range p.Map {
 		newDir := filepath.Join(absBaseDir, dir)
-		if _, err := os.Stat(newDir); err == nil {
-			for _, key := range vars {
-				value := suffix(p.Getenv(key), os.PathListSeparator) + newDir
-				if err := p.Setenv(key, value); err != nil {
-					return err
-				}
-			}
-		} else if !os.IsNotExist(err) {
+		if _, err := os.Stat(newDir); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
 			return err
+		}
+		for _, key := range vars {
+			value := suffix(p.Getenv(key), os.PathListSeparator) + newDir
+			if err := p.Setenv(key, value); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

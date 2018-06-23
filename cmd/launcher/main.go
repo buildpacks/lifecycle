@@ -1,12 +1,15 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 
-	"github.com/sclevine/lifecycle"
 	"github.com/sclevine/packs"
+
+	"github.com/sclevine/lifecycle"
 )
 
 const launcher = `
@@ -42,8 +45,16 @@ func launch() error {
 		Environ: os.Environ,
 		Map:     lifecycle.POSIXLaunchEnv,
 	}
-	if err := env.AddRootDir(lifecycle.DefaultLaunchDir); err != nil {
-		return packs.FailErr(err, "modify env using", lifecycle.DefaultLaunchDir)
+	if err := eachDir(lifecycle.DefaultLaunchDir, func(bp string) error {
+		if bp == "app" {
+			return nil
+		}
+		bpPath := filepath.Join(lifecycle.DefaultLaunchDir, bp)
+		return eachDir(bpPath, func(layer string) error {
+			return env.AddRootDir(filepath.Join(bpPath, layer))
+		})
+	}); err != nil {
+		return packs.FailErr(err, "modify env")
 	}
 	if err := os.Chdir(lifecycle.DefaultAppDir); err != nil {
 		return packs.FailErr(err, "change directory to", lifecycle.DefaultAppDir)
@@ -55,6 +66,24 @@ func launch() error {
 		startCommand,
 	}, os.Environ()); err != nil {
 		return packs.FailErrCode(err, packs.CodeFailedLaunch, "launch")
+	}
+	return nil
+}
+
+func eachDir(dir string, fn func(file string) error) error {
+	files, err := ioutil.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		if err := fn(f.Name()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
