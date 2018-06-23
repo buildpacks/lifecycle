@@ -78,7 +78,7 @@ func eachDir(dir string, fn func(file string) error) error {
 		return err
 	}
 	for _, f := range files {
-		if f.IsDir() {
+		if !f.IsDir() {
 			continue
 		}
 		if err := fn(f.Name()); err != nil {
