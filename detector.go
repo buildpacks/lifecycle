@@ -121,6 +121,14 @@ func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, co
 	return info, codes
 }
 
+func (bg *BuildpackGroup) List() []string {
+	var out []string
+	for _, bp := range bg.Buildpacks {
+		out = append(out, bp.ID+"@"+bp.Version)
+	}
+	return out
+}
+
 func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
 	result := map[string]interface{}{}
 	for _, r := range in {

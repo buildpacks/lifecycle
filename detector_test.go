@@ -19,6 +19,7 @@ import (
 
 func TestDetector(t *testing.T) {
 	spec.Run(t, "Detector", testDetector, spec.Report(report.Terminal{}))
+	spec.Run(t, "Group", testGroup, spec.Report(report.Terminal{}))
 }
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
@@ -121,6 +122,27 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				"2 = true\nGroup: buildpack1-name: error (1) | buildpack2-name: error (1)\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", out)
+			}
+		})
+	})
+}
+
+func testGroup(t *testing.T, when spec.G, it spec.S) {
+	when("#List", func() {
+		it("should return a list of references to buildpacks", func() {
+			group := lifecycle.BuildpackGroup{
+				Buildpacks: []*lifecycle.Buildpack{
+					{ID: "buildpack1-id", Version: "0.0.1"},
+					{ID: "buildpack2-id", Version: "0.0.2"},
+					{ID: "buildpack3-id", Version: "0.0.3"},
+				},
+			}
+			if l := group.List(); !reflect.DeepEqual(l, []string{
+				"buildpack1-id@0.0.1",
+				"buildpack2-id@0.0.2",
+				"buildpack3-id@0.0.3",
+			}) {
+				t.Fatalf("Unexpected reference list: %#v\n", l)
 			}
 		})
 	})

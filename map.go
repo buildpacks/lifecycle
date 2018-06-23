@@ -42,11 +42,3 @@ func (m BuildpackMap) FromList(l []string) []*Buildpack {
 	}
 	return out
 }
-
-func (bg *BuildpackGroup) List() []string {
-	var out []string
-	for _, bp := range bg.Buildpacks {
-		out = append(out, bp.ID+"@"+bp.Version)
-	}
-	return out
-}
