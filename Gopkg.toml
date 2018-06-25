@@ -16,4 +16,4 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/sclevine/packs"
+  name = "github.com/buildpack/packs"

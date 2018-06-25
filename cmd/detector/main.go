@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/sclevine/packs"
+	"github.com/buildpack/packs"
 
-	"github.com/sclevine/lifecycle"
+	"github.com/buildpack/lifecycle"
 )
 
 var (

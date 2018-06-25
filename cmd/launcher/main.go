@@ -7,9 +7,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/sclevine/packs"
+	"github.com/buildpack/packs"
 
-	"github.com/sclevine/lifecycle"
+	"github.com/buildpack/lifecycle"
 )
 
 const launcher = `

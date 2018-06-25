@@ -13,7 +13,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/sclevine/lifecycle"
+	"github.com/buildpack/lifecycle"
 )
 
 func TestEnv(t *testing.T) {

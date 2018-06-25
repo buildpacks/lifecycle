@@ -8,16 +8,16 @@
   version = "v0.3.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/buildpack/packs"
+  packages = ["."]
+  revision = "77f10dfb2fe840bd870403ad97f08b749298188f"
+
+[[projects]]
   name = "github.com/golang/mock"
   packages = ["gomock"]
   revision = "c34cdb4725f4c3844d095133c6e40e448b86589b"
   version = "v1.1.1"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/sclevine/packs"
-  packages = ["."]
-  revision = "4b4d46b73a3a30d6560f50ff9df2b0d37bbaddba"
 
 [[projects]]
   branch = "master"
@@ -37,6 +37,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f23d3f9f3ac8579483721abafb42549ff22a87f7e8eda496bf360e9662813464"
+  inputs-digest = "c682c8df5d11cb56451f8e6e5b9fdb422ec2588b774300c483815ec21ae7bbc8"
   solver-name = "gps-cdcl"
   solver-version = 1

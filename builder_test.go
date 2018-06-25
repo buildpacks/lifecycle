@@ -16,15 +16,15 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/sclevine/lifecycle"
-	"github.com/sclevine/lifecycle/testmock"
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/testmock"
 )
 
 func TestBuilder(t *testing.T) {
 	spec.Run(t, "Builder", testBuilder, spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination testmock/env.go github.com/sclevine/lifecycle BuildEnv
+//go:generate mockgen -package mocks -destination testmock/env.go github.com/buildpack/lifecycle BuildEnv
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (

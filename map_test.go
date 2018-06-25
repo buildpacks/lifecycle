@@ -10,7 +10,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/sclevine/lifecycle"
+	"github.com/buildpack/lifecycle"
 )
 
 func TestMap(t *testing.T) {

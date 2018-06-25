@@ -4,7 +4,7 @@ services:
 - docker
 go:
 - 1.10.x
-go_import_path: github.com/sclevine/packs
+go_import_path: github.com/buildpack/packs
 install:
 - set -e
 - ./cf/bin/build cflinuxfs2
