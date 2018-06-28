@@ -138,10 +138,6 @@ func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
 			continue
 		}
 		for k, v := range m {
-			if _, ok := result[k]; ok {
-				l.Printf("Warning: %s is already present", k)
-				continue
-			}
 			result[k] = v
 		}
 	}
