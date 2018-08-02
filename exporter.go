@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,7 +25,7 @@ type Exporter struct {
 	Out, Err   io.Writer
 }
 
-func (e *Exporter) Export(buildMetadata BuildMetadata, launchDir string, stackImage, origImage v1.Image) (v1.Image, error) {
+func (e *Exporter) Export(launchDir string, stackImage, origImage v1.Image) (v1.Image, error) {
 	stackDigest, err := stackImage.Digest()
 	if err != nil {
 		return nil, packs.FailErr(err, "stack digest")
@@ -45,6 +44,12 @@ func (e *Exporter) Export(buildMetadata BuildMetadata, launchDir string, stackIm
 	}
 	metadata.App.SHA = topLayerDigest
 
+	repoImage, topLayerDigest, err = e.addDirAsLayer(repoImage, filepath.Join(e.TmpDir, "config.tgz"), filepath.Join(launchDir, "config"), "launch/config")
+	if err != nil {
+		return nil, packs.FailErr(err, "append droplet to stack")
+	}
+	metadata.Config.SHA = topLayerDigest
+
 	for _, buildpack := range e.Buildpacks {
 		bpMetadata := packs.BuildpackMetadata{Key: buildpack.ID}
 		repoImage, bpMetadata.Layers, err = e.addBuildpackLayer(buildpack.ID, launchDir, repoImage, origImage)
@@ -52,16 +57,6 @@ func (e *Exporter) Export(buildMetadata BuildMetadata, launchDir string, stackIm
 			return nil, packs.FailErr(err, "append layers")
 		}
 		metadata.Buildpacks = append(metadata.Buildpacks, bpMetadata)
-	}
-
-	// TODO: Once launcher can determine process type start commands; remove this
-	webCommand, err := e.webCommand(buildMetadata)
-	if err != nil {
-		return nil, packs.FailErr(err, "read web command from metadata")
-	}
-	repoImage, err = e.startCommand(repoImage, webCommand)
-	if err != nil {
-		return nil, packs.FailErr(err, "set start command")
 	}
 
 	buildJSON, err := json.Marshal(metadata)
@@ -74,26 +69,6 @@ func (e *Exporter) Export(buildMetadata BuildMetadata, launchDir string, stackIm
 	}
 
 	return repoImage, nil
-}
-
-// TODO: Once launcher can determine process type start commands; remove this
-func (e *Exporter) startCommand(image v1.Image, cmd ...string) (v1.Image, error) {
-	configFile, err := image.ConfigFile()
-	if err != nil {
-		return nil, err
-	}
-	config := *configFile.Config.DeepCopy()
-	config.Cmd = cmd
-	return mutate.Config(image, config)
-}
-
-func (e *Exporter) webCommand(buildMetadata BuildMetadata) (string, error) {
-	for _, process := range buildMetadata.Processes {
-		if process.Type == "web" {
-			return process.Command, nil
-		}
-	}
-	return "", errors.New("Missing process with web type")
 }
 
 func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage v1.Image) (v1.Image, map[string]packs.LayerMetadata, error) {

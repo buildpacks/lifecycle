@@ -14,13 +14,13 @@ import (
 )
 
 var (
-	repoName     string
-	stackName    string
-	useDaemon    bool
-	useHelpers   bool
-	groupPath    string
-	launchDir    string
-	metadataPath string
+	repoName       string
+	stackName      string
+	useDaemon      bool
+	useHelpers     bool
+	groupPath      string
+	launchDir      string
+	useDaemonStack bool
 )
 
 func init() {
@@ -28,9 +28,9 @@ func init() {
 	packs.InputUseDaemon(&useDaemon)
 	packs.InputUseHelpers(&useHelpers)
 	packs.InputBPGroupPath(&groupPath)
-	packs.InputMetadataPath(&metadataPath)
 
 	flag.StringVar(&launchDir, "launch", "/launch", "launch directory")
+	flag.BoolVar(&useDaemonStack, "daemon-stack", false, "use stack from docker daemon")
 }
 
 func main() {
@@ -59,7 +59,11 @@ func export() error {
 		return packs.FailErr(err, "access", repoName)
 	}
 
-	stackStore, err := img.NewRegistry(stackName + ":run")
+	newStackStore := img.NewRegistry
+	if useDaemonStack {
+		newStackStore = img.NewDaemon
+	}
+	stackStore, err := newStackStore(stackName + ":run")
 	if err != nil {
 		return packs.FailErr(err, "access", stackName+":run")
 	}
@@ -80,11 +84,6 @@ func export() error {
 		return packs.FailErr(err, "read group")
 	}
 
-	buildMetadata := lifecycle.BuildMetadata{}
-	if _, err := toml.DecodeFile(metadataPath, &buildMetadata); err != nil {
-		return packs.FailErr(err, "read metadata.toml", metadataPath)
-	}
-
 	tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return packs.FailErr(err, "create temp directory")
@@ -98,7 +97,6 @@ func export() error {
 		Err:        os.Stderr,
 	}
 	newImage, err := exporter.Export(
-		buildMetadata,
 		launchDir,
 		stackImage,
 		origImage,
