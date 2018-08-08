@@ -14,13 +14,13 @@
   version = "v0.4.9"
 
 [[projects]]
-  branch = "exporter"
+  branch = "master"
   name = "github.com/buildpack/packs"
   packages = [
     ".",
     "img"
   ]
-  revision = "705a737efd5030706942bdf4ff5269fad2d503e7"
+  revision = "1d0e5c127ab7ae425db615227aa1b56e1f4c884f"
 
 [[projects]]
   name = "github.com/docker/distribution"
@@ -141,6 +141,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "94d66c1de4a5e871cc96f4e144747dd9b88a1e9c91284a3378ff85b2b389abea"
+  inputs-digest = "890bbfdc92409919056c8c04aa7c2fe76c2a1e229de368f5d79cb999067130c5"
   solver-name = "gps-cdcl"
   solver-version = 1

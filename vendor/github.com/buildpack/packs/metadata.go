@@ -7,6 +7,7 @@ const (
 
 type BuildMetadata struct {
 	App        AppMetadata         `json:"app"`
+	Config     ConfigMetadata      `json:"config"`
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 	Stack      StackMetadata       `json:"stack"`
 }
@@ -31,4 +32,8 @@ type StackMetadata struct {
 type LayerMetadata struct {
 	SHA  string      `json:"sha"`
 	Data interface{} `json:"data"`
+}
+
+type ConfigMetadata struct {
+	SHA string `json:"sha"`
 }
