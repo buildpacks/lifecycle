@@ -30,7 +30,6 @@ func TestExporter(t *testing.T) {
 func testExporter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		exporter       *lifecycle.Exporter
-		buildMetadata  lifecycle.BuildMetadata
 		stdout, stderr *bytes.Buffer
 		tmpDir         string
 	)
@@ -50,13 +49,6 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			Out: io.MultiWriter(stdout, it.Out()),
 			Err: io.MultiWriter(stderr, it.Out()),
 		}
-		buildMetadata = lifecycle.BuildMetadata{
-			Processes: []lifecycle.Process{
-				{Type: "other-type", Command: "some-process"},
-				{Type: "web", Command: "./test_app.sh MyArg"},
-				{Type: "worker", Command: "some-other-process"},
-			},
-		}
 	})
 	it.After(func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
@@ -75,7 +67,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("a simple launch dir exists", func() {
-			image, err := exporter.Export(buildMetadata, "testdata/exporter/first/launch", stackImage, nil)
+			image, err := exporter.Export("testdata/exporter/first/launch", stackImage, nil)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -110,6 +102,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf(`launch/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
 			}
 
+			t.Log("adds config layer to image")
+			if txt, err := getImageFile(image, data.Config.SHA, "launch/config/metadata.toml"); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			} else if diff := cmp.Diff(strings.TrimSpace(txt), "[[processes]]\n  type = \"web\"\n  command = \"npm start\""); diff != "" {
+				t.Fatalf(`launch/config/metadata.toml: (-got +want)\n%s`, diff)
+			}
+
 			t.Log("adds buildpack/layer1 as layer")
 			if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer1"].SHA, "launch/buildpack.id/layer1/file-from-layer-1"); err != nil {
 				t.Fatalf("Error: %s\n", err)
@@ -123,29 +122,20 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 2"); diff != "" {
 				t.Fatal("launch/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
 			}
-
-			t.Log("Sets cmd from metadata.toml")
-			cfg, err := image.ConfigFile()
-			if err != nil {
-				t.Fatal("reading image config")
-			}
-			if diff := cmp.Diff(cfg.Config.Cmd, []string{"./test_app.sh MyArg"}); diff != "" {
-				t.Fatal(diff)
-			}
 		})
 
 		when("rebuilding when toml exists without directory", func() {
 			var firstImage v1.Image
 			it.Before(func() {
 				var err error
-				firstImage, err = exporter.Export(buildMetadata, "testdata/exporter/first/launch", stackImage, nil)
+				firstImage, err = exporter.Export("testdata/exporter/first/launch", stackImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 			})
 
 			it("reuses layers if there is a layer.toml file", func() {
-				image, err := exporter.Export(buildMetadata, "testdata/exporter/second/launch", stackImage, firstImage)
+				image, err := exporter.Export("testdata/exporter/second/launch", stackImage, firstImage)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -244,6 +234,9 @@ type metadata struct {
 	App struct {
 		SHA string `json:"sha"`
 	} `json:"app"`
+	Config struct {
+		SHA string `json:"sha"`
+	} `json:"config"`
 	Buildpacks []struct {
 		Key    string `json:"key"`
 		Layers map[string]struct {

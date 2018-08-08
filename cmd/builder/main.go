@@ -4,6 +4,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/packs"
@@ -70,6 +71,9 @@ func build() error {
 	)
 	if err != nil {
 		return packs.FailErrCode(err, packs.CodeFailedBuild)
+	}
+	if err := os.MkdirAll(path.Dir(metadataPath), 0750); err != nil {
+		return packs.FailErr(err, "create metadata dir")
 	}
 	mdFile, err := os.Create(metadataPath)
 	if err != nil {

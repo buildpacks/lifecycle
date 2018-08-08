@@ -1,89 +1,55 @@
 package main
 
 import (
-	"io/ioutil"
+	"flag"
 	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
 
-	"github.com/buildpack/packs"
-
+	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/packs"
 )
 
-const launcher = `
-if compgen -G "$1/*/*/profile.d/*" > /dev/null; then
-  for script in "$1"/*/*/profile.d/*; do
-    [[ $script == $1/app/* ]] || [[ ! -f $script ]] && continue
-    source "$script"
-  done
-fi
+var (
+	metadataPath string
+)
 
-if [[ -f .profile ]]; then
-  source .profile
-fi
-
-shift
-exec bash -c "$@"
-`
-
-var startCommand string
+func init() {
+	packs.InputMetadataPath(&metadataPath)
+}
 
 func main() {
-	if len(os.Args) < 2 {
-		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse start command"))
+	flag.Parse()
+	if metadataPath == "" {
+		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments"))
 	}
-	startCommand = strings.Join(os.Args[1:], " ")
 	packs.Exit(launch())
 }
 
 func launch() error {
-	env := &lifecycle.Env{
-		Getenv:  os.Getenv,
-		Setenv:  os.Setenv,
-		Environ: os.Environ,
-		Map:     lifecycle.POSIXLaunchEnv,
+	defaultProcessType := "web"
+	if v := os.Getenv("PACK_PROCESS_TYPE"); v != "" {
+		defaultProcessType = v
 	}
-	if err := eachDir(lifecycle.DefaultLaunchDir, func(bp string) error {
-		if bp == "app" {
-			return nil
-		}
-		bpPath := filepath.Join(lifecycle.DefaultLaunchDir, bp)
-		return eachDir(bpPath, func(layer string) error {
-			return env.AddRootDir(filepath.Join(bpPath, layer))
-		})
-	}); err != nil {
-		return packs.FailErr(err, "modify env")
-	}
-	if err := os.Chdir(lifecycle.DefaultAppDir); err != nil {
-		return packs.FailErr(err, "change directory to", lifecycle.DefaultAppDir)
-	}
-	if err := syscall.Exec("/bin/bash", []string{
-		"bash", "-c",
-		launcher, os.Args[0],
-		lifecycle.DefaultLaunchDir,
-		startCommand,
-	}, os.Environ()); err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedLaunch, "launch")
-	}
-	return nil
-}
 
-func eachDir(dir string, fn func(file string) error) error {
-	files, err := ioutil.ReadDir(dir)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
+	var metadata lifecycle.BuildMetadata
+	if _, err := toml.DecodeFile(metadataPath, &metadata); err != nil {
+		return packs.FailErr(err, "read metadata")
 	}
-	for _, f := range files {
-		if !f.IsDir() {
-			continue
-		}
-		if err := fn(f.Name()); err != nil {
-			return err
-		}
+
+	launcher := &lifecycle.Launcher{
+		DefaultProcessType: defaultProcessType,
+		DefaultLaunchDir:   lifecycle.DefaultLaunchDir,
+		DefaultAppDir:      lifecycle.DefaultAppDir,
+		Processes:          metadata.Processes,
+		Exec:               syscall.Exec,
 	}
-	return nil
+
+	command := ""
+	if flag.NArg() > 0 {
+		command = strings.Join(flag.Args(), " ")
+	}
+
+	return launcher.Launch(os.Args[0], command)
 }
