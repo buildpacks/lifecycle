@@ -24,20 +24,20 @@ func TestBuilder(t *testing.T) {
 	spec.Run(t, "Builder", testBuilder, spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination testmock/env.go github.com/buildpack/lifecycle BuildEnv
+//go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpack/lifecycle BuildEnv
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		builder             *lifecycle.Builder
 		mockCtrl            *gomock.Controller
-		env                 *testmock.MockEnv
+		env                 *testmock.MockBuildEnv
 		stdout, stderr      *bytes.Buffer
 		tmpDir, platformDir string
 	)
 
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
-		env = testmock.NewMockEnv(mockCtrl)
+		env = testmock.NewMockBuildEnv(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")

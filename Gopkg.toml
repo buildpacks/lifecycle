@@ -15,5 +15,9 @@
   version = "1.1.1"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/buildpack/packs"
+  branch = "master"
+
+[[override]]
+  name = "github.com/google/go-containerregistry"
+  revision = "11085b1805b9e9e6987278a5f61202d088e9b7f0"
