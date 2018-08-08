@@ -20,7 +20,7 @@
     ".",
     "img"
   ]
-  revision = "1d0e5c127ab7ae425db615227aa1b56e1f4c884f"
+  revision = "27a22e86e2e7a115b432d958a9ef555ce0aaf5a3"
 
 [[projects]]
   name = "github.com/docker/distribution"
@@ -104,7 +104,7 @@
     "pkg/v1/types",
     "pkg/v1/v1util"
   ]
-  revision = "11085b1805b9e9e6987278a5f61202d088e9b7f0"
+  revision = "697ee0b3d46eff19ed2b30f86230377061203f79"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -141,6 +141,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "890bbfdc92409919056c8c04aa7c2fe76c2a1e229de368f5d79cb999067130c5"
+  inputs-digest = "3e3d9d422961b6ca41e6e97c099a0e5ac2ccc98dd130c1538169fb2992119bc6"
   solver-name = "gps-cdcl"
   solver-version = 1

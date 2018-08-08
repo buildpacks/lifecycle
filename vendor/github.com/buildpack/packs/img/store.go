@@ -38,7 +38,7 @@ func (r *registryStore) Ref() name.Reference {
 }
 
 func (r *registryStore) Image() (v1.Image, error) {
-	return remote.Image(r.ref, r.auth, http.DefaultTransport)
+	return remote.Image(r.ref, remote.WithAuth(r.auth))
 }
 
 func (r *registryStore) Write(image v1.Image) error {
@@ -62,7 +62,7 @@ func (d *daemonStore) Ref() name.Reference {
 }
 
 func (d *daemonStore) Image() (v1.Image, error) {
-	return daemon.Image(d.tag, &daemon.ReadOptions{})
+	return daemon.Image(d.tag)
 }
 
 func (d *daemonStore) Write(image v1.Image) error {

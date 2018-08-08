@@ -174,7 +174,7 @@ func getBusyboxWithEntrypoint() (v1.Image, error) {
 	}
 	stackImage, err := stackStore.Image()
 	if err != nil {
-		return nil, fmt.Errorf("get image for SCRATCH: %s", err)
+		return nil, fmt.Errorf("get image for busybox: %s", err)
 	}
 	configFile, err := stackImage.ConfigFile()
 	if err != nil {
