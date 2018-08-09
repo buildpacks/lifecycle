@@ -43,6 +43,7 @@ func launch() error {
 		DefaultLaunchDir:   lifecycle.DefaultLaunchDir,
 		DefaultAppDir:      lifecycle.DefaultAppDir,
 		Processes:          metadata.Processes,
+		Buildpacks:         metadata.Buildpacks,
 		Exec:               syscall.Exec,
 	}
 

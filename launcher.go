@@ -5,31 +5,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/buildpack/packs"
 )
-
-const launcher = `
-if compgen -G "$1/*/*/profile.d/*" > /dev/null; then
-  for script in "$1"/*/*/profile.d/*; do
-    [[ $script == $1/app/* ]] || [[ ! -f $script ]] && continue
-    source "$script"
-  done
-fi
-
-if [[ -f .profile ]]; then
-  source .profile
-fi
-
-shift
-exec bash -c "$@"
-`
 
 type Launcher struct {
 	DefaultProcessType string
 	DefaultLaunchDir   string
 	DefaultAppDir      string
 	Processes          []Process
+	Buildpacks         []string
 	Exec               func(argv0 string, argv []string, envv []string) error
 }
 
@@ -60,15 +46,56 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 		return packs.FailErr(err, "determine start command")
 	}
 
+	launcher, err := l.profiled()
+	if err != nil {
+		return packs.FailErr(err, "determine profile")
+	}
+
 	if err := l.Exec("/bin/bash", []string{
 		"bash", "-c",
 		launcher, executable,
-		l.DefaultLaunchDir,
 		startCommand,
 	}, os.Environ()); err != nil {
 		return packs.FailErrCode(err, packs.CodeFailedLaunch, "launch")
 	}
 	return nil
+}
+
+func (l *Launcher) profiled() (string, error) {
+	var script []string
+
+	appendIfFile := func(path string) error {
+		fi, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if !fi.IsDir() {
+			script = append(script, fmt.Sprintf(`source "%s"`, path))
+		}
+		return nil
+	}
+
+	for _, bp := range l.Buildpacks {
+		pdscripts, err := filepath.Glob(filepath.Join(l.DefaultLaunchDir, bp, "*", "profile.d", "*"))
+		if err != nil {
+			return "", err
+		}
+		for _, pdscript := range pdscripts {
+			if err := appendIfFile(pdscript); err != nil {
+				return "", err
+			}
+		}
+	}
+
+	if err := appendIfFile(filepath.Join(l.DefaultAppDir, ".profile")); err != nil {
+		return "", err
+	}
+
+	script = append(script, `exec bash -c "$@"`)
+	return strings.Join(script, "\n"), nil
 }
 
 func (l *Launcher) processFor(cmd string) (string, error) {
