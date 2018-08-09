@@ -3,10 +3,12 @@ package lifecycle_test
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -66,21 +68,88 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#FromList", func() {
-		it("should return a list of buildpacks", func() {
+	when("#ReadOrder", func() {
+		var tmpDir string
+		it.Before(func() {
+			tmpDir, _ = ioutil.TempDir("", "lifecycle.map.")
+		})
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+		it("should return a groups of buildpacks", func() {
 			m := lifecycle.BuildpackMap{
-				"buildpack1@version1.1": {ID: "buildpack1", Version: "version1.1"},
-				"buildpack1@version1.2": {ID: "buildpack1", Version: "version1.2"},
-				"buildpack2@latest":     {ID: "buildpack2"},
+				"buildpack1@version1.1": {Name: "buildpack1-1.1"},
+				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
+				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			if l := m.FromList([]string{
-				"buildpack1@version1.1",
-				"buildpack2",
-			}); !reflect.DeepEqual(l, []*lifecycle.Buildpack{
-				{ID: "buildpack1", Version: "version1.1"},
-				{ID: "buildpack2"},
+			mkfile(t, `groups = [{ buildpacks = [{id = "buildpack1", version = "version1.1"},{id = "buildpack2"}] }]`, filepath.Join(tmpDir, "order.toml"))
+			actual, err := m.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(actual, lifecycle.BuildpackOrder{
+				{Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}}},
 			}) {
-				t.Fatalf("Unexpected list: %#v\n", l)
+				t.Fatalf("Unexpected list: %#v\n", actual)
+			}
+		})
+	})
+
+	when("#ReadGroup", func() {
+		var tmpDir string
+		it.Before(func() {
+			tmpDir, _ = ioutil.TempDir("", "lifecycle.map.")
+		})
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+		it("should return a groups of buildpacks", func() {
+			m := lifecycle.BuildpackMap{
+				"buildpack1@version1.1": {Name: "buildpack1-1.1"},
+				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
+				"buildpack2@latest":     {Name: "buildpack2"},
+			}
+			mkfile(t, `repository = "myrepo"`+"\n"+`buildpacks = [{id = "buildpack1", version = "version1.1"},{id = "buildpack2"}]`, filepath.Join(tmpDir, "group.toml"))
+			actual, err := m.ReadGroup(filepath.Join(tmpDir, "group.toml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(actual, lifecycle.BuildpackGroup{
+				Repository: "myrepo",
+				Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}},
+			}) {
+				t.Fatalf("Unexpected list: %#v\n", actual)
+			}
+		})
+	})
+
+	when("BuildpackGroup#Write", func() {
+		var tmpDir string
+		it.Before(func() {
+			tmpDir, _ = ioutil.TempDir("", "lifecycle.map.")
+		})
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+		it("writes only id and version", func() {
+			group := lifecycle.BuildpackGroup{
+				Repository: "myrepo",
+				Buildpacks: []*lifecycle.Buildpack{{ID: "a", Name: "b", Version: "v", Dir: "d"}},
+			}
+			if err := group.Write(filepath.Join(tmpDir, "group.toml")); err != nil {
+				t.Fatal(err)
+			}
+			b, err := ioutil.ReadFile(filepath.Join(tmpDir, "group.toml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(string(b), `repository = "myrepo"
+
+[[buildpacks]]
+  id = "a"
+  version = "v"
+`); diff != "" {
+				t.Fatalf(`toml did not match: (-got +want)\n%s`, diff)
 			}
 		})
 	})

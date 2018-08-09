@@ -44,7 +44,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks: []string{"buildpack.node@1.0.0", "buildpack.go"},
+			Buildpacks: []*lifecycle.Buildpack{{ID: "buildpack.node"}, {ID: "buildpack.go"}},
 			Out:        io.MultiWriter(stdout, it.Out()),
 			Err:        io.MultiWriter(stderr, it.Out()),
 		}
@@ -144,7 +144,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("only writes layer toml files that correspond to detected buildpacks", func() {
-				analyzer.Buildpacks = []string{"buildpack.go"}
+				analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "buildpack.go"}}
 
 				if err := analyzer.Analyze(launchDir, image); err != nil {
 					t.Fatalf("Error: %s\n", err)

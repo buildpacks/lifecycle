@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
@@ -77,9 +76,7 @@ func export() error {
 		origImage = nil
 	}
 
-	var group struct {
-		Buildpacks []string
-	}
+	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
 		return packs.FailErr(err, "read group")
 	}
@@ -91,7 +88,7 @@ func export() error {
 	defer os.RemoveAll(tmpDir)
 
 	exporter := &lifecycle.Exporter{
-		Buildpacks: buildpacksFromList(group.Buildpacks),
+		Buildpacks: group.Buildpacks,
 		TmpDir:     tmpDir,
 		Out:        os.Stdout,
 		Err:        os.Stderr,
@@ -110,13 +107,4 @@ func export() error {
 	}
 
 	return nil
-}
-
-func buildpacksFromList(input []string) []lifecycle.Buildpack {
-	buildpacks := make([]lifecycle.Buildpack, 0, len(input))
-	for _, s := range input {
-		m := strings.SplitN(s, "@", 2)
-		buildpacks = append(buildpacks, lifecycle.Buildpack{ID: m[0]})
-	}
-	return buildpacks
 }
