@@ -137,6 +137,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{Type: "process1-type", Command: "process1-command"},
 						{Type: "process2-type", Command: "process2-command"},
 					},
+					Buildpacks: []string{"buildpack1-id", "buildpack2-id"},
 				}) {
 					t.Fatalf("Unexpected:\n%+v\n", metadata)
 				}
@@ -149,7 +150,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Error: %s\n", err)
 				}
 				if !reflect.DeepEqual(metadata, &lifecycle.BuildMetadata{
-					Processes: []lifecycle.Process{},
+					Processes:  []lifecycle.Process{},
+					Buildpacks: []string{"buildpack1-id", "buildpack2-id"},
 				}) {
 					t.Fatalf("Unexpected:\n%+v\n", metadata)
 				}

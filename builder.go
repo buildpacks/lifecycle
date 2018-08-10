@@ -32,16 +32,19 @@ type Process struct {
 }
 
 type LaunchTOML struct {
-	Processes []Process `toml:"processes"`
+	Processes  []Process `toml:"processes"`
+	Buildpacks []string  `toml:"buildpacks"`
 }
 
 type BuildMetadata LaunchTOML
 
 func (b *Builder) Build(appDir, cacheDir, launchDir string, env BuildEnv) (*BuildMetadata, error) {
 	procMap := processMap{}
+	var buildpackIDs []string
 	for _, bp := range b.Buildpacks {
 		bpLaunchDir := filepath.Join(launchDir, bp.ID)
 		bpCacheDir := filepath.Join(cacheDir, bp.ID)
+		buildpackIDs = append(buildpackIDs, bp.ID)
 		if err := os.MkdirAll(bpLaunchDir, 0777); err != nil {
 			return nil, err
 		}
@@ -73,8 +76,10 @@ func (b *Builder) Build(appDir, cacheDir, launchDir string, env BuildEnv) (*Buil
 		}
 		procMap.add(launch.Processes)
 	}
+
 	return &BuildMetadata{
-		Processes: procMap.list(),
+		Processes:  procMap.list(),
+		Buildpacks: buildpackIDs,
 	}, nil
 }
 
