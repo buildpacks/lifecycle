@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/packs"
@@ -13,7 +12,7 @@ import (
 )
 
 type Analyzer struct {
-	Buildpacks []string
+	Buildpacks []*Buildpack
 	In         []byte
 	Out, Err   io.Writer
 }
@@ -60,9 +59,8 @@ func (a *Analyzer) getBuildMetadata(image v1.Image) (packs.BuildMetadata, error)
 
 func (a *Analyzer) buildpacks() map[string]struct{} {
 	buildpacks := make(map[string]struct{}, len(a.Buildpacks))
-	for _, buildpack := range a.Buildpacks {
-		a := strings.SplitN(buildpack, "@", 2)
-		buildpacks[a[0]] = struct{}{}
+	for _, b := range a.Buildpacks {
+		buildpacks[b.ID] = struct{}{}
 	}
 	return buildpacks
 }

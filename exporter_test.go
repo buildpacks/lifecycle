@@ -43,7 +43,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		}
 		exporter = &lifecycle.Exporter{
 			TmpDir: tmpDir,
-			Buildpacks: []lifecycle.Buildpack{
+			Buildpacks: []*lifecycle.Buildpack{
 				{ID: "buildpack.id"},
 			},
 			Out: io.MultiWriter(stdout, it.Out()),

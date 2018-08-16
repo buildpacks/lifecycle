@@ -42,9 +42,7 @@ func analyzer() error {
 		}
 	}
 
-	var group struct {
-		Buildpacks []string
-	}
+	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
 		return packs.FailErr(err, "read group")
 	}

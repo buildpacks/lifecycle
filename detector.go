@@ -20,11 +20,16 @@ const (
 	CodeDetectFail = 100
 )
 
+type SimpleBuildpack struct {
+	ID      string `toml:"id"`
+	Version string `toml:"version"`
+}
+
 type Buildpack struct {
-	ID      string
-	Name    string
-	Version string
-	Dir     string
+	ID      string `toml:"id"`
+	Version string `toml:"version"`
+	Name    string `toml:"name"`
+	Dir     string `toml:"-"`
 }
 
 func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.Writer) int {
@@ -57,8 +62,8 @@ func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.W
 }
 
 type BuildpackGroup struct {
-	Buildpacks []*Buildpack
-	Repository string
+	Buildpacks []*Buildpack `toml:"buildpacks"`
+	Repository string       `toml:"repository"`
 }
 
 func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok bool) {
@@ -119,14 +124,6 @@ func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, co
 		}
 	}
 	return info, codes
-}
-
-func (bg *BuildpackGroup) List() []string {
-	var out []string
-	for _, bp := range bg.Buildpacks {
-		out = append(out, bp.ID+"@"+bp.Version)
-	}
-	return out
 }
 
 func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {

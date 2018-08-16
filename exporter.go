@@ -19,7 +19,7 @@ import (
 )
 
 type Exporter struct {
-	Buildpacks []Buildpack
+	Buildpacks []*Buildpack
 	TmpDir     string
 	In         []byte
 	Out, Err   io.Writer
