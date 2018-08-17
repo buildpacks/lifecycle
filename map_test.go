@@ -88,9 +88,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(actual, lifecycle.BuildpackOrder{
-				{
-					Repository: "local",
-					Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}}},
+				{Repository: "local", Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}}},
 			}) {
 				t.Fatalf("Unexpected list: %#v\n", actual)
 			}
