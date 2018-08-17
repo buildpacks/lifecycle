@@ -35,7 +35,7 @@ func main() {
 }
 
 func detect() error {
-	log := log.New(os.Stderr, "", log.LstdFlags)
+	logger := log.New(os.Stderr, "", log.LstdFlags)
 
 	buildpacks, err := lifecycle.NewBuildpackMap(buildpackPath)
 	if err != nil {
@@ -46,7 +46,7 @@ func detect() error {
 		return packs.FailErr(err, "read buildpack order file")
 	}
 
-	info, group := order.Detect(log, lifecycle.DefaultAppDir)
+	info, group := order.Detect(logger, lifecycle.DefaultAppDir)
 	if len(group.Buildpacks) == 0 {
 		return packs.FailCode(packs.CodeFailedDetect, "detect")
 	}
