@@ -82,13 +82,13 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `groups = [{ buildpacks = [{id = "buildpack1", version = "version1.1"},{id = "buildpack2"}] }]`, filepath.Join(tmpDir, "order.toml"))
+			mkfile(t, `groups = [{ repository = "local", buildpacks = [{id = "buildpack1", version = "version1.1"},{id = "buildpack2"}] }]`, filepath.Join(tmpDir, "order.toml"))
 			actual, err := m.ReadOrder(filepath.Join(tmpDir, "order.toml"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(actual, lifecycle.BuildpackOrder{
-				{Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}}},
+				{Repository: "local", Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}}},
 			}) {
 				t.Fatalf("Unexpected list: %#v\n", actual)
 			}

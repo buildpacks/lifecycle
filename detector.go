@@ -151,5 +151,5 @@ func (bo BuildpackOrder) Detect(l *log.Logger, appDir string) ([]byte, *Buildpac
 			return info, &bo[i]
 		}
 	}
-	return nil, nil
+	return nil, &BuildpackGroup{}
 }

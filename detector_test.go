@@ -92,7 +92,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
 
-			if info, group := list.Detect(l, tmpDir); group != nil {
+			if info, group := list.Detect(l, tmpDir); len(group.Buildpacks) != 0 {
 				t.Fatalf("Unexpected group: %#v\n", group)
 			} else if len(info) > 0 {
 				t.Fatalf("Unexpected info: %s\n", string(info))
@@ -111,7 +111,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
 
-			if info, group := list.Detect(l, tmpDir); group != nil {
+			if info, group := list.Detect(l, tmpDir); len(group.Buildpacks) != 0 {
 				t.Fatalf("Unexpected group: %#v\n", group)
 			} else if len(info) > 0 {
 				t.Fatalf("Unexpected info: %s\n", string(info))
