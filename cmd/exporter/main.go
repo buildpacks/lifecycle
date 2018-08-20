@@ -74,6 +74,10 @@ func export() error {
 	origImage, err := repoStore.Image()
 	if err != nil {
 		origImage = nil
+	} else if _, err := origImage.RawManifest(); err != nil {
+		// Assume error is due to non-existent image
+		// This is necessary for registries
+		origImage = nil
 	}
 
 	var group lifecycle.BuildpackGroup
