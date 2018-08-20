@@ -21,10 +21,11 @@ const (
 )
 
 type Buildpack struct {
-	ID      string `toml:"id"`
-	Version string `toml:"version"`
-	Name    string `toml:"-"`
-	Dir     string `toml:"-"`
+	ID       string `toml:"id"`
+	Version  string `toml:"version"`
+	Optional bool   `toml:"optional,omitempty"`
+	Name     string `toml:"-"`
+	Dir      string `toml:"-"`
 }
 
 func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.Writer) int {
@@ -61,9 +62,12 @@ type BuildpackGroup struct {
 	Repository string       `toml:"repository"`
 }
 
-func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok bool) {
-	summary := "Group:"
+func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, group *BuildpackGroup, ok bool) {
+	group = &BuildpackGroup{
+		Repository: bg.Repository,
+	}
 	detected := true
+	summary := "Group:"
 	info, codes := bg.pDetect(l, appDir)
 	for i, code := range codes {
 		if i > 0 {
@@ -72,16 +76,17 @@ func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, ok 
 		switch code {
 		case CodeDetectPass:
 			summary += fmt.Sprintf(" %s: pass", bg.Buildpacks[i].Name)
+			group.Buildpacks = append(group.Buildpacks, bg.Buildpacks[i])
 		case CodeDetectFail:
 			summary += fmt.Sprintf(" %s: fail", bg.Buildpacks[i].Name)
-			detected = false
+			detected = detected && bg.Buildpacks[i].Optional
 		default:
 			summary += fmt.Sprintf(" %s: error (%d)", bg.Buildpacks[i].Name, code)
-			detected = false
+			detected = detected && bg.Buildpacks[i].Optional
 		}
 	}
 	l.Println(summary)
-	return info, detected
+	return info, group, detected
 }
 
 func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, codes []int) {
@@ -102,10 +107,16 @@ func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, co
 				last := io.TeeReader(last, orig)
 				codes[i] = bg.Buildpacks[i].Detect(l, appDir, last, add)
 				ioutil.ReadAll(last)
-				mergeTOML(l, out, orig, add)
+				if codes[i] == CodeDetectPass {
+					mergeTOML(l, out, orig, add)
+				} else {
+					mergeTOML(l, out, orig)
+				}
 			} else {
 				codes[i] = bg.Buildpacks[i].Detect(l, appDir, nil, add)
-				mergeTOML(l, out, add)
+				if codes[i] == CodeDetectPass {
+					mergeTOML(l, out, add)
+				}
 			}
 		}(i, lastIn)
 		lastIn = in
@@ -142,9 +153,9 @@ type BuildpackOrder []BuildpackGroup
 
 func (bo BuildpackOrder) Detect(l *log.Logger, appDir string) ([]byte, *BuildpackGroup) {
 	for i := range bo {
-		if info, ok := bo[i].Detect(l, appDir); ok {
-			return info, &bo[i]
+		if info, group, ok := bo[i].Detect(l, appDir); ok {
+			return info, group
 		}
 	}
-	return nil, &BuildpackGroup{}
+	return nil, nil
 }

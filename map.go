@@ -40,15 +40,17 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 	return buildpacks, nil
 }
 
-func (m BuildpackMap) mapFull(l []*Buildpack) []*Buildpack {
+func (m BuildpackMap) lookup(l []*Buildpack) []*Buildpack {
 	out := make([]*Buildpack, 0, len(l))
-	for _, i := range l {
-		ref := i.ID + "@" + i.Version
-		if i.Version == "" {
+	for _, b := range l {
+		ref := b.ID + "@" + b.Version
+		if b.Version == "" {
 			ref += "latest"
 		}
 		if bp, ok := m[ref]; ok {
-			out = append(out, bp)
+			bp := *bp
+			bp.Optional = b.Optional
+			out = append(out, &bp)
 		}
 	}
 	return out
@@ -66,7 +68,7 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 	for _, g := range order.Groups {
 		groups = append(groups, BuildpackGroup{
 			Repository: g.Repository,
-			Buildpacks: m.mapFull(g.Buildpacks),
+			Buildpacks: m.lookup(g.Buildpacks),
 		})
 	}
 	return groups, nil
@@ -80,7 +82,6 @@ func (g *BuildpackGroup) Write(path string) error {
 		Repository: g.Repository,
 		Buildpacks: g.Buildpacks,
 	}
-
 	return WriteTOML(path, data)
 }
 
@@ -89,6 +90,6 @@ func (m BuildpackMap) ReadGroup(path string) (*BuildpackGroup, error) {
 	if _, err := toml.DecodeFile(path, &group); err != nil {
 		return nil, err
 	}
-	group.Buildpacks = m.mapFull(group.Buildpacks)
+	group.Buildpacks = m.lookup(group.Buildpacks)
 	return &group, nil
 }

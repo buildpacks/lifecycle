@@ -47,7 +47,7 @@ func detect() error {
 	}
 
 	info, group := order.Detect(logger, lifecycle.DefaultAppDir)
-	if len(group.Buildpacks) == 0 {
+	if group == nil {
 		return packs.FailCode(packs.CodeFailedDetect, "detect")
 	}
 

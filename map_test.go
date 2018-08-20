@@ -89,7 +89,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `groups = [{ repository = "local", buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2"}] }]`,
+			mkfile(t, `groups = [{ repository = "local", buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}] }]`,
 				filepath.Join(tmpDir, "order.toml"),
 			)
 			actual, err := m.ReadOrder(filepath.Join(tmpDir, "order.toml"))
@@ -97,7 +97,10 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(actual, lifecycle.BuildpackOrder{
-				{Repository: "local", Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}}},
+				{Repository: "local", Buildpacks: []*lifecycle.Buildpack{
+					{Name: "buildpack1-1.1"},
+					{Name: "buildpack2", Optional: true},
+				}},
 			}) {
 				t.Fatalf("Unexpected list: %#v\n", actual)
 			}
@@ -126,7 +129,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
 			mkfile(t, `repository = "myrepo"`+"\n"+
-				`buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2"}]`,
+				`buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}]`,
 				filepath.Join(tmpDir, "group.toml"),
 			)
 			actual, err := m.ReadGroup(filepath.Join(tmpDir, "group.toml"))
@@ -135,7 +138,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 			}
 			if !reflect.DeepEqual(actual, &lifecycle.BuildpackGroup{
 				Repository: "myrepo",
-				Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}},
+				Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}},
 			}) {
 				t.Fatalf("Unexpected list: %#v\n", actual)
 			}
