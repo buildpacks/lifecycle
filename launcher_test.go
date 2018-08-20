@@ -24,7 +24,6 @@ type syscallExecArgs struct {
 }
 
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
-
 	var (
 		launcher            *lifecycle.Launcher
 		tmpDir              string
@@ -68,7 +67,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Launch", func() {
 		when("no start command has been specified", func() {
-			it("runs the default process type", func() {
+			it("should run the default process type", func() {
 				if err := launcher.Launch("/path/to/launcher", ""); err != nil {
 					t.Fatal(err)
 				}
@@ -90,7 +89,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("default start process type is not in the process types", func() {
-				it("returns an error", func() {
+				it("should return an error", func() {
 					launcher.DefaultProcessType = "not-exist"
 
 					err := launcher.Launch("/path/to/launcher", "")
@@ -104,9 +103,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
 		when("start command has been specified", func() {
 			when("start command matches a process type", func() {
-				it("runs that process type", func() {
+				it("should run that process type", func() {
 					if err := launcher.Launch("/path/to/launcher", "worker"); err != nil {
 						t.Fatal(err)
 					}
@@ -120,8 +120,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 			})
+
 			when("start command does NOT match a process type", func() {
-				it("runs the start command", func() {
+				it("should run the start command", func() {
 					if err := launcher.Launch("/path/to/launcher", "some-different-process"); err != nil {
 						t.Fatal(err)
 					}
@@ -146,7 +147,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					{Type: "start", Command: "./start"},
 				}
 				launcher.Buildpacks = []string{"bp.1", "bp.2"}
-				launcher.Exec = syscallExecWithStdout(tmpDir)
+				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
 				if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"), 0755); err != nil {
 					t.Fatal(err)
@@ -161,32 +162,44 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal(err)
 				}
 			})
-			it("runs them in buildpack order", func() {
+
+			it("should run them in buildpack order", func() {
 				if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
 					t.Fatal(err)
 				}
 
-				stdout, _ := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
+				stdout, err := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
+				if err != nil {
+					t.Fatal(err)
+				}
 				expected := "apple\nbanana\nhi from app\n"
 
 				if len(stdout) == 0 {
-					stderr, _ := ioutil.ReadFile(filepath.Join(tmpDir, "stderr"))
+					stderr, err := ioutil.ReadFile(filepath.Join(tmpDir, "stderr"))
+					if err != nil {
+						t.Fatal(err)
+					}
 					t.Fatalf("stdout was empty: stderr: %s", stderr)
 				}
 				if diff := cmp.Diff(string(stdout), expected); diff != "" {
 					t.Fatalf(`syscall.Exec stdout did not match: (-got +want)\n%s`, diff)
 				}
 			})
+
 			when("changing the buildpack order", func() {
 				it.Before(func() {
 					launcher.Buildpacks = []string{"bp.2", "bp.1"}
 				})
-				it("runs them in buildpack order", func() {
+
+				it("should run them in buildpack order", func() {
 					if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
 						t.Fatal(err)
 					}
 
-					stdout, _ := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
+					stdout, err := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
+					if err != nil {
+						t.Fatal(err)
+					}
 					expected := "banana\napple\nhi from app\n"
 
 					if len(stdout) == 0 {
@@ -198,22 +211,30 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 			})
+
 			when("app has '.profile'", func() {
 				it.Before(func() {
 					if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "app", ".profile"), []byte("echo from profile"), 0644); err != nil {
 						t.Fatal(err)
 					}
 				})
-				it("sources .profile", func() {
+
+				it("should source .profile", func() {
 					if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
 						t.Fatal(err)
 					}
 
-					stdout, _ := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
+					stdout, err := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
+					if err != nil {
+						t.Fatal(err)
+					}
 					expected := "apple\nbanana\nfrom profile\nhi from app\n"
 
 					if len(stdout) == 0 {
-						stderr, _ := ioutil.ReadFile(filepath.Join(tmpDir, "stderr"))
+						stderr, err := ioutil.ReadFile(filepath.Join(tmpDir, "stderr"))
+						if err != nil {
+							t.Fatal(err)
+						}
 						t.Fatalf("stdout was empty: stderr: %s", stderr)
 					}
 					if diff := cmp.Diff(string(stdout), expected); diff != "" {
@@ -225,10 +246,19 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func syscallExecWithStdout(tmpDir string) func(argv0 string, argv []string, envv []string) error {
-	fstdin, _ := os.Create(filepath.Join(tmpDir, "stdin"))
-	fstdout, _ := os.Create(filepath.Join(tmpDir, "stdout"))
-	fstderr, _ := os.Create(filepath.Join(tmpDir, "stderr"))
+func syscallExecWithStdout(t *testing.T, tmpDir string) func(argv0 string, argv []string, envv []string) error {
+	fstdin, err := os.Create(filepath.Join(tmpDir, "stdin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fstdout, err := os.Create(filepath.Join(tmpDir, "stdout"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fstderr, err := os.Create(filepath.Join(tmpDir, "stderr"))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	return func(argv0 string, argv []string, envv []string) error {
 		pid, err := syscall.ForkExec(argv0, argv, &syscall.ProcAttr{

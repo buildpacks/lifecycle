@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	"github.com/buildpack/packs"
 )
 
 func TestExporter(t *testing.T) {
@@ -50,6 +51,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			Err: io.MultiWriter(stderr, it.Out()),
 		}
 	})
+
 	it.After(func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
 			t.Fatal(err)
@@ -66,7 +68,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("a simple launch dir exists", func() {
+		it("should process a simple launch directory", func() {
 			image, err := exporter.Export("testdata/exporter/first/launch", stackImage, nil)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
@@ -124,7 +126,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		when("rebuilding when toml exists without directory", func() {
+		when("rebuilding when layer TOML exists without directory", func() {
 			var firstImage v1.Image
 			it.Before(func() {
 				var err error
@@ -134,7 +136,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("reuses layers if there is a layer.toml file", func() {
+			it("should reuse layers if there is a layer TOML file", func() {
 				image, err := exporter.Export("testdata/exporter/second/launch", stackImage, firstImage)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
@@ -183,14 +185,6 @@ func getBusyboxWithEntrypoint() (v1.Image, error) {
 	config := *configFile.Config.DeepCopy()
 	config.Entrypoint = []string{"sh", "-c"}
 	return mutate.Config(stackImage, config)
-}
-
-func randString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26))
-	}
-	return string(b)
 }
 
 func getLayerFile(layer v1.Layer, path string) (string, error) {
@@ -252,7 +246,7 @@ func getMetadata(image v1.Image) (metadata, error) {
 	if err != nil {
 		return metadata, fmt.Errorf("read config: %s", err)
 	}
-	label := cfg.Config.Labels["sh.packs.build"]
+	label := cfg.Config.Labels[packs.BuildLabel]
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return metadata, fmt.Errorf("unmarshal: %s", err)
 	}

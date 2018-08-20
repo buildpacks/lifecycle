@@ -46,7 +46,7 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 		return packs.FailErr(err, "determine start command")
 	}
 
-	launcher, err := l.profiled()
+	launcher, err := l.profileD()
 	if err != nil {
 		return packs.FailErr(err, "determine profile")
 	}
@@ -61,8 +61,8 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 	return nil
 }
 
-func (l *Launcher) profiled() (string, error) {
-	var script []string
+func (l *Launcher) profileD() (string, error) {
+	var out []string
 
 	appendIfFile := func(path string) error {
 		fi, err := os.Stat(path)
@@ -73,18 +73,18 @@ func (l *Launcher) profiled() (string, error) {
 			return err
 		}
 		if !fi.IsDir() {
-			script = append(script, fmt.Sprintf(`source "%s"`, path))
+			out = append(out, fmt.Sprintf(`source "%s"`, path))
 		}
 		return nil
 	}
 
 	for _, bp := range l.Buildpacks {
-		pdscripts, err := filepath.Glob(filepath.Join(l.DefaultLaunchDir, bp, "*", "profile.d", "*"))
+		scripts, err := filepath.Glob(filepath.Join(l.DefaultLaunchDir, bp, "*", "profile.d", "*"))
 		if err != nil {
 			return "", err
 		}
-		for _, pdscript := range pdscripts {
-			if err := appendIfFile(pdscript); err != nil {
+		for _, script := range scripts {
+			if err := appendIfFile(script); err != nil {
 				return "", err
 			}
 		}
@@ -94,8 +94,8 @@ func (l *Launcher) profiled() (string, error) {
 		return "", err
 	}
 
-	script = append(script, `exec bash -c "$@"`)
-	return strings.Join(script, "\n"), nil
+	out = append(out, `exec bash -c "$@"`)
+	return strings.Join(out, "\n"), nil
 }
 
 func (l *Launcher) processFor(cmd string) (string, error) {
@@ -104,7 +104,7 @@ func (l *Launcher) processFor(cmd string) (string, error) {
 			return process, nil
 		}
 
-		return "", fmt.Errorf("process type %s was not available", l.DefaultProcessType)
+		return "", fmt.Errorf("process type %s was not found", l.DefaultProcessType)
 	}
 
 	if process, ok := l.findProcessType(cmd); ok {

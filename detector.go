@@ -20,15 +20,10 @@ const (
 	CodeDetectFail = 100
 )
 
-type SimpleBuildpack struct {
-	ID      string `toml:"id"`
-	Version string `toml:"version"`
-}
-
 type Buildpack struct {
 	ID      string `toml:"id"`
 	Version string `toml:"version"`
-	Name    string `toml:"name"`
+	Name    string `toml:"-"`
 	Dir     string `toml:"-"`
 }
 

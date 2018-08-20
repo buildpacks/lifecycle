@@ -141,7 +141,7 @@ func (e *Exporter) GetMetadata(image v1.Image) (packs.BuildMetadata, error) {
 	if err != nil {
 		return metadata, fmt.Errorf("read config: %s", err)
 	}
-	label := cfg.Config.Labels["sh.packs.build"]
+	label := cfg.Config.Labels[packs.BuildLabel]
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return metadata, fmt.Errorf("unmarshal: %s", err)
 	}

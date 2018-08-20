@@ -9,6 +9,12 @@ import (
 
 type BuildpackMap map[string]*Buildpack
 
+type buildpackTOML struct {
+	ID      string `toml:"id"`
+	Version string `toml:"version"`
+	Name    string `toml:"name"`
+}
+
 func NewBuildpackMap(dir string) (BuildpackMap, error) {
 	buildpacks := BuildpackMap{}
 	glob := filepath.Join(dir, "*", "*", "buildpack.toml")
@@ -16,16 +22,20 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, bpTOML := range files {
-		buildpackDir := filepath.Dir(bpTOML)
+	for _, file := range files {
+		buildpackDir := filepath.Dir(file)
 		base, version := filepath.Split(buildpackDir)
 		_, id := filepath.Split(filepath.Clean(base))
-		var buildpack Buildpack
-		if _, err := toml.DecodeFile(bpTOML, &buildpack); err != nil {
+		var bpTOML buildpackTOML
+		if _, err := toml.DecodeFile(file, &bpTOML); err != nil {
 			return nil, err
 		}
-		buildpack.Dir = buildpackDir
-		buildpacks[id+"@"+version] = &buildpack
+		buildpacks[id+"@"+version] = &Buildpack{
+			ID:      bpTOML.ID,
+			Version: bpTOML.Version,
+			Name:    bpTOML.Name,
+			Dir:     buildpackDir,
+		}
 	}
 	return buildpacks, nil
 }
@@ -63,27 +73,22 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 }
 
 func (g *BuildpackGroup) Write(path string) error {
-	buildpacks := make([]*SimpleBuildpack, 0, len(g.Buildpacks))
-	for _, b := range g.Buildpacks {
-		buildpacks = append(buildpacks, &SimpleBuildpack{ID: b.ID, Version: b.Version})
-	}
-
 	data := struct {
-		Repository string             `toml:"repository"`
-		Buildpacks []*SimpleBuildpack `toml:"buildpacks"`
+		Repository string       `toml:"repository"`
+		Buildpacks []*Buildpack `toml:"buildpacks"`
 	}{
 		Repository: g.Repository,
-		Buildpacks: buildpacks,
+		Buildpacks: g.Buildpacks,
 	}
 
 	return WriteTOML(path, data)
 }
 
-func (m BuildpackMap) ReadGroup(path string) (BuildpackGroup, error) {
+func (m BuildpackMap) ReadGroup(path string) (*BuildpackGroup, error) {
 	var group BuildpackGroup
 	if _, err := toml.DecodeFile(path, &group); err != nil {
-		return BuildpackGroup{}, err
+		return nil, err
 	}
 	group.Buildpacks = m.mapFull(group.Buildpacks)
-	return group, nil
+	return &group, nil
 }

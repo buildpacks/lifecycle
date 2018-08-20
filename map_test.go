@@ -22,7 +22,7 @@ func TestMap(t *testing.T) {
 func testMap(t *testing.T, when spec.G, it spec.S) {
 	when(".NewBuildpackMap", func() {
 		it("should return a map of buildpacks in the provided directory", func() {
-			tmpDir, err := ioutil.TempDir("", "lifecycle")
+			tmpDir, err := ioutil.TempDir("", "lifecycle.test")
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -70,19 +70,28 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 
 	when("#ReadOrder", func() {
 		var tmpDir string
+
 		it.Before(func() {
-			tmpDir, _ = ioutil.TempDir("", "lifecycle.map.")
+			var err error
+			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			if err != nil {
+				t.Fatal(err)
+			}
 		})
+
 		it.After(func() {
 			os.RemoveAll(tmpDir)
 		})
-		it("should return a groups of buildpacks", func() {
+
+		it("should return an ordering of buildpacks", func() {
 			m := lifecycle.BuildpackMap{
 				"buildpack1@version1.1": {Name: "buildpack1-1.1"},
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `groups = [{ repository = "local", buildpacks = [{id = "buildpack1", version = "version1.1"},{id = "buildpack2"}] }]`, filepath.Join(tmpDir, "order.toml"))
+			mkfile(t, `groups = [{ repository = "local", buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2"}] }]`,
+				filepath.Join(tmpDir, "order.toml"),
+			)
 			actual, err := m.ReadOrder(filepath.Join(tmpDir, "order.toml"))
 			if err != nil {
 				t.Fatal(err)
@@ -97,24 +106,34 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 
 	when("#ReadGroup", func() {
 		var tmpDir string
+
 		it.Before(func() {
-			tmpDir, _ = ioutil.TempDir("", "lifecycle.map.")
+			var err error
+			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			if err != nil {
+				t.Fatal(err)
+			}
 		})
+
 		it.After(func() {
 			os.RemoveAll(tmpDir)
 		})
-		it("should return a groups of buildpacks", func() {
+
+		it("should return a group of buildpacks", func() {
 			m := lifecycle.BuildpackMap{
 				"buildpack1@version1.1": {Name: "buildpack1-1.1"},
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `repository = "myrepo"`+"\n"+`buildpacks = [{id = "buildpack1", version = "version1.1"},{id = "buildpack2"}]`, filepath.Join(tmpDir, "group.toml"))
+			mkfile(t, `repository = "myrepo"`+"\n"+
+				`buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2"}]`,
+				filepath.Join(tmpDir, "group.toml"),
+			)
 			actual, err := m.ReadGroup(filepath.Join(tmpDir, "group.toml"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(actual, lifecycle.BuildpackGroup{
+			if !reflect.DeepEqual(actual, &lifecycle.BuildpackGroup{
 				Repository: "myrepo",
 				Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2"}},
 			}) {
@@ -123,15 +142,22 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("BuildpackGroup#Write", func() {
+	when("#Write", func() {
 		var tmpDir string
+
 		it.Before(func() {
-			tmpDir, _ = ioutil.TempDir("", "lifecycle.map.")
+			var err error
+			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			if err != nil {
+				t.Fatal(err)
+			}
 		})
+
 		it.After(func() {
 			os.RemoveAll(tmpDir)
 		})
-		it("writes only id and version", func() {
+
+		it("should write only ID and version", func() {
 			group := lifecycle.BuildpackGroup{
 				Repository: "myrepo",
 				Buildpacks: []*lifecycle.Buildpack{{ID: "a", Name: "b", Version: "v", Dir: "d"}},
