@@ -14,13 +14,13 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/packs"
 	"github.com/buildpack/packs/img"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"github.com/buildpack/packs"
 )
 
 func TestExporter(t *testing.T) {
@@ -206,7 +206,6 @@ func getLayerFile(layer v1.Layer, path string) (string, error) {
 			return string(buf), err
 		}
 	}
-	return "", fmt.Errorf("file not found: %s", path)
 }
 
 func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
