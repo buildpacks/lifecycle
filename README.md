@@ -23,14 +23,10 @@ A reference implementation of Buildpack API v3.
 
 ### Cache
 
-* `restorer` - restores cache
+* `retriever` - restores cache
 * `cacher` - updates cache
 
 ## Notes
 
-Only the `detector`, `builder`, and `launcher` are currently implemented here.
-
-The `analyzer` and `exporter` are partially implemented in [packs](https://github.com/buildpack/packs).
-
-Cache implementations (`restorer` and `cacher`) are intended to be interchangable and platform-specific.
+Cache implementations (`retriever` and `cacher`) are intended to be interchangable and platform-specific.
 A platform may choose not to deduplicate cache layers.
