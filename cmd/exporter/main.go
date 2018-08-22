@@ -15,6 +15,7 @@ import (
 var (
 	repoName       string
 	stackName      string
+	stackTag       string
 	useDaemon      bool
 	useHelpers     bool
 	groupPath      string
@@ -24,6 +25,7 @@ var (
 
 func init() {
 	packs.InputStackName(&stackName)
+	packs.InputStackTag(&stackTag)
 	packs.InputUseDaemon(&useDaemon)
 	packs.InputUseHelpers(&useHelpers)
 	packs.InputBPGroupPath(&groupPath)
@@ -34,8 +36,8 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || stackName == "" || launchDir == "" {
-		args := map[string]interface{}{"narg": flag.NArg, "stackName": stackName, "launchDir": launchDir}
+	if flag.NArg() > 1 || flag.Arg(0) == "" || stackName == "" || stackTag == "" || launchDir == "" {
+		args := map[string]interface{}{"narg": flag.NArg, "stackName": stackName, "stackTag:": stackTag, "launchDir": launchDir}
 		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -62,13 +64,16 @@ func export() error {
 	if useDaemonStack {
 		newStackStore = img.NewDaemon
 	}
-	stackStore, err := newStackStore(stackName + ":run")
+	if stackTag == "" {
+		stackTag = "run"
+	}
+	stackStore, err := newStackStore(stackName + ":" + stackTag)
 	if err != nil {
-		return packs.FailErr(err, "access", stackName+":run")
+		return packs.FailErr(err, "access", stackName+":"+stackTag)
 	}
 	stackImage, err := stackStore.Image()
 	if err != nil {
-		return packs.FailErr(err, "get image for", stackName+":run")
+		return packs.FailErr(err, "get image for", stackName+":"+stackTag)
 	}
 
 	origImage, err := repoStore.Image()
