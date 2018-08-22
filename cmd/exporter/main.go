@@ -14,8 +14,7 @@ import (
 
 var (
 	repoName       string
-	stackName      string
-	stackTag       string
+	runImage       string
 	useDaemon      bool
 	useHelpers     bool
 	groupPath      string
@@ -24,8 +23,7 @@ var (
 )
 
 func init() {
-	packs.InputStackName(&stackName)
-	packs.InputStackTag(&stackTag)
+	packs.InputRunImage(&runImage)
 	packs.InputUseDaemon(&useDaemon)
 	packs.InputUseHelpers(&useHelpers)
 	packs.InputBPGroupPath(&groupPath)
@@ -36,8 +34,8 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || stackName == "" || stackTag == "" || launchDir == "" {
-		args := map[string]interface{}{"narg": flag.NArg, "stackName": stackName, "stackTag:": stackTag, "launchDir": launchDir}
+	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" || launchDir == "" {
+		args := map[string]interface{}{"narg": flag.NArg, "runImage": runImage, "launchDir": launchDir}
 		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -46,7 +44,7 @@ func main() {
 
 func export() error {
 	if useHelpers {
-		if err := img.SetupCredHelpers(repoName, stackName); err != nil {
+		if err := img.SetupCredHelpers(repoName, runImage); err != nil {
 			return packs.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -64,16 +62,13 @@ func export() error {
 	if useDaemonStack {
 		newStackStore = img.NewDaemon
 	}
-	if stackTag == "" {
-		stackTag = "run"
-	}
-	stackStore, err := newStackStore(stackName + ":" + stackTag)
+	stackStore, err := newStackStore(runImage)
 	if err != nil {
-		return packs.FailErr(err, "access", stackName+":"+stackTag)
+		return packs.FailErr(err, "access", runImage)
 	}
 	stackImage, err := stackStore.Image()
 	if err != nil {
-		return packs.FailErr(err, "get image for", stackName+":"+stackTag)
+		return packs.FailErr(err, "get image for", runImage)
 	}
 
 	origImage, err := repoStore.Image()
