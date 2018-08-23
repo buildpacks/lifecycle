@@ -88,8 +88,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if diff := cmp.Diff(data.Stack.SHA, stackDigest.String()); diff != "" {
-				t.Fatalf(`Stack digest did not match: (-got +want)\n%s`, diff)
+			if diff := cmp.Diff(data.RunImage.SHA, stackDigest.String()); diff != "" {
+				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
 			}
 
 			t.Log("sets toml files in buildpack metadata")
@@ -221,7 +221,7 @@ func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
 }
 
 type metadata struct {
-	Stack struct {
+	RunImage struct {
 		SHA string `json:"sha"`
 	} `json:"stack"`
 	App struct {

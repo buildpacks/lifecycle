@@ -13,29 +13,29 @@ import (
 )
 
 var (
-	repoName       string
-	stackName      string
-	useDaemon      bool
-	useHelpers     bool
-	groupPath      string
-	launchDir      string
-	useDaemonStack bool
+	repoName          string
+	runImage          string
+	useDaemon         bool
+	useHelpers        bool
+	groupPath         string
+	launchDir         string
+	useDaemonRunImage bool
 )
 
 func init() {
-	packs.InputStackName(&stackName)
+	packs.InputRunImage(&runImage)
 	packs.InputUseDaemon(&useDaemon)
 	packs.InputUseHelpers(&useHelpers)
 	packs.InputBPGroupPath(&groupPath)
 
 	flag.StringVar(&launchDir, "launch", "/launch", "launch directory")
-	flag.BoolVar(&useDaemonStack, "daemon-stack", false, "use stack from docker daemon")
+	flag.BoolVar(&useDaemonRunImage, "daemon-stack", false, "use stack from docker daemon")
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || stackName == "" || launchDir == "" {
-		args := map[string]interface{}{"narg": flag.NArg, "stackName": stackName, "launchDir": launchDir}
+	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" || launchDir == "" {
+		args := map[string]interface{}{"narg": flag.NArg, "runImage": runImage, "launchDir": launchDir}
 		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -44,7 +44,7 @@ func main() {
 
 func export() error {
 	if useHelpers {
-		if err := img.SetupCredHelpers(repoName, stackName); err != nil {
+		if err := img.SetupCredHelpers(repoName, runImage); err != nil {
 			return packs.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -58,17 +58,17 @@ func export() error {
 		return packs.FailErr(err, "access", repoName)
 	}
 
-	newStackStore := img.NewRegistry
-	if useDaemonStack {
-		newStackStore = img.NewDaemon
+	newRunImageStore := img.NewRegistry
+	if useDaemonRunImage {
+		newRunImageStore = img.NewDaemon
 	}
-	stackStore, err := newStackStore(stackName + ":run")
+	stackStore, err := newRunImageStore(runImage)
 	if err != nil {
-		return packs.FailErr(err, "access", stackName+":run")
+		return packs.FailErr(err, "access", runImage)
 	}
 	stackImage, err := stackStore.Image()
 	if err != nil {
-		return packs.FailErr(err, "get image for", stackName+":run")
+		return packs.FailErr(err, "get image for", runImage)
 	}
 
 	origImage, err := repoStore.Image()
