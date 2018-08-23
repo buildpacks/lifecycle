@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	repoName       string
-	runImage       string
-	useDaemon      bool
-	useHelpers     bool
-	groupPath      string
-	launchDir      string
-	useDaemonStack bool
+	repoName          string
+	runImage          string
+	useDaemon         bool
+	useHelpers        bool
+	groupPath         string
+	launchDir         string
+	useDaemonRunImage bool
 )
 
 func init() {
@@ -29,7 +29,7 @@ func init() {
 	packs.InputBPGroupPath(&groupPath)
 
 	flag.StringVar(&launchDir, "launch", "/launch", "launch directory")
-	flag.BoolVar(&useDaemonStack, "daemon-stack", false, "use stack from docker daemon")
+	flag.BoolVar(&useDaemonRunImage, "daemon-stack", false, "use stack from docker daemon")
 }
 
 func main() {
@@ -58,11 +58,11 @@ func export() error {
 		return packs.FailErr(err, "access", repoName)
 	}
 
-	newStackStore := img.NewRegistry
-	if useDaemonStack {
-		newStackStore = img.NewDaemon
+	newRunImageStore := img.NewRegistry
+	if useDaemonRunImage {
+		newRunImageStore = img.NewDaemon
 	}
-	stackStore, err := newStackStore(runImage)
+	stackStore, err := newRunImageStore(runImage)
 	if err != nil {
 		return packs.FailErr(err, "access", runImage)
 	}

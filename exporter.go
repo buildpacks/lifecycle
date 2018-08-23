@@ -33,7 +33,7 @@ func (e *Exporter) Export(launchDir string, stackImage, origImage v1.Image) (v1.
 	metadata := packs.BuildMetadata{
 		App:        packs.AppMetadata{},
 		Buildpacks: []packs.BuildpackMetadata{},
-		Stack: packs.StackMetadata{
+		RunImage: packs.RunImageMetadata{
 			SHA: stackDigest.String(),
 		},
 	}
