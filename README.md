@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/buildpack/lifecycle.svg?branch=master)](https://travis-ci.org/buildpack/lifecycle)
 [![GoDoc](https://godoc.org/github.com/buildpack/lifecycle?status.svg)](https://godoc.org/github.com/buildpack/lifecycle)
 
-A reference implementation of Buildpack API v3.
+A reference implementation of [Buildpack API v3](https://docs.google.com/document/d/1D-f2wAX5CUmbgNzj7joFTpFdUYeirVatiFicwKsMnFo/edit).
 
 ## Commands
 
@@ -23,14 +23,10 @@ A reference implementation of Buildpack API v3.
 
 ### Cache
 
-* `restorer` - restores cache
+* `retriever` - restores cache
 * `cacher` - updates cache
 
 ## Notes
 
-Only the `detector`, `builder`, and `launcher` are currently implemented here.
-
-The `analyzer` and `exporter` are partially implemented in [packs](https://github.com/buildpack/packs).
-
-Cache implementations (`restorer` and `cacher`) are intended to be interchangable and platform-specific.
+Cache implementations (`retriever` and `cacher`) are intended to be interchangable and platform-specific.
 A platform may choose not to deduplicate cache layers.
