@@ -223,7 +223,7 @@ func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
 type metadata struct {
 	RunImage struct {
 		SHA string `json:"sha"`
-	} `json:"stack"`
+	} `json:"runImage"`
 	App struct {
 		SHA string `json:"sha"`
 	} `json:"app"`

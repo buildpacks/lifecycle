@@ -20,7 +20,7 @@
     ".",
     "img"
   ]
-  revision = "27a22e86e2e7a115b432d958a9ef555ce0aaf5a3"
+  revision = "87af8c73104fff99e719f1c38ca01d5c0ae7af0e"
 
 [[projects]]
   name = "github.com/docker/distribution"
