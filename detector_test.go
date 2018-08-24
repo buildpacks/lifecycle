@@ -42,7 +42,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{Name: "buildpack3-name", Dir: buildpackDir},
 					{Name: "buildpack4-name", Dir: buildpackDir},
 				},
-				Repository: "repository1",
+				BuildImage: "build-image-1",
+				RunImage:   "run-image-1",
 			},
 			{
 				Buildpacks: []*lifecycle.Buildpack{
@@ -51,7 +52,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{Name: "buildpack3-name", Dir: buildpackDir},
 					{Name: "buildpack4-name", Dir: buildpackDir, Optional: true},
 				},
-				Repository: "repository2",
+				BuildImage: "build-image-2",
+				RunImage:   "run-image-2",
 			},
 			{
 				Buildpacks: []*lifecycle.Buildpack{
@@ -59,14 +61,16 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{Name: "buildpack2-name", Dir: buildpackDir},
 					{Name: "buildpack3-name", Dir: buildpackDir},
 				},
-				Repository: "repository3",
+				BuildImage: "build-image-3",
+				RunImage:   "run-image-3",
 			},
 			{
 				Buildpacks: []*lifecycle.Buildpack{
 					{Name: "buildpack1-name", Dir: buildpackDir},
 					{Name: "buildpack2-name", Dir: buildpackDir},
 				},
-				Repository: "repository4",
+				BuildImage: "build-image-4",
+				RunImage:   "run-image-4",
 			},
 		}
 	})
