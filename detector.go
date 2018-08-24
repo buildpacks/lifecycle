@@ -87,6 +87,7 @@ func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, gro
 			detected = detected && bg.Buildpacks[i].Optional
 		}
 	}
+	detected = detected && len(group.Buildpacks) > 0
 	l.Println(summary)
 	return info, group, detected
 }

@@ -57,20 +57,26 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			},
 			{
 				Buildpacks: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Dir: buildpackDir, Optional: true},
+				},
+				BuildImage: "build-image-3",
+				RunImage:   "run-image-3",			},
+			{
+				Buildpacks: []*lifecycle.Buildpack{
 					{Name: "buildpack1-name", Dir: buildpackDir},
 					{Name: "buildpack2-name", Dir: buildpackDir},
 					{Name: "buildpack3-name", Dir: buildpackDir},
 				},
-				BuildImage: "build-image-3",
-				RunImage:   "run-image-3",
+				BuildImage: "build-image-4",
+				RunImage:   "run-image-4",
 			},
 			{
 				Buildpacks: []*lifecycle.Buildpack{
 					{Name: "buildpack1-name", Dir: buildpackDir},
 					{Name: "buildpack2-name", Dir: buildpackDir},
 				},
-				BuildImage: "build-image-4",
-				RunImage:   "run-image-4",
+				BuildImage: "build-image-5",
+				RunImage:   "run-image-5",
 			},
 		}
 	})
@@ -103,7 +109,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it("should return empty if no groups match", func() {
 			mkfile(t, "1", filepath.Join(tmpDir, "add"))
-			mkfile(t, "1", filepath.Join(tmpDir, "last"))
+			mkfile(t, "0", filepath.Join(tmpDir, "last"))
 			out := &bytes.Buffer{}
 			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
 
@@ -114,7 +120,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			if !strings.HasSuffix(out.String(),
-				"2 = true\nGroup: buildpack1-name: pass | buildpack2-name: fail\n",
+				"1 = true\nGroup: buildpack1-name: fail | buildpack2-name: fail\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", out)
 			}
