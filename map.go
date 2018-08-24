@@ -67,7 +67,8 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 	var groups BuildpackOrder
 	for _, g := range order.Groups {
 		groups = append(groups, BuildpackGroup{
-			Repository: g.Repository,
+			BuildImage: g.BuildImage,
+			RunImage:   g.RunImage,
 			Buildpacks: m.lookup(g.Buildpacks),
 		})
 	}
@@ -76,10 +77,12 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 
 func (g *BuildpackGroup) Write(path string) error {
 	data := struct {
-		Repository string       `toml:"repository"`
+		BuildImage string       `toml:"build-image"`
+		RunImage   string       `toml:"run-image"`
 		Buildpacks []*Buildpack `toml:"buildpacks"`
 	}{
-		Repository: g.Repository,
+		BuildImage: g.BuildImage,
+		RunImage:   g.RunImage,
 		Buildpacks: g.Buildpacks,
 	}
 	return WriteTOML(path, data)

@@ -59,12 +59,14 @@ func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.W
 
 type BuildpackGroup struct {
 	Buildpacks []*Buildpack `toml:"buildpacks"`
-	Repository string       `toml:"repository"`
+	BuildImage string       `toml:"build-image"`
+	RunImage   string       `toml:"run-image"`
 }
 
 func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, group *BuildpackGroup, ok bool) {
 	group = &BuildpackGroup{
-		Repository: bg.Repository,
+		BuildImage: bg.BuildImage,
+		RunImage:   bg.RunImage,
 	}
 	detected := true
 	summary := "Group:"
