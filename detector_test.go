@@ -60,7 +60,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{Name: "buildpack1-name", Dir: buildpackDir, Optional: true},
 				},
 				BuildImage: "build-image-3",
-				RunImage:   "run-image-3",			},
+				RunImage:   "run-image-3",
+			},
 			{
 				Buildpacks: []*lifecycle.Buildpack{
 					{Name: "buildpack1-name", Dir: buildpackDir},
