@@ -4,6 +4,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/buildpack/packs"
 
@@ -14,20 +15,17 @@ var (
 	buildpackPath string
 	groupPath     string
 	infoPath      string
-	metadataPath  string
 )
 
 func init() {
 	packs.InputBPPath(&buildpackPath)
 	packs.InputBPGroupPath(&groupPath)
 	packs.InputDetectInfoPath(&infoPath)
-
-	packs.InputMetadataPath(&metadataPath)
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() != 0 || groupPath == "" || infoPath == "" || metadataPath == "" {
+	if flag.NArg() != 0 || groupPath == "" || infoPath == "" {
 		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments"))
 	}
 	packs.Exit(build())
@@ -62,7 +60,6 @@ func build() error {
 		Map:     lifecycle.POSIXBuildEnv,
 	}
 	metadata, err := builder.Build(
-		lifecycle.DefaultAppDir,
 		lifecycle.DefaultCacheDir,
 		lifecycle.DefaultLaunchDir,
 		env,
@@ -71,6 +68,7 @@ func build() error {
 		return packs.FailErrCode(err, packs.CodeFailedBuild)
 	}
 
+	metadataPath := filepath.Join(lifecycle.DefaultLaunchDir, "config", "metadata.toml")
 	if err := lifecycle.WriteTOML(metadataPath, metadata); err != nil {
 		return packs.FailErr(err, "write metadata")
 	}

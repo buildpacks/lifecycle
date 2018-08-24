@@ -43,7 +43,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		launcher = &lifecycle.Launcher{
 			DefaultProcessType: "web",
 			DefaultLaunchDir:   filepath.Join(tmpDir, "launch"),
-			DefaultAppDir:      filepath.Join(tmpDir, "launch", "app"),
 			Processes: []lifecycle.Process{
 				{Type: "other", Command: "some-other-process"},
 				{Type: "web", Command: "some-web-process"},

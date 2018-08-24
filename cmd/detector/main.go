@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/buildpack/packs"
 
@@ -46,7 +47,7 @@ func detect() error {
 		return packs.FailErr(err, "read buildpack order file")
 	}
 
-	info, group := order.Detect(logger, lifecycle.DefaultAppDir)
+	info, group := order.Detect(logger, filepath.Join(lifecycle.DefaultLaunchDir, "app"))
 	if group == nil {
 		return packs.FailCode(packs.CodeFailedDetect, "detect")
 	}

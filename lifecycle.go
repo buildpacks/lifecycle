@@ -4,7 +4,6 @@ const (
 	DefaultPlatformDir = "/platform"
 	DefaultCacheDir    = "/cache"
 	DefaultLaunchDir   = "/launch"
-	DefaultAppDir      = DefaultLaunchDir + "/app"
 )
 
 var POSIXBuildEnv = map[string][]string{

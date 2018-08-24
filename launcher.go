@@ -13,7 +13,6 @@ import (
 type Launcher struct {
 	DefaultProcessType string
 	DefaultLaunchDir   string
-	DefaultAppDir      string
 	Processes          []Process
 	Buildpacks         []string
 	Exec               func(argv0 string, argv []string, envv []string) error
@@ -37,8 +36,8 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 	}); err != nil {
 		return packs.FailErr(err, "modify env")
 	}
-	if err := os.Chdir(l.DefaultAppDir); err != nil {
-		return packs.FailErr(err, "change directory to", l.DefaultAppDir)
+	if err := os.Chdir(filepath.Join(l.DefaultLaunchDir, "app")); err != nil {
+		return packs.FailErr(err, "change to app directory")
 	}
 
 	startCommand, err := l.processFor(startCommand)
@@ -90,7 +89,7 @@ func (l *Launcher) profileD() (string, error) {
 		}
 	}
 
-	if err := appendIfFile(filepath.Join(l.DefaultAppDir, ".profile")); err != nil {
+	if err := appendIfFile(filepath.Join(l.DefaultLaunchDir, "app", ".profile")); err != nil {
 		return "", err
 	}
 

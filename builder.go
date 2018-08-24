@@ -32,13 +32,15 @@ type Process struct {
 }
 
 type LaunchTOML struct {
+	Processes []Process `toml:"processes"`
+}
+
+type BuildMetadata struct {
 	Processes  []Process `toml:"processes"`
 	Buildpacks []string  `toml:"buildpacks"`
 }
 
-type BuildMetadata LaunchTOML
-
-func (b *Builder) Build(appDir, cacheDir, launchDir string, env BuildEnv) (*BuildMetadata, error) {
+func (b *Builder) Build(cacheDir, launchDir string, env BuildEnv) (*BuildMetadata, error) {
 	procMap := processMap{}
 	var buildpackIDs []string
 	for _, bp := range b.Buildpacks {
@@ -57,7 +59,7 @@ func (b *Builder) Build(appDir, cacheDir, launchDir string, env BuildEnv) (*Buil
 		}
 		cmd := exec.Command(buildPath, b.PlatformDir, bpCacheDir, bpLaunchDir)
 		cmd.Env = env.List()
-		cmd.Dir = appDir
+		cmd.Dir = filepath.Join(launchDir, "app")
 		cmd.Stdin = bytes.NewBuffer(b.In)
 		cmd.Stdout = b.Out
 		cmd.Stderr = b.Err
