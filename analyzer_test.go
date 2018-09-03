@@ -85,7 +85,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				image.EXPECT().ConfigFile().Return(configFile, nil)
 			})
 
-			it("uses labels to populate the launch dir", func() {
+			it("should use labels to populate the launch dir", func() {
 				if err := analyzer.Analyze(launchDir, image); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -110,7 +110,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				image.EXPECT().ConfigFile().Return(configFile, nil)
 			})
 
-			it("does nothing and succeeds", func() {
+			it("should do nothing and succeed", func() {
 				if err := analyzer.Analyze(launchDir, image); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -143,7 +143,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				image.EXPECT().ConfigFile().Return(configFile, nil)
 			})
 
-			it("only writes layer toml files that correspond to detected buildpacks", func() {
+			it("should only write layer TOML files that correspond to detected buildpacks", func() {
 				analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "buildpack.go"}}
 
 				if err := analyzer.Analyze(launchDir, image); err != nil {

@@ -59,17 +59,18 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Export", func() {
-		var stackImage v1.Image
+		var runImage v1.Image
+
 		it.Before(func() {
 			var err error
-			stackImage, err = getBusyboxWithEntrypoint()
+			runImage, err = getBusyboxWithEntrypoint()
 			if err != nil {
-				t.Fatalf("get busybox image for stack: %s", err)
+				t.Fatalf("get busybox image for run image: %s", err)
 			}
 		})
 
 		it("should process a simple launch directory", func() {
-			image, err := exporter.Export("testdata/exporter/first/launch", stackImage, nil)
+			image, err := exporter.Export("testdata/exporter/first/launch", runImage, nil)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -83,12 +84,12 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(diff)
 			}
 
-			t.Log("sets stack sha in metadata")
-			stackDigest, err := stackImage.Digest()
+			t.Log("sets run image SHA in metadata")
+			runImageDigest, err := runImage.Digest()
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if diff := cmp.Diff(data.RunImage.SHA, stackDigest.String()); diff != "" {
+			if diff := cmp.Diff(data.RunImage.SHA, runImageDigest.String()); diff != "" {
 				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
 			}
 
@@ -130,14 +131,14 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			var firstImage v1.Image
 			it.Before(func() {
 				var err error
-				firstImage, err = exporter.Export("testdata/exporter/first/launch", stackImage, nil)
+				firstImage, err = exporter.Export("testdata/exporter/first/launch", runImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 			})
 
 			it("should reuse layers if there is a layer TOML file", func() {
-				image, err := exporter.Export("testdata/exporter/second/launch", stackImage, firstImage)
+				image, err := exporter.Export("testdata/exporter/second/launch", runImage, firstImage)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -170,21 +171,21 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 }
 
 func getBusyboxWithEntrypoint() (v1.Image, error) {
-	stackStore, err := img.NewRegistry("busybox")
+	runImageStore, err := img.NewRegistry("busybox")
 	if err != nil {
 		return nil, fmt.Errorf("get store for busybox: %s", err)
 	}
-	stackImage, err := stackStore.Image()
+	runImage, err := runImageStore.Image()
 	if err != nil {
 		return nil, fmt.Errorf("get image for busybox: %s", err)
 	}
-	configFile, err := stackImage.ConfigFile()
+	configFile, err := runImage.ConfigFile()
 	if err != nil {
 		return nil, err
 	}
 	config := *configFile.Config.DeepCopy()
 	config.Entrypoint = []string{"sh", "-c"}
-	return mutate.Config(stackImage, config)
+	return mutate.Config(runImage, config)
 }
 
 func getLayerFile(layer v1.Layer, path string) (string, error) {

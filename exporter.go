@@ -25,28 +25,26 @@ type Exporter struct {
 	Out, Err   io.Writer
 }
 
-func (e *Exporter) Export(launchDir string, stackImage, origImage v1.Image) (v1.Image, error) {
-	stackDigest, err := stackImage.Digest()
+func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Image, error) {
+	runImageDigest, err := runImage.Digest()
 	if err != nil {
-		return nil, packs.FailErr(err, "stack digest")
+		return nil, packs.FailErr(err, "find run image digest")
 	}
 	metadata := packs.BuildMetadata{
-		App:        packs.AppMetadata{},
-		Buildpacks: []packs.BuildpackMetadata{},
 		RunImage: packs.RunImageMetadata{
-			SHA: stackDigest.String(),
+			SHA: runImageDigest.String(),
 		},
 	}
 
-	repoImage, topLayerDigest, err := e.addDirAsLayer(stackImage, filepath.Join(e.TmpDir, "app.tgz"), filepath.Join(launchDir, "app"), "launch/app")
+	repoImage, topLayerDigest, err := e.addDirAsLayer(runImage, filepath.Join(e.TmpDir, "app.tgz"), filepath.Join(launchDir, "app"), "launch/app")
 	if err != nil {
-		return nil, packs.FailErr(err, "append droplet to stack")
+		return nil, packs.FailErr(err, "append layers to run image")
 	}
 	metadata.App.SHA = topLayerDigest
 
 	repoImage, topLayerDigest, err = e.addDirAsLayer(repoImage, filepath.Join(e.TmpDir, "config.tgz"), filepath.Join(launchDir, "config"), "launch/config")
 	if err != nil {
-		return nil, packs.FailErr(err, "append droplet to stack")
+		return nil, packs.FailErr(err, "append layers to run image")
 	}
 	metadata.Config.SHA = topLayerDigest
 
@@ -61,11 +59,11 @@ func (e *Exporter) Export(launchDir string, stackImage, origImage v1.Image) (v1.
 
 	buildJSON, err := json.Marshal(metadata)
 	if err != nil {
-		return nil, packs.FailErr(err, "get encode metadata")
+		return nil, packs.FailErr(err, "get encoded metadata")
 	}
 	repoImage, err = img.Label(repoImage, packs.BuildLabel, string(buildJSON))
 	if err != nil {
-		return nil, packs.FailErr(err, "set metdata label")
+		return nil, packs.FailErr(err, "set metadata label")
 	}
 
 	return repoImage, nil
@@ -75,6 +73,7 @@ func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage 
 	metadata := make(map[string]packs.LayerMetadata)
 	origLayers := make(map[string]packs.LayerMetadata)
 	if origImage != nil {
+		// TODO: avoid requesting the same config layer for each buildpack
 		data, err := e.GetMetadata(origImage)
 		if err != nil {
 			return nil, nil, err
@@ -100,7 +99,7 @@ func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage 
 		dirInfo, err := os.Stat(dir)
 		if os.IsNotExist(err) {
 			if origLayers[layerName].SHA == "" {
-				return nil, nil, fmt.Errorf("toml file layer expected, but no previous image data: %s/%s", id, layerName)
+				return nil, nil, fmt.Errorf("layer TOML found, but no available contents for %s %s", id, layerName)
 			}
 			layerDiffID = origLayers[layerName].SHA
 			hash, err := v1.NewHash(layerDiffID)
@@ -128,7 +127,7 @@ func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage 
 		}
 		var tomlData map[string]interface{}
 		if _, err := toml.DecodeFile(layer, &tomlData); err != nil {
-			return nil, nil, packs.FailErr(err, "read layer toml data")
+			return nil, nil, packs.FailErr(err, "read layer TOML data")
 		}
 		metadata[layerName] = packs.LayerMetadata{SHA: layerDiffID, Data: tomlData}
 	}
@@ -154,13 +153,13 @@ func (e *Exporter) addDirAsLayer(image v1.Image, tarFile, fsDir, tarDir string) 
 	}
 	newImage, topLayer, err := img.Append(image, tarFile)
 	if err != nil {
-		return nil, "", packs.FailErr(err, "append droplet to stack")
+		return nil, "", packs.FailErr(err, "append layers to run image")
 	}
-	diffid, err := topLayer.DiffID()
+	diffID, err := topLayer.DiffID()
 	if err != nil {
-		return nil, "", packs.FailErr(err, "calculate layer diffid")
+		return nil, "", packs.FailErr(err, "calculate layer diff ID")
 	}
-	return newImage, diffid.String(), nil
+	return newImage, diffID.String(), nil
 }
 
 func (e *Exporter) createTarFile(tarFile, fsDir, tarDir string) error {
