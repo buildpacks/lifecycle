@@ -8,6 +8,8 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/packs"
 	"github.com/buildpack/packs/img"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"log"
 )
 
 var (
@@ -53,18 +55,24 @@ func analyzer() error {
 	}
 	repoStore, err := newRepoStore(repoName)
 	if err != nil {
-		return packs.FailErr(err, "access", repoName)
+		return packs.FailErr(err, "repository configuration", repoName)
 	}
 
 	origImage, err := repoStore.Image()
 	if err != nil {
-		// Assume error is due to non-existent image
+		log.Printf("WARNING: skipping analyze, authenticating to registry failed: %s", err.Error())
 		return nil
+
 	}
 	if _, err := origImage.RawManifest(); err != nil {
-		// Assume error is due to non-existent image
-		// This is necessary for registries
-		return nil
+		if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
+			switch remoteErr.Errors[0].Code {
+			case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
+				log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", remoteErr.Error())
+				return nil
+			}
+		}
+		return packs.FailErr(err, "access manifest", repoName)
 	}
 
 	analyzer := &lifecycle.Analyzer{
