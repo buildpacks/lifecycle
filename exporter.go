@@ -173,6 +173,13 @@ func (e *Exporter) createTarFile(tarFile, fsDir, tarDir string) error {
 	tw := tar.NewWriter(gzw)
 	defer tw.Close()
 
+	layerInfo, err := os.Lstat(fsDir)
+	if err != nil {
+		return err
+	}
+	if layerInfo.Mode()&os.ModeSymlink != 0 {
+		fsDir, err = filepath.EvalSymlinks(fsDir)
+	}
 	return filepath.Walk(fsDir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err

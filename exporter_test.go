@@ -70,7 +70,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should process a simple launch directory", func() {
-			image, err := exporter.Export("testdata/exporter/first/launch", runImage, nil)
+			image, err := exporter.Export("testdata/exporter/simple/launch", runImage, nil)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -127,18 +127,51 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+
+		it("should handle an app directory symlink", func() {
+			image, err := exporter.Export("testdata/exporter/app-dir-symlink/launch", runImage, nil)
+			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			data, err := getMetadata(image)
+			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+
+			t.Log("adds buildpack metadata to label")
+			if diff := cmp.Diff(data.Buildpacks[0].Key, "buildpack.id"); diff != "" {
+				t.Fatal(diff)
+			}
+
+			t.Log("sets run image SHA in metadata")
+			runImageDigest, err := runImage.Digest()
+			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			if diff := cmp.Diff(data.RunImage.SHA, runImageDigest.String()); diff != "" {
+				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
+			}
+
+			t.Log("adds app layer to image")
+			if txt, err := getImageFile(image, data.App.SHA, "launch/app/subdir/myfile.txt"); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			} else if diff := cmp.Diff(strings.TrimSpace(txt), "mycontents"); diff != "" {
+				t.Fatalf(`launch/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+			}
+		})
+
 		when("rebuilding when layer TOML exists without directory", func() {
 			var firstImage v1.Image
 			it.Before(func() {
 				var err error
-				firstImage, err = exporter.Export("testdata/exporter/first/launch", runImage, nil)
+				firstImage, err = exporter.Export("testdata/exporter/simple/launch", runImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 			})
 
 			it("should reuse layers if there is a layer TOML file", func() {
-				image, err := exporter.Export("testdata/exporter/second/launch", runImage, firstImage)
+				image, err := exporter.Export("testdata/exporter/rebuild/launch", runImage, firstImage)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
