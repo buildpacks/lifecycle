@@ -174,6 +174,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 }
 
 const buildpackTOML = `
+[buildpack]
 id = "%[1]s"
 name = "%[1]s-name"
 version = "%[2]s"

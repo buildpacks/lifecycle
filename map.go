@@ -9,9 +9,11 @@ import (
 type BuildpackMap map[string]*Buildpack
 
 type buildpackTOML struct {
-	ID      string `toml:"id"`
-	Version string `toml:"version"`
-	Name    string `toml:"name"`
+	Buildpack struct {
+		ID      string `toml:"id"`
+		Version string `toml:"version"`
+		Name    string `toml:"name"`
+	} `toml:"buildpack"`
 }
 
 func NewBuildpackMap(dir string) (BuildpackMap, error) {
@@ -30,9 +32,9 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 			return nil, err
 		}
 		buildpacks[id+"@"+version] = &Buildpack{
-			ID:      bpTOML.ID,
-			Version: bpTOML.Version,
-			Name:    bpTOML.Name,
+			ID:      bpTOML.Buildpack.ID,
+			Version: bpTOML.Buildpack.Version,
+			Name:    bpTOML.Buildpack.Name,
 			Dir:     buildpackDir,
 		}
 	}
