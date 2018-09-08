@@ -74,8 +74,6 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 
 func (g *BuildpackGroup) Write(path string) error {
 	data := struct {
-		BuildImage string       `toml:"build-image"`
-		RunImage   string       `toml:"run-image"`
 		Buildpacks []*Buildpack `toml:"buildpacks"`
 	}{
 		Buildpacks: g.Buildpacks,

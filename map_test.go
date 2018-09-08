@@ -89,7 +89,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `groups = [{ build-image = "local-build", run-image = "local-run", buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}] }]`,
+			mkfile(t, `groups = [{ buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}] }]`,
 				filepath.Join(tmpDir, "order.toml"),
 			)
 			actual, err := m.ReadOrder(filepath.Join(tmpDir, "order.toml"))
@@ -125,8 +125,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `build-image = "myrepo"`+"\n"+`run-image = "myrepo"`+"\n"+
-				`buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}]`,
+			mkfile(t, `buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}]`,
 				filepath.Join(tmpDir, "group.toml"),
 			)
 			actual, err := m.ReadGroup(filepath.Join(tmpDir, "group.toml"))

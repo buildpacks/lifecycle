@@ -13,9 +13,9 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/img"
-	"github.com/pkg/errors"
 )
 
 type Exporter struct {
@@ -120,7 +120,7 @@ func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage 
 			return nil, nil, errors.Errorf("expected %s to be a directory", dir)
 		} else {
 			tarFile := filepath.Join(e.TmpDir, fmt.Sprintf("layer.%s.%s.tgz", id, layerName))
-			repoImage, layerDiffID, err = e.addDirAsLayer(repoImage, tarFile, dir, filepath.Join("launch", id, layerName))
+			repoImage, layerDiffID, err = e.addDirAsLayer(repoImage, tarFile, dir, filepath.Join("workspace", id, layerName))
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "append dir as layer")
 			}
