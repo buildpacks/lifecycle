@@ -46,15 +46,20 @@ func suffix(s string, suffix byte) string {
 
 func (p *Env) AddEnvDir(envDir string) error {
 	return eachEnvFile(envDir, func(k, v string) error {
-		if strings.HasSuffix(k, ".append") {
-			name := strings.TrimSuffix(k, ".append")
-			return p.Setenv(name, p.Getenv(name)+string(v))
+		parts := strings.SplitN(k, ".", 2)
+		name := parts[0]
+		var action string
+		if len(parts) > 1 {
+			action = strings.ToLower(parts[1])
 		}
-		if strings.HasSuffix(k, ".override") {
-			name := strings.TrimSuffix(k, ".override")
+		switch action {
+		case "append":
+			return p.Setenv(name, p.Getenv(name)+v)
+		case "override":
 			return p.Setenv(name, v)
+		default:
+			return p.Setenv(name, suffix(p.Getenv(name), os.PathListSeparator)+v)
 		}
-		return p.Setenv(k, suffix(p.Getenv(k), os.PathListSeparator)+string(v))
 	})
 }
 

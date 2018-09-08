@@ -120,6 +120,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "some-value-default", filepath.Join(tmpDir, "SOME_VAR_DEFAULT"), filepath.Join(tmpDir, "SOME_VAR_DEFAULT_NEW"))
 			mkfile(t, "some-value-append", filepath.Join(tmpDir, "SOME_VAR_APPEND.append"), filepath.Join(tmpDir, "SOME_VAR_APPEND_NEW.append"))
 			mkfile(t, "some-value-override", filepath.Join(tmpDir, "SOME_VAR_OVERRIDE.override"), filepath.Join(tmpDir, "SOME_VAR_OVERRIDE_NEW.override"))
+			mkfile(t, "some-value-ignore", filepath.Join(tmpDir, "SOME_VAR_IGNORE.ignore"))
 			result = map[string]string{
 				"SOME_VAR_DEFAULT":  "some-value-default-orig",
 				"SOME_VAR_APPEND":   "some-value-append-orig",
@@ -135,6 +136,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				"SOME_VAR_APPEND_NEW":   "some-value-append",
 				"SOME_VAR_OVERRIDE":     "some-value-override",
 				"SOME_VAR_OVERRIDE_NEW": "some-value-override",
+				"SOME_VAR_IGNORE":       "some-value-ignore",
 			}) {
 				t.Fatalf("Unexpected env: %+v\n", result)
 			}
