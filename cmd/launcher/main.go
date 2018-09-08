@@ -7,12 +7,13 @@ import (
 	"syscall"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/packs"
+	"github.com/buildpack/lifecycle/cmd"
 )
 
 func main() {
-	packs.Exit(launch())
+	cmd.Exit(launch())
 }
 
 func launch() error {
@@ -24,7 +25,7 @@ func launch() error {
 	var metadata lifecycle.BuildMetadata
 	metadataPath := filepath.Join(lifecycle.DefaultLaunchDir, "config", "metadata.toml")
 	if _, err := toml.DecodeFile(metadataPath, &metadata); err != nil {
-		return packs.FailErr(err, "read metadata")
+		return cmd.FailErr(err, "read metadata")
 	}
 
 	launcher := &lifecycle.Launcher{
@@ -35,5 +36,8 @@ func launch() error {
 		Exec:               syscall.Exec,
 	}
 
-	return launcher.Launch(os.Args[0], strings.Join(os.Args[1:], " "))
+	if err := launcher.Launch(os.Args[0], strings.Join(os.Args[1:], " ")); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailedLaunch, "launch")
+	}
+	return nil
 }

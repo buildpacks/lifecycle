@@ -7,57 +7,56 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpack/packs"
-
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cmd"
 )
 
 var (
-	buildpackPath string
+	buildpacksDir string
 	orderPath     string
 	groupPath     string
-	infoPath      string
+	planPath      string
 )
 
 func init() {
-	packs.InputBPPath(&buildpackPath)
-	packs.InputBPOrderPath(&orderPath)
+	cmd.FlagBuildpacksDir(&buildpacksDir)
+	cmd.FlagOrderPath(&orderPath)
 
-	packs.InputBPGroupPath(&groupPath)
-	packs.InputDetectInfoPath(&infoPath)
+	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagPlanPath(&planPath)
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() != 0 || buildpackPath == "" || orderPath == "" || groupPath == "" || infoPath == "" {
-		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments"))
+	if flag.NArg() != 0 || buildpacksDir == "" || orderPath == "" || groupPath == "" || planPath == "" {
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
-	packs.Exit(detect())
+	cmd.Exit(detect())
 }
 
 func detect() error {
 	logger := log.New(os.Stderr, "", log.LstdFlags)
 
-	buildpacks, err := lifecycle.NewBuildpackMap(buildpackPath)
+	buildpacks, err := lifecycle.NewBuildpackMap(buildpacksDir)
 	if err != nil {
-		return packs.FailErr(err, "read buildpack directory")
+		return cmd.FailErr(err, "read buildpack directory")
 	}
 	order, err := buildpacks.ReadOrder(orderPath)
 	if err != nil {
-		return packs.FailErr(err, "read buildpack order file")
+		return cmd.FailErr(err, "read buildpack order file")
 	}
 
 	info, group := order.Detect(logger, filepath.Join(lifecycle.DefaultLaunchDir, "app"))
 	if group == nil {
-		return packs.FailCode(packs.CodeFailedDetect, "detect")
+		return cmd.FailCode(cmd.CodeFailedDetect, "detect")
 	}
 
 	if err := group.Write(groupPath); err != nil {
-		return packs.FailErr(err, "write buildpack group")
+		return cmd.FailErr(err, "write buildpack group")
 	}
 
-	if err := ioutil.WriteFile(infoPath, info, 0666); err != nil {
-		return packs.FailErr(err, "write detect info")
+	if err := ioutil.WriteFile(planPath, info, 0666); err != nil {
+		return cmd.FailErr(err, "write detect info")
 	}
 
 	return nil

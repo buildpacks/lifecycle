@@ -14,8 +14,7 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/packs"
-	"github.com/buildpack/packs/img"
+	"github.com/buildpack/lifecycle/img"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -246,7 +245,7 @@ func getMetadata(image v1.Image) (metadata, error) {
 	if err != nil {
 		return metadata, fmt.Errorf("read config: %s", err)
 	}
-	label := cfg.Config.Labels[packs.BuildLabel]
+	label := cfg.Config.Labels[lifecycle.MetadataLabel]
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return metadata, fmt.Errorf("unmarshal: %s", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/packs"
 )
 
 type BuildpackMap map[string]*Buildpack
@@ -61,14 +60,12 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 		Groups BuildpackOrder `toml:"groups"`
 	}
 	if _, err := toml.DecodeFile(orderPath, &order); err != nil {
-		return nil, packs.FailErr(err, "read buildpack order")
+		return nil, err
 	}
 
 	var groups BuildpackOrder
 	for _, g := range order.Groups {
 		groups = append(groups, BuildpackGroup{
-			BuildImage: g.BuildImage,
-			RunImage:   g.RunImage,
 			Buildpacks: m.lookup(g.Buildpacks),
 		})
 	}
@@ -81,8 +78,6 @@ func (g *BuildpackGroup) Write(path string) error {
 		RunImage   string       `toml:"run-image"`
 		Buildpacks []*Buildpack `toml:"buildpacks"`
 	}{
-		BuildImage: g.BuildImage,
-		RunImage:   g.RunImage,
 		Buildpacks: g.Buildpacks,
 	}
 	return WriteTOML(path, data)

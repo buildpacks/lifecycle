@@ -14,8 +14,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 
-	"github.com/buildpack/packs"
-	"github.com/buildpack/packs/img"
+	"github.com/buildpack/lifecycle/img"
+	"github.com/pkg/errors"
 )
 
 type Exporter struct {
@@ -28,50 +28,50 @@ type Exporter struct {
 func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Image, error) {
 	runImageDigest, err := runImage.Digest()
 	if err != nil {
-		return nil, packs.FailErr(err, "find run image digest")
+		return nil, errors.Wrap(err, "find run image digest")
 	}
-	metadata := packs.BuildMetadata{
-		RunImage: packs.RunImageMetadata{
+	metadata := AppImageMetadata{
+		RunImage: RunImageMetadata{
 			SHA: runImageDigest.String(),
 		},
 	}
 
-	repoImage, topLayerDigest, err := e.addDirAsLayer(runImage, filepath.Join(e.TmpDir, "app.tgz"), filepath.Join(launchDir, "app"), "launch/app")
+	repoImage, topLayerDigest, err := e.addDirAsLayer(runImage, filepath.Join(e.TmpDir, "app.tgz"), filepath.Join(launchDir, "app"), "workspace/app")
 	if err != nil {
-		return nil, packs.FailErr(err, "append layers to run image")
+		return nil, errors.Wrap(err, "append layers to run image")
 	}
 	metadata.App.SHA = topLayerDigest
 
-	repoImage, topLayerDigest, err = e.addDirAsLayer(repoImage, filepath.Join(e.TmpDir, "config.tgz"), filepath.Join(launchDir, "config"), "launch/config")
+	repoImage, topLayerDigest, err = e.addDirAsLayer(repoImage, filepath.Join(e.TmpDir, "config.tgz"), filepath.Join(launchDir, "config"), "workspace/config")
 	if err != nil {
-		return nil, packs.FailErr(err, "append layers to run image")
+		return nil, errors.Wrap(err, "append layers to run image")
 	}
 	metadata.Config.SHA = topLayerDigest
 
 	for _, buildpack := range e.Buildpacks {
-		bpMetadata := packs.BuildpackMetadata{Key: buildpack.ID}
+		bpMetadata := BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version}
 		repoImage, bpMetadata.Layers, err = e.addBuildpackLayer(buildpack.ID, launchDir, repoImage, origImage)
 		if err != nil {
-			return nil, packs.FailErr(err, "append layers")
+			return nil, errors.Wrap(err, "append layers")
 		}
 		metadata.Buildpacks = append(metadata.Buildpacks, bpMetadata)
 	}
 
 	buildJSON, err := json.Marshal(metadata)
 	if err != nil {
-		return nil, packs.FailErr(err, "get encoded metadata")
+		return nil, errors.Wrap(err, "get encoded metadata")
 	}
-	repoImage, err = img.Label(repoImage, packs.BuildLabel, string(buildJSON))
+	repoImage, err = img.Label(repoImage, MetadataLabel, string(buildJSON))
 	if err != nil {
-		return nil, packs.FailErr(err, "set metadata label")
+		return nil, errors.Wrap(err, "set metadata label")
 	}
 
 	return repoImage, nil
 }
 
-func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage v1.Image) (v1.Image, map[string]packs.LayerMetadata, error) {
-	metadata := make(map[string]packs.LayerMetadata)
-	origLayers := make(map[string]packs.LayerMetadata)
+func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage v1.Image) (v1.Image, map[string]LayerMetadata, error) {
+	metadata := make(map[string]LayerMetadata)
+	origLayers := make(map[string]LayerMetadata)
 	if origImage != nil {
 		// TODO: avoid requesting the same config layer for each buildpack
 		data, err := e.GetMetadata(origImage)
@@ -79,7 +79,7 @@ func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage 
 			return nil, nil, err
 		}
 		for _, bp := range data.Buildpacks {
-			if bp.Key == id {
+			if bp.ID == id {
 				origLayers = bp.Layers
 			}
 		}
@@ -99,65 +99,65 @@ func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage 
 		dirInfo, err := os.Stat(dir)
 		if os.IsNotExist(err) {
 			if origLayers[layerName].SHA == "" {
-				return nil, nil, fmt.Errorf("layer TOML found, but no available contents for %s %s", id, layerName)
+				return nil, nil, errors.Errorf("layer TOML found, but no available contents for %s %s", id, layerName)
 			}
 			layerDiffID = origLayers[layerName].SHA
 			hash, err := v1.NewHash(layerDiffID)
 			if err != nil {
-				return nil, nil, packs.FailErr(err, "parse hash", origLayers[layerName].SHA)
+				return nil, nil, errors.Wrapf(err, "parse hash: %s", origLayers[layerName].SHA)
 			}
 			topLayer, err := origImage.LayerByDiffID(hash)
 			if err != nil {
-				return nil, nil, packs.FailErr(err, "find previous layer", id, layerName)
+				return nil, nil, errors.Wrapf(err, "find previous layer %s/%s", id, layerName)
 			}
 			repoImage, err = mutate.AppendLayers(repoImage, topLayer)
 			if err != nil {
-				return nil, nil, packs.FailErr(err, "append layer from previous image", id, layerName)
+				return nil, nil, errors.Wrapf(err, "append layer %s/%s from previous image", id, layerName)
 			}
 		} else if err != nil {
 			return nil, nil, err
 		} else if !dirInfo.IsDir() {
-			return nil, nil, fmt.Errorf("expected %s to be a directory", dir)
+			return nil, nil, errors.Errorf("expected %s to be a directory", dir)
 		} else {
 			tarFile := filepath.Join(e.TmpDir, fmt.Sprintf("layer.%s.%s.tgz", id, layerName))
 			repoImage, layerDiffID, err = e.addDirAsLayer(repoImage, tarFile, dir, filepath.Join("launch", id, layerName))
 			if err != nil {
-				return nil, nil, packs.FailErr(err, "append dir as layer")
+				return nil, nil, errors.Wrap(err, "append dir as layer")
 			}
 		}
 		var tomlData map[string]interface{}
 		if _, err := toml.DecodeFile(layer, &tomlData); err != nil {
-			return nil, nil, packs.FailErr(err, "read layer TOML data")
+			return nil, nil, errors.Wrap(err, "read layer TOML data")
 		}
-		metadata[layerName] = packs.LayerMetadata{SHA: layerDiffID, Data: tomlData}
+		metadata[layerName] = LayerMetadata{SHA: layerDiffID, Data: tomlData}
 	}
 	return repoImage, metadata, nil
 }
 
-func (e *Exporter) GetMetadata(image v1.Image) (packs.BuildMetadata, error) {
-	var metadata packs.BuildMetadata
+func (e *Exporter) GetMetadata(image v1.Image) (AppImageMetadata, error) {
+	var metadata AppImageMetadata
 	cfg, err := image.ConfigFile()
 	if err != nil {
-		return metadata, fmt.Errorf("read config: %s", err)
+		return metadata, err
 	}
-	label := cfg.Config.Labels[packs.BuildLabel]
+	label := cfg.Config.Labels[MetadataLabel]
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-		return metadata, fmt.Errorf("unmarshal: %s", err)
+		return metadata, err
 	}
 	return metadata, nil
 }
 
 func (e *Exporter) addDirAsLayer(image v1.Image, tarFile, fsDir, tarDir string) (v1.Image, string, error) {
 	if err := e.createTarFile(tarFile, fsDir, tarDir); err != nil {
-		return nil, "", packs.FailErr(err, "tar", fsDir, "to", tarFile)
+		return nil, "", errors.Wrapf(err, "tar %s to %s", fsDir, tarFile)
 	}
 	newImage, topLayer, err := img.Append(image, tarFile)
 	if err != nil {
-		return nil, "", packs.FailErr(err, "append layers to run image")
+		return nil, "", errors.Wrap(err, "append layers to run image")
 	}
 	diffID, err := topLayer.DiffID()
 	if err != nil {
-		return nil, "", packs.FailErr(err, "calculate layer diff ID")
+		return nil, "", errors.Wrap(err, "calculate layer diff ID")
 	}
 	return newImage, diffID.String(), nil
 }
@@ -165,7 +165,7 @@ func (e *Exporter) addDirAsLayer(image v1.Image, tarFile, fsDir, tarDir string) 
 func (e *Exporter) createTarFile(tarFile, fsDir, tarDir string) error {
 	fh, err := os.Create(tarFile)
 	if err != nil {
-		return fmt.Errorf("create file for tar: %s", err)
+		return errors.Wrap(err, "create file for tar")
 	}
 	defer fh.Close()
 	gzw := gzip.NewWriter(fh)

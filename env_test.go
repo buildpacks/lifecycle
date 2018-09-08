@@ -117,17 +117,24 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#AddEnvDir", func() {
 		it("should append env vars as filename=file-contents", func() {
 			mkdir(t, filepath.Join(tmpDir, "some-dir"))
-			mkfile(t, "some-value1", filepath.Join(tmpDir, "SOME_VAR1"))
-			mkfile(t, "some-value2", filepath.Join(tmpDir, "SOME_VAR2"))
+			mkfile(t, "some-value-default", filepath.Join(tmpDir, "SOME_VAR_DEFAULT"), filepath.Join(tmpDir, "SOME_VAR_DEFAULT_NEW"))
+			mkfile(t, "some-value-append", filepath.Join(tmpDir, "SOME_VAR_APPEND.append"), filepath.Join(tmpDir, "SOME_VAR_APPEND_NEW.append"))
+			mkfile(t, "some-value-override", filepath.Join(tmpDir, "SOME_VAR_OVERRIDE.override"), filepath.Join(tmpDir, "SOME_VAR_OVERRIDE_NEW.override"))
 			result = map[string]string{
-				"SOME_VAR1": "some-value",
+				"SOME_VAR_DEFAULT":  "some-value-default-orig",
+				"SOME_VAR_APPEND":   "some-value-append-orig",
+				"SOME_VAR_OVERRIDE": "some-value-override-orig",
 			}
 			if err := env.AddEnvDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			if !reflect.DeepEqual(result, map[string]string{
-				"SOME_VAR1": "some-value:some-value1",
-				"SOME_VAR2": "some-value2",
+				"SOME_VAR_DEFAULT":      "some-value-default-orig:some-value-default",
+				"SOME_VAR_DEFAULT_NEW":  "some-value-default",
+				"SOME_VAR_APPEND":       "some-value-append-origsome-value-append",
+				"SOME_VAR_APPEND_NEW":   "some-value-append",
+				"SOME_VAR_OVERRIDE":     "some-value-override",
+				"SOME_VAR_OVERRIDE_NEW": "some-value-override",
 			}) {
 				t.Fatalf("Unexpected env: %+v\n", result)
 			}
@@ -137,34 +144,6 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			retErr = errors.New("some error")
 			mkfile(t, "some-value", filepath.Join(tmpDir, "SOME_VAR"))
 			if err := env.AddEnvDir(tmpDir); err != retErr {
-				t.Fatalf("Unexpected error: %s\n", err)
-			}
-		})
-	})
-
-	when("#SetEnvDir", func() {
-		it("should append env vars as filename=file-contents", func() {
-			mkdir(t, filepath.Join(tmpDir, "some-dir"))
-			mkfile(t, "some-value1", filepath.Join(tmpDir, "SOME_VAR1"))
-			mkfile(t, "some-value2", filepath.Join(tmpDir, "SOME_VAR2"))
-			result = map[string]string{
-				"SOME_VAR1": "some-value",
-			}
-			if err := env.SetEnvDir(tmpDir); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			if !reflect.DeepEqual(result, map[string]string{
-				"SOME_VAR1": "some-value1",
-				"SOME_VAR2": "some-value2",
-			}) {
-				t.Fatalf("Unexpected env: %+v\n", result)
-			}
-		})
-
-		it("should return an error when setenv fails", func() {
-			retErr = errors.New("some error")
-			mkfile(t, "some-value", filepath.Join(tmpDir, "SOME_VAR"))
-			if err := env.SetEnvDir(tmpDir); err != retErr {
 				t.Fatalf("Unexpected error: %s\n", err)
 			}
 		})

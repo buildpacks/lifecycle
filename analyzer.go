@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/packs"
 	"github.com/google/go-containerregistry/pkg/v1"
 )
 
@@ -18,18 +17,18 @@ type Analyzer struct {
 }
 
 func (a *Analyzer) Analyze(launchDir string, image v1.Image) error {
-	config, err := a.getBuildMetadata(image)
+	config, err := a.getMetadata(image)
 	if err != nil {
 		return err
 	}
 
 	buildpacks := a.buildpacks()
 	for _, buildpack := range config.Buildpacks {
-		if _, exist := buildpacks[buildpack.Key]; !exist {
+		if _, exist := buildpacks[buildpack.ID]; !exist {
 			continue
 		}
 		for name, metadata := range buildpack.Layers {
-			path := filepath.Join(launchDir, buildpack.Key, name+".toml")
+			path := filepath.Join(launchDir, buildpack.ID, name+".toml")
 			if err := writeTOML(path, metadata.Data); err != nil {
 				return err
 			}
@@ -39,19 +38,19 @@ func (a *Analyzer) Analyze(launchDir string, image v1.Image) error {
 	return nil
 }
 
-func (a *Analyzer) getBuildMetadata(image v1.Image) (packs.BuildMetadata, error) {
+func (a *Analyzer) getMetadata(image v1.Image) (AppImageMetadata, error) {
 	configFile, err := image.ConfigFile()
 	if err != nil {
-		return packs.BuildMetadata{}, err
+		return AppImageMetadata{}, err
 	}
-	jsonConfig := configFile.Config.Labels[packs.BuildLabel]
+	jsonConfig := configFile.Config.Labels[MetadataLabel]
 	if jsonConfig == "" {
-		return packs.BuildMetadata{}, nil
+		return AppImageMetadata{}, nil
 	}
 
-	config := packs.BuildMetadata{}
+	config := AppImageMetadata{}
 	if err := json.Unmarshal([]byte(jsonConfig), &config); err != nil {
-		return packs.BuildMetadata{}, err
+		return AppImageMetadata{}, err
 	}
 
 	return config, err

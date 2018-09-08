@@ -22,7 +22,6 @@ type Builder struct {
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string) error
-	SetEnvDir(envDir string) error
 	List() []string
 }
 
