@@ -11,4 +11,4 @@ USER pack
 
 ENV PACK_PROCESS_TYPE web
 
-ENTRYPOINT ["/packs/launcher"]
+ENTRYPOINT ["/lifecycle/launcher"]
