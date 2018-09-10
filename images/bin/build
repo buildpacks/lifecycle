@@ -6,7 +6,7 @@ usage() { echo "Usage: $0 [-b <base image; ubuntu:18.04>] [-p <image prefix; pac
 base=ubuntu:18.04
 prefix=packs/
 
-while getopts ":b:l:s:" o; do
+while getopts ":b:p:" o; do
   case "${o}" in
     b)
       base=${OPTARG}
