@@ -26,7 +26,7 @@ cd $(dirname "${BASH_SOURCE[0]}")/..
 
 docker pull "${base}"
 
-docker build --build-arg "base=${base}" -t packs/base:latest ..
+docker build --build-arg "base=${base}" -t "${prefix}base:latest" ..
 docker build --build-arg "base=${prefix}base" -t "${prefix}build" build
 docker build --build-arg "base=${prefix}base" -t "${prefix}run" run
 docker build --build-arg "base=${prefix}base" -t "${prefix}util" util
