@@ -5,11 +5,11 @@ FROM golang:${go_version} as builder
 
 WORKDIR /go/src/github.com/buildpack/lifecycle
 COPY . .
-RUN CGO_ENABLED=0 go install -a -installsuffix static "./cmd/..."
+RUN CGO_ENABLED=0 GO111MODULE=on go install -a -installsuffix static "./cmd/..."
 
 RUN mv /go/bin /lifecycle && mkdir /go/bin
 
-RUN go get github.com/sclevine/yj
+RUN GO111MODULE=on go get github.com/sclevine/yj
 
 FROM ${base}
 ARG jq_url=http://stedolan.github.io/jq/download/linux64/jq
