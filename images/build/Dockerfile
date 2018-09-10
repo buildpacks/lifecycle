@@ -1,7 +1,7 @@
 ARG base=packs/base
 
 FROM $base
-ARG samples_tgz=https://api.github.com/repos/buildpack/samples/tarball/update-for-spec
+ARG samples_tgz=https://api.github.com/repos/buildpack/samples/tarball/master
 
 RUN mkdir /tmp/samples /buildpacks && \
   wget -q -O - "$samples_tgz" | tar -xzf - -C /tmp/samples --strip-components=1 --wildcards 'buildpack-samples-*' && \
