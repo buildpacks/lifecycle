@@ -11,7 +11,7 @@ RUN mkdir /tmp/samples /buildpacks && \
     mkdir -p "/buildpacks/$id" && \
     mv "/tmp/samples/${buildpack}-buildpack" "/buildpacks/$id/$version" && \
     ln -s "$version" "/buildpacks/$id/latest" && \
-    echo "[[groups]]\nbuildpacks = [ { id = \"sh.packs.samples.buildpack.${buildpack}\", version = \"latest\" }" > /buildpacks/order.toml; \
+    echo "[[groups]]\nbuildpacks = [ { id = \"sh.packs.samples.buildpack.${buildpack}\", version = \"latest\" } ]" > /buildpacks/order.toml; \
   done && \
   rm -rf /tmp/samples
 
@@ -20,7 +20,7 @@ RUN chown -R pack:pack /workspace /cache
 
 USER pack
 
-ENV PACK_BUILDPACKS_PATH /buildpacks
+ENV PACK_BUILDPACKS_DIR /buildpacks
 ENV PACK_ORDER_PATH /buildpacks/order.toml
 
 ENV PACK_GROUP_PATH ./group.toml
