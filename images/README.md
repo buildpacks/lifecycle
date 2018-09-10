@@ -33,7 +33,7 @@ $ docker run --rm -v "$(pwd)/workspace:/workspace" packs/build /lifecycle/detect
 Analyze:
 
 ```sh-session
-$ docker run --rm -v "$(pwd)/workspace:/workspace" packs/build /lifecycle/analyzer
+$ docker run --rm -v "$(pwd)/workspace:/workspace" packs/util /lifecycle/analyzer
 ```
 
 Build:
