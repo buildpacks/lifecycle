@@ -6,44 +6,43 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpack/packs"
-
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cmd"
 )
 
 var (
-	buildpackPath string
+	buildpacksDir string
 	groupPath     string
-	infoPath      string
+	planPath      string
 )
 
 func init() {
-	packs.InputBPPath(&buildpackPath)
-	packs.InputBPGroupPath(&groupPath)
-	packs.InputDetectInfoPath(&infoPath)
+	cmd.FlagBuildpacksDir(&buildpacksDir)
+	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagPlanPath(&planPath)
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() != 0 || groupPath == "" || infoPath == "" {
-		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments"))
+	if flag.NArg() != 0 || groupPath == "" || planPath == "" {
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
-	packs.Exit(build())
+	cmd.Exit(build())
 }
 
 func build() error {
-	buildpacks, err := lifecycle.NewBuildpackMap(buildpackPath)
+	buildpacks, err := lifecycle.NewBuildpackMap(buildpacksDir)
 	if err != nil {
-		return packs.FailErr(err, "read buildpack directory")
+		return cmd.FailErr(err, "read buildpack directory")
 	}
 	group, err := buildpacks.ReadGroup(groupPath)
 	if err != nil {
-		return packs.FailErr(err, "read group")
+		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	info, err := ioutil.ReadFile(infoPath)
+	info, err := ioutil.ReadFile(planPath)
 	if err != nil {
-		return packs.FailErr(err, "read detect info")
+		return cmd.FailErr(err, "read build plan")
 	}
 
 	builder := &lifecycle.Builder{
@@ -65,12 +64,12 @@ func build() error {
 		env,
 	)
 	if err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedBuild)
+		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 
 	metadataPath := filepath.Join(lifecycle.DefaultLaunchDir, "config", "metadata.toml")
 	if err := lifecycle.WriteTOML(metadataPath, metadata); err != nil {
-		return packs.FailErr(err, "write metadata")
+		return cmd.FailErr(err, "write metadata")
 	}
 	return nil
 }

@@ -3,7 +3,7 @@ package lifecycle
 const (
 	DefaultPlatformDir = "/platform"
 	DefaultCacheDir    = "/cache"
-	DefaultLaunchDir   = "/launch"
+	DefaultLaunchDir   = "/workspace"
 )
 
 var POSIXBuildEnv = map[string][]string{

@@ -7,45 +7,43 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/packs"
-	"github.com/buildpack/packs/img"
+	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/img"
 )
 
 var (
-	repoName          string
-	runImage          string
-	useDaemon         bool
-	useHelpers        bool
-	groupPath         string
-	launchDir         string
-	useDaemonRunImage bool
+	repoName   string
+	runImage   string
+	launchDir  string
+	groupPath  string
+	useDaemon  bool
+	useHelpers bool
 )
 
 func init() {
-	packs.InputRunImage(&runImage)
-	packs.InputUseDaemon(&useDaemon)
-	packs.InputUseHelpers(&useHelpers)
-	packs.InputBPGroupPath(&groupPath)
-
-	flag.StringVar(&launchDir, "launch", "/launch", "launch directory")
-	flag.BoolVar(&useDaemonRunImage, "daemon-stack", false, "use stack from docker daemon")
+	cmd.FlagRunImage(&runImage)
+	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagUseDaemon(&useDaemon)
+	cmd.FlagUseHelpers(&useHelpers)
 }
 
 func main() {
 	flag.Parse()
 	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" || launchDir == "" {
 		args := map[string]interface{}{"narg": flag.NArg, "runImage": runImage, "launchDir": launchDir}
-		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
-	packs.Exit(export())
+	cmd.Exit(export())
 }
 
 func export() error {
 	if useHelpers {
 		if err := img.SetupCredHelpers(repoName, runImage); err != nil {
-			return packs.FailErr(err, "setup credential helpers")
+			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
 
@@ -55,20 +53,20 @@ func export() error {
 	}
 	repoStore, err := newRepoStore(repoName)
 	if err != nil {
-		return packs.FailErr(err, "access", repoName)
+		return cmd.FailErr(err, "access", repoName)
 	}
 
 	newRunImageStore := img.NewRegistry
-	if useDaemonRunImage {
+	if useDaemon {
 		newRunImageStore = img.NewDaemon
 	}
 	stackStore, err := newRunImageStore(runImage)
 	if err != nil {
-		return packs.FailErr(err, "access", runImage)
+		return cmd.FailErr(err, "access", runImage)
 	}
 	stackImage, err := stackStore.Image()
 	if err != nil {
-		return packs.FailErr(err, "get image for", runImage)
+		return cmd.FailErr(err, "get image for", runImage)
 	}
 
 	origImage, err := repoStore.Image()
@@ -82,12 +80,12 @@ func export() error {
 
 	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
-		return packs.FailErr(err, "read group")
+		return cmd.FailErr(err, "read group")
 	}
 
 	tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
-		return packs.FailErr(err, "create temp directory")
+		return cmd.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -103,11 +101,11 @@ func export() error {
 		origImage,
 	)
 	if err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedBuild)
+		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 
 	if err := repoStore.Write(newImage); err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedUpdate, "write")
+		return cmd.FailErrCode(err, cmd.CodeFailedUpdate, "write")
 	}
 
 	return nil

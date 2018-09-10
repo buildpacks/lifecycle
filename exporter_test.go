@@ -14,8 +14,7 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/packs"
-	"github.com/buildpack/packs/img"
+	"github.com/buildpack/lifecycle/img"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -70,7 +69,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should process a simple launch directory", func() {
-			image, err := exporter.Export("testdata/exporter/simple/launch", runImage, nil)
+			image, err := exporter.Export("testdata/exporter/first/launch", runImage, nil)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -99,64 +98,31 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("adds app layer to image")
-			if txt, err := getImageFile(image, data.App.SHA, "launch/app/subdir/myfile.txt"); err != nil {
+			if txt, err := getImageFile(image, data.App.SHA, "workspace/app/subdir/myfile.txt"); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			} else if diff := cmp.Diff(strings.TrimSpace(txt), "mycontents"); diff != "" {
-				t.Fatalf(`launch/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+				t.Fatalf(`workspace/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
 			}
 
 			t.Log("adds config layer to image")
-			if txt, err := getImageFile(image, data.Config.SHA, "launch/config/metadata.toml"); err != nil {
+			if txt, err := getImageFile(image, data.Config.SHA, "workspace/config/metadata.toml"); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			} else if diff := cmp.Diff(strings.TrimSpace(txt), "[[processes]]\n  type = \"web\"\n  command = \"npm start\""); diff != "" {
-				t.Fatalf(`launch/config/metadata.toml: (-got +want)\n%s`, diff)
+				t.Fatalf(`workspace/config/metadata.toml: (-got +want)\n%s`, diff)
 			}
 
 			t.Log("adds buildpack/layer1 as layer")
-			if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer1"].SHA, "launch/buildpack.id/layer1/file-from-layer-1"); err != nil {
+			if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer1"].SHA, "workspace/buildpack.id/layer1/file-from-layer-1"); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 1"); diff != "" {
-				t.Fatal("launch/buildpack.id/layer1/file-from-layer-1: (-got +want)", diff)
+				t.Fatal("workspace/buildpack.id/layer1/file-from-layer-1: (-got +want)", diff)
 			}
 
 			t.Log("adds buildpack/layer2 as layer")
-			if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer2"].SHA, "launch/buildpack.id/layer2/file-from-layer-2"); err != nil {
+			if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer2"].SHA, "workspace/buildpack.id/layer2/file-from-layer-2"); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 2"); diff != "" {
-				t.Fatal("launch/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
-			}
-		})
-
-
-		it("should handle an app directory symlink", func() {
-			image, err := exporter.Export("testdata/exporter/app-dir-symlink/launch", runImage, nil)
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			data, err := getMetadata(image)
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-
-			t.Log("adds buildpack metadata to label")
-			if diff := cmp.Diff(data.Buildpacks[0].Key, "buildpack.id"); diff != "" {
-				t.Fatal(diff)
-			}
-
-			t.Log("sets run image SHA in metadata")
-			runImageDigest, err := runImage.Digest()
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			if diff := cmp.Diff(data.RunImage.SHA, runImageDigest.String()); diff != "" {
-				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
-			}
-
-			t.Log("adds app layer to image")
-			if txt, err := getImageFile(image, data.App.SHA, "launch/app/subdir/myfile.txt"); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			} else if diff := cmp.Diff(strings.TrimSpace(txt), "mycontents"); diff != "" {
-				t.Fatalf(`launch/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+				t.Fatal("workspace/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
 			}
 		})
 
@@ -164,14 +130,14 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			var firstImage v1.Image
 			it.Before(func() {
 				var err error
-				firstImage, err = exporter.Export("testdata/exporter/simple/launch", runImage, nil)
+				firstImage, err = exporter.Export("testdata/exporter/first/launch", runImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 			})
 
 			it("should reuse layers if there is a layer TOML file", func() {
-				image, err := exporter.Export("testdata/exporter/rebuild/launch", runImage, firstImage)
+				image, err := exporter.Export("testdata/exporter/second/launch", runImage, firstImage)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -186,17 +152,17 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				t.Log("adds buildpack/layer1 as layer (from previous image)")
-				if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer1"].SHA, "launch/buildpack.id/layer1/file-from-layer-1"); err != nil {
+				if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer1"].SHA, "workspace/buildpack.id/layer1/file-from-layer-1"); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 1"); diff != "" {
-					t.Fatal("launch/buildpack.id/layer1/file-from-layer-1: (-got +want)", diff)
+					t.Fatal("workspace/buildpack.id/layer1/file-from-layer-1: (-got +want)", diff)
 				}
 
 				t.Log("adds buildpack/layer2 as layer from directory")
-				if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer2"].SHA, "launch/buildpack.id/layer2/file-from-layer-2"); err != nil {
+				if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer2"].SHA, "workspace/buildpack.id/layer2/file-from-layer-2"); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from new layer 2"); diff != "" {
-					t.Fatal("launch/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
+					t.Fatal("workspace/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
 				}
 			})
 		})
@@ -279,7 +245,7 @@ func getMetadata(image v1.Image) (metadata, error) {
 	if err != nil {
 		return metadata, fmt.Errorf("read config: %s", err)
 	}
-	label := cfg.Config.Labels[packs.BuildLabel]
+	label := cfg.Config.Labels[lifecycle.MetadataLabel]
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return metadata, fmt.Errorf("unmarshal: %s", err)
 	}

@@ -4,15 +4,16 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/packs"
 )
 
 type BuildpackMap map[string]*Buildpack
 
 type buildpackTOML struct {
-	ID      string `toml:"id"`
-	Version string `toml:"version"`
-	Name    string `toml:"name"`
+	Buildpack struct {
+		ID      string `toml:"id"`
+		Version string `toml:"version"`
+		Name    string `toml:"name"`
+	} `toml:"buildpack"`
 }
 
 func NewBuildpackMap(dir string) (BuildpackMap, error) {
@@ -31,9 +32,9 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 			return nil, err
 		}
 		buildpacks[id+"@"+version] = &Buildpack{
-			ID:      bpTOML.ID,
-			Version: bpTOML.Version,
-			Name:    bpTOML.Name,
+			ID:      bpTOML.Buildpack.ID,
+			Version: bpTOML.Buildpack.Version,
+			Name:    bpTOML.Buildpack.Name,
 			Dir:     buildpackDir,
 		}
 	}
@@ -61,14 +62,12 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 		Groups BuildpackOrder `toml:"groups"`
 	}
 	if _, err := toml.DecodeFile(orderPath, &order); err != nil {
-		return nil, packs.FailErr(err, "read buildpack order")
+		return nil, err
 	}
 
 	var groups BuildpackOrder
 	for _, g := range order.Groups {
 		groups = append(groups, BuildpackGroup{
-			BuildImage: g.BuildImage,
-			RunImage:   g.RunImage,
 			Buildpacks: m.lookup(g.Buildpacks),
 		})
 	}
@@ -77,12 +76,8 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 
 func (g *BuildpackGroup) Write(path string) error {
 	data := struct {
-		BuildImage string       `toml:"build-image"`
-		RunImage   string       `toml:"run-image"`
 		Buildpacks []*Buildpack `toml:"buildpacks"`
 	}{
-		BuildImage: g.BuildImage,
-		RunImage:   g.RunImage,
 		Buildpacks: g.Buildpacks,
 	}
 	return WriteTOML(path, data)

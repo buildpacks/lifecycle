@@ -67,15 +67,3 @@ func (m *MockBuildEnv) List() []string {
 func (mr *MockBuildEnvMockRecorder) List() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockBuildEnv)(nil).List))
 }
-
-// SetEnvDir mocks base method
-func (m *MockBuildEnv) SetEnvDir(arg0 string) error {
-	ret := m.ctrl.Call(m, "SetEnvDir", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetEnvDir indicates an expected call of SetEnvDir
-func (mr *MockBuildEnvMockRecorder) SetEnvDir(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnvDir", reflect.TypeOf((*MockBuildEnv)(nil).SetEnvDir), arg0)
-}

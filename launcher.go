@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpack/packs"
+	"github.com/pkg/errors"
 )
 
 type Launcher struct {
@@ -34,20 +34,20 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 			return env.AddRootDir(filepath.Join(bpPath, layer))
 		})
 	}); err != nil {
-		return packs.FailErr(err, "modify env")
+		return errors.Wrap(err, "modify env")
 	}
 	if err := os.Chdir(filepath.Join(l.DefaultLaunchDir, "app")); err != nil {
-		return packs.FailErr(err, "change to app directory")
+		return errors.Wrap(err, "change to app directory")
 	}
 
 	startCommand, err := l.processFor(startCommand)
 	if err != nil {
-		return packs.FailErr(err, "determine start command")
+		return errors.Wrap(err, "determine start command")
 	}
 
 	launcher, err := l.profileD()
 	if err != nil {
-		return packs.FailErr(err, "determine profile")
+		return errors.Wrap(err, "determine profile")
 	}
 
 	if err := l.Exec("/bin/bash", []string{
@@ -55,7 +55,7 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 		launcher, executable,
 		startCommand,
 	}, os.Environ()); err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedLaunch, "launch")
+		return errors.Wrap(err, "exec")
 	}
 	return nil
 }

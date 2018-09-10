@@ -89,7 +89,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `groups = [{ build-image = "local-build", run-image = "local-run", buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}] }]`,
+			mkfile(t, `groups = [{ buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}] }]`,
 				filepath.Join(tmpDir, "order.toml"),
 			)
 			actual, err := m.ReadOrder(filepath.Join(tmpDir, "order.toml"))
@@ -97,10 +97,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(actual, lifecycle.BuildpackOrder{
-				{BuildImage: "local-build", RunImage: "local-run", Buildpacks: []*lifecycle.Buildpack{
-					{Name: "buildpack1-1.1"},
-					{Name: "buildpack2", Optional: true},
-				}},
+				{Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}}},
 			}) {
 				t.Fatalf("Unexpected list: %#v\n", actual)
 			}
@@ -128,8 +125,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
 				"buildpack2@latest":     {Name: "buildpack2"},
 			}
-			mkfile(t, `build-image = "myrepo"`+"\n"+`run-image = "myrepo"`+"\n"+
-				`buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}]`,
+			mkfile(t, `buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}]`,
 				filepath.Join(tmpDir, "group.toml"),
 			)
 			actual, err := m.ReadGroup(filepath.Join(tmpDir, "group.toml"))
@@ -137,8 +133,6 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(actual, &lifecycle.BuildpackGroup{
-				BuildImage: "myrepo",
-				RunImage:   "myrepo",
 				Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}},
 			}) {
 				t.Fatalf("Unexpected list: %#v\n", actual)
@@ -163,8 +157,6 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 
 		it("should write only ID and version", func() {
 			group := lifecycle.BuildpackGroup{
-				BuildImage: "myrepo1",
-				RunImage:   "myrepo2",
 				Buildpacks: []*lifecycle.Buildpack{{ID: "a", Name: "b", Version: "v", Dir: "d"}},
 			}
 			if err := group.Write(filepath.Join(tmpDir, "group.toml")); err != nil {
@@ -174,13 +166,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(string(b), `build-image = "myrepo1"
-run-image = "myrepo2"
-
-[[buildpacks]]
-  id = "a"
-  version = "v"
-`); diff != "" {
+			if diff := cmp.Diff(string(b), "[[buildpacks]]\n  id = \"a\"\n  version = \"v\"\n"); diff != "" {
 				t.Fatalf(`toml did not match: (-got +want)\n%s`, diff)
 			}
 		})
@@ -188,6 +174,7 @@ run-image = "myrepo2"
 }
 
 const buildpackTOML = `
+[buildpack]
 id = "%[1]s"
 name = "%[1]s-name"
 version = "%[2]s"

@@ -10,7 +10,6 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/testmock"
-	"github.com/buildpack/packs"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/sclevine/spec"
@@ -59,7 +58,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("image exists and has labels", func() {
 			it.Before(func() {
 				var configFile = &v1.ConfigFile{}
-				configFile.Config.Labels = map[string]string{packs.BuildLabel: `{
+				configFile.Config.Labels = map[string]string{lifecycle.MetadataLabel: `{
 					"buildpacks": [
 						{
 							"key": "buildpack.node",
@@ -120,7 +119,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("image has buildpacks that won't be run", func() {
 			it.Before(func() {
 				var configFile = &v1.ConfigFile{}
-				configFile.Config.Labels = map[string]string{packs.BuildLabel: `{
+				configFile.Config.Labels = map[string]string{lifecycle.MetadataLabel: `{
 					"buildpacks": [
 						{
 							"key": "buildpack.node",

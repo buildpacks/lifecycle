@@ -2,51 +2,51 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/packs"
-	"github.com/buildpack/packs/img"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"log"
+
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/img"
 )
 
 var (
 	repoName   string
+	launchDir  string
+	groupPath  string
 	useDaemon  bool
 	useHelpers bool
-	groupPath  string
-	launchDir  string
 )
 
 func init() {
-	packs.InputBPGroupPath(&groupPath)
-	packs.InputUseDaemon(&useDaemon)
-	packs.InputUseHelpers(&useHelpers)
-
-	flag.StringVar(&launchDir, "launch", "/launch", "launch directory")
+	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagUseDaemon(&useDaemon)
+	cmd.FlagUseHelpers(&useHelpers)
 }
 
 func main() {
 	flag.Parse()
 	repoName = flag.Arg(0)
 	if flag.NArg() > 1 || repoName == "" || launchDir == "" {
-		packs.Exit(packs.FailCode(packs.CodeInvalidArgs, "parse arguments"))
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
-	packs.Exit(analyzer())
+	cmd.Exit(analyzer())
 }
 
 func analyzer() error {
 	if useHelpers {
 		if err := img.SetupCredHelpers(repoName); err != nil {
-			return packs.FailErr(err, "setup credential helpers")
+			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
 
 	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
-		return packs.FailErr(err, "read group")
+		return cmd.FailErr(err, "read group")
 	}
 
 	newRepoStore := img.NewRegistry
@@ -55,7 +55,7 @@ func analyzer() error {
 	}
 	repoStore, err := newRepoStore(repoName)
 	if err != nil {
-		return packs.FailErr(err, "repository configuration", repoName)
+		return cmd.FailErr(err, "repository configuration", repoName)
 	}
 
 	origImage, err := repoStore.Image()
@@ -72,7 +72,7 @@ func analyzer() error {
 				return nil
 			}
 		}
-		return packs.FailErr(err, "access manifest", repoName)
+		return cmd.FailErr(err, "access manifest", repoName)
 	}
 
 	analyzer := &lifecycle.Analyzer{
@@ -85,7 +85,7 @@ func analyzer() error {
 		origImage,
 	)
 	if err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedBuild)
+		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 
 	return nil
