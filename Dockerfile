@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 GO111MODULE=on go install -a -installsuffix static "./cmd/..."
 
 RUN mv /go/bin /lifecycle && mkdir /go/bin
 
-RUN GO111MODULE=on go get github.com/sclevine/yj
+RUN go get github.com/sclevine/yj
 
 FROM ${base}
 ARG jq_url=https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64

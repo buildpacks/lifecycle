@@ -3,7 +3,8 @@ ARG base=packs/base
 FROM $base
 ARG samples_tgz=https://api.github.com/repos/buildpack/samples/tarball/master
 
-RUN mkdir /tmp/samples /buildpacks && \
+RUN  \
+  mkdir /tmp/samples /buildpacks && \
   wget -q -O - "$samples_tgz" | tar -xzf - -C /tmp/samples --strip-components=1 --wildcards 'buildpack-samples-*' && \
   for buildpack in nodejs java; do \
     id=$(cat "/tmp/samples/${buildpack}-buildpack/buildpack.toml" | yj -t | jq -r .buildpack.id) && \
