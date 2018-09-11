@@ -32,9 +32,9 @@ cd $(dirname "${BASH_SOURCE[0]}")/..
 docker pull "${base}"
 
 docker build --build-arg "base=${base}" -t "${prefix}base:${version}" ..
-docker build --build-arg "base=${prefix}base" -t "${prefix}build:${version}" build
-docker build --build-arg "base=${prefix}base" -t "${prefix}run:${version}" run
-docker build --build-arg "base=${prefix}base" -t "${prefix}util:${version}" util
+docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}build:${version}" build
+docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}run:${version}" run
+docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}util:${version}" util
 
 echo "To publish these images:"
 for suffix in base build run util; do
