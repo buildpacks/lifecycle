@@ -21,7 +21,10 @@ func (a *Analyzer) Analyze(launchDir string, image v1.Image) error {
 	if err != nil {
 		return err
 	}
+	return a.AnalyzeConfig(launchDir, config)
+}
 
+func (a *Analyzer) AnalyzeConfig(launchDir string, config AppImageMetadata) error {
 	buildpacks := a.buildpacks()
 	for _, buildpack := range config.Buildpacks {
 		if _, exist := buildpacks[buildpack.ID]; !exist {
