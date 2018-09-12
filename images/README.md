@@ -51,7 +51,6 @@ $ docker run --rm -P -v "$(pwd)/workspace:/workspace" packs/run
 Export:
 
 ```sh-session
-$ docker run --rm -v "$(pwd)/workspace:/workspace" \
-  -e PACK_RUN_IMAGE="packs/run" -e PACK_LAUNCH_DIR="/workspace" \
+$ docker run --rm -v "$(pwd)/workspace:/workspace" -e PACK_RUN_IMAGE="packs/run" \
   packs/util /lifecycle/exporter myimage
 ```

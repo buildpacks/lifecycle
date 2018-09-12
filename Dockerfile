@@ -7,12 +7,11 @@ WORKDIR /go/src/github.com/buildpack/lifecycle
 COPY . .
 RUN CGO_ENABLED=0 GO111MODULE=on go install -a -installsuffix static "./cmd/..."
 
-RUN mv /go/bin /lifecycle && mkdir /go/bin
-
-RUN go get github.com/sclevine/yj
-
 FROM ${base}
 ARG jq_url=https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64
+ARG yj_url=https://github.com/sclevine/yj/releases/download/v2.0/yj-linux
+
+LABEL io.buildpacks.stack.id="io.buildpacks.stacks.bionic"
 
 RUN apt-get update && \
   apt-get install -y wget xz-utils ca-certificates && \
@@ -20,10 +19,10 @@ RUN apt-get update && \
 
 RUN useradd -u 1000 -mU -s /bin/bash pack
 
-COPY --from=builder /lifecycle /lifecycle
-COPY --from=builder /go/bin /usr/local/bin
+COPY --from=builder /go/bin /lifecycle
 
-RUN wget -qO /usr/local/bin/jq "${jq_url}" && chmod +x /usr/local/bin/jq
+RUN wget -qO /usr/local/bin/jq "${jq_url}" && chmod +x /usr/local/bin/jq && \
+  wget -qO /usr/local/bin/yj "${yj_url}" && chmod +x /usr/local/bin/yj
 
 WORKDIR /workspace
 RUN chown -R pack:pack /workspace

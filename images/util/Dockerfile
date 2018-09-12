@@ -14,6 +14,4 @@ COPY --from=helpers /go/bin /usr/local/bin
 USER pack
 
 ENV PACK_GROUP_PATH ./group.toml
-ENV PACK_METADATA_PATH /workspace/config/metadata.toml
 ENV PACK_LAUNCH_DIR /workspace
-ENV PACK_PLAN_PATH ./plan.toml

@@ -3,7 +3,7 @@ ARG base=packs/base
 FROM $base
 ARG samples_tgz=https://api.github.com/repos/buildpack/samples/tarball/master
 
-RUN  \
+RUN \
   mkdir /tmp/samples /buildpacks && \
   wget -q -O - "$samples_tgz" | tar -xzf - -C /tmp/samples --strip-components=1 --wildcards 'buildpack-samples-*' && \
   for buildpack in nodejs java; do \
@@ -28,4 +28,3 @@ ENV PACK_GROUP_PATH ./group.toml
 ENV PACK_PLAN_PATH ./plan.toml
 
 ENV PACK_STACK_ID io.buildpacks.stacks.bionic
-ENV PACK_METADATA_PATH /workspace/config/metadata.toml
