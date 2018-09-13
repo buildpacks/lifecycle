@@ -8,6 +8,8 @@ import (
 
 var (
 	launchDir string
+	uid       int
+	gid       int
 )
 
 const knativeBuildHomeDir = "/builder/home"
@@ -15,6 +17,8 @@ const knativeWorkspaceDir = "/workspace"
 
 func init() {
 	flag.StringVar(&launchDir, "launch", knativeWorkspaceDir, "path to launch directory")
+	cmd.FlagUID(&uid)
+	cmd.FlagGID(&gid)
 }
 
 func main() {
@@ -25,5 +29,5 @@ func main() {
 	if err := lifecycle.SetupKnativeLaunchDir(launchDir); err != nil {
 		cmd.Exit(cmd.FailCode(cmd.CodeFailed, "moving app dir"))
 	}
-	cmd.Exit(lifecycle.ChownDirs(launchDir, knativeBuildHomeDir))
+	cmd.Exit(lifecycle.ChownDirs(launchDir, knativeBuildHomeDir, uid, gid))
 }

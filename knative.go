@@ -7,9 +7,6 @@ import (
 	"time"
 )
 
-const pack_uid = 1000
-const pack_gid = 1000
-
 func SetupKnativeLaunchDir(dir string) error {
 	var ephemeralApp string
 	if _, err := os.Stat(filepath.Join(dir, "app")); err != nil {
@@ -49,13 +46,13 @@ func SetupKnativeLaunchDir(dir string) error {
 	return nil
 }
 
-func ChownDirs(launchDir, homeDir string) error {
-	err := os.Chown(filepath.Join(homeDir, ".docker", "config.json"), pack_uid, pack_gid)
+func ChownDirs(launchDir, homeDir string, uid, gid int) error {
+	err := os.Chown(filepath.Join(homeDir, ".docker", "config.json"), uid, gid)
 	if err != nil {
 		return err
 	}
 
 	return filepath.Walk(launchDir, func(path string, info os.FileInfo, err error) error {
-		return os.Chown(path, pack_uid, pack_gid)
+		return os.Chown(path, uid, gid)
 	})
 }

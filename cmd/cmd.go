@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -20,6 +21,9 @@ const (
 
 	EnvUseDaemon  = "PACK_USE_DAEMON"
 	EnvUseHelpers = "PACK_USE_HELPERS"
+
+	EnvUID = "PACK_USER_ID"
+	EnvGID = "PACK_GROUP_ID"
 )
 
 func FlagLaunchDir(dir *string) {
@@ -52,6 +56,14 @@ func FlagUseDaemon(use *bool) {
 
 func FlagUseHelpers(use *bool) {
 	flag.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
+}
+
+func FlagUID(uid *int) {
+	flag.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
+}
+
+func FlagGID(gid *int) {
+	flag.IntVar(gid, "gid", intEnv(EnvGID), "GID of user's group in the stack's build and run images")
 }
 
 const (
@@ -109,4 +121,13 @@ func Exit(err error) {
 func boolEnv(k string) bool {
 	v := os.Getenv(k)
 	return v == "true" || v == "1"
+}
+
+func intEnv(k string) int {
+	v := os.Getenv(k)
+	d, err := strconv.Atoi(v)
+	if err != nil {
+		return 0
+	}
+	return d
 }
