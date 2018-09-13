@@ -1,17 +1,18 @@
 package lifecycle
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-	"fmt"
 	"time"
 )
+
 const pack_uid = 1000
 const pack_gid = 1000
 
-func SetupKnativeLaunchDir(dir string) error{
+func SetupKnativeLaunchDir(dir string) error {
 	var ephemeralApp string
-	if _, err := os.Stat(filepath.Join(dir, "app")); err != nil{
+	if _, err := os.Stat(filepath.Join(dir, "app")); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}

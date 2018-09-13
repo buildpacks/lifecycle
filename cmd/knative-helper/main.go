@@ -1,22 +1,21 @@
 package main
 
 import (
-	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle"
 	"flag"
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cmd"
 )
 
 var (
-	launchDir  string
+	launchDir string
 )
 
 const knativeBuildHomeDir = "/builder/home"
 const knativeWorkspaceDir = "/workspace"
 
-func init(){
+func init() {
 	flag.StringVar(&launchDir, "launch", knativeWorkspaceDir, "path to launch directory")
 }
-
 
 func main() {
 	flag.Parse()
