@@ -85,7 +85,51 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should use labels to populate the launch dir", func() {
-				if err := analyzer.Analyze(launchDir, image); err != nil {
+				if err := analyzer.Analyze(launchDir, "", image); err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+
+				for _, data := range []struct{ name, expected string }{
+					{"buildpack.node/nodejs.toml", `akey = "avalue"` + "\n" + `bkey = "bvalue"` + "\n"},
+					{"buildpack.node/node_modules.toml", `version = "1234"` + "\n"},
+					{"buildpack.go/go.toml", `version = "1.10"` + "\n"},
+				} {
+					if txt, err := ioutil.ReadFile(filepath.Join(launchDir, data.name)); err != nil {
+						t.Fatalf("Error: %s\n", err)
+					} else if string(txt) != data.expected {
+						t.Fatalf(`Error: expected "%s" to be toml encoded %s`, txt, data.name)
+					}
+				}
+			})
+		})
+
+		when("metadata is passed in as a string", func() {
+			it("uses that config instead of accessing the image", func() {
+				metadataJSON := `{
+					"buildpacks": [
+						{
+							"key": "buildpack.node",
+							"layers": {
+								"nodejs": {
+									"data": {"akey": "avalue", "bkey": "bvalue"}
+								},
+								"node_modules": {
+									"data": {"version": "1234"}
+								}
+							}
+						},
+						{
+							"key": "buildpack.go",
+							"layers": {
+								"go": {
+									"data": {"version": "1.10"}
+								}
+							}
+						}
+					]
+				}`
+
+				if err := analyzer.Analyze(launchDir, metadataJSON, image); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 
@@ -110,7 +154,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should do nothing and succeed", func() {
-				if err := analyzer.Analyze(launchDir, image); err != nil {
+				if err := analyzer.Analyze(launchDir, "", image); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 			})
@@ -145,7 +189,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("should only write layer TOML files that correspond to detected buildpacks", func() {
 				analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "buildpack.go"}}
 
-				if err := analyzer.Analyze(launchDir, image); err != nil {
+				if err := analyzer.Analyze(launchDir, "", image); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 

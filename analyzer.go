@@ -16,11 +16,23 @@ type Analyzer struct {
 	Out, Err   io.Writer
 }
 
-func (a *Analyzer) Analyze(launchDir string, image v1.Image) error {
-	config, err := a.getMetadata(image)
-	if err != nil {
+func (a *Analyzer) Analyze(launchDir, configJSON string, image v1.Image) error {
+	if configJSON == "" {
+		var err error
+		configJSON, err = a.getMetadata(image)
+		if err != nil {
+			return err
+		}
+	}
+	if configJSON == "" {
+		return nil
+	}
+
+	config := AppImageMetadata{}
+	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return err
 	}
+
 	return a.AnalyzeConfig(launchDir, config)
 }
 
@@ -41,22 +53,12 @@ func (a *Analyzer) AnalyzeConfig(launchDir string, config AppImageMetadata) erro
 	return nil
 }
 
-func (a *Analyzer) getMetadata(image v1.Image) (AppImageMetadata, error) {
+func (a *Analyzer) getMetadata(image v1.Image) (string, error) {
 	configFile, err := image.ConfigFile()
 	if err != nil {
-		return AppImageMetadata{}, err
+		return "", err
 	}
-	jsonConfig := configFile.Config.Labels[MetadataLabel]
-	if jsonConfig == "" {
-		return AppImageMetadata{}, nil
-	}
-
-	config := AppImageMetadata{}
-	if err := json.Unmarshal([]byte(jsonConfig), &config); err != nil {
-		return AppImageMetadata{}, err
-	}
-
-	return config, err
+	return configFile.Config.Labels[MetadataLabel], nil
 }
 
 func (a *Analyzer) buildpacks() map[string]struct{} {

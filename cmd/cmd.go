@@ -50,6 +50,10 @@ func FlagRunImage(image *string) {
 	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
 }
 
+func FlagMetadata(metadata *string) {
+	flag.StringVar(metadata, "metadata", "", "previous metadata as string (instead of image)")
+}
+
 func FlagUseDaemon(use *bool) {
 	flag.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
 }
