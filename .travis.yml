@@ -27,6 +27,8 @@ jobs:
     - docker push "packs/build:0.0.1-rc.$TRAVIS_BUILD_NUMBER"
     - docker push "packs/run:0.0.1-rc.$TRAVIS_BUILD_NUMBER"
     - docker push "packs/util:0.0.1-rc.$TRAVIS_BUILD_NUMBER"
+    - docker tag "packs/build:0.0.1-rc.$TRAVIS_BUILD_NUMBER" "packs/samples:0.0.1-rc.$TRAVIS_BUILD_NUMBER"
+    - docker push "packs/samples:0.0.1-rc.$TRAVIS_BUILD_NUMBER"
   - stage: build and publish images
     if: tag = publish
     env:
@@ -39,3 +41,5 @@ jobs:
     - docker push "packs/build:latest"
     - docker push "packs/run:latest"
     - docker push "packs/util:latest"
+    - docker tag "packs/build:latest" "packs/samples:latest"
+    - docker push "packs/samples:latest"
