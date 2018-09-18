@@ -47,18 +47,21 @@ func SetupKnativeLaunchDir(dir string) error {
 }
 
 func ChownDirs(launchDir, homeDir, cacheDir string, uid, gid int) error {
+	fmt.Println("chowning docker config.json to pack:pack")
 	err := os.Chown(filepath.Join(homeDir, ".docker", "config.json"), uid, gid)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("chowning /workspace to pack:pack")
 	if err := filepath.Walk(launchDir, func(path string, info os.FileInfo, err error) error {
 		return os.Chown(path, uid, gid)
 	}); err != nil {
 		return err
 	}
 
-	if _, err := os.Stat(cacheDir); os.IsExist(err) {
+	if _, err := os.Stat(cacheDir); err == nil {
+		fmt.Println("chowning /cache to pack:pack")
 		return filepath.Walk(cacheDir, func(path string, info os.FileInfo, err error) error {
 			return os.Chown(path, uid, gid)
 		})
