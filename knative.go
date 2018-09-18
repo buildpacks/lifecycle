@@ -46,13 +46,22 @@ func SetupKnativeLaunchDir(dir string) error {
 	return nil
 }
 
-func ChownDirs(launchDir, homeDir string, uid, gid int) error {
+func ChownDirs(launchDir, homeDir, cacheDir string, uid, gid int) error {
 	err := os.Chown(filepath.Join(homeDir, ".docker", "config.json"), uid, gid)
 	if err != nil {
 		return err
 	}
 
-	return filepath.Walk(launchDir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(launchDir, func(path string, info os.FileInfo, err error) error {
 		return os.Chown(path, uid, gid)
-	})
+	}); err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(cacheDir); os.IsExist(err) {
+		return filepath.Walk(cacheDir, func(path string, info os.FileInfo, err error) error {
+			return os.Chown(path, uid, gid)
+		})
+	}
+	return nil
 }

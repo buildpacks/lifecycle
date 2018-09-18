@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 )
@@ -14,6 +15,7 @@ var (
 
 const knativeBuildHomeDir = "/builder/home"
 const knativeWorkspaceDir = "/workspace"
+const knativeCacheDir = "/cache"
 
 func init() {
 	flag.StringVar(&launchDir, "launch", knativeWorkspaceDir, "path to launch directory")
@@ -29,5 +31,5 @@ func main() {
 	if err := lifecycle.SetupKnativeLaunchDir(launchDir); err != nil {
 		cmd.Exit(cmd.FailCode(cmd.CodeFailed, "moving app dir"))
 	}
-	cmd.Exit(lifecycle.ChownDirs(launchDir, knativeBuildHomeDir, uid, gid))
+	cmd.Exit(lifecycle.ChownDirs(launchDir, knativeBuildHomeDir, knativeCacheDir, uid, gid))
 }
