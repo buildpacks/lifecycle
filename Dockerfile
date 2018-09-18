@@ -10,7 +10,8 @@ RUN CGO_ENABLED=0 GO111MODULE=on go install -a -installsuffix static "./cmd/..."
 FROM ${base}
 ARG jq_url=https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64
 ARG yj_url=https://github.com/sclevine/yj/releases/download/v2.0/yj-linux
-ARG default_uid=1000
+ARG pack_uid=1000
+ARG pack_gid=1000
 
 LABEL io.buildpacks.stack.id="io.buildpacks.stacks.bionic"
 
@@ -18,9 +19,13 @@ RUN apt-get update && \
   apt-get install -y wget xz-utils ca-certificates && \
   rm -rf /var/lib/apt/lists/*
 
-RUN useradd -u ${default_uid} -mU -s /bin/bash pack
-ENV PACK_USER_ID=${default_uid}
-ENV PACK_USER_GID=${default_uid}
+
+RUN \
+  groupadd pack --gid ${pack_gid} && \
+  useradd --uid ${pack_uid} --gid ${pack_gid} -m -s /bin/bash pack
+
+ENV PACK_USER_ID=${pack_uid}
+ENV PACK_USER_GID=${pack_gid}
 
 COPY --from=builder /go/bin /lifecycle
 
