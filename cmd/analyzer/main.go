@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"log"
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
@@ -15,12 +15,12 @@ import (
 )
 
 var (
-	repoName   string
-	launchDir  string
-	groupPath  string
-	useDaemon  bool
-	useHelpers bool
-	metadata   string
+	repoName     string
+	launchDir    string
+	groupPath    string
+	useDaemon    bool
+	useHelpers   bool
+	metadataPath string
 )
 
 func init() {
@@ -28,7 +28,7 @@ func init() {
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseHelpers(&useHelpers)
-	cmd.FlagMetadata(&metadata)
+	cmd.FlagMetadataPath(&metadataPath)
 }
 
 func main() {
@@ -52,44 +52,44 @@ func analyzer() error {
 		return cmd.FailErr(err, "read group")
 	}
 
-	var origImage v1.Image
-	if metadata == "" {
-		newRepoStore := img.NewRegistry
-		if useDaemon {
-			newRepoStore = img.NewDaemon
-		}
-		repoStore, err := newRepoStore(repoName)
-		if err != nil {
-			return cmd.FailErr(err, "repository configuration", repoName)
-		}
-
-		origImage, err = repoStore.Image()
-		if err != nil {
-			log.Printf("WARNING: skipping analyze, authenticating to registry failed: %s", err.Error())
-			return nil
-
-		}
-		if _, err := origImage.RawManifest(); err != nil {
-			if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
-				switch remoteErr.Errors[0].Code {
-				case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
-					log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", remoteErr.Error())
-					return nil
-				}
-			}
-			return cmd.FailErr(err, "access manifest", repoName)
-		}
-	}
-
 	analyzer := &lifecycle.Analyzer{
 		Buildpacks: group.Buildpacks,
 		Out:        os.Stdout,
 		Err:        os.Stderr,
 	}
+
+	var metadata string
+	if metadataPath != "" {
+		bMetadata, err := ioutil.ReadFile(metadataPath)
+		if err != nil {
+			return cmd.FailErr(err, "access image metadata from path", metadataPath)
+		}
+		metadata = string(bMetadata)
+	} else {
+		var err error
+		newRepoStore := img.NewRegistry
+		if useDaemon {
+			newRepoStore = img.NewDaemon
+		}
+		metadata, err = analyzer.GetMetadata(newRepoStore)
+		if err != nil {
+			return cmd.FailErr(err, "access image metadata from image", metadataPath)
+		}
+	}
+
+	if metadata == "" {
+		return nil
+	}
+
+	config := lifecycle.AppImageMetadata{}
+	if err := json.Unmarshal([]byte(metadata), &config); err != nil {
+		log.Printf("WARNING: skipping analyze, previous image metadata was incompatible")
+		return nil
+	}
+
 	err := analyzer.Analyze(
 		launchDir,
-		metadata,
-		origImage,
+		config,
 	)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
