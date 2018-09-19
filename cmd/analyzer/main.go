@@ -71,7 +71,7 @@ func analyzer() error {
 		if useDaemon {
 			newRepoStore = img.NewDaemon
 		}
-		metadata, err = analyzer.GetMetadata(newRepoStore)
+		metadata, err = analyzer.GetMetadata(newRepoStore, repoName)
 		if err != nil {
 			return cmd.FailErr(err, "access image metadata from image", metadataPath)
 		}
