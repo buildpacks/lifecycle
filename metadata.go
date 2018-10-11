@@ -31,6 +31,5 @@ type LayerMetadata struct {
 }
 
 type RunImageMetadata struct {
-	Name string `json:"name"`
-	SHA  string `json:"sha"`
+	SHA string `json:"sha"`
 }
