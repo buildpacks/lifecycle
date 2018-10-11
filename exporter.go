@@ -26,7 +26,11 @@ type Exporter struct {
 }
 
 func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Image, error) {
-	runImageDigest, err := runImage.Digest()
+	runImageLayers, err := runImage.Layers()
+	if err != nil {
+		return nil, errors.Wrap(err, "find run image layers")
+	}
+	runImageDigest, err := runImageLayers[len(runImageLayers)-1].DiffID()
 	if err != nil {
 		return nil, errors.Wrap(err, "find run image digest")
 	}

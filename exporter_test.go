@@ -85,11 +85,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("sets run image SHA in metadata")
-			runImageDigest, err := runImage.Digest()
+			runImageDigest, err := getTopLayerDiffID(runImage)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if diff := cmp.Diff(data.RunImage.SHA, runImageDigest.String()); diff != "" {
+			if diff := cmp.Diff(data.RunImage.SHA, runImageDigest); diff != "" {
 				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
 			}
 
@@ -251,4 +251,16 @@ func getMetadata(image v1.Image) (metadata, error) {
 		return metadata, fmt.Errorf("unmarshal: %s", err)
 	}
 	return metadata, nil
+}
+
+func getTopLayerDiffID(image v1.Image) (string, error) {
+	layers, err := image.Layers()
+	if err != nil {
+		return "", err
+	}
+	diffid, err := layers[len(layers)-1].DiffID()
+	if err != nil {
+		return "", err
+	}
+	return diffid.String(), nil
 }
