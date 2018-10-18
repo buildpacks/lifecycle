@@ -13,14 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/img"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/img"
 )
 
 func TestExporter(t *testing.T) {
@@ -224,7 +223,7 @@ func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
 type metadata struct {
 	RunImage struct {
 		SHA string `json:"sha"`
-	} `json:"runimage"`
+	} `json:"runImage"`
 	App struct {
 		SHA string `json:"sha"`
 	} `json:"app"`
