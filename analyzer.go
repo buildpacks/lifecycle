@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/img"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 type Analyzer struct {
