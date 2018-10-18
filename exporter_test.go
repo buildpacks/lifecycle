@@ -132,7 +132,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if uid, gid, err := getImageFileUidGid(image, data.App.SHA, "workspace/app/subdir/myfile.txt"); err != nil {
+			if uid, gid, err := getImageFileOwner(image, data.App.SHA, "workspace/app/subdir/myfile.txt"); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			} else if diff := cmp.Diff(strconv.Itoa(uid), currentUser.Uid); diff != "" {
 				t.Fatalf(`workspace/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
@@ -157,7 +157,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				// File
-				if uid, gid, err := getImageFileUidGid(image, data.App.SHA, "workspace/app/subdir/myfile.txt"); err != nil {
+				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "workspace/app/subdir/myfile.txt"); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				} else if diff := cmp.Diff(uid, 1234); diff != "" {
 					t.Fatalf(`workspace/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
@@ -166,7 +166,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				// Directory
-				if uid, gid, err := getImageFileUidGid(image, data.App.SHA, "workspace/app/subdir"); err != nil {
+				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "workspace/app/subdir"); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				} else if diff := cmp.Diff(uid, 1234); diff != "" {
 					t.Fatalf(`workspace/app/subdir: (-got +want)\n%s`, diff)
@@ -270,7 +270,7 @@ func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
 	return getLayerFile(layer, path)
 }
 
-func getImageFileUidGid(image v1.Image, layerDigest, path string) (int, int, error) {
+func getImageFileOwner(image v1.Image, layerDigest, path string) (int, int, error) {
 	hash, err := v1.NewHash(layerDigest)
 	if err != nil {
 		return 0, 0, err
