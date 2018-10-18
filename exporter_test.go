@@ -270,7 +270,7 @@ func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
 	return getLayerFile(layer, path)
 }
 
-func getImageFileOwner(image v1.Image, layerDigest, path string) (int, int, error) {
+func getImageFileOwner(image v1.Image, layerDigest, path string) (uid, gid int, err error) {
 	hash, err := v1.NewHash(layerDigest)
 	if err != nil {
 		return 0, 0, err
