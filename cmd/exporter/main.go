@@ -14,15 +14,15 @@ import (
 )
 
 var (
-	repoName   string
-	runImage   string
-	launchDir  string
+	repoName     string
+	runImage     string
+	launchDir    string
 	launchDirSrc string
-	groupPath  string
-	useDaemon  bool
-	useHelpers bool
-	uid        int
-	gid        int
+	groupPath    string
+	useDaemon    bool
+	useHelpers   bool
+	uid          int
+	gid          int
 )
 
 func init() {
