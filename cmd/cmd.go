@@ -29,7 +29,7 @@ func FlagLaunchDir(dir *string) {
 }
 
 func FlagLaunchDirSrc(dir *string) {
-	flag.StringVar(dir, "launchSrc", DefaultLaunchDir, "path to source launch directory for export step")
+	flag.StringVar(dir, "launch-src", DefaultLaunchDir, "path to source launch directory for export step")
 }
 
 func FlagCacheDir(dir *string) {

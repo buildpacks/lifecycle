@@ -30,6 +30,7 @@ func launch() error {
 	if v := os.Getenv(lifecycle.EnvLaunchDir); v != "" {
 		launchDir = v
 	}
+	os.Unsetenv(lifecycle.EnvLaunchDir)
 
 	var metadata lifecycle.BuildMetadata
 	metadataPath := filepath.Join(launchDir, "config", "metadata.toml")

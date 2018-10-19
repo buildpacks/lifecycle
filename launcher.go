@@ -19,7 +19,6 @@ type Launcher struct {
 }
 
 func (l *Launcher) Launch(executable, startCommand string) error {
-	os.Unsetenv(EnvLaunchDir)
 	env := &Env{
 		Getenv:  os.Getenv,
 		Setenv:  os.Setenv,

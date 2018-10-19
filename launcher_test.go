@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"testing"
 
@@ -136,40 +135,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf(`syscall.Exec Argv did not match: (-got +want)\n%s`, diff)
 					}
 				})
-			})
-		})
-
-		when("when PACK_LAUNCH_DIR env var is set", func() {
-			it.Before(func() {
-				err := os.Setenv("PACK_LAUNCH_DIR", "some-val")
-				if err != nil {
-					t.Fatalf("test setup failed to set PACK_LAUNCH_DIR: %s", err)
-				}
-			})
-
-			it.After(func() {
-				err := os.Unsetenv("PACK_LAUNCH_DIR")
-				if err != nil {
-					t.Fatalf("test teardown failed to unset PACK_LAUNCH_DIR: %s", err)
-				}
-			})
-
-			it("unsets it", func() {
-				done := make(chan struct{})
-				launcher.Exec = func(argv0 string, argv []string, envv []string) error {
-					for _, e := range envv {
-						parts := strings.Split(e, "=")
-						if parts[0] == "PACK_LAUNCH_DIR" {
-							t.Fatalf("failed to unset PACK LAUNCH DIR")
-						}
-					}
-					close(done)
-					return nil
-				}
-				if err := launcher.Launch("/path/to/launcher", "echo $PACK_LAUNCH_DIR"); err != nil {
-					t.Fatal(err)
-				}
-				<-done
 			})
 		})
 
