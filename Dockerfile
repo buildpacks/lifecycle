@@ -25,6 +25,7 @@ RUN \
   useradd --uid ${pack_uid} --gid ${pack_gid} -m -s /bin/bash pack
 
 ENV PACK_USER_ID=${pack_uid}
+ENV PACK_GROUP_ID=${pack_gid}
 ENV PACK_USER_GID=${pack_gid}
 
 COPY --from=builder /go/bin /lifecycle
