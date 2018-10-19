@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	DefaultLaunchDir            = "/workspace"
-	DefaultCacheDir             = "/cache"
-	DefaultBuildpacksDir        = "/buildpacks"
-	DefaultPlatformDir          = "/platform"
-	DefaultOrderPath            = "/buildpacks/order.toml"
-	DefaultGroupPath            = `./group.toml`
-	DefaultPlanPath             = "./plan.toml"
-	DefaultUseDaemon            = false
-	DefaultUseCredentialHelpers = false
+	DefaultLaunchDir      = "/workspace"
+	DefaultCacheDir       = "/cache"
+	DefaultBuildpacksDir  = "/buildpacks"
+	DefaultPlatformDir    = "/platform"
+	DefaultOrderPath      = "/buildpacks/order.toml"
+	DefaultGroupPath      = `./group.toml`
+	DefaultPlanPath       = "./plan.toml"
+	DefaultUseDaemon      = false
+	DefaultUseCredHelpers = false
 
 	EnvUID = "PACK_USER_ID"
 	EnvGID = "PACK_GROUP_ID"
@@ -65,7 +65,7 @@ func FlagUseDaemon(use *bool) {
 }
 
 func FlagUseHelpers(use *bool) {
-	flag.BoolVar(use, "helpers", DefaultUseCredentialHelpers, "use credential helpers")
+	flag.BoolVar(use, "helpers", DefaultUseCredHelpers, "use credential helpers")
 }
 
 func FlagUID(uid *int) {
