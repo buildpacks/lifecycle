@@ -23,6 +23,7 @@ type Exporter struct {
 	TmpDir     string
 	In         []byte
 	Out, Err   io.Writer
+	UID, GID   int
 }
 
 func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Image, error) {
@@ -177,9 +178,6 @@ func (e *Exporter) createTarFile(tarFile, fsDir, tarDir string) error {
 		if err != nil {
 			return err
 		}
-		if fi.Mode().IsDir() {
-			return nil
-		}
 		relPath, err := filepath.Rel(fsDir, file)
 		if err != nil {
 			return err
@@ -202,6 +200,11 @@ func (e *Exporter) createTarFile(tarFile, fsDir, tarDir string) error {
 			}
 		}
 		header.Name = filepath.Join(tarDir, relPath)
+
+		if e.UID > 0 && e.GID > 0 {
+			header.Uid = e.UID
+			header.Gid = e.GID
+		}
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err

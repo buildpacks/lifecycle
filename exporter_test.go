@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"os/user"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -125,6 +127,54 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 2"); diff != "" {
 				t.Fatal("workspace/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
 			}
+
+			t.Log("uses filesystem uid/gid for image layers")
+			currentUser, err := user.Current()
+			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			if uid, gid, err := getImageFileOwner(image, data.App.SHA, "workspace/app/subdir/myfile.txt"); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			} else if diff := cmp.Diff(strconv.Itoa(uid), currentUser.Uid); diff != "" {
+				t.Fatalf(`workspace/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+			} else if diff := cmp.Diff(strconv.Itoa(gid), currentUser.Gid); diff != "" {
+				t.Fatalf(`workspace/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+			}
+		})
+
+		when("exporter has UID/GID set", func() {
+			it.Before(func() {
+				exporter.UID = 1234
+				exporter.GID = 5678
+			})
+			it("sets uid/gid on the layer files", func() {
+				image, err := exporter.Export("testdata/exporter/first/launch", runImage, nil)
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				data, err := getMetadata(image)
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+
+				// File
+				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "workspace/app/subdir/myfile.txt"); err != nil {
+					t.Fatalf("Error: %s\n", err)
+				} else if diff := cmp.Diff(uid, 1234); diff != "" {
+					t.Fatalf(`workspace/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+				} else if diff := cmp.Diff(gid, 5678); diff != "" {
+					t.Fatalf(`workspace/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+				}
+
+				// Directory
+				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "workspace/app/subdir"); err != nil {
+					t.Fatalf("Error: %s\n", err)
+				} else if diff := cmp.Diff(uid, 1234); diff != "" {
+					t.Fatalf(`workspace/app/subdir: (-got +want)\n%s`, diff)
+				} else if diff := cmp.Diff(gid, 5678); diff != "" {
+					t.Fatalf(`workspace/app/subdir: (-got +want)\n%s`, diff)
+				}
+			})
 		})
 
 		when("rebuilding when layer TOML exists without directory", func() {
@@ -219,6 +269,34 @@ func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
 		return "", err
 	}
 	return getLayerFile(layer, path)
+}
+
+func getImageFileOwner(image v1.Image, layerDigest, path string) (uid, gid int, err error) {
+	hash, err := v1.NewHash(layerDigest)
+	if err != nil {
+		return 0, 0, err
+	}
+	layer, err := image.LayerByDiffID(hash)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	r, err := layer.Uncompressed()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer r.Close()
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			return 0, 0, err
+		}
+
+		if header.Name == path {
+			return header.Uid, header.Gid, err
+		}
+	}
 }
 
 type metadata struct {

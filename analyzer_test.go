@@ -10,15 +10,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/img"
-	"github.com/buildpack/lifecycle/testmock"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/img"
+	"github.com/buildpack/lifecycle/testmock"
 )
 
 func TestAnalyzer(t *testing.T) {

@@ -2,14 +2,14 @@ package lifecycle_test
 
 import (
 	"io/ioutil"
-	"testing"
-
 	"os"
 	"path/filepath"
+	"testing"
 
-	"github.com/buildpack/lifecycle"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/lifecycle"
 )
 
 func TestKnative(t *testing.T) {

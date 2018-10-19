@@ -2,16 +2,15 @@ package lifecycle_test
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"io/ioutil"
-	"strings"
 
 	"github.com/buildpack/lifecycle"
 )

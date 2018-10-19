@@ -20,6 +20,8 @@ var (
 	groupPath  string
 	useDaemon  bool
 	useHelpers bool
+	uid        int
+	gid        int
 )
 
 func init() {
@@ -28,6 +30,8 @@ func init() {
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseHelpers(&useHelpers)
+	cmd.FlagUID(&uid)
+	cmd.FlagGID(&gid)
 }
 
 func main() {
@@ -94,6 +98,8 @@ func export() error {
 		TmpDir:     tmpDir,
 		Out:        os.Stdout,
 		Err:        os.Stderr,
+		UID:        uid,
+		GID:        gid,
 	}
 	newImage, err := exporter.Export(
 		launchDir,
