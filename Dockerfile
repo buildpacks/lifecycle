@@ -13,12 +13,10 @@ ARG yj_url=https://github.com/sclevine/yj/releases/download/v2.0/yj-linux
 ARG pack_uid=1000
 ARG pack_gid=1000
 
-LABEL io.buildpacks.stack.id="io.buildpacks.stacks.bionic"
 
 RUN apt-get update && \
   apt-get install -y wget xz-utils ca-certificates && \
   rm -rf /var/lib/apt/lists/*
-
 
 RUN \
   groupadd pack --gid ${pack_gid} && \

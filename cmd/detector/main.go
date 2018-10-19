@@ -13,6 +13,7 @@ import (
 
 var (
 	buildpacksDir string
+	launchDir     string
 	orderPath     string
 	groupPath     string
 	planPath      string
@@ -20,6 +21,7 @@ var (
 
 func init() {
 	cmd.FlagBuildpacksDir(&buildpacksDir)
+	cmd.FlagLaunchDir(&launchDir)
 	cmd.FlagOrderPath(&orderPath)
 
 	cmd.FlagGroupPath(&groupPath)
@@ -28,7 +30,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() != 0 || buildpacksDir == "" || orderPath == "" || groupPath == "" || planPath == "" {
+	if flag.NArg() != 0 {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	cmd.Exit(detect())
@@ -46,7 +48,7 @@ func detect() error {
 		return cmd.FailErr(err, "read buildpack order file")
 	}
 
-	info, group := order.Detect(logger, filepath.Join(lifecycle.DefaultLaunchDir, "app"))
+	info, group := order.Detect(logger, filepath.Join(launchDir, "app"))
 	if group == nil {
 		return cmd.FailCode(cmd.CodeFailedDetect, "detect")
 	}

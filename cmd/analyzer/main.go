@@ -27,14 +27,14 @@ func init() {
 	cmd.FlagLaunchDir(&launchDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
-	cmd.FlagUseHelpers(&useHelpers)
+	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagMetadataPath(&metadataPath)
 }
 
 func main() {
 	flag.Parse()
 	repoName = flag.Arg(0)
-	if flag.NArg() > 1 || repoName == "" || launchDir == "" {
+	if flag.NArg() > 1 || repoName == "" {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	cmd.Exit(analyzer())

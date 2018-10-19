@@ -14,17 +14,23 @@ var (
 	buildpacksDir string
 	groupPath     string
 	planPath      string
+	launchDir     string
+	cacheDir      string
+	platformDir   string
 )
 
 func init() {
 	cmd.FlagBuildpacksDir(&buildpacksDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagPlanPath(&planPath)
+	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagCacheDir(&cacheDir)
+	cmd.FlagPlatformDir(&platformDir)
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() != 0 || groupPath == "" || planPath == "" {
+	if flag.NArg() != 0 {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	cmd.Exit(build())
@@ -46,7 +52,7 @@ func build() error {
 	}
 
 	builder := &lifecycle.Builder{
-		PlatformDir: lifecycle.DefaultPlatformDir,
+		PlatformDir: platformDir,
 		Buildpacks:  group.Buildpacks,
 		In:          info,
 		Out:         os.Stdout,
@@ -59,15 +65,15 @@ func build() error {
 		Map:     lifecycle.POSIXBuildEnv,
 	}
 	metadata, err := builder.Build(
-		lifecycle.DefaultCacheDir,
-		lifecycle.DefaultLaunchDir,
+		cacheDir,
+		launchDir,
 		env,
 	)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 
-	metadataPath := filepath.Join(lifecycle.DefaultLaunchDir, "config", "metadata.toml")
+	metadataPath := filepath.Join(launchDir, "config", "metadata.toml")
 	if err := lifecycle.WriteTOML(metadataPath, metadata); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}

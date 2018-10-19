@@ -14,29 +14,31 @@ import (
 )
 
 var (
-	repoName   string
-	runImage   string
-	launchDir  string
-	groupPath  string
-	useDaemon  bool
-	useHelpers bool
-	uid        int
-	gid        int
+	repoName     string
+	runImage     string
+	launchDir    string
+	launchDirSrc string
+	groupPath    string
+	useDaemon    bool
+	useHelpers   bool
+	uid          int
+	gid          int
 )
 
 func init() {
 	cmd.FlagRunImage(&runImage)
 	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagLaunchDirSrc(&launchDirSrc)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
-	cmd.FlagUseHelpers(&useHelpers)
+	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
 }
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" || launchDir == "" {
+	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" {
 		args := map[string]interface{}{"narg": flag.NArg, "runImage": runImage, "launchDir": launchDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
@@ -102,6 +104,7 @@ func export() error {
 		GID:        gid,
 	}
 	newImage, err := exporter.Export(
+		launchDirSrc,
 		launchDir,
 		stackImage,
 		origImage,

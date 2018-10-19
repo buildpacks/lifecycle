@@ -26,7 +26,7 @@ type Exporter struct {
 	UID, GID   int
 }
 
-func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Image, error) {
+func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
 	runImageDigest, err := runImage.Digest()
 	if err != nil {
 		return nil, errors.Wrap(err, "find run image digest")
@@ -37,13 +37,23 @@ func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Im
 		},
 	}
 
-	repoImage, topLayerDigest, err := e.addDirAsLayer(runImage, filepath.Join(e.TmpDir, "app.tgz"), filepath.Join(launchDir, "app"), "workspace/app")
+	repoImage, topLayerDigest, err := e.addDirAsLayer(
+		runImage,
+		filepath.Join(e.TmpDir, "app.tgz"),
+		filepath.Join(launchDirSrc, "app"),
+		filepath.Join(launchDirDst, "app"),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "append app layer to run image")
 	}
 	metadata.App.SHA = topLayerDigest
 
-	repoImage, topLayerDigest, err = e.addDirAsLayer(repoImage, filepath.Join(e.TmpDir, "config.tgz"), filepath.Join(launchDir, "config"), "workspace/config")
+	repoImage, topLayerDigest, err = e.addDirAsLayer(
+		repoImage,
+		filepath.Join(e.TmpDir, "config.tgz"),
+		filepath.Join(launchDirSrc, "config"),
+		filepath.Join(launchDirDst, "config"),
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "append config layer to run image")
 	}
@@ -65,7 +75,14 @@ func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Im
 			}
 		}
 		bpMetadata := BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version}
-		repoImage, bpMetadata.Layers, err = e.addBuildpackLayer(buildpack.ID, launchDir, repoImage, origImage, origLayers)
+		repoImage, bpMetadata.Layers, err = e.addBuildpackLayer(
+			buildpack.ID,
+			launchDirSrc,
+			launchDirDst,
+			repoImage,
+			origImage,
+			origLayers,
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "append layers")
 		}
@@ -80,11 +97,20 @@ func (e *Exporter) Export(launchDir string, runImage, origImage v1.Image) (v1.Im
 	if err != nil {
 		return nil, errors.Wrap(err, "set metadata label")
 	}
+	repoImage, err = img.Env(repoImage, EnvLaunchDir, launchDirDst)
+	if err != nil {
+		return nil, errors.Wrap(err, "set launch dir env var")
+	}
 
 	return repoImage, nil
 }
 
-func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage v1.Image, origLayers map[string]LayerMetadata) (v1.Image, map[string]LayerMetadata, error) {
+func (e *Exporter) addBuildpackLayer(
+	id, launchDir, launchDirDst string,
+	repoImage, origImage v1.Image,
+	origLayers map[string]LayerMetadata,
+) (v1.Image, map[string]LayerMetadata, error) {
+
 	metadata := map[string]LayerMetadata{}
 	layers, err := filepath.Glob(filepath.Join(launchDir, id, "*.toml"))
 	if err != nil {
@@ -121,7 +147,7 @@ func (e *Exporter) addBuildpackLayer(id, launchDir string, repoImage, origImage 
 			return nil, nil, errors.Errorf("expected %s to be a directory", dir)
 		} else {
 			tarFile := filepath.Join(e.TmpDir, fmt.Sprintf("layer.%s.%s.tgz", id, layerName))
-			repoImage, layerDiffID, err = e.addDirAsLayer(repoImage, tarFile, dir, filepath.Join("workspace", id, layerName))
+			repoImage, layerDiffID, err = e.addDirAsLayer(repoImage, tarFile, dir, filepath.Join(launchDirDst, id, layerName))
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "append dir as layer")
 			}
