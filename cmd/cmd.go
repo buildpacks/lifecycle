@@ -64,7 +64,7 @@ func FlagUseDaemon(use *bool) {
 	flag.BoolVar(use, "daemon", DefaultUseDaemon, "export to docker daemon")
 }
 
-func FlagUseHelpers(use *bool) {
+func FlagUseCredHelpers(use *bool) {
 	flag.BoolVar(use, "helpers", DefaultUseCredHelpers, "use credential helpers")
 }
 

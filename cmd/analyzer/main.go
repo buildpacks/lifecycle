@@ -27,7 +27,7 @@ func init() {
 	cmd.FlagLaunchDir(&launchDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
-	cmd.FlagUseHelpers(&useHelpers)
+	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagMetadataPath(&metadataPath)
 }
 
