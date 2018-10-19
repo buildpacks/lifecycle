@@ -27,13 +27,13 @@ type Exporter struct {
 }
 
 func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
-	runImageDigest, err := runImage.Digest()
+	runLayerDigest, err := img.TopLayerDigest(runImage)
 	if err != nil {
 		return nil, errors.Wrap(err, "find run image digest")
 	}
 	metadata := AppImageMetadata{
 		RunImage: RunImageMetadata{
-			SHA: runImageDigest.String(),
+			TopLayer: runLayerDigest.String(),
 		},
 	}
 

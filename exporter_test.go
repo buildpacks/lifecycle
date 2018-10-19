@@ -86,12 +86,12 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(diff)
 			}
 
-			t.Log("sets run image SHA in metadata")
-			runImageDigest, err := runImage.Digest()
+			t.Log("sets run image top layer TopLayer in metadata")
+			runImageLayerDigest, err := topLayer(runImage)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if diff := cmp.Diff(data.RunImage.SHA, runImageDigest.String()); diff != "" {
+			if diff := cmp.Diff(data.RunImage.TopLayer, runImageLayerDigest.String()); diff != "" {
 				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
 			}
 
@@ -234,6 +234,14 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
+func topLayer(image v1.Image) (v1.Hash, error) {
+	layers, err := image.Layers()
+	if err != nil {
+		return v1.Hash{}, err
+	}
+	return layers[len(layers)-1].Digest()
+}
+
 func getBusyboxWithEntrypoint() (v1.Image, error) {
 	runImageStore, err := img.NewRegistry("busybox")
 	if err != nil {
@@ -315,7 +323,7 @@ func getImageFileOwner(image v1.Image, layerDigest, path string) (uid, gid int, 
 
 type metadata struct {
 	RunImage struct {
-		SHA string `json:"sha"`
+		TopLayer string `json:"topLayer"`
 	} `json:"runimage"`
 	App struct {
 		SHA string `json:"sha"`
