@@ -17,6 +17,7 @@ var (
 	repoName   string
 	runImage   string
 	launchDir  string
+	launchDirSrc string
 	groupPath  string
 	useDaemon  bool
 	useHelpers bool
@@ -27,6 +28,7 @@ var (
 func init() {
 	cmd.FlagRunImage(&runImage)
 	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagLaunchDirSrc(&launchDirSrc)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
@@ -102,6 +104,7 @@ func export() error {
 		GID:        gid,
 	}
 	newImage, err := exporter.Export(
+		launchDirSrc,
 		launchDir,
 		stackImage,
 		origImage,

@@ -16,10 +16,6 @@ var (
 	launchDir string
 )
 
-func init() {
-	cmd.FlagLaunchDir(&launchDir)
-}
-
 func main() {
 	cmd.Exit(launch())
 }
@@ -30,6 +26,11 @@ func launch() error {
 		defaultProcessType = v
 	}
 
+	launchDir := cmd.DefaultLaunchDir
+	if v := os.Getenv(lifecycle.EnvLaunchDir); v != "" {
+		launchDir = v
+	}
+
 	var metadata lifecycle.BuildMetadata
 	metadataPath := filepath.Join(launchDir, "config", "metadata.toml")
 	if _, err := toml.DecodeFile(metadataPath, &metadata); err != nil {
@@ -38,7 +39,7 @@ func launch() error {
 
 	launcher := &lifecycle.Launcher{
 		DefaultProcessType: defaultProcessType,
-		DefaultLaunchDir:   launchDir,
+		LaunchDir:          launchDir,
 		Processes:          metadata.Processes,
 		Buildpacks:         metadata.Buildpacks,
 		Exec:               syscall.Exec,
