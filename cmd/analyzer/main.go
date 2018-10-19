@@ -34,7 +34,7 @@ func init() {
 func main() {
 	flag.Parse()
 	repoName = flag.Arg(0)
-	if flag.NArg() > 1 || repoName == "" || launchDir == "" {
+	if flag.NArg() > 1 || repoName == "" {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	cmd.Exit(analyzer())

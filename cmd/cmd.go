@@ -10,44 +10,50 @@ import (
 )
 
 const (
-	EnvLaunchDir     = "PACK_LAUNCH_DIR"
-	EnvBuildpacksDir = "PACK_BUILDPACKS_DIR"
-
-	EnvOrderPath = "PACK_ORDER_PATH"
-	EnvGroupPath = "PACK_GROUP_PATH"
-	EnvPlanPath  = "PACK_PLAN_PATH"
-
-	EnvRunImage = "PACK_RUN_IMAGE"
-
-	EnvUseDaemon  = "PACK_USE_DAEMON"
-	EnvUseHelpers = "PACK_USE_HELPERS"
+	DefaultLaunchDir            = "/workspace"
+	DefaultCacheDir             = "/cache"
+	DefaultBuildpacksDir        = "/buildpacks"
+	DefaultPlatformDir          = "/platform"
+	DefaultOrderPath            = "/buildpacks/order.toml"
+	DefaultGroupPath            = `./group.toml`
+	DefaultPlanPath             = "./plan.toml"
+	DefaultUseDaemon            = false
+	DefaultUseCredentialHelpers = false
 
 	EnvUID = "PACK_USER_ID"
 	EnvGID = "PACK_GROUP_ID"
 )
 
 func FlagLaunchDir(dir *string) {
-	flag.StringVar(dir, "launch", os.Getenv(EnvLaunchDir), "path to launch directory")
+	flag.StringVar(dir, "launch", DefaultLaunchDir, "path to launch directory")
+}
+
+func FlagCacheDir(dir *string) {
+	flag.StringVar(dir, "cache", DefaultCacheDir, "path to cache directory")
 }
 
 func FlagBuildpacksDir(dir *string) {
-	flag.StringVar(dir, "buildpacks", os.Getenv(EnvBuildpacksDir), "path to buildpacks directory")
+	flag.StringVar(dir, "buildpacks", DefaultBuildpacksDir, "path to buildpacks directory")
+}
+
+func FlagPlatformDir(dir *string) {
+	flag.StringVar(dir, "platform", DefaultPlatformDir, "path to platform directory")
 }
 
 func FlagOrderPath(path *string) {
-	flag.StringVar(path, "order", os.Getenv(EnvOrderPath), "path to order.toml")
+	flag.StringVar(path, "order", DefaultOrderPath, "path to order.toml")
 }
 
 func FlagGroupPath(path *string) {
-	flag.StringVar(path, "group", os.Getenv(EnvGroupPath), "path to group.toml")
+	flag.StringVar(path, "group", DefaultGroupPath, "path to group.toml")
 }
 
 func FlagPlanPath(path *string) {
-	flag.StringVar(path, "plan", os.Getenv(EnvPlanPath), "path to plan.toml")
+	flag.StringVar(path, "plan", DefaultPlanPath, "path to plan.toml")
 }
 
 func FlagRunImage(image *string) {
-	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
+	flag.StringVar(image, "image", "", "reference to run image")
 }
 
 func FlagMetadataPath(metadata *string) {
@@ -55,11 +61,11 @@ func FlagMetadataPath(metadata *string) {
 }
 
 func FlagUseDaemon(use *bool) {
-	flag.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
+	flag.BoolVar(use, "daemon", DefaultUseDaemon, "export to docker daemon")
 }
 
 func FlagUseHelpers(use *bool) {
-	flag.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
+	flag.BoolVar(use, "helpers", DefaultUseCredentialHelpers, "use credential helpers")
 }
 
 func FlagUID(uid *int) {
@@ -120,11 +126,6 @@ func Exit(err error) {
 		os.Exit(err.Code)
 	}
 	os.Exit(CodeFailed)
-}
-
-func boolEnv(k string) bool {
-	v := os.Getenv(k)
-	return v == "true" || v == "1"
 }
 
 func intEnv(k string) int {

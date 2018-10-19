@@ -36,7 +36,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" || launchDir == "" {
+	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" {
 		args := map[string]interface{}{"narg": flag.NArg, "runImage": runImage, "launchDir": launchDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}

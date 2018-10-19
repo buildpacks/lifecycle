@@ -12,6 +12,14 @@ import (
 	"github.com/buildpack/lifecycle/cmd"
 )
 
+var (
+	launchDir string
+)
+
+func init() {
+	cmd.FlagLaunchDir(&launchDir)
+}
+
 func main() {
 	cmd.Exit(launch())
 }
@@ -23,14 +31,14 @@ func launch() error {
 	}
 
 	var metadata lifecycle.BuildMetadata
-	metadataPath := filepath.Join(lifecycle.DefaultLaunchDir, "config", "metadata.toml")
+	metadataPath := filepath.Join(launchDir, "config", "metadata.toml")
 	if _, err := toml.DecodeFile(metadataPath, &metadata); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 
 	launcher := &lifecycle.Launcher{
 		DefaultProcessType: defaultProcessType,
-		DefaultLaunchDir:   lifecycle.DefaultLaunchDir,
+		DefaultLaunchDir:   launchDir,
 		Processes:          metadata.Processes,
 		Buildpacks:         metadata.Buildpacks,
 		Exec:               syscall.Exec,
