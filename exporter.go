@@ -27,17 +27,13 @@ type Exporter struct {
 }
 
 func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
-	runImageDigest, err := runImage.Digest()
-	if err != nil {
-		return nil, errors.Wrap(err, "find run image digest")
-	}
-	metadata := AppImageMetadata{
-		RunImage: RunImageMetadata{
-			SHA: runImageDigest.String(),
-		},
+	metadata := AppImageMetadata{}
+
+	if err := addRunImageMetadata(runImage, &metadata); err != nil {
+		return nil, err
 	}
 
-	repoImage, topLayerDigest, err := e.addDirAsLayer(
+	repoImage, appLayerDigest, err := e.addDirAsLayer(
 		runImage,
 		filepath.Join(e.TmpDir, "app.tgz"),
 		filepath.Join(launchDirSrc, "app"),
@@ -46,9 +42,9 @@ func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage
 	if err != nil {
 		return nil, errors.Wrap(err, "append app layer to run image")
 	}
-	metadata.App.SHA = topLayerDigest
+	metadata.App.SHA = appLayerDigest
 
-	repoImage, topLayerDigest, err = e.addDirAsLayer(
+	repoImage, configLayerDigest, err := e.addDirAsLayer(
 		repoImage,
 		filepath.Join(e.TmpDir, "config.tgz"),
 		filepath.Join(launchDirSrc, "config"),
@@ -57,7 +53,7 @@ func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage
 	if err != nil {
 		return nil, errors.Wrap(err, "append config layer to run image")
 	}
-	metadata.Config.SHA = topLayerDigest
+	metadata.Config.SHA = configLayerDigest
 
 	var bpMetadata []BuildpackMetadata
 	if origImage != nil {
@@ -103,6 +99,21 @@ func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage
 	}
 
 	return repoImage, nil
+}
+func addRunImageMetadata(runImage v1.Image, metadata *AppImageMetadata) error {
+	runLayerDigest, err := img.TopLayerDigest(runImage)
+	if err != nil {
+		return errors.Wrap(err, "find run image digest")
+	}
+	runImageDigest, err := runImage.Digest()
+	if err != nil {
+		return errors.Wrap(err, "find run image digest")
+	}
+	metadata.RunImage = RunImageMetadata{
+		TopLayer: runLayerDigest.String(),
+		SHA:      runImageDigest.String(),
+	}
+	return nil
 }
 
 func (e *Exporter) addBuildpackLayer(

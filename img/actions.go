@@ -44,6 +44,14 @@ func Rebase(orig v1.Image, newBase v1.Image, oldBaseFinder ImageFinder) (v1.Imag
 	return image, nil
 }
 
+func TopLayerDigest(image v1.Image) (v1.Hash, error) {
+	layers, err := image.Layers()
+	if err != nil {
+		return v1.Hash{}, err
+	}
+	return layers[len(layers)-1].Digest()
+}
+
 func Label(image v1.Image, k, v string) (v1.Image, error) {
 	configFile, err := image.ConfigFile()
 	if err != nil {
