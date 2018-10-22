@@ -9,7 +9,7 @@ type AppImageMetadata struct {
 	App        AppMetadata         `json:"app"`
 	Config     ConfigMetadata      `json:"config"`
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
-	RunImage   RunImageMetadata    `json:"runimage"`
+	RunImage   RunImageMetadata    `json:"runImage"`
 }
 
 type AppMetadata struct {
@@ -34,4 +34,5 @@ type LayerMetadata struct {
 type RunImageMetadata struct {
 	Name     string `json:"name"`
 	TopLayer string `json:"topLayer"`
+	SHA      string `json:"sha"`
 }
