@@ -17,12 +17,12 @@ const (
 	DefaultOrderPath      = "/buildpacks/order.toml"
 	DefaultGroupPath      = `./group.toml`
 	DefaultPlanPath       = "./plan.toml"
-	DefaultRunImage       = "packs/run"
 	DefaultUseDaemon      = false
 	DefaultUseCredHelpers = false
 
-	EnvUID = "PACK_USER_ID"
-	EnvGID = "PACK_GROUP_ID"
+	EnvRunImage = "PACK_RUN_IMAGE"
+	EnvUID      = "PACK_USER_ID"
+	EnvGID      = "PACK_GROUP_ID"
 )
 
 func FlagLaunchDir(dir *string) {
@@ -58,7 +58,7 @@ func FlagPlanPath(path *string) {
 }
 
 func FlagRunImage(image *string) {
-	flag.StringVar(image, "image", DefaultRunImage, "reference to run image")
+	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
 }
 
 func FlagMetadataPath(metadata *string) {
