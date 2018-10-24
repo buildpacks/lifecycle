@@ -17,6 +17,7 @@ const (
 	DefaultOrderPath      = "/buildpacks/order.toml"
 	DefaultGroupPath      = `./group.toml`
 	DefaultPlanPath       = "./plan.toml"
+	DefaultRunImage       = "packs/run"
 	DefaultUseDaemon      = false
 	DefaultUseCredHelpers = false
 
@@ -57,7 +58,7 @@ func FlagPlanPath(path *string) {
 }
 
 func FlagRunImage(image *string) {
-	flag.StringVar(image, "image", "", "reference to run image")
+	flag.StringVar(image, "image", DefaultRunImage, "reference to run image")
 }
 
 func FlagMetadataPath(metadata *string) {
