@@ -248,7 +248,7 @@ func topLayer(image v1.Image) (v1.Hash, error) {
 	if err != nil {
 		return v1.Hash{}, err
 	}
-	return layers[len(layers)-1].Digest()
+	return layers[len(layers)-1].DiffID()
 }
 
 func getBusyboxWithEntrypoint() (v1.Image, error) {
