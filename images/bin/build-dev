@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$( dirname "${BASH_SOURCE[0]}" )/../.."
+
+scratch=$(mktemp -d -t tmp.pack.samples.XXXXXXXXXX)
+function finish {
+  rm -rf "$scratch"
+}
+trap finish EXIT
+
+echo -n COMPILING:
+for name in $(ls ./cmd/); do
+  if [ -d "./cmd/$name" ]; then
+    echo -n " $name"
+    GOOS=linux CGO_ENABLED=0 GO111MODULE=on go build -o "$scratch/bin/$name" "./cmd/$name"
+  fi
+done
+echo
+
+cat >$scratch/Dockerfile <<EOL
+FROM packs/samples
+USER root
+COPY bin/* /lifecycle/
+USER pack
+EOL
+
+docker build -t packs/samples:dev $scratch
