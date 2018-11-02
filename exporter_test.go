@@ -72,7 +72,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should process a simple launch directory", func() {
-			image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest", runImage, nil)
+			image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest",
+				"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, nil)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -164,7 +165,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				exporter.GID = 5678
 			})
 			it("sets uid/gid on the layer files", func() {
-				image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest", runImage, nil)
+				image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest",
+					"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -197,14 +199,16 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			var firstImage v1.Image
 			it.Before(func() {
 				var err error
-				firstImage, err = exporter.Export("testdata/exporter/first/launch", "/launch/dest", runImage, nil)
+				firstImage, err = exporter.Export("testdata/exporter/first/launch", "/launch/dest",
+					"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 			})
 
 			it("should reuse layers if there is a layer TOML file", func() {
-				image, err := exporter.Export("testdata/exporter/second/launch", "/launch/dest", runImage, firstImage)
+				image, err := exporter.Export("testdata/exporter/second/launch", "/launch/dest",
+					"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, firstImage)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
