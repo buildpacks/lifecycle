@@ -105,7 +105,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer3", "env")),
 					env.EXPECT().AddEnvDir(filepath.Join(cacheDir, "buildpack2-id", "cache-layer4", "env")),
 				)
-				if _, err := builder.Build(cacheDir, launchDir, env); err != nil {
+				if _, err := builder.Build(cacheDir, launchDir, appDir, env); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 			})
@@ -117,7 +117,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(appDir, "launch-buildpack1", "launch-layer1"),
 					filepath.Join(appDir, "launch-buildpack2", "launch-layer2"),
 				)
-				if _, err := builder.Build(cacheDir, launchDir, env); err != nil {
+				if _, err := builder.Build(cacheDir, launchDir, appDir, env); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 				testExists(t,
@@ -127,7 +127,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should return build metadata when processes are present", func() {
-				metadata, err := builder.Build(cacheDir, launchDir, env)
+				metadata, err := builder.Build(cacheDir, launchDir, appDir, env)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -145,7 +145,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should return build metadata when processes are not present", func() {
 				mkfile(t, "test", filepath.Join(appDir, "skip-processes"))
-				metadata, err := builder.Build(cacheDir, launchDir, env)
+				metadata, err := builder.Build(cacheDir, launchDir, appDir, env)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -161,7 +161,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				mkfile(t, "some-data",
 					filepath.Join(platformDir, "env", "SOME_VAR"),
 				)
-				if _, err := builder.Build(cacheDir, launchDir, env); err != nil {
+				if _, err := builder.Build(cacheDir, launchDir, appDir, env); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 				testExists(t,
@@ -171,7 +171,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should connect stdout and stdin to the terminal", func() {
-				if _, err := builder.Build(cacheDir, launchDir, env); err != nil {
+				if _, err := builder.Build(cacheDir, launchDir, appDir, env); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 				if stdout.String() != "STDOUT1\nSTDOUT2\n" {
@@ -186,7 +186,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("building fails", func() {
 			it("should error when launch directories cannot be created", func() {
 				mkfile(t, "some-data", filepath.Join(launchDir, "buildpack1-id"))
-				_, err := builder.Build(cacheDir, launchDir, env)
+				_, err := builder.Build(cacheDir, launchDir, appDir, env)
 				if _, ok := err.(*os.PathError); !ok {
 					t.Fatalf("Incorrect error: %s\n", err)
 				}
@@ -194,7 +194,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should error when cache directories cannot be created", func() {
 				mkfile(t, "some-data", filepath.Join(cacheDir, "buildpack1-id"))
-				_, err := builder.Build(cacheDir, launchDir, env)
+				_, err := builder.Build(cacheDir, launchDir, appDir, env)
 				if _, ok := err.(*os.PathError); !ok {
 					t.Fatalf("Incorrect error: %s\n", err)
 				}
@@ -205,7 +205,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err := os.RemoveAll(platformDir); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
-				_, err := builder.Build(cacheDir, launchDir, env)
+				_, err := builder.Build(cacheDir, launchDir, appDir, env)
 				if _, ok := err.(*exec.ExitError); !ok {
 					t.Fatalf("Incorrect error: %s\n", err)
 				}
@@ -237,7 +237,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "cache-buildpack1", "cache-layer1"),
 						filepath.Join(appDir, "cache-buildpack1", "cache-layer2"),
 					)
-					if _, err := builder.Build(cacheDir, launchDir, env); err != appendErr {
+					if _, err := builder.Build(cacheDir, launchDir, appDir, env); err != appendErr {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
 				})
@@ -246,7 +246,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should error when launch.toml is not writable", func() {
 				env.EXPECT().List().Return([]string{"ID=1"})
 				mkdir(t, filepath.Join(launchDir, "buildpack1-id", "launch.toml"))
-				if _, err := builder.Build(cacheDir, launchDir, env); err == nil {
+				if _, err := builder.Build(cacheDir, launchDir, appDir, env); err == nil {
 					t.Fatal("Expected error")
 				}
 			})
