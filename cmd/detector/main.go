@@ -2,11 +2,12 @@ package main
 
 import (
 	"flag"
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/cmd"
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cmd"
 )
 
 var (

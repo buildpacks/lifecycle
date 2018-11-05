@@ -27,7 +27,7 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 		Map:     POSIXLaunchEnv,
 	}
 	if err := l.eachDir(l.LaunchDir, func(bp string) error {
-		if l.AppDir == filepath.Join(l.LaunchDir, bp) {
+		if filepath.Clean(l.AppDir) == filepath.Join(l.LaunchDir, bp) {
 			return nil
 		}
 		bpPath := filepath.Join(l.LaunchDir, bp)

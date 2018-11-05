@@ -39,7 +39,7 @@ func FlagAppDir(dir *string) {
 }
 
 func FlagAppDirSrc(dir *string) {
-	flag.StringVar(dir, "app-src", DefaultAppDir, "path to app directory")
+	flag.StringVar(dir, "app-src", DefaultAppDir, "path to app directory for export step")
 }
 
 func FlagCacheDir(dir *string) {
