@@ -26,7 +26,7 @@ type Exporter struct {
 	UID, GID   int
 }
 
-func (e *Exporter) Export(launchDirSrc, launchDirDst string, appDirSrc string, appDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
+func (e *Exporter) Export(launchDirSrc, launchDirDst, appDirSrc, appDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
 	metadata := AppImageMetadata{}
 
 	if err := addRunImageMetadata(runImage, &metadata); err != nil {
