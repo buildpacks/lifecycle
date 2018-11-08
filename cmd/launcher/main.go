@@ -14,6 +14,7 @@ import (
 
 var (
 	launchDir string
+	appDir    string
 )
 
 func main() {
@@ -32,6 +33,12 @@ func launch() error {
 	}
 	os.Unsetenv(lifecycle.EnvLaunchDir)
 
+	appDir := cmd.DefaultAppDir
+	if v := os.Getenv(lifecycle.EnvAppDir); v != "" {
+		appDir = v
+	}
+	os.Unsetenv(lifecycle.EnvAppDir)
+
 	var metadata lifecycle.BuildMetadata
 	metadataPath := filepath.Join(launchDir, "config", "metadata.toml")
 	if _, err := toml.DecodeFile(metadataPath, &metadata); err != nil {
@@ -41,6 +48,7 @@ func launch() error {
 	launcher := &lifecycle.Launcher{
 		DefaultProcessType: defaultProcessType,
 		LaunchDir:          launchDir,
+		AppDir:             appDir,
 		Processes:          metadata.Processes,
 		Buildpacks:         metadata.Buildpacks,
 		Exec:               syscall.Exec,

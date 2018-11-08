@@ -26,7 +26,7 @@ type Exporter struct {
 	UID, GID   int
 }
 
-func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
+func (e *Exporter) Export(launchDirSrc, launchDirDst, appDirSrc, appDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
 	metadata := AppImageMetadata{}
 
 	if err := addRunImageMetadata(runImage, &metadata); err != nil {
@@ -36,8 +36,8 @@ func (e *Exporter) Export(launchDirSrc, launchDirDst string, runImage, origImage
 	repoImage, appLayerDigest, err := e.addDirAsLayer(
 		runImage,
 		filepath.Join(e.TmpDir, "app.tgz"),
-		filepath.Join(launchDirSrc, "app"),
-		filepath.Join(launchDirDst, "app"),
+		appDirSrc,
+		appDirDst,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "append app layer to run image")

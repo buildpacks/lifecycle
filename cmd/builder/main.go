@@ -15,6 +15,7 @@ var (
 	groupPath     string
 	planPath      string
 	launchDir     string
+	appDir        string
 	cacheDir      string
 	platformDir   string
 )
@@ -24,6 +25,7 @@ func init() {
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagPlanPath(&planPath)
 	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagAppDir(&appDir)
 	cmd.FlagCacheDir(&cacheDir)
 	cmd.FlagPlatformDir(&platformDir)
 }
@@ -67,6 +69,7 @@ func build() error {
 	metadata, err := builder.Build(
 		cacheDir,
 		launchDir,
+		appDir,
 		env,
 	)
 	if err != nil {

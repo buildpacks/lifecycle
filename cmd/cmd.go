@@ -11,6 +11,7 @@ import (
 
 const (
 	DefaultLaunchDir      = "/workspace"
+	DefaultAppDir         = "/workspace/app"
 	DefaultCacheDir       = "/cache"
 	DefaultBuildpacksDir  = "/buildpacks"
 	DefaultPlatformDir    = "/platform"
@@ -31,6 +32,14 @@ func FlagLaunchDir(dir *string) {
 
 func FlagLaunchDirSrc(dir *string) {
 	flag.StringVar(dir, "launch-src", DefaultLaunchDir, "path to source launch directory for export step")
+}
+
+func FlagAppDir(dir *string) {
+	flag.StringVar(dir, "app", DefaultAppDir, "path to app directory")
+}
+
+func FlagAppDirSrc(dir *string) {
+	flag.StringVar(dir, "app-src", DefaultAppDir, "path to app directory for export step")
 }
 
 func FlagCacheDir(dir *string) {

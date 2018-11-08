@@ -18,6 +18,8 @@ var (
 	runImage     string
 	launchDir    string
 	launchDirSrc string
+	appDir       string
+	appDirSrc    string
 	groupPath    string
 	useDaemon    bool
 	useHelpers   bool
@@ -29,6 +31,8 @@ func init() {
 	cmd.FlagRunImage(&runImage)
 	cmd.FlagLaunchDir(&launchDir)
 	cmd.FlagLaunchDirSrc(&launchDirSrc)
+	cmd.FlagAppDir(&appDir)
+	cmd.FlagAppDirSrc(&appDirSrc)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
@@ -106,6 +110,8 @@ func export() error {
 	newImage, err := exporter.Export(
 		launchDirSrc,
 		launchDir,
+		appDirSrc,
+		appDir,
 		stackImage,
 		origImage,
 	)

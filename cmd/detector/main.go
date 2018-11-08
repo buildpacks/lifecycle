@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
@@ -13,7 +12,7 @@ import (
 
 var (
 	buildpacksDir string
-	launchDir     string
+	appDir        string
 	orderPath     string
 	groupPath     string
 	planPath      string
@@ -21,7 +20,7 @@ var (
 
 func init() {
 	cmd.FlagBuildpacksDir(&buildpacksDir)
-	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagAppDir(&appDir)
 	cmd.FlagOrderPath(&orderPath)
 
 	cmd.FlagGroupPath(&groupPath)
@@ -48,7 +47,7 @@ func detect() error {
 		return cmd.FailErr(err, "read buildpack order file")
 	}
 
-	info, group := order.Detect(logger, filepath.Join(launchDir, "app"))
+	info, group := order.Detect(logger, appDir)
 	if group == nil {
 		return cmd.FailCode(cmd.CodeFailedDetect, "detect")
 	}
