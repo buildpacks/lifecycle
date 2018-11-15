@@ -10,19 +10,19 @@ import (
 	"math/rand"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/img"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/img"
 )
 
 func TestExporter(t *testing.T) {
@@ -60,6 +60,45 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		}
 	})
 
+	when("#PrepareExport", func() {
+		it("creates fs representation of image", func() {
+			dir, err := exporter.PrepareExport("testdata/exporter/first/launch", "/launch/dest", "testdata/exporter/first/launch/app", "/app/dest")
+			assertNil(t, err)
+			var metadata lifecycle.AppImageMetadata
+			b, err := ioutil.ReadFile(filepath.Join(dir, "metadata.json"))
+			assertNil(t, err)
+			assertNil(t, json.Unmarshal(b, &metadata))
+
+			t.Log("generates app tar")
+			assertTarFileContents(t,
+				filepath.Join(dir, strings.Replace(metadata.App.SHA, "sha256:", "", -1)+".tar"),
+				"/app/dest/.hidden.txt", "some-hidden-text\n")
+
+			t.Log("generate config tar")
+			assertTarFileContents(t,
+				filepath.Join(dir, strings.Replace(metadata.Config.SHA, "sha256:", "", -1)+".tar"),
+				"/launch/dest/config/metadata.toml", "[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n")
+
+			t.Log("generates buildpacks layers")
+			assertEq(t, len(metadata.Buildpacks), 1)
+			assertTarFileContents(t,
+				filepath.Join(dir, strings.Replace(metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:", "", -1)+".tar"),
+				"/launch/dest/buildpack.id/layer1/file-from-layer-1", "echo text from layer 1\n")
+			assertEq(t,
+				metadata.Buildpacks[0].Layers["layer1"].Data,
+				map[string]interface{}{
+					"mykey": "myval",
+				})
+
+			assertTarFileContents(t,
+				filepath.Join(dir, strings.Replace(metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:", "", -1)+".tar"),
+				"/launch/dest/buildpack.id/layer2/file-from-layer-2", "echo text from layer 2\n")
+			assertEq(t,
+				metadata.Buildpacks[0].Layers["layer2"].Data,
+				map[string]interface{}{})
+		})
+	})
+
 	when("#Export", func() {
 		var runImage v1.Image
 
@@ -73,7 +112,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		it("should process a simple launch directory", func() {
 			image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest",
-				"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, nil)
+				"testdata/exporter/first/launch/app", "/app/dest", runImage, nil)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -111,10 +150,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("adds app layer to image")
-			if txt, err := getImageFile(image, data.App.SHA, "/launch/dest/app/subdir/myfile.txt"); err != nil {
+			if txt, err := getImageFile(image, data.App.SHA, "/app/dest/subdir/myfile.txt"); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			} else if diff := cmp.Diff(strings.TrimSpace(txt), "mycontents"); diff != "" {
-				t.Fatalf(`/launch/dest/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+				t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
 			}
 
 			t.Log("adds config layer to image")
@@ -150,12 +189,12 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/launch/dest/app/subdir/myfile.txt"); err != nil {
+			if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/app/dest/subdir/myfile.txt"); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			} else if diff := cmp.Diff(strconv.Itoa(uid), currentUser.Uid); diff != "" {
-				t.Fatalf(`/launch/dest/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+				t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
 			} else if diff := cmp.Diff(strconv.Itoa(gid), currentUser.Gid); diff != "" {
-				t.Fatalf(`/launch/dest/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+				t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
 			}
 		})
 
@@ -166,7 +205,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 			it("sets uid/gid on the layer files", func() {
 				image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest",
-					"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, nil)
+					"testdata/exporter/first/launch/app", "/app/dest", runImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -176,21 +215,21 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				// File
-				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/launch/dest/app/subdir/myfile.txt"); err != nil {
+				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/app/dest/subdir/myfile.txt"); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				} else if diff := cmp.Diff(uid, 1234); diff != "" {
-					t.Fatalf(`/launch/dest/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+					t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
 				} else if diff := cmp.Diff(gid, 5678); diff != "" {
-					t.Fatalf(`/launch/dest/app/subdir/myfile.txt: (-got +want)\n%s`, diff)
+					t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
 				}
 
 				// Directory
-				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/launch/dest/app/subdir"); err != nil {
+				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/app/dest/subdir/"); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				} else if diff := cmp.Diff(uid, 1234); diff != "" {
-					t.Fatalf(`/launch/dest/app/subdir: (-got +want)\n%s`, diff)
+					t.Fatalf(`/app/dest/subdir/: (-got +want)\n%s`, diff)
 				} else if diff := cmp.Diff(gid, 5678); diff != "" {
-					t.Fatalf(`/launch/dest/app/subdir: (-got +want)\n%s`, diff)
+					t.Fatalf(`/app/dest/subdir/: (-got +want)\n%s`, diff)
 				}
 			})
 		})
@@ -200,7 +239,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				var err error
 				firstImage, err = exporter.Export("testdata/exporter/first/launch", "/launch/dest",
-					"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, nil)
+					"testdata/exporter/first/launch/app", "/app/dest", runImage, nil)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -208,7 +247,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 			it("should reuse layers if there is a layer TOML file", func() {
 				image, err := exporter.Export("testdata/exporter/second/launch", "/launch/dest",
-					"testdata/exporter/first/launch/app", "/launch/dest/app", runImage, firstImage)
+					"testdata/exporter/first/launch/app", "/app/dest", runImage, firstImage)
 				if err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -379,4 +418,27 @@ func envVar(image v1.Image, key string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("image ENV did not contain variable '%s'", key)
+}
+
+func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
+	r, err := os.Open(tarfile)
+	assertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assertNil(t, err)
+
+		if header.Name == path {
+			buf, err := ioutil.ReadAll(tr)
+			assertNil(t, err)
+			assertEq(t, string(buf), expected)
+			return
+		}
+	}
+	t.Fatalf("%s does not exist in %s", path, tarfile)
 }
