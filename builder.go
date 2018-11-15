@@ -95,7 +95,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
-		cmd := exec.Command(buildPath, platformDir, bpCacheDir, bpLaunchDir, bpPlanDir)
+		cmd := exec.Command(buildPath, platformDir, bpPlanDir, bpCacheDir, bpLaunchDir)
 		cmd.Env = b.Env.List()
 		cmd.Dir = appDir
 		cmd.Stdin = planIn
