@@ -12,12 +12,13 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle/img"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/img"
 )
 
 type Exporter struct {

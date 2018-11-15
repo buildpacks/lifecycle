@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/img"
@@ -17,7 +18,7 @@ var (
 	runImage     string
 	launchDir    string
 	launchDirSrc string
-	dryrun       string
+	dryRun       string
 	appDir       string
 	appDirSrc    string
 	groupPath    string
@@ -33,7 +34,7 @@ func init() {
 	cmd.FlagLaunchDirSrc(&launchDirSrc)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagAppDirSrc(&appDirSrc)
-	cmd.FlagDryRunDir(&dryrun)
+	cmd.FlagDryRunDir(&dryRun)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
@@ -66,8 +67,8 @@ func export() error {
 		GID:        gid,
 	}
 
-	if dryrun != "" {
-		exporter.TmpDir = dryrun
+	if dryRun != "" {
+		exporter.TmpDir = dryRun
 		if err := os.MkdirAll(exporter.TmpDir, 0777); err != nil {
 			return cmd.FailErr(err, "create temp directory")
 		}
@@ -86,10 +87,10 @@ func export() error {
 		appDir,
 	)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
+		return cmd.FailErr(err, "prepare export")
 	}
 
-	if dryrun != "" {
+	if dryRun != "" {
 		return nil
 	}
 

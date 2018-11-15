@@ -35,7 +35,7 @@ func FlagLaunchDirSrc(dir *string) {
 }
 
 func FlagDryRunDir(dir *string) {
-	flag.StringVar(dir, "dryrun", "", "path to store first stage output in. (Don't perform export)")
+	flag.StringVar(dir, "dry-run", "", "path to store first stage output in (Don't perform export)")
 }
 
 func FlagAppDir(dir *string) {
