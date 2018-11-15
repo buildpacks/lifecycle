@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"github.com/google/go-cmp/cmp"
 
 	"github.com/buildpack/lifecycle"
 )
