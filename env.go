@@ -27,7 +27,7 @@ func (p *Env) AddRootDir(baseDir string) error {
 			return err
 		}
 		for _, key := range vars {
-			value := suffix(p.Getenv(key), os.PathListSeparator) + newDir
+			value := newDir + prefix(p.Getenv(key), os.PathListSeparator)
 			if err := p.Setenv(key, value); err != nil {
 				return err
 			}
@@ -36,11 +36,11 @@ func (p *Env) AddRootDir(baseDir string) error {
 	return nil
 }
 
-func suffix(s string, suffix byte) string {
+func prefix(s string, prefix byte) string {
 	if s == "" {
 		return ""
 	} else {
-		return s + string(suffix)
+		return string(prefix) + s
 	}
 }
 
@@ -54,11 +54,11 @@ func (p *Env) AddEnvDir(envDir string) error {
 		}
 		switch action {
 		case "append":
-			return p.Setenv(name, p.Getenv(name)+v)
+			return p.Setenv(name, v+p.Getenv(name))
 		case "override":
 			return p.Setenv(name, v)
 		default:
-			return p.Setenv(name, suffix(p.Getenv(name), os.PathListSeparator)+v)
+			return p.Setenv(name, v+prefix(p.Getenv(name), os.PathListSeparator))
 		}
 	})
 }

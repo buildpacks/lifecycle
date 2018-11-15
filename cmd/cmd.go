@@ -16,7 +16,7 @@ const (
 	DefaultBuildpacksDir  = "/buildpacks"
 	DefaultPlatformDir    = "/platform"
 	DefaultOrderPath      = "/buildpacks/order.toml"
-	DefaultGroupPath      = `./group.toml`
+	DefaultGroupPath      = "./group.toml"
 	DefaultPlanPath       = "./plan.toml"
 	DefaultUseDaemon      = false
 	DefaultUseCredHelpers = false

@@ -13,14 +13,17 @@ import (
 var (
 	buildpacksDir string
 	appDir        string
+	platformDir   string
 	orderPath     string
-	groupPath     string
-	planPath      string
+
+	groupPath string
+	planPath  string
 )
 
 func init() {
 	cmd.FlagBuildpacksDir(&buildpacksDir)
 	cmd.FlagAppDir(&appDir)
+	cmd.FlagPlatformDir(&platformDir)
 	cmd.FlagOrderPath(&orderPath)
 
 	cmd.FlagGroupPath(&groupPath)
@@ -36,7 +39,8 @@ func main() {
 }
 
 func detect() error {
-	logger := log.New(os.Stderr, "", log.LstdFlags)
+	errLog := log.New(os.Stderr, "", log.LstdFlags)
+	outLog := log.New(os.Stdout, "", log.LstdFlags)
 
 	buildpacks, err := lifecycle.NewBuildpackMap(buildpacksDir)
 	if err != nil {
@@ -47,7 +51,12 @@ func detect() error {
 		return cmd.FailErr(err, "read buildpack order file")
 	}
 
-	info, group := order.Detect(logger, appDir)
+	info, group := order.Detect(&lifecycle.DetectConfig{
+		AppDir:      appDir,
+		PlatformDir: platformDir,
+		Out:         outLog,
+		Err:         errLog,
+	})
 	if group == nil {
 		return cmd.FailCode(cmd.CodeFailedDetect, "detect")
 	}

@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
@@ -48,30 +49,30 @@ func build() error {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	info, err := ioutil.ReadFile(planPath)
-	if err != nil {
-		return cmd.FailErr(err, "read build plan")
+	var plan lifecycle.Plan
+	if _, err := toml.DecodeFile(planPath, &plan); err != nil {
+		return cmd.FailErr(err, "parse build plan")
 	}
 
-	builder := &lifecycle.Builder{
-		PlatformDir: platformDir,
-		Buildpacks:  group.Buildpacks,
-		In:          info,
-		Out:         os.Stdout,
-		Err:         os.Stderr,
-	}
 	env := &lifecycle.Env{
 		Getenv:  os.Getenv,
 		Setenv:  os.Setenv,
 		Environ: os.Environ,
 		Map:     lifecycle.POSIXBuildEnv,
 	}
-	metadata, err := builder.Build(
-		cacheDir,
-		launchDir,
-		appDir,
-		env,
-	)
+	builder := &lifecycle.Builder{
+		PlatformDir: platformDir,
+		CacheDir:    cacheDir,
+		LaunchDir:   launchDir,
+		AppDir:      appDir,
+		Env:         env,
+		Buildpacks:  group.Buildpacks,
+		Plan:        plan,
+		Out:         os.Stdout,
+		Err:         os.Stderr,
+	}
+
+	metadata, err := builder.Build()
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}

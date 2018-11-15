@@ -5,6 +5,13 @@ set -eo pipefail
 platform_dir=$1
 cache_dir=$2
 launch_dir=$3
+plan_dir=$4
+
+cat - > "plan${ID}.toml"
+echo > "$plan_dir/dep${ID}-keep"
+if [[ -f dep-replace ]]; then
+  cat dep-replace > "$plan_dir/dep${ID}-replace"
+fi
 
 echo "STDOUT${ID}"
 >&2 echo "STDERR${ID}"
