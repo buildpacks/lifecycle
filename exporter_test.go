@@ -299,11 +299,18 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal("/launch/dest/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
 				}
 
-				t.Log("adds PACKS_LAUNCH_DIR env var")
+				t.Log("adds PACK_LAUNCH_DIR env var")
 				if val, err := envVar(image, "PACK_LAUNCH_DIR"); err != nil {
 					t.Fatal(err)
 				} else if val != "/launch/dest" {
 					t.Fatalf("expected exporter to set env var PACK_LAUNCH_DIR to '/launch/dest', got '%s'", val)
+				}
+
+				t.Log("adds PACK_APP_DIR env var")
+				if val, err := envVar(image, "PACK_APP_DIR"); err != nil {
+					t.Fatal(err)
+				} else if val != "/app/dest" {
+					t.Fatalf("expected exporter to set env var PACK_APP_DIR to '/app/dest', got '%s'", val)
 				}
 			})
 		})
