@@ -34,6 +34,10 @@ func FlagLaunchDirSrc(dir *string) {
 	flag.StringVar(dir, "launch-src", DefaultLaunchDir, "path to source launch directory for export step")
 }
 
+func FlagDryRunDir(dir *string) {
+	flag.StringVar(dir, "dry-run", "", "path to store first stage output in (Don't perform export)")
+}
+
 func FlagAppDir(dir *string) {
 	flag.StringVar(dir, "app", DefaultAppDir, "path to app directory")
 }

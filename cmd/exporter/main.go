@@ -18,6 +18,7 @@ var (
 	runImage     string
 	launchDir    string
 	launchDirSrc string
+	dryRun       string
 	appDir       string
 	appDirSrc    string
 	groupPath    string
@@ -33,6 +34,7 @@ func init() {
 	cmd.FlagLaunchDirSrc(&launchDirSrc)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagAppDirSrc(&appDirSrc)
+	cmd.FlagDryRunDir(&dryRun)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
@@ -43,7 +45,7 @@ func init() {
 func main() {
 	flag.Parse()
 	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" {
-		args := map[string]interface{}{"narg": flag.NArg, "runImage": runImage, "launchDir": launchDir}
+		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImage, "launchDir": launchDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -51,6 +53,47 @@ func main() {
 }
 
 func export() error {
+	var group lifecycle.BuildpackGroup
+	var err error
+	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
+		return cmd.FailErr(err, "read group")
+	}
+
+	exporter := &lifecycle.Exporter{
+		Buildpacks: group.Buildpacks,
+		Out:        os.Stdout,
+		Err:        os.Stderr,
+		UID:        uid,
+		GID:        gid,
+	}
+
+	if dryRun != "" {
+		exporter.TmpDir = dryRun
+		if err := os.MkdirAll(exporter.TmpDir, 0777); err != nil {
+			return cmd.FailErr(err, "create temp directory")
+		}
+	} else {
+		exporter.TmpDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
+		if err != nil {
+			return cmd.FailErr(err, "create temp directory")
+		}
+		defer os.RemoveAll(exporter.TmpDir)
+	}
+
+	_, err = exporter.PrepareExport(
+		launchDirSrc,
+		launchDir,
+		appDirSrc,
+		appDir,
+	)
+	if err != nil {
+		return cmd.FailErr(err, "prepare export")
+	}
+
+	if dryRun != "" {
+		return nil
+	}
+
 	if useHelpers {
 		if err := img.SetupCredHelpers(repoName, runImage); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
@@ -88,30 +131,9 @@ func export() error {
 		origImage = nil
 	}
 
-	var group lifecycle.BuildpackGroup
-	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
-		return cmd.FailErr(err, "read group")
-	}
-
-	tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
-	if err != nil {
-		return cmd.FailErr(err, "create temp directory")
-	}
-	defer os.RemoveAll(tmpDir)
-
-	exporter := &lifecycle.Exporter{
-		Buildpacks: group.Buildpacks,
-		TmpDir:     tmpDir,
-		Out:        os.Stdout,
-		Err:        os.Stderr,
-		UID:        uid,
-		GID:        gid,
-	}
-	newImage, err := exporter.Export(
+	newImage, err := exporter.ExportImage(
 		launchDirSrc,
 		launchDir,
-		appDirSrc,
-		appDir,
 		stackImage,
 		origImage,
 	)
