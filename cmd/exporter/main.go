@@ -7,29 +7,28 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/img"
 )
 
 var (
-	repoName         string
-	runImageRepoName string
-	launchDir        string
-	launchDirSrc     string
-	dryRun           string
-	appDir           string
-	appDirSrc        string
-	groupPath        string
-	useDaemon        bool
-	useHelpers       bool
-	uid              int
-	gid              int
+	repoName     string
+	runImageRef  string
+	launchDir    string
+	launchDirSrc string
+	dryRun       string
+	appDir       string
+	appDirSrc    string
+	groupPath    string
+	useDaemon    bool
+	useHelpers   bool
+	uid          int
+	gid          int
 )
 
 func init() {
-	cmd.FlagRunImage(&runImageRepoName)
+	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagLaunchDir(&launchDir)
 	cmd.FlagLaunchDirSrc(&launchDirSrc)
 	cmd.FlagAppDir(&appDir)
@@ -44,8 +43,8 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRepoName == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRepoName, "launchDir": launchDir}
+	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRef == "" {
+		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "launchDir": launchDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -95,7 +94,7 @@ func export() error {
 	}
 
 	if useHelpers {
-		if err := img.SetupCredHelpers(repoName, runImageRepoName); err != nil {
+		if err := img.SetupCredHelpers(repoName, runImageRef); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -113,13 +112,13 @@ func export() error {
 	if useDaemon {
 		newRunImageStore = img.NewDaemon
 	}
-	runImageStore, err := newRunImageStore(runImageRepoName)
+	runImageStore, err := newRunImageStore(runImageRef)
 	if err != nil {
-		return cmd.FailErr(err, "access", runImageRepoName)
+		return cmd.FailErr(err, "access", runImageRef)
 	}
 	runImage, err := runImageStore.Image()
 	if err != nil {
-		return cmd.FailErr(err, "get image for", runImageRepoName)
+		return cmd.FailErr(err, "get image for", runImageRef)
 	}
 
 	origImage, err := repoStore.Image()
