@@ -41,11 +41,11 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 	var err error
 	var metadata AppImageMetadata
 
-	metadata.App.SHA, err = e.exportTar(appDirSrc, appDirDst, "")
+	metadata.App.SHA, err = e.exportTar(appDirSrc, appDirDst)
 	if err != nil {
 		return "", errors.Wrap(err, "exporting app layer tar")
 	}
-	metadata.Config.SHA, err = e.exportTar(launchDirSrc, launchDirDst, "config")
+	metadata.Config.SHA, err = e.exportTar(filepath.Join(launchDirSrc, "config"), filepath.Join(launchDirDst, "config"))
 	if err != nil {
 		return "", errors.Wrap(err, "exporting config layer tar")
 	}
@@ -65,7 +65,10 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 			layerName := filepath.Base(dir)
 			_, err := os.Stat(dir)
 			if !os.IsNotExist(err) {
-				bpLayer.SHA, err = e.exportTar(launchDirSrc, launchDirDst, filepath.Join(buildpack.ID, layerName))
+				bpLayer.SHA, err = e.exportTar(
+					filepath.Join(launchDirSrc, buildpack.ID, layerName),
+					filepath.Join(launchDirDst, buildpack.ID, layerName),
+				)
 				if err != nil {
 					return "", errors.Wrapf(err, "exporting tar for layer '%s/%s'", buildpack.ID, layerName)
 				}
@@ -243,11 +246,12 @@ func (e *Exporter) writeWithSHA(r io.Reader) (string, error) {
 	return "sha256:" + sha, nil
 }
 
-func (e *Exporter) exportTar(launchDirSrc, launchDirDst, name string) (string, error) {
+func (e *Exporter) exportTar(sourceDir, destDir string) (string, error) {
+	name := filepath.Base(sourceDir)
 	tarOptions := &archive.TarOptions{
 		IncludeFiles: []string{name},
 		RebaseNames: map[string]string{
-			name: launchDirDst + "/" + name,
+			name: destDir,
 		},
 	}
 	if e.UID > 0 && e.GID > 0 {
@@ -256,7 +260,7 @@ func (e *Exporter) exportTar(launchDirSrc, launchDirDst, name string) (string, e
 			GID: e.GID,
 		}
 	}
-	rc, err := archive.TarWithOptions(filepath.Join(launchDirSrc), tarOptions)
+	rc, err := archive.TarWithOptions(filepath.Dir(sourceDir), tarOptions)
 	if err != nil {
 		return "", err
 	}
