@@ -141,7 +141,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		when("buildpacks provided profile.d scripts", func() {
 			it.Before(func() {
-				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "app", "start"), []byte("#!/usr/bin/env bash\necho hi from app\n"), 0755); err != nil {
+				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "app", "start"), []byte("#!/usr/bin/env bash\necho hi from app\n"), 0777); err != nil {
 					t.Fatal(err)
 				}
 				launcher.Processes = []lifecycle.Process{
@@ -150,16 +150,16 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				launcher.Buildpacks = []string{"bp.1", "bp.2"}
 				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
-				if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"), 0777); err != nil {
 					t.Fatal(err)
 				}
-				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "apple"), []byte("echo apple"), 0644); err != nil {
+				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "apple"), []byte("echo apple"), 0666); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d"), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d"), 0777); err != nil {
 					t.Fatal(err)
 				}
-				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "banana"), []byte("echo banana"), 0644); err != nil {
+				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "banana"), []byte("echo banana"), 0666); err != nil {
 					t.Fatal(err)
 				}
 			})

@@ -26,11 +26,19 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 		Environ: os.Environ,
 		Map:     POSIXLaunchEnv,
 	}
+	appInfo, err := os.Stat(l.AppDir)
+	if err != nil {
+		return errors.Wrap(err, "find app directory")
+	}
 	if err := l.eachDir(l.LaunchDir, func(bp string) error {
-		if filepath.Clean(l.AppDir) == filepath.Join(l.LaunchDir, bp) {
+		bpPath := filepath.Join(l.LaunchDir, bp)
+		bpInfo, err := os.Stat(bpPath)
+		if err != nil {
+			return errors.Wrap(err, "find buildpack directory")
+		}
+		if os.SameFile(appInfo, bpInfo) {
 			return nil
 		}
-		bpPath := filepath.Join(l.LaunchDir, bp)
 		return l.eachDir(bpPath, func(layer string) error {
 			return env.AddRootDir(filepath.Join(bpPath, layer))
 		})
@@ -41,7 +49,7 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 		return errors.Wrap(err, "change to app directory")
 	}
 
-	startCommand, err := l.processFor(startCommand)
+	startCommand, err = l.processFor(startCommand)
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
 	}
