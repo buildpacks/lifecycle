@@ -134,6 +134,7 @@ func export() error {
 	newImage, err := exporter.ExportImage(
 		launchDirSrc,
 		launchDir,
+		appDir,
 		stackImage,
 		origImage,
 	)

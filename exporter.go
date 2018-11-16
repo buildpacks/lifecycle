@@ -34,7 +34,7 @@ func (e *Exporter) Export(launchDirSrc, launchDirDst, appDirSrc, appDirDst strin
 	if err != nil {
 		return nil, errors.Wrapf(err, "prepare export")
 	}
-	return e.ExportImage(dir, launchDirDst, runImage, origImage)
+	return e.ExportImage(dir, launchDirDst, appDirDst, runImage, origImage)
 }
 
 func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDst string) (string, error) {
@@ -99,7 +99,7 @@ func rawSHA(prefixedSHA string) string {
 	return strings.TrimPrefix(prefixedSHA, "sha256:")
 }
 
-func (e *Exporter) ExportImage(exportDir, launchDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
+func (e *Exporter) ExportImage(exportDir, launchDirDst, appDirDst string, runImage, origImage v1.Image) (v1.Image, error) {
 	data, err := ioutil.ReadFile(filepath.Join(exportDir, "metadata.json"))
 	if err != nil {
 		return nil, err
@@ -169,6 +169,11 @@ func (e *Exporter) ExportImage(exportDir, launchDirDst string, runImage, origIma
 	repoImage, err = img.Env(repoImage, EnvLaunchDir, launchDirDst)
 	if err != nil {
 		return nil, errors.Wrap(err, "set launch dir env var")
+	}
+
+	repoImage, err = img.Env(repoImage, EnvAppDir, appDirDst)
+	if err != nil {
+		return nil, errors.Wrap(err, "set app dir env var")
 	}
 
 	return repoImage, nil
