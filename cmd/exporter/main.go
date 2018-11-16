@@ -14,22 +14,22 @@ import (
 )
 
 var (
-	repoName     string
-	runImage     string
-	launchDir    string
-	launchDirSrc string
-	dryRun       string
-	appDir       string
-	appDirSrc    string
-	groupPath    string
-	useDaemon    bool
-	useHelpers   bool
-	uid          int
-	gid          int
+	repoName         string
+	runImageRepoName string
+	launchDir        string
+	launchDirSrc     string
+	dryRun           string
+	appDir           string
+	appDirSrc        string
+	groupPath        string
+	useDaemon        bool
+	useHelpers       bool
+	uid              int
+	gid              int
 )
 
 func init() {
-	cmd.FlagRunImage(&runImage)
+	cmd.FlagRunImage(&runImageRepoName)
 	cmd.FlagLaunchDir(&launchDir)
 	cmd.FlagLaunchDirSrc(&launchDirSrc)
 	cmd.FlagAppDir(&appDir)
@@ -44,8 +44,8 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImage, "launchDir": launchDir}
+	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRepoName == "" {
+		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRepoName, "launchDir": launchDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -95,7 +95,7 @@ func export() error {
 	}
 
 	if useHelpers {
-		if err := img.SetupCredHelpers(repoName, runImage); err != nil {
+		if err := img.SetupCredHelpers(repoName, runImageRepoName); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -113,13 +113,13 @@ func export() error {
 	if useDaemon {
 		newRunImageStore = img.NewDaemon
 	}
-	stackStore, err := newRunImageStore(runImage)
+	runImageStore, err := newRunImageStore(runImageRepoName)
 	if err != nil {
-		return cmd.FailErr(err, "access", runImage)
+		return cmd.FailErr(err, "access", runImageRepoName)
 	}
-	stackImage, err := stackStore.Image()
+	runImage, err := runImageStore.Image()
 	if err != nil {
-		return cmd.FailErr(err, "get image for", runImage)
+		return cmd.FailErr(err, "get image for", runImageRepoName)
 	}
 
 	origImage, err := repoStore.Image()
@@ -135,7 +135,7 @@ func export() error {
 		launchDirSrc,
 		launchDir,
 		appDir,
-		stackImage,
+		runImage,
 		origImage,
 	)
 	if err != nil {

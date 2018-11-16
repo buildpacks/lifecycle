@@ -198,7 +198,7 @@ func origLayerDiffID(metadata *AppImageMetadata, buildpackID, layerName string) 
 func addRunImageMetadata(runImage v1.Image, metadata *AppImageMetadata) error {
 	runLayerDiffID, err := img.TopLayerDiffID(runImage)
 	if err != nil {
-		return errors.Wrap(err, "find run image digest")
+		return errors.Wrap(err, "find run image top layer diff ID")
 	}
 	runImageDigest, err := runImage.Digest()
 	if err != nil {
