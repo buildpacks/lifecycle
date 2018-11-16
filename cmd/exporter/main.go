@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/img"
@@ -15,7 +14,7 @@ import (
 
 var (
 	repoName     string
-	runImage     string
+	runImageRef  string
 	launchDir    string
 	launchDirSrc string
 	dryRun       string
@@ -29,7 +28,7 @@ var (
 )
 
 func init() {
-	cmd.FlagRunImage(&runImage)
+	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagLaunchDir(&launchDir)
 	cmd.FlagLaunchDirSrc(&launchDirSrc)
 	cmd.FlagAppDir(&appDir)
@@ -44,8 +43,8 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || runImage == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImage, "launchDir": launchDir}
+	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRef == "" {
+		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "launchDir": launchDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -68,19 +67,19 @@ func export() error {
 	}
 
 	if dryRun != "" {
-		exporter.TmpDir = dryRun
-		if err := os.MkdirAll(exporter.TmpDir, 0777); err != nil {
+		exporter.ArtifactsDir = dryRun
+		if err := os.MkdirAll(exporter.ArtifactsDir, 0777); err != nil {
 			return cmd.FailErr(err, "create temp directory")
 		}
 	} else {
-		exporter.TmpDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
+		exporter.ArtifactsDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
 		if err != nil {
 			return cmd.FailErr(err, "create temp directory")
 		}
-		defer os.RemoveAll(exporter.TmpDir)
+		defer os.RemoveAll(exporter.ArtifactsDir)
 	}
 
-	_, err = exporter.PrepareExport(
+	err = exporter.PrepareExport(
 		launchDirSrc,
 		launchDir,
 		appDirSrc,
@@ -95,7 +94,7 @@ func export() error {
 	}
 
 	if useHelpers {
-		if err := img.SetupCredHelpers(repoName, runImage); err != nil {
+		if err := img.SetupCredHelpers(repoName, runImageRef); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -113,13 +112,13 @@ func export() error {
 	if useDaemon {
 		newRunImageStore = img.NewDaemon
 	}
-	stackStore, err := newRunImageStore(runImage)
+	runImageStore, err := newRunImageStore(runImageRef)
 	if err != nil {
-		return cmd.FailErr(err, "access", runImage)
+		return cmd.FailErr(err, "access", runImageRef)
 	}
-	stackImage, err := stackStore.Image()
+	runImage, err := runImageStore.Image()
 	if err != nil {
-		return cmd.FailErr(err, "get image for", runImage)
+		return cmd.FailErr(err, "get image for", runImageRef)
 	}
 
 	origImage, err := repoStore.Image()
@@ -132,10 +131,9 @@ func export() error {
 	}
 
 	newImage, err := exporter.ExportImage(
-		launchDirSrc,
 		launchDir,
 		appDir,
-		stackImage,
+		runImage,
 		origImage,
 	)
 	if err != nil {
