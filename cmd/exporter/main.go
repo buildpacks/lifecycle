@@ -68,19 +68,19 @@ func export() error {
 	}
 
 	if dryRun != "" {
-		exporter.TmpDir = dryRun
-		if err := os.MkdirAll(exporter.TmpDir, 0777); err != nil {
+		exporter.ArtifactsDir = dryRun
+		if err := os.MkdirAll(exporter.ArtifactsDir, 0777); err != nil {
 			return cmd.FailErr(err, "create temp directory")
 		}
 	} else {
-		exporter.TmpDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
+		exporter.ArtifactsDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
 		if err != nil {
 			return cmd.FailErr(err, "create temp directory")
 		}
-		defer os.RemoveAll(exporter.TmpDir)
+		defer os.RemoveAll(exporter.ArtifactsDir)
 	}
 
-	_, err = exporter.PrepareExport(
+	err = exporter.PrepareExport(
 		launchDirSrc,
 		launchDir,
 		appDirSrc,
@@ -132,7 +132,6 @@ func export() error {
 	}
 
 	newImage, err := exporter.ExportImage(
-		launchDirSrc,
 		launchDir,
 		appDir,
 		runImage,

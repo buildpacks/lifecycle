@@ -46,7 +46,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			t.Fatal(err)
 		}
 		exporter = &lifecycle.Exporter{
-			TmpDir: tmpDir,
+			ArtifactsDir: tmpDir,
 			Buildpacks: []*lifecycle.Buildpack{
 				{ID: "buildpack.id"},
 			},
@@ -69,35 +69,35 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates fs representation of image", func() {
-				dir, err := exporter.PrepareExport("testdata/exporter/first/launch", "/launch/dest", "testdata/exporter/first/launch/app", "/app/dest")
+				err := exporter.PrepareExport("testdata/exporter/first/launch", "/launch/dest", "testdata/exporter/first/launch/app", "/app/dest")
 				assertNil(t, err)
 				var metadata lifecycle.AppImageMetadata
-				b, err := ioutil.ReadFile(filepath.Join(dir, "metadata.json"))
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "metadata.json"))
 				assertNil(t, err)
 				assertNil(t, json.Unmarshal(b, &metadata))
 
 				t.Log("generates app tar")
 				assertTarFileContents(t,
-					filepath.Join(dir, strings.Replace(metadata.App.SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.App.SHA, "sha256:", "", -1)+".tar"),
 					"/app/dest/.hidden.txt", "some-hidden-text\n")
 				assertTarFileOwner(t,
-					filepath.Join(dir, strings.Replace(metadata.App.SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.App.SHA, "sha256:", "", -1)+".tar"),
 					"/app/dest/",
 					1234, 5678)
 
 				t.Log("generate config tar")
 				assertTarFileContents(t,
-					filepath.Join(dir, strings.Replace(metadata.Config.SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.Config.SHA, "sha256:", "", -1)+".tar"),
 					"/launch/dest/config/metadata.toml", "[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n")
 				assertTarFileOwner(t,
-					filepath.Join(dir, strings.Replace(metadata.Config.SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.Config.SHA, "sha256:", "", -1)+".tar"),
 					"/launch/dest/config/",
 					1234, 5678)
 
 				t.Log("generates buildpacks layers")
 				assertEq(t, len(metadata.Buildpacks), 1)
 				assertTarFileContents(t,
-					filepath.Join(dir, strings.Replace(metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:", "", -1)+".tar"),
 					"/launch/dest/buildpack.id/layer1/file-from-layer-1", "echo text from layer 1\n")
 				assertEq(t,
 					metadata.Buildpacks[0].Layers["layer1"].Data,
@@ -105,18 +105,18 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						"mykey": "myval",
 					})
 				assertTarFileOwner(t,
-					filepath.Join(dir, strings.Replace(metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:", "", -1)+".tar"),
 					"/launch/dest/buildpack.id/layer1/",
 					1234, 5678)
 
 				assertTarFileContents(t,
-					filepath.Join(dir, strings.Replace(metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:", "", -1)+".tar"),
 					"/launch/dest/buildpack.id/layer2/file-from-layer-2", "echo text from layer 2\n")
 				assertEq(t,
 					metadata.Buildpacks[0].Layers["layer2"].Data,
 					map[string]interface{}{})
 				assertTarFileOwner(t,
-					filepath.Join(dir, strings.Replace(metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:", "", -1)+".tar"),
+					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:", "", -1)+".tar"),
 					"/launch/dest/buildpack.id/layer2/",
 					1234, 5678)
 			})
