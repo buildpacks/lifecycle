@@ -7,10 +7,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -23,8 +23,12 @@ func TestDetector(t *testing.T) {
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	var (
-		list   lifecycle.BuildpackOrder
-		tmpDir string
+		list           lifecycle.BuildpackOrder
+		config         *lifecycle.DetectConfig
+		outLog, errLog *bytes.Buffer
+		tmpDir         string
+		appDir         string
+		platformDir    string
 	)
 
 	it.Before(func() {
@@ -33,6 +37,19 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
+		platformDir = filepath.Join(tmpDir, "platform")
+		appDir = filepath.Join(tmpDir, "app")
+		mkdir(t, appDir, filepath.Join(platformDir, "env"), filepath.Join(platformDir, "plan"))
+
+		outLog = &bytes.Buffer{}
+		errLog = &bytes.Buffer{}
+		config = &lifecycle.DetectConfig{
+			AppDir:      appDir,
+			PlatformDir: platformDir,
+			Out:         log.New(io.MultiWriter(outLog, it.Out()), "", 0),
+			Err:         log.New(io.MultiWriter(errLog, it.Out()), "", 0),
+		}
+
 		buildpackDir := filepath.Join("testdata", "buildpack")
 		list = lifecycle.BuildpackOrder{
 			{
@@ -78,61 +95,78 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Detect", func() {
 		it("should return the first matching group without optional buildpacks", func() {
-			mkfile(t, "1", filepath.Join(tmpDir, "add"))
-			mkfile(t, "3", filepath.Join(tmpDir, "last"))
-			out := &bytes.Buffer{}
-			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
+			mkfile(t, "1", filepath.Join(appDir, "add"))
+			mkfile(t, "3", filepath.Join(appDir, "last"))
 
 			result := list[1]
 			result.Buildpacks = result.Buildpacks[:len(result.Buildpacks)-1]
-			if info, group := list.Detect(l, tmpDir); !reflect.DeepEqual(*group, result) {
-				t.Fatalf("Unexpected group: %#v\n", group)
-			} else if s := string(info); s != "1 = true\n2 = true\n3 = true\n" {
-				t.Fatalf("Unexpected info: %s\n", s)
+			plan, group := list.Detect(config)
+			if s := cmp.Diff(*group, result); s != "" {
+				t.Fatalf("Unexpected group:\n%s\n", s)
+			}
+			if s := cmp.Diff(string(plan), "[1]\n  1 = true\n\n[2]\n  2 = true\n\n[3]\n  3 = true\n"); s != "" {
+				t.Fatalf("Unexpected plan:\n%s\n", s)
 			}
 
-			if !strings.HasSuffix(out.String(),
-				"4 = true\nGroup: buildpack1-name: pass | buildpack2-name: pass | buildpack3-name: pass | buildpack4-name: fail\n",
+			if !strings.HasSuffix(outLog.String(),
+				"======== Output: buildpack4-name ========\n"+
+					"stdout: 4\nstderr: 4\n"+
+					"======== Results ========\n"+
+					"buildpack1-name: pass\nbuildpack2-name: pass\nbuildpack3-name: pass\nbuildpack4-name: skip\n",
 			) {
-				t.Fatalf("Unexpected log: %s\n", out)
+				t.Fatalf("Unexpected log: %s\n", outLog)
+			}
+
+			if errLog.Len() > 0 {
+				t.Fatalf("Unexpected error: %s\n", errLog)
 			}
 		})
 
 		it("should return empty if no groups match", func() {
-			mkfile(t, "1", filepath.Join(tmpDir, "add"))
-			mkfile(t, "0", filepath.Join(tmpDir, "last"))
-			out := &bytes.Buffer{}
-			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
+			mkfile(t, "1", filepath.Join(appDir, "add"))
+			mkfile(t, "0", filepath.Join(appDir, "last"))
 
-			if info, group := list.Detect(l, tmpDir); group != nil {
+			if plan, group := list.Detect(config); group != nil {
 				t.Fatalf("Unexpected group: %#v\n", group)
-			} else if len(info) > 0 {
-				t.Fatalf("Unexpected info: %s\n", string(info))
+			} else if len(plan) > 0 {
+				t.Fatalf("Unexpected plan: %s\n", string(plan))
 			}
 
-			if !strings.HasSuffix(out.String(),
-				"1 = true\nGroup: buildpack1-name: fail | buildpack2-name: fail\n",
+			if !strings.HasSuffix(outLog.String(),
+				"======== Output: buildpack2-name ========\n"+
+					"stdout: 1\nstderr: 1\n"+
+					"======== Results ========\n"+
+					"buildpack1-name: fail\nbuildpack2-name: fail\n",
 			) {
-				t.Fatalf("Unexpected log: %s\n", out)
+				t.Fatalf("Unexpected log: %s\n", outLog)
+			}
+
+			if errLog.Len() > 0 {
+				t.Fatalf("Unexpected error: %s\n", errLog)
 			}
 		})
 
 		it("should return empty there is an error", func() {
-			mkfile(t, "1", filepath.Join(tmpDir, "add"))
-			mkfile(t, "error", filepath.Join(tmpDir, "error"))
-			out := &bytes.Buffer{}
-			l := log.New(io.MultiWriter(out, it.Out()), "", 0)
+			mkfile(t, "1", filepath.Join(appDir, "add"))
+			mkfile(t, "error", filepath.Join(platformDir, "env", "ERROR"))
 
-			if info, group := list.Detect(l, tmpDir); group != nil {
+			if plan, group := list.Detect(config); group != nil {
 				t.Fatalf("Unexpected group: %#v\n", group)
-			} else if len(info) > 0 {
-				t.Fatalf("Unexpected info: %s\n", string(info))
+			} else if len(plan) > 0 {
+				t.Fatalf("Unexpected plan: %s\n", string(plan))
 			}
 
-			if !strings.HasSuffix(out.String(),
-				"1 = true\nGroup: buildpack1-name: error (1) | buildpack2-name: error (1)\n",
+			if !strings.HasSuffix(outLog.String(),
+				"======== Output: buildpack2-name ========\n"+
+					"stdout: 1\nstderr: 1\n"+
+					"======== Results ========\n"+
+					"buildpack1-name: error (1)\nbuildpack2-name: error (1)\n",
 			) {
-				t.Fatalf("Unexpected log: %s\n", out)
+				t.Fatalf("Unexpected log: %s\n", outLog)
+			}
+
+			if errLog.Len() > 0 {
+				t.Fatalf("Unexpected error: %s\n", errLog)
 			}
 		})
 	})

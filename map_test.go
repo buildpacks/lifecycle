@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -43,7 +42,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "buildpack3", "version3", "not-buildpack.toml"),
 			)
 			m, err := lifecycle.NewBuildpackMap(tmpDir)
-			if !reflect.DeepEqual(m, lifecycle.BuildpackMap{
+			if s := cmp.Diff(m, lifecycle.BuildpackMap{
 				"buildpack1@version1": {
 					ID:      "buildpack1",
 					Name:    "buildpack1-name",
@@ -62,8 +61,8 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 					Version: "version2.2",
 					Dir:     filepath.Join(tmpDir, "buildpack2", "version2.2"),
 				},
-			}) {
-				t.Fatalf("Unexpected map: %#v\n", m)
+			}); s != "" {
+				t.Fatalf("Unexpected map:\n%s\n", s)
 			}
 		})
 	})
@@ -96,10 +95,10 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(actual, lifecycle.BuildpackOrder{
+			if s := cmp.Diff(actual, lifecycle.BuildpackOrder{
 				{Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}}},
-			}) {
-				t.Fatalf("Unexpected list: %#v\n", actual)
+			}); s != "" {
+				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
 		})
 	})
@@ -132,10 +131,10 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(actual, &lifecycle.BuildpackGroup{
+			if s := cmp.Diff(actual, &lifecycle.BuildpackGroup{
 				Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}},
-			}) {
-				t.Fatalf("Unexpected list: %#v\n", actual)
+			}); s != "" {
+				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
 		})
 	})
@@ -166,8 +165,8 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(string(b), "[[buildpacks]]\n  id = \"a\"\n  version = \"v\"\n"); diff != "" {
-				t.Fatalf(`toml did not match: (-got +want)\n%s`, diff)
+			if s := cmp.Diff(string(b), "[[buildpacks]]\n  id = \"a\"\n  version = \"v\"\n"); s != "" {
+				t.Fatalf(`toml did not match: (-got +want)\n%s`, s)
 			}
 		})
 	})

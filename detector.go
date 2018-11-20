@@ -2,10 +2,10 @@ package lifecycle
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -28,66 +28,115 @@ type Buildpack struct {
 	Dir      string `toml:"-"`
 }
 
-func (bp *Buildpack) Detect(l *log.Logger, appDir string, in io.Reader, out io.Writer) int {
-	path, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "detect"))
+type DetectConfig struct {
+	AppDir      string
+	PlatformDir string
+	Out, Err    *log.Logger
+}
+
+func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
+	detectPath, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "detect"))
 	if err != nil {
-		l.Print("Error: ", err)
+		c.Err.Print("Error: ", err)
 		return CodeDetectError
 	}
-	stderr := &bytes.Buffer{}
+	appDir, err := filepath.Abs(c.AppDir)
+	if err != nil {
+		c.Err.Print("Error: ", err)
+		return CodeDetectError
+	}
+	platformDir, err := filepath.Abs(c.PlatformDir)
+	if err != nil {
+		c.Err.Print("Error: ", err)
+		return CodeDetectError
+	}
+	planDir, err := ioutil.TempDir("", bp.ID+".plan.")
+	if err != nil {
+		c.Err.Print("Error: ", err)
+		return CodeDetectError
+	}
+	defer os.RemoveAll(planDir)
+	log := &bytes.Buffer{}
 	defer func() {
-		if stderr.Len() > 0 {
-			l.Print(stderr)
+		if log.Len() > 0 {
+			c.Out.Printf("======== Output: %s ========\n%s", bp.Name, log)
 		}
 	}()
-	cmd := exec.Command(path)
+	cmd := exec.Command(detectPath, platformDir, planDir)
 	cmd.Dir = appDir
 	cmd.Stdin = in
-	cmd.Stdout = out
-	cmd.Stderr = stderr
+	cmd.Stdout = log
+	cmd.Stderr = log
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			if status, ok := err.Sys().(syscall.WaitStatus); ok {
 				return status.ExitStatus()
 			}
 		}
-		l.Print("Error: ", err)
+		c.Err.Print("Error: ", err)
+		return CodeDetectError
+	}
+	if err := parsePlan(out, planDir); err != nil {
+		c.Err.Print("Error: ", err)
 		return CodeDetectError
 	}
 	return CodeDetectPass
+}
+
+func parsePlan(out io.Writer, planDir string) error {
+	files, err := ioutil.ReadDir(planDir)
+	if err != nil {
+		return err
+	}
+	m := Plan{}
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		path := filepath.Join(planDir, f.Name())
+		var entry map[string]interface{}
+		if _, err := toml.DecodeFile(path, &entry); err != nil {
+			return err
+		}
+		m[f.Name()] = entry
+	}
+	return toml.NewEncoder(out).Encode(m)
 }
 
 type BuildpackGroup struct {
 	Buildpacks []*Buildpack `toml:"buildpacks"`
 }
 
-func (bg *BuildpackGroup) Detect(l *log.Logger, appDir string) (info []byte, group *BuildpackGroup, ok bool) {
+func (bg *BuildpackGroup) Detect(c *DetectConfig) (plan []byte, group *BuildpackGroup, ok bool) {
 	group = &BuildpackGroup{}
 	detected := true
-	summary := "Group:"
-	info, codes := bg.pDetect(l, appDir)
+	c.Out.Printf("Trying group of %d...", len(bg.Buildpacks))
+	plan, codes := bg.pDetect(c)
+	c.Out.Printf("======== Results ========")
 	for i, code := range codes {
-		if i > 0 {
-			summary += " |"
-		}
+		name := bg.Buildpacks[i].Name
+		optional := bg.Buildpacks[i].Optional
 		switch code {
 		case CodeDetectPass:
-			summary += fmt.Sprintf(" %s: pass", bg.Buildpacks[i].Name)
+			c.Out.Printf("%s: pass", name)
 			group.Buildpacks = append(group.Buildpacks, bg.Buildpacks[i])
 		case CodeDetectFail:
-			summary += fmt.Sprintf(" %s: fail", bg.Buildpacks[i].Name)
-			detected = detected && bg.Buildpacks[i].Optional
+			if optional {
+				c.Out.Printf("%s: skip", name)
+			} else {
+				c.Out.Printf("%s: fail", name)
+			}
+			detected = detected && optional
 		default:
-			summary += fmt.Sprintf(" %s: error (%d)", bg.Buildpacks[i].Name, code)
-			detected = detected && bg.Buildpacks[i].Optional
+			c.Out.Printf("%s: error (%d)", name, code)
+			detected = detected && optional
 		}
 	}
 	detected = detected && len(group.Buildpacks) > 0
-	l.Println(summary)
-	return info, group, detected
+	return plan, group, detected
 }
 
-func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, codes []int) {
+func (bg *BuildpackGroup) pDetect(c *DetectConfig) (plan []byte, codes []int) {
 	codes = make([]int, len(bg.Buildpacks))
 	wg := sync.WaitGroup{}
 	defer wg.Wait()
@@ -103,17 +152,17 @@ func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, co
 				defer last.Close()
 				orig := &bytes.Buffer{}
 				last := io.TeeReader(last, orig)
-				codes[i] = bg.Buildpacks[i].Detect(l, appDir, last, add)
+				codes[i] = bg.Buildpacks[i].Detect(c, last, add)
 				ioutil.ReadAll(last)
 				if codes[i] == CodeDetectPass {
-					mergeTOML(l, out, orig, add)
+					mergeTOML(c.Err, out, orig, add)
 				} else {
-					mergeTOML(l, out, orig)
+					mergeTOML(c.Err, out, orig)
 				}
 			} else {
-				codes[i] = bg.Buildpacks[i].Detect(l, appDir, nil, add)
+				codes[i] = bg.Buildpacks[i].Detect(c, nil, add)
 				if codes[i] == CodeDetectPass {
-					mergeTOML(l, out, add)
+					mergeTOML(c.Err, out, add)
 				}
 			}
 		}(i, lastIn)
@@ -121,13 +170,13 @@ func (bg *BuildpackGroup) pDetect(l *log.Logger, appDir string) (info []byte, co
 	}
 	if lastIn != nil {
 		defer lastIn.Close()
-		if i, err := ioutil.ReadAll(lastIn); err != nil {
-			l.Print("Warning: ", err)
+		if p, err := ioutil.ReadAll(lastIn); err != nil {
+			c.Err.Print("Warning: ", err)
 		} else {
-			info = i
+			plan = p
 		}
 	}
-	return info, codes
+	return plan, codes
 }
 
 func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
@@ -149,10 +198,10 @@ func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(l *log.Logger, appDir string) ([]byte, *BuildpackGroup) {
+func (bo BuildpackOrder) Detect(c *DetectConfig) (plan []byte, group *BuildpackGroup) {
 	for i := range bo {
-		if info, group, ok := bo[i].Detect(l, appDir); ok {
-			return info, group
+		if plan, group, ok := bo[i].Detect(c); ok {
+			return plan, group
 		}
 	}
 	return nil, nil

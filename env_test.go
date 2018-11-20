@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -78,12 +78,12 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			if err := env.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if !reflect.DeepEqual(result, map[string]string{
-				"PATH":            "some:/tmpDir/bin",
-				"LD_LIBRARY_PATH": "some-ld:/tmpDir/lib",
-				"LIBRARY_PATH":    "some-library:/tmpDir/lib",
-			}) {
-				t.Fatalf("Unexpected env: %+v\n", result)
+			if s := cmp.Diff(result, map[string]string{
+				"PATH":            "/tmpDir/bin:some",
+				"LD_LIBRARY_PATH": "/tmpDir/lib:some-ld",
+				"LIBRARY_PATH":    "/tmpDir/lib:some-library",
+			}); s != "" {
+				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
 
@@ -95,12 +95,12 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			if err := env.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if !reflect.DeepEqual(result, map[string]string{
+			if s := cmp.Diff(result, map[string]string{
 				"PATH":            "/tmpDir/bin",
 				"LD_LIBRARY_PATH": "/tmpDir/lib",
 				"LIBRARY_PATH":    "/tmpDir/lib",
-			}) {
-				t.Fatalf("Unexpected env: %+v\n", result)
+			}); s != "" {
+				t.Fatalf("Unexpected env\n%s\n", s)
 			}
 		})
 
@@ -128,16 +128,16 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			if err := env.AddEnvDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if !reflect.DeepEqual(result, map[string]string{
-				"SOME_VAR_DEFAULT":      "some-value-default-orig:some-value-default",
+			if s := cmp.Diff(result, map[string]string{
+				"SOME_VAR_DEFAULT":      "some-value-default:some-value-default-orig",
 				"SOME_VAR_DEFAULT_NEW":  "some-value-default",
-				"SOME_VAR_APPEND":       "some-value-append-origsome-value-append",
+				"SOME_VAR_APPEND":       "some-value-appendsome-value-append-orig",
 				"SOME_VAR_APPEND_NEW":   "some-value-append",
 				"SOME_VAR_OVERRIDE":     "some-value-override",
 				"SOME_VAR_OVERRIDE_NEW": "some-value-override",
 				"SOME_VAR_IGNORE":       "some-value-ignore",
-			}) {
-				t.Fatalf("Unexpected env: %+v\n", result)
+			}); s != "" {
+				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
 
