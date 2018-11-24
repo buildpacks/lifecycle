@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"strings"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -26,40 +27,40 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Error: %s\n", err)
 			}
 			mkdir(t,
-				filepath.Join(tmpDir, "buildpack1", "version1"),
-				filepath.Join(tmpDir, "buildpack2", "version2.1"),
-				filepath.Join(tmpDir, "buildpack2", "version2.2"),
-				filepath.Join(tmpDir, "buildpack2", "version2.3"),
-				filepath.Join(tmpDir, "buildpack2", "version2.4"),
-				filepath.Join(tmpDir, "buildpack3", "version3"),
+				filepath.Join(tmpDir, escapeId("buildpack/1"), "version1"),
+				filepath.Join(tmpDir, "com.buildpack2", "version2.1"),
+				filepath.Join(tmpDir, "com.buildpack2", "version2.2"),
+				filepath.Join(tmpDir, "com.buildpack2", "version2.3"),
+				filepath.Join(tmpDir, "com.buildpack2", "version2.4"),
+				filepath.Join(tmpDir, "buildpack-3", "version3"),
 				filepath.Join(tmpDir, "buildpack4", "version4"),
 			)
-			mkBuildpackTOML(t, tmpDir, "buildpack1", "version1")
-			mkBuildpackTOML(t, tmpDir, "buildpack2", "version2.1")
-			mkBuildpackTOML(t, tmpDir, "buildpack2", "version2.2")
+			mkBuildpackTOML(t, tmpDir, "buildpack/1", "buildpack1-name", "version1")
+			mkBuildpackTOML(t, tmpDir, "com.buildpack2", "buildpack2-name", "version2.1")
+			mkBuildpackTOML(t, tmpDir, "com.buildpack2", "buildpack2-name", "version2.2")
 			mkfile(t, "other",
-				filepath.Join(tmpDir, "buildpack2", "version2.3", "not-buildpack.toml"),
-				filepath.Join(tmpDir, "buildpack3", "version3", "not-buildpack.toml"),
+				filepath.Join(tmpDir, "com.buildpack2", "version2.3", "not-buildpack.toml"),
+				filepath.Join(tmpDir, "buildpack-3", "version3", "not-buildpack.toml"),
 			)
 			m, err := lifecycle.NewBuildpackMap(tmpDir)
 			if s := cmp.Diff(m, lifecycle.BuildpackMap{
-				"buildpack1@version1": {
-					ID:      "buildpack1",
+				"buildpack/1@version1": {
+					ID:      "buildpack/1",
 					Name:    "buildpack1-name",
 					Version: "version1",
-					Dir:     filepath.Join(tmpDir, "buildpack1", "version1"),
+					Dir:     filepath.Join(tmpDir, escapeId("buildpack/1"), "version1"),
 				},
-				"buildpack2@version2.1": {
-					ID:      "buildpack2",
+				"com.buildpack2@version2.1": {
+					ID:      "com.buildpack2",
 					Name:    "buildpack2-name",
 					Version: "version2.1",
-					Dir:     filepath.Join(tmpDir, "buildpack2", "version2.1"),
+					Dir:     filepath.Join(tmpDir, "com.buildpack2", "version2.1"),
 				},
-				"buildpack2@version2.2": {
-					ID:      "buildpack2",
+				"com.buildpack2@version2.2": {
+					ID:      "com.buildpack2",
 					Name:    "buildpack2-name",
 					Version: "version2.2",
-					Dir:     filepath.Join(tmpDir, "buildpack2", "version2.2"),
+					Dir:     filepath.Join(tmpDir, "com.buildpack2", "version2.2"),
 				},
 			}); s != "" {
 				t.Fatalf("Unexpected map:\n%s\n", s)
@@ -175,13 +176,17 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 const buildpackTOML = `
 [buildpack]
 id = "%[1]s"
-name = "%[1]s-name"
-version = "%[2]s"
+name = "%[2]s"
+version = "%[3]s"
 dir = "none"
 `
 
-func mkBuildpackTOML(t *testing.T, dir, id, version string) {
-	mkfile(t, fmt.Sprintf(buildpackTOML, id, version),
-		filepath.Join(dir, id, version, "buildpack.toml"),
+func mkBuildpackTOML(t *testing.T, dir, id, name, version string) {
+	mkfile(t, fmt.Sprintf(buildpackTOML, id, name, version),
+		filepath.Join(dir, escapeId(id), version, "buildpack.toml"),
 	)
+}
+
+func escapeId(id string) string {
+	return strings.Replace(id, "/", string("___"), -1)
 }
