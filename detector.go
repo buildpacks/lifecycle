@@ -50,7 +50,7 @@ func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
 		c.Err.Print("Error: ", err)
 		return CodeDetectError
 	}
-	planDir, err := ioutil.TempDir("", bp.ID+".plan.")
+	planDir, err := ioutil.TempDir("", filepath.Base(bp.Dir)+".plan.")
 	if err != nil {
 		c.Err.Print("Error: ", err)
 		return CodeDetectError
