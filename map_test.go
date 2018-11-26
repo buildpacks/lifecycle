@@ -27,7 +27,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Error: %s\n", err)
 			}
 			mkdir(t,
-				filepath.Join(tmpDir, escapeId("buildpack/1"), "version1"),
+				filepath.Join(tmpDir, escapeID("buildpack/1"), "version1"),
 				filepath.Join(tmpDir, "com.buildpack2", "version2.1"),
 				filepath.Join(tmpDir, "com.buildpack2", "version2.2"),
 				filepath.Join(tmpDir, "com.buildpack2", "version2.3"),
@@ -48,7 +48,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 					ID:      "buildpack/1",
 					Name:    "buildpack1-name",
 					Version: "version1",
-					Dir:     filepath.Join(tmpDir, escapeId("buildpack/1"), "version1"),
+					Dir:     filepath.Join(tmpDir, escapeID("buildpack/1"), "version1"),
 				},
 				"com.buildpack2@version2.1": {
 					ID:      "com.buildpack2",
@@ -183,10 +183,10 @@ dir = "none"
 
 func mkBuildpackTOML(t *testing.T, dir, id, name, version string) {
 	mkfile(t, fmt.Sprintf(buildpackTOML, id, name, version),
-		filepath.Join(dir, escapeId(id), version, "buildpack.toml"),
+		filepath.Join(dir, escapeID(id), version, "buildpack.toml"),
 	)
 }
 
-func escapeId(id string) string {
+func escapeID(id string) string {
 	return strings.Replace(id, "/", string("___"), -1)
 }
