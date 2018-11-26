@@ -55,7 +55,7 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 
 	for _, buildpack := range e.Buildpacks {
 		bpMetadata := BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version, Layers: make(map[string]LayerMetadata)}
-		tomls, err := filepath.Glob(filepath.Join(launchDirSrc, buildpack.ID, "*.toml"))
+		tomls, err := filepath.Glob(filepath.Join(launchDirSrc, buildpack.EscapedID(), "*.toml"))
 		if err != nil {
 			return errors.Wrapf(err, "finding layer tomls")
 		}
@@ -69,8 +69,8 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 			_, err := os.Stat(dir)
 			if !os.IsNotExist(err) {
 				bpLayer.SHA, err = e.exportTar(
-					filepath.Join(launchDirSrc, buildpack.ID, layerName),
-					filepath.Join(launchDirDst, buildpack.ID, layerName),
+					filepath.Join(launchDirSrc, buildpack.EscapedID(), layerName),
+					filepath.Join(launchDirDst, buildpack.EscapedID(), layerName),
 				)
 				if err != nil {
 					return errors.Wrapf(err, "exporting tar for layer '%s/%s'", buildpack.ID, layerName)
