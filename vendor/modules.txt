@@ -1,13 +1,23 @@
 # github.com/BurntSushi/toml v0.3.0
 github.com/BurntSushi/toml
-# github.com/Microsoft/go-winio v0.4.9
+# github.com/Microsoft/go-winio v0.4.11
 github.com/Microsoft/go-winio
+# github.com/containerd/continuity v0.0.0-20181027224239-bea7585dbfac
+github.com/containerd/continuity/pathdriver
 # github.com/docker/distribution v0.0.0-20180327202408-83389a148052
 github.com/docker/distribution/reference
 github.com/docker/distribution/digestset
-# github.com/docker/docker v0.7.3-0.20180531152204-71cd53e4a197
+# github.com/docker/docker v0.7.3-0.20181027010111-b8e87cfdad8d
+github.com/docker/docker/pkg/archive
+github.com/docker/docker/pkg/idtools
+github.com/docker/docker/pkg/fileutils
+github.com/docker/docker/pkg/ioutils
+github.com/docker/docker/pkg/longpath
+github.com/docker/docker/pkg/pools
+github.com/docker/docker/pkg/system
 github.com/docker/docker/api/types
 github.com/docker/docker/client
+github.com/docker/docker/pkg/mount
 github.com/docker/docker/api/types/container
 github.com/docker/docker/api/types/filters
 github.com/docker/docker/api/types/mount
@@ -22,6 +32,7 @@ github.com/docker/docker/api/types/versions
 github.com/docker/docker/api/types/volume
 github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/strslice
+github.com/docker/docker/errdefs
 github.com/docker/docker/api/types/swarm/runtime
 # github.com/docker/go-connections v0.4.0
 github.com/docker/go-connections/nat
@@ -38,7 +49,7 @@ github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-containerregistry v0.0.0-20180731221751-697ee0b3d46e
+# github.com/google/go-containerregistry v0.0.0-20180912122137-74aef1a35cfa
 github.com/google/go-containerregistry/pkg/v1
 github.com/google/go-containerregistry/pkg/v1/mutate
 github.com/google/go-containerregistry/pkg/v1/remote
@@ -52,20 +63,29 @@ github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/v1util
 github.com/google/go-containerregistry/pkg/v1/remote/transport
 github.com/google/go-containerregistry/pkg/v1/random
+# github.com/konsorten/go-windows-terminal-sequences v0.0.0-20180402223658-b729f2633dfe
+github.com/konsorten/go-windows-terminal-sequences
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
 github.com/opencontainers/image-spec/specs-go/v1
 github.com/opencontainers/image-spec/specs-go
+# github.com/opencontainers/runc v0.1.1
+github.com/opencontainers/runc/libcontainer/system
+github.com/opencontainers/runc/libcontainer/user
 # github.com/pkg/errors v0.8.0
 github.com/pkg/errors
-# github.com/sclevine/spec v0.0.0-20180404042546-a925ac4bfbc9
+# github.com/sclevine/spec v1.0.0
 github.com/sclevine/spec
 github.com/sclevine/spec/report
-# golang.org/x/net v0.0.0-20180611182652-db08ff08e862
+# github.com/sirupsen/logrus v1.1.1
+github.com/sirupsen/logrus
+# golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
+golang.org/x/crypto/ssh/terminal
+# golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3
 golang.org/x/net/context
-golang.org/x/net/context/ctxhttp
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
-# golang.org/x/sys v0.0.0-20180724212812-e072cadbbdc8
+# golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e
+golang.org/x/sys/unix
 golang.org/x/sys/windows
