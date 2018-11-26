@@ -76,7 +76,6 @@ func (l *Launcher) env() error {
 	})
 }
 
-
 func (l *Launcher) profileD() (string, error) {
 	var out []string
 
