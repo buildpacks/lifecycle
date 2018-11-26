@@ -201,11 +201,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal("/launch/dest/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
 			}
 
-			t.Log("adds PACKS_LAUNCH_DIR env var")
-			if val, err := envVar(image, "PACK_LAUNCH_DIR"); err != nil {
+			t.Log("adds PACKS_LAYERS_DIR env var")
+			if val, err := envVar(image, "PACK_LAYERS_DIR"); err != nil {
 				t.Fatal(err)
 			} else if val != "/launch/dest" {
-				t.Fatalf("expected exporter to set env var PACK_LAUNCH_DIR to 'testdata/exporter/first/launch', got '%s'", val)
+				t.Fatalf("expected exporter to set env var PACK_LAYERS_DIR to 'testdata/exporter/first/launch', got '%s'", val)
 			}
 
 			t.Log("uses filesystem uid/gid for image layers")
@@ -299,11 +299,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal("/launch/dest/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
 				}
 
-				t.Log("adds PACK_LAUNCH_DIR env var")
-				if val, err := envVar(image, "PACK_LAUNCH_DIR"); err != nil {
+				t.Log("adds PACK_LAYERS_DIR env var")
+				if val, err := envVar(image, "PACK_LAYERS_DIR"); err != nil {
 					t.Fatal(err)
 				} else if val != "/launch/dest" {
-					t.Fatalf("expected exporter to set env var PACK_LAUNCH_DIR to '/launch/dest', got '%s'", val)
+					t.Fatalf("expected exporter to set env var PACK_LAYERS_DIR to '/launch/dest', got '%s'", val)
 				}
 
 				t.Log("adds PACK_APP_DIR env var")

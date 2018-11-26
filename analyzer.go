@@ -19,14 +19,14 @@ type Analyzer struct {
 	Out, Err   io.Writer
 }
 
-func (a *Analyzer) Analyze(launchDir string, config AppImageMetadata) error {
+func (a *Analyzer) Analyze(layersDir string, config AppImageMetadata) error {
 	buildpacks := a.buildpacks()
 	for _, buildpack := range config.Buildpacks {
 		if _, exist := buildpacks[buildpack.ID]; !exist {
 			continue
 		}
 		for name, metadata := range buildpack.Layers {
-			path := filepath.Join(launchDir, buildpack.ID, name+".toml")
+			path := filepath.Join(layersDir, buildpack.ID, name+".toml")
 			if err := writeTOML(path, metadata.Data); err != nil {
 				return err
 			}
@@ -78,7 +78,7 @@ func (a *Analyzer) buildpacks() map[string]struct{} {
 }
 
 func writeTOML(path string, data interface{}) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
 	fh, err := os.Create(path)

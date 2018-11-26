@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	launchDir string
+	layersDir string
 	appDir    string
 )
 
@@ -27,30 +27,37 @@ func launch() error {
 		defaultProcessType = v
 	}
 
-	launchDir := cmd.DefaultLaunchDir
-	if v := os.Getenv(lifecycle.EnvLaunchDir); v != "" {
-		launchDir = v
+	layersDir := cmd.DefaultLayersDir
+	if v := os.Getenv(cmd.EnvLayersDir); v != "" {
+		layersDir = v
 	}
-	os.Unsetenv(lifecycle.EnvLaunchDir)
+	os.Unsetenv(cmd.EnvLayersDir)
 
 	appDir := cmd.DefaultAppDir
-	if v := os.Getenv(lifecycle.EnvAppDir); v != "" {
+	if v := os.Getenv(cmd.EnvAppDir); v != "" {
 		appDir = v
 	}
-	os.Unsetenv(lifecycle.EnvAppDir)
+	os.Unsetenv(cmd.EnvAppDir)
 
 	var metadata lifecycle.BuildMetadata
-	metadataPath := filepath.Join(launchDir, "config", "metadata.toml")
+	metadataPath := filepath.Join(layersDir, "config", "metadata.toml")
 	if _, err := toml.DecodeFile(metadataPath, &metadata); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 
+	env := &lifecycle.Env{
+		Getenv:  os.Getenv,
+		Setenv:  os.Setenv,
+		Environ: os.Environ,
+		Map:     lifecycle.POSIXLaunchEnv,
+	}
 	launcher := &lifecycle.Launcher{
 		DefaultProcessType: defaultProcessType,
-		LaunchDir:          launchDir,
+		LayersDir:          layersDir,
 		AppDir:             appDir,
 		Processes:          metadata.Processes,
 		Buildpacks:         metadata.Buildpacks,
+		Env:                env,
 		Exec:               syscall.Exec,
 	}
 

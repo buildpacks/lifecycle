@@ -16,7 +16,7 @@ import (
 
 var (
 	repoName     string
-	launchDir    string
+	layersDir    string
 	groupPath    string
 	useDaemon    bool
 	useHelpers   bool
@@ -24,7 +24,7 @@ var (
 )
 
 func init() {
-	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
@@ -88,7 +88,7 @@ func analyzer() error {
 	}
 
 	err := analyzer.Analyze(
-		launchDir,
+		layersDir,
 		config,
 	)
 	if err != nil {

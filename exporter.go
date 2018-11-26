@@ -18,6 +18,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/img"
 )
 
@@ -168,13 +169,12 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 	if err != nil {
 		return nil, errors.Wrap(err, "set metadata label")
 	}
-
-	repoImage, err = img.Env(repoImage, EnvLaunchDir, launchDirDst)
+	repoImage, err = img.Env(repoImage, cmd.EnvLayersDir, launchDirDst)
 	if err != nil {
-		return nil, errors.Wrap(err, "set launch dir env var")
+		return nil, errors.Wrap(err, "set layers dir env var")
 	}
 
-	repoImage, err = img.Env(repoImage, EnvAppDir, appDirDst)
+	repoImage, err = img.Env(repoImage, cmd.EnvAppDir, appDirDst)
 	if err != nil {
 		return nil, errors.Wrap(err, "set app dir env var")
 	}

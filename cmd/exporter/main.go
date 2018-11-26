@@ -15,8 +15,8 @@ import (
 var (
 	repoName     string
 	runImageRef  string
-	launchDir    string
-	launchDirSrc string
+	layersDir    string
+	layersDirSrc string
 	dryRun       string
 	appDir       string
 	appDirSrc    string
@@ -29,8 +29,8 @@ var (
 
 func init() {
 	cmd.FlagRunImage(&runImageRef)
-	cmd.FlagLaunchDir(&launchDir)
-	cmd.FlagLaunchDirSrc(&launchDirSrc)
+	cmd.FlagLayersDir(&layersDir)
+	cmd.FlagLayersDirSrc(&layersDirSrc)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagAppDirSrc(&appDirSrc)
 	cmd.FlagDryRunDir(&dryRun)
@@ -44,7 +44,7 @@ func init() {
 func main() {
 	flag.Parse()
 	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRef == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "launchDir": launchDir}
+		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "launchDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -80,8 +80,8 @@ func export() error {
 	}
 
 	err = exporter.PrepareExport(
-		launchDirSrc,
-		launchDir,
+		layersDirSrc,
+		layersDir,
 		appDirSrc,
 		appDir,
 	)
@@ -131,7 +131,7 @@ func export() error {
 	}
 
 	newImage, err := exporter.ExportImage(
-		launchDir,
+		layersDir,
 		appDir,
 		runImage,
 		origImage,

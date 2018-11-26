@@ -4,8 +4,7 @@ set -eo pipefail
 
 platform_dir=$1
 plan_dir=$2
-cache_dir=$3
-launch_dir=$4
+layers_dir=$3
 
 cat - > "plan${ID}.toml"
 echo > "$plan_dir/dep${ID}-keep"
@@ -16,12 +15,8 @@ fi
 echo "STDOUT${ID}"
 >&2 echo "STDERR${ID}"
 
-if [[ -d launch-buildpack${ID} ]]; then
-  cp -a "launch-buildpack${ID}/." "$launch_dir"
-fi
-
-if [[ -d cache-buildpack${ID} ]]; then
-  cp -a "cache-buildpack${ID}/." "$cache_dir"
+if [[ -d buildpack${ID} ]]; then
+  cp -a "buildpack${ID}/." "$layers_dir"
 fi
 
 cp -a "$platform_dir/env" "./env-buildpack${ID}"
@@ -30,7 +25,7 @@ if [[ -f skip-processes ]]; then
  exit 0
 fi
 
-cat > "$launch_dir/launch.toml" <<EOF
+cat > "$layers_dir/launch.toml" <<EOF
 [[processes]]
 type = "process${ID}-type"
 command = "process${ID}-command"
