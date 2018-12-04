@@ -25,13 +25,12 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 	}
 	for _, file := range files {
 		buildpackDir := filepath.Dir(file)
-		base, version := filepath.Split(buildpackDir)
-		_, id := filepath.Split(filepath.Clean(base))
+		_, version := filepath.Split(buildpackDir)
 		var bpTOML buildpackTOML
 		if _, err := toml.DecodeFile(file, &bpTOML); err != nil {
 			return nil, err
 		}
-		buildpacks[id+"@"+version] = &Buildpack{
+		buildpacks[bpTOML.Buildpack.ID+"@"+version] = &Buildpack{
 			ID:      bpTOML.Buildpack.ID,
 			Version: bpTOML.Buildpack.Version,
 			Name:    bpTOML.Buildpack.Name,

@@ -74,10 +74,11 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	bom := copyPlan(b.Plan)
 	var buildpackIDs []string
 	for _, bp := range b.Buildpacks {
-		bpLaunchDir := filepath.Join(launchDir, bp.ID)
-		bpCacheDir := filepath.Join(cacheDir, bp.ID)
-		bpPlanDir := filepath.Join(planDir, bp.ID)
-		buildpackIDs = append(buildpackIDs, bp.ID)
+		bpDirName := bp.EscapedID()
+		bpLaunchDir := filepath.Join(launchDir, bpDirName)
+		bpCacheDir := filepath.Join(cacheDir, bpDirName)
+		bpPlanDir := filepath.Join(planDir, bpDirName)
+		buildpackIDs = append(buildpackIDs, bpDirName)
 		if err := os.MkdirAll(bpLaunchDir, 0777); err != nil {
 			return nil, err
 		}

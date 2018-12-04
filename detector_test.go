@@ -54,10 +54,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		list = lifecycle.BuildpackOrder{
 			{
 				Buildpacks: []*lifecycle.Buildpack{
-					{Name: "buildpack1-name", Dir: buildpackDir},
-					{Name: "buildpack2-name", Dir: buildpackDir},
-					{Name: "buildpack3-name", Dir: buildpackDir},
-					{Name: "buildpack4-name", Dir: buildpackDir},
+					// IDs should not affect directory names and other logic
+					{ID: "buildpack1", Name: "buildpack1-name", Dir: buildpackDir},
+					{ID: "com.buildpack2", Name: "buildpack2-name", Dir: buildpackDir},
+					{ID: "buildpack/3", Name: "buildpack3-name", Dir: buildpackDir},
+					{ID: "buildpack-4", Name: "buildpack4-name", Dir: buildpackDir},
 				},
 			},
 			{

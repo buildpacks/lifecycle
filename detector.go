@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -34,6 +35,10 @@ type DetectConfig struct {
 	Out, Err    *log.Logger
 }
 
+func (bp *Buildpack) EscapedID() string {
+	return strings.Replace(bp.ID, "/", "_", -1)
+}
+
 func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
 	detectPath, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "detect"))
 	if err != nil {
@@ -50,7 +55,7 @@ func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
 		c.Err.Print("Error: ", err)
 		return CodeDetectError
 	}
-	planDir, err := ioutil.TempDir("", bp.ID+".plan.")
+	planDir, err := ioutil.TempDir("", filepath.Base(bp.Dir)+".plan.")
 	if err != nil {
 		c.Err.Print("Error: ", err)
 		return CodeDetectError
