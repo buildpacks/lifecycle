@@ -1,13 +1,15 @@
 package img
 
 import (
+	"github.com/buildpack/lifecycle/cmd"
+	"github.com/google/go-containerregistry/pkg/v1/daemon"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"net/http"
+	"os"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/daemon"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 type Store interface {
@@ -17,15 +19,29 @@ type Store interface {
 }
 
 func NewRegistry(ref string) (Store, error) {
+	var auth authn.Authenticator
 	r, err := name.ParseReference(ref, name.WeakValidation)
 	if err != nil {
 		return nil, err
 	}
-	auth, err := authn.DefaultKeychain.Resolve(r.Context().Registry)
-	if err != nil {
-		return nil, err
+
+	if v := os.Getenv(cmd.EnvRegistryAuth); v != "" {
+		auth = &ProvidedAuth{auth: v}
+	} else {
+		auth, err = authn.DefaultKeychain.Resolve(r.Context().Registry)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &registryStore{ref: r, auth: auth}, nil
+}
+
+type ProvidedAuth struct {
+	auth string
+}
+
+func (p *ProvidedAuth) Authorization() (string, error) {
+	return p.auth, nil
 }
 
 type registryStore struct {

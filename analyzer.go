@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -19,7 +20,18 @@ type Analyzer struct {
 	Out, Err   io.Writer
 }
 
-func (a *Analyzer) Analyze(launchDir string, config AppImageMetadata) error {
+func (a *Analyzer) Analyze(repoStore img.Store, launchDir string) error {
+	metadata, err := a.GetMetadata(repoStore)
+	if err != nil {
+		return err
+	}
+	if metadata != nil {
+		return a.AnalyzeMetadata(launchDir, *metadata)
+	}
+	return nil
+}
+
+func (a *Analyzer) AnalyzeMetadata(launchDir string, config AppImageMetadata) error {
 	buildpacks := a.buildpacks()
 	for _, buildpack := range config.Buildpacks {
 		if _, exist := buildpacks[buildpack.ID]; !exist {
@@ -36,37 +48,39 @@ func (a *Analyzer) Analyze(launchDir string, config AppImageMetadata) error {
 	return nil
 }
 
-func (a *Analyzer) GetMetadata(newRepoStore func(string) (img.Store, error), repoName string) (string, error) {
-	repoStore, err := newRepoStore(repoName)
-	if err != nil {
-		return "", cmd.FailErr(err, "repository configuration", repoName)
-	}
-
+func (a *Analyzer) GetMetadata(repoStore img.Store) (*AppImageMetadata, error) {
 	origImage, err := repoStore.Image()
 	if err != nil {
-		fmt.Fprintf(a.Out, "WARNING: skipping analyze, authenticating to registry failed: %s", err.Error())
-		return "", nil
+		fmt.Fprintf(a.Out, "WARNING: skipping analyze, authenticating to registry failed: %s\n", err.Error())
+		return nil, nil
 	}
 	if _, err := origImage.RawManifest(); err != nil {
 		if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
 			switch remoteErr.Errors[0].Code {
 			case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
-				fmt.Fprintf(a.Out, "WARNING: skipping analyze, image not found or requires authentication to access: %s", remoteErr.Error())
-				return "", nil
+				fmt.Fprintf(a.Out, "WARNING: skipping analyze, image not found or requires authentication to access: %s\n", remoteErr.Error())
+				return nil, nil
 			}
 		}
-		return "", cmd.FailErr(err, "access manifest", repoName)
+		fmt.Fprintf(a.Out, "ERROR accessing manifest\n")
+		return nil, cmd.FailErr(err, "access manifest", repoStore.Ref().Name())
 	}
 
 	configFile, err := origImage.ConfigFile()
 	if err != nil {
-		return "", cmd.FailErr(err, "image configfile", repoName)
+		return nil, cmd.FailErr(err, "image configfile", repoStore.Ref().Name())
 	}
 	label := configFile.Config.Labels[MetadataLabel]
 	if label == "" {
-		fmt.Fprintf(a.Out, "WARNING: skipping analyze, previous image metadata was not found")
+		fmt.Fprintf(a.Out, "WARNING: skipping analyze, previous image metadata was not found\n")
+		return nil, nil
 	}
-	return label, nil
+	metadata := &AppImageMetadata{}
+	if err := json.Unmarshal([]byte(label), metadata); err != nil {
+		fmt.Fprintf(a.Out, "WARNING: skipping analyze, previous image metadata was incompatible\n")
+		return nil, nil
+	}
+	return metadata, nil
 }
 
 func (a *Analyzer) buildpacks() map[string]struct{} {

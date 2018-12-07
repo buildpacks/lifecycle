@@ -21,9 +21,10 @@ const (
 	DefaultUseDaemon      = false
 	DefaultUseCredHelpers = false
 
-	EnvRunImage = "PACK_RUN_IMAGE"
-	EnvUID      = "PACK_USER_ID"
-	EnvGID      = "PACK_GROUP_ID"
+	EnvRunImage     = "PACK_RUN_IMAGE"
+	EnvUID          = "PACK_USER_ID"
+	EnvGID          = "PACK_GROUP_ID"
+	EnvRegistryAuth = "PACK_REGISTRY_AUTH"
 )
 
 func FlagLaunchDir(dir *string) {
@@ -72,10 +73,6 @@ func FlagPlanPath(path *string) {
 
 func FlagRunImage(image *string) {
 	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
-}
-
-func FlagMetadataPath(metadata *string) {
-	flag.StringVar(metadata, "metadata", "", "path to json containing image metadata for previous image")
 }
 
 func FlagUseDaemon(use *bool) {

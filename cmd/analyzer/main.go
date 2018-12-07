@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"io/ioutil"
-	"log"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -15,12 +12,11 @@ import (
 )
 
 var (
-	repoName     string
-	launchDir    string
-	groupPath    string
-	useDaemon    bool
-	useHelpers   bool
-	metadataPath string
+	repoName   string
+	launchDir  string
+	groupPath  string
+	useDaemon  bool
+	useHelpers bool
 )
 
 func init() {
@@ -28,7 +24,6 @@ func init() {
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
-	cmd.FlagMetadataPath(&metadataPath)
 }
 
 func main() {
@@ -58,38 +53,21 @@ func analyzer() error {
 		Err:        os.Stderr,
 	}
 
-	var metadata string
-	if metadataPath != "" {
-		bMetadata, err := ioutil.ReadFile(metadataPath)
-		if err != nil {
-			return cmd.FailErr(err, "access image metadata from path", metadataPath)
-		}
-		metadata = string(bMetadata)
+	var err error
+	var repoStore img.Store
+
+	if useDaemon {
+		repoStore, err = img.NewDaemon(repoName)
 	} else {
-		var err error
-		newRepoStore := img.NewRegistry
-		if useDaemon {
-			newRepoStore = img.NewDaemon
-		}
-		metadata, err = analyzer.GetMetadata(newRepoStore, repoName)
-		if err != nil {
-			return cmd.FailErr(err, "access image metadata from image", metadataPath)
-		}
+		repoStore, err = img.NewRegistry(repoName)
+	}
+	if err != nil {
+		return cmd.FailErr(err, "repository configuration", repoName)
 	}
 
-	if metadata == "" {
-		return nil
-	}
-
-	config := lifecycle.AppImageMetadata{}
-	if err := json.Unmarshal([]byte(metadata), &config); err != nil {
-		log.Printf("WARNING: skipping analyze, previous image metadata was incompatible")
-		return nil
-	}
-
-	err := analyzer.Analyze(
+	err = analyzer.Analyze(
+		repoStore,
 		launchDir,
-		config,
 	)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
