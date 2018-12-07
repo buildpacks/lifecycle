@@ -12,62 +12,70 @@ import (
 
 type Launcher struct {
 	DefaultProcessType string
-	LaunchDir          string
+	LayersDir          string
 	AppDir             string
 	Processes          []Process
 	Buildpacks         []string
+	Env                BuildEnv
 	Exec               func(argv0 string, argv []string, envv []string) error
 }
 
 func (l *Launcher) Launch(executable, startCommand string) error {
-	env := &Env{
-		Getenv:  os.Getenv,
-		Setenv:  os.Setenv,
-		Environ: os.Environ,
-		Map:     POSIXLaunchEnv,
+	if err := l.env(); err != nil {
+		return errors.Wrap(err, "modify env")
 	}
+	startCommand, err := l.processFor(startCommand)
+	if err != nil {
+		return errors.Wrap(err, "determine start command")
+	}
+	launcher, err := l.profileD()
+	if err != nil {
+		return errors.Wrap(err, "determine profile")
+	}
+
+	if err := os.Chdir(l.AppDir); err != nil {
+		return errors.Wrap(err, "change to app directory")
+	}
+	if err := l.Exec("/bin/bash", []string{
+		"bash", "-c",
+		launcher, executable,
+		startCommand,
+	}, l.Env.List()); err != nil {
+		return errors.Wrap(err, "exec")
+	}
+	return nil
+}
+
+func (l *Launcher) env() error {
 	appInfo, err := os.Stat(l.AppDir)
 	if err != nil {
 		return errors.Wrap(err, "find app directory")
 	}
-	if err := l.eachDir(l.LaunchDir, func(bp string) error {
-		bpPath := filepath.Join(l.LaunchDir, bp)
-		bpInfo, err := os.Stat(bpPath)
+	return l.eachBuildpack(l.LayersDir, func(path string) error {
+		bpInfo, err := os.Stat(path)
 		if err != nil {
 			return errors.Wrap(err, "find buildpack directory")
 		}
 		if os.SameFile(appInfo, bpInfo) {
 			return nil
 		}
-		return l.eachDir(bpPath, func(layer string) error {
-			return env.AddRootDir(filepath.Join(bpPath, layer))
-		})
-	}); err != nil {
-		return errors.Wrap(err, "modify env")
-	}
-	if err := os.Chdir(l.AppDir); err != nil {
-		return errors.Wrap(err, "change to app directory")
-	}
-
-	startCommand, err = l.processFor(startCommand)
-	if err != nil {
-		return errors.Wrap(err, "determine start command")
-	}
-
-	launcher, err := l.profileD()
-	if err != nil {
-		return errors.Wrap(err, "determine profile")
-	}
-
-	if err := l.Exec("/bin/bash", []string{
-		"bash", "-c",
-		launcher, executable,
-		startCommand,
-	}, os.Environ()); err != nil {
-		return errors.Wrap(err, "exec")
-	}
-	return nil
+		if err := eachDir(path, func(path string) error {
+			return l.Env.AddRootDir(path)
+		}); err != nil {
+			return errors.Wrap(err, "add layer root")
+		}
+		if err := eachDir(path, func(path string) error {
+			if err := l.Env.AddEnvDir(filepath.Join(path, "env")); err != nil {
+				return err
+			}
+			return l.Env.AddEnvDir(filepath.Join(path, "env.launch"))
+		}); err != nil {
+			return errors.Wrap(err, "add layer env")
+		}
+		return nil
+	})
 }
+
 
 func (l *Launcher) profileD() (string, error) {
 	var out []string
@@ -85,9 +93,12 @@ func (l *Launcher) profileD() (string, error) {
 		}
 		return nil
 	}
-
+	layersDir, err := filepath.Abs(l.LayersDir)
+	if err != nil {
+		return "", err
+	}
 	for _, bp := range l.Buildpacks {
-		scripts, err := filepath.Glob(filepath.Join(l.LaunchDir, bp, "*", "profile.d", "*"))
+		scripts, err := filepath.Glob(filepath.Join(layersDir, bp, "*", "profile.d", "*"))
 		if err != nil {
 			return "", err
 		}
@@ -132,7 +143,7 @@ func (l *Launcher) findProcessType(kind string) (string, bool) {
 	return "", false
 }
 
-func (*Launcher) eachDir(dir string, fn func(file string) error) error {
+func eachDir(dir string, fn func(path string) error) error {
 	files, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
@@ -143,7 +154,16 @@ func (*Launcher) eachDir(dir string, fn func(file string) error) error {
 		if !f.IsDir() {
 			continue
 		}
-		if err := fn(f.Name()); err != nil {
+		if err := fn(filepath.Join(dir, f.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *Launcher) eachBuildpack(dir string, fn func(path string) error) error {
+	for _, bp := range l.Buildpacks {
+		if err := fn(filepath.Join(l.LayersDir, bp)); err != nil {
 			return err
 		}
 	}

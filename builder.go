@@ -14,8 +14,7 @@ import (
 
 type Builder struct {
 	PlatformDir string
-	CacheDir    string
-	LaunchDir   string
+	LayersDir   string
 	AppDir      string
 	Env         BuildEnv
 	Buildpacks  []*Buildpack
@@ -51,11 +50,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	launchDir, err := filepath.Abs(b.LaunchDir)
-	if err != nil {
-		return nil, err
-	}
-	cacheDir, err := filepath.Abs(b.CacheDir)
+	layersDir, err := filepath.Abs(b.LayersDir)
 	if err != nil {
 		return nil, err
 	}
@@ -75,16 +70,13 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	var buildpackIDs []string
 	for _, bp := range b.Buildpacks {
 		bpDirName := bp.EscapedID()
-		bpLaunchDir := filepath.Join(launchDir, bpDirName)
-		bpCacheDir := filepath.Join(cacheDir, bpDirName)
+		bpLayersDir := filepath.Join(layersDir, bpDirName)
 		bpPlanDir := filepath.Join(planDir, bpDirName)
 		buildpackIDs = append(buildpackIDs, bpDirName)
-		if err := os.MkdirAll(bpLaunchDir, 0777); err != nil {
+		if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
 			return nil, err
 		}
-		if err := os.MkdirAll(bpCacheDir, 0777); err != nil {
-			return nil, err
-		}
+
 		if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
 			return nil, err
 		}
@@ -96,7 +88,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
-		cmd := exec.Command(buildPath, platformDir, bpPlanDir, bpCacheDir, bpLaunchDir)
+		cmd := exec.Command(buildPath, platformDir, bpPlanDir, bpLayersDir)
 		cmd.Env = b.Env.List()
 		cmd.Dir = appDir
 		cmd.Stdin = planIn
@@ -105,14 +97,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := cmd.Run(); err != nil {
 			return nil, err
 		}
-		if err := setupEnv(b.Env, bpCacheDir); err != nil {
+		if err := setupEnv(b.Env, bpLayersDir); err != nil {
 			return nil, err
 		}
 		if err := consumePlan(bpPlanDir, plan, bom); err != nil {
 			return nil, err
 		}
 		var launch LaunchTOML
-		tomlPath := filepath.Join(bpLaunchDir, "launch.toml")
+		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
 		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
 			continue
 		} else if err != nil {
@@ -128,31 +120,33 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}, nil
 }
 
-func setupEnv(env BuildEnv, cacheDir string) error {
-	cacheFiles, err := ioutil.ReadDir(cacheDir)
-	if err != nil {
-		return err
-	}
-	if err := eachDir(cacheFiles, func(layer os.FileInfo) error {
-		return env.AddRootDir(filepath.Join(cacheDir, layer.Name()))
+func setupEnv(env BuildEnv, layersDir string) error {
+	if err := eachDir(layersDir, func(path string) error {
+		if !isBuild(path + ".toml") {
+			return nil
+		}
+		return env.AddRootDir(path)
 	}); err != nil {
 		return err
 	}
-	return eachDir(cacheFiles, func(layer os.FileInfo) error {
-		return env.AddEnvDir(filepath.Join(cacheDir, layer.Name(), "env"))
+
+	return eachDir(layersDir, func(path string) error {
+		if !isBuild(path + ".toml") {
+			return nil
+		}
+		if err := env.AddEnvDir(filepath.Join(path, "env")); err != nil {
+			return err
+		}
+		return env.AddEnvDir(filepath.Join(path, "env.build"))
 	})
 }
 
-func eachDir(files []os.FileInfo, fn func(os.FileInfo) error) error {
-	for _, f := range files {
-		if !f.IsDir() {
-			continue
-		}
-		if err := fn(f); err != nil {
-			return err
-		}
+func isBuild(path string) bool {
+	var layerTOML struct {
+		Build bool `toml:"build"`
 	}
-	return nil
+	_, err := toml.DecodeFile(path, &layerTOML)
+	return err == nil && layerTOML.Build
 }
 
 func consumePlan(planDir string, plan, bom Plan) error {

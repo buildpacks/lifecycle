@@ -2,8 +2,6 @@ package lifecycle
 
 const (
 	MetadataLabel = "io.buildpacks.lifecycle.metadata"
-	EnvLaunchDir  = "PACK_LAUNCH_DIR"
-	EnvAppDir     = "PACK_APP_DIR"
 )
 
 type AppImageMetadata struct {

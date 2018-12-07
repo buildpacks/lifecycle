@@ -172,7 +172,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					})
 					return nil
 				})
-				mockRunImage.EXPECT().SetEnv("PACK_LAUNCH_DIR", "/dest/launch")
+				mockRunImage.EXPECT().SetEnv("PACK_LAYERS_DIR", "/dest/launch")
 				mockRunImage.EXPECT().SetEnv("PACK_APP_DIR", "/dest/app")
 				mockRunImage.EXPECT().Save().Return("some-digest", nil)
 
@@ -291,7 +291,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					})
 					return nil
 				})
-				mockRunImage.EXPECT().SetEnv("PACK_LAUNCH_DIR", "/dest/launch")
+				mockRunImage.EXPECT().SetEnv("PACK_LAYERS_DIR", "/dest/launch")
 				mockRunImage.EXPECT().SetEnv("PACK_APP_DIR", "/dest/app")
 				mockRunImage.EXPECT().Save()
 

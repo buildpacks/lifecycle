@@ -16,8 +16,8 @@ import (
 var (
 	repoName     string
 	runImageRef  string
-	launchDir    string
-	launchDirSrc string
+	layersDir    string
+	layersDirSrc string
 	appDir       string
 	appDirSrc    string
 	groupPath    string
@@ -29,8 +29,8 @@ var (
 
 func init() {
 	cmd.FlagRunImage(&runImageRef)
-	cmd.FlagLaunchDir(&launchDir)
-	cmd.FlagLaunchDirSrc(&launchDirSrc)
+	cmd.FlagLayersDir(&layersDir)
+	cmd.FlagLayersDirSrc(&layersDirSrc)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagAppDirSrc(&appDirSrc)
 	cmd.FlagGroupPath(&groupPath)
@@ -43,7 +43,7 @@ func init() {
 func main() {
 	flag.Parse()
 	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRef == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "launchDir": launchDir}
+		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "launchDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -102,8 +102,8 @@ func export() error {
 	}
 
 	if err := exporter.Export(
-		launchDirSrc,
-		launchDir,
+		layersDirSrc,
+		layersDir,
 		appDirSrc,
 		appDir,
 		runImage,

@@ -18,6 +18,7 @@ import (
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
 )
 
@@ -175,12 +176,12 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 	if err := appImage.SetLabel(MetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
-	e.Out.Printf("setting env var '%s=%s'\n", EnvLaunchDir, launchDirDst)
-	if err := appImage.SetEnv(EnvLaunchDir, launchDirDst); err != nil {
+	e.Out.Printf("setting env var '%s=%s'\n", cmd.EnvLayersDir, launchDirDst)
+	if err := appImage.SetEnv(cmd.EnvLayersDir, launchDirDst); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
-	e.Out.Printf("setting env var '%s=%s'\n", EnvAppDir, appDirDst)
-	if err := appImage.SetEnv(EnvAppDir, appDirDst); err != nil {
+	e.Out.Printf("setting env var '%s=%s'\n", cmd.EnvAppDir, appDirDst)
+	if err := appImage.SetEnv(cmd.EnvAppDir, appDirDst); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
