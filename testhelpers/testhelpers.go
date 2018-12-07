@@ -10,9 +10,7 @@ import (
 	dockerClient "github.com/docker/docker/client"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -24,7 +22,6 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle/fs"
-	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -94,37 +91,6 @@ func DockerCli(t *testing.T) *dockerClient.Client {
 	return dockerCliVal
 }
 
-func proxyDockerHostPort(port string) error {
-	ln, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		// TODO exit somehow.
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			go func(conn net.Conn) {
-				defer conn.Close()
-				c, err := dockerdial.Dial("tcp", "localhost:"+port)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-				defer c.Close()
-
-				go io.Copy(c, conn)
-				io.Copy(conn, c)
-			}(conn)
-		}
-	}()
-	return nil
-}
-
 var runRegistryName, runRegistryPort string
 var runRegistryOnce sync.Once
 
@@ -152,11 +118,6 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		inspect, err := DockerCli(t).ContainerInspect(context.TODO(), ctr.ID)
 		AssertNil(t, err)
 		runRegistryPort = inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
-
-		if os.Getenv("DOCKER_HOST") != "" {
-			err := proxyDockerHostPort(runRegistryPort)
-			AssertNil(t, err)
-		}
 
 		Eventually(t, func() bool {
 			txt, err := HttpGetE(fmt.Sprintf("http://localhost:%s/v2/", runRegistryPort))
@@ -375,15 +336,7 @@ func packTag() string {
 }
 
 func HttpGetE(url string) (string, error) {
-	var client *http.Client
-	if os.Getenv("DOCKER_HOST") == "" {
-		client = http.DefaultClient
-	} else {
-		tr := &http.Transport{Dial: dockerdial.Dial}
-		client = &http.Client{Transport: tr}
-	}
-
-	resp, err := client.Get(url)
+	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return "", err
 	}
