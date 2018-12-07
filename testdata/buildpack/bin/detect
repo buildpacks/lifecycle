@@ -3,11 +3,11 @@
 set -eu
 
 platform_dir=$1
-plan_dir=$2
+plan_path=$2
 
-i=$(cat -|grep -Eo '[0-9]'|tail -n1) # probably not right
+i=$(cat -|grep -Eo '[0-9]'|tail -n1)
 let r=$(<add)+${i:-0}
-echo "$r = true" > "$plan_dir/$r"
+echo -e "[${r}]\n${r} = true\n" >> "$plan_path"
 echo "stdout: $r"
 >&2 echo "stderr: $r"
 
