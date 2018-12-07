@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/buildpack/lifecycle/image"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -54,19 +55,29 @@ func analyzer() error {
 	}
 
 	var err error
-	var repoStore img.Store
+	var imageNotAPackageYo image.Image
+	factory, err := image.DefaultFactory()
+	if err != nil {
+		return err
+	}
 
 	if useDaemon {
-		repoStore, err = img.NewDaemon(repoName)
+		imageNotAPackageYo, err = factory.NewLocal(repoName, false)
+		if err != nil {
+			return err
+		}
 	} else {
-		repoStore, err = img.NewRegistry(repoName)
+		imageNotAPackageYo, err = factory.NewRemote(repoName)
+		if err != nil {
+			return err
+		}
 	}
 	if err != nil {
 		return cmd.FailErr(err, "repository configuration", repoName)
 	}
 
 	err = analyzer.Analyze(
-		repoStore,
+		imageNotAPackageYo,
 		launchDir,
 	)
 	if err != nil {

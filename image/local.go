@@ -37,14 +37,10 @@ type local struct {
 	easyAddLayers    []string
 }
 
-func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
-	if pull {
-		f.Log.Printf("Pulling image '%s'\n", repoName)
-		if err := f.Docker.PullImage(repoName); err != nil {
-			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
-		}
-	}
+// if there is an image, do the thing
+// or do the other thing
 
+func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 	inspect, _, err := f.Docker.ImageInspectWithRaw(context.Background(), repoName)
 	if err != nil && !dockercli.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "analyze read previous image config")
@@ -82,6 +78,10 @@ func (l *local) Rename(name string) {
 
 func (l *local) Name() string {
 	return l.RepoName
+}
+
+func (l *local) Found() (bool, error) {
+	return l.Inspect.Config != nil, nil
 }
 
 func (l *local) Digest() (string, error) {

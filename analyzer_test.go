@@ -3,6 +3,7 @@ package lifecycle_test
 import (
 	"bytes"
 	"errors"
+	"github.com/buildpack/lifecycle/testhelpers"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,8 +13,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -25,9 +24,10 @@ func TestAnalyzer(t *testing.T) {
 	spec.Run(t, "Analyzer", testAnalyzer, spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package testmock -destination testmock/image.go github.com/google/go-containerregistry/pkg/v1 Image
+//go:generate mockgen -mock_names Image=GGCRImage -package testmock -destination testmock/image.go github.com/google/go-containerregistry/pkg/v1 Image
 //go:generate mockgen -package testmock -destination testmock/store.go github.com/buildpack/lifecycle/img Store
 //go:generate mockgen -package testmock -destination testmock/ref.go github.com/google/go-containerregistry/pkg/name Reference
+//go:generate mockgen -package testmock -destination testmock/image.go github.com/buildpack/lifecycle/image Image
 
 func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	var (
@@ -73,39 +73,29 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("image exists", func() {
-			it.Before(func() {
-				repoStore.EXPECT().Image().Return(image, nil)
-				image.EXPECT().RawManifest().Return(nil, nil)
-			})
-
 			when("image label has compatible metadata", func() {
 				it.Before(func() {
-					image.EXPECT().ConfigFile().Return(&v1.ConfigFile{
-						Config: v1.Config{
-							Labels: map[string]string{
-								"io.buildpacks.lifecycle.metadata": `
+					image.EXPECT().Found().Return(true, nil)
+					image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`
 {"buildpacks": [
-  {
-    "key": "buildpack.node",
-    "layers": {
-      "nodejs": {"data": {"akey": "avalue", "bkey": "bvalue"}},
-      "node_modules": {"data": {"version": "1234"}}
-    }
-  },
-  {
-    "key": "buildpack.go",
-      "layers": {
-      "go": {"data": {"version": "1.10"}}
-    }
-  }
-]}`,
-							},
-						},
-					}, nil)
+ {
+   "key": "buildpack.node",
+   "layers": {
+     "nodejs": {"data": {"akey": "avalue", "bkey": "bvalue"}},
+     "node_modules": {"data": {"version": "1234"}}
+   }
+ },
+ {
+   "key": "buildpack.go",
+     "layers": {
+     "go": {"data": {"version": "1.10"}}
+   }
+ }
+]}`, nil)
 				})
-
+				//
 				it("should use labels to populate the launch dir", func() {
-					if err := analyzer.Analyze(repoStore, launchDir); err != nil {
+					if err := analyzer.Analyze(image, launchDir); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
@@ -125,7 +115,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it("should only write layer TOML files that correspond to detected buildpacks", func() {
 					analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "buildpack.go"}}
 
-					if err := analyzer.Analyze(repoStore, launchDir); err != nil {
+					if err := analyzer.Analyze(image, launchDir); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
@@ -142,109 +132,40 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("error obtaining image from repoStore", func() {
+		when("the image cannot found", func() {
 			it.Before(func() {
-				repoStore.EXPECT().Image().Return(nil, errors.New("MyError"))
+				image.EXPECT().Found().Return(false, nil)
+				image.EXPECT().Name().Return("test-name")
 			})
+
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(repoStore, launchDir)
+				err := analyzer.Analyze(image, launchDir)
 				assertNil(t, err)
-				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, authenticating to registry failed: MyError") {
+				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, image 'test-name' not found or requires authentication to access") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
 				}
 			})
 		})
 
-		when("using a registry #Image returns but #RawManifest has errors", func() {
+		when("there is an error while trying to find the image", func() {
 			it.Before(func() {
-				repoStore.EXPECT().Image().Return(image, nil)
+				image.EXPECT().Found().Return(false, errors.New("the system has kerfupsed"))
 			})
 
-			when("#RawManifest returns an UnauthorizedErrorCode", func() {
-				it.Before(func() {
-					image.EXPECT().RawManifest().Return(nil,
-						&remote.Error{Errors: []remote.Diagnostic{{Code: remote.UnauthorizedErrorCode}}},
-					)
-				})
-
-				it("warns user and returns", func() {
-					err := analyzer.Analyze(repoStore, launchDir)
-					assertNil(t, err)
-					if !strings.Contains(stdout.String(), "WARNING: skipping analyze, image not found or requires authentication to access:") {
-						t.Fatalf("expected warning in stdout: %s", stdout.String())
-					}
-				})
-			})
-
-			when("#RawManifest returns a ManifestUnknownErrorCode", func() {
-				it.Before(func() {
-					image.EXPECT().RawManifest().Return(nil,
-						&remote.Error{Errors: []remote.Diagnostic{{Code: remote.ManifestUnknownErrorCode}}},
-					)
-				})
-
-				it("warns user and returns", func() {
-					err := analyzer.Analyze(repoStore, launchDir)
-					assertNil(t, err)
-					if !strings.Contains(stdout.String(), "WARNING: skipping analyze, image not found or requires authentication to access:") {
-						t.Fatalf("expected warning in stdout: %s", stdout.String())
-					}
-				})
-			})
-
-			when("#RawManifest returns a different error", func() {
-				it.Before(func() {
-					image.EXPECT().RawManifest().Return(nil,
-						&remote.Error{Errors: []remote.Diagnostic{{Code: remote.UnsupportedErrorCode}}},
-					)
-				})
-
-				it("fails", func() {
-					err := analyzer.Analyze(repoStore, launchDir)
-					assertNotNil(t, err)
-				})
-			})
-
-			when("#RawManifest returns a completely different error", func() {
-				it.Before(func() {
-					image.EXPECT().RawManifest().Return(nil, errors.New("error"))
-				})
-
-				it("fails", func() {
-					err := analyzer.Analyze(repoStore, launchDir)
-					assertNotNil(t, err)
-				})
+			it("returns the error", func() {
+				err := analyzer.Analyze(image, launchDir)
+				testhelpers.AssertError(t, err, "the system has kerfupsed")
 			})
 		})
 
-		when("error obtaining configfile from repoStore", func() {
+		when("the image does not have the required label", func() {
 			it.Before(func() {
-				repoStore.EXPECT().Image().Return(image, nil)
-				image.EXPECT().RawManifest().Return(nil, nil)
-				image.EXPECT().ConfigFile().Return(nil, errors.New("MyError"))
-			})
-
-			it("fails", func() {
-				err := analyzer.Analyze(repoStore, launchDir)
-				assertNotNil(t, err)
-			})
-		})
-
-		when("required label is not found", func() {
-			it.Before(func() {
-				repoStore.EXPECT().Image().Return(image, nil)
-				image.EXPECT().RawManifest().Return(nil, nil)
-				image.EXPECT().ConfigFile().Return(&v1.ConfigFile{
-					Config: v1.Config{
-						Labels: map[string]string{
-							"otherlabel": `{"key":"value"}`,
-						},
-					},
-				}, nil)
+				image.EXPECT().Found().Return(true, nil)
+				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return("", errors.New("failed to get label, image 'made up test name' does not exist"))
 			})
 
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(repoStore, launchDir)
+				err := analyzer.Analyze(image, launchDir)
 				assertNil(t, err)
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was not found") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())

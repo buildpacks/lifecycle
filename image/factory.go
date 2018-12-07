@@ -25,6 +25,7 @@ type Image interface {
 	AddLayer(path string) error
 	ReuseLayer(sha string) error
 	Save() (string, error)
+	Found() (bool, error)
 }
 
 type Docker interface {

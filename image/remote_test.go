@@ -312,6 +312,37 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#Found", func() {
+		when("it exists", func() {
+			it.Before(func() {
+				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+				`, repoName))
+			})
+
+			it("returns true, nil", func() {
+				image, err := factory.NewRemote(repoName)
+				h.AssertNil(t, err)
+				exists, err := image.Found()
+
+				h.AssertNil(t, err)
+				h.AssertEq(t, exists, true)
+			})
+		})
+
+		when("it does not exist", func() {
+			it("returns false, nil", func() {
+				image, err := factory.NewRemote(repoName)
+				h.AssertNil(t, err)
+				exists, err := image.Found()
+
+				h.AssertNil(t, err)
+				h.AssertEq(t, exists, false)
+			})
+		})
+	})
 }
 
 func manifestLayers(t *testing.T, repoName string) []string {

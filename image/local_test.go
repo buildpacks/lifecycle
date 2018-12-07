@@ -455,4 +455,37 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#Found", func() {
+		when("it exists", func() {
+			it.Before(func() {
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+				`, repoName))
+			})
+
+			it.After(func() {
+				h.DockerRmi(dockerCli, repoName)
+			})
+
+			it("returns true, nil", func() {
+				image, err := factory.NewLocal(repoName, false)
+				exists, err := image.Found()
+
+				h.AssertNil(t, err)
+				h.AssertEq(t, exists, true)
+			})
+		})
+
+		when("it does not exist", func() {
+			it("returns false, nil", func() {
+				image, err := factory.NewLocal(repoName, false)
+				exists, err := image.Found()
+
+				h.AssertNil(t, err)
+				h.AssertEq(t, exists, false)
+			})
+		})
+	})
 }

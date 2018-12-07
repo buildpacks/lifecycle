@@ -2,10 +2,10 @@ package image
 
 import (
 	"fmt"
-
 	"github.com/buildpack/lifecycle/img"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 )
@@ -22,7 +22,7 @@ func (f *Factory) NewRemote(repoName string) (Image, error) {
 	}
 	image, err := repoStore.Image()
 	if err != nil {
-		return nil, errors.New("connect to repo store")
+		return nil, fmt.Errorf("connect to repo store '%s': %s", repoName, err.Error())
 	}
 
 	return &remote{
@@ -47,6 +47,19 @@ func (r *remote) Rename(name string) {
 
 func (r *remote) Name() string {
 	return r.RepoName
+}
+
+func (r *remote) Found() (bool, error) {
+	if _, err := r.Image.RawManifest(); err != nil {
+		if remoteErr, ok := err.(*v1remote.Error); ok && len(remoteErr.Errors) > 0 {
+			switch remoteErr.Errors[0].Code {
+			case v1remote.UnauthorizedErrorCode, v1remote.ManifestUnknownErrorCode:
+				return false, nil
+			}
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *remote) Digest() (string, error) {

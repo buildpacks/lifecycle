@@ -3,15 +3,13 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/buildpack/lifecycle/image"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
-
-	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/img"
 )
 
 type Analyzer struct {
@@ -20,18 +18,29 @@ type Analyzer struct {
 	Out, Err   io.Writer
 }
 
-func (a *Analyzer) Analyze(repoStore img.Store, launchDir string) error {
-	metadata, err := a.GetMetadata(repoStore)
+func (a *Analyzer) Analyze(image image.Image, launchDir string) error {
+	found, err := image.Found()
+
 	if err != nil {
 		return err
 	}
-	if metadata != nil {
-		return a.AnalyzeMetadata(launchDir, *metadata)
+
+	if found {
+		metadata, err := a.getMetadata(image)
+		if err != nil {
+			return err
+		}
+		if metadata != nil {
+			return a.analyzeMetadata(launchDir, *metadata)
+		}
+		return nil
+	} else {
+		fmt.Fprintf(a.Out, "WARNING: skipping analyze, image '%s' not found or requires authentication to access\n", image.Name())
+		return nil
 	}
-	return nil
 }
 
-func (a *Analyzer) AnalyzeMetadata(launchDir string, config AppImageMetadata) error {
+func (a *Analyzer) analyzeMetadata(launchDir string, config AppImageMetadata) error {
 	buildpacks := a.buildpacks()
 	for _, buildpack := range config.Buildpacks {
 		if _, exist := buildpacks[buildpack.ID]; !exist {
@@ -48,32 +57,13 @@ func (a *Analyzer) AnalyzeMetadata(launchDir string, config AppImageMetadata) er
 	return nil
 }
 
-func (a *Analyzer) GetMetadata(repoStore img.Store) (*AppImageMetadata, error) {
-	origImage, err := repoStore.Image()
-	if err != nil {
-		fmt.Fprintf(a.Out, "WARNING: skipping analyze, authenticating to registry failed: %s\n", err.Error())
-		return nil, nil
-	}
-	if _, err := origImage.RawManifest(); err != nil {
-		if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
-			switch remoteErr.Errors[0].Code {
-			case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
-				fmt.Fprintf(a.Out, "WARNING: skipping analyze, image not found or requires authentication to access: %s\n", remoteErr.Error())
-				return nil, nil
-			}
-		}
-		fmt.Fprintf(a.Out, "ERROR accessing manifest\n")
-		return nil, cmd.FailErr(err, "access manifest", repoStore.Ref().Name())
-	}
-
-	configFile, err := origImage.ConfigFile()
-	if err != nil {
-		return nil, cmd.FailErr(err, "image configfile", repoStore.Ref().Name())
-	}
-	label := configFile.Config.Labels[MetadataLabel]
-	if label == "" {
+func (a *Analyzer) getMetadata(image image.Image) (*AppImageMetadata, error) {
+	label, err := image.Label(MetadataLabel)
+	if err != nil && strings.Contains(err.Error(), "does not exist") {
 		fmt.Fprintf(a.Out, "WARNING: skipping analyze, previous image metadata was not found\n")
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 	metadata := &AppImageMetadata{}
 	if err := json.Unmarshal([]byte(label), metadata); err != nil {
