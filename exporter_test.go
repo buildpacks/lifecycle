@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/buildpack/lifecycle/testmock"
-	"github.com/golang/mock/gomock"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,11 +15,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
 	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpack/lifecycle/testmock"
 )
 
 func TestExporter(t *testing.T) {

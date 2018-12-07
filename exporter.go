@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpack/lifecycle/image"
-	"github.com/docker/docker/pkg/idtools"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,7 +15,10 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/idtools"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/image"
 )
 
 type Exporter struct {

@@ -3,13 +3,13 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/buildpack/lifecycle/image"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/buildpack/lifecycle/image"
 )
 
 type Analyzer struct {
@@ -20,24 +20,22 @@ type Analyzer struct {
 
 func (a *Analyzer) Analyze(image image.Image, launchDir string) error {
 	found, err := image.Found()
-
 	if err != nil {
 		return err
 	}
 
-	if found {
-		metadata, err := a.getMetadata(image)
-		if err != nil {
-			return err
-		}
-		if metadata != nil {
-			return a.analyzeMetadata(launchDir, *metadata)
-		}
-		return nil
-	} else {
+	if !found {
 		fmt.Fprintf(a.Out, "WARNING: skipping analyze, image '%s' not found or requires authentication to access\n", image.Name())
 		return nil
 	}
+	metadata, err := a.getMetadata(image)
+	if err != nil {
+		return err
+	}
+	if metadata != nil {
+		return a.analyzeMetadata(launchDir, *metadata)
+	}
+	return nil
 }
 
 func (a *Analyzer) analyzeMetadata(launchDir string, config AppImageMetadata) error {
@@ -59,12 +57,14 @@ func (a *Analyzer) analyzeMetadata(launchDir string, config AppImageMetadata) er
 
 func (a *Analyzer) getMetadata(image image.Image) (*AppImageMetadata, error) {
 	label, err := image.Label(MetadataLabel)
-	if err != nil && strings.Contains(err.Error(), "does not exist") {
-		fmt.Fprintf(a.Out, "WARNING: skipping analyze, previous image metadata was not found\n")
-		return nil, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
+	if label == "" {
+		fmt.Fprintf(a.Out, "WARNING: skipping analyze, previous image metadata was not found\n")
+		return nil, nil
+	}
+
 	metadata := &AppImageMetadata{}
 	if err := json.Unmarshal([]byte(label), metadata); err != nil {
 		fmt.Fprintf(a.Out, "WARNING: skipping analyze, previous image metadata was incompatible\n")

@@ -3,7 +3,6 @@ package lifecycle_test
 import (
 	"bytes"
 	"errors"
-	"github.com/buildpack/lifecycle/testhelpers"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
 )
 
@@ -25,7 +25,6 @@ func TestAnalyzer(t *testing.T) {
 }
 
 //go:generate mockgen -mock_names Image=GGCRImage -package testmock -destination testmock/image.go github.com/google/go-containerregistry/pkg/v1 Image
-//go:generate mockgen -package testmock -destination testmock/store.go github.com/buildpack/lifecycle/img Store
 //go:generate mockgen -package testmock -destination testmock/ref.go github.com/google/go-containerregistry/pkg/name Reference
 //go:generate mockgen -package testmock -destination testmock/image.go github.com/buildpack/lifecycle/image Image
 
@@ -60,16 +59,13 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 	when("Analyze", func() {
 		var (
-			image     *testmock.MockImage
-			repoStore *testmock.MockStore
-			ref       *testmock.MockReference
+			image *testmock.MockImage
+			ref   *testmock.MockReference
 		)
 		it.Before(func() {
 			image = testmock.NewMockImage(mockCtrl)
-			repoStore = testmock.NewMockStore(mockCtrl)
 			ref = testmock.NewMockReference(mockCtrl)
 			ref.EXPECT().Name().AnyTimes()
-			repoStore.EXPECT().Ref().AnyTimes().Return(ref)
 		})
 
 		when("image exists", func() {
@@ -77,23 +73,38 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					image.EXPECT().Found().Return(true, nil)
 					image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`
-{"buildpacks": [
- {
-   "key": "buildpack.node",
-   "layers": {
-     "nodejs": {"data": {"akey": "avalue", "bkey": "bvalue"}},
-     "node_modules": {"data": {"version": "1234"}}
-   }
- },
- {
-   "key": "buildpack.go",
-     "layers": {
-     "go": {"data": {"version": "1.10"}}
-   }
- }
-]}`, nil)
+{
+  "buildpacks": [
+    {
+      "key": "buildpack.node",
+      "layers": {
+        "nodejs": {
+          "data": {
+            "akey": "avalue",
+            "bkey": "bvalue"
+          }
+        },
+        "node_modules": {
+          "data": {
+            "version": "1234"
+          }
+        }
+      }
+    },
+    {
+      "key": "buildpack.go",
+      "layers": {
+        "go": {
+          "data": {
+            "version": "1.10"
+          }
+        }
+      }
+    }
+  ]
+}`, nil)
 				})
-				//
+
 				it("should use labels to populate the launch dir", func() {
 					if err := analyzer.Analyze(image, launchDir); err != nil {
 						t.Fatalf("Error: %s\n", err)
@@ -149,25 +160,43 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is an error while trying to find the image", func() {
 			it.Before(func() {
-				image.EXPECT().Found().Return(false, errors.New("the system has kerfupsed"))
+				image.EXPECT().Found().Return(false, errors.New("some-error"))
 			})
 
 			it("returns the error", func() {
 				err := analyzer.Analyze(image, launchDir)
-				testhelpers.AssertError(t, err, "the system has kerfupsed")
+				testhelpers.AssertError(t, err, "some-error")
 			})
 		})
 
 		when("the image does not have the required label", func() {
 			it.Before(func() {
 				image.EXPECT().Found().Return(true, nil)
-				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return("", errors.New("failed to get label, image 'made up test name' does not exist"))
+				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return("", nil)
 			})
 
 			it("warns user and returns", func() {
 				err := analyzer.Analyze(image, launchDir)
 				assertNil(t, err)
+
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was not found") {
+					t.Fatalf("expected warning in stdout: %s", stdout.String())
+				}
+			})
+		})
+
+		when("the image label has incompatible metadata", func() {
+			it.Before(func() {
+				image.EXPECT().Found().Return(true, nil)
+				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{["bad", "metadata"]}`, nil)
+
+			})
+
+			it("warns user and returns", func() {
+				err := analyzer.Analyze(image, launchDir)
+				assertNil(t, err)
+
+				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was incompatible") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
 				}
 			})
@@ -179,13 +208,6 @@ func assertNil(t *testing.T, actual interface{}) {
 	t.Helper()
 	if actual != nil {
 		t.Fatalf("Expected nil: %s", actual)
-	}
-}
-
-func assertNotNil(t *testing.T, actual interface{}) {
-	t.Helper()
-	if actual == nil {
-		t.Fatal("Expected not nil")
 	}
 }
 

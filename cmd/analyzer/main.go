@@ -54,19 +54,19 @@ func analyzer() error {
 	}
 
 	var err error
-	var imageNotAPackageYo image.Image
+	var previousImage image.Image
 	factory, err := image.DefaultFactory()
 	if err != nil {
 		return err
 	}
 
 	if useDaemon {
-		imageNotAPackageYo, err = factory.NewLocal(repoName, false)
+		previousImage, err = factory.NewLocal(repoName, false)
 		if err != nil {
 			return err
 		}
 	} else {
-		imageNotAPackageYo, err = factory.NewRemote(repoName)
+		previousImage, err = factory.NewRemote(repoName)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ func analyzer() error {
 	}
 
 	err = analyzer.Analyze(
-		imageNotAPackageYo,
+		previousImage,
 		launchDir,
 	)
 	if err != nil {
