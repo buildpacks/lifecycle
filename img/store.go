@@ -58,7 +58,7 @@ func (r *registryStore) Image() (v1.Image, error) {
 }
 
 func (r *registryStore) Write(image v1.Image) error {
-	return remote.Write(r.ref, image, r.auth, http.DefaultTransport, remote.WriteOptions{})
+	return remote.Write(r.ref, image, r.auth, http.DefaultTransport)
 }
 
 func NewDaemon(tag string) (Store, error) {
@@ -82,6 +82,6 @@ func (d *daemonStore) Image() (v1.Image, error) {
 }
 
 func (d *daemonStore) Write(image v1.Image) error {
-	_, err := daemon.Write(d.tag, image, daemon.WriteOptions{})
+	_, err := daemon.Write(d.tag, image)
 	return err
 }

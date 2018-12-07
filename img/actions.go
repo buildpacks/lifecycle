@@ -37,7 +37,7 @@ func Rebase(orig v1.Image, newBase v1.Image, oldBaseFinder ImageFinder) (v1.Imag
 	if err != nil {
 		return nil, err
 	}
-	image, err := mutate.Rebase(orig, oldBase, newBase, nil)
+	image, err := mutate.Rebase(orig, oldBase, newBase)
 	if err != nil {
 		return nil, err
 	}
