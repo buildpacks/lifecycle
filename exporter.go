@@ -179,6 +179,11 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 		return nil, errors.Wrap(err, "set app dir env var")
 	}
 
+	repoImage, err = img.Entrypoint(repoImage, []string{"/lifecycle/launcher"})
+	if err != nil {
+		return nil, errors.Wrap(err, "set entrypoint")
+	}
+
 	return repoImage, nil
 }
 

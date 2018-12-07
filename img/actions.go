@@ -82,6 +82,26 @@ func Env(image v1.Image, k, v string) (v1.Image, error) {
 	return mutate.Config(image, config)
 }
 
+func Entrypoint(image v1.Image, entrypoint []string) (v1.Image, error) {
+	configFile, err := image.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+	config := *configFile.Config.DeepCopy()
+	config.Entrypoint = entrypoint
+	return mutate.Config(image, config)
+}
+
+func Cmd(image v1.Image, cmd []string) (v1.Image, error) {
+	configFile, err := image.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+	config := *configFile.Config.DeepCopy()
+	config.Cmd = cmd
+	return mutate.Config(image, config)
+}
+
 func SetupCredHelpers(refs ...string) error {
 	dockerPath := filepath.Join(os.Getenv("HOME"), ".docker")
 	configPath := filepath.Join(dockerPath, "config.json")
