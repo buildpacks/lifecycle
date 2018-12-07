@@ -147,7 +147,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		
 		when("buildpacks have provided layer directories that could affect the environment", func() {
 			it.Before(func() {
 				mkfile(t, "#!/usr/bin/env bash\necho test1: $TEST_ENV_ONE test2: $TEST_ENV_TWO\n",
@@ -167,7 +166,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(tmpDir, "launch", "bp.2", "layer4"),
 				)
 			})
-			
+
 			it("should ensure each buildpack's layers dir exists and process build layers", func() {
 				gomock.InOrder(
 					env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "bp.1", "layer1")),
@@ -176,7 +175,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.1", "layer1", "env.launch")),
 					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.1", "layer2", "env")),
 					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.1", "layer2", "env.launch")),
-					
+
 					env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "bp.2", "layer3")),
 					env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "bp.2", "layer4")),
 					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.2", "layer3", "env")),
