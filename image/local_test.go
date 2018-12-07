@@ -183,6 +183,41 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#SetEnv", func() {
+		var (
+			img    image.Image
+			origID string
+		)
+		it.Before(func() {
+			var err error
+			h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+					LABEL some-key=some-value
+				`, repoName))
+			img, err = factory.NewLocal(repoName, false)
+			h.AssertNil(t, err)
+			origID = h.ImageID(t, repoName)
+		})
+
+		it.After(func() {
+			h.AssertNil(t, h.DockerRmi(dockerCli, repoName, origID))
+		})
+
+		it("sets the environment", func() {
+			err := img.SetEnv("ENV_KEY", "ENV_VAL")
+			h.AssertNil(t, err)
+
+			_, err = img.Save()
+			h.AssertNil(t, err)
+
+			inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+			h.AssertNil(t, err)
+
+			h.AssertContains(t, inspect.Config.Env, "ENV_KEY=ENV_VAL")
+		})
+	})
+
 	when("#Rebase", func() {
 		when("image exists", func() {
 			var oldBase, oldTopLayer, newBase, origID string

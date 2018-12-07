@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -44,6 +47,17 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	}
 }
 
+func AssertContains(t *testing.T, slice []string, expected string) {
+	t.Helper()
+	for _, actual := range slice {
+		if diff := cmp.Diff(actual, expected); diff == "" {
+			return
+		}
+	}
+	t.Fatalf("Expected %+v to contain: %s", slice, expected)
+
+}
+
 func AssertMatch(t *testing.T, actual string, expected *regexp.Regexp) {
 	t.Helper()
 	if !expected.Match([]byte(actual)) {
@@ -56,8 +70,8 @@ func AssertError(t *testing.T, actual error, expected string) {
 	if actual == nil {
 		t.Fatalf("Expected an error but got nil")
 	}
-	if actual.Error() != expected {
-		t.Fatalf(`Expected error to equal "%s", got "%s"`, expected, actual.Error())
+	if !strings.Contains(actual.Error(), expected) {
+		t.Fatalf(`Expected error to contain "%s", got "%s"`, expected, actual.Error())
 	}
 }
 
@@ -393,4 +407,19 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	}
 
 	return string(output), nil
+}
+
+func ComputeSHA256(t *testing.T, path string) string {
+	t.Helper()
+
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("failed to open file: %s", err)
+	}
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		t.Fatalf("failed to copy file to hasher: %s", err)
+	}
+
+	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }

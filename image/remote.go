@@ -8,14 +8,30 @@ import (
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
+	"sync"
 )
 
 type remote struct {
-	RepoName string
-	Image    v1.Image
+	RepoName   string
+	Image      v1.Image
+	PrevLayers []v1.Layer
+	prevOnce   *sync.Once
 }
 
 func (f *Factory) NewRemote(repoName string) (Image, error) {
+	image, err := newV1Image(repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &remote{
+		RepoName: repoName,
+		Image:    image,
+		prevOnce: &sync.Once{},
+	}, nil
+}
+
+func newV1Image(repoName string) (v1.Image, error) {
 	repoStore, err := img.NewRegistry(repoName)
 	if err != nil {
 		return nil, err
@@ -24,11 +40,7 @@ func (f *Factory) NewRemote(repoName string) (Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect to repo store '%s': %s", repoName, err.Error())
 	}
-
-	return &remote{
-		RepoName: repoName,
-		Image:    image,
-	}, nil
+	return image, nil
 }
 
 func (r *remote) Label(key string) (string, error) {
@@ -94,6 +106,16 @@ func (r *remote) SetLabel(key, val string) error {
 	return nil
 }
 
+func (r *remote) SetEnv(key, val string) error {
+	newImage, err := img.Env(r.Image, key, val)
+	if err != nil {
+		errors.Wrapf(err, "failed to set env var '%s'", key)
+	}
+
+	r.Image = newImage
+	return nil
+}
+
 func (r *remote) TopLayer() (string, error) {
 	all, err := r.Image.Layers()
 	if err != nil {
@@ -117,7 +139,42 @@ func (r *remote) AddLayer(path string) error {
 }
 
 func (r *remote) ReuseLayer(sha string) error {
-	panic("Not Implemented")
+	var outerErr error
+
+	r.prevOnce.Do(func() {
+		prevImage, err := newV1Image(r.RepoName)
+		if err != nil {
+			outerErr = err
+			return
+		}
+		r.PrevLayers, err = prevImage.Layers()
+		if err != nil {
+			outerErr = fmt.Errorf("failed to get layers for previous image with repo name '%s': %s", r.RepoName, err)
+		}
+	})
+	if outerErr != nil {
+		return outerErr
+	}
+
+	layer, err := findLayerWithSha(r.PrevLayers, sha)
+	if err != nil {
+		return err
+	}
+	r.Image, err = mutate.AppendLayers(r.Image, layer)
+	return err
+}
+
+func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
+	for _, layer := range layers {
+		diffID, err := layer.DiffID()
+		if err != nil {
+			return nil, errors.Wrap(err, "get diff ID for previous image layer")
+		}
+		if sha == diffID.String() {
+			return layer, nil
+		}
+	}
+	return nil, fmt.Errorf(`previous image did not have layer with sha '%s'`, sha)
 }
 
 func (r *remote) Save() (string, error) {

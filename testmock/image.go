@@ -143,6 +143,18 @@ func (mr *MockImageMockRecorder) Save() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockImage)(nil).Save))
 }
 
+// SetEnv mocks base method
+func (m *MockImage) SetEnv(arg0, arg1 string) error {
+	ret := m.ctrl.Call(m, "SetEnv", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetEnv indicates an expected call of SetEnv
+func (mr *MockImageMockRecorder) SetEnv(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnv", reflect.TypeOf((*MockImage)(nil).SetEnv), arg0, arg1)
+}
+
 // SetLabel mocks base method
 func (m *MockImage) SetLabel(arg0, arg1 string) error {
 	ret := m.ctrl.Call(m, "SetLabel", arg0, arg1)

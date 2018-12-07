@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -33,7 +34,7 @@ func TestRemote(t *testing.T) {
 	registryPort = h.RunRegistry(t, false)
 	defer h.StopRegistry(t)
 
-	spec.Run(t, "remote", testRemote, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "remote", testRemote, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testRemote(t *testing.T, when spec.G, it spec.S) {
@@ -144,6 +145,38 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				label := remoteLabel(t, dockerCli, repoName, "mykey")
 				h.AssertEq(t, "new-val", label)
 			})
+		})
+	})
+
+	when("#SetEnv", func() {
+		var (
+			img image.Image
+		)
+		it.Before(func() {
+			var err error
+			h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+					LABEL some-key=some-value
+				`, repoName))
+			img, err = factory.NewRemote(repoName)
+			h.AssertNil(t, err)
+		})
+
+		it("sets the environment", func() {
+			err := img.SetEnv("ENV_KEY", "ENV_VAL")
+			h.AssertNil(t, err)
+
+			_, err = img.Save()
+			h.AssertNil(t, err)
+
+			h.AssertNil(t, dockerCli.PullImage(repoName))
+			defer h.DockerRmi(dockerCli, repoName)
+
+			inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+			h.AssertNil(t, err)
+
+			h.AssertContains(t, inspect.Config.Env, "ENV_KEY=ENV_VAL")
 		})
 	})
 
@@ -284,6 +317,74 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			output, err = h.CopySingleFileFromImage(dockerCli, repoName, "new-layer.txt")
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, "new-layer")
+		})
+	})
+
+	when("#ReuseLayer", func() {
+		when("previous image", func() {
+			var (
+				layer2SHA string
+				img       image.Image
+			)
+
+			it.Before(func() {
+				var err error
+
+				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM busybox
+					LABEL repo_name_for_randomisation=%s
+					RUN echo -n old-layer-1 > layer-1.txt
+					RUN echo -n old-layer-2 > layer-2.txt
+				`, repoName))
+
+				h.AssertNil(t, dockerCli.PullImage(repoName))
+				defer func() {
+					h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+				}()
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+				h.AssertNil(t, err)
+
+				layer2SHA = inspect.RootFS.Layers[2]
+
+				img, err = factory.NewRemote("busybox")
+				h.AssertNil(t, err)
+			})
+
+			it("reuses a layer", func() {
+				img.Rename(repoName)
+				err := img.ReuseLayer(layer2SHA)
+				h.AssertNil(t, err)
+
+				_, err = img.Save()
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, dockerCli.PullImage(repoName))
+				defer h.DockerRmi(dockerCli, repoName)
+				output, err := h.CopySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
+				h.AssertNil(t, err)
+				h.AssertEq(t, output, "old-layer-2")
+
+				// Confirm layer-1.txt does not exist
+				_, err = h.CopySingleFileFromImage(dockerCli, repoName, "layer-1.txt")
+				h.AssertMatch(t, err.Error(), regexp.MustCompile(`Error: No such container:path: .*:layer-1.txt`))
+			})
+
+			it("returns error on nonexistent layer", func() {
+				img.Rename(repoName)
+				err := img.ReuseLayer("some-bad-sha")
+
+				h.AssertError(t, err, "previous image did not have layer with sha 'some-bad-sha'")
+			})
+		})
+
+		it("returns errors on nonexistent prev image", func() {
+			img, err := factory.NewRemote("busybox")
+			h.AssertNil(t, err)
+			img.Rename("some-bad-repo-name")
+
+			err = img.ReuseLayer("some-bad-sha")
+
+			h.AssertError(t, err, "failed to get layers for previous image with repo name 'some-bad-repo-name'")
 		})
 	})
 

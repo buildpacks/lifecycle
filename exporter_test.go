@@ -4,42 +4,40 @@ import (
 	"archive/tar"
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
+	"github.com/buildpack/lifecycle/testmock"
+	"github.com/golang/mock/gomock"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/img"
+	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
 func TestExporter(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	spec.Run(t, "Exporter", testExporter, spec.Report(report.Terminal{}))
+	spec.Run(t, "Exporter", testExporter, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testExporter(t *testing.T, when spec.G, it spec.S) {
 	var (
-		exporter       *lifecycle.Exporter
-		stdout, stderr *bytes.Buffer
-		tmpDir         string
+		exporter *lifecycle.Exporter
+		stderr   bytes.Buffer
+		stdout   bytes.Buffer
+		tmpDir   string
 	)
 
 	it.Before(func() {
-		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
+		stdout, stderr = bytes.Buffer{}, bytes.Buffer{}
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
 		if err != nil {
@@ -49,9 +47,12 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			ArtifactsDir: tmpDir,
 			Buildpacks: []*lifecycle.Buildpack{
 				{ID: "buildpack.id"},
+				{ID: "other.buildpack.id"},
 			},
-			Out: io.MultiWriter(stdout, it.Out()),
-			Err: io.MultiWriter(stderr, it.Out()),
+			Out: log.New(&stdout, "", 0),
+			Err: log.New(&stderr, "", 0),
+			UID: 1234,
+			GID: 4321,
 		}
 	})
 
@@ -61,397 +62,242 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		}
 	})
 
-	when("#PrepareExport", func() {
-		when("exporter has UID/GID set", func() {
+	when("#Export", func() {
+		var (
+			mockRunImage       *testmock.MockImage
+			mockOrigImage      *testmock.MockImage
+			mockController     *gomock.Controller
+			appLayerSHA        string
+			configLayerSHA     string
+			buildpackLayer2SHA string
+			buildpackLayer3SHA string
+			launchSrc          string
+			launchDst          string
+			appSrc             string
+			appDst             string
+		)
+
+		it.Before(func() {
+			mockController = gomock.NewController(t)
+			mockRunImage = testmock.NewMockImage(mockController)
+			mockOrigImage = testmock.NewMockImage(mockController)
+			launchSrc = filepath.Join("testdata", "exporter", "first", "launch")
+			launchDst = filepath.Join("/", "dest", "launch")
+			appSrc = filepath.Join("testdata", "exporter", "first", "launch", "app")
+			appDst = filepath.Join("/", "dest", "app")
+			mockRunImage.EXPECT().TopLayer().Return("some-top-layer-sha", nil)
+			mockRunImage.EXPECT().Digest().Return("some-run-image-digest", nil)
+			mockOrigImage.EXPECT().Name().Return("app/repo")
+			mockRunImage.EXPECT().Rename("app/repo")
+		})
+
+		it.After(func() {
+			mockController.Finish()
+		})
+
+		when("previous image exists", func() {
+
 			it.Before(func() {
-				exporter.UID = 1234
-				exporter.GID = 5678
+				mockOrigImage.EXPECT().Found().Return(true, nil).AnyTimes()
 			})
 
-			it("creates fs representation of image", func() {
-				err := exporter.PrepareExport("testdata/exporter/first/launch", "/launch/dest", "testdata/exporter/first/launch/app", "/app/dest")
-				assertNil(t, err)
-				var metadata lifecycle.AppImageMetadata
-				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "metadata.json"))
-				assertNil(t, err)
-				assertNil(t, json.Unmarshal(b, &metadata))
+			it("creates the image on the registry", func() {
+				mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+					Return(`{"buildpacks":[{"key": "buildpack.id", "layers": {"layer1": {"sha": "orig-layer1-sha", "data": {"oldkey":"oldval"}}}}]}`, nil)
+				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+					t.Log("adds app layer")
+					appLayerSHA = h.ComputeSHA256(t, layerPath)
+					assertTarFileContents(t, layerPath, "/dest/app/.hidden.txt", "some-hidden-text\n")
+					assertTarFileOwner(t, layerPath, "/dest/app/", 1234, 4321)
+					return nil
+				})
+				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+					t.Log("adds config layer")
+					configLayerSHA = h.ComputeSHA256(t, layerPath)
+					assertTarFileContents(t,
+						layerPath,
+						"/dest/launch/config/metadata.toml",
+						"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
+					)
+					assertTarFileOwner(t, layerPath, "/dest/launch/config/", 1234, 4321)
+					return nil
+				})
+				mockRunImage.EXPECT().ReuseLayer("orig-layer1-sha")
+				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+					t.Log("adds buildpack layer2")
+					buildpackLayer2SHA = h.ComputeSHA256(t, layerPath)
+					assertTarFileContents(t,
+						layerPath,
+						"/dest/launch/buildpack.id/layer2/file-from-layer-2",
+						"echo text from layer 2\n")
+					assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer2/", 1234, 4321)
+					return nil
+				})
+				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+					t.Log("adds buildpack layer3")
+					buildpackLayer3SHA = h.ComputeSHA256(t, layerPath)
+					assertTarFileContents(t,
+						layerPath,
+						"/dest/launch/other.buildpack.id/layer3/file-from-layer-3",
+						"echo text from layer 3\n")
+					assertTarFileOwner(t, layerPath, "/dest/launch/other.buildpack.id/layer3/", 1234, 4321)
+					return nil
+				})
 
-				t.Log("generates app tar")
-				assertTarFileContents(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.App.SHA, "sha256:", "", -1)+".tar"),
-					"/app/dest/.hidden.txt", "some-hidden-text\n")
-				assertTarFileOwner(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.App.SHA, "sha256:", "", -1)+".tar"),
-					"/app/dest/",
-					1234, 5678)
+				mockRunImage.EXPECT().SetLabel("io.buildpacks.lifecycle.metadata", gomock.Any()).DoAndReturn(func(_, label string) error {
+					t.Log("sets metadata label")
+					var metadata lifecycle.AppImageMetadata
+					if err := json.Unmarshal([]byte(label), &metadata); err != nil {
+						t.Fatalf("badly formatted metadata: %s", err)
+					}
 
-				t.Log("generate config tar")
-				assertTarFileContents(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.Config.SHA, "sha256:", "", -1)+".tar"),
-					"/launch/dest/config/metadata.toml", "[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n")
-				assertTarFileOwner(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.Config.SHA, "sha256:", "", -1)+".tar"),
-					"/launch/dest/config/",
-					1234, 5678)
+					t.Log("adds run image metadata to label")
+					h.AssertEq(t, metadata.RunImage.TopLayer, "some-top-layer-sha")
+					h.AssertEq(t, metadata.RunImage.SHA, "some-run-image-digest")
 
-				t.Log("generates buildpacks layers")
-				assertEq(t, len(metadata.Buildpacks), 1)
-				assertTarFileContents(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:", "", -1)+".tar"),
-					"/launch/dest/buildpack.id/layer1/file-from-layer-1", "echo text from layer 1\n")
-				assertEq(t,
-					metadata.Buildpacks[0].Layers["layer1"].Data,
-					map[string]interface{}{
-						"mykey": "myval",
+					t.Log("adds layer shas to metadata label")
+					h.AssertEq(t, metadata.App.SHA, "sha256:"+appLayerSHA)
+					h.AssertEq(t, metadata.Config.SHA, "sha256:"+configLayerSHA)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].SHA, "orig-layer1-sha")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:"+buildpackLayer2SHA)
+					h.AssertEq(t, metadata.Buildpacks[1].Layers["layer3"].SHA, "sha256:"+buildpackLayer3SHA)
+
+					t.Log("adds buildpack layer metadata to label")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{
+						"oldkey": "oldval",
 					})
-				assertTarFileOwner(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:", "", -1)+".tar"),
-					"/launch/dest/buildpack.id/layer1/",
-					1234, 5678)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["layer2"].Data, map[string]interface{}{
+						"somekey": "someval",
+					})
+					return nil
+				})
+				mockRunImage.EXPECT().SetEnv("PACK_LAUNCH_DIR", "/dest/launch")
+				mockRunImage.EXPECT().SetEnv("PACK_APP_DIR", "/dest/app")
+				mockRunImage.EXPECT().Save()
 
-				assertTarFileContents(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:", "", -1)+".tar"),
-					"/launch/dest/buildpack.id/layer2/file-from-layer-2", "echo text from layer 2\n")
-				assertEq(t,
-					metadata.Buildpacks[0].Layers["layer2"].Data,
-					map[string]interface{}{})
-				assertTarFileOwner(t,
-					filepath.Join(tmpDir, strings.Replace(metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:", "", -1)+".tar"),
-					"/launch/dest/buildpack.id/layer2/",
-					1234, 5678)
+				h.AssertNil(t, exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage))
+			})
+
+			when("previous image metadata is missing buildpack for reused layer", func() {
+				it.Before(func() {
+					mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+						Return(`{"buildpacks":[{}]}`, nil)
+					mockRunImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
+				})
+
+				it("returns an error", func() {
+					h.AssertError(
+						t,
+						exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage),
+						"cannot reuse 'buildpack.id/layer1', previous image has no metadata for buildpack 'buildpack.id'",
+					)
+				})
+			})
+
+			when("previous image metadata is missing reused layer", func() {
+				it.Before(func() {
+					mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+						Return(`{"buildpacks":[{"key": "buildpack.id", "layers": {}}]}`, nil)
+					mockRunImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
+				})
+
+				it("returns an error", func() {
+					h.AssertError(
+						t,
+						exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage),
+						"cannot reuse 'buildpack.id/layer1', previous image has no metadata for layer 'buildpack.id/layer1'",
+					)
+				})
+			})
+		})
+
+		when("previous image doesn't exist", func() {
+			var buildpackLayer1SHA string
+
+			it.Before(func() {
+				launchSrc = filepath.Join("testdata", "exporter", "second", "launch")
+				mockOrigImage.EXPECT().Found().Return(false, nil).AnyTimes()
+				mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+					Return("", errors.New("not exist")).AnyTimes()
+			})
+
+			it("makes new layers", func() {
+				gomock.InOrder(
+					mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+						t.Log("adds app layer")
+						appLayerSHA = h.ComputeSHA256(t, layerPath)
+						assertTarFileContents(t, layerPath, "/dest/app/.hidden.txt", "some-hidden-text\n")
+						assertTarFileOwner(t, layerPath, "/dest/app/", 1234, 4321)
+						return nil
+					}),
+					mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+						t.Log("adds config layer")
+						configLayerSHA = h.ComputeSHA256(t, layerPath)
+						assertTarFileContents(t,
+							layerPath,
+							"/dest/launch/config/metadata.toml",
+							"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
+						)
+						assertTarFileOwner(t, layerPath, "/dest/launch/config/", 1234, 4321)
+						return nil
+					}),
+					mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+						t.Log("adds buildpack layer1")
+						buildpackLayer1SHA = h.ComputeSHA256(t, layerPath)
+						assertTarFileContents(t,
+							layerPath,
+							"/dest/launch/buildpack.id/layer1/file-from-layer-1",
+							"echo text from layer 1\n")
+						assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer1/", 1234, 4321)
+						return nil
+					}),
+					mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
+						t.Log("adds buildpack layer2")
+						buildpackLayer2SHA = h.ComputeSHA256(t, layerPath)
+						assertTarFileContents(t,
+							layerPath,
+							"/dest/launch/buildpack.id/layer2/file-from-layer-2",
+							"echo text from layer 2\n")
+						assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer2/", 1234, 4321)
+						return nil
+					}),
+				)
+
+				mockRunImage.EXPECT().SetLabel("io.buildpacks.lifecycle.metadata", gomock.Any()).DoAndReturn(func(_, label string) error {
+					t.Log("sets metadata label")
+					var metadata lifecycle.AppImageMetadata
+					if err := json.Unmarshal([]byte(label), &metadata); err != nil {
+						t.Fatalf("badly formatted metadata: %s", err)
+					}
+
+					t.Log("adds run image metadata to label")
+					h.AssertEq(t, metadata.RunImage.TopLayer, "some-top-layer-sha")
+					h.AssertEq(t, metadata.RunImage.SHA, "some-run-image-digest")
+
+					t.Log("adds layer shas to metadata label")
+					h.AssertEq(t, metadata.App.SHA, "sha256:"+appLayerSHA)
+					h.AssertEq(t, metadata.Config.SHA, "sha256:"+configLayerSHA)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:"+buildpackLayer1SHA)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:"+buildpackLayer2SHA)
+
+					t.Log("adds buildpack layer metadata to label")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{
+						"mykey": "new val",
+					})
+					return nil
+				})
+				mockRunImage.EXPECT().SetEnv("PACK_LAUNCH_DIR", "/dest/launch")
+				mockRunImage.EXPECT().SetEnv("PACK_APP_DIR", "/dest/app")
+				mockRunImage.EXPECT().Save()
+
+				h.AssertNil(t, exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage))
 			})
 		})
 	})
-
-	when("#Export", func() {
-		var runImage v1.Image
-
-		it.Before(func() {
-			var err error
-			runImage, err = getBusyboxWithEntrypoint()
-			if err != nil {
-				t.Fatalf("get busybox image for run image: %s", err)
-			}
-		})
-
-		it("should process a simple launch directory", func() {
-			image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest",
-				"testdata/exporter/first/launch/app", "/app/dest", runImage, nil)
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			data, err := getMetadata(image)
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-
-			t.Log("adds buildpack metadata to label")
-			if diff := cmp.Diff(data.Buildpacks[0].Key, "buildpack.id"); diff != "" {
-				t.Fatal(diff)
-			}
-
-			t.Log("sets run image top layer in metadata")
-			runImageLayerDigest, err := topLayer(runImage)
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			if diff := cmp.Diff(data.RunImage.TopLayer, runImageLayerDigest.String()); diff != "" {
-				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
-			}
-
-			t.Log("sets run image SHA in metadata")
-			runImageDigest, err := runImage.Digest()
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			if diff := cmp.Diff(data.RunImage.SHA, runImageDigest.String()); diff != "" {
-				t.Fatalf(`RunImage digest did not match: (-got +want)\n%s`, diff)
-			}
-
-			t.Log("sets toml files in buildpack metadata")
-			if diff := cmp.Diff(data.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{"mykey": "myval"}); diff != "" {
-				t.Fatalf(`Layer toml did not match: (-got +want)\n%s`, diff)
-			}
-
-			t.Log("adds app layer to image")
-			if txt, err := getImageFile(image, data.App.SHA, "/app/dest/subdir/myfile.txt"); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			} else if diff := cmp.Diff(strings.TrimSpace(txt), "mycontents"); diff != "" {
-				t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
-			}
-
-			t.Log("adds config layer to image")
-			if txt, err := getImageFile(image, data.Config.SHA, "/launch/dest/config/metadata.toml"); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			} else if diff := cmp.Diff(strings.TrimSpace(txt), "[[processes]]\n  type = \"web\"\n  command = \"npm start\""); diff != "" {
-				t.Fatalf(`/launch/dest/config/metadata.toml: (-got +want)\n%s`, diff)
-			}
-
-			t.Log("adds buildpack/layer1 as layer")
-			if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer1"].SHA, "/launch/dest/buildpack.id/layer1/file-from-layer-1"); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 1"); diff != "" {
-				t.Fatal("/launch/dest/buildpack.id/layer1/file-from-layer-1: (-got +want)", diff)
-			}
-
-			t.Log("adds buildpack/layer2 as layer")
-			if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer2"].SHA, "/launch/dest/buildpack.id/layer2/file-from-layer-2"); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 2"); diff != "" {
-				t.Fatal("/launch/dest/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
-			}
-
-			t.Log("adds PACKS_LAUNCH_DIR env var")
-			if val, err := envVar(image, "PACK_LAUNCH_DIR"); err != nil {
-				t.Fatal(err)
-			} else if val != "/launch/dest" {
-				t.Fatalf("expected exporter to set env var PACK_LAUNCH_DIR to 'testdata/exporter/first/launch', got '%s'", val)
-			}
-
-			t.Log("uses filesystem uid/gid for image layers")
-			currentUser, err := user.Current()
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/app/dest/subdir/myfile.txt"); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			} else if diff := cmp.Diff(strconv.Itoa(uid), currentUser.Uid); diff != "" {
-				t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
-			} else if diff := cmp.Diff(strconv.Itoa(gid), currentUser.Gid); diff != "" {
-				t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
-			}
-		})
-
-		when("exporter has UID/GID set", func() {
-			it.Before(func() {
-				exporter.UID = 1234
-				exporter.GID = 5678
-			})
-			it("sets uid/gid on the layer files", func() {
-				image, err := exporter.Export("testdata/exporter/first/launch", "/launch/dest",
-					"testdata/exporter/first/launch/app", "/app/dest", runImage, nil)
-				if err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-				data, err := getMetadata(image)
-				if err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-
-				// File
-				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/app/dest/subdir/myfile.txt"); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				} else if diff := cmp.Diff(uid, 1234); diff != "" {
-					t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
-				} else if diff := cmp.Diff(gid, 5678); diff != "" {
-					t.Fatalf(`/app/dest/subdir/myfile.txt: (-got +want)\n%s`, diff)
-				}
-
-				// Directory
-				if uid, gid, err := getImageFileOwner(image, data.App.SHA, "/app/dest/subdir/"); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				} else if diff := cmp.Diff(uid, 1234); diff != "" {
-					t.Fatalf(`/app/dest/subdir/: (-got +want)\n%s`, diff)
-				} else if diff := cmp.Diff(gid, 5678); diff != "" {
-					t.Fatalf(`/app/dest/subdir/: (-got +want)\n%s`, diff)
-				}
-			})
-		})
-
-		when("rebuilding when layer TOML exists without directory", func() {
-			var firstImage v1.Image
-			it.Before(func() {
-				var err error
-				firstImage, err = exporter.Export("testdata/exporter/first/launch", "/launch/dest",
-					"testdata/exporter/first/launch/app", "/app/dest", runImage, nil)
-				if err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-			})
-
-			it("should reuse layers if there is a layer TOML file", func() {
-				image, err := exporter.Export("testdata/exporter/second/launch", "/launch/dest",
-					"testdata/exporter/first/launch/app", "/app/dest", runImage, firstImage)
-				if err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-				data, err := getMetadata(image)
-				if err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-
-				t.Log("sets toml files in image metadata")
-				if diff := cmp.Diff(data.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{"mykey": "new val"}); diff != "" {
-					t.Fatalf(`Layer toml did not match: (-got +want)\n%s`, diff)
-				}
-
-				t.Log("adds buildpack/layer1 as layer (from previous image)")
-				if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer1"].SHA, "/launch/dest/buildpack.id/layer1/file-from-layer-1"); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from layer 1"); diff != "" {
-					t.Fatal("/launch/dest/buildpack.id/layer1/file-from-layer-1: (-got +want)", diff)
-				}
-
-				t.Log("adds buildpack/layer2 as layer from directory")
-				if txt, err := getImageFile(image, data.Buildpacks[0].Layers["layer2"].SHA, "/launch/dest/buildpack.id/layer2/file-from-layer-2"); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				} else if diff := cmp.Diff(strings.TrimSpace(txt), "echo text from new layer 2"); diff != "" {
-					t.Fatal("/launch/dest/buildpack.id/layer2/file-from-layer-2: (-got +want)", diff)
-				}
-
-				t.Log("adds PACK_LAUNCH_DIR env var")
-				if val, err := envVar(image, "PACK_LAUNCH_DIR"); err != nil {
-					t.Fatal(err)
-				} else if val != "/launch/dest" {
-					t.Fatalf("expected exporter to set env var PACK_LAUNCH_DIR to '/launch/dest', got '%s'", val)
-				}
-
-				t.Log("adds PACK_APP_DIR env var")
-				if val, err := envVar(image, "PACK_APP_DIR"); err != nil {
-					t.Fatal(err)
-				} else if val != "/app/dest" {
-					t.Fatalf("expected exporter to set env var PACK_APP_DIR to '/app/dest', got '%s'", val)
-				}
-			})
-		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
-}
-
-func topLayer(image v1.Image) (v1.Hash, error) {
-	layers, err := image.Layers()
-	if err != nil {
-		return v1.Hash{}, err
-	}
-	return layers[len(layers)-1].DiffID()
-}
-
-func getBusyboxWithEntrypoint() (v1.Image, error) {
-	runImageStore, err := img.NewRegistry("busybox")
-	if err != nil {
-		return nil, fmt.Errorf("get store for busybox: %s", err)
-	}
-	runImage, err := runImageStore.Image()
-	if err != nil {
-		return nil, fmt.Errorf("get image for busybox: %s", err)
-	}
-	configFile, err := runImage.ConfigFile()
-	if err != nil {
-		return nil, err
-	}
-	config := *configFile.Config.DeepCopy()
-	config.Entrypoint = []string{"sh", "-c"}
-	return mutate.Config(runImage, config)
-}
-
-func getLayerFile(layer v1.Layer, path string) (string, error) {
-	r, err := layer.Uncompressed()
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	tr := tar.NewReader(r)
-
-	for {
-		header, err := tr.Next()
-		if err != nil {
-			return "", err
-		}
-
-		if header.Name == path {
-			buf, err := ioutil.ReadAll(tr)
-			return string(buf), err
-		}
-	}
-}
-
-func getImageFile(image v1.Image, layerDigest, path string) (string, error) {
-	hash, err := v1.NewHash(layerDigest)
-	if err != nil {
-		return "", err
-	}
-	layer, err := image.LayerByDiffID(hash)
-	if err != nil {
-		return "", err
-	}
-	return getLayerFile(layer, path)
-}
-
-func getImageFileOwner(image v1.Image, layerDigest, path string) (uid, gid int, err error) {
-	hash, err := v1.NewHash(layerDigest)
-	if err != nil {
-		return 0, 0, err
-	}
-	layer, err := image.LayerByDiffID(hash)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	r, err := layer.Uncompressed()
-	if err != nil {
-		return 0, 0, err
-	}
-	defer r.Close()
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err != nil {
-			return 0, 0, err
-		}
-
-		if header.Name == path {
-			return header.Uid, header.Gid, err
-		}
-	}
-}
-
-type metadata struct {
-	RunImage struct {
-		TopLayer string `json:"topLayer"`
-		SHA      string `json:"sha"`
-	} `json:"runImage"`
-	App struct {
-		SHA string `json:"sha"`
-	} `json:"app"`
-	Config struct {
-		SHA string `json:"sha"`
-	} `json:"config"`
-	Buildpacks []struct {
-		Key    string `json:"key"`
-		Layers map[string]struct {
-			SHA  string                 `json:"sha"`
-			Data map[string]interface{} `json:"data"`
-		} `json:"layers"`
-	} `json:"buildpacks"`
-}
-
-func getMetadata(image v1.Image) (metadata, error) {
-	var metadata metadata
-	cfg, err := image.ConfigFile()
-	if err != nil {
-		return metadata, fmt.Errorf("read config: %s", err)
-	}
-	label := cfg.Config.Labels[lifecycle.MetadataLabel]
-	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-		return metadata, fmt.Errorf("unmarshal: %s", err)
-	}
-	return metadata, nil
-}
-
-func envVar(image v1.Image, key string) (string, error) {
-	config, err := image.ConfigFile()
-	if err != nil {
-		return "", fmt.Errorf("failed to get image config file: %s", err)
-	}
-	for _, e := range config.Config.Env {
-		parts := strings.Split(e, "=")
-		if parts[0] == key {
-			return parts[1], nil
-		}
-	}
-	return "", fmt.Errorf("image ENV did not contain variable '%s'", key)
 }
 
 func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
+	t.Helper()
 	r, err := os.Open(tarfile)
 	assertNil(t, err)
 	defer r.Close()

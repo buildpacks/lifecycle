@@ -157,6 +157,11 @@ func (l *local) SetLabel(key, val string) error {
 	return nil
 }
 
+func (l *local) SetEnv(key, val string) error {
+	l.Inspect.Config.Env = append(l.Inspect.Config.Env, fmt.Sprintf("%s=%s", key, val))
+	return nil
+}
+
 func (l *local) TopLayer() (string, error) {
 	all := l.Inspect.RootFS.Layers
 	topLayer := all[len(all)-1]
