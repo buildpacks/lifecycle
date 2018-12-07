@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,27 +34,27 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		analyzer       *lifecycle.Analyzer
 		mockCtrl       *gomock.Controller
 		stdout, stderr *bytes.Buffer
-		launchDir      string
+		layerDir       string
 	)
 
 	it.Before(func() {
 		var err error
-		launchDir, err = ioutil.TempDir("", "lifecycle-launch-dir")
+		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks: []*lifecycle.Buildpack{{ID: "buildpack.node"}, {ID: "buildpack.go"}},
-			Out:        io.MultiWriter(stdout, it.Out()),
-			Err:        io.MultiWriter(stderr, it.Out()),
+			Buildpacks: []*lifecycle.Buildpack{{ID: "buildpack.node"}, {ID: "buildpack.go"}, {ID: "no.metadata.buildpack"}},
+			Out:        log.New(stdout, "", 0),
+			Err:        log.New(stderr, "", 0),
 		}
 		mockCtrl = gomock.NewController(t)
 	})
 
 	it.After(func() {
-		os.RemoveAll(launchDir)
+		os.RemoveAll(layerDir)
 		mockCtrl.Finish()
 	})
 
@@ -72,8 +73,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			when("image label has compatible metadata", func() {
 				it.Before(func() {
 					image.EXPECT().Found().Return(true, nil)
-					image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`
-{
+					image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{
   "buildpacks": [
     {
       "key": "buildpack.node",
@@ -82,12 +82,21 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
           "data": {
             "akey": "avalue",
             "bkey": "bvalue"
-          }
+          },
+          "sha": "nodejs-layer-sha"
         },
         "node_modules": {
           "data": {
             "version": "1234"
-          }
+          },
+          "sha": "node-modules-sha"
+        },
+        "buildhelpers": {
+          "data": {
+            "some": "metadata"
+          },
+          "sha": "new-buildhelpers-sha",
+          "build": true
         }
       }
     },
@@ -105,20 +114,24 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 }`, nil)
 				})
 
-				it("should use labels to populate the launch dir", func() {
-					if err := analyzer.Analyze(image, launchDir); err != nil {
+				it("should use labels to populate the layer dir", func() {
+					if err := analyzer.Analyze(image, layerDir); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
 					for _, data := range []struct{ name, expected string }{
-						{"buildpack.node/nodejs.toml", `akey = "avalue"` + "\n" + `bkey = "bvalue"` + "\n"},
-						{"buildpack.node/node_modules.toml", `version = "1234"` + "\n"},
-						{"buildpack.go/go.toml", `version = "1.10"` + "\n"},
+						{"buildpack.node/nodejs.toml", `[metadata]
+  akey = "avalue"
+  bkey = "bvalue"`},
+						{"buildpack.node/node_modules.toml", `[metadata]
+  version = "1234"`},
+						{"buildpack.go/go.toml", `[metadata]
+  version = "1.10"`},
 					} {
-						if txt, err := ioutil.ReadFile(filepath.Join(launchDir, data.name)); err != nil {
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, data.name)); err != nil {
 							t.Fatalf("Error: %s\n", err)
-						} else if string(txt) != data.expected {
-							t.Fatalf(`Error: expected "%s" to be toml encoded %s`, txt, data.name)
+						} else if !strings.Contains(string(txt), data.expected) {
+							t.Fatalf(`Error: expected "%s" to contain "%s"`, txt, data.expected)
 						}
 					}
 				})
@@ -126,19 +139,183 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it("should only write layer TOML files that correspond to detected buildpacks", func() {
 					analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "buildpack.go"}}
 
-					if err := analyzer.Analyze(image, launchDir); err != nil {
+					if err := analyzer.Analyze(image, layerDir); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
-					if txt, err := ioutil.ReadFile(filepath.Join(launchDir, "buildpack.go", "go.toml")); err != nil {
+					if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.go", "go.toml")); err != nil {
 						t.Fatalf("Error: %s\n", err)
-					} else if string(txt) != `version = "1.10"`+"\n" {
+					} else if !strings.Contains(string(txt), `[metadata]
+  version = "1.10"`) {
 						t.Fatalf(`Error: expected "%s" to be toml encoded go.toml`, txt)
 					}
 
-					if _, err := os.Stat(filepath.Join(launchDir, "buildpack.node")); !os.IsNotExist(err) {
-						t.Fatalf(`Error: expected /launch/buildpack.node to not exist`)
+					if _, err := os.Stat(filepath.Join(layerDir, "buildpack.node")); !os.IsNotExist(err) {
+						t.Fatalf(`Error: expected /layer/buildpack.node to not exist`)
 					}
+				})
+
+				when("there are cached launch layers", func() {
+					it("leaves the layers", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "nodejs", "node-file")); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						} else if string(txt) != "nodejs cached file" {
+							t.Fatalf("Error: expected cached node file to remain")
+						}
+					})
+				})
+
+				when("there are cached build layers", func() {
+					it("leaves the layers", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "build-layer", "build-layer-file")); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						} else if string(txt) != "build-layer-file-contents" {
+							t.Fatalf("Error: expected cached node file to remain")
+						}
+					})
+				})
+
+				when("there are stale cached launch layers", func() {
+					it("removes the layer dir and rewrites the metadata", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						var err error
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "buildpack.node", "node_modules")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale node_modules layer dir, it should not exist")
+						}
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "node_modules.toml")); err != nil {
+							t.Fatalf("failed to read node_modules.toml: %s", err)
+						} else if !strings.Contains(string(txt), `[metadata]
+  version = "1234"`) {
+							t.Fatalf(`Error: expected "%s" to be equal %s`, txt, `metadata.version = "1234"`)
+						}
+
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "node_modules.sha")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale node_modules.sha, it should be removed")
+						}
+					})
+				})
+
+				when("there are stale cached launch/build layers", func() {
+					it("removes the layer dir and metadata", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						var err error
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "buildpack.node", "buildhelpers")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale buildhelpers layer dir, it should not exist")
+						}
+
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "buildhelpers.toml")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale buildhelpers.toml, it should be removed")
+						}
+
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "buildhelpers.sha")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale buildhelpers.sha, it should be removed")
+						}
+					})
+				})
+
+				when("there cached launch layers that are missing from metadata", func() {
+					it("removes the layer dir and metadata", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						var err error
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "buildpack.node", "old-layer")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale old-layer layer dir, it should not exist")
+						}
+
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "old-layer.toml")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale old-layer.toml, it should be removed")
+						}
+
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "old-layer.sha")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale old-layer.sha, it should be removed")
+						}
+					})
+				})
+
+				when("there are cached layers for a buildpack that is missing from the group", func() {
+					it("removes all the layers", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						var err error
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "old-buildpack")); !os.IsNotExist(err) {
+							t.Fatalf("Found old-buildpack dir, it should not exist")
+						}
+					})
+				})
+
+				when("there are cached non launch layers for a buildpack that is missing from metadata", func() {
+					it("keeps the layers", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						buildLayerFile := filepath.Join(layerDir, "no.metadata.buildpack", "buildlayer", "buildlayerfile")
+						if txt, err := ioutil.ReadFile(buildLayerFile); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						} else if !strings.Contains(string(txt), "buildlayer file contents") {
+							t.Fatalf(`Error: expected "%s" to still exist`, buildLayerFile)
+						}
+
+					})
+				})
+
+				when("there are cached non launch for a buildpack that is missing from metadata", func() {
+					it("removes the layers", func() {
+						//copy to layerDir
+						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						var err error
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale launchlayer layer dir, it should not exist")
+						}
+
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer.toml")); !os.IsNotExist(err) {
+							t.Fatalf("Found stale launchlayer.toml, it should be removed")
+						}
+					})
 				})
 			})
 		})
@@ -150,7 +327,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(image, launchDir)
+				err := analyzer.Analyze(image, layerDir)
 				assertNil(t, err)
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, image 'test-name' not found or requires authentication to access") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
@@ -164,7 +341,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the error", func() {
-				err := analyzer.Analyze(image, launchDir)
+				err := analyzer.Analyze(image, layerDir)
 				testhelpers.AssertError(t, err, "some-error")
 			})
 		})
@@ -176,7 +353,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(image, launchDir)
+				err := analyzer.Analyze(image, layerDir)
 				assertNil(t, err)
 
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was not found") {
@@ -193,7 +370,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(image, launchDir)
+				err := analyzer.Analyze(image, layerDir)
 				assertNil(t, err)
 
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was incompatible") {
@@ -202,6 +379,28 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+}
+
+func recursiveCopy(t *testing.T, src, dst string) {
+	t.Helper()
+	fis, err := ioutil.ReadDir(src)
+	assertNil(t, err)
+	for _, fi := range fis {
+		if fi.Mode().IsRegular() {
+			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
+			assertNil(t, err)
+			dstFile, err := os.Create(filepath.Join(dst, fi.Name()))
+			assertNil(t, err)
+			_, err = io.Copy(dstFile, srcFile)
+			assertNil(t, err)
+		}
+		if fi.IsDir() {
+			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
+			assertNil(t, err)
+			recursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+		}
+	}
 }
 
 func assertNil(t *testing.T, actual interface{}) {

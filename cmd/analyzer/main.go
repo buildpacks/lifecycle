@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/buildpack/lifecycle/image"
+	"log"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -49,8 +50,8 @@ func analyzer() error {
 
 	analyzer := &lifecycle.Analyzer{
 		Buildpacks: group.Buildpacks,
-		Out:        os.Stdout,
-		Err:        os.Stderr,
+		Out:        log.New(os.Stdout, "", log.LstdFlags),
+		Err:        log.New(os.Stderr, "", log.LstdFlags),
 	}
 
 	var err error

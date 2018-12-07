@@ -36,7 +36,11 @@ type DetectConfig struct {
 }
 
 func (bp *Buildpack) EscapedID() string {
-	return strings.Replace(bp.ID, "/", "_", -1)
+	return escape(bp.ID)
+}
+
+func escape(id string) string {
+	return strings.Replace(id, "/", "_", -1)
 }
 
 func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {

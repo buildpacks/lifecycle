@@ -26,10 +26,13 @@ type BuildpackMetadata struct {
 }
 
 type LayerMetadata struct {
-	SHA  string      `json:"sha"`
-	Data interface{} `json:"data"`
+	SHA    string      `json:"sha" toml:"-"`
+	Data   interface{} `json:"data" toml:"metadata"`
+	Build  bool        `json:"build" toml:"build"`
+	Launch bool        `json:"launch" toml:"launch"`
 }
 
+//this
 type RunImageMetadata struct {
 	TopLayer string `json:"topLayer"`
 	SHA      string `json:"sha"`
