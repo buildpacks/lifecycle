@@ -27,19 +27,19 @@ $ docker volume create --name packs_cache
 Detect:
 
 ```sh-session
-$ docker run --rm -v "$(pwd)/workspace:/workspace" packs/build /lifecycle/detector
+$ docker run --rm -v "$(pwd)/workspace:/workspace" packs/samples /lifecycle/detector
 ```
 
 Analyze:
 
 ```sh-session
-$ docker run --rm -v "$(pwd)/workspace:/workspace" packs/util /lifecycle/analyzer
+$ docker run --rm -v "$(pwd)/workspace:/workspace" packs/build /lifecycle/analyzer
 ```
 
 Build:
 
 ```sh-session
-$ docker run --rm -v "$(pwd)/workspace:/workspace" -v "packs_cache:/cache" packs/build /lifecycle/builder
+$ docker run --rm -v "$(pwd)/workspace:/workspace" -v "packs_cache:/cache" packs/samples /lifecycle/builder
 ```
 
 Run:
@@ -52,5 +52,5 @@ Export:
 
 ```sh-session
 $ docker run --rm -v "$(pwd)/workspace:/workspace" -e PACK_RUN_IMAGE="packs/run" \
-  packs/util /lifecycle/exporter myimage
+  packs/build /lifecycle/exporter myimage
 ```
