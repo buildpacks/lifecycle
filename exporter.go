@@ -111,7 +111,8 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 	}
 
 	appImage := runImage
-	appImage.Rename(origImage.Name())
+	repoName := origImage.Name()
+	appImage.Rename(repoName)
 
 	e.Out.Printf("adding app layer with diffID '%s'\n", metadata.App.SHA)
 	if err := appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(metadata.App.SHA, "sha256:")+".tar")); err != nil {
@@ -183,7 +184,8 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 	}
 
 	e.Out.Println("writing image")
-	_, err = appImage.Save()
+	sha, err := appImage.Save()
+	e.Out.Printf("\n*** Image: %s@%s\n", repoName, sha)
 	return err
 }
 

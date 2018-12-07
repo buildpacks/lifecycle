@@ -2,12 +2,18 @@ package image
 
 import (
 	"fmt"
-	"github.com/buildpack/lifecycle/img"
+	"github.com/buildpack/lifecycle/cmd"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
+	"net/http"
+	"os"
+	"strings"
 	"sync"
 )
 
@@ -32,11 +38,11 @@ func (f *Factory) NewRemote(repoName string) (Image, error) {
 }
 
 func newV1Image(repoName string) (v1.Image, error) {
-	repoStore, err := img.NewRegistry(repoName)
+	ref, auth, err := referenceForRepoName(repoName)
 	if err != nil {
 		return nil, err
 	}
-	image, err := repoStore.Image()
+	image, err := v1remote.Image(ref, v1remote.WithAuth(auth))
 	if err != nil {
 		return nil, fmt.Errorf("connect to repo store '%s': %s", repoName, err.Error())
 	}
@@ -88,8 +94,7 @@ func (r *remote) Rebase(baseTopLayer string, newBase Image) error {
 		return errors.New("expected new base to be a remote image")
 	}
 
-	oldBase := &subImage{img: r.Image, topSHA: baseTopLayer}
-	newImage, err := mutate.Rebase(r.Image, oldBase, newBaseRemote.Image)
+	newImage, err := mutate.Rebase(r.Image, &subImage{img: r.Image, topSHA: baseTopLayer}, newBaseRemote.Image, &mutate.RebaseOptions{})
 	if err != nil {
 		return errors.Wrap(err, "rebase")
 	}
@@ -98,22 +103,39 @@ func (r *remote) Rebase(baseTopLayer string, newBase Image) error {
 }
 
 func (r *remote) SetLabel(key, val string) error {
-	newImage, err := img.Label(r.Image, key, val)
+	configFile, err := r.Image.ConfigFile()
 	if err != nil {
-		return errors.Wrap(err, "set metadata label")
+		return err
 	}
-	r.Image = newImage
-	return nil
+	config := *configFile.Config.DeepCopy()
+	if config.Labels == nil {
+		config.Labels = map[string]string{}
+	}
+	config.Labels[key] = val
+	r.Image, err = mutate.Config(r.Image, config)
+	return err
 }
 
 func (r *remote) SetEnv(key, val string) error {
-	newImage, err := img.Env(r.Image, key, val)
+	configFile, err := r.Image.ConfigFile()
 	if err != nil {
-		errors.Wrapf(err, "failed to set env var '%s'", key)
+		return err
 	}
-
-	r.Image = newImage
-	return nil
+	config := *configFile.Config.DeepCopy()
+	for i, e := range config.Env {
+		parts := strings.Split(e, "=")
+		if parts[0] == key {
+			config.Env[i] = fmt.Sprintf("%s=%s", key, val)
+			r.Image, err = mutate.Config(r.Image, config)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	config.Env = append(config.Env, fmt.Sprintf("%s=%s", key, val))
+	r.Image, err = mutate.Config(r.Image, config)
+	return err
 }
 
 func (r *remote) TopLayer() (string, error) {
@@ -130,11 +152,14 @@ func (r *remote) TopLayer() (string, error) {
 }
 
 func (r *remote) AddLayer(path string) error {
-	newImage, _, err := img.Append(r.Image, path)
+	layer, err := tarball.LayerFromFile(path)
+	if err != nil {
+		return err
+	}
+	r.Image, err = mutate.AppendLayers(r.Image, layer)
 	if err != nil {
 		return errors.Wrap(err, "add layer")
 	}
-	r.Image = newImage
 	return nil
 }
 
@@ -178,17 +203,47 @@ func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
 }
 
 func (r *remote) Save() (string, error) {
-	repoStore, err := img.NewRegistry(r.RepoName)
+	ref, auth, err := referenceForRepoName(r.RepoName)
 	if err != nil {
 		return "", err
 	}
-	if err := repoStore.Write(r.Image); err != nil {
+
+	if err := v1remote.Write(ref, r.Image, auth, http.DefaultTransport, v1remote.WriteOptions{}); err != nil {
 		return "", err
 	}
 
 	hex, err := r.Image.Digest()
+	if err != nil {
+		return "", err
+	}
 
 	return hex.String(), nil
+}
+
+func referenceForRepoName(ref string) (name.Reference, authn.Authenticator, error) {
+	var auth authn.Authenticator
+	r, err := name.ParseReference(ref, name.WeakValidation)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if v := os.Getenv(cmd.EnvRegistryAuth); v != "" {
+		auth = &providedAuth{auth: v}
+	} else {
+		auth, err = authn.DefaultKeychain.Resolve(r.Context().Registry)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return r, auth, nil
+}
+
+type providedAuth struct {
+	auth string
+}
+
+func (p *providedAuth) Authorization() (string, error) {
+	return p.auth, nil
 }
 
 type subImage struct {

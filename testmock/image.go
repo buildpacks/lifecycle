@@ -71,17 +71,17 @@ func (mr *MockImageMockRecorder) Found() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Found", reflect.TypeOf((*MockImage)(nil).Found))
 }
 
-// Label mocks base method
+// label mocks base method
 func (m *MockImage) Label(arg0 string) (string, error) {
-	ret := m.ctrl.Call(m, "Label", arg0)
+	ret := m.ctrl.Call(m, "label", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Label indicates an expected call of Label
+// label indicates an expected call of label
 func (mr *MockImageMockRecorder) Label(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Label", reflect.TypeOf((*MockImage)(nil).Label), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "label", reflect.TypeOf((*MockImage)(nil).Label), arg0)
 }
 
 // Name mocks base method

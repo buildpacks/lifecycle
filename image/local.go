@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +17,8 @@ import (
 
 	"github.com/buildpack/lifecycle/fs"
 	"github.com/docker/docker/api/types"
-	dockercli "github.com/docker/docker/client"
+	dockertypes "github.com/docker/docker/api/types"
+	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 )
@@ -41,8 +41,15 @@ type local struct {
 // or do the other thing
 
 func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
+	if pull {
+		f.Log.Printf("Pulling image '%s'\n", repoName)
+		if err := pullImage(f.Docker, repoName); err != nil {
+			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
+		}
+	}
+
 	inspect, _, err := f.Docker.ImageInspectWithRaw(context.Background(), repoName)
-	if err != nil && !dockercli.IsErrNotFound(err) {
+	if err != nil && !dockerClient.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "analyze read previous image config")
 	}
 
@@ -371,43 +378,17 @@ func (l *local) prevDownload() error {
 	return outerErr
 }
 
-// TODO copied from exporter.go
-func parseImageBuildBody(r io.Reader, out io.Writer) (string, error) {
-	jr := json.NewDecoder(r)
-	var id string
-	var streamError error
-	var obj struct {
-		Stream string `json:"stream"`
-		Error  string `json:"error"`
-		Aux    struct {
-			ID string `json:"ID"`
-		} `json:"aux"`
-	}
-	for {
-		err := jr.Decode(&obj)
+func pullImage(dockerCli *dockerClient.Client, ref string) error {
+	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	if err != nil {
+		// Retry
+		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return "", err
-		}
-		if obj.Aux.ID != "" {
-			id = obj.Aux.ID
-		}
-		if txt := strings.TrimSpace(obj.Stream); txt != "" {
-			fmt.Fprintln(out, txt)
-		}
-		if txt := strings.TrimSpace(obj.Error); txt != "" {
-			streamError = errors.New(txt)
+			return err
 		}
 	}
-	return id, streamError
-}
-
-func randString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26))
+	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+		return err
 	}
-	return string(b)
+	return rc.Close()
 }

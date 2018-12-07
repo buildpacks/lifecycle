@@ -17,10 +17,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/docker"
 	"github.com/buildpack/lifecycle/fs"
 	"github.com/buildpack/lifecycle/image"
 	h "github.com/buildpack/lifecycle/testhelpers"
+
+	dockerClient "github.com/docker/docker/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 )
@@ -41,11 +42,11 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	var factory image.Factory
 	var buf bytes.Buffer
 	var repoName string
-	var dockerCli *docker.Client
+	var dockerCli *dockerClient.Client
 
 	it.Before(func() {
 		var err error
-		dockerCli, err = docker.New()
+		dockerCli = h.DockerCli(t)
 		h.AssertNil(t, err)
 		factory = image.Factory{
 			Docker: dockerCli,
@@ -56,7 +57,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		repoName = "localhost:" + registryPort + "/pack-image-test-" + h.RandString(10)
 	})
 
-	when("#Label", func() {
+	when("#label", func() {
 		when("image exists", func() {
 			var img image.Image
 			it.Before(func() {
@@ -170,7 +171,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			_, err = img.Save()
 			h.AssertNil(t, err)
 
-			h.AssertNil(t, dockerCli.PullImage(repoName))
+			h.AssertNil(t, h.PullImage(dockerCli, repoName))
 			defer h.DockerRmi(dockerCli, repoName)
 
 			inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
@@ -308,7 +309,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			// After Pull
-			h.AssertNil(t, dockerCli.PullImage(repoName))
+			h.AssertNil(t, h.PullImage(dockerCli, repoName))
 
 			output, err := h.CopySingleFileFromImage(dockerCli, repoName, "old-layer.txt")
 			h.AssertNil(t, err)
@@ -337,7 +338,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					RUN echo -n old-layer-2 > layer-2.txt
 				`, repoName))
 
-				h.AssertNil(t, dockerCli.PullImage(repoName))
+				h.AssertNil(t, h.PullImage(dockerCli, repoName))
 				defer func() {
 					h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 				}()
@@ -358,7 +359,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				_, err = img.Save()
 				h.AssertNil(t, err)
 
-				h.AssertNil(t, dockerCli.PullImage(repoName))
+				h.AssertNil(t, h.PullImage(dockerCli, repoName))
 				defer h.DockerRmi(dockerCli, repoName)
 				output, err := h.CopySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
 				h.AssertNil(t, err)
@@ -481,10 +482,10 @@ func manifestLayers(t *testing.T, repoName string) []string {
 	return outSlice
 }
 
-func remoteLabel(t *testing.T, dockerCli *docker.Client, repoName, label string) string {
+func remoteLabel(t *testing.T, dockerCli *dockerClient.Client, repoName, label string) string {
 	t.Helper()
 
-	h.AssertNil(t, dockerCli.PullImage(repoName))
+	h.AssertNil(t, h.PullImage(dockerCli, repoName))
 	defer func() { h.AssertNil(t, h.DockerRmi(dockerCli, repoName)) }()
 	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 	h.AssertNil(t, err)

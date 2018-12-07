@@ -9,7 +9,6 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/img"
 )
 
 var (
@@ -38,7 +37,7 @@ func main() {
 
 func analyzer() error {
 	if useHelpers {
-		if err := img.SetupCredHelpers(repoName); err != nil {
+		if err := lifecycle.SetupCredHelpers(repoName); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}

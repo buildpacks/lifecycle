@@ -15,12 +15,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/docker"
 	"github.com/buildpack/lifecycle/fs"
 	"github.com/buildpack/lifecycle/image"
+
 	h "github.com/buildpack/lifecycle/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	dockerClient "github.com/docker/docker/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 )
@@ -35,11 +36,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 	var factory image.Factory
 	var buf bytes.Buffer
 	var repoName string
-	var dockerCli *docker.Client
+	var dockerCli *dockerClient.Client
 
 	it.Before(func() {
 		var err error
-		dockerCli, err = docker.New()
+		dockerCli = h.DockerCli(t)
 		h.AssertNil(t, err)
 		factory = image.Factory{
 			Docker: dockerCli,
@@ -50,7 +51,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		repoName = "pack-image-test-" + h.RandString(10)
 	})
 
-	when("#Label", func() {
+	when("#label", func() {
 		when("image exists", func() {
 			it.Before(func() {
 				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
@@ -107,7 +108,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists and has a digest", func() {
 			var expectedDigest string
 			it.Before(func() {
-				h.AssertNil(t, dockerCli.PullImage("busybox:1.29"))
+				h.AssertNil(t, h.PullImage(dockerCli, "busybox:1.29"))
 				expectedDigest = "sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812"
 			})
 

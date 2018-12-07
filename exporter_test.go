@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -173,9 +174,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 				mockRunImage.EXPECT().SetEnv("PACK_LAUNCH_DIR", "/dest/launch")
 				mockRunImage.EXPECT().SetEnv("PACK_APP_DIR", "/dest/app")
-				mockRunImage.EXPECT().Save()
+				mockRunImage.EXPECT().Save().Return("some-digest", nil)
 
 				h.AssertNil(t, exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage))
+
+				if !strings.Contains(stdout.String(), "Image: app/repo@some-digest") {
+					t.Fatalf("output should contain Image: app/repo@some-digest, got '%s'", stdout.String())
+				}
 			})
 
 			when("previous image metadata is missing buildpack for reused layer", func() {
