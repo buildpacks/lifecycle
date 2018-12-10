@@ -276,6 +276,38 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Found old-buildpack dir, it should not exist")
 						}
 					})
+
+					it("does not remove app layers", func() {
+						//copy to layerDir
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						appFile := filepath.Join(layerDir, "app", "appfile")
+						if txt, err := ioutil.ReadFile(appFile); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						} else if !strings.Contains(string(txt), "appFile file contents") {
+							t.Fatalf(`Error: expected "%s" to still exist`, appFile)
+						}
+					})
+
+					it("does not remove remaining layerDir files", func() {
+						//copy to layerDir
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image, layerDir); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						appFile := filepath.Join(layerDir, "config.toml")
+						if txt, err := ioutil.ReadFile(appFile); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						} else if !strings.Contains(string(txt), "someNoneLayer = \"file\"") {
+							t.Fatalf(`Error: expected "%s" to still exist`, appFile)
+						}
+					})
 				})
 
 				when("there are cached non launch layers for a buildpack that is missing from metadata", func() {
