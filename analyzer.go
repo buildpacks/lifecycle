@@ -103,7 +103,13 @@ func cachedBuildpacks(launchDir string) ([]string, error) {
 		return nil, err
 	}
 	for _, dir := range bpDirs {
-		cachedBps = append(cachedBps, filepath.Base(dir))
+		info, err := os.Stat(dir)
+		if err != nil {
+			return nil, err
+		}
+		if filepath.Base(dir) != "app" && info.IsDir() {
+			cachedBps = append(cachedBps, filepath.Base(dir))
+		}
 	}
 	return cachedBps, nil
 }

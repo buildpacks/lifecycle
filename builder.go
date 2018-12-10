@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"bytes"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -82,7 +83,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		}
 		planIn := &bytes.Buffer{}
 		if err := toml.NewEncoder(planIn).Encode(plan); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "encode plan")
 		}
 		buildPath, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "build"))
 		if err != nil {
@@ -95,13 +96,13 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		cmd.Stdout = b.Out
 		cmd.Stderr = b.Err
 		if err := cmd.Run(); err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "buildpack '%s' /bin/build", bp.ID)
 		}
 		if err := setupEnv(b.Env, bpLayersDir); err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "buildpack '%s' setup env", bp.ID)
 		}
 		if err := consumePlan(bpPlanDir, plan, bom); err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "buildpack '%s' consume plan", bp.ID)
 		}
 		var launch LaunchTOML
 		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
