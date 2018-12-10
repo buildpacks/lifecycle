@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -81,28 +80,32 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
 			return nil, err
 		}
+		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
+		if ioutil.WriteFile(bpPlanPath, nil, 0777); err != nil {
+			return nil, err
+		}
 		planIn := &bytes.Buffer{}
 		if err := toml.NewEncoder(planIn).Encode(plan); err != nil {
-			return nil, errors.Wrap(err, "encode plan")
+			return nil, err
 		}
 		buildPath, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "build"))
 		if err != nil {
 			return nil, err
 		}
-		cmd := exec.Command(buildPath, platformDir, bpPlanDir, bpLayersDir)
+		cmd := exec.Command(buildPath, bpLayersDir, platformDir, bpPlanPath)
 		cmd.Env = b.Env.List()
 		cmd.Dir = appDir
 		cmd.Stdin = planIn
 		cmd.Stdout = b.Out
 		cmd.Stderr = b.Err
 		if err := cmd.Run(); err != nil {
-			return nil, errors.Wrapf(err, "buildpack '%s' /bin/build", bp.ID)
+			return nil, err
 		}
 		if err := setupEnv(b.Env, bpLayersDir); err != nil {
-			return nil, errors.Wrapf(err, "buildpack '%s' setup env", bp.ID)
+			return nil, err
 		}
-		if err := consumePlan(bpPlanDir, plan, bom); err != nil {
-			return nil, errors.Wrapf(err, "buildpack '%s' consume plan", bp.ID)
+		if err := consumePlan(bpPlanPath, plan, bom); err != nil {
+			return nil, err
 		}
 		var launch LaunchTOML
 		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
@@ -150,23 +153,15 @@ func isBuild(path string) bool {
 	return err == nil && layerTOML.Build
 }
 
-func consumePlan(planDir string, plan, bom Plan) error {
-	files, err := ioutil.ReadDir(planDir)
-	if err != nil {
+func consumePlan(path string, plan, bom Plan) error {
+	var input map[string]map[string]interface{}
+	if _, err := toml.DecodeFile(path, &input); err != nil {
 		return err
 	}
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		path := filepath.Join(planDir, f.Name())
-		var entry map[string]interface{}
-		if _, err := toml.DecodeFile(path, &entry); err != nil {
-			return err
-		}
-		delete(plan, f.Name())
-		if len(entry) > 0 {
-			bom[f.Name()] = entry
+	for k, v := range input {
+		delete(plan, k)
+		if len(v) > 0 {
+			bom[k] = v
 		}
 	}
 	return nil

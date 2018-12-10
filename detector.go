@@ -65,13 +65,18 @@ func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
 		return CodeDetectError
 	}
 	defer os.RemoveAll(planDir)
+	planPath := filepath.Join(planDir, "plan.toml")
+	if ioutil.WriteFile(planPath, nil, 0777); err != nil {
+		c.Err.Print("Error: ", err)
+		return CodeDetectError
+	}
 	log := &bytes.Buffer{}
 	defer func() {
 		if log.Len() > 0 {
 			c.Out.Printf("======== Output: %s ========\n%s", bp.Name, log)
 		}
 	}()
-	cmd := exec.Command(detectPath, platformDir, planDir)
+	cmd := exec.Command(detectPath, platformDir, planPath)
 	cmd.Dir = appDir
 	cmd.Stdin = in
 	cmd.Stdout = log
@@ -85,31 +90,21 @@ func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
 		c.Err.Print("Error: ", err)
 		return CodeDetectError
 	}
-	if err := parsePlan(out, planDir); err != nil {
+	if err := parsePlan(out, planPath); err != nil {
 		c.Err.Print("Error: ", err)
 		return CodeDetectError
 	}
 	return CodeDetectPass
 }
 
-func parsePlan(out io.Writer, planDir string) error {
-	files, err := ioutil.ReadDir(planDir)
+func parsePlan(out io.Writer, path string) error {
+	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	m := Plan{}
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		path := filepath.Join(planDir, f.Name())
-		var entry map[string]interface{}
-		if _, err := toml.DecodeFile(path, &entry); err != nil {
-			return err
-		}
-		m[f.Name()] = entry
-	}
-	return toml.NewEncoder(out).Encode(m)
+	defer f.Close()
+	_, err = io.Copy(out, f)
+	return err
 }
 
 type BuildpackGroup struct {
@@ -162,7 +157,7 @@ func (bg *BuildpackGroup) pDetect(c *DetectConfig) (plan []byte, codes []int) {
 				orig := &bytes.Buffer{}
 				last := io.TeeReader(last, orig)
 				codes[i] = bg.Buildpacks[i].Detect(c, last, add)
-				ioutil.ReadAll(last)
+				io.Copy(ioutil.Discard, last)
 				if codes[i] == CodeDetectPass {
 					mergeTOML(c.Err, out, orig, add)
 				} else {

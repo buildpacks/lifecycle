@@ -2,14 +2,14 @@
 
 set -eo pipefail
 
-platform_dir=$1
-plan_dir=$2
-layers_dir=$3
+layers_dir=$1
+platform_dir=$2
+plan_path=$3
 
 cat - > "plan${ID}.toml"
-echo > "$plan_dir/dep${ID}-keep"
+echo -e "[dep${ID}-keep]\n" >> "$plan_path"
 if [[ -f dep-replace ]]; then
-  cat dep-replace > "$plan_dir/dep${ID}-replace"
+  echo -e "[dep${ID}-replace]\n$(cat dep-replace)" >> "$plan_path"
 fi
 
 echo "STDOUT${ID}"
