@@ -72,8 +72,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			configLayerSHA     string
 			buildpackLayer2SHA string
 			buildpackLayer3SHA string
-			launchSrc          string
-			launchDst          string
+			layerSrc           string
+			layersDst          string
 			appSrc             string
 			appDst             string
 		)
@@ -82,17 +82,25 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			mockController = gomock.NewController(t)
 			mockRunImage = testmock.NewMockImage(mockController)
 			mockOrigImage = testmock.NewMockImage(mockController)
-			launchSrc = filepath.Join("testdata", "exporter", "first", "launch")
-			launchDst = filepath.Join("/", "dest", "launch")
+
+			layersDst = filepath.Join("/", "dest", "launch")
+
 			appSrc = filepath.Join("testdata", "exporter", "first", "launch", "app")
 			appDst = filepath.Join("/", "dest", "app")
 			mockRunImage.EXPECT().TopLayer().Return("some-top-layer-sha", nil)
 			mockRunImage.EXPECT().Digest().Return("some-run-image-digest", nil)
 			mockOrigImage.EXPECT().Name().Return("app/repo")
 			mockRunImage.EXPECT().Rename("app/repo")
+
+			var err error
+			layerSrc, err = ioutil.TempDir("", "lifecycle-layer-dir")
+			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
 		})
 
 		it.After(func() {
+			os.RemoveAll(layerSrc)
 			mockController.Finish()
 		})
 
@@ -100,11 +108,41 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				mockOrigImage.EXPECT().Found().Return(true, nil).AnyTimes()
+				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "first", "launch"), layerSrc)
 			})
 
 			it("creates the image on the registry", func() {
 				mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
-					Return(`{"buildpacks":[{"key": "buildpack.id", "layers": {"layer1": {"sha": "orig-layer1-sha", "data": {"oldkey":"oldval"}}}}]}`, nil)
+					Return(`{
+  "buildpacks": [
+    {
+      "key": "buildpack.id",
+      "layers": {
+        "layer1": {
+          "sha": "orig-layer1-sha",
+          "data": {
+            "oldkey": "oldval"
+          }
+        }
+      }
+    },
+    {
+      "key": "other.buildpack.id",
+      "layers": {
+        "layer4": {
+          "sha": "orig-layer4-sha",
+          "data": {
+            "layer4key": "layer4val"
+          }
+        },
+        "layer5": {
+          "sha": "sha256:4c57b867c3f5c73b37516299bb8385dd2083ad7e65f39efb990419710bec8c48"
+        }
+      }
+    }
+  ]
+}
+`, nil)
 				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
 					t.Log("adds app layer")
 					appLayerSHA = h.ComputeSHA256(t, layerPath)
@@ -124,6 +162,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					return nil
 				})
 				mockRunImage.EXPECT().ReuseLayer("orig-layer1-sha")
+				mockRunImage.EXPECT().ReuseLayer("sha256:4c57b867c3f5c73b37516299bb8385dd2083ad7e65f39efb990419710bec8c48")
 				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
 					t.Log("adds buildpack layer2")
 					buildpackLayer2SHA = h.ComputeSHA256(t, layerPath)
@@ -176,7 +215,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				mockRunImage.EXPECT().SetEnv("PACK_APP_DIR", "/dest/app")
 				mockRunImage.EXPECT().Save().Return("some-digest", nil)
 
-				h.AssertNil(t, exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage))
+				h.AssertNil(t, exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage))
 
 				if !strings.Contains(stdout.String(), "Image: app/repo@some-digest") {
 					t.Fatalf("output should contain Image: app/repo@some-digest, got '%s'", stdout.String())
@@ -193,8 +232,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				it("returns an error", func() {
 					h.AssertError(
 						t,
-						exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage),
-						"cannot reuse 'buildpack.id/layer1', previous image has no metadata for buildpack 'buildpack.id'",
+						exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage),
+						"cannot reuse 'buildpack.id/layer1', previous image has no metadata for layer 'buildpack.id/layer1'",
 					)
 				})
 			})
@@ -209,7 +248,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				it("returns an error", func() {
 					h.AssertError(
 						t,
-						exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage),
+						exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage),
 						"cannot reuse 'buildpack.id/layer1', previous image has no metadata for layer 'buildpack.id/layer1'",
 					)
 				})
@@ -220,7 +259,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			var buildpackLayer1SHA string
 
 			it.Before(func() {
-				launchSrc = filepath.Join("testdata", "exporter", "second", "launch")
+				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "second", "launch"), layerSrc)
 				mockOrigImage.EXPECT().Found().Return(false, nil).AnyTimes()
 				mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 					Return("", errors.New("not exist")).AnyTimes()
@@ -295,13 +334,101 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				mockRunImage.EXPECT().SetEnv("PACK_APP_DIR", "/dest/app")
 				mockRunImage.EXPECT().Save()
 
-				h.AssertNil(t, exporter.Export(launchSrc, launchDst, appSrc, appDst, mockRunImage, mockOrigImage))
+				h.AssertNil(t, exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage))
+			})
+		})
+
+		when("dealing with cached layers", func() {
+			var layer2sha string
+
+			it.Before(func() {
+				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "third", "launch"), layerSrc)
+				mockOrigImage.EXPECT().Found().Return(true, nil).AnyTimes()
+				mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+					Return(`{"buildpacks":[{"key": "buildpack.id", "layers": {"layer3": {"sha": "orig-layer3-sha"}}}]}`, nil)
+				mockOrigImage.EXPECT().Found().Return(false, nil).AnyTimes()
+				mockOrigImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+					Return("", errors.New("not exist")).AnyTimes()
+
+				mockRunImage.EXPECT().AddLayer(gomock.Any()).AnyTimes().Do(func(layerPath string) {
+					buildpackLayer2SHA = h.ComputeSHA256(t, layerPath)
+					if exist, _ := tarFileContext(t,
+						layerPath,
+						"/dest/launch/buildpack.id/layer2/file-from-layer-2"); exist {
+						layer2sha = h.ComputeSHA256(t, layerPath)
+					}
+				})
+				mockRunImage.EXPECT().ReuseLayer(gomock.Any()).AnyTimes()
+				mockRunImage.EXPECT().SetLabel(gomock.Any(), gomock.Any()).AnyTimes()
+				mockRunImage.EXPECT().SetEnv(gomock.Any(), gomock.Any()).AnyTimes()
+				mockRunImage.EXPECT().Save()
+			})
+
+			it("deletes all non buildpack dirs", func() {
+				h.AssertNil(t, exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage))
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerSrc, "app")); !os.IsNotExist(err) {
+					t.Fatalf("Found app dir, it should not exist")
+				}
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerSrc, "nonbuildpackdir")); !os.IsNotExist(err) {
+					t.Fatalf("Found nonbuildpackdir dir, it should not exist")
+				}
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerSrc, "config")); !os.IsNotExist(err) {
+					t.Fatalf("Found config dir, it should not exist")
+				}
+			})
+
+			it("deletes all uncached layers", func() {
+				h.AssertNil(t, exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage))
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerSrc, "buildpack.id", "layer1")); !os.IsNotExist(err) {
+					t.Fatalf("Found layer1 dir, it should not exist")
+				}
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerSrc, "buildpack.id", "layer1.toml")); !os.IsNotExist(err) {
+					t.Fatalf("Found layer1.toml, it should not exist")
+				}
+			})
+
+			it("deletes layer.toml for all layers without a dir", func() {
+				h.AssertNil(t, exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage))
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerSrc, "buildpack.id", "layer3.toml")); !os.IsNotExist(err) {
+					t.Fatalf("Found layer3.toml, it should not exist")
+				}
+			})
+
+			it("preserves cached layers and writes a sha", func() {
+				h.AssertNil(t, exporter.Export(layerSrc, layersDst, appSrc, appDst, mockRunImage, mockOrigImage))
+
+				if txt, err := ioutil.ReadFile(filepath.Join(layerSrc, "buildpack.id", "layer2", "file-from-layer-2")); err != nil || string(txt) != "echo text from layer 2\n" {
+					t.Fatal("missing file-from-layer-2")
+				}
+				if _, err := ioutil.ReadFile(filepath.Join(layerSrc, "buildpack.id", "layer2.toml")); err != nil {
+					t.Fatal("missing layer2.toml")
+				}
+				if txt, err := ioutil.ReadFile(filepath.Join(layerSrc, "buildpack.id", "layer2", "layer2.sha")); err != nil {
+					t.Fatal("missing layer2.sha")
+				} else if string(txt) != "sha256:"+layer2sha {
+					t.Fatalf("expected layer.sha to have sha '%s', got '%s'", layer2sha, string(txt))
+				}
 			})
 		})
 	})
 }
 
 func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
+	t.Helper()
+	exist, contents := tarFileContext(t, tarfile, path)
+	if !exist {
+		t.Fatalf("%s does not exist in %s", path, tarfile)
+	}
+	h.AssertEq(t, contents, expected)
+}
+
+func tarFileContext(t *testing.T, tarfile, path string) (exist bool, contents string) {
 	t.Helper()
 	r, err := os.Open(tarfile)
 	assertNil(t, err)
@@ -318,11 +445,10 @@ func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
 		if header.Name == path {
 			buf, err := ioutil.ReadAll(tr)
 			assertNil(t, err)
-			assertEq(t, string(buf), expected)
-			return
+			return true, string(buf)
 		}
 	}
-	t.Fatalf("%s does not exist in %s", path, tarfile)
+	return false, ""
 }
 
 func assertTarFileOwner(t *testing.T, tarfile, path string, expectedUID, expectedGID int) {

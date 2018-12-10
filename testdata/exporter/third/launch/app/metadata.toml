@@ -1,0 +1,11 @@
+[[processes]]
+  type = "other-type"
+  command = "some-process"
+
+[[processes]]
+  type = "web"
+  command = "./test_app.sh MyArg"
+
+[[processes]]
+  type = "worker"
+  command = "some-other-process"

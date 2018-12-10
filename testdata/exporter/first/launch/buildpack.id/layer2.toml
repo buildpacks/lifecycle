@@ -1,1 +1,3 @@
-somekey = "someval"
+launch = true
+[metadata]
+  somekey = "someval"

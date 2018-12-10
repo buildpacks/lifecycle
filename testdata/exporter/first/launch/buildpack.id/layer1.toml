@@ -1,1 +1,3 @@
-mykey = "myval"
+launch = true
+[metadata]
+  mykey = "myval"

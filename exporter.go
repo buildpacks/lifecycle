@@ -58,30 +58,61 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 			return nil, errors.Wrapf(err, "finding layer tomls")
 		}
 		for _, tomlFile := range tomls {
-			var bpLayer LayerMetadata
+			var metadata LayerMetadata
 			if filepath.Base(tomlFile) == "launch.toml" {
 				continue
 			}
-			dir := strings.TrimSuffix(tomlFile, ".toml")
-			layerName := filepath.Base(dir)
-			_, err := os.Stat(dir)
-			if !os.IsNotExist(err) {
-				bpLayer.SHA, err = e.exportTar(
-					filepath.Join(launchDirSrc, buildpack.EscapedID(), layerName),
-					filepath.Join(launchDirDst, buildpack.EscapedID(), layerName),
-				)
-				if err != nil {
-					return nil, errors.Wrapf(err, "exporting tar for layer '%s/%s'", buildpack.ID, layerName)
-				}
-			}
-			var metadata map[string]interface{}
+			layerDir := strings.TrimSuffix(tomlFile, ".toml")
+			layerName := filepath.Base(layerDir)
+			_, err := os.Stat(layerDir)
 			if _, err := toml.DecodeFile(tomlFile, &metadata); err != nil {
 				return nil, errors.Wrapf(err, "read metadata for layer %s/%s", buildpack.ID, layerName)
 			}
-			bpLayer.Data = metadata
-			bpMetadata.Layers[layerName] = bpLayer
+			if metadata.Launch {
+				if !os.IsNotExist(err) {
+					metadata.SHA, err = e.exportTar(
+						layerDir,
+						filepath.Join(launchDirDst, buildpack.EscapedID(), layerName),
+					)
+					if err != nil {
+						return nil, errors.Wrapf(err, "exporting tar for layer '%s/%s'", buildpack.ID, layerName)
+					}
+					if metadata.Cache {
+						if err := ioutil.WriteFile(filepath.Join(layerDir, layerName+".sha"), []byte(metadata.SHA), 0777); err != nil {
+							return nil, errors.Wrapf(err, "writing layer sha")
+						}
+					}
+				} else {
+					if err := os.Remove(tomlFile); err != nil {
+						return nil, errors.Wrap(err, "removing toml for reused layer")
+					}
+				}
+				bpMetadata.Layers[layerName] = metadata
+			}
+			if !metadata.Cache {
+				if err := os.RemoveAll(layerDir); err != nil && !os.IsNotExist(err) {
+					return nil, errors.Wrap(err, "removing uncached layer")
+				}
+				if err := os.Remove(tomlFile); err != nil && !os.IsNotExist(err) {
+					return nil, errors.Wrap(err, "removing toml for uncached layer")
+				}
+			}
 		}
 		metadata.Buildpacks = append(metadata.Buildpacks, bpMetadata)
+	}
+
+	fis, err := ioutil.ReadDir(launchDirSrc)
+
+OUTER:
+	for _, fi := range fis {
+		for _, buildpack := range e.Buildpacks {
+			if fi.Name() == buildpack.EscapedID() {
+				continue OUTER
+			}
+		}
+		if err := os.RemoveAll(filepath.Join(launchDirSrc, fi.Name())); err != nil {
+			return nil, errors.Wrap(err, "failed to cleanup layers dir")
+		}
 	}
 
 	data, err := json.Marshal(metadata)
@@ -128,9 +159,9 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 
 	for index, bp := range metadata.Buildpacks {
 		var prevBP *BuildpackMetadata
-		for _, pbp := range origMetadata.Buildpacks {
+		for index, pbp := range origMetadata.Buildpacks {
 			if pbp.ID == bp.ID {
-				prevBP = &pbp
+				prevBP = &origMetadata.Buildpacks[index]
 			}
 		}
 
@@ -141,14 +172,10 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 		sort.Strings(layerKeys)
 
 		for _, layerName := range layerKeys {
+			prevLayer := prevLayer(layerName, prevBP)
 			layer := bp.Layers[layerName]
-			if layer.SHA == "" {
-				if prevBP == nil {
-					return fmt.Errorf(
-						"cannot reuse '%s/%s', previous image has no metadata for buildpack '%s'",
-						bp.ID, layerName, bp.ID)
-				}
-				prevLayer := prevBP.Layers[layerName]
+
+			if layer.SHA == "" || layer.SHA == prevLayer.SHA {
 				if prevLayer.SHA == "" {
 					return fmt.Errorf(
 						"cannot reuse '%s/%s', previous image has no metadata for layer '%s/%s'",
@@ -189,6 +216,17 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 	sha, err := appImage.Save()
 	e.Out.Printf("\n*** Image: %s@%s\n", repoName, sha)
 	return err
+}
+
+func prevLayer(name string, prevBP *BuildpackMetadata) LayerMetadata {
+	if prevBP == nil {
+		return LayerMetadata{}
+	}
+	prevLayer := prevBP.Layers[name]
+	if prevLayer.SHA == "" {
+		return LayerMetadata{}
+	}
+	return prevLayer
 }
 
 func (e *Exporter) GetMetadata(image image.Image) (AppImageMetadata, error) {

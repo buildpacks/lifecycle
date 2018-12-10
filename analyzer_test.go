@@ -3,7 +3,6 @@ package lifecycle_test
 import (
 	"bytes"
 	"errors"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,7 +16,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/testhelpers"
+	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
 )
 
@@ -158,7 +157,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there are cached launch layers", func() {
 					it("leaves the layers", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -175,7 +174,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there are cached build layers", func() {
 					it("leaves the layers", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -192,7 +191,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there are stale cached launch layers", func() {
 					it("removes the layer dir and rewrites the metadata", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -218,7 +217,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there are stale cached launch/build layers", func() {
 					it("removes the layer dir and metadata", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -242,7 +241,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there cached launch layers that are missing from metadata", func() {
 					it("removes the layer dir and metadata", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -266,7 +265,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there are cached layers for a buildpack that is missing from the group", func() {
 					it("removes all the layers", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -282,7 +281,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there are cached non launch layers for a buildpack that is missing from metadata", func() {
 					it("keeps the layers", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -301,7 +300,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("there are cached non launch for a buildpack that is missing from metadata", func() {
 					it("removes the layers", func() {
 						//copy to layerDir
-						recursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image, layerDir); err != nil {
 							t.Fatalf("Error: %s\n", err)
@@ -342,7 +341,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns the error", func() {
 				err := analyzer.Analyze(image, layerDir)
-				testhelpers.AssertError(t, err, "some-error")
+				h.AssertError(t, err, "some-error")
 			})
 		})
 
@@ -380,27 +379,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-}
-
-func recursiveCopy(t *testing.T, src, dst string) {
-	t.Helper()
-	fis, err := ioutil.ReadDir(src)
-	assertNil(t, err)
-	for _, fi := range fis {
-		if fi.Mode().IsRegular() {
-			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
-			assertNil(t, err)
-			dstFile, err := os.Create(filepath.Join(dst, fi.Name()))
-			assertNil(t, err)
-			_, err = io.Copy(dstFile, srcFile)
-			assertNil(t, err)
-		}
-		if fi.IsDir() {
-			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
-			assertNil(t, err)
-			recursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
-		}
-	}
 }
 
 func assertNil(t *testing.T, actual interface{}) {
