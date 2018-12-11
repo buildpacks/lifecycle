@@ -35,6 +35,7 @@ func (m *MockImage) EXPECT() *MockImageMockRecorder {
 
 // AddLayer mocks base method
 func (m *MockImage) AddLayer(arg0 string) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddLayer", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -42,11 +43,13 @@ func (m *MockImage) AddLayer(arg0 string) error {
 
 // AddLayer indicates an expected call of AddLayer
 func (mr *MockImageMockRecorder) AddLayer(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLayer", reflect.TypeOf((*MockImage)(nil).AddLayer), arg0)
 }
 
 // Digest mocks base method
 func (m *MockImage) Digest() (string, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Digest")
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
@@ -55,11 +58,28 @@ func (m *MockImage) Digest() (string, error) {
 
 // Digest indicates an expected call of Digest
 func (mr *MockImageMockRecorder) Digest() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Digest", reflect.TypeOf((*MockImage)(nil).Digest))
+}
+
+// Env mocks base method
+func (m *MockImage) Env(arg0 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Env", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Env indicates an expected call of Env
+func (mr *MockImageMockRecorder) Env(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Env", reflect.TypeOf((*MockImage)(nil).Env), arg0)
 }
 
 // Found mocks base method
 func (m *MockImage) Found() (bool, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Found")
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
@@ -68,24 +88,28 @@ func (m *MockImage) Found() (bool, error) {
 
 // Found indicates an expected call of Found
 func (mr *MockImageMockRecorder) Found() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Found", reflect.TypeOf((*MockImage)(nil).Found))
 }
 
-// label mocks base method
+// Label mocks base method
 func (m *MockImage) Label(arg0 string) (string, error) {
-	ret := m.ctrl.Call(m, "label", arg0)
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Label", arg0)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// label indicates an expected call of label
+// Label indicates an expected call of Label
 func (mr *MockImageMockRecorder) Label(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "label", reflect.TypeOf((*MockImage)(nil).Label), arg0)
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Label", reflect.TypeOf((*MockImage)(nil).Label), arg0)
 }
 
 // Name mocks base method
 func (m *MockImage) Name() string {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Name")
 	ret0, _ := ret[0].(string)
 	return ret0
@@ -93,11 +117,13 @@ func (m *MockImage) Name() string {
 
 // Name indicates an expected call of Name
 func (mr *MockImageMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockImage)(nil).Name))
 }
 
 // Rebase mocks base method
 func (m *MockImage) Rebase(arg0 string, arg1 image.Image) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Rebase", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -105,21 +131,25 @@ func (m *MockImage) Rebase(arg0 string, arg1 image.Image) error {
 
 // Rebase indicates an expected call of Rebase
 func (mr *MockImageMockRecorder) Rebase(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rebase", reflect.TypeOf((*MockImage)(nil).Rebase), arg0, arg1)
 }
 
 // Rename mocks base method
 func (m *MockImage) Rename(arg0 string) {
+	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Rename", arg0)
 }
 
 // Rename indicates an expected call of Rename
 func (mr *MockImageMockRecorder) Rename(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rename", reflect.TypeOf((*MockImage)(nil).Rename), arg0)
 }
 
 // ReuseLayer mocks base method
 func (m *MockImage) ReuseLayer(arg0 string) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReuseLayer", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -127,11 +157,13 @@ func (m *MockImage) ReuseLayer(arg0 string) error {
 
 // ReuseLayer indicates an expected call of ReuseLayer
 func (mr *MockImageMockRecorder) ReuseLayer(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReuseLayer", reflect.TypeOf((*MockImage)(nil).ReuseLayer), arg0)
 }
 
 // Save mocks base method
 func (m *MockImage) Save() (string, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save")
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
@@ -140,11 +172,13 @@ func (m *MockImage) Save() (string, error) {
 
 // Save indicates an expected call of Save
 func (mr *MockImageMockRecorder) Save() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockImage)(nil).Save))
 }
 
 // SetEnv mocks base method
 func (m *MockImage) SetEnv(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetEnv", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -152,11 +186,13 @@ func (m *MockImage) SetEnv(arg0, arg1 string) error {
 
 // SetEnv indicates an expected call of SetEnv
 func (mr *MockImageMockRecorder) SetEnv(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnv", reflect.TypeOf((*MockImage)(nil).SetEnv), arg0, arg1)
 }
 
 // SetLabel mocks base method
 func (m *MockImage) SetLabel(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetLabel", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -164,11 +200,13 @@ func (m *MockImage) SetLabel(arg0, arg1 string) error {
 
 // SetLabel indicates an expected call of SetLabel
 func (mr *MockImageMockRecorder) SetLabel(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLabel", reflect.TypeOf((*MockImage)(nil).SetLabel), arg0, arg1)
 }
 
 // TopLayer mocks base method
 func (m *MockImage) TopLayer() (string, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TopLayer")
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
@@ -177,5 +215,6 @@ func (m *MockImage) TopLayer() (string, error) {
 
 // TopLayer indicates an expected call of TopLayer
 func (mr *MockImageMockRecorder) TopLayer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopLayer", reflect.TypeOf((*MockImage)(nil).TopLayer))
 }

@@ -95,6 +95,50 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#Env", func() {
+		when("image exists", func() {
+			it.Before(func() {
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+					ENV MY_VAR=my_val
+				`, repoName))
+			})
+
+			it.After(func() {
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+			})
+
+			it("returns the label value", func() {
+				img, err := factory.NewLocal(repoName, false)
+				h.AssertNil(t, err)
+
+				val, err := img.Env("MY_VAR")
+				h.AssertNil(t, err)
+				h.AssertEq(t, val, "my_val")
+			})
+
+			it("returns an empty string for a missing label", func() {
+				img, err := factory.NewLocal(repoName, false)
+				h.AssertNil(t, err)
+
+				val, err := img.Env("MISSING_VAR")
+				h.AssertNil(t, err)
+				h.AssertEq(t, val, "")
+			})
+		})
+
+		when("image NOT exists", func() {
+			it("returns an error", func() {
+				img, err := factory.NewLocal(repoName, false)
+				h.AssertNil(t, err)
+
+				_, err = img.Env("MISSING_VAR")
+				h.AssertError(t, err, fmt.Sprintf("failed to get env var, image '%s' does not exist", repoName))
+			})
+		})
+	})
+
 	when("#Name", func() {
 		it("always returns the original name", func() {
 			img, err := factory.NewLocal(repoName, false)

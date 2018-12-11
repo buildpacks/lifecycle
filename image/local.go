@@ -72,6 +72,19 @@ func (l *local) Label(key string) (string, error) {
 	return labels[key], nil
 }
 
+func (l *local) Env(key string) (string, error) {
+	if l.Inspect.Config == nil {
+		return "", fmt.Errorf("failed to get env var, image '%s' does not exist", l.RepoName)
+	}
+	for _, envVar := range l.Inspect.Config.Env {
+		parts := strings.Split(envVar, "=")
+		if parts[0] == key {
+			return parts[1], nil
+		}
+	}
+	return "", nil
+}
+
 func (l *local) Rename(name string) {
 	l.easyAddLayers = nil
 	if inspect, _, err := l.Docker.ImageInspectWithRaw(context.TODO(), name); err == nil {

@@ -34,6 +34,7 @@ func (m *MockBuildEnv) EXPECT() *MockBuildEnvMockRecorder {
 
 // AddEnvDir mocks base method
 func (m *MockBuildEnv) AddEnvDir(arg0 string) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddEnvDir", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -41,11 +42,13 @@ func (m *MockBuildEnv) AddEnvDir(arg0 string) error {
 
 // AddEnvDir indicates an expected call of AddEnvDir
 func (mr *MockBuildEnvMockRecorder) AddEnvDir(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEnvDir", reflect.TypeOf((*MockBuildEnv)(nil).AddEnvDir), arg0)
 }
 
 // AddRootDir mocks base method
 func (m *MockBuildEnv) AddRootDir(arg0 string) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddRootDir", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -53,11 +56,13 @@ func (m *MockBuildEnv) AddRootDir(arg0 string) error {
 
 // AddRootDir indicates an expected call of AddRootDir
 func (mr *MockBuildEnvMockRecorder) AddRootDir(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRootDir", reflect.TypeOf((*MockBuildEnv)(nil).AddRootDir), arg0)
 }
 
 // List mocks base method
 func (m *MockBuildEnv) List() []string {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List")
 	ret0, _ := ret[0].([]string)
 	return ret0
@@ -65,5 +70,6 @@ func (m *MockBuildEnv) List() []string {
 
 // List indicates an expected call of List
 func (mr *MockBuildEnvMockRecorder) List() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockBuildEnv)(nil).List))
 }

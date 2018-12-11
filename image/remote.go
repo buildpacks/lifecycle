@@ -59,6 +59,20 @@ func (r *remote) Label(key string) (string, error) {
 
 }
 
+func (r *remote) Env(key string) (string, error) {
+	cfg, err := r.Image.ConfigFile()
+	if err != nil || cfg == nil {
+		return "", fmt.Errorf("failed to get env var, image '%s' does not exist", r.RepoName)
+	}
+	for _, envVar := range cfg.Config.Env {
+		parts := strings.Split(envVar, "=")
+		if parts[0] == key {
+			return parts[1], nil
+		}
+	}
+	return "", nil
+}
+
 func (r *remote) Rename(name string) {
 	r.RepoName = name
 }

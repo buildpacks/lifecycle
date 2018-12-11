@@ -20,6 +20,7 @@ type Image interface {
 	Rebase(string, Image) error
 	SetLabel(string, string) error
 	SetEnv(string, string) error
+	Env(key string) (string, error)
 	TopLayer() (string, error)
 	AddLayer(path string) error
 	ReuseLayer(sha string) error
