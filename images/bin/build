@@ -34,10 +34,9 @@ docker pull "${base}"
 docker build --build-arg "base=${base}" -t "${prefix}base:${version}" ..
 docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}build:${version}" build
 docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}run:${version}" run
-docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}util:${version}" util
 docker build --build-arg "base=${prefix}build:${version}" -t "${prefix}samples:${version}" samples
 
 echo "To publish these images:"
-for suffix in base build run util samples; do
+for suffix in base build run samples; do
   echo "  docker push \"${prefix}${suffix}:${version}\""
 done

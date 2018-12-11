@@ -15,9 +15,8 @@ var (
 	buildpacksDir string
 	groupPath     string
 	planPath      string
-	launchDir     string
+	layersDir     string
 	appDir        string
-	cacheDir      string
 	platformDir   string
 )
 
@@ -25,9 +24,8 @@ func init() {
 	cmd.FlagBuildpacksDir(&buildpacksDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagPlanPath(&planPath)
-	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagAppDir(&appDir)
-	cmd.FlagCacheDir(&cacheDir)
 	cmd.FlagPlatformDir(&platformDir)
 }
 
@@ -62,8 +60,7 @@ func build() error {
 	}
 	builder := &lifecycle.Builder{
 		PlatformDir: platformDir,
-		CacheDir:    cacheDir,
-		LaunchDir:   launchDir,
+		LayersDir:   layersDir,
 		AppDir:      appDir,
 		Env:         env,
 		Buildpacks:  group.Buildpacks,
@@ -77,7 +74,7 @@ func build() error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 
-	metadataPath := filepath.Join(launchDir, "config", "metadata.toml")
+	metadataPath := filepath.Join(layersDir, "config", "metadata.toml")
 	if err := lifecycle.WriteTOML(metadataPath, metadata); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}

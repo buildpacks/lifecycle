@@ -1,9 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"io/ioutil"
+	"github.com/buildpack/lifecycle/image"
 	"log"
 	"os"
 
@@ -11,24 +10,21 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/img"
 )
 
 var (
-	repoName     string
-	launchDir    string
-	groupPath    string
-	useDaemon    bool
-	useHelpers   bool
-	metadataPath string
+	repoName   string
+	layersDir  string
+	groupPath  string
+	useDaemon  bool
+	useHelpers bool
 )
 
 func init() {
-	cmd.FlagLaunchDir(&launchDir)
+	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
-	cmd.FlagMetadataPath(&metadataPath)
 }
 
 func main() {
@@ -42,7 +38,7 @@ func main() {
 
 func analyzer() error {
 	if useHelpers {
-		if err := img.SetupCredHelpers(repoName); err != nil {
+		if err := lifecycle.SetupCredHelpers(repoName); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -54,42 +50,35 @@ func analyzer() error {
 
 	analyzer := &lifecycle.Analyzer{
 		Buildpacks: group.Buildpacks,
-		Out:        os.Stdout,
-		Err:        os.Stderr,
+		Out:        log.New(os.Stdout, "", log.LstdFlags),
+		Err:        log.New(os.Stderr, "", log.LstdFlags),
 	}
 
-	var metadata string
-	if metadataPath != "" {
-		bMetadata, err := ioutil.ReadFile(metadataPath)
+	var err error
+	var previousImage image.Image
+	factory, err := image.DefaultFactory()
+	if err != nil {
+		return err
+	}
+
+	if useDaemon {
+		previousImage, err = factory.NewLocal(repoName, false)
 		if err != nil {
-			return cmd.FailErr(err, "access image metadata from path", metadataPath)
+			return err
 		}
-		metadata = string(bMetadata)
 	} else {
-		var err error
-		newRepoStore := img.NewRegistry
-		if useDaemon {
-			newRepoStore = img.NewDaemon
-		}
-		metadata, err = analyzer.GetMetadata(newRepoStore, repoName)
+		previousImage, err = factory.NewRemote(repoName)
 		if err != nil {
-			return cmd.FailErr(err, "access image metadata from image", metadataPath)
+			return err
 		}
 	}
-
-	if metadata == "" {
-		return nil
+	if err != nil {
+		return cmd.FailErr(err, "repository configuration", repoName)
 	}
 
-	config := lifecycle.AppImageMetadata{}
-	if err := json.Unmarshal([]byte(metadata), &config); err != nil {
-		log.Printf("WARNING: skipping analyze, previous image metadata was incompatible")
-		return nil
-	}
-
-	err := analyzer.Analyze(
-		launchDir,
-		config,
+	err = analyzer.Analyze(
+		previousImage,
+		layersDir,
 	)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)

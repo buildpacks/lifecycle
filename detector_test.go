@@ -39,7 +39,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		}
 		platformDir = filepath.Join(tmpDir, "platform")
 		appDir = filepath.Join(tmpDir, "app")
-		mkdir(t, appDir, filepath.Join(platformDir, "env"), filepath.Join(platformDir, "plan"))
+		mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
 		outLog = &bytes.Buffer{}
 		errLog = &bytes.Buffer{}

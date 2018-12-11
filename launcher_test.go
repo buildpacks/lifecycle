@@ -12,6 +12,8 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/testmock"
+	"github.com/golang/mock/gomock"
 )
 
 func TestLauncher(t *testing.T) {
@@ -27,11 +29,17 @@ type syscallExecArgs struct {
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	var (
 		launcher            *lifecycle.Launcher
+		mockCtrl            *gomock.Controller
+		env                 *testmock.MockBuildEnv
 		tmpDir              string
 		syscallExecArgsColl []syscallExecArgs
 	)
 
 	it.Before(func() {
+		mockCtrl = gomock.NewController(t)
+		env = testmock.NewMockBuildEnv(mockCtrl)
+		env.EXPECT().List().Return([]string{"TEST_ENV_ONE=1", "TEST_ENV_TWO=2"}).AnyTimes()
+
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle.launcher.")
 		if err != nil {
@@ -40,10 +48,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "app"), 0755); err != nil {
 			t.Fatal(err)
 		}
-
 		launcher = &lifecycle.Launcher{
 			DefaultProcessType: "web",
-			LaunchDir:          filepath.Join(tmpDir, "launch"),
+			LayersDir:          filepath.Join(tmpDir, "launch"),
 			AppDir:             filepath.Join(tmpDir, "launch", "app"),
 			Processes: []lifecycle.Process{
 				{Type: "other", Command: "some-other-process"},
@@ -51,6 +58,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				{Type: "worker", Command: "some-worker-process"},
 			},
 			Buildpacks: []string{},
+			Env:        env,
 			Exec: func(argv0 string, argv []string, envv []string) error {
 				syscallExecArgsColl = append(syscallExecArgsColl, syscallExecArgs{
 					argv0: argv0,
@@ -64,6 +72,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		os.RemoveAll(tmpDir)
+		mockCtrl.Finish()
 	})
 
 	when("#Launch", func() {
@@ -74,18 +83,18 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if len(syscallExecArgsColl) != 1 {
-					t.Fatalf("expected syscall.Exec to be called once: actual %v", syscallExecArgsColl)
+					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 				}
 
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "/bin/bash"); diff != "" {
-					t.Fatalf(`syscall.Exec Argv did not match: (-got +want)\n%s`, diff)
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
 
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[3], "/path/to/launcher"); diff != "" {
-					t.Fatalf(`syscall.Exec Argv did not match: (-got +want)\n%s`, diff)
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-web-process"); diff != "" {
-					t.Fatalf(`syscall.Exec Argv did not match: (-got +want)\n%s`, diff)
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
 			})
 
@@ -93,13 +102,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				it("should return an error", func() {
 					launcher.DefaultProcessType = "not-exist"
 
-					err := launcher.Launch("/path/to/launcher", "")
-					if err == nil {
-						t.Fatalf("expected launch to return an error")
+					if err := launcher.Launch("/path/to/launcher", ""); err == nil {
+						t.Fatal("expected launch to return an error")
 					}
 
 					if len(syscallExecArgsColl) != 0 {
-						t.Fatalf("expected syscall.Exec to not be called: actual %v", syscallExecArgsColl)
+						t.Fatalf("expected syscall.Exec to not be called: actual %v\n", syscallExecArgsColl)
 					}
 				})
 			})
@@ -113,11 +121,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					if len(syscallExecArgsColl) != 1 {
-						t.Fatalf("expected syscall.Exec to be called once: actual %v", syscallExecArgsColl)
+						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 					}
 
 					if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-worker-process"); diff != "" {
-						t.Fatalf(`syscall.Exec Argv did not match: (-got +want)\n%s`, diff)
+						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
 				})
 			})
@@ -129,39 +137,87 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					if len(syscallExecArgsColl) != 1 {
-						t.Fatalf("expected syscall.Exec to be called once: actual %v", syscallExecArgsColl)
+						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 					}
 
 					if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-different-process"); diff != "" {
-						t.Fatalf(`syscall.Exec Argv did not match: (-got +want)\n%s`, diff)
+						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
 				})
 			})
 		})
 
-		when("buildpacks provided profile.d scripts", func() {
+		when("buildpacks have provided layer directories that could affect the environment", func() {
 			it.Before(func() {
-				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "app", "start"), []byte("#!/usr/bin/env bash\necho hi from app\n"), 0777); err != nil {
-					t.Fatal(err)
-				}
+				mkfile(t, "#!/usr/bin/env bash\necho test1: $TEST_ENV_ONE test2: $TEST_ENV_TWO\n",
+					filepath.Join(tmpDir, "launch", "app", "start"),
+				)
+
 				launcher.Processes = []lifecycle.Process{
 					{Type: "start", Command: "./start"},
 				}
 				launcher.Buildpacks = []string{"bp.1", "bp.2"}
 				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
-				if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"), 0777); err != nil {
+				mkdir(t,
+					filepath.Join(tmpDir, "launch", "bp.1", "layer1"),
+					filepath.Join(tmpDir, "launch", "bp.1", "layer2"),
+					filepath.Join(tmpDir, "launch", "bp.2", "layer3"),
+					filepath.Join(tmpDir, "launch", "bp.2", "layer4"),
+				)
+			})
+
+			it("should ensure each buildpack's layers dir exists and process build layers", func() {
+				gomock.InOrder(
+					env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "bp.1", "layer1")),
+					env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "bp.1", "layer2")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.1", "layer1", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.1", "layer1", "env.launch")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.1", "layer2", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.1", "layer2", "env.launch")),
+
+					env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "bp.2", "layer3")),
+					env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "bp.2", "layer4")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.2", "layer3", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.2", "layer3", "env.launch")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.2", "layer4", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.2", "layer4", "env.launch")),
+				)
+				if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
 					t.Fatal(err)
 				}
-				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "apple"), []byte("echo apple"), 0666); err != nil {
-					t.Fatal(err)
+				stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
+				if len(stdout) == 0 {
+					stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
+					t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 				}
-				if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d"), 0777); err != nil {
-					t.Fatal(err)
+				if diff := cmp.Diff(stdout, "test1: 1 test2: 2\n"); diff != "" {
+					t.Fatalf("syscall.Exec stdout did not match: (-got +want)\n%s\n", diff)
 				}
-				if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "banana"), []byte("echo banana"), 0666); err != nil {
-					t.Fatal(err)
+			})
+		})
+
+		when("buildpacks have provided profile.d scripts", func() {
+			it.Before(func() {
+				mkfile(t, "#!/usr/bin/env bash\necho hi from app\n",
+					filepath.Join(tmpDir, "launch", "app", "start"),
+				)
+
+				launcher.Processes = []lifecycle.Process{
+					{Type: "start", Command: "./start"},
 				}
+				launcher.Buildpacks = []string{"bp.1", "bp.2"}
+				launcher.Exec = syscallExecWithStdout(t, tmpDir)
+
+				mkdir(t,
+					filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"),
+					filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d"),
+				)
+				mkfile(t, "echo apple", filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "apple"))
+				mkfile(t, "echo banana", filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "banana"))
+
+				env.EXPECT().AddRootDir(gomock.Any()).AnyTimes()
+				env.EXPECT().AddEnvDir(gomock.Any()).AnyTimes()
 			})
 
 			it("should run them in buildpack order", func() {
@@ -169,21 +225,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal(err)
 				}
 
-				stdout, err := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				expected := "apple\nbanana\nhi from app\n"
-
+				stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
 				if len(stdout) == 0 {
-					stderr, err := ioutil.ReadFile(filepath.Join(tmpDir, "stderr"))
-					if err != nil {
-						t.Fatal(err)
-					}
-					t.Fatalf("stdout was empty: stderr: %s", stderr)
+					stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
+					t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 				}
-				if diff := cmp.Diff(string(stdout), expected); diff != "" {
-					t.Fatalf(`syscall.Exec stdout did not match: (-got +want)\n%s`, diff)
+				if diff := cmp.Diff(stdout, "apple\nbanana\nhi from app\n"); diff != "" {
+					t.Fatalf("syscall.Exec stdout did not match: (-got +want)\n%s\n", diff)
 				}
 			})
 
@@ -197,27 +245,22 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						t.Fatal(err)
 					}
 
-					stdout, err := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
-					if err != nil {
-						t.Fatal(err)
-					}
-					expected := "banana\napple\nhi from app\n"
-
+					stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
 					if len(stdout) == 0 {
-						stderr, _ := ioutil.ReadFile(filepath.Join(tmpDir, "stderr"))
-						t.Fatalf("stdout was empty: stderr: %s", stderr)
+						stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
+						t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 					}
-					if diff := cmp.Diff(string(stdout), expected); diff != "" {
-						t.Fatalf(`syscall.Exec stdout did not match: (-got +want)\n%s`, diff)
+					if diff := cmp.Diff(stdout, "banana\napple\nhi from app\n"); diff != "" {
+						t.Fatalf("syscall.Exec stdout did not match: (-got +want)\n%s\n", diff)
 					}
 				})
 			})
 
 			when("app has '.profile'", func() {
 				it.Before(func() {
-					if err := ioutil.WriteFile(filepath.Join(tmpDir, "launch", "app", ".profile"), []byte("echo from profile"), 0644); err != nil {
-						t.Fatal(err)
-					}
+					mkfile(t, "echo from profile",
+						filepath.Join(tmpDir, "launch", "app", ".profile"),
+					)
 				})
 
 				it("should source .profile", func() {
@@ -225,21 +268,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						t.Fatal(err)
 					}
 
-					stdout, err := ioutil.ReadFile(filepath.Join(tmpDir, "stdout"))
-					if err != nil {
-						t.Fatal(err)
-					}
-					expected := "apple\nbanana\nfrom profile\nhi from app\n"
-
+					stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
 					if len(stdout) == 0 {
-						stderr, err := ioutil.ReadFile(filepath.Join(tmpDir, "stderr"))
-						if err != nil {
-							t.Fatal(err)
-						}
-						t.Fatalf("stdout was empty: stderr: %s", stderr)
+						stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
+						t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 					}
-					if diff := cmp.Diff(string(stdout), expected); diff != "" {
-						t.Fatalf(`syscall.Exec stdout did not match: (-got +want)\n%s`, diff)
+					if diff := cmp.Diff(stdout, "apple\nbanana\nfrom profile\nhi from app\n"); diff != "" {
+						t.Fatalf("syscall.Exec stdout did not match: (-got +want)\n%s\n", diff)
 					}
 				})
 			})
@@ -248,6 +283,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 }
 
 func syscallExecWithStdout(t *testing.T, tmpDir string) func(argv0 string, argv []string, envv []string) error {
+	t.Helper()
 	fstdin, err := os.Create(filepath.Join(tmpDir, "stdin"))
 	if err != nil {
 		t.Fatal(err)

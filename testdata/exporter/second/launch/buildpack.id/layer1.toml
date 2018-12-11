@@ -1,1 +1,4 @@
-mykey = "new val"
+cache = false
+launch = true
+[metadata]
+  mykey = "new val"

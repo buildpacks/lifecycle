@@ -10,9 +10,8 @@ import (
 )
 
 const (
-	DefaultLaunchDir      = "/workspace"
+	DefaultLayersDir      = "/workspace"
 	DefaultAppDir         = "/workspace/app"
-	DefaultCacheDir       = "/cache"
 	DefaultBuildpacksDir  = "/buildpacks"
 	DefaultPlatformDir    = "/platform"
 	DefaultOrderPath      = "/buildpacks/order.toml"
@@ -21,21 +20,20 @@ const (
 	DefaultUseDaemon      = false
 	DefaultUseCredHelpers = false
 
-	EnvRunImage = "PACK_RUN_IMAGE"
-	EnvUID      = "PACK_USER_ID"
-	EnvGID      = "PACK_GROUP_ID"
+	EnvRunImage     = "PACK_RUN_IMAGE"
+	EnvUID          = "PACK_USER_ID"
+	EnvGID          = "PACK_GROUP_ID"
+	EnvLayersDir    = "PACK_LAYERS_DIR"
+	EnvAppDir       = "PACK_APP_DIR"
+	EnvRegistryAuth = "PACK_REGISTRY_AUTH"
 )
 
-func FlagLaunchDir(dir *string) {
-	flag.StringVar(dir, "launch", DefaultLaunchDir, "path to launch directory")
+func FlagLayersDir(dir *string) {
+	flag.StringVar(dir, "layers", DefaultLayersDir, "path to layers directory")
 }
 
-func FlagLaunchDirSrc(dir *string) {
-	flag.StringVar(dir, "launch-src", DefaultLaunchDir, "path to source launch directory for export step")
-}
-
-func FlagDryRunDir(dir *string) {
-	flag.StringVar(dir, "dry-run", "", "path to store first stage output in (Don't perform export)")
+func FlagLayersDirSrc(dir *string) {
+	flag.StringVar(dir, "layers-src", DefaultLayersDir, "path to source layers directory for export step")
 }
 
 func FlagAppDir(dir *string) {
@@ -44,10 +42,6 @@ func FlagAppDir(dir *string) {
 
 func FlagAppDirSrc(dir *string) {
 	flag.StringVar(dir, "app-src", DefaultAppDir, "path to app directory for export step")
-}
-
-func FlagCacheDir(dir *string) {
-	flag.StringVar(dir, "cache", DefaultCacheDir, "path to cache directory")
 }
 
 func FlagBuildpacksDir(dir *string) {
@@ -72,10 +66,6 @@ func FlagPlanPath(path *string) {
 
 func FlagRunImage(image *string) {
 	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
-}
-
-func FlagMetadataPath(metadata *string) {
-	flag.StringVar(metadata, "metadata", "", "path to json containing image metadata for previous image")
 }
 
 func FlagUseDaemon(use *bool) {
