@@ -14,22 +14,22 @@ import (
 type FS struct {
 }
 
-func (*FS) CreateTarFile(tarFile, srcDir, tarDir string, uid, gid int) error {
+func (fs *FS) CreateTarFile(tarFile, srcDir, tarDir string, uid, gid int) error {
 	fh, err := os.Create(tarFile)
 	if err != nil {
 		return fmt.Errorf("create file for tar: %s", err)
 	}
 	defer fh.Close()
-	return writeTarArchive(fh, srcDir, tarDir, uid, gid)
+	return fs.WriteTarArchive(fh, srcDir, tarDir, uid, gid)
 }
 
-func (*FS) CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error) {
+func (fs *FS) CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error) {
 	r, w := io.Pipe()
 	errChan := make(chan error, 1)
 
 	go func() {
 		defer w.Close()
-		err := writeTarArchive(w, srcDir, tarDir, uid, gid)
+		err := fs.WriteTarArchive(w, srcDir, tarDir, uid, gid)
 		w.Close()
 		errChan <- err
 	}()
@@ -51,16 +51,13 @@ func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
+func (*FS) WriteTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
-		}
-		if fi.Mode().IsDir() {
-			return nil
 		}
 		relPath, err := filepath.Rel(srcDir, file)
 		if err != nil {
@@ -89,6 +86,8 @@ func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 		}
 		header.Uid = uid
 		header.Gid = gid
+		header.Uname = ""
+		header.Gname = ""
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err

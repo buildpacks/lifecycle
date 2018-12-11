@@ -407,6 +407,8 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 			modifiedtime := time.Time{}
 			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
 			AssertNil(t, err)
+			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)
+			AssertNil(t, err)
 		}
 		if fi.IsDir() {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
@@ -416,5 +418,7 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 	}
 	modifiedtime := time.Time{}
 	err = os.Chtimes(dst, modifiedtime, modifiedtime)
+	AssertNil(t, err)
+	err = os.Chmod(dst, 0775)
 	AssertNil(t, err)
 }

@@ -49,6 +49,7 @@ func (a *Analyzer) analyze(launchDir string, metadata AppImageMetadata) error {
 	for _, cachedBP := range cachedBPs {
 		_, exists := groupBPs[cachedBP]
 		if !exists {
+			a.Out.Printf("removing cached layers for buildpack '%s' not in group\n", cachedBP)
 			if err := os.RemoveAll(filepath.Join(launchDir, cachedBP)); err != nil && !os.IsNotExist(err) {
 				return err
 			}
@@ -63,14 +64,15 @@ func (a *Analyzer) analyze(launchDir string, metadata AppImageMetadata) error {
 		}
 
 		var metadataBP BuildpackMetadata
-		for _, mbp := range metadata.Buildpacks {
+		for i, mbp := range metadata.Buildpacks {
 			if escape(mbp.ID) == groupBP {
-				metadataBP = mbp
+				metadataBP = metadata.Buildpacks[i]
 			}
 		}
 
 		for name, cachedLayer := range cachedLayers {
 			if _, ok := metadataBP.Layers[name]; !ok && cachedLayer.Launch {
+				a.Out.Printf("removing stale cached layer '%s/%s', not in metadata \n", metadataBP.ID, name)
 				if err := a.removeLayer(bpDir, name); err != nil {
 					return err
 				}
@@ -79,12 +81,14 @@ func (a *Analyzer) analyze(launchDir string, metadata AppImageMetadata) error {
 
 		for name, layerMetadata := range metadataBP.Layers {
 			if cachedLayer, ok := cachedLayers[name]; ok && cachedLayer.SHA != layerMetadata.SHA {
+				a.Out.Printf("removing stale cached layer '%s/%s', sha '%s' does not match sha from metadata '%s' \n", metadataBP.ID, name, cachedLayer.SHA, layerMetadata.SHA)
 				if err := a.removeLayer(bpDir, name); err != nil {
 					return err
 				}
 			}
 
 			if !layerMetadata.Build {
+				a.Out.Printf("writing metadata for layer '%s/%s'\n", metadataBP.ID, name)
 				path := filepath.Join(bpDir, name+".toml")
 				if err := writeTOML(path, layerMetadata); err != nil {
 					return err
@@ -92,7 +96,6 @@ func (a *Analyzer) analyze(launchDir string, metadata AppImageMetadata) error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -115,7 +118,6 @@ func cachedBuildpacks(launchDir string) ([]string, error) {
 }
 
 func (a *Analyzer) removeLayer(buildpackDir, name string) error {
-	a.Out.Printf("remove stale cached layer dir '%s'\n", filepath.Join(buildpackDir, name))
 	if err := os.RemoveAll(filepath.Join(buildpackDir, name)); err != nil && !os.IsNotExist(err) {
 		return err
 	}

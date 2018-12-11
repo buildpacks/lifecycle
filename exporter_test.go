@@ -136,7 +136,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
           }
         },
         "layer5": {
-          "sha": "sha256:4c57b867c3f5c73b37516299bb8385dd2083ad7e65f39efb990419710bec8c48"
+          "sha": "sha256:3b62bb1034a4542c79ec6117baedbd4fb8948879a519c646c5528621ffa3d196"
         }
       }
     }
@@ -147,7 +147,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					t.Log("adds app layer")
 					appLayerSHA = h.ComputeSHA256(t, layerPath)
 					assertTarFileContents(t, layerPath, "/dest/app/.hidden.txt", "some-hidden-text\n")
-					assertTarFileOwner(t, layerPath, "/dest/app/", 1234, 4321)
+					assertTarFileOwner(t, layerPath, "/dest/app", 1234, 4321)
 					return nil
 				})
 				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
@@ -158,11 +158,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						"/dest/launch/config/metadata.toml",
 						"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 					)
-					assertTarFileOwner(t, layerPath, "/dest/launch/config/", 1234, 4321)
+					assertTarFileOwner(t, layerPath, "/dest/launch/config", 1234, 4321)
 					return nil
 				})
 				mockRunImage.EXPECT().ReuseLayer("orig-layer1-sha")
-				mockRunImage.EXPECT().ReuseLayer("sha256:4c57b867c3f5c73b37516299bb8385dd2083ad7e65f39efb990419710bec8c48")
+				mockRunImage.EXPECT().ReuseLayer("sha256:3b62bb1034a4542c79ec6117baedbd4fb8948879a519c646c5528621ffa3d196")
 				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
 					t.Log("adds buildpack layer2")
 					buildpackLayer2SHA = h.ComputeSHA256(t, layerPath)
@@ -170,7 +170,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						layerPath,
 						"/dest/launch/buildpack.id/layer2/file-from-layer-2",
 						"echo text from layer 2\n")
-					assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer2/", 1234, 4321)
+					assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer2", 1234, 4321)
 					return nil
 				})
 				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
@@ -180,7 +180,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						layerPath,
 						"/dest/launch/other.buildpack.id/layer3/file-from-layer-3",
 						"echo text from layer 3\n")
-					assertTarFileOwner(t, layerPath, "/dest/launch/other.buildpack.id/layer3/", 1234, 4321)
+					assertTarFileOwner(t, layerPath, "/dest/launch/other.buildpack.id/layer3", 1234, 4321)
 					return nil
 				})
 
@@ -271,7 +271,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						t.Log("adds app layer")
 						appLayerSHA = h.ComputeSHA256(t, layerPath)
 						assertTarFileContents(t, layerPath, "/dest/app/.hidden.txt", "some-hidden-text\n")
-						assertTarFileOwner(t, layerPath, "/dest/app/", 1234, 4321)
+						assertTarFileOwner(t, layerPath, "/dest/app", 1234, 4321)
 						return nil
 					}),
 					mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
@@ -282,7 +282,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 							"/dest/launch/config/metadata.toml",
 							"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 						)
-						assertTarFileOwner(t, layerPath, "/dest/launch/config/", 1234, 4321)
+						assertTarFileOwner(t, layerPath, "/dest/launch/config", 1234, 4321)
 						return nil
 					}),
 					mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
@@ -292,7 +292,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 							layerPath,
 							"/dest/launch/buildpack.id/layer1/file-from-layer-1",
 							"echo text from layer 1\n")
-						assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer1/", 1234, 4321)
+						assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer1", 1234, 4321)
 						return nil
 					}),
 					mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
@@ -302,7 +302,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 							layerPath,
 							"/dest/launch/buildpack.id/layer2/file-from-layer-2",
 							"echo text from layer 2\n")
-						assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer2/", 1234, 4321)
+						assertTarFileOwner(t, layerPath, "/dest/launch/buildpack.id/layer2", 1234, 4321)
 						return nil
 					}),
 				)
@@ -409,7 +409,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				if _, err := ioutil.ReadFile(filepath.Join(layerSrc, "buildpack.id", "layer2.toml")); err != nil {
 					t.Fatal("missing layer2.toml")
 				}
-				if txt, err := ioutil.ReadFile(filepath.Join(layerSrc, "buildpack.id", "layer2", "layer2.sha")); err != nil {
+				if txt, err := ioutil.ReadFile(filepath.Join(layerSrc, "buildpack.id", "layer2.sha")); err != nil {
 					t.Fatal("missing layer2.sha")
 				} else if string(txt) != "sha256:"+layer2sha {
 					t.Fatalf("expected layer.sha to have sha '%s', got '%s'", layer2sha, string(txt))
@@ -452,6 +452,7 @@ func tarFileContext(t *testing.T, tarfile, path string) (exist bool, contents st
 }
 
 func assertTarFileOwner(t *testing.T, tarfile, path string, expectedUID, expectedGID int) {
+	t.Helper()
 	var foundPath bool
 	r, err := os.Open(tarfile)
 	assertNil(t, err)

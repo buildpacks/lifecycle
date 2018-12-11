@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpack/lifecycle/fs"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,8 +15,6 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/docker/docker/pkg/archive"
-	"github.com/docker/docker/pkg/idtools"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/cmd"
@@ -78,7 +77,8 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 						return nil, errors.Wrapf(err, "exporting tar for layer '%s/%s'", buildpack.ID, layerName)
 					}
 					if metadata.Cache {
-						if err := ioutil.WriteFile(filepath.Join(layerDir, layerName+".sha"), []byte(metadata.SHA), 0777); err != nil {
+						e.Out.Printf("caching launch layer '%s/%s' with sha '%s'\n", bpMetadata.ID, layerName, metadata.SHA)
+						if err := ioutil.WriteFile(filepath.Join(launchDirSrc, buildpack.EscapedID(), layerName+".sha"), []byte(metadata.SHA), 0777); err != nil {
 							return nil, errors.Wrapf(err, "writing layer sha")
 						}
 					}
@@ -90,12 +90,15 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 				bpMetadata.Layers[layerName] = metadata
 			}
 			if !metadata.Cache {
+				e.Out.Printf("removing uncached layer '%s/%s'\n", bpMetadata.ID, layerName)
 				if err := os.RemoveAll(layerDir); err != nil && !os.IsNotExist(err) {
 					return nil, errors.Wrap(err, "removing uncached layer")
 				}
 				if err := os.Remove(tomlFile); err != nil && !os.IsNotExist(err) {
 					return nil, errors.Wrap(err, "removing toml for uncached layer")
 				}
+			} else if !metadata.Launch {
+				e.Out.Printf("caching unexported layer '%s/%s'\n", bpMetadata.ID, layerName)
 			}
 		}
 		metadata.Buildpacks = append(metadata.Buildpacks, bpMetadata)
@@ -247,21 +250,20 @@ func (e *Exporter) GetMetadata(image image.Image) (AppImageMetadata, error) {
 	return metadata, nil
 }
 
-func (e *Exporter) writeWithSHA(r io.Reader) (string, error) {
+func (e *Exporter) exportTar(sourceDir, destDir string) (string, error) {
 	hasher := sha256.New()
-
 	f, err := ioutil.TempFile(e.ArtifactsDir, "tarfile")
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
-
 	w := io.MultiWriter(hasher, f)
 
-	if _, err := io.Copy(w, r); err != nil {
+	fs := &fs.FS{}
+	err = fs.WriteTarArchive(w, sourceDir, destDir, e.UID, e.GID)
+	if err != nil {
 		return "", err
 	}
-
 	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 
 	if err := f.Close(); err != nil {
@@ -272,26 +274,4 @@ func (e *Exporter) writeWithSHA(r io.Reader) (string, error) {
 	}
 
 	return "sha256:" + sha, nil
-}
-
-func (e *Exporter) exportTar(sourceDir, destDir string) (string, error) {
-	name := filepath.Base(sourceDir)
-	tarOptions := &archive.TarOptions{
-		IncludeFiles: []string{name},
-		RebaseNames: map[string]string{
-			name: destDir,
-		},
-	}
-	if e.UID > 0 && e.GID > 0 {
-		tarOptions.ChownOpts = &idtools.Identity{
-			UID: e.UID,
-			GID: e.GID,
-		}
-	}
-	rc, err := archive.TarWithOptions(filepath.Dir(sourceDir), tarOptions)
-	if err != nil {
-		return "", err
-	}
-	defer rc.Close()
-	return e.writeWithSHA(rc)
 }

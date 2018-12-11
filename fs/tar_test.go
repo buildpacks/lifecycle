@@ -54,8 +54,16 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		defer file.Close()
 		tr := tar.NewReader(file)
 
-		t.Log("handles regular files")
+		t.Log("handles directories")
 		header, err := tr.Next()
+		if err != nil {
+			t.Fatalf("Failed to get next file: %s", err)
+		}
+		if header.Name != "/dir-in-archive" {
+			t.Fatalf(`expected directory with name /dir-in-archive, got %s`, header.Name)
+		}
+		t.Log("handles regular files")
+		header, err = tr.Next()
 		if err != nil {
 			t.Fatalf("Failed to get next file: %s", err)
 		}
@@ -75,6 +83,12 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		if runtime.GOOS != "windows" {
+			t.Log("handles sub dir")
+			_, err = tr.Next()
+			if err != nil {
+				t.Fatalf("Failed to get directory: %s", err)
+			}
+
 			t.Log("handles symlinks")
 			header, err = tr.Next()
 			if err != nil {
