@@ -197,6 +197,21 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("metadata includes buildpacks that have not contributed layers", func() {
+			it.Before(func() {
+				launcher.Buildpacks = []string{"bp.3"}
+			})
+
+			it("ignores those buildpacks when setting the env", func() {
+				if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
+					t.Fatal(err)
+				}
+				if len(syscallExecArgsColl) != 1 {
+					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
+				}
+			})
+		})
+
 		when("buildpacks have provided profile.d scripts", func() {
 			it.Before(func() {
 				mkfile(t, "#!/usr/bin/env bash\necho hi from app\n",
