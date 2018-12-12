@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,14 +19,14 @@ import (
 	"github.com/buildpack/lifecycle/fs"
 	"github.com/docker/docker/api/types"
 	dockertypes "github.com/docker/docker/api/types"
-	dockerClient "github.com/docker/docker/client"
+	dockerclient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 )
 
 type local struct {
 	RepoName         string
-	Docker           Docker
+	Docker           *dockerclient.Client
 	Inspect          types.ImageInspect
 	layerPaths       []string
 	Stdout           io.Writer
@@ -49,7 +50,7 @@ func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 	}
 
 	inspect, _, err := f.Docker.ImageInspectWithRaw(context.Background(), repoName)
-	if err != nil && !dockerClient.IsErrNotFound(err) {
+	if err != nil && !dockerclient.IsErrNotFound(err) {
 		return nil, errors.Wrap(err, "analyze read previous image config")
 	}
 
@@ -391,11 +392,20 @@ func (l *local) prevDownload() error {
 	return outerErr
 }
 
-func pullImage(dockerCli *dockerClient.Client, ref string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+func pullImage(dockerCli *dockerclient.Client, ref string) error {
+	regAuth, err := registryAuth(ref)
+	if err != nil {
+		return errors.Wrap(err, "auth for docker pull")
+	}
+
+	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{
+		RegistryAuth: regAuth,
+	})
 	if err != nil {
 		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{
+			RegistryAuth: regAuth,
+		})
 		if err != nil {
 			return err
 		}
@@ -404,4 +414,29 @@ func pullImage(dockerCli *dockerClient.Client, ref string) error {
 		return err
 	}
 	return rc.Close()
+}
+
+func registryAuth(ref string) (string, error) {
+	var regAuth string
+	_, auth, err := referenceForRepoName(ref)
+	if err != nil {
+		return "", errors.Wrapf(err, "resolve auth for ref %s", ref)
+	}
+	authHeader, err := auth.Authorization()
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(authHeader, "Basic ") {
+		encoded := strings.TrimPrefix(authHeader, "Basic ")
+		decoded, _ := base64.StdEncoding.DecodeString(encoded)
+		parts := strings.SplitN(string(decoded), ":", 2)
+		regAuth = base64.StdEncoding.EncodeToString(
+			[]byte(fmt.Sprintf(
+				`{"username": "%s", "password": "%s"}`,
+				parts[0],
+				parts[1],
+			)),
+		)
+	}
+	return regAuth, nil
 }
