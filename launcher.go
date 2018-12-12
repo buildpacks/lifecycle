@@ -54,7 +54,11 @@ func (l *Launcher) env() error {
 	return l.eachBuildpack(l.LayersDir, func(path string) error {
 		bpInfo, err := os.Stat(path)
 		if err != nil {
-			return errors.Wrap(err, "find buildpack directory")
+			if os.IsNotExist(err) {
+				return nil
+			} else {
+				return errors.Wrap(err, "find buildpack directory")
+			}
 		}
 		if os.SameFile(appInfo, bpInfo) {
 			return nil
