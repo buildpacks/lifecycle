@@ -1,9 +1,11 @@
 package lifecycle
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 )
 
 type BuildpackMap map[string]*Buildpack
@@ -40,7 +42,7 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 	return buildpacks, nil
 }
 
-func (m BuildpackMap) lookup(l []*Buildpack) []*Buildpack {
+func (m BuildpackMap) lookup(l []*Buildpack) ([]*Buildpack, error) {
 	out := make([]*Buildpack, 0, len(l))
 	for _, b := range l {
 		ref := b.ID + "@" + b.Version
@@ -51,9 +53,11 @@ func (m BuildpackMap) lookup(l []*Buildpack) []*Buildpack {
 			bp := *bp
 			bp.Optional = b.Optional
 			out = append(out, &bp)
+		} else {
+			return nil, fmt.Errorf("buildpack '%s' missing from image", ref)
 		}
 	}
-	return out
+	return out, nil
 }
 
 func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
@@ -66,8 +70,12 @@ func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 
 	var groups BuildpackOrder
 	for _, g := range order.Groups {
+		group, err := m.lookup(g.Buildpacks)
+		if err != nil {
+			return nil, errors.Wrap(err, "lookup buildpacks")
+		}
 		groups = append(groups, BuildpackGroup{
-			Buildpacks: m.lookup(g.Buildpacks),
+			Buildpacks: group,
 		})
 	}
 	return groups, nil
@@ -84,9 +92,13 @@ func (g *BuildpackGroup) Write(path string) error {
 
 func (m BuildpackMap) ReadGroup(path string) (*BuildpackGroup, error) {
 	var group BuildpackGroup
+	var err error
 	if _, err := toml.DecodeFile(path, &group); err != nil {
 		return nil, err
 	}
-	group.Buildpacks = m.lookup(group.Buildpacks)
+	group.Buildpacks, err = m.lookup(group.Buildpacks)
+	if err != nil {
+		return nil, errors.Wrap(err, "lookup buildpacks")
+	}
 	return &group, nil
 }
