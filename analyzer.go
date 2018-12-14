@@ -105,7 +105,7 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 }
 
 type analyzedBuildPackDirectory struct {
-	metaData  AppImageMetadata
+	metadata  AppImageMetadata
 	layersDir string
 	groupBP   string
 }
@@ -127,7 +127,7 @@ func (abd *analyzedBuildPackDirectory) classifyLayer(layer string) layerType {
 		return noCacheAvailable
 	}
 
-	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metaData)
+	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metadata)
 	if !ok {
 		if !cachedTOML.Launch {
 			return noMetaDataForBuildLayer
@@ -168,7 +168,7 @@ func (abd *analyzedBuildPackDirectory) layerPath(layer string) string {
 
 func (abd *analyzedBuildPackDirectory) allLayers() (map[string]interface{}, error) {
 	setOfLayers := make(map[string]interface{})
-	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metaData)
+	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metadata)
 	if ok {
 		for layer := range buildpackMetadata.Layers {
 			setOfLayers[layer] = struct{}{}
@@ -188,7 +188,7 @@ func (abd *analyzedBuildPackDirectory) allLayers() (map[string]interface{}, erro
 }
 
 func (abd *analyzedBuildPackDirectory) restoreMetadata(layer string) error {
-	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metaData)
+	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metadata)
 	if !ok {
 		return fmt.Errorf("metadata unavailable for %s", layer)
 	}
