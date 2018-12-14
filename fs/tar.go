@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -54,6 +55,11 @@ func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
 func (*FS) WriteTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
+
+	err := writeParentDirectoryHeaders(tarDir, tw, uid, gid)
+	if err != nil {
+		return err
+	}
 
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
@@ -104,6 +110,21 @@ func (*FS) WriteTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) err
 		}
 		return nil
 	})
+}
+
+func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int) error {
+	base := path.Base(tarDir)
+	initialPath := "/"
+	for _, value := range strings.Split(tarDir, "/") {
+		if value != base && value != "" {
+			initialPath = filepath.Join(initialPath, value)
+
+			if err := tw.WriteHeader(&tar.Header{Name: initialPath + "/", Typeflag: tar.TypeDir, Uid: uid, Gid: gid, Mode: 0755}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (*FS) AddTextToTar(tw *tar.Writer, name string, contents []byte) error {

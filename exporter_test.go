@@ -136,7 +136,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
           }
         },
         "layer5": {
-          "sha": "sha256:3b62bb1034a4542c79ec6117baedbd4fb8948879a519c646c5528621ffa3d196"
+          "sha": "sha256:994ca0ae66fac54fa60911f2a57ad932c471bcd616cf219d47ea3d794992c815"
         }
       }
     }
@@ -162,7 +162,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					return nil
 				})
 				mockRunImage.EXPECT().ReuseLayer("orig-layer1-sha")
-				mockRunImage.EXPECT().ReuseLayer("sha256:3b62bb1034a4542c79ec6117baedbd4fb8948879a519c646c5528621ffa3d196")
+				mockRunImage.EXPECT().ReuseLayer("sha256:994ca0ae66fac54fa60911f2a57ad932c471bcd616cf219d47ea3d794992c815")
 				mockRunImage.EXPECT().AddLayer(gomock.Any()).DoAndReturn(func(layerPath string) error {
 					t.Log("adds buildpack layer2")
 					buildpackLayer2SHA = h.ComputeSHA256(t, layerPath)
