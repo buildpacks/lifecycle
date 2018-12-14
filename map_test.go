@@ -102,6 +102,22 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
 		})
+
+		when("order references a missing buildpack", func() {
+			it("returns an error", func() {
+				m := lifecycle.BuildpackMap{
+					"buildpack1@version1.2": {Name: "buildpack1-1.2"},
+					"buildpack2@latest":     {Name: "buildpack2"},
+				}
+				mkfile(t, `groups = [{ buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}] }]`,
+					filepath.Join(tmpDir, "order.toml"),
+				)
+				_, err := m.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+			})
+		})
 	})
 
 	when("#ReadGroup", func() {
@@ -137,6 +153,22 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
+		})
+
+		when("group references a missing buildpack", func() {
+			it("returns an error", func() {
+				m := lifecycle.BuildpackMap{
+					"buildpack1@version1.2": {Name: "buildpack1-1.2"},
+					"buildpack2@latest":     {Name: "buildpack2"},
+				}
+				mkfile(t, `buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}]`,
+					filepath.Join(tmpDir, "group.toml"),
+				)
+				_, err := m.ReadGroup(filepath.Join(tmpDir, "group.toml"))
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+			})
 		})
 	})
 
