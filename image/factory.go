@@ -1,15 +1,14 @@
 package image
 
 import (
-	"context"
-	"github.com/docker/docker/client"
-	"github.com/pkg/errors"
 	"io"
 	"log"
 	"os"
 
+	"github.com/docker/docker/client"
+	"github.com/pkg/errors"
+
 	"github.com/buildpack/lifecycle/fs"
-	"github.com/docker/docker/api/types"
 )
 
 type Image interface {
@@ -26,14 +25,6 @@ type Image interface {
 	ReuseLayer(sha string) error
 	Save() (string, error)
 	Found() (bool, error)
-}
-
-type Docker interface {
-	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
-	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
-	ImageRemove(ctx context.Context, ref string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
-	ImageLoad(ctx context.Context, r io.Reader, quiet bool) (types.ImageLoadResponse, error)
-	ImageSave(ctx context.Context, imageIDs []string) (io.ReadCloser, error)
 }
 
 type Factory struct {
