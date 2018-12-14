@@ -70,6 +70,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			image = testmock.NewMockImage(mockCtrl)
 			ref = testmock.NewMockReference(mockCtrl)
 			ref.EXPECT().Name().AnyTimes()
+			image.EXPECT().Name().AnyTimes().Return("image-repo-name")
 		})
 
 		when("image exists", func() {
@@ -358,14 +359,26 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("the image cannot found", func() {
 			it.Before(func() {
 				image.EXPECT().Found().Return(false, nil)
-				image.EXPECT().Name().Return("test-name")
 			})
 
-			it("warns user and returns", func() {
+			it("warns user and clears the cached launch layers", func() {
+				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
-				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, image 'test-name' not found or requires authentication to access") {
+				if !strings.Contains(stdout.String(), "WARNING: image 'image-repo-name' not found or requires authentication to access") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale launchlayer cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "buildpack.node", "buildhelpers")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale buildhelpers cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "old-buildpack")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale no group buildpack cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
+					t.Fatalf("Missing some-app-dir")
 				}
 			})
 		})
@@ -388,11 +401,26 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("warns user and returns", func() {
+				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
 
-				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was not found") {
+				if !strings.Contains(stdout.String(), "WARNING: previous image 'image-repo-name' does not have 'io.buildpacks.lifecycle.metadata' label") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
+				}
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale launchlayer cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "buildpack.node", "buildhelpers")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale buildhelpers cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "old-buildpack")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale no group buildpack cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
+					t.Fatalf("Missing some-app-dir")
 				}
 			})
 		})
@@ -401,20 +429,33 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				image.EXPECT().Found().Return(true, nil)
 				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{["bad", "metadata"]}`, nil)
-
 			})
 
 			it("warns user and returns", func() {
+				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
 
-				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was incompatible") {
+				if !strings.Contains(stdout.String(), "WARNING: previous image 'image-repo-name' has incompatible 'io.buildpacks.lifecycle.metadata' label") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
+				}
+
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale launchlayer cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "buildpack.node", "buildhelpers")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale buildhelpers cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "old-buildpack")); !os.IsNotExist(err) {
+					t.Fatalf("Found stale no group buildpack cache, it should not exist")
+				}
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
+					t.Fatalf("Missing some-app-dir")
 				}
 			})
 		})
 	})
-
 }
 
 func assertNil(t *testing.T, actual interface{}) {

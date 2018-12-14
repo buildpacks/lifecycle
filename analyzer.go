@@ -29,18 +29,16 @@ func (a *Analyzer) Analyze(image image.Image) error {
 		return err
 	}
 
+	var metadata AppImageMetadata
 	if !found {
-		a.Out.Printf("WARNING: skipping analyze, image '%s' not found or requires authentication to access\n", image.Name())
-		return nil
+		a.Out.Printf("WARNING: image '%s' not found or requires authentication to access\n", image.Name())
+	} else {
+		metadata, err = a.getMetadata(image)
+		if err != nil {
+			return err
+		}
 	}
-	metadata, err := a.getMetadata(image)
-	if err != nil {
-		return err
-	}
-	if metadata != nil {
-		return a.analyze(*metadata)
-	}
-	return nil
+	return a.analyze(metadata)
 }
 
 func (a *Analyzer) analyze(metadata AppImageMetadata) error {
@@ -158,7 +156,6 @@ func (abd *analyzedBuildPackDirectory) classifyLayer(layer string) layerType {
 		} else {
 			return outdatedLaunchLayer
 		}
-
 	}
 
 	return existingCacheUptoDate
@@ -227,20 +224,20 @@ func appImageMetadata(groupBP string, metadata AppImageMetadata) (*BuildpackMeta
 	return nil, false
 }
 
-func (a *Analyzer) getMetadata(image image.Image) (*AppImageMetadata, error) {
+func (a *Analyzer) getMetadata(image image.Image) (AppImageMetadata, error) {
+	metadata := AppImageMetadata{}
 	label, err := image.Label(MetadataLabel)
 	if err != nil {
-		return nil, err
+		return metadata, err
 	}
 	if label == "" {
-		a.Out.Printf("WARNING: skipping analyze, previous image metadata was not found\n")
-		return nil, nil
+		a.Out.Printf("WARNING: previous image '%s' does not have '%s' label", image.Name(), MetadataLabel)
+		return metadata, nil
 	}
 
-	metadata := &AppImageMetadata{}
-	if err := json.Unmarshal([]byte(label), metadata); err != nil {
-		a.Out.Printf("WARNING: skipping analyze, previous image metadata was incompatible\n")
-		return nil, nil
+	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
+		a.Out.Printf("WARNING: previous image '%s' has incompatible '%s' label\n", image.Name(), MetadataLabel)
+		return metadata, nil
 	}
 	return metadata, nil
 }
