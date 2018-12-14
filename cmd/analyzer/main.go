@@ -15,6 +15,7 @@ import (
 var (
 	repoName   string
 	layersDir  string
+	appDir     string
 	groupPath  string
 	useDaemon  bool
 	useHelpers bool
@@ -22,6 +23,7 @@ var (
 
 func init() {
 	cmd.FlagLayersDir(&layersDir)
+	cmd.FlagAppDir(&appDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
@@ -50,6 +52,8 @@ func analyzer() error {
 
 	analyzer := &lifecycle.Analyzer{
 		Buildpacks: group.Buildpacks,
+		AppDir:     appDir,
+		LayersDir:  layersDir,
 		Out:        log.New(os.Stdout, "", log.LstdFlags),
 		Err:        log.New(os.Stderr, "", log.LstdFlags),
 	}
@@ -78,7 +82,6 @@ func analyzer() error {
 
 	err = analyzer.Analyze(
 		previousImage,
-		layersDir,
 	)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)

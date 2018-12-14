@@ -34,6 +34,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		mockCtrl       *gomock.Controller
 		stdout, stderr *bytes.Buffer
 		layerDir       string
+		appDir         string
 	)
 
 	it.Before(func() {
@@ -42,10 +43,13 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
+		appDir = filepath.Join(layerDir, "some-app-dir")
 
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		analyzer = &lifecycle.Analyzer{
 			Buildpacks: []*lifecycle.Buildpack{{ID: "buildpack.node"}, {ID: "buildpack.go"}, {ID: "no.metadata.buildpack"}},
+			AppDir:     appDir,
+			LayersDir:  layerDir,
 			Out:        log.New(stdout, "", 0),
 			Err:        log.New(stderr, "", 0),
 		}
@@ -114,7 +118,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should use labels to populate the layer dir", func() {
-					if err := analyzer.Analyze(image, layerDir); err != nil {
+					if err := analyzer.Analyze(image); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
@@ -138,7 +142,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it("should only write layer TOML files that correspond to detected buildpacks", func() {
 					analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "buildpack.go"}}
 
-					if err := analyzer.Analyze(image, layerDir); err != nil {
+					if err := analyzer.Analyze(image); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
@@ -159,7 +163,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -176,7 +180,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -193,7 +197,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -219,7 +223,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -243,7 +247,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -267,7 +271,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -281,11 +285,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
-						appFile := filepath.Join(layerDir, "app", "appfile")
+						appFile := filepath.Join(layerDir, "some-app-dir", "appfile")
 						if txt, err := ioutil.ReadFile(appFile); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						} else if !strings.Contains(string(txt), "appFile file contents") {
@@ -297,7 +301,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -315,7 +319,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -334,7 +338,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						//copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image, layerDir); err != nil {
+						if err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -358,7 +362,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(image, layerDir)
+				err := analyzer.Analyze(image)
 				assertNil(t, err)
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, image 'test-name' not found or requires authentication to access") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
@@ -372,7 +376,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the error", func() {
-				err := analyzer.Analyze(image, layerDir)
+				err := analyzer.Analyze(image)
 				h.AssertError(t, err, "some-error")
 			})
 		})
@@ -384,7 +388,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(image, layerDir)
+				err := analyzer.Analyze(image)
 				assertNil(t, err)
 
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was not found") {
@@ -401,7 +405,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("warns user and returns", func() {
-				err := analyzer.Analyze(image, layerDir)
+				err := analyzer.Analyze(image)
 				assertNil(t, err)
 
 				if !strings.Contains(stdout.String(), "WARNING: skipping analyze, previous image metadata was incompatible") {

@@ -10,17 +10,20 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/image"
 )
 
 type Analyzer struct {
 	Buildpacks []*Buildpack
+	AppDir     string
+	LayersDir  string
 	In         []byte
 	Out, Err   *log.Logger
 }
 
-func (a *Analyzer) Analyze(image image.Image, layersDir string) error {
+func (a *Analyzer) Analyze(image image.Image) error {
 	found, err := image.Found()
 	if err != nil {
 		return err
@@ -35,21 +38,21 @@ func (a *Analyzer) Analyze(image image.Image, layersDir string) error {
 		return err
 	}
 	if metadata != nil {
-		return a.analyze(layersDir, *metadata)
+		return a.analyze(*metadata)
 	}
 	return nil
 }
 
-func (a *Analyzer) analyze(layersDir string, metadata AppImageMetadata) error {
+func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 	groupBPs := a.buildpacks()
 
-	err := a.removeOldBackpackLayersNotInGroup(groupBPs, layersDir)
+	err := a.removeOldBackpackLayersNotInGroup(groupBPs)
 	if err != nil {
 		return err
 	}
 
 	for groupBP := range groupBPs {
-		analyzedDirectory := analyzedBuildPackDirectory{metadata, layersDir, groupBP}
+		analyzedDirectory := analyzedBuildPackDirectory{metadata, a.LayersDir, groupBP}
 
 		layers, err := analyzedDirectory.allLayers()
 		if err != nil {
@@ -250,8 +253,8 @@ func (a *Analyzer) buildpacks() map[string]struct{} {
 	return buildpacks
 }
 
-func (a *Analyzer) removeOldBackpackLayersNotInGroup(groupBPs map[string]struct{}, layersDir string) error {
-	cachedBPs, err := cachedBuildpacks(layersDir)
+func (a *Analyzer) removeOldBackpackLayersNotInGroup(groupBPs map[string]struct{}) error {
+	cachedBPs, err := a.cachedBuildpacks()
 	if err != nil {
 		return err
 	}
@@ -260,7 +263,7 @@ func (a *Analyzer) removeOldBackpackLayersNotInGroup(groupBPs map[string]struct{
 		_, exists := groupBPs[cachedBP]
 		if !exists {
 			a.Out.Printf("removing cached layers for buildpack '%s' not in group\n", cachedBP)
-			if err := os.RemoveAll(filepath.Join(layersDir, cachedBP)); err != nil && !os.IsNotExist(err) {
+			if err := os.RemoveAll(filepath.Join(a.LayersDir, cachedBP)); err != nil && !os.IsNotExist(err) {
 				return err
 			}
 		}
@@ -268,18 +271,22 @@ func (a *Analyzer) removeOldBackpackLayersNotInGroup(groupBPs map[string]struct{
 	return nil
 }
 
-func cachedBuildpacks(launchDir string) ([]string, error) {
+func (a *Analyzer) cachedBuildpacks() ([]string, error) {
 	cachedBps := make([]string, 0, 0)
-	bpDirs, err := filepath.Glob(filepath.Join(launchDir, "*"))
+	bpDirs, err := filepath.Glob(filepath.Join(a.LayersDir, "*"))
 	if err != nil {
 		return nil, err
+	}
+	appDirInfo, err := os.Stat(a.AppDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Wrap(err, "stat app dir")
 	}
 	for _, dir := range bpDirs {
 		info, err := os.Stat(dir)
 		if err != nil {
 			return nil, err
 		}
-		if filepath.Base(dir) != "app" && info.IsDir() {
+		if !os.SameFile(appDirInfo, info) && info.IsDir() {
 			cachedBps = append(cachedBps, filepath.Base(dir))
 		}
 	}
