@@ -1,13 +1,11 @@
 package image_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -17,13 +15,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/fs"
-	"github.com/buildpack/lifecycle/image"
-	h "github.com/buildpack/lifecycle/testhelpers"
-
 	dockerClient "github.com/docker/docker/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/image"
+	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
 var registryPort string
@@ -40,7 +38,6 @@ func TestRemote(t *testing.T) {
 
 func testRemote(t *testing.T, when spec.G, it spec.S) {
 	var factory image.Factory
-	var buf bytes.Buffer
 	var repoName string
 	var dockerCli *dockerClient.Client
 
@@ -50,8 +47,6 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		factory = image.Factory{
 			Docker: dockerCli,
-			Log:    log.New(&buf, "", log.LstdFlags),
-			Stdout: &buf,
 			FS:     &fs.FS{},
 		}
 		repoName = "localhost:" + registryPort + "/pack-image-test-" + h.RandString(10)

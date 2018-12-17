@@ -16,12 +16,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/buildpack/lifecycle/fs"
 	"github.com/docker/docker/api/types"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/fs"
 )
 
 type local struct {
@@ -43,7 +44,6 @@ type local struct {
 
 func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 	if pull {
-		f.Log.Printf("Pulling image '%s'\n", repoName)
 		if err := pullImage(f.Docker, repoName); err != nil {
 			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
 		}
@@ -59,7 +59,6 @@ func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 		RepoName:   repoName,
 		Inspect:    inspect,
 		layerPaths: make([]string, len(inspect.RootFS.Layers)),
-		Stdout:     f.Stdout,
 		FS:         f.FS,
 		prevOnce:   &sync.Once{},
 	}, nil
