@@ -377,7 +377,7 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func ComputeSHA256(t *testing.T, path string) string {
+func ComputeSHA256ForFile(t *testing.T, path string) string {
 	t.Helper()
 
 	file, err := os.Open(path)
@@ -390,6 +390,14 @@ func ComputeSHA256(t *testing.T, path string) string {
 	}
 
 	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+}
+
+func ComputeSHA256ForPath(t *testing.T, path string, uid int, guid int) string {
+	hasher := sha256.New()
+	err := (&fs.FS{}).WriteTarArchive(hasher, path, path, uid, guid)
+	AssertNil(t, err)
+	layer5sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	return layer5sha
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {
