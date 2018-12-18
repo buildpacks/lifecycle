@@ -29,30 +29,30 @@ type Exporter struct {
 	UID, GID     int
 }
 
-func (e *Exporter) Export(launchDirSrc, launchDirDst, appDirSrc, appDirDst string, runImage, origImage image.Image) error {
-	metadata, err := e.PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDst)
+func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Image) error {
+	metadata, err := e.prepareExport(layersDir, appDir)
 	if err != nil {
 		return errors.Wrapf(err, "prepare export")
 	}
-	return e.ExportImage(launchDirDst, appDirDst, runImage, origImage, metadata)
+	return e.exportImage(layersDir, appDir, runImage, origImage, metadata)
 }
 
-func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDst string) (*AppImageMetadata, error) {
+func (e *Exporter) prepareExport(layersDir, appDir string) (*AppImageMetadata, error) {
 	var err error
 	var metadata AppImageMetadata
 
-	metadata.App.SHA, err = e.exportTar(appDirSrc, appDirDst)
+	metadata.App.SHA, err = e.exportTar(appDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting app layer tar")
 	}
-	metadata.Config.SHA, err = e.exportTar(filepath.Join(launchDirSrc, "config"), filepath.Join(launchDirDst, "config"))
+	metadata.Config.SHA, err = e.exportTar(filepath.Join(layersDir, "config"))
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting config layer tar")
 	}
 
 	for _, buildpack := range e.Buildpacks {
 		bpMetadata := BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version, Layers: make(map[string]LayerMetadata)}
-		tomls, err := filepath.Glob(filepath.Join(launchDirSrc, buildpack.EscapedID(), "*.toml"))
+		tomls, err := filepath.Glob(filepath.Join(layersDir, buildpack.EscapedID(), "*.toml"))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding layer tomls")
 		}
@@ -69,16 +69,13 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 			}
 			if metadata.Launch {
 				if !os.IsNotExist(err) {
-					metadata.SHA, err = e.exportTar(
-						layerDir,
-						filepath.Join(launchDirDst, buildpack.EscapedID(), layerName),
-					)
+					metadata.SHA, err = e.exportTar(layerDir)
 					if err != nil {
 						return nil, errors.Wrapf(err, "exporting tar for layer '%s/%s'", buildpack.ID, layerName)
 					}
 					if metadata.Cache {
 						e.Out.Printf("caching launch layer '%s/%s' with sha '%s'\n", bpMetadata.ID, layerName, metadata.SHA)
-						if err := ioutil.WriteFile(filepath.Join(launchDirSrc, buildpack.EscapedID(), layerName+".sha"), []byte(metadata.SHA), 0777); err != nil {
+						if err := ioutil.WriteFile(filepath.Join(layersDir, buildpack.EscapedID(), layerName+".sha"), []byte(metadata.SHA), 0777); err != nil {
 							return nil, errors.Wrapf(err, "writing layer sha")
 						}
 					}
@@ -104,7 +101,7 @@ func (e *Exporter) PrepareExport(launchDirSrc, launchDirDst, appDirSrc, appDirDs
 		metadata.Buildpacks = append(metadata.Buildpacks, bpMetadata)
 	}
 
-	fis, err := ioutil.ReadDir(launchDirSrc)
+	fis, err := ioutil.ReadDir(layersDir)
 
 OUTER:
 	for _, fi := range fis {
@@ -113,7 +110,7 @@ OUTER:
 				continue OUTER
 			}
 		}
-		if err := os.RemoveAll(filepath.Join(launchDirSrc, fi.Name())); err != nil {
+		if err := os.RemoveAll(filepath.Join(layersDir, fi.Name())); err != nil {
 			return nil, errors.Wrap(err, "failed to cleanup layers dir")
 		}
 	}
@@ -130,7 +127,7 @@ OUTER:
 	return &metadata, nil
 }
 
-func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origImage image.Image, metadata *AppImageMetadata) error {
+func (e *Exporter) exportImage(layersDir, appDir string, runImage, origImage image.Image, metadata *AppImageMetadata) error {
 	var err error
 	metadata.RunImage.TopLayer, err = runImage.TopLayer()
 	if err != nil {
@@ -183,7 +180,6 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 					return fmt.Errorf(
 						"cannot reuse '%s/%s', previous image has no metadata for layer '%s/%s'",
 						bp.ID, layerName, bp.ID, layerName)
-
 				}
 
 				e.Out.Printf("reusing layer '%s/%s' with diffID '%s'\n", bp.ID, layerName, prevLayer.SHA)
@@ -193,7 +189,9 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 				metadata.Buildpacks[index].Layers[layerName] = prevLayer
 			} else {
 				e.Out.Printf("adding layer '%s/%s' with diffID '%s'\n", bp.ID, layerName, layer.SHA)
-				appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(layer.SHA, "sha256:")+".tar"))
+				if err := appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(layer.SHA, "sha256:")+".tar")); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -206,12 +204,12 @@ func (e *Exporter) ExportImage(launchDirDst, appDirDst string, runImage, origIma
 	if err := appImage.SetLabel(MetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
-	e.Out.Printf("setting env var '%s=%s'\n", cmd.EnvLayersDir, launchDirDst)
-	if err := appImage.SetEnv(cmd.EnvLayersDir, launchDirDst); err != nil {
+	e.Out.Printf("setting env var '%s=%s'\n", cmd.EnvLayersDir, layersDir)
+	if err := appImage.SetEnv(cmd.EnvLayersDir, layersDir); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
-	e.Out.Printf("setting env var '%s=%s'\n", cmd.EnvAppDir, appDirDst)
-	if err := appImage.SetEnv(cmd.EnvAppDir, appDirDst); err != nil {
+	e.Out.Printf("setting env var '%s=%s'\n", cmd.EnvAppDir, appDir)
+	if err := appImage.SetEnv(cmd.EnvAppDir, appDir); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
@@ -250,7 +248,7 @@ func (e *Exporter) GetMetadata(image image.Image) (AppImageMetadata, error) {
 	return metadata, nil
 }
 
-func (e *Exporter) exportTar(sourceDir, destDir string) (string, error) {
+func (e *Exporter) exportTar(sourceDir string) (string, error) {
 	hasher := sha256.New()
 	f, err := ioutil.TempFile(e.ArtifactsDir, "tarfile")
 	if err != nil {
@@ -260,7 +258,7 @@ func (e *Exporter) exportTar(sourceDir, destDir string) (string, error) {
 	w := io.MultiWriter(hasher, f)
 
 	fs := &fs.FS{}
-	err = fs.WriteTarArchive(w, sourceDir, destDir, e.UID, e.GID)
+	err = fs.WriteTarArchive(w, sourceDir, e.UID, e.GID)
 	if err != nil {
 		return "", err
 	}

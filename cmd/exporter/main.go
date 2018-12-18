@@ -15,25 +15,21 @@ import (
 )
 
 var (
-	repoName     string
-	runImageRef  string
-	layersDir    string
-	layersDirSrc string
-	appDir       string
-	appDirSrc    string
-	groupPath    string
-	useDaemon    bool
-	useHelpers   bool
-	uid          int
-	gid          int
+	repoName    string
+	runImageRef string
+	layersDir   string
+	appDir      string
+	groupPath   string
+	useDaemon   bool
+	useHelpers  bool
+	uid         int
+	gid         int
 )
 
 func init() {
 	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagLayersDir(&layersDir)
-	cmd.FlagLayersDirSrc(&layersDirSrc)
 	cmd.FlagAppDir(&appDir)
-	cmd.FlagAppDirSrc(&appDirSrc)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
@@ -102,14 +98,7 @@ func export() error {
 		}
 	}
 
-	if err := exporter.Export(
-		layersDirSrc,
-		layersDir,
-		appDirSrc,
-		appDir,
-		runImage,
-		origImage,
-	); err != nil {
+	if err := exporter.Export(layersDir, appDir, runImage, origImage); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 

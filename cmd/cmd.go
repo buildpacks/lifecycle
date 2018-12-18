@@ -32,16 +32,8 @@ func FlagLayersDir(dir *string) {
 	flag.StringVar(dir, "layers", DefaultLayersDir, "path to layers directory")
 }
 
-func FlagLayersDirSrc(dir *string) {
-	flag.StringVar(dir, "layers-src", DefaultLayersDir, "path to source layers directory for export step")
-}
-
 func FlagAppDir(dir *string) {
 	flag.StringVar(dir, "app", DefaultAppDir, "path to app directory")
-}
-
-func FlagAppDirSrc(dir *string) {
-	flag.StringVar(dir, "app-src", DefaultAppDir, "path to app directory for export step")
 }
 
 func FlagBuildpacksDir(dir *string) {
