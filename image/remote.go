@@ -2,7 +2,11 @@ package image
 
 import (
 	"fmt"
-	"github.com/buildpack/lifecycle/cmd"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1"
@@ -11,10 +15,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
-	"net/http"
-	"os"
-	"strings"
-	"sync"
+
+	"github.com/buildpack/lifecycle/cmd"
 )
 
 type remote struct {

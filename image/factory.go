@@ -1,10 +1,6 @@
 package image
 
 import (
-	"io"
-	"log"
-	"os"
-
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
@@ -29,16 +25,12 @@ type Image interface {
 
 type Factory struct {
 	Docker *client.Client
-	Log    *log.Logger
-	Stdout io.Writer
 	FS     *fs.FS
 }
 
 func DefaultFactory() (*Factory, error) {
 	f := &Factory{
-		Stdout: os.Stdout,
-		Log:    log.New(os.Stdout, "", log.LstdFlags),
-		FS:     &fs.FS{},
+		FS: &fs.FS{},
 	}
 
 	var err error
