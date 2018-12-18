@@ -468,12 +468,12 @@ func assertTarFileOwner(t *testing.T, tarfile, path string, expectedUID, expecte
 
 		if header.Name == path {
 			foundPath = true
-		}
-		if header.Uid != expectedUID {
-			t.Fatalf("expected all entries in `%s` to have uid '%d', got '%d'", tarfile, expectedUID, header.Uid)
-		}
-		if header.Gid != expectedGID {
-			t.Fatalf("expected all entries in `%s` to have gid '%d', got '%d'", tarfile, expectedGID, header.Gid)
+			if header.Uid != expectedUID {
+				t.Fatalf("expected all entries in `%s` to have uid '%d', but '%s' has '%d'", tarfile, expectedUID, header.Name, header.Uid)
+			}
+			if header.Gid != expectedGID {
+				t.Fatalf("expected all entries in `%s` to have gid '%d', got '%d'", tarfile, expectedGID, header.Gid)
+			}
 		}
 	}
 	if !foundPath {

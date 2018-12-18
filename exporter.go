@@ -41,11 +41,11 @@ func (e *Exporter) prepareExport(layersDir, appDir string) (*AppImageMetadata, e
 	var err error
 	var metadata AppImageMetadata
 
-	metadata.App.SHA, err = e.exportTar(appDir, appDir)
+	metadata.App.SHA, err = e.exportTar(appDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting app layer tar")
 	}
-	metadata.Config.SHA, err = e.exportTar(filepath.Join(layersDir, "config"), filepath.Join(layersDir, "config"))
+	metadata.Config.SHA, err = e.exportTar(filepath.Join(layersDir, "config"))
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting config layer tar")
 	}
@@ -69,10 +69,7 @@ func (e *Exporter) prepareExport(layersDir, appDir string) (*AppImageMetadata, e
 			}
 			if metadata.Launch {
 				if !os.IsNotExist(err) {
-					metadata.SHA, err = e.exportTar(
-						layerDir,
-						filepath.Join(layersDir, buildpack.EscapedID(), layerName),
-					)
+					metadata.SHA, err = e.exportTar(layerDir)
 					if err != nil {
 						return nil, errors.Wrapf(err, "exporting tar for layer '%s/%s'", buildpack.ID, layerName)
 					}
@@ -251,7 +248,7 @@ func (e *Exporter) GetMetadata(image image.Image) (AppImageMetadata, error) {
 	return metadata, nil
 }
 
-func (e *Exporter) exportTar(sourceDir, destDir string) (string, error) {
+func (e *Exporter) exportTar(sourceDir string) (string, error) {
 	hasher := sha256.New()
 	f, err := ioutil.TempFile(e.ArtifactsDir, "tarfile")
 	if err != nil {
@@ -261,7 +258,7 @@ func (e *Exporter) exportTar(sourceDir, destDir string) (string, error) {
 	w := io.MultiWriter(hasher, f)
 
 	fs := &fs.FS{}
-	err = fs.WriteTarArchive(w, sourceDir, destDir, e.UID, e.GID)
+	err = fs.WriteTarArchive(w, sourceDir, e.UID, e.GID)
 	if err != nil {
 		return "", err
 	}

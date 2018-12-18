@@ -394,7 +394,7 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 
 func ComputeSHA256ForPath(t *testing.T, path string, uid int, guid int) string {
 	hasher := sha256.New()
-	err := (&fs.FS{}).WriteTarArchive(hasher, path, path, uid, guid)
+	err := (&fs.FS{}).WriteTarArchive(hasher, path, uid, guid)
 	AssertNil(t, err)
 	layer5sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 	return layer5sha

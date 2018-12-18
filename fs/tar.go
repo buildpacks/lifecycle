@@ -7,33 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
+	"time"
 )
 
 type FS struct {
-}
-
-func (fs *FS) CreateTarFile(tarFile, srcDir, tarDir string, uid, gid int) error {
-	fh, err := os.Create(tarFile)
-	if err != nil {
-		return fmt.Errorf("create file for tar: %s", err)
-	}
-	defer fh.Close()
-	return fs.WriteTarArchive(fh, srcDir, tarDir, uid, gid)
-}
-
-func (fs *FS) CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error) {
-	r, w := io.Pipe()
-	errChan := make(chan error, 1)
-
-	go func() {
-		defer w.Close()
-		err := fs.WriteTarArchive(w, srcDir, tarDir, uid, gid)
-		w.Close()
-		errChan <- err
-	}()
-	return r, errChan
 }
 
 func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
@@ -51,19 +28,19 @@ func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-func (*FS) WriteTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
+func (*FS) WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
+
+	err := writeParentDirectoryHeaders(srcDir, tw, uid, gid)
+	if err != nil {
+		return err
+	}
 
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		relPath, err := filepath.Rel(srcDir, file)
-		if err != nil {
-			return err
-		}
-
 		var header *tar.Header
 		if fi.Mode()&os.ModeSymlink != 0 {
 			target, err := os.Readlink(file)
@@ -80,10 +57,7 @@ func (*FS) WriteTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) err
 				return err
 			}
 		}
-		header.Name = filepath.Join(tarDir, relPath)
-		if runtime.GOOS == "windows" {
-			header.Name = strings.Replace(header.Name, "\\", "/", -1)
-		}
+		header.Name = file
 		header.Uid = uid
 		header.Gid = gid
 		header.Uname = ""
@@ -104,6 +78,34 @@ func (*FS) WriteTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) err
 		}
 		return nil
 	})
+}
+
+func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int) error {
+	parent := filepath.Dir(tarDir)
+	if parent == "." || parent == "/" {
+		return nil
+	} else {
+		if err := writeParentDirectoryHeaders(parent, tw, uid, gid); err != nil {
+			return err
+		}
+
+		info, err := os.Stat(parent)
+		if err != nil {
+			return err
+		}
+
+		header, err := tar.FileInfoHeader(info, parent)
+		if err != nil {
+			return err
+		}
+		header.Name = parent
+		header.ModTime = time.Time{}
+
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+		return nil
+	}
 }
 
 func (*FS) AddTextToTar(tw *tar.Writer, name string, contents []byte) error {
