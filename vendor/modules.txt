@@ -2,22 +2,13 @@
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.9
 github.com/Microsoft/go-winio
-# github.com/containerd/continuity v0.0.0-20181203112020-004b46473808
-github.com/containerd/continuity/pathdriver
 # github.com/docker/distribution v0.0.0-20180327202408-83389a148052
 github.com/docker/distribution/reference
 github.com/docker/distribution/digestset
 # github.com/docker/docker v0.7.3-0.20181027010111-b8e87cfdad8d
-github.com/docker/docker/pkg/archive
-github.com/docker/docker/pkg/idtools
 github.com/docker/docker/api/types
 github.com/docker/docker/client
 github.com/docker/docker/api/types/container
-github.com/docker/docker/pkg/fileutils
-github.com/docker/docker/pkg/ioutils
-github.com/docker/docker/pkg/longpath
-github.com/docker/docker/pkg/pools
-github.com/docker/docker/pkg/system
 github.com/docker/docker/api/types/filters
 github.com/docker/docker/api/types/mount
 github.com/docker/docker/api/types/network
@@ -31,7 +22,6 @@ github.com/docker/docker/api/types/versions
 github.com/docker/docker/api/types/volume
 github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/strslice
-github.com/docker/docker/pkg/mount
 github.com/docker/docker/errdefs
 github.com/docker/docker/api/types/swarm/runtime
 # github.com/docker/go-connections v0.4.0
@@ -42,7 +32,7 @@ github.com/docker/go-connections/tlsconfig
 github.com/docker/go-units
 # github.com/gogo/protobuf v1.1.1
 github.com/gogo/protobuf/proto
-# github.com/golang/mock v1.1.1
+# github.com/golang/mock v1.2.0
 github.com/golang/mock/gomock
 # github.com/google/go-cmp v0.2.0
 github.com/google/go-cmp/cmp
@@ -62,29 +52,18 @@ github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/v1util
 github.com/google/go-containerregistry/pkg/v1/remote/transport
 github.com/google/go-containerregistry/pkg/v1/random
-# github.com/konsorten/go-windows-terminal-sequences v1.0.1
-github.com/konsorten/go-windows-terminal-sequences
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
 github.com/opencontainers/image-spec/specs-go/v1
 github.com/opencontainers/image-spec/specs-go
-# github.com/opencontainers/runc v0.1.1
-github.com/opencontainers/runc/libcontainer/system
-github.com/opencontainers/runc/libcontainer/user
 # github.com/pkg/errors v0.8.0
 github.com/pkg/errors
 # github.com/sclevine/spec v1.0.0
 github.com/sclevine/spec
 github.com/sclevine/spec/report
-# github.com/sirupsen/logrus v1.2.0
-github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
-golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20181201002055-351d144fa1fc
-golang.org/x/net/context
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
 # golang.org/x/sys v0.0.0-20181128092732-4ed8d59d0b35
-golang.org/x/sys/unix
 golang.org/x/sys/windows
