@@ -58,6 +58,7 @@ func (*FS) WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 			}
 		}
 		header.Name = file
+		header.ModTime = time.Time{}
 		header.Uid = uid
 		header.Gid = gid
 		header.Uname = ""

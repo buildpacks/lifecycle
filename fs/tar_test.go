@@ -67,10 +67,12 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 				header, err := tr.Next()
 				h.AssertNil(t, err)
 				h.AssertEq(t, header.Name, "testdata")
+				assertModTimeZeroedOut(t, header)
 
 				header, err = tr.Next()
 				h.AssertNil(t, err)
 				h.AssertEq(t, header.Name, "testdata/dir-to-tar")
+				assertModTimeZeroedOut(t, header)
 			})
 
 			tarContains(t, "regular files", func() {
@@ -83,12 +85,14 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, string(fileContents), "some-content")
 				h.AssertEq(t, header.Uid, uid)
 				h.AssertEq(t, header.Gid, gid)
+				assertModTimeZeroedOut(t, header)
 			})
 
 			tarContains(t, "sub directories", func() {
 				header, err := tr.Next()
 				h.AssertNil(t, err)
 				h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
+				assertModTimeZeroedOut(t, header)
 			})
 
 			tarContains(t, "symlinks", func() {
@@ -99,8 +103,8 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, header.Uid, uid)
 				h.AssertEq(t, header.Gid, gid)
 				h.AssertEq(t, header.Linkname, "../some-file.txt")
+				assertModTimeZeroedOut(t, header)
 			})
-
 		})
 
 		when("a absolute path is given", func() {
@@ -128,7 +132,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, header.Name, expectedDir)
 
 					assertDirectory(t, header)
-					assertModificationTimeZeroedOut(t, header)
+					assertModTimeZeroedOut(t, header)
 				}
 			})
 		})
@@ -157,7 +161,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, header.Name, expectedDir)
 
 					assertDirectory(t, header)
-					assertModificationTimeZeroedOut(t, header)
+					assertModTimeZeroedOut(t, header)
 
 				}
 			})
@@ -217,7 +221,7 @@ func assertDirectory(t *testing.T, header *tar.Header) {
 	}
 }
 
-func assertModificationTimeZeroedOut(t *testing.T, header *tar.Header) {
+func assertModTimeZeroedOut(t *testing.T, header *tar.Header) {
 	t.Helper()
 	if header.ModTime.Unix() != 0 {
 		t.Fatalf(`expected %s time not to be set instead: %s`, header.Name, header.ModTime.String())
