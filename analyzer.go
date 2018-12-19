@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -9,164 +10,234 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/image"
 )
 
 type Analyzer struct {
 	Buildpacks []*Buildpack
+	AppDir     string
+	LayersDir  string
 	In         []byte
 	Out, Err   *log.Logger
 }
 
-func (a *Analyzer) Analyze(image image.Image, launchDir string) error {
+func (a *Analyzer) Analyze(image image.Image) error {
 	found, err := image.Found()
 	if err != nil {
 		return err
 	}
 
+	var metadata AppImageMetadata
 	if !found {
-		a.Out.Printf("WARNING: skipping analyze, image '%s' not found or requires authentication to access\n", image.Name())
-		return nil
+		a.Out.Printf("WARNING: image '%s' not found or requires authentication to access\n", image.Name())
+	} else {
+		metadata, err = a.getMetadata(image)
+		if err != nil {
+			return err
+		}
 	}
-	metadata, err := a.getMetadata(image)
-	if err != nil {
-		return err
-	}
-	if metadata != nil {
-		return a.analyze(launchDir, *metadata)
-	}
-	return nil
+	return a.analyze(metadata)
 }
 
-func (a *Analyzer) analyze(launchDir string, metadata AppImageMetadata) error {
+func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 	groupBPs := a.buildpacks()
-	cachedBPs, err := cachedBuildpacks(launchDir)
+
+	err := a.removeOldBackpackLayersNotInGroup(groupBPs)
 	if err != nil {
 		return err
-	}
-
-	for _, cachedBP := range cachedBPs {
-		_, exists := groupBPs[cachedBP]
-		if !exists {
-			a.Out.Printf("removing cached layers for buildpack '%s' not in group\n", cachedBP)
-			if err := os.RemoveAll(filepath.Join(launchDir, cachedBP)); err != nil && !os.IsNotExist(err) {
-				return err
-			}
-		}
 	}
 
 	for groupBP := range groupBPs {
-		bpDir := filepath.Join(launchDir, groupBP)
-		cachedLayers, err := cachedLayers(bpDir)
+		analyzedDirectory := analyzedBuildPackDirectory{metadata, a.LayersDir, groupBP}
+
+		layers, err := analyzedDirectory.allLayers()
 		if err != nil {
 			return err
 		}
 
-		var metadataBP BuildpackMetadata
-		for i, mbp := range metadata.Buildpacks {
-			if escape(mbp.ID) == groupBP {
-				metadataBP = metadata.Buildpacks[i]
-			}
-		}
+		for layer := range layers {
 
-		for name, cachedLayer := range cachedLayers {
-			if _, ok := metadataBP.Layers[name]; !ok && cachedLayer.Launch {
-				a.Out.Printf("removing stale cached layer '%s/%s', not in metadata \n", metadataBP.ID, name)
-				if err := a.removeLayer(bpDir, name); err != nil {
+			layerType := analyzedDirectory.classifyLayer(layer)
+
+			switch layerType {
+			case noMetaDataForLaunchLayer:
+				a.Out.Printf("removing stale cached layer '%s/%s', not in metadata \n", groupBP, layer)
+
+				if err := analyzedDirectory.removeLayer(layer); err != nil {
 					return err
 				}
-			}
-		}
+			case outdatedLaunchLayer:
+				a.Out.Printf("removing stale cached launch layer '%s/%s', writing updated metadata for layer \n", groupBP, layer)
 
-		for name, layerMetadata := range metadataBP.Layers {
-			if cachedLayer, ok := cachedLayers[name]; ok && cachedLayer.SHA != layerMetadata.SHA {
-				a.Out.Printf("removing stale cached layer '%s/%s', sha '%s' does not match sha from metadata '%s' \n", metadataBP.ID, name, cachedLayer.SHA, layerMetadata.SHA)
-				if err := a.removeLayer(bpDir, name); err != nil {
+				if err := analyzedDirectory.removeLayer(layer); err != nil {
 					return err
 				}
-			}
 
-			if !layerMetadata.Build {
-				a.Out.Printf("writing metadata for layer '%s/%s'\n", metadataBP.ID, name)
-				path := filepath.Join(bpDir, name+".toml")
-				if err := writeTOML(path, layerMetadata); err != nil {
+				if err := analyzedDirectory.restoreMetadata(layer); err != nil {
 					return err
 				}
+			case outdatedBuildLayer:
+				a.Out.Printf("removing stale cached build layer '%s/%s' \n", groupBP, layer)
+
+				if err := analyzedDirectory.removeLayer(layer); err != nil {
+					return err
+				}
+			case noCacheAvailable:
+				a.Out.Printf("writing metadata for layer '%s/%s'", groupBP, layer)
+
+				if err := analyzedDirectory.restoreMetadata(layer); err != nil {
+					return err
+				}
+			case existingCacheUptoDate:
+				a.Out.Printf("using cached layer '%s/%s' ", groupBP, layer)
+			case noMetaDataForBuildLayer:
+				a.Out.Printf("using cached build layer '%s/%s'", groupBP, layer)
+			default:
+				return fmt.Errorf("error, unexpected layer type %v", layer)
 			}
+
 		}
 	}
+
 	return nil
 }
 
-func cachedBuildpacks(launchDir string) ([]string, error) {
-	cachedBps := make([]string, 0, 0)
-	bpDirs, err := filepath.Glob(filepath.Join(launchDir, "*"))
-	if err != nil {
-		return nil, err
-	}
-	for _, dir := range bpDirs {
-		info, err := os.Stat(dir)
-		if err != nil {
-			return nil, err
-		}
-		if filepath.Base(dir) != "app" && info.IsDir() {
-			cachedBps = append(cachedBps, filepath.Base(dir))
-		}
-	}
-	return cachedBps, nil
+type analyzedBuildPackDirectory struct {
+	metadata  AppImageMetadata
+	layersDir string
+	groupBP   string
 }
 
-func (a *Analyzer) removeLayer(buildpackDir, name string) error {
-	if err := os.RemoveAll(filepath.Join(buildpackDir, name)); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	if err := os.Remove(filepath.Join(buildpackDir, name+".sha")); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	if err := os.Remove(filepath.Join(buildpackDir, name+".toml")); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return nil
-}
+type layerType int
 
-func cachedLayers(buildpackDir string) (map[string]*LayerMetadata, error) {
-	cachedLayers := make(map[string]*LayerMetadata)
-	layerTomls, err := filepath.Glob(filepath.Join(buildpackDir, "*.toml"))
+const (
+	noMetaDataForLaunchLayer layerType = iota
+	noMetaDataForBuildLayer
+	outdatedLaunchLayer
+	outdatedBuildLayer
+	noCacheAvailable
+	existingCacheUptoDate
+)
+
+func (abd *analyzedBuildPackDirectory) classifyLayer(layer string) layerType {
+	cachedTOML, err := readTOML(abd.layerPath(layer) + ".toml")
 	if err != nil {
-		return nil, err
+		return noCacheAvailable
 	}
-	for _, toml := range layerTomls {
-		metadata, err := readTOML(toml)
-		if err != nil {
-			return nil, err
-		}
-		name := strings.TrimRight(filepath.Base(toml), ".toml")
-		cachedLayers[name] = metadata
-		if sha, err := ioutil.ReadFile(filepath.Join(buildpackDir, name+".sha")); os.IsNotExist(err) {
-		} else if err != nil {
-			return nil, err
+
+	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metadata)
+	if !ok {
+		if !cachedTOML.Launch {
+			return noMetaDataForBuildLayer
 		} else {
-			cachedLayers[name].SHA = string(sha)
+			return noMetaDataForLaunchLayer
 		}
 	}
-	return cachedLayers, nil
+
+	layerMetadata, ok := buildpackMetadata.Layers[layer]
+	if !ok {
+		if !cachedTOML.Launch {
+			return noMetaDataForBuildLayer
+		} else {
+			return noMetaDataForLaunchLayer
+		}
+	}
+
+	sha, err := ioutil.ReadFile(abd.layerPath(layer + ".sha"))
+	if err != nil {
+		return noCacheAvailable
+	}
+
+	if string(sha) != layerMetadata.SHA {
+		if layerMetadata.Build {
+			return outdatedBuildLayer
+		} else {
+			return outdatedLaunchLayer
+		}
+	}
+
+	return existingCacheUptoDate
+
 }
 
-func (a *Analyzer) getMetadata(image image.Image) (*AppImageMetadata, error) {
+func (abd *analyzedBuildPackDirectory) layerPath(layer string) string {
+	return filepath.Join(abd.layersDir, abd.groupBP, layer)
+}
+
+func (abd *analyzedBuildPackDirectory) allLayers() (map[string]interface{}, error) {
+	setOfLayers := make(map[string]interface{})
+	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metadata)
+	if ok {
+		for layer := range buildpackMetadata.Layers {
+			setOfLayers[layer] = struct{}{}
+		}
+	}
+
+	bpDir := filepath.Join(abd.layersDir, abd.groupBP)
+	layerTOMLs, err := filepath.Glob(filepath.Join(bpDir, "*.toml"))
+	if err != nil {
+		return nil, err
+	}
+	for _, layerTOML := range layerTOMLs {
+		name := strings.TrimRight(filepath.Base(layerTOML), ".toml")
+		setOfLayers[name] = struct{}{}
+	}
+	return setOfLayers, nil
+}
+
+func (abd *analyzedBuildPackDirectory) restoreMetadata(layer string) error {
+	buildpackMetadata, ok := appImageMetadata(abd.groupBP, abd.metadata)
+	if !ok {
+		return fmt.Errorf("metadata unavailable for %s", layer)
+	}
+
+	layerMetadata, ok := buildpackMetadata.Layers[layer]
+	if !ok {
+		return fmt.Errorf("metadata unavailable for %s", layer)
+	}
+
+	return writeTOML(filepath.Join(abd.layersDir, abd.groupBP, layer+".toml"), layerMetadata)
+}
+
+func (abd *analyzedBuildPackDirectory) removeLayer(name string) error {
+	if err := os.RemoveAll(abd.layerPath(name)); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.Remove(abd.layerPath(name) + ".sha"); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.Remove(abd.layerPath(name) + ".toml"); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func appImageMetadata(groupBP string, metadata AppImageMetadata) (*BuildpackMetadata, bool) {
+	for _, buildpackMetaData := range metadata.Buildpacks {
+		if buildpackMetaData.ID == groupBP {
+			return &buildpackMetaData, true
+		}
+	}
+
+	return nil, false
+}
+
+func (a *Analyzer) getMetadata(image image.Image) (AppImageMetadata, error) {
+	metadata := AppImageMetadata{}
 	label, err := image.Label(MetadataLabel)
 	if err != nil {
-		return nil, err
+		return metadata, err
 	}
 	if label == "" {
-		a.Out.Printf("WARNING: skipping analyze, previous image metadata was not found\n")
-		return nil, nil
+		a.Out.Printf("WARNING: previous image '%s' does not have '%s' label", image.Name(), MetadataLabel)
+		return metadata, nil
 	}
 
-	metadata := &AppImageMetadata{}
-	if err := json.Unmarshal([]byte(label), metadata); err != nil {
-		a.Out.Printf("WARNING: skipping analyze, previous image metadata was incompatible\n")
-		return nil, nil
+	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
+		a.Out.Printf("WARNING: previous image '%s' has incompatible '%s' label\n", image.Name(), MetadataLabel)
+		return metadata, nil
 	}
 	return metadata, nil
 }
@@ -177,6 +248,46 @@ func (a *Analyzer) buildpacks() map[string]struct{} {
 		buildpacks[b.EscapedID()] = struct{}{}
 	}
 	return buildpacks
+}
+
+func (a *Analyzer) removeOldBackpackLayersNotInGroup(groupBPs map[string]struct{}) error {
+	cachedBPs, err := a.cachedBuildpacks()
+	if err != nil {
+		return err
+	}
+
+	for _, cachedBP := range cachedBPs {
+		_, exists := groupBPs[cachedBP]
+		if !exists {
+			a.Out.Printf("removing cached layers for buildpack '%s' not in group\n", cachedBP)
+			if err := os.RemoveAll(filepath.Join(a.LayersDir, cachedBP)); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (a *Analyzer) cachedBuildpacks() ([]string, error) {
+	cachedBps := make([]string, 0, 0)
+	bpDirs, err := filepath.Glob(filepath.Join(a.LayersDir, "*"))
+	if err != nil {
+		return nil, err
+	}
+	appDirInfo, err := os.Stat(a.AppDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Wrap(err, "stat app dir")
+	}
+	for _, dir := range bpDirs {
+		info, err := os.Stat(dir)
+		if err != nil {
+			return nil, err
+		}
+		if !os.SameFile(appDirInfo, info) && info.IsDir() {
+			cachedBps = append(cachedBps, filepath.Base(dir))
+		}
+	}
+	return cachedBps, nil
 }
 
 func writeTOML(path string, metadata LayerMetadata) error {
