@@ -178,7 +178,26 @@ func (l *local) SetLabel(key, val string) error {
 }
 
 func (l *local) SetEnv(key, val string) error {
+	if l.Inspect.Config == nil {
+		return fmt.Errorf("failed to set env var, image '%s' does not exist", l.RepoName)
+	}
 	l.Inspect.Config.Env = append(l.Inspect.Config.Env, fmt.Sprintf("%s=%s", key, val))
+	return nil
+}
+
+func (l *local) SetEntrypoint(ep ...string) error {
+	if l.Inspect.Config == nil {
+		return fmt.Errorf("failed to set entrypoint, image '%s' does not exist", l.RepoName)
+	}
+	l.Inspect.Config.Entrypoint = ep
+	return nil
+}
+
+func (l *local) SetCmd(cmd ...string) error {
+	if l.Inspect.Config == nil {
+		return fmt.Errorf("failed to set cmd, image '%s' does not exist", l.RepoName)
+	}
+	l.Inspect.Config.Cmd = cmd
 	return nil
 }
 

@@ -154,6 +154,28 @@ func (r *remote) SetEnv(key, val string) error {
 	return err
 }
 
+func (r *remote) SetEntrypoint(ep ...string) error {
+	configFile, err := r.Image.ConfigFile()
+	if err != nil {
+		return err
+	}
+	config := *configFile.Config.DeepCopy()
+	config.Entrypoint = ep
+	r.Image, err = mutate.Config(r.Image, config)
+	return err
+}
+
+func (r *remote) SetCmd(cmd ...string) error {
+	configFile, err := r.Image.ConfigFile()
+	if err != nil {
+		return err
+	}
+	config := *configFile.Config.DeepCopy()
+	config.Cmd = cmd
+	r.Image, err = mutate.Config(r.Image, config)
+	return err
+}
+
 func (r *remote) TopLayer() (string, error) {
 	all, err := r.Image.Layers()
 	if err != nil {

@@ -29,15 +29,15 @@ type Exporter struct {
 	UID, GID     int
 }
 
-func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Image) error {
-	metadata, err := e.prepareExport(layersDir, appDir)
+func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Image, launcher string) error {
+	metadata, err := e.prepareExport(layersDir, appDir, launcher)
 	if err != nil {
 		return errors.Wrapf(err, "prepare export")
 	}
-	return e.exportImage(layersDir, appDir, runImage, origImage, metadata)
+	return e.exportImage(layersDir, appDir, launcher, runImage, origImage, metadata)
 }
 
-func (e *Exporter) prepareExport(layersDir, appDir string) (*AppImageMetadata, error) {
+func (e *Exporter) prepareExport(layersDir, appDir, launcher string) (*AppImageMetadata, error) {
 	var err error
 	var metadata AppImageMetadata
 
@@ -48,6 +48,10 @@ func (e *Exporter) prepareExport(layersDir, appDir string) (*AppImageMetadata, e
 	metadata.Config.SHA, err = e.exportTar(filepath.Join(layersDir, "config"))
 	if err != nil {
 		return nil, errors.Wrap(err, "exporting config layer tar")
+	}
+	metadata.Launcher.SHA, err = e.exportTar(launcher)
+	if err != nil {
+		return nil, errors.Wrap(err, "exporting launcher layer tar")
 	}
 
 	for _, buildpack := range e.Buildpacks {
@@ -127,7 +131,7 @@ OUTER:
 	return &metadata, nil
 }
 
-func (e *Exporter) exportImage(layersDir, appDir string, runImage, origImage image.Image, metadata *AppImageMetadata) error {
+func (e *Exporter) exportImage(layersDir, appDir, launcher string, runImage, origImage image.Image, metadata *AppImageMetadata) error {
 	var err error
 	metadata.RunImage.TopLayer, err = runImage.TopLayer()
 	if err != nil {
@@ -155,6 +159,17 @@ func (e *Exporter) exportImage(layersDir, appDir string, runImage, origImage ima
 	e.Out.Printf("adding config layer with diffID '%s'\n", metadata.Config.SHA)
 	if err := appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(metadata.Config.SHA, "sha256:")+".tar")); err != nil {
 		return errors.Wrap(err, "add config layer")
+	}
+
+	if origMetadata.Launcher.SHA == metadata.Launcher.SHA {
+		if err := appImage.ReuseLayer(origMetadata.Launcher.SHA); err != nil {
+			return errors.Wrapf(err, "reuse launch layer from previous image")
+		}
+	} else {
+		e.Out.Printf("adding launcher layer with diffID '%s'\n", metadata.Config.SHA)
+		if err := appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(metadata.Launcher.SHA, "sha256:")+".tar")); err != nil {
+			return errors.Wrap(err, "add launcher layer")
+		}
 	}
 
 	for index, bp := range metadata.Buildpacks {
@@ -211,6 +226,14 @@ func (e *Exporter) exportImage(layersDir, appDir string, runImage, origImage ima
 	e.Out.Printf("setting env var '%s=%s'\n", cmd.EnvAppDir, appDir)
 	if err := appImage.SetEnv(cmd.EnvAppDir, appDir); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
+	}
+	e.Out.Printf("setting entrypoint '%s'\n", launcher)
+	if err := appImage.SetEntrypoint(launcher); err != nil {
+		return errors.Wrap(err, "setting entrypoint")
+	}
+	e.Out.Println("setting empty cmd")
+	if err := appImage.SetCmd(); err != nil {
+		return errors.Wrap(err, "setting cmd")
 	}
 
 	e.Out.Println("writing image")
