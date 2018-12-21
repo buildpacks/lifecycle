@@ -7,6 +7,7 @@ const (
 type AppImageMetadata struct {
 	App        AppMetadata         `json:"app"`
 	Config     ConfigMetadata      `json:"config"`
+	Launcher   LauncherMetadata    `json:"launcher"`
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 	RunImage   RunImageMetadata    `json:"runImage"`
 }
@@ -16,6 +17,10 @@ type AppMetadata struct {
 }
 
 type ConfigMetadata struct {
+	SHA string `json:"sha"`
+}
+
+type LauncherMetadata struct {
 	SHA string `json:"sha"`
 }
 

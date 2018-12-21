@@ -7,22 +7,6 @@ import (
 	"github.com/buildpack/lifecycle/fs"
 )
 
-type Image interface {
-	Label(string) (string, error)
-	Rename(name string)
-	Name() string
-	Digest() (string, error)
-	Rebase(string, Image) error
-	SetLabel(string, string) error
-	SetEnv(string, string) error
-	Env(key string) (string, error)
-	TopLayer() (string, error)
-	AddLayer(path string) error
-	ReuseLayer(sha string) error
-	Save() (string, error)
-	Found() (bool, error)
-}
-
 type Factory struct {
 	Docker *client.Client
 	FS     *fs.FS

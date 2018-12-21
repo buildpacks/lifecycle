@@ -26,6 +26,8 @@ var (
 	gid         int
 )
 
+const launcherPath = "/lifecycle/launcher"
+
 func init() {
 	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagLayersDir(&layersDir)
@@ -98,7 +100,7 @@ func export() error {
 		}
 	}
 
-	if err := exporter.Export(layersDir, appDir, runImage, origImage); err != nil {
+	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 

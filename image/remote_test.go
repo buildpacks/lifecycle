@@ -216,6 +216,68 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#SetEntrypoint", func() {
+		var (
+			img image.Image
+		)
+		it.Before(func() {
+			var err error
+			h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+				`, repoName))
+			img, err = factory.NewRemote(repoName)
+			h.AssertNil(t, err)
+		})
+
+		it("sets the entrypoint", func() {
+			err := img.SetEntrypoint("some", "entrypoint")
+			h.AssertNil(t, err)
+
+			_, err = img.Save()
+			h.AssertNil(t, err)
+
+			h.AssertNil(t, h.PullImage(dockerCli, repoName))
+			defer h.DockerRmi(dockerCli, repoName)
+
+			inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, []string(inspect.Config.Entrypoint), []string{"some", "entrypoint"})
+		})
+	})
+
+	when("#SetCmd", func() {
+		var (
+			img image.Image
+		)
+		it.Before(func() {
+			var err error
+			h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+				`, repoName))
+			img, err = factory.NewRemote(repoName)
+			h.AssertNil(t, err)
+		})
+
+		it("sets the cmd", func() {
+			err := img.SetCmd("some", "cmd")
+			h.AssertNil(t, err)
+
+			_, err = img.Save()
+			h.AssertNil(t, err)
+
+			h.AssertNil(t, h.PullImage(dockerCli, repoName))
+			defer h.DockerRmi(dockerCli, repoName)
+
+			inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, []string(inspect.Config.Cmd), []string{"some", "cmd"})
+		})
+	})
+
 	when("#Rebase", func() {
 		when("image exists", func() {
 			var oldBase, oldTopLayer, newBase string

@@ -33,6 +33,8 @@ type FakeImage struct {
 	topLayerSha  string
 	digest       string
 	name         string
+	entryPoint   []string
+	cmd          []string
 }
 
 func (f *FakeImage) Label(key string) (string, error) {
@@ -68,8 +70,20 @@ func (f *FakeImage) SetEnv(k string, v string) error {
 	return nil
 }
 
-func (f *FakeImage) Env(key string) (string, error) {
-	return f.env[key], nil
+func (f *FakeImage) SetEntrypoint(v ...string) error {
+	f.assertNotAlreadySaved()
+	f.entryPoint = v
+	return nil
+}
+
+func (f *FakeImage) SetCmd(v ...string) error {
+	f.assertNotAlreadySaved()
+	f.cmd = v
+	return nil
+}
+
+func (f *FakeImage) Env(k string) (string, error) {
+	return f.env[k], nil
 }
 
 func (f *FakeImage) TopLayer() (string, error) {
@@ -100,10 +114,18 @@ func (FakeImage) Found() (bool, error) {
 	return true, nil
 }
 
-//test methods
-
 func (f *FakeImage) AppLayerPath() string {
 	return f.layers[0]
+}
+
+//test methods
+
+func (f *FakeImage) Entrypoint() ([]string, error) {
+	return f.entryPoint, nil
+}
+
+func (f *FakeImage) Cmd() ([]string, error) {
+	return f.cmd, nil
 }
 
 func (f *FakeImage) ConfigLayerPath() string {
