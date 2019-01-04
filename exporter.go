@@ -151,22 +151,23 @@ func (e *Exporter) exportImage(layersDir, appDir, launcher string, runImage, ori
 	repoName := origImage.Name()
 	appImage.Rename(repoName)
 
-	e.Out.Printf("adding app layer with diffID '%s'\n", metadata.App.SHA)
+	e.Out.Printf("adding layer 'app' with diffID '%s'\n", metadata.App.SHA)
 	if err := appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(metadata.App.SHA, "sha256:")+".tar")); err != nil {
 		return errors.Wrap(err, "add app layer")
 	}
 
-	e.Out.Printf("adding config layer with diffID '%s'\n", metadata.Config.SHA)
+	e.Out.Printf("adding layer 'config' with diffID '%s'\n", metadata.Config.SHA)
 	if err := appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(metadata.Config.SHA, "sha256:")+".tar")); err != nil {
 		return errors.Wrap(err, "add config layer")
 	}
 
 	if origMetadata.Launcher.SHA == metadata.Launcher.SHA {
+		e.Out.Printf("reusing layer 'launcher' with diffID '%s'\n", metadata.Launcher.SHA)
 		if err := appImage.ReuseLayer(origMetadata.Launcher.SHA); err != nil {
 			return errors.Wrapf(err, "reuse launch layer from previous image")
 		}
 	} else {
-		e.Out.Printf("adding launcher layer with diffID '%s'\n", metadata.Config.SHA)
+		e.Out.Printf("adding layer 'launcher' with diffID '%s'\n", metadata.Launcher.SHA)
 		if err := appImage.AddLayer(filepath.Join(e.ArtifactsDir, strings.TrimPrefix(metadata.Launcher.SHA, "sha256:")+".tar")); err != nil {
 			return errors.Wrap(err, "add launcher layer")
 		}

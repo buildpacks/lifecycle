@@ -141,12 +141,13 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Digest", func() {
 		it("returns the image digest", func() {
-			//busybox:1.29 has digest sha256:915f390a8912e16d4beb8689720a17348f3f6d1a7b659697df850ab625ea29d5
-			img, err := factory.NewRemote("busybox:1.29")
+			// The SHA of a particular iteration of busybox:1.29
+			expectedDigest := "sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812"
+			img, err := factory.NewRemote("busybox@sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812")
 			h.AssertNil(t, err)
 			digest, err := img.Digest()
 			h.AssertNil(t, err)
-			h.AssertEq(t, digest, "sha256:915f390a8912e16d4beb8689720a17348f3f6d1a7b659697df850ab625ea29d5")
+			h.AssertEq(t, digest, expectedDigest)
 		})
 	})
 

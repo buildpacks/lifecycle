@@ -101,7 +101,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				      "key": "buildpack.id",
 				      "layers": {
 				        "layer1": {
-				          "sha": "orig-layer1-sha",
+				          "sha": "sha256:orig-layer1-sha",
 				          "data": {
 				            "oldkey": "oldval"
 				          }
@@ -138,6 +138,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 				assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
 				assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
+				assertAddLayerLog(t, stdout, "app", appLayerPath)
 			})
 
 			it("creates config layer on Run image", func() {
@@ -151,18 +152,21 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(layersDir, "config"), uid, gid)
+				assertAddLayerLog(t, stdout, "config", configLayerPath)
 			})
 
 			it("reuses launcher layer if the sha matches the sha in the metadata", func() {
 				launcherLayerSHA := h.ComputeSHA256ForPath(t, launcherPath, uid, gid)
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
 				h.AssertContains(t, fakeRunImage.ReusedLayers(), "sha256:"+launcherLayerSHA)
+				assertReuseLayerLog(t, stdout, "launcher", launcherLayerSHA)
 			})
 
 			it("reuses launch layers when only layer.toml is present", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
 
-				h.AssertContains(t, fakeRunImage.ReusedLayers(), "orig-layer1-sha")
+				h.AssertContains(t, fakeRunImage.ReusedLayers(), "sha256:orig-layer1-sha")
+				assertReuseLayerLog(t, stdout, "buildpack.id/layer1", "orig-layer1-sha")
 			})
 
 			it("reuses cached launch layers if the local sha matches the sha in the metadata", func() {
@@ -171,6 +175,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
 
 				h.AssertContains(t, fakeRunImage.ReusedLayers(), "sha256:"+layer5sha)
+				assertReuseLayerLog(t, stdout, "other.buildpack.id/layer5", layer5sha)
 			})
 
 			it("adds new launch layers", func() {
@@ -183,6 +188,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "buildpack.id/layer2/file-from-layer-2"),
 					"echo text from layer 2\n")
 				assertTarFileOwner(t, layer2Path, filepath.Join(layersDir, "buildpack.id/layer2"), uid, gid)
+				assertAddLayerLog(t, stdout, "buildpack.id/layer2", layer2Path)
 			})
 
 			it("adds new launch layers from a second buildpack", func() {
@@ -195,6 +201,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "other.buildpack.id/layer3/file-from-layer-3"),
 					"echo text from layer 3\n")
 				assertTarFileOwner(t, layer3Path, filepath.Join(layersDir, "other.buildpack.id/layer3"), uid, gid)
+				assertAddLayerLog(t, stdout, "other.buildpack.id/layer3", layer3Path)
 			})
 
 			it("only creates expected layers", func() {
@@ -241,7 +248,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				t.Log("adds layer shas to metadata label")
 				h.AssertEq(t, metadata.App.SHA, "sha256:"+appLayerSHA)
 				h.AssertEq(t, metadata.Config.SHA, "sha256:"+configLayerSHA)
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].SHA, "orig-layer1-sha")
+				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:orig-layer1-sha")
 				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:"+buildpackLayer2SHA)
 				h.AssertEq(t, metadata.Buildpacks[1].Layers["layer3"].SHA, "sha256:"+buildpackLayer3SHA)
 
@@ -363,6 +370,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 				assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
 				assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
+				assertAddLayerLog(t, stdout, "app", appLayerPath)
 			})
 
 			it("creates config layer on Run image", func() {
@@ -376,6 +384,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(layersDir, "config"), uid, gid)
+				assertAddLayerLog(t, stdout, "config", configLayerPath)
 			})
 
 			it("creates a launcher layer", func() {
@@ -387,6 +396,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					launcherPath,
 					"some-launcher")
 				assertTarFileOwner(t, launcherLayerPath, launcherPath, uid, gid)
+				assertAddLayerLog(t, stdout, "launcher", launcherLayerPath)
 			})
 
 			it("adds launch layers", func() {
@@ -398,6 +408,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "buildpack.id/layer1/file-from-layer-1"),
 					"echo text from layer 1\n")
 				assertTarFileOwner(t, layer1Path, filepath.Join(layersDir, "buildpack.id/layer1"), uid, gid)
+				assertAddLayerLog(t, stdout, "buildpack.id/layer1", layer1Path)
 
 				layer2Path := fakeRunImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/layer2"))
 				assertTarFileContents(t,
@@ -405,6 +416,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "buildpack.id/layer2/file-from-layer-2"),
 					"echo text from layer 2\n")
 				assertTarFileOwner(t, layer2Path, filepath.Join(layersDir, "buildpack.id/layer2"), uid, gid)
+				assertAddLayerLog(t, stdout, "buildpack.id/layer2", layer2Path)
 			})
 
 			it("only creates expected layers", func() {
@@ -572,6 +584,24 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+func assertAddLayerLog(t *testing.T, stdout bytes.Buffer, name, layerPath string) {
+	t.Helper()
+	layerSHA := h.ComputeSHA256ForFile(t, layerPath)
+
+	expected := fmt.Sprintf("adding layer '%s' with diffID 'sha256:%s'", name, layerSHA)
+	if !strings.Contains(stdout.String(), expected) {
+		t.Fatalf("Expected output \n'%s' to contain \n'%s'", stdout.String(), expected)
+	}
+}
+
+func assertReuseLayerLog(t *testing.T, stdout bytes.Buffer, name, sha string) {
+	t.Helper()
+	expected := fmt.Sprintf("reusing layer '%s' with diffID 'sha256:%s'", name, sha)
+	if !strings.Contains(stdout.String(), expected) {
+		t.Fatalf("Expected output \n\"%s\"\n to contain \n\"%s\"", stdout.String(), expected)
+	}
 }
 
 func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
