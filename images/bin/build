@@ -31,12 +31,16 @@ cd $(dirname "${BASH_SOURCE[0]}")/..
 
 docker pull "${base}"
 
-docker build --build-arg "base=${base}" -t "${prefix}base:${version}" ..
-docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}build:${version}" build
-docker build --build-arg "base=${prefix}base:${version}" -t "${prefix}run:${version}" run
-docker build --build-arg "base=${prefix}build:${version}" -t "${prefix}samples:${version}" samples
+base_image=${prefix}base:${version}
+run_image=${prefix}run:${version}
+build_image=${prefix}build:${version}
+samples_image=${prefix}samples:${version}
+docker build --build-arg "base=${base}" -t "${base_image}" ..
+docker build --build-arg "base=${base_image}" -t "${build_image}" build
+docker build --build-arg "base=${base_image}" -t "${run_image}" run
+docker build --build-arg "base=${build_image}" --build-arg "run_image=${run_image}"  -t "${samples_image}" samples
 
 echo "To publish these images:"
-for suffix in base build run samples; do
-  echo "  docker push \"${prefix}${suffix}:${version}\""
+for image in "${base_image}" "${run_image}" "${build_image}" "${samples_image}"; do
+  echo "  docker push ${image}"
 done

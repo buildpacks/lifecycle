@@ -18,4 +18,7 @@ RUN \
   done && \
   rm -rf /tmp/samples
 
+ARG run_image
+LABEL io.buildpacks.pack.metadata="{\"runImages\": [\"${run_image}\"]}"
+
 USER pack
