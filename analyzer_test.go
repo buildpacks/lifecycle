@@ -87,20 +87,23 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
             "akey": "avalue",
             "bkey": "bvalue"
           },
-          "sha": "nodejs-layer-sha"
+          "sha": "nodejs-layer-sha",
+          "launch": true
         },
         "node_modules": {
           "data": {
             "version": "1234"
           },
-          "sha": "node-modules-sha"
+          "sha": "node-modules-sha",
+          "launch": true
         },
         "buildhelpers": {
           "data": {
             "some": "metadata"
           },
           "sha": "new-buildhelpers-sha",
-          "build": true
+          "build": true,
+          "launch": true
         }
       }
     },
@@ -183,6 +186,34 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Error: %s\n", err)
 						} else if string(txt) != "nodejs cached file" {
 							t.Fatalf("Error: expected cached node file to remain")
+						}
+					})
+				})
+
+				when("there are cached launch layers", func() {
+					it("updates the metadata", func() {
+						// copy to layerDir
+						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
+
+						if err := analyzer.Analyze(image); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node", "nodejs.toml")); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						} else {
+							expected := `build = false
+launch = true
+cache = false
+
+[metadata]
+  akey = "avalue"
+  bkey = "bvalue"
+`
+							actual := string(txt)
+							if diff := cmp.Diff(actual, expected); diff != "" {
+								t.Fatalf("Error: expected metadata to be rewritten: diff: '%s'", diff)
+							}
 						}
 					})
 				})

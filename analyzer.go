@@ -51,7 +51,6 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 		if err != nil {
 			return err
 		}
-		layersToAnalyze := a.layersToAnalyze(buildpackID, metadata)
 
 		for cachedLayer := range cache.layers {
 			cacheType := cache.classifyLayer(cachedLayer, bpMetadata(buildpackID, metadata))
@@ -70,11 +69,10 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 				a.Out.Printf("using cached layer '%s/%s'", buildpackID, cachedLayer)
 			case valid:
 				a.Out.Printf("using cached launch layer '%s/%s'", buildpackID, cachedLayer)
-				delete(layersToAnalyze, cachedLayer)
 			}
 		}
 
-		for layer, data := range layersToAnalyze {
+		for layer, data := range a.layersToAnalyze(buildpackID, metadata) {
 			if !data.Build {
 				a.Out.Printf("writing metadata for layer '%s/%s'", buildpackID, layer)
 				if err := writeTOML(filepath.Join(a.LayersDir, buildpackID, layer+".toml"), data); err != nil {
