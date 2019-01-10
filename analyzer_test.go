@@ -159,9 +159,20 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 
+				when("there is a launch/build layer that isn't cached", func() {
+					it("should not restore the metadata", func() {
+						if err := analyzer.Analyze(image); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "buildpack.node/buildhelpers.toml")); !os.IsNotExist(err) {
+							t.Fatalf("Found unexpected metadata for buildhelpers layer")
+						}
+					})
+				})
+
 				when("there are cached launch layers", func() {
 					it("leaves the layers", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -178,7 +189,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there are cached build layers", func() {
 					it("leaves the layers", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -195,7 +206,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there are stale cached launch layers", func() {
 					it("removes the layer dir and rewrites the metadata", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -221,7 +232,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there are stale cached launch/build layers", func() {
 					it("removes the layer dir and metadata", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -245,7 +256,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there cached launch layers that are missing from metadata", func() {
 					it("removes the layer dir and metadata", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -269,7 +280,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there are cached layers for a buildpack that is missing from the group", func() {
 					it("removes all the layers", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -283,7 +294,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("does not remove app layers", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -299,7 +310,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("does not remove remaining layerDir files", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -317,7 +328,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there are cached non launch layers for a buildpack that is missing from metadata", func() {
 					it("keeps the layers", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
@@ -336,7 +347,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there are cached non launch for a buildpack that is missing from metadata", func() {
 					it("removes the layers", func() {
-						//copy to layerDir
+						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 						if err := analyzer.Analyze(image); err != nil {
