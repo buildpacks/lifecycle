@@ -1,0 +1,25 @@
+{
+  "buildpacks": [
+    {
+      "key": "buildpack.id",
+      "layers": {
+        "layer1": {
+          "sha": "sha256:orig-layer1-sha",
+          "data": {
+            "oldkey": "oldval"
+          }
+        },
+        "layer2": {
+          "sha": "sha256:orig-layer2-sha",
+          "cache": true,
+          "data": {
+            "oldkey": "oldval"
+          }
+        }
+      }
+    }
+  ],
+  "launcher": {
+    "sha": "sha256:orig-launch-sha"
+  }
+}

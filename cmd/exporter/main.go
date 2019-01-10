@@ -12,24 +12,29 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
+	"github.com/google/go-containerregistry/pkg/name"
 )
 
 var (
-	repoName    string
-	runImageRef string
-	layersDir   string
-	appDir      string
-	groupPath   string
-	useDaemon   bool
-	useHelpers  bool
-	uid         int
-	gid         int
+	repoName      string
+	cacheTag      string
+	runImageRef   string
+	cacheImageRef string
+	layersDir     string
+	appDir        string
+	groupPath     string
+	useDaemon     bool
+	useHelpers    bool
+	uid           int
+	gid           int
 )
 
 const launcherPath = "/lifecycle/launcher"
 
 func init() {
 	cmd.FlagRunImage(&runImageRef)
+	cmd.FlagCacheImage(&cacheImageRef)
+	cmd.FlagCacheTag(&cacheTag)
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagGroupPath(&groupPath)
@@ -61,6 +66,11 @@ func export() error {
 		}
 	}
 
+	tagRef, err := name.NewTag(repoName, name.WeakValidation)
+	if err != nil {
+		return err
+	}
+
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
@@ -80,27 +90,43 @@ func export() error {
 		return err
 	}
 	var runImage, origImage image.Image
+	var cacher lifecycle.Cacher
 	if useDaemon {
 		runImage, err = factory.NewLocal(runImageRef, false)
 		if err != nil {
 			return err
 		}
-		origImage, err = factory.NewLocal(repoName, false)
+		origImage, err = factory.NewLocal(tagRef.Name(), false)
 		if err != nil {
 			return err
+		}
+
+		if len(cacheImageRef) > 0 {
+			cacheTagRef, _ := name.NewTag(fmt.Sprintf("%s:%s", tagRef.Repository.Name(), cacheTag), name.WeakValidation)
+			if err != nil {
+				return err
+			}
+			cacher, err = lifecycle.NewLocalImageCacher(cacheImageRef, cacheTagRef.Name(), *factory, exporter.Out)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		runImage, err = factory.NewRemote(runImageRef)
 		if err != nil {
 			return err
 		}
-		origImage, err = factory.NewRemote(repoName)
+		origImage, err = factory.NewRemote(tagRef.Name())
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath); err != nil {
+	if cacher == nil {
+		cacher = &lifecycle.NoopCacher{}
+	}
+
+	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath, cacher); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 

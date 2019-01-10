@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/fs"
+	"github.com/docker/docker/api/types/container"
 )
 
 type local struct {
@@ -90,6 +91,13 @@ func (l *local) Rename(name string) {
 	if inspect, _, err := l.Docker.ImageInspectWithRaw(context.TODO(), name); err == nil {
 		if len(inspect.RootFS.Layers) > len(l.Inspect.RootFS.Layers) {
 			l.easyAddLayers = inspect.RootFS.Layers[len(l.Inspect.RootFS.Layers):]
+		}
+	}
+
+	if l.RepoName == "scratch" {
+		l.Inspect.Config = &container.Config{
+			Image:  name,
+			Labels: map[string]string{},
 		}
 	}
 

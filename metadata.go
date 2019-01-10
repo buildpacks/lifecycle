@@ -36,6 +36,7 @@ type LayerMetadata struct {
 	Build  bool        `json:"build" toml:"build"`
 	Launch bool        `json:"launch" toml:"launch"`
 	Cache  bool        `json:"cache" toml:"cache"`
+	Tar    string
 }
 
 //this

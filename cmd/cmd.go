@@ -19,6 +19,7 @@ const (
 	DefaultPlanPath       = "./plan.toml"
 	DefaultUseDaemon      = false
 	DefaultUseCredHelpers = false
+	DefaultCacheTag       = "cache"
 
 	EnvRunImage     = "PACK_RUN_IMAGE"
 	EnvUID          = "PACK_USER_ID"
@@ -58,6 +59,14 @@ func FlagPlanPath(path *string) {
 
 func FlagRunImage(image *string) {
 	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
+}
+
+func FlagCacheImage(image *string) {
+	flag.StringVar(image, "cache-image", "", "reference to cache image")
+}
+
+func FlagCacheTag(image *string) {
+	flag.StringVar(image, "cache-tag", DefaultCacheTag, "tag of the cache image")
 }
 
 func FlagUseDaemon(use *bool) {
