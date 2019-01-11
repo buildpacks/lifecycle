@@ -147,7 +147,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, data.name)); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						} else if !strings.Contains(string(txt), data.expected) {
-							t.Fatalf(`Error: expected "%s" to contain "%s"`, txt, data.expected)
+							t.Fatalf(`Error: expected "%s" to contain "%s"`, string(txt), data.expected)
 						}
 					}
 				})
@@ -211,17 +211,13 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "valid-launch.toml")); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						} else {
-							expected := `build = false
-launch = true
-cache = false
-
+							expected := `
 [metadata]
   akey = "avalue"
   bkey = "bvalue"
 `
-							actual := string(txt)
-							if diff := cmp.Diff(actual, expected); diff != "" {
-								t.Fatalf("Error: expected metadata to be rewritten: diff: '%s'", diff)
+							if !strings.Contains(string(txt), expected) {
+								t.Fatalf(`Error: expected "%s" to contain "%s"`, string(txt), expected)
 							}
 						}
 					})

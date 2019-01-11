@@ -5,34 +5,29 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 )
 
 type cache struct {
-	layersDir   string
-	buildpackID string
-	layers      map[string]*LayerMetadata
+	buildpackDir string
+	layers       []string
 }
 
 func readCache(layersDir, buildpackID string) (cache, error) {
-	layers := map[string]*LayerMetadata{}
-	tomls, err := filepath.Glob(filepath.Join(layersDir, buildpackID, "*.toml"))
+	buildpackDir := filepath.Join(layersDir, buildpackID)
+	tomls, err := filepath.Glob(filepath.Join(buildpackDir, "*.toml"))
 	if err != nil {
 		return cache{}, err
 	}
+	layers := make([]string, 0, len(tomls))
 	for _, toml := range tomls {
 		name := strings.TrimRight(filepath.Base(toml), ".toml")
-		layers[name], err = readTOML(toml)
-		if err != nil {
-			continue
-		}
-		if sha, err := ioutil.ReadFile(filepath.Join(layersDir, buildpackID, name+".sha")); err == nil {
-			layers[name].SHA = string(sha)
-		}
+		layers = append(layers, name)
 	}
 	return cache{
-		layersDir:   layersDir,
-		buildpackID: buildpackID,
-		layers:      layers,
+		buildpackDir: buildpackDir,
+		layers:       layers,
 	}, nil
 }
 
@@ -47,8 +42,8 @@ const (
 )
 
 func (c *cache) classifyLayer(layerName string, metadataLayers map[string]LayerMetadata) cacheType {
-	cachedLayer, ok := c.layers[layerName]
-	if cachedLayer == nil {
+	cachedLayer, err := c.readLayer(layerName)
+	if err != nil {
 		return cacheMalformed
 	}
 	if !cachedLayer.Launch {
@@ -67,6 +62,24 @@ func (c *cache) classifyLayer(layerName string, metadataLayers map[string]LayerM
 	return cacheValid
 }
 
+func (c *cache) readLayer(layerName string) (*LayerMetadata, error) {
+	var metadata LayerMetadata
+	tomlPath := c.layerPath(layerName) + ".toml"
+	fh, err := os.Open(tomlPath)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+	_, err = toml.DecodeFile(tomlPath, &metadata)
+	if err != nil {
+		return nil, err
+	}
+	if sha, err := ioutil.ReadFile(c.layerPath(layerName) + ".sha"); err == nil {
+		metadata.SHA = string(sha)
+	}
+	return &metadata, err
+}
+
 func (c *cache) removeLayer(layerName string) error {
 	if err := os.RemoveAll(c.layerPath(layerName)); err != nil && !os.IsNotExist(err) {
 		return err
@@ -81,14 +94,19 @@ func (c *cache) removeLayer(layerName string) error {
 }
 
 func (c *cache) layerPath(layerName string) string {
-	return filepath.Join(c.layersDir, c.buildpackID, layerName)
+	return filepath.Join(c.buildpackDir, layerName)
 }
 
 func (c *cache) writeMetadata(layerName string, metadataLayers map[string]LayerMetadata) error {
 	layerMetadata := metadataLayers[layerName]
-	if err := writeTOML(filepath.Join(c.layerPath(layerName)+".toml"), layerMetadata); err != nil {
+	path := filepath.Join(c.layerPath(layerName) + ".toml")
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-
-	return nil
+	fh, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	return toml.NewEncoder(fh).Encode(layerMetadata)
 }

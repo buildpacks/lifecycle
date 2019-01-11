@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/image"
@@ -53,7 +52,7 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 		}
 
 		metadataLayers := a.layersToAnalyze(buildpackID, metadata)
-		for cachedLayer := range cache.layers {
+		for _, cachedLayer := range cache.layers {
 			cacheType := cache.classifyLayer(cachedLayer, metadataLayers)
 			switch cacheType {
 			case cacheStaleNoMetadata:
@@ -97,9 +96,9 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 
 func (a *Analyzer) layersToAnalyze(buildpackID string, metadata AppImageMetadata) map[string]LayerMetadata {
 	layers := make(map[string]LayerMetadata)
-	for _, buildpackMetaData := range metadata.Buildpacks {
-		if buildpackMetaData.ID == buildpackID {
-			return buildpackMetaData.Layers
+	for _, bp := range metadata.Buildpacks {
+		if bp.ID == buildpackID {
+			return bp.Layers
 		}
 	}
 	return layers
@@ -169,32 +168,4 @@ func (a *Analyzer) cachedBuildpacks() ([]string, error) {
 		}
 	}
 	return cachedBps, nil
-}
-
-func writeTOML(path string, metadata LayerMetadata) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	fh, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-
-	defer fh.Close()
-	return toml.NewEncoder(fh).Encode(metadata)
-}
-
-func readTOML(path string) (*LayerMetadata, error) {
-	var metadata LayerMetadata
-	fh, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fh.Close()
-	_, err = toml.DecodeFile(path, &metadata)
-	if err != nil {
-		return nil, err
-	}
-
-	return &metadata, err
 }
