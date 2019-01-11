@@ -1,0 +1,5 @@
+build = false
+launch = true
+
+[metadata]
+  somekey = "somevalue"

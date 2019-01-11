@@ -1,2 +1,4 @@
+launch = true
+
 [metadata]
   stalekey = "staleval"
