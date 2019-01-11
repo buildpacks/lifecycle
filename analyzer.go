@@ -52,30 +52,41 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 			return err
 		}
 
+		metadataLayers := a.layersToAnalyze(buildpackID, metadata)
 		for cachedLayer := range cache.layers {
-			cacheType := cache.classifyLayer(cachedLayer, bpMetadata(buildpackID, metadata))
+			cacheType := cache.classifyLayer(cachedLayer, metadataLayers)
 			switch cacheType {
-			case staleNoMetadata:
+			case cacheStaleNoMetadata:
 				a.Out.Printf("removing stale cached launch layer '%s/%s', not in metadata \n", buildpackID, cachedLayer)
 				if err := cache.removeLayer(cachedLayer); err != nil {
 					return err
 				}
-			case staleWrongSHA:
+			case cacheStaleWrongSHA:
 				a.Out.Printf("removing stale cached launch layer '%s/%s'", buildpackID, cachedLayer)
 				if err := cache.removeLayer(cachedLayer); err != nil {
 					return err
 				}
-			case nonLaunch:
+			case cacheMalformed:
+				a.Out.Printf("removing malformed cached layer '%s/%s'", buildpackID, cachedLayer)
+				if err := cache.removeLayer(cachedLayer); err != nil {
+					return err
+				}
+			case cacheNotForLaunch:
 				a.Out.Printf("using cached layer '%s/%s'", buildpackID, cachedLayer)
-			case valid:
+			case cacheValid:
 				a.Out.Printf("using cached launch layer '%s/%s'", buildpackID, cachedLayer)
+				a.Out.Printf("rewriting metadata for layer '%s/%s'", buildpackID, cachedLayer)
+				if err := cache.writeMetadata(cachedLayer, metadataLayers); err != nil {
+					return err
+				}
+				delete(metadataLayers, cachedLayer)
 			}
 		}
 
-		for layer, data := range a.layersToAnalyze(buildpackID, metadata) {
+		for layer, data := range metadataLayers {
 			if !data.Build {
-				a.Out.Printf("writing metadata for layer '%s/%s'", buildpackID, layer)
-				if err := writeTOML(filepath.Join(a.LayersDir, buildpackID, layer+".toml"), data); err != nil {
+				a.Out.Printf("writing metadata for uncached layer '%s/%s'", buildpackID, layer)
+				if err := cache.writeMetadata(layer, metadataLayers); err != nil {
 					return err
 				}
 			}
@@ -84,23 +95,14 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 	return nil
 }
 
-func (a *Analyzer) layersToAnalyze(buildpack string, metadata AppImageMetadata) map[string]LayerMetadata {
+func (a *Analyzer) layersToAnalyze(buildpackID string, metadata AppImageMetadata) map[string]LayerMetadata {
 	layers := make(map[string]LayerMetadata)
-	bpMetadata := bpMetadata(buildpack, metadata)
-	if bpMetadata != nil {
-		layers = bpMetadata.Layers
-	}
-	return layers
-}
-
-func bpMetadata(buildpackID string, metadata AppImageMetadata) *BuildpackMetadata {
 	for _, buildpackMetaData := range metadata.Buildpacks {
 		if buildpackMetaData.ID == buildpackID {
-			return &buildpackMetaData
+			return buildpackMetaData.Layers
 		}
 	}
-
-	return nil
+	return layers
 }
 
 func (a *Analyzer) getMetadata(image image.Image) (AppImageMetadata, error) {

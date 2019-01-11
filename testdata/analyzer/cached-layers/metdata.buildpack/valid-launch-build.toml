@@ -1,0 +1,6 @@
+build = true
+launch = true
+
+[metadata]
+   some-key = "val-from-cache"
+   some-other-key = "val-from-cache"

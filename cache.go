@@ -14,14 +14,17 @@ type cache struct {
 }
 
 func readCache(layersDir, buildpackID string) (cache, error) {
-	layers := make(map[string]*LayerMetadata)
+	layers := map[string]*LayerMetadata{}
 	tomls, err := filepath.Glob(filepath.Join(layersDir, buildpackID, "*.toml"))
 	if err != nil {
 		return cache{}, err
 	}
 	for _, toml := range tomls {
 		name := strings.TrimRight(filepath.Base(toml), ".toml")
-		layers[name], _ = readTOML(toml)
+		layers[name], err = readTOML(toml)
+		if err != nil {
+			continue
+		}
 		if sha, err := ioutil.ReadFile(filepath.Join(layersDir, buildpackID, name+".sha")); err == nil {
 			layers[name].SHA = string(sha)
 		}
@@ -36,28 +39,32 @@ func readCache(layersDir, buildpackID string) (cache, error) {
 type cacheType int
 
 const (
-	staleNoMetadata cacheType = iota
-	staleWrongSHA
-	nonLaunch // we can't determine whether the cache is stale for launch=false layers
-	valid
+	cacheStaleNoMetadata cacheType = iota
+	cacheStaleWrongSHA
+	cacheNotForLaunch // we can't determine whether the cache is stale for launch=false layers
+	cacheValid
+	cacheMalformed
 )
 
-func (c *cache) classifyLayer(layerName string, metadata *BuildpackMetadata) cacheType {
+func (c *cache) classifyLayer(layerName string, metadataLayers map[string]LayerMetadata) cacheType {
 	cachedLayer, ok := c.layers[layerName]
+	if cachedLayer == nil {
+		return cacheMalformed
+	}
 	if !cachedLayer.Launch {
-		return nonLaunch
+		return cacheNotForLaunch
 	}
-	if metadata == nil {
-		return staleNoMetadata
+	if metadataLayers == nil {
+		return cacheStaleNoMetadata
 	}
-	layerMetadata, ok := metadata.Layers[layerName]
+	layerMetadata, ok := metadataLayers[layerName]
 	if !ok {
-		return staleNoMetadata
+		return cacheStaleNoMetadata
 	}
 	if layerMetadata.SHA != cachedLayer.SHA {
-		return staleWrongSHA
+		return cacheStaleWrongSHA
 	}
-	return valid
+	return cacheValid
 }
 
 func (c *cache) removeLayer(layerName string) error {
@@ -75,4 +82,13 @@ func (c *cache) removeLayer(layerName string) error {
 
 func (c *cache) layerPath(layerName string) string {
 	return filepath.Join(c.layersDir, c.buildpackID, layerName)
+}
+
+func (c *cache) writeMetadata(layerName string, metadataLayers map[string]LayerMetadata) error {
+	layerMetadata := metadataLayers[layerName]
+	if err := writeTOML(filepath.Join(c.layerPath(layerName)+".toml"), layerMetadata); err != nil {
+		return err
+	}
+
+	return nil
 }

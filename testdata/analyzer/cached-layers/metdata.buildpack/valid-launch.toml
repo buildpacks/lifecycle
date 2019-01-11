@@ -1,6 +1,5 @@
 build = false
 launch = true
-cache = false
 
 [metadata]
   somekey = "somevalue"
