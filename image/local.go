@@ -94,7 +94,7 @@ func (l *local) Rename(name string) {
 		}
 	}
 
-	if l.RepoName == "scratch" {
+	if l.Inspect.Config == nil {
 		l.Inspect.Config = &container.Config{
 			Image:  name,
 			Labels: map[string]string{},
@@ -181,6 +181,11 @@ func (l *local) SetLabel(key, val string) error {
 	if l.Inspect.Config == nil {
 		return fmt.Errorf("failed to set label, image '%s' does not exist", l.RepoName)
 	}
+
+	if l.Inspect.Config.Labels == nil {
+		l.Inspect.Config.Labels = map[string]string{}
+	}
+
 	l.Inspect.Config.Labels[key] = val
 	return nil
 }
