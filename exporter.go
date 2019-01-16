@@ -68,7 +68,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(layersDir, bp.EscapedID())
 		if err != nil {
-			panic(err)
+			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
 		bpMD := BuildpackMetadata{ID: bp.ID, Layers: map[string]LayerMetadata{}}
 
