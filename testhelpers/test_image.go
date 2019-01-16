@@ -149,6 +149,8 @@ func (f *FakeImage) FindLayerWithPath(path string) string {
 			header, err := tr.Next()
 			if err == io.EOF {
 				break
+			} else if err != nil {
+				f.t.Fatal(err)
 			}
 
 			if header.Name == path {

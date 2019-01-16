@@ -254,7 +254,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 				t.Log("adds buildpack layer metadata to label")
 				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{
-					"oldkey": "oldval",
+					"mykey": "myval",
 				})
 				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer2"].Data, map[string]interface{}{
 					"somekey": "someval",
