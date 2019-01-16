@@ -20,6 +20,7 @@ func NewFakeImage(t *testing.T, name, topLayerSha, digest string) *FakeImage {
 		topLayerSha:  topLayerSha,
 		digest:       digest,
 		name:         name,
+		cmd:          []string{"initialCMD"},
 	}
 }
 
@@ -114,11 +115,11 @@ func (FakeImage) Found() (bool, error) {
 	return true, nil
 }
 
+//test methods
+
 func (f *FakeImage) AppLayerPath() string {
 	return f.layers[0]
 }
-
-//test methods
 
 func (f *FakeImage) Entrypoint() ([]string, error) {
 	return f.entryPoint, nil
