@@ -46,28 +46,28 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 	}
 
 	for buildpackID := range groupBPs {
-		cache, err := readCache(a.LayersDir, buildpackID)
+		cache, err := readBuildpackLayersDir(a.LayersDir, buildpackID)
 		if err != nil {
 			return err
 		}
 
 		metadataLayers := a.layersToAnalyze(buildpackID, metadata)
 		for _, cachedLayer := range cache.layers {
-			cacheType := cache.classifyLayer(cachedLayer, metadataLayers)
+			cacheType := cachedLayer.classifyCache(metadataLayers)
 			switch cacheType {
 			case cacheStaleNoMetadata:
 				a.Out.Printf("removing stale cached launch layer '%s/%s', not in metadata \n", buildpackID, cachedLayer)
-				if err := cache.removeLayer(cachedLayer); err != nil {
+				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheStaleWrongSHA:
 				a.Out.Printf("removing stale cached launch layer '%s/%s'", buildpackID, cachedLayer)
-				if err := cache.removeLayer(cachedLayer); err != nil {
+				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheMalformed:
 				a.Out.Printf("removing malformed cached layer '%s/%s'", buildpackID, cachedLayer)
-				if err := cache.removeLayer(cachedLayer); err != nil {
+				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheNotForLaunch:
@@ -75,17 +75,17 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 			case cacheValid:
 				a.Out.Printf("using cached launch layer '%s/%s'", buildpackID, cachedLayer)
 				a.Out.Printf("rewriting metadata for layer '%s/%s'", buildpackID, cachedLayer)
-				if err := cache.writeMetadata(cachedLayer, metadataLayers); err != nil {
+				if err := cachedLayer.writeMetadata(metadataLayers); err != nil {
 					return err
 				}
-				delete(metadataLayers, cachedLayer)
+				delete(metadataLayers, cachedLayer.name())
 			}
 		}
 
 		for layer, data := range metadataLayers {
 			if !data.Build {
 				a.Out.Printf("writing metadata for uncached layer '%s/%s'", buildpackID, layer)
-				if err := cache.writeMetadata(layer, metadataLayers); err != nil {
+				if err := cache.newBPLayer(layer).writeMetadata(metadataLayers); err != nil {
 					return err
 				}
 			}

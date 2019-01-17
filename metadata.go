@@ -38,8 +38,16 @@ type LayerMetadata struct {
 	Cache  bool        `json:"cache" toml:"cache"`
 }
 
-//this
 type RunImageMetadata struct {
 	TopLayer string `json:"topLayer"`
 	SHA      string `json:"sha"`
+}
+
+func (m *AppImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
+	for _, bpMd := range m.Buildpacks {
+		if bpMd.ID == id {
+			return bpMd
+		}
+	}
+	return BuildpackMetadata{}
 }
