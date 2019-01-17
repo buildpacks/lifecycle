@@ -45,7 +45,6 @@ func (li *loggingImage) SetEntrypoint(entryPoint string) error {
 func (li *loggingImage) SetEmptyCmd() error {
 	li.Out.Println("setting empty cmd")
 	return li.image.SetCmd()
-
 }
 
 func (li *loggingImage) Save() (string, error) {

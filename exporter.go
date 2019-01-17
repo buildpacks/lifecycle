@@ -79,14 +79,13 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 			}
 
 			if layer.hasLocalContents() {
-				origLayerMetadata, _ := origMetadata.metadataForBuildpack(bp.ID).Layers[layer.name()]
+				origLayerMetadata := origMetadata.metadataForBuildpack(bp.ID).Layers[layer.name()]
 				lmd.SHA, err = e.addOrReuseLayer(appImage, &layer, origLayerMetadata.SHA)
 				if err != nil {
 					return err
 				}
 
-				err = layer.writeSha(lmd.SHA)
-				if err != nil {
+				if err := layer.writeSha(lmd.SHA); err != nil {
 					return errors.Wrapf(err, "writing '%s' sha", layer.Identifier())
 				}
 			} else {
@@ -149,9 +148,8 @@ func (e *Exporter) addOrReuseLayer(image *loggingImage, layer identifiableLayer,
 	}
 	if sha == previousSha {
 		return sha, image.ReuseLayer(layer.Identifier(), previousSha)
-	} else {
-		return sha, image.AddLayer(layer.Identifier(), sha, e.tarPath(sha))
 	}
+	return sha, image.AddLayer(layer.Identifier(), sha, e.tarPath(sha))
 }
 
 func (e *Exporter) tarPath(sha string) string {

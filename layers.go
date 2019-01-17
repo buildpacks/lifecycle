@@ -110,14 +110,19 @@ func (bp *bpLayer) read() (LayerMetadata, error) {
 		return LayerMetadata{}, err
 	}
 	defer fh.Close()
-	_, err = toml.DecodeFile(tomlPath, &metadata)
-	if err != nil {
+	if _, err := toml.DecodeFile(tomlPath, &metadata); err != nil {
 		return LayerMetadata{}, err
 	}
-	if sha, err := ioutil.ReadFile(bp.path + ".sha"); err == nil {
-		metadata.SHA = string(sha)
+	sha, err := ioutil.ReadFile(bp.path + ".sha")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return metadata, nil
+		} else {
+			return LayerMetadata{}, err
+		}
 	}
-	return metadata, err
+	metadata.SHA = string(sha)
+	return metadata, nil
 }
 
 func (bp *bpLayer) remove() error {
@@ -136,7 +141,7 @@ func (bp *bpLayer) remove() error {
 func (bp *bpLayer) writeMetadata(metadataLayers map[string]LayerMetadata) error {
 	layerMetadata := metadataLayers[bp.name()]
 	path := filepath.Join(bp.path + ".toml")
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
 	fh, err := os.Create(path)
@@ -154,7 +159,7 @@ func (bp *bpLayer) hasLocalContents() bool {
 }
 
 func (bp *bpLayer) writeSha(sha string) error {
-	if err := ioutil.WriteFile(filepath.Join(bp.path+".sha"), []byte(sha), 0755); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(bp.path+".sha"), []byte(sha), 0777); err != nil {
 		return err
 	}
 	return nil
