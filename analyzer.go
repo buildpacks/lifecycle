@@ -164,7 +164,7 @@ func (a *Analyzer) cachedBuildpacks() ([]string, error) {
 			return nil, err
 		}
 		if !os.SameFile(appDirInfo, info) && info.IsDir() {
-			cachedBps = append(cachedBps, BuildpackDirToId(filepath.Base(dir)))
+			cachedBps = append(cachedBps, buildpackDirToID(filepath.Base(dir)))
 		}
 	}
 	return cachedBps, nil

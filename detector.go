@@ -35,7 +35,7 @@ type DetectConfig struct {
 }
 
 func (bp *Buildpack) EscapedID() string {
-	return BuildpackIdToDir(bp.ID)
+	return buildpackIDToDir(bp.ID)
 }
 
 func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
