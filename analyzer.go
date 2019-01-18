@@ -125,7 +125,7 @@ func (a *Analyzer) getMetadata(image image.Image) (AppImageMetadata, error) {
 func (a *Analyzer) buildpacks() map[string]struct{} {
 	buildpacks := make(map[string]struct{}, len(a.Buildpacks))
 	for _, b := range a.Buildpacks {
-		buildpacks[b.EscapedID()] = struct{}{}
+		buildpacks[b.ID] = struct{}{}
 	}
 	return buildpacks
 }
@@ -164,7 +164,7 @@ func (a *Analyzer) cachedBuildpacks() ([]string, error) {
 			return nil, err
 		}
 		if !os.SameFile(appDirInfo, info) && info.IsDir() {
-			cachedBps = append(cachedBps, filepath.Base(dir))
+			cachedBps = append(cachedBps, BuildpackDirToId(filepath.Base(dir)))
 		}
 	}
 	return cachedBps, nil
