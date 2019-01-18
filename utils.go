@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -17,4 +18,12 @@ func WriteTOML(path string, data interface{}) error {
 	}
 	defer f.Close()
 	return toml.NewEncoder(f).Encode(data)
+}
+
+func buildpackIDToDir(id string) string {
+	return strings.Replace(id, "/", "_", -1)
+}
+
+func buildpackDirToID(dirname string) string {
+	return strings.Replace(dirname, "_", "/", -1)
 }

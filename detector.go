@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -36,11 +35,7 @@ type DetectConfig struct {
 }
 
 func (bp *Buildpack) EscapedID() string {
-	return escape(bp.ID)
-}
-
-func escape(id string) string {
-	return strings.Replace(id, "/", "_", -1)
+	return buildpackIDToDir(bp.ID)
 }
 
 func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {

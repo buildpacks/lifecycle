@@ -56,25 +56,25 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 			cacheType := cachedLayer.classifyCache(metadataLayers)
 			switch cacheType {
 			case cacheStaleNoMetadata:
-				a.Out.Printf("removing stale cached launch layer '%s/%s', not in metadata \n", buildpackID, cachedLayer)
+				a.Out.Printf("removing stale cached launch layer '%s:%s', not in metadata \n", buildpackID, cachedLayer)
 				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheStaleWrongSHA:
-				a.Out.Printf("removing stale cached launch layer '%s/%s'", buildpackID, cachedLayer)
+				a.Out.Printf("removing stale cached launch layer '%s:%s'", buildpackID, cachedLayer)
 				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheMalformed:
-				a.Out.Printf("removing malformed cached layer '%s/%s'", buildpackID, cachedLayer)
+				a.Out.Printf("removing malformed cached layer '%s:%s'", buildpackID, cachedLayer)
 				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheNotForLaunch:
 				a.Out.Printf("using cached layer '%s/%s'", buildpackID, cachedLayer)
 			case cacheValid:
-				a.Out.Printf("using cached launch layer '%s/%s'", buildpackID, cachedLayer)
-				a.Out.Printf("rewriting metadata for layer '%s/%s'", buildpackID, cachedLayer)
+				a.Out.Printf("using cached launch layer '%s:%s'", buildpackID, cachedLayer)
+				a.Out.Printf("rewriting metadata for layer '%s:%s'", buildpackID, cachedLayer)
 				if err := cachedLayer.writeMetadata(metadataLayers); err != nil {
 					return err
 				}
@@ -125,7 +125,7 @@ func (a *Analyzer) getMetadata(image image.Image) (AppImageMetadata, error) {
 func (a *Analyzer) buildpacks() map[string]struct{} {
 	buildpacks := make(map[string]struct{}, len(a.Buildpacks))
 	for _, b := range a.Buildpacks {
-		buildpacks[b.EscapedID()] = struct{}{}
+		buildpacks[b.ID] = struct{}{}
 	}
 	return buildpacks
 }
@@ -164,7 +164,7 @@ func (a *Analyzer) cachedBuildpacks() ([]string, error) {
 			return nil, err
 		}
 		if !os.SameFile(appDirInfo, info) && info.IsDir() {
-			cachedBps = append(cachedBps, filepath.Base(dir))
+			cachedBps = append(cachedBps, buildpackDirToID(filepath.Base(dir)))
 		}
 	}
 	return cachedBps, nil
