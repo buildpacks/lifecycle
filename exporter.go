@@ -66,7 +66,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	}
 
 	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, bp.EscapedID())
+		bpDir, err := readBuildpackLayersDir(layersDir, bp.ID)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}

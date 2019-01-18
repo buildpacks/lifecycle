@@ -56,25 +56,25 @@ func (a *Analyzer) analyze(metadata AppImageMetadata) error {
 			cacheType := cachedLayer.classifyCache(metadataLayers)
 			switch cacheType {
 			case cacheStaleNoMetadata:
-				a.Out.Printf("removing stale cached launch layer '%s/%s', not in metadata \n", buildpackID, cachedLayer)
+				a.Out.Printf("removing stale cached launch layer '%s:%s', not in metadata \n", buildpackID, cachedLayer)
 				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheStaleWrongSHA:
-				a.Out.Printf("removing stale cached launch layer '%s/%s'", buildpackID, cachedLayer)
+				a.Out.Printf("removing stale cached launch layer '%s:%s'", buildpackID, cachedLayer)
 				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheMalformed:
-				a.Out.Printf("removing malformed cached layer '%s/%s'", buildpackID, cachedLayer)
+				a.Out.Printf("removing malformed cached layer '%s:%s'", buildpackID, cachedLayer)
 				if err := cachedLayer.remove(); err != nil {
 					return err
 				}
 			case cacheNotForLaunch:
 				a.Out.Printf("using cached layer '%s/%s'", buildpackID, cachedLayer)
 			case cacheValid:
-				a.Out.Printf("using cached launch layer '%s/%s'", buildpackID, cachedLayer)
-				a.Out.Printf("rewriting metadata for layer '%s/%s'", buildpackID, cachedLayer)
+				a.Out.Printf("using cached launch layer '%s:%s'", buildpackID, cachedLayer)
+				a.Out.Printf("rewriting metadata for layer '%s:%s'", buildpackID, cachedLayer)
 				if err := cachedLayer.writeMetadata(metadataLayers); err != nil {
 					return err
 				}
