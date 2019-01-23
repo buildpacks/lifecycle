@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
@@ -85,9 +86,9 @@ func (r *remote) Name() string {
 
 func (r *remote) Found() (bool, error) {
 	if _, err := r.Image.RawManifest(); err != nil {
-		if remoteErr, ok := err.(*v1remote.Error); ok && len(remoteErr.Errors) > 0 {
-			switch remoteErr.Errors[0].Code {
-			case v1remote.UnauthorizedErrorCode, v1remote.ManifestUnknownErrorCode:
+		if transportErr, ok := err.(*transport.Error); ok && len(transportErr.Errors) > 0 {
+			switch transportErr.Errors[0].Code {
+			case transport.UnauthorizedErrorCode, transport.ManifestUnknownErrorCode:
 				return false, nil
 			}
 		}
@@ -110,7 +111,7 @@ func (r *remote) Rebase(baseTopLayer string, newBase Image) error {
 		return errors.New("expected new base to be a remote image")
 	}
 
-	newImage, err := mutate.Rebase(r.Image, &subImage{img: r.Image, topSHA: baseTopLayer}, newBaseRemote.Image, &mutate.RebaseOptions{})
+	newImage, err := mutate.Rebase(r.Image, &subImage{img: r.Image, topSHA: baseTopLayer}, newBaseRemote.Image)
 	if err != nil {
 		return errors.Wrap(err, "rebase")
 	}
@@ -246,7 +247,7 @@ func (r *remote) Save() (string, error) {
 		return "", err
 	}
 
-	if err := v1remote.Write(ref, r.Image, auth, http.DefaultTransport, v1remote.WriteOptions{}); err != nil {
+	if err := v1remote.Write(ref, r.Image, auth, http.DefaultTransport); err != nil {
 		return "", err
 	}
 
