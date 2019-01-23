@@ -17,15 +17,11 @@ package mutate
 import (
 	"fmt"
 
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 )
 
-type RebaseOptions struct {
-	// TODO(jasonhall): Rebase seam hint.
-}
-
-func Rebase(orig, oldBase, newBase v1.Image, opts *RebaseOptions) (v1.Image, error) {
+func Rebase(orig, oldBase, newBase v1.Image) (v1.Image, error) {
 	// Verify that oldBase's layers are present in orig, otherwise orig is
 	// not based on oldBase at all.
 	origLayers, err := orig.Layers()
