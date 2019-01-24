@@ -7,10 +7,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	dockerClient "github.com/docker/docker/client"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -22,8 +23,10 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle/fs"
+	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	dockerClient "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/go-cmp/cmp"
 )
@@ -119,6 +122,11 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		AssertNil(t, err)
 		runRegistryPort = inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
 
+		if os.Getenv("DOCKER_HOST") != "" {
+			err := proxyDockerHostPort(DockerCli(t), runRegistryPort)
+			AssertNil(t, err)
+		}
+
 		Eventually(t, func() bool {
 			txt, err := HttpGetE(fmt.Sprintf("http://localhost:%s/v2/", runRegistryPort))
 			return err == nil && txt != ""
@@ -132,6 +140,36 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		}
 	})
 	return runRegistryPort
+}
+func proxyDockerHostPort(dockerCli *dockerClient.Client, port string) error {
+	ln, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		// TODO exit somehow.
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			go func(conn net.Conn) {
+				defer conn.Close()
+				c, err := dockerdial.Dial("tcp", "localhost:"+port)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				defer c.Close()
+
+				go io.Copy(c, conn)
+				io.Copy(conn, c)
+			}(conn)
+		}
+	}()
+	return nil
 }
 
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
