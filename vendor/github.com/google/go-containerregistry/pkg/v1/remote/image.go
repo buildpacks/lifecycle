@@ -25,7 +25,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/types"
@@ -125,7 +125,7 @@ func (r *remoteImage) RawManifest() ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	if err := CheckError(resp, http.StatusOK); err != nil {
+	if err := transport.CheckError(resp, http.StatusOK); err != nil {
 		return nil, err
 	}
 
@@ -207,7 +207,7 @@ func (rl *remoteLayer) Compressed() (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	if err := CheckError(resp, http.StatusOK); err != nil {
+	if err := transport.CheckError(resp, http.StatusOK); err != nil {
 		resp.Body.Close()
 		return nil, err
 	}
