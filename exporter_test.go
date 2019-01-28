@@ -570,9 +570,16 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("preserves cached layers and writes a sha", func() {
+			it("treats a missing layer.toml like an empty layer.toml (launch=false cache=false)", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
 
+				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "buildpack.id", "no-toml-layer")); !os.IsNotExist(err) {
+					t.Fatalf("Found no-toml-layer dir, it should not exist")
+				}
+			})
+
+			it("preserves cached layers and writes a sha", func() {
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
 				cacheTrueLayerPath := fakeRunImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/cache-true-layer"))
 				cacheTrueLayersha := h.ComputeSHA256ForFile(t, cacheTrueLayerPath)
 
@@ -637,6 +644,36 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, metadata.Buildpacks[0].ID, "some/escaped/bp/id")
 				h.AssertEq(t, len(metadata.Buildpacks[0].Layers), 1)
+			})
+		})
+
+		when("there is an invalid layer.toml", func() {
+			var (
+				nonExistingOriginalImage image.Image
+			)
+
+			it.Before(func() {
+				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "bad-layer", "layers"), layersDir)
+				var err error
+				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "bad-layer", "layers", "app"))
+				h.AssertNil(t, err)
+
+				mockNonExistingOriginalImage := testmock.NewMockImage(gomock.NewController(t))
+
+				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name")
+				mockNonExistingOriginalImage.EXPECT().Found().Return(false, nil)
+				mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+					Return("", errors.New("not exist")).AnyTimes()
+
+				nonExistingOriginalImage = mockNonExistingOriginalImage
+			})
+
+			it("returns an error", func() {
+				h.AssertError(
+					t,
+					exporter.Export(layersDir, appDir, fakeRunImage, nonExistingOriginalImage, launcherPath),
+					"failed to parse metadata for layers '[buildpack.id:bad-layer]'",
+				)
 			})
 		})
 	})

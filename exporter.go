@@ -112,6 +112,14 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 			}
 		}
 
+		if malformedLayers := bpDir.findLayers(malformed); len(malformedLayers) > 0 {
+			ids := make([]string, 0, len(malformedLayers))
+			for _, ml := range malformedLayers {
+				ids = append(ids, ml.identifier)
+			}
+			return fmt.Errorf("failed to parse metadata for layers '%s'", ids)
+		}
+
 		metadata.Buildpacks = append(metadata.Buildpacks, bpMD)
 	}
 

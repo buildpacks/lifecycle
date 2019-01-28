@@ -12,50 +12,59 @@ import (
 
 type bpLayersDir struct {
 	path   string
-	layers []bpLayer
+	layers map[string]bpLayer
 	name   string
 }
 
 func readBuildpackLayersDir(layersDir, buildpackID string) (bpLayersDir, error) {
 	path := filepath.Join(layersDir, buildpackIDToDir(buildpackID))
-	tomls, err := filepath.Glob(filepath.Join(path, "*.toml"))
-	if err != nil {
-		return bpLayersDir{}, err
-	}
-	layers := make([]bpLayer, 0, len(tomls))
-	for _, toml := range tomls {
-		name := strings.TrimRight(filepath.Base(toml), ".toml")
-		layers = append(layers, bpLayer{
-			layer{
-				path:       filepath.Join(layersDir, buildpackIDToDir(buildpackID), name),
-				identifier: fmt.Sprintf("%s:%s", buildpackID, name),
-			},
-		})
-	}
-	return bpLayersDir{
+	bpDir := bpLayersDir{
 		name:   buildpackID,
 		path:   path,
-		layers: layers,
-	}, nil
-}
+		layers: map[string]bpLayer{},
+	}
 
-func launch(md LayerMetadata) bool {
-	return md.Launch
-}
-
-func nonCached(md LayerMetadata) bool {
-	return !md.Cache
-}
-
-func (bd *bpLayersDir) findLayers(f func(layer LayerMetadata) bool) []bpLayer {
-	var launchLayers []bpLayer
-	for _, l := range bd.layers {
-		md, err := l.read()
-		if err == nil && f(md) {
-			launchLayers = append(launchLayers, l)
+	fis, err := ioutil.ReadDir(path)
+	if err != nil && !os.IsNotExist(err) {
+		return bpDir, err
+	}
+	for _, fi := range fis {
+		if fi.IsDir() {
+			bpDir.layers[fi.Name()] = *bpDir.newBPLayer(fi.Name())
 		}
 	}
-	return launchLayers
+
+	tomls, err := filepath.Glob(filepath.Join(path, "*.toml"))
+	for _, toml := range tomls {
+		name := strings.TrimRight(filepath.Base(toml), ".toml")
+		bpDir.layers[name] = *bpDir.newBPLayer(name)
+	}
+	return bpDir, nil
+}
+
+func launch(l bpLayer) bool {
+	md, err := l.read()
+	return err == nil && md.Launch
+}
+
+func nonCached(l bpLayer) bool {
+	md, err := l.read()
+	return err == nil && !md.Cache
+}
+
+func malformed(l bpLayer) bool {
+	_, err := l.read()
+	return err != nil
+}
+
+func (bd *bpLayersDir) findLayers(f func(layer bpLayer) bool) []bpLayer {
+	var selectedLayers []bpLayer
+	for _, l := range bd.layers {
+		if f(l) {
+			selectedLayers = append(selectedLayers, l)
+		}
+	}
+	return selectedLayers
 }
 
 func (bd *bpLayersDir) newBPLayer(name string) *bpLayer {
@@ -106,7 +115,9 @@ func (bp *bpLayer) read() (LayerMetadata, error) {
 	var metadata LayerMetadata
 	tomlPath := bp.path + ".toml"
 	fh, err := os.Open(tomlPath)
-	if err != nil {
+	if os.IsNotExist(err) {
+		return LayerMetadata{}, nil
+	} else if err != nil {
 		return LayerMetadata{}, err
 	}
 	defer fh.Close()
