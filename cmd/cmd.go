@@ -20,12 +20,13 @@ const (
 	DefaultUseDaemon      = false
 	DefaultUseCredHelpers = false
 
-	EnvRunImage     = "PACK_RUN_IMAGE"
-	EnvUID          = "PACK_USER_ID"
-	EnvGID          = "PACK_GROUP_ID"
-	EnvLayersDir    = "PACK_LAYERS_DIR"
-	EnvAppDir       = "PACK_APP_DIR"
-	EnvRegistryAuth = "PACK_REGISTRY_AUTH"
+	EnvRunImage           = "PACK_RUN_IMAGE"
+	EnvUID                = "PACK_USER_ID"
+	EnvGID                = "PACK_GROUP_ID"
+	EnvLayersDir          = "PACK_LAYERS_DIR"
+	EnvAppDir             = "PACK_APP_DIR"
+	EnvLegacyRegistryAuth = "PACK_REGISTRY_AUTH"
+	EnvRegistryAuth       = "CNB_REGISTRY_AUTH"
 )
 
 func FlagLayersDir(dir *string) {

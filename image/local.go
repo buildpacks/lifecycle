@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/image/auth"
 )
 
 type local struct {
@@ -39,12 +40,9 @@ type local struct {
 	easyAddLayers    []string
 }
 
-// if there is an image, do the thing
-// or do the other thing
-
 func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 	if pull {
-		if err := pullImage(f.Docker, repoName); err != nil {
+		if err := f.pullImage(f.Docker, repoName); err != nil {
 			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
 		}
 	}
@@ -410,8 +408,8 @@ func (l *local) prevDownload() error {
 	return outerErr
 }
 
-func pullImage(dockerCli *dockerclient.Client, ref string) error {
-	regAuth, err := registryAuth(ref)
+func (f *Factory) pullImage(dockerCli *dockerclient.Client, ref string) error {
+	regAuth, err := f.registryAuth(ref)
 	if err != nil {
 		return errors.Wrap(err, "auth for docker pull")
 	}
@@ -434,13 +432,13 @@ func pullImage(dockerCli *dockerclient.Client, ref string) error {
 	return rc.Close()
 }
 
-func registryAuth(ref string) (string, error) {
+func (f *Factory) registryAuth(ref string) (string, error) {
 	var regAuth string
-	_, auth, err := referenceForRepoName(ref)
+	_, a, err := auth.ReferenceForRepoName(f.Keychain, ref)
 	if err != nil {
 		return "", errors.Wrapf(err, "resolve auth for ref %s", ref)
 	}
-	authHeader, err := auth.Authorization()
+	authHeader, err := a.Authorization()
 	if err != nil {
 		return "", err
 	}

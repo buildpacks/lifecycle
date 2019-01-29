@@ -2,19 +2,23 @@ package image
 
 import (
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/image/auth"
 )
 
 type Factory struct {
-	Docker *client.Client
-	FS     *fs.FS
+	Docker   *client.Client
+	FS       *fs.FS
+	Keychain authn.Keychain
 }
 
-func DefaultFactory() (*Factory, error) {
+func NewFactory(ops ...func(*Factory)) (*Factory, error) {
 	f := &Factory{
-		FS: &fs.FS{},
+		FS:       &fs.FS{},
+		Keychain: authn.DefaultKeychain,
 	}
 
 	var err error
@@ -22,8 +26,19 @@ func DefaultFactory() (*Factory, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, op := range ops {
+		op(f)
+	}
 
 	return f, nil
+}
+
+func WithEnvKeychain(factory *Factory) {
+	factory.Keychain = authn.NewMultiKeychain(&auth.EnvKeychain{}, factory.Keychain)
+}
+
+func WithLegacyEnvKeychain(factory *Factory) {
+	factory.Keychain = authn.NewMultiKeychain(&auth.LegacyEnvKeychain{}, factory.Keychain)
 }
 
 func newDocker() (*client.Client, error) {

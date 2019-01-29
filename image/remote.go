@@ -3,12 +3,10 @@ package image
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
@@ -17,10 +15,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/image/auth"
 )
 
 type remote struct {
+	keychain   authn.Keychain
 	RepoName   string
 	Image      v1.Image
 	PrevLayers []v1.Layer
@@ -28,20 +27,21 @@ type remote struct {
 }
 
 func (f *Factory) NewRemote(repoName string) (Image, error) {
-	image, err := newV1Image(repoName)
+	image, err := newV1Image(f.Keychain, repoName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &remote{
+		keychain: f.Keychain,
 		RepoName: repoName,
 		Image:    image,
 		prevOnce: &sync.Once{},
 	}, nil
 }
 
-func newV1Image(repoName string) (v1.Image, error) {
-	ref, auth, err := referenceForRepoName(repoName)
+func newV1Image(keychain authn.Keychain, repoName string) (v1.Image, error) {
+	ref, auth, err := auth.ReferenceForRepoName(keychain, repoName)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (r *remote) ReuseLayer(sha string) error {
 	var outerErr error
 
 	r.prevOnce.Do(func() {
-		prevImage, err := newV1Image(r.RepoName)
+		prevImage, err := newV1Image(r.keychain, r.RepoName)
 		if err != nil {
 			outerErr = err
 			return
@@ -242,7 +242,7 @@ func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
 }
 
 func (r *remote) Save() (string, error) {
-	ref, auth, err := referenceForRepoName(r.RepoName)
+	ref, auth, err := auth.ReferenceForRepoName(r.keychain, r.RepoName)
 	if err != nil {
 		return "", err
 	}
@@ -257,32 +257,6 @@ func (r *remote) Save() (string, error) {
 	}
 
 	return hex.String(), nil
-}
-
-func referenceForRepoName(ref string) (name.Reference, authn.Authenticator, error) {
-	var auth authn.Authenticator
-	r, err := name.ParseReference(ref, name.WeakValidation)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if v := os.Getenv(cmd.EnvRegistryAuth); v != "" {
-		auth = &providedAuth{auth: v}
-	} else {
-		auth, err = authn.DefaultKeychain.Resolve(r.Context().Registry)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	return r, auth, nil
-}
-
-type providedAuth struct {
-	auth string
-}
-
-func (p *providedAuth) Authorization() (string, error) {
-	return p.auth, nil
 }
 
 type subImage struct {
