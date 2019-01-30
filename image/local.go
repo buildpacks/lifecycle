@@ -8,8 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/term"
 	"io"
 	"io/ioutil"
 	"os"
@@ -21,6 +19,8 @@ import (
 	"github.com/docker/docker/api/types"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/term"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -44,7 +44,7 @@ type local struct {
 
 func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 	if pull {
-		if err := f.pullImage(f.Docker, repoName); err != nil {
+		if err := f.pullImage(f.Out, f.Docker, repoName); err != nil {
 			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
 		}
 	}
@@ -410,7 +410,7 @@ func (l *local) prevDownload() error {
 	return outerErr
 }
 
-func (f *Factory) pullImage(dockerCli *dockerclient.Client, ref string) error {
+func (f *Factory) pullImage(outputFile *os.File, dockerCli *dockerclient.Client, ref string) error {
 	regAuth, err := f.registryAuth(ref)
 	if err != nil {
 		return errors.Wrap(err, "auth for docker pull")
@@ -429,8 +429,8 @@ func (f *Factory) pullImage(dockerCli *dockerclient.Client, ref string) error {
 		}
 	}
 
-	termFd, isTerm := term.GetFdInfo(os.Stdout)
-	err = jsonmessage.DisplayJSONMessagesStream(rc, os.Stdout, termFd, isTerm, nil)
+	termFd, isTerm := term.GetFdInfo(outputFile)
+	err = jsonmessage.DisplayJSONMessagesStream(rc, outputFile, termFd, isTerm, nil)
 	if err != nil {
 		return err
 	}

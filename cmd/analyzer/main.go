@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/buildpack/lifecycle/image"
 	"log"
 	"os"
 
@@ -10,6 +9,7 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/image"
 )
 
 var (
@@ -60,7 +60,7 @@ func analyzer() error {
 
 	var err error
 	var previousImage image.Image
-	factory, err := image.NewFactory(image.WithEnvKeychain, image.WithLegacyEnvKeychain)
+	factory, err := image.NewFactory(os.Stdout, image.WithEnvKeychain, image.WithLegacyEnvKeychain)
 	if err != nil {
 		return err
 	}

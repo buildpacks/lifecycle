@@ -1,6 +1,8 @@
 package image
 
 import (
+	"os"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -13,9 +15,10 @@ type Factory struct {
 	Docker   *client.Client
 	FS       *fs.FS
 	Keychain authn.Keychain
+	Out      *os.File
 }
 
-func NewFactory(ops ...func(*Factory)) (*Factory, error) {
+func NewFactory(outputFile *os.File, ops ...func(*Factory)) (*Factory, error) {
 	f := &Factory{
 		FS:       &fs.FS{},
 		Keychain: authn.DefaultKeychain,
@@ -29,6 +32,8 @@ func NewFactory(ops ...func(*Factory)) (*Factory, error) {
 	for _, op := range ops {
 		op(f)
 	}
+
+	f.Out = outputFile
 
 	return f, nil
 }

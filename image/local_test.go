@@ -45,6 +45,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		factory = image.Factory{
 			Docker:   dockerCli,
 			FS:       &fs.FS{},
+			Out:      os.Stdout,
 			Keychain: authn.DefaultKeychain,
 		}
 		repoName = "pack-image-test-" + h.RandString(10)
