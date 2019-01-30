@@ -1,5 +1,3 @@
-// +build image
-
 package image_test
 
 import (
