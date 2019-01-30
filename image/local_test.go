@@ -1,6 +1,7 @@
 package image_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -617,24 +618,15 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("it exists", func() {
-				var outputFile *os.File
-				var outputFilePath string
+				var outBuf bytes.Buffer
 				it.Before(func() {
-					var err error
 					repoName = "localhost:" + localTestRegistry.Port + "/pack-image-test-" + h.RandString(10)
 					h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 				`, repoName))
-					outputFilePath = os.TempDir() + "out-file" + h.RandString(5)
-					outputFile, err = os.OpenFile(outputFilePath, os.O_RDWR|os.O_CREATE, 0755)
-					h.AssertNil(t, err)
 
-					factory.Out = outputFile
-				})
-
-				it.After(func() {
-					_ = os.Remove(outputFilePath)
+					factory.Out = &outBuf
 				})
 
 				it("returns true, nil", func() {
@@ -651,13 +643,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.Eventually(t, func() bool {
-						_, err := outputFile.Seek(0, 0)
-						h.AssertNil(t, err)
-
-						out := make([]byte, 10000)
-						_, err = outputFile.Read(out)
-						h.AssertNil(t, err)
-						return strings.Contains(string(out), "Downloaded newer image for "+repoName)
+						return strings.Contains(outBuf.String(), "Downloaded newer image for "+repoName)
 					}, 100*time.Millisecond, 10*time.Second)
 				})
 			})
