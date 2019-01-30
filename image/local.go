@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/term"
 	"io"
 	"io/ioutil"
 	"os"
@@ -426,9 +428,13 @@ func (f *Factory) pullImage(dockerCli *dockerclient.Client, ref string) error {
 			return err
 		}
 	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+
+	termFd, isTerm := term.GetFdInfo(os.Stdout)
+	err = jsonmessage.DisplayJSONMessagesStream(rc, os.Stdout, termFd, isTerm, nil)
+	if err != nil {
 		return err
 	}
+
 	return rc.Close()
 }
 
