@@ -18,7 +18,7 @@ jobs:
       openssl aes-256-cbc -K $encrypted_e607085e6307_key -iv $encrypted_e607085e6307_iv -in .travis/key.pem.enc -out .travis/key.pem -d
       test -z "$(bin/format | tee >(cat >&2))"
       export DOCKER_CERT_PATH=$PWD/.travis/
-      go test -tags=image -v ./...
+      go test -v -parallel=1 ./...
   - stage: build and push images
     if: branch = master AND fork = false
     env:
