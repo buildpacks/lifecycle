@@ -1,7 +1,8 @@
 package image
 
 import (
-	"os"
+	"io"
+	"io/ioutil"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -15,12 +16,13 @@ type Factory struct {
 	Docker   *client.Client
 	FS       *fs.FS
 	Keychain authn.Keychain
-	Out      *os.File
+	Out      io.Writer
 }
 
-func NewFactory(outputFile *os.File, ops ...func(*Factory)) (*Factory, error) {
+func NewFactory(ops ...func(*Factory)) (*Factory, error) {
 	f := &Factory{
 		FS:       &fs.FS{},
+		Out:      ioutil.Discard,
 		Keychain: authn.DefaultKeychain,
 	}
 
@@ -33,8 +35,6 @@ func NewFactory(outputFile *os.File, ops ...func(*Factory)) (*Factory, error) {
 		op(f)
 	}
 
-	f.Out = outputFile
-
 	return f, nil
 }
 
@@ -44,6 +44,12 @@ func WithEnvKeychain(factory *Factory) {
 
 func WithLegacyEnvKeychain(factory *Factory) {
 	factory.Keychain = authn.NewMultiKeychain(&auth.LegacyEnvKeychain{}, factory.Keychain)
+}
+
+func WithOutWriter(w io.Writer) func(factory *Factory) {
+	return func(factory *Factory) {
+		factory.Out = w
+	}
 }
 
 func newDocker() (*client.Client, error) {

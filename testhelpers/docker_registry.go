@@ -12,8 +12,8 @@ import (
 
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
-	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/api/types/container"
+	dockercli "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 )
 

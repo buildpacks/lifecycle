@@ -21,8 +21,8 @@ import (
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
-	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/api/types/container"
+	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/buildpack/lifecycle/fs"
