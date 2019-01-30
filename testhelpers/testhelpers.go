@@ -113,58 +113,6 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 
 var getBuildImageOnce sync.Once
 
-func DefaultBuildImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getBuildImageOnce.Do(func() {
-		if tag == "latest" {
-			AssertNil(t, PullImage(DockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
-		}
-		AssertNil(t, DockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/build:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag)
-}
-
-var getRunImageOnce sync.Once
-
-func DefaultRunImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getRunImageOnce.Do(func() {
-		if tag == "latest" {
-			AssertNil(t, PullImage(DockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
-		}
-		AssertNil(t, DockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/run:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag)
-}
-
-var getBuilderImageOnce sync.Once
-
-func DefaultBuilderImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getBuilderImageOnce.Do(func() {
-		if tag == "latest" {
-			AssertNil(t, PullImage(DockerCli(t), fmt.Sprintf("packs/samples:%s", tag)))
-		}
-		AssertNil(t, DockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/samples:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/samples:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/samples:%s", registryPort, tag)
-}
-
 func CreateImageOnLocal(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string) {
 	ctx := context.Background()
 

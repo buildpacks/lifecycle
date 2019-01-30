@@ -28,11 +28,10 @@ import (
 var registryPort string
 
 func TestRemote(t *testing.T) {
-	t.Parallel()
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	dockerRegistry := h.NewDockerRegistry()
-	dockerRegistry.Start(t, false)
+	dockerRegistry.Start(t)
 	defer dockerRegistry.Stop(t)
 
 	registryPort = dockerRegistry.Port

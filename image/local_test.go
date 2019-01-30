@@ -29,11 +29,10 @@ import (
 var localTestRegistry *h.DockerRegistry
 
 func TestLocal(t *testing.T) {
-	t.Parallel()
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	localTestRegistry = h.NewDockerRegistry()
-	localTestRegistry.Start(t, false)
+	localTestRegistry.Start(t)
 	defer localTestRegistry.Stop(t)
 
 	spec.Run(t, "local", testLocal, spec.Parallel(), spec.Report(report.Terminal{}))
