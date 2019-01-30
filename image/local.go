@@ -19,6 +19,8 @@ import (
 	"github.com/docker/docker/api/types"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/term"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -42,7 +44,7 @@ type local struct {
 
 func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 	if pull {
-		if err := f.pullImage(f.Docker, repoName); err != nil {
+		if err := f.pullImage(f.Out, f.Docker, repoName); err != nil {
 			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
 		}
 	}
@@ -408,7 +410,7 @@ func (l *local) prevDownload() error {
 	return outerErr
 }
 
-func (f *Factory) pullImage(dockerCli *dockerclient.Client, ref string) error {
+func (f *Factory) pullImage(output io.Writer, dockerCli *dockerclient.Client, ref string) error {
 	regAuth, err := f.registryAuth(ref)
 	if err != nil {
 		return errors.Wrap(err, "auth for docker pull")
@@ -426,9 +428,13 @@ func (f *Factory) pullImage(dockerCli *dockerclient.Client, ref string) error {
 			return err
 		}
 	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+
+	termFd, isTerm := term.GetFdInfo(output)
+	err = jsonmessage.DisplayJSONMessagesStream(rc, output, termFd, isTerm, nil)
+	if err != nil {
 		return err
 	}
+
 	return rc.Close()
 }
 

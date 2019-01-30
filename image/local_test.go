@@ -1,8 +1,7 @@
-// +build image
-
 package image_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -27,9 +26,15 @@ import (
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
+var localTestRegistry *h.DockerRegistry
+
 func TestLocal(t *testing.T) {
-	t.Parallel()
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	localTestRegistry = h.NewDockerRegistry()
+	localTestRegistry.Start(t)
+	defer localTestRegistry.Stop(t)
+
 	spec.Run(t, "local", testLocal, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -45,6 +50,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		factory = image.Factory{
 			Docker:   dockerCli,
 			FS:       &fs.FS{},
+			Out:      ioutil.Discard,
 			Keychain: authn.DefaultKeychain,
 		}
 		repoName = "pack-image-test-" + h.RandString(10)
@@ -605,34 +611,80 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Found", func() {
-		when("it exists", func() {
+		when("pull from remote", func() {
 			it.Before(func() {
-				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+				repoName = "localhost:" + localTestRegistry.Port + "/pack-image-test-" + h.RandString(10)
+			})
+
+			when("it exists", func() {
+				var outBuf bytes.Buffer
+				it.Before(func() {
+					repoName = "localhost:" + localTestRegistry.Port + "/pack-image-test-" + h.RandString(10)
+					h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 				`, repoName))
+
+					factory.Out = &outBuf
+				})
+
+				it("returns true, nil", func() {
+					dockerImage, err := factory.NewLocal(repoName, true)
+					h.AssertNil(t, err)
+					exists, err := dockerImage.Found()
+
+					h.AssertNil(t, err)
+					h.AssertEq(t, exists, true)
+				})
+
+				it("retrieve image pull output", func() {
+					_, err := factory.NewLocal(repoName, true)
+					h.AssertNil(t, err)
+
+					h.Eventually(t, func() bool {
+						return strings.Contains(outBuf.String(), "Downloaded newer image for "+repoName)
+					}, 100*time.Millisecond, 10*time.Second)
+				})
 			})
 
-			it.After(func() {
-				h.DockerRmi(dockerCli, repoName)
-			})
-
-			it("returns true, nil", func() {
-				image, err := factory.NewLocal(repoName, false)
-				exists, err := image.Found()
-
-				h.AssertNil(t, err)
-				h.AssertEq(t, exists, true)
+			when("it does not exist", func() {
+				it("returns false, nil", func() {
+					_, err := factory.NewLocal(repoName, true)
+					h.AssertError(t, err, "not found")
+				})
 			})
 		})
 
-		when("it does not exist", func() {
-			it("returns false, nil", func() {
-				image, err := factory.NewLocal(repoName, false)
-				exists, err := image.Found()
+		when("no pull from remote", func() {
+			when("it exists", func() {
+				it.Before(func() {
+					h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM scratch
+					LABEL repo_name_for_randomisation=%s
+				`, repoName))
+				})
 
-				h.AssertNil(t, err)
-				h.AssertEq(t, exists, false)
+				it.After(func() {
+					h.DockerRmi(dockerCli, repoName)
+				})
+
+				it("returns true, nil", func() {
+					image, err := factory.NewLocal(repoName, false)
+					exists, err := image.Found()
+
+					h.AssertNil(t, err)
+					h.AssertEq(t, exists, true)
+				})
+			})
+
+			when("it does not exist", func() {
+				it("returns false, nil", func() {
+					image, err := factory.NewLocal(repoName, false)
+					exists, err := image.Found()
+
+					h.AssertNil(t, err)
+					h.AssertEq(t, exists, false)
+				})
 			})
 		})
 	})

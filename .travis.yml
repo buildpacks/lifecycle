@@ -11,15 +11,10 @@ jobs:
     - 1.11.x
     env:
     - GO111MODULE=on
-    - DOCKER_TLS_VERIFY=1
-    - secure: U0WHj8cs5dMFrfabxgmhl7Id6UL3+kELfIee7tREvBj3UKZl6iS2P6wA8oQkyvwLH1h+mO0QdTnQqwtH6cUnP1jNHG15loN3KM1504OB64UEv0AnOezrPZLhDQwBWT7T+Rw6iBjBWGUk9KdCuT5/JKlP46ZllRVuMphhtnJwGVggFL+W2ol6oL8qg1/pVT6HZNEwfsbBe3HH3EYw8mhvhM2WjscQKEjiNiIClKwO/IcJdZ0iCUSKvTk20nNIGOnIMfAXtmwMGJAB/nRmHDnzV3ijxyUsCPo6Ae2f/bJsU1The0gCItw9yAag6ckeeudPQtLLRlzZr/Z5l2Z05qWRr7v2BIIVDrs7lBYPUCkoJGy8azCTAnB3BdR0iv/w+6L/p5eK9rHxtW8zI+8rgswfxmAzZjAVDMuIDXXg/PUkK/g27UmzInUmf3gOJk9hItfYtT43hVqp0ZfFTZBtrwOjwVriHKl7o4jGwIkBWWr7UeFzASL0QE45e6yYxlobyuF/plww6ECe/tbGUrXRd52M01VWEqJqHqFZ3v/QUU7ZoYMYLZHAelXrQ9ymIFgBRiXCOCFrofzjMt8KgKEUHre++pBm6E9boUW3mcc6p9Wsi/Mh1cVjr/Fk3T0+4TqTm+Yo2yyabmOCQlRHubLRYcwOdJ9dkXBMIcS7IsQ6szG6kR8=
     go_import_path: github.com/buildpack/lifecycle
     script: |
-      openssl aes-256-cbc -K $encrypted_e607085e6307_key -iv $encrypted_e607085e6307_iv -in .travis/key.pem.enc -out .travis/key.pem -d
       test -z "$(bin/format | tee >(cat >&2))"
-      export DOCKER_CERT_PATH=$PWD/.travis/
-      go test -v ./...
-      go test -tags=image -v ./image/...
+      go test -v -parallel=1 -p=1 -count=1 ./...
   - stage: build and push images
     if: branch = master AND fork = false
     env:

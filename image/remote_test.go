@@ -1,5 +1,3 @@
-// +build image
-
 package image_test
 
 import (
@@ -30,11 +28,13 @@ import (
 var registryPort string
 
 func TestRemote(t *testing.T) {
-	t.Parallel()
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	registryPort = h.RunRegistry(t, false)
-	defer h.StopRegistry(t)
+	dockerRegistry := h.NewDockerRegistry()
+	dockerRegistry.Start(t)
+	defer dockerRegistry.Stop(t)
+
+	registryPort = dockerRegistry.Port
 
 	spec.Run(t, "remote", testRemote, spec.Sequential(), spec.Report(report.Terminal{}))
 }
