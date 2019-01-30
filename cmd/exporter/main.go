@@ -75,7 +75,7 @@ func export() error {
 		ArtifactsDir: artifactsDir,
 	}
 
-	factory, err := image.DefaultFactory()
+	factory, err := image.NewFactory(image.WithEnvKeychain, image.WithLegacyEnvKeychain)
 	if err != nil {
 		return err
 	}

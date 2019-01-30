@@ -18,6 +18,7 @@ import (
 	"time"
 
 	dockerClient "github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -48,8 +49,9 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		dockerCli = h.DockerCli(t)
 		h.AssertNil(t, err)
 		factory = image.Factory{
-			Docker: dockerCli,
-			FS:     &fs.FS{},
+			Docker:   dockerCli,
+			FS:       &fs.FS{},
+			Keychain: authn.DefaultKeychain,
 		}
 		repoName = "localhost:" + registryPort + "/pack-image-test-" + h.RandString(10)
 	})
