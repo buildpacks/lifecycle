@@ -1,13 +1,20 @@
+# github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
+github.com/Azure/go-ansiterm/winterm
+github.com/Azure/go-ansiterm
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.11
 github.com/Microsoft/go-winio
+# github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5
+github.com/Nvveen/Gotty
 # github.com/docker/distribution v2.7.0+incompatible
 github.com/docker/distribution/reference
 github.com/docker/distribution/digestset
 # github.com/docker/docker v0.7.3-0.20181027010111-b8e87cfdad8d
 github.com/docker/docker/api/types
 github.com/docker/docker/client
+github.com/docker/docker/pkg/jsonmessage
+github.com/docker/docker/pkg/term
 github.com/docker/docker/api/types/container
 github.com/docker/docker/api/types/filters
 github.com/docker/docker/api/types/mount
@@ -20,6 +27,7 @@ github.com/docker/docker/api/types/image
 github.com/docker/docker/api/types/time
 github.com/docker/docker/api/types/versions
 github.com/docker/docker/api/types/volume
+github.com/docker/docker/pkg/term/windows
 github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/strslice
 github.com/docker/docker/errdefs
@@ -53,6 +61,8 @@ github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/v1util
 github.com/google/go-containerregistry/pkg/v1/random
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
@@ -63,6 +73,10 @@ github.com/pkg/errors
 # github.com/sclevine/spec v1.0.0
 github.com/sclevine/spec
 github.com/sclevine/spec/report
+# github.com/sirupsen/logrus v1.2.0
+github.com/sirupsen/logrus
+# golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
+golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20181201002055-351d144fa1fc
 golang.org/x/net/proxy
 golang.org/x/net/context
@@ -70,4 +84,5 @@ golang.org/x/net/internal/socks
 # golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f
 golang.org/x/sync/errgroup
 # golang.org/x/sys v0.0.0-20181128092732-4ed8d59d0b35
+golang.org/x/sys/unix
 golang.org/x/sys/windows
