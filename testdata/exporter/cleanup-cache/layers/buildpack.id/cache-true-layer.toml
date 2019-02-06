@@ -1,5 +1,0 @@
-cache = true
-launch = true
-
-[metadata]
- layer2key = "layer2val"

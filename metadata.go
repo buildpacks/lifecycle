@@ -1,5 +1,12 @@
 package lifecycle
 
+import (
+	"encoding/json"
+	"log"
+
+	"github.com/buildpack/lifecycle/image"
+)
+
 const (
 	MetadataLabel = "io.buildpacks.lifecycle.metadata"
 )
@@ -50,4 +57,28 @@ func (m *AppImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
 		}
 	}
 	return BuildpackMetadata{}
+}
+
+func getMetadata(image image.Image, log *log.Logger) (AppImageMetadata, error) {
+	metadata := AppImageMetadata{}
+	if found, err := image.Found(); err != nil {
+		return metadata, err
+	} else if !found {
+		log.Printf("WARNING: image '%s' not found or requires authentication to access\n", image.Name())
+		return metadata, nil
+	}
+	label, err := image.Label(MetadataLabel)
+	if err != nil {
+		return metadata, err
+	}
+	if label == "" {
+		log.Printf("WARNING: image '%s' does not have '%s' label", image.Name(), MetadataLabel)
+		return metadata, nil
+	}
+
+	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
+		log.Printf("WARNING: image '%s' has incompatible '%s' label\n", image.Name(), MetadataLabel)
+		return metadata, nil
+	}
+	return metadata, nil
 }

@@ -5,14 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/fs"
@@ -39,7 +36,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 		return errors.Wrap(err, "get run image digest")
 	}
 
-	origMetadata, err := e.getImageMetadata(origImage)
+	origMetadata, err := getMetadata(origImage, e.Out)
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous image")
 	}
@@ -66,7 +63,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	}
 
 	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, bp.ID)
+		bpDir, err := readBuildpackLayersDir(layersDir, *bp)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
@@ -84,10 +81,6 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 				if err != nil {
 					return err
 				}
-
-				if err := layer.writeSha(lmd.SHA); err != nil {
-					return errors.Wrapf(err, "writing '%s' sha", layer.Identifier())
-				}
 			} else {
 				origLayerMetadata, ok := origMetadata.metadataForBuildpack(bp.ID).Layers[layer.name()]
 				if !ok {
@@ -98,24 +91,14 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 					return errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
 				}
 				lmd.SHA = origLayerMetadata.SHA
-
-				if err := layer.remove(); err != nil {
-					return errors.Wrapf(err, "removing layer: '%s'", layer.Identifier())
-				}
 			}
 			bpMD.Layers[layer.name()] = lmd
-		}
-
-		for _, layer := range bpDir.findLayers(nonCached) {
-			if err := layer.remove(); err != nil {
-				return errors.Wrapf(err, "removing non-cached layer: '%s'", layer.Identifier())
-			}
 		}
 
 		if malformedLayers := bpDir.findLayers(malformed); len(malformedLayers) > 0 {
 			ids := make([]string, 0, len(malformedLayers))
 			for _, ml := range malformedLayers {
-				ids = append(ids, ml.identifier)
+				ids = append(ids, ml.Identifier())
 			}
 			return fmt.Errorf("failed to parse metadata for layers '%s'", ids)
 		}
@@ -142,75 +125,25 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	if err := appImage.SetEmptyCmd(); err != nil {
 		return errors.Wrap(err, "setting cmd")
 	}
-	if err := e.cleanBuildpacksNotInGroup(layersDir); err != nil {
-		return errors.Wrap(err, "failed to cleanup layers dir")
-	}
 	_, err = appImage.Save()
 	return err
 }
 
 func (e *Exporter) addOrReuseLayer(image *loggingImage, layer identifiableLayer, previousSha string) (string, error) {
-	sha, err := e.exportTar(layer.Path())
+	tarPath := filepath.Join(e.ArtifactsDir, escape(layer.Identifier())+".tar")
+	sha, err := e.exportTar(layer.Path(), tarPath)
 	if err != nil {
 		return "", errors.Wrapf(err, "exporting layer '%s'", layer.Identifier())
 	}
 	if sha == previousSha {
 		return sha, image.ReuseLayer(layer.Identifier(), previousSha)
 	}
-	return sha, image.AddLayer(layer.Identifier(), sha, e.tarPath(sha))
+	return sha, image.AddLayer(layer.Identifier(), sha, tarPath)
 }
 
-func (e *Exporter) tarPath(sha string) string {
-	return filepath.Join(e.ArtifactsDir, strings.TrimPrefix(sha, "sha256:")+".tar")
-}
-
-func (e *Exporter) cleanBuildpacksNotInGroup(layersDir string) error {
-	fis, err := ioutil.ReadDir(layersDir)
-	if err != nil {
-		return err
-	}
-	for _, fi := range fis {
-		if e.groupContainsBuildpack(fi.Name()) {
-			continue
-		}
-
-		if err := os.RemoveAll(filepath.Join(layersDir, fi.Name())); err != nil {
-			return errors.Wrap(err, "failed to cleanup layers dir")
-		}
-	}
-	return nil
-}
-
-func (e *Exporter) groupContainsBuildpack(name string) bool {
-	for _, buildpack := range e.Buildpacks {
-		if name == buildpack.EscapedID() {
-			return true
-		}
-	}
-	return false
-}
-
-func (e *Exporter) getImageMetadata(image image.Image) (AppImageMetadata, error) {
-	var metadata AppImageMetadata
-	found, err := image.Found()
-	if err != nil {
-		return metadata, errors.Wrap(err, "looking for image")
-	}
-	if found {
-		label, err := image.Label(MetadataLabel)
-		if err != nil {
-			return metadata, errors.Wrap(err, "getting metadata")
-		}
-		if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-			return metadata, err
-		}
-	}
-	return metadata, nil
-}
-
-func (e *Exporter) exportTar(sourceDir string) (string, error) {
+func (e *Exporter) exportTar(sourceDir, dest string) (string, error) {
 	hasher := sha256.New()
-	f, err := ioutil.TempFile(e.ArtifactsDir, "tarfile")
+	f, err := os.Create(dest)
 	if err != nil {
 		return "", err
 	}
@@ -223,13 +156,5 @@ func (e *Exporter) exportTar(sourceDir string) (string, error) {
 		return "", err
 	}
 	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-
-	if err := f.Close(); err != nil {
-		return "", err
-	}
-	if err := os.Rename(f.Name(), filepath.Join(e.ArtifactsDir, sha+".tar")); err != nil {
-		return "", err
-	}
-
 	return "sha256:" + sha, nil
 }

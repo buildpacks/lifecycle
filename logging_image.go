@@ -1,9 +1,11 @@
 package lifecycle
 
 import (
-	"github.com/buildpack/lifecycle/image"
-	"github.com/pkg/errors"
 	"log"
+
+	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/image"
 )
 
 type loggingImage struct {

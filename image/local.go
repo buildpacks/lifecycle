@@ -18,6 +18,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/term"
@@ -62,6 +63,21 @@ func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 		FS:         f.FS,
 		prevOnce:   &sync.Once{},
 	}, nil
+}
+
+func (f *Factory) NewEmptyLocal(repoName string) Image {
+	inspect := dockertypes.ImageInspect{}
+	inspect.Config = &container.Config{
+		Labels: map[string]string{},
+	}
+	return &local{
+		RepoName:   repoName,
+		Docker:     f.Docker,
+		Inspect:    inspect,
+		layerPaths: []string{},
+		FS:         f.FS,
+		prevOnce:   &sync.Once{},
+	}
 }
 
 func (l *local) Label(key string) (string, error) {
@@ -205,6 +221,19 @@ func (l *local) TopLayer() (string, error) {
 	all := l.Inspect.RootFS.Layers
 	topLayer := all[len(all)-1]
 	return topLayer, nil
+}
+
+func (l *local) GetLayer(sha string) (io.ReadCloser, error) {
+	l.prevDownload()
+	layerID, ok := l.prevMap[sha]
+	if !ok {
+		return nil, fmt.Errorf("image '%s' does not contain layer with diff ID '%s'", l.RepoName, sha)
+	}
+	rc, err := os.Open(filepath.Join(l.prevDir, layerID))
+	if err != nil {
+		return nil, err
+	}
+	return rc, nil
 }
 
 func (l *local) AddLayer(path string) error {

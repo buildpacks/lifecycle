@@ -1,6 +1,7 @@
 package image_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
@@ -54,6 +55,17 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			Keychain: authn.DefaultKeychain,
 		}
 		repoName = "pack-image-test-" + h.RandString(10)
+	})
+
+	when("#NewEmptyLocal", func() {
+		it("returns a scratch image", func() {
+			img := factory.NewEmptyLocal(repoName)
+
+			t.Log("check that the empty image is useable image")
+			h.AssertNil(t, img.SetLabel("some-key", "some-val"))
+			_, err := img.Save()
+			h.AssertNil(t, err)
+		})
 	})
 
 	when("#label", func() {
@@ -502,6 +514,60 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			output, err = h.CopySingleFileFromImage(dockerCli, repoName, "new-layer.txt")
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, "new-layer")
+		})
+	})
+
+	when("#GetLayer", func() {
+		when("the layer exists", func() {
+			it.Before(func() {
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM busybox
+					LABEL repo_name_for_randomisation=%s
+					RUN mkdir /dir && echo -n file-contents > /dir/file.txt
+				`, repoName))
+			})
+
+			it("returns a layer tar", func() {
+				img, err := factory.NewLocal(repoName, false)
+				h.AssertNil(t, err)
+				topLayer, err := img.TopLayer()
+				h.AssertNil(t, err)
+				r, err := img.GetLayer(topLayer)
+				h.AssertNil(t, err)
+				tr := tar.NewReader(r)
+				header, err := tr.Next()
+				h.AssertNil(t, err)
+				h.AssertEq(t, header.Name, "dir/")
+				header, err = tr.Next()
+				h.AssertNil(t, err)
+				h.AssertEq(t, header.Name, "dir/file.txt")
+				contents := make([]byte, len("file-contents"), len("file-contents"))
+				_, err = tr.Read(contents)
+				if err != io.EOF {
+					t.Fatalf("expected end of file: %x", err)
+				}
+				h.AssertEq(t, string(contents), "file-contents")
+			})
+		})
+
+		when("the layer doesn't exist", func() {
+			it.Before(func() {
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM busybox
+					LABEL repo_name_for_randomisation=%s
+				`, repoName))
+			})
+
+			it("returns an error", func() {
+				img, err := factory.NewLocal(repoName, false)
+				h.AssertNil(t, err)
+				_, err = img.GetLayer("not-exist")
+				h.AssertError(
+					t,
+					err,
+					fmt.Sprintf("image '%s' does not contain layer with diff ID 'not-exist'", repoName),
+				)
+			})
 		})
 	})
 

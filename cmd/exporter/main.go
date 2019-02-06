@@ -42,7 +42,7 @@ func init() {
 func main() {
 	flag.Parse()
 	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRef == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "launchDir": layersDir}
+		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "layersDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)

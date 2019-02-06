@@ -1,0 +1,6 @@
+cache = true
+launch = true
+build = false
+
+[metadata]
+ cache-true-key = "cache-true-val"

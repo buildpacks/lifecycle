@@ -11,9 +11,10 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/golang/mock/gomock"
+
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/testmock"
-	"github.com/golang/mock/gomock"
 )
 
 func TestLauncher(t *testing.T) {
@@ -33,6 +34,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		env                 *testmock.MockBuildEnv
 		tmpDir              string
 		syscallExecArgsColl []syscallExecArgs
+		wd                  string
 	)
 
 	it.Before(func() {
@@ -68,9 +70,14 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				return nil
 			},
 		}
+		wd, err = os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	it.After(func() {
+		os.Chdir(wd) // restore the working dir after Launcher changes it
 		os.RemoveAll(tmpDir)
 		mockCtrl.Finish()
 	})

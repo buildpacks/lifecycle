@@ -1,0 +1,5 @@
+launch = true
+cache = true
+
+[metadata]
+ other-buildpack-key = "other-buildpack-val"

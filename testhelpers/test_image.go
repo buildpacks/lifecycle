@@ -3,12 +3,13 @@ package testhelpers
 import (
 	"archive/tar"
 	"fmt"
-	"github.com/buildpack/lifecycle/image"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/buildpack/lifecycle/image"
 )
 
 func NewFakeImage(t *testing.T, name, topLayerSha, digest string) *FakeImage {
@@ -21,6 +22,7 @@ func NewFakeImage(t *testing.T, name, topLayerSha, digest string) *FakeImage {
 		digest:       digest,
 		name:         name,
 		cmd:          []string{"initialCMD"},
+		layersMap:    map[string]string{},
 	}
 }
 
@@ -28,6 +30,7 @@ type FakeImage struct {
 	t            *testing.T
 	alreadySaved bool
 	layers       []string
+	layersMap    map[string]string
 	reusedLayers []string
 	labels       map[string]string
 	env          map[string]string
@@ -94,8 +97,17 @@ func (f *FakeImage) TopLayer() (string, error) {
 func (f *FakeImage) AddLayer(path string) error {
 	f.assertNotAlreadySaved()
 
+	f.layersMap["sha256:"+ComputeSHA256ForFile(f.t, path)] = path
 	f.layers = append(f.layers, path)
 	return nil
+}
+
+func (f *FakeImage) GetLayer(sha string) (io.ReadCloser, error) {
+	path, ok := f.layersMap[sha]
+	if !ok {
+		f.t.Fatalf("failed to get layer with sha '%s'", sha)
+	}
+	return os.Open(path)
 }
 
 func (f *FakeImage) ReuseLayer(sha string) error {
@@ -115,7 +127,7 @@ func (FakeImage) Found() (bool, error) {
 	return true, nil
 }
 
-//test methods
+// test methods
 
 func (f *FakeImage) AppLayerPath() string {
 	return f.layers[0]
@@ -140,7 +152,7 @@ func (f *FakeImage) ReusedLayers() []string {
 func (f *FakeImage) FindLayerWithPath(path string) string {
 	f.t.Helper()
 
-	for _, tarPath := range f.layers {
+	for _, tarPath := range f.layersMap {
 
 		r, _ := os.Open(tarPath)
 		defer r.Close()
@@ -189,7 +201,7 @@ func (f *FakeImage) tarContents() string {
 	return strBuilder.String()
 }
 
-func (f *FakeImage) NumberOfLayers() int {
+func (f *FakeImage) NumberOfAddedLayers() int {
 	return len(f.layers)
 }
 

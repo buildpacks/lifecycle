@@ -1,3 +1,0 @@
-[[processes]]
-  type = "web"
-  command = "npm start"
