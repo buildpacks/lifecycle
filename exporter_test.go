@@ -570,7 +570,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is an invalid layer.toml", func() {
 			var (
-				nonExistingOriginalImage image.Image
+				mockNonExistingOriginalImage *testmock.MockImage
 			)
 
 			it.Before(func() {
@@ -579,21 +579,54 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "bad-layer", "layers", "app"))
 				h.AssertNil(t, err)
 
-				mockNonExistingOriginalImage := testmock.NewMockImage(gomock.NewController(t))
-
+				mockNonExistingOriginalImage = testmock.NewMockImage(gomock.NewController(t))
 				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name").AnyTimes()
 				mockNonExistingOriginalImage.EXPECT().Found().Return(false, nil)
 				mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 					Return("", errors.New("not exist")).AnyTimes()
-
-				nonExistingOriginalImage = mockNonExistingOriginalImage
 			})
 
 			it("returns an error", func() {
 				h.AssertError(
 					t,
-					exporter.Export(layersDir, appDir, fakeRunImage, nonExistingOriginalImage, launcherPath),
+					exporter.Export(layersDir, appDir, fakeRunImage, mockNonExistingOriginalImage, launcherPath),
 					"failed to parse metadata for layers '[buildpack.id:bad-layer]'",
+				)
+			})
+		})
+
+		when("there is a launch=true cache=true layer without contents", func() {
+			var (
+				fakeOriginalImage *h.FakeImage
+			)
+
+			it.Before(func() {
+				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "cache-layer-no-contents", "layers"), layersDir)
+				var err error
+				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "cache-layer-no-contents", "layers", "app"))
+				h.AssertNil(t, err)
+
+				fakeOriginalImage = h.NewFakeImage(t, "app/original-Image-Name", "original-top-layer-sha", "some-original-run-image-digest")
+				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{
+  "buildpacks": [
+    {
+      "key": "buildpack.id",
+      "layers": {
+        "cache-layer-no-contents": {
+          "sha": "some-sha",
+          "cache": true
+        }
+      }
+    }
+  ]
+}`)
+			})
+
+			it("returns an error", func() {
+				h.AssertError(
+					t,
+					exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath),
+					"layer 'buildpack.id:cache-layer-no-contents' is cache=true but has no contents",
 				)
 			})
 		})

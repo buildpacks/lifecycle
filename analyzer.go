@@ -52,12 +52,11 @@ func (a *Analyzer) Analyze(image image.Image) error {
 				if err := cachedLayer.writeMetadata(metadataLayers); err != nil {
 					return err
 				}
-				delete(metadataLayers, cachedLayer.name())
 			}
 		}
 
 		for lmd, data := range metadataLayers {
-			if !data.Build {
+			if !data.Build && !data.Cache {
 				layer := cache.newBPLayer(lmd)
 				a.Out.Printf("writing metadata for uncached layer '%s'", layer.Identifier())
 				if err := layer.writeMetadata(metadataLayers); err != nil {
@@ -67,12 +66,4 @@ func (a *Analyzer) Analyze(image image.Image) error {
 		}
 	}
 	return nil
-}
-
-func (a *Analyzer) buildpacks() map[string]struct{} {
-	buildpacks := make(map[string]struct{}, len(a.Buildpacks))
-	for _, b := range a.Buildpacks {
-		buildpacks[b.ID] = struct{}{}
-	}
-	return buildpacks
 }

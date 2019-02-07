@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -50,6 +51,9 @@ func (c *Cacher) Cache(layersDir string, oldCacheImage, newCacheImage image.Imag
 			Layers:  map[string]LayerMetadata{},
 		}
 		for _, l := range bpDir.findLayers(cached) {
+			if !l.hasLocalContents() {
+				return fmt.Errorf("failed to cache layer '%s' because it has no contents", l.Identifier())
+			}
 			metadata, err := l.read()
 			if err != nil {
 				return err

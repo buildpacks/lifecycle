@@ -82,6 +82,9 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 					return err
 				}
 			} else {
+				if lmd.Cache {
+					return fmt.Errorf("layer '%s' is cache=true but has no contents", layer.Identifier())
+				}
 				origLayerMetadata, ok := origMetadata.metadataForBuildpack(bp.ID).Layers[layer.name()]
 				if !ok {
 					return fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())

@@ -112,6 +112,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
           "sha": "new-launch-build-sha",
           "build": true,
           "launch": true
+        },
+        "launch-cache": {
+          "data": {
+            "some": "metadata"
+          },
+          "sha": "launch-cache-sha",
+          "cache": true,
+          "launch": true
         }
       }
     },
@@ -177,6 +185,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						}
 						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack/stale-launch-build.toml")); !os.IsNotExist(err) {
 							t.Fatalf("Found unexpected metadata for stale-launch-build layer")
+						}
+					})
+				})
+
+				when("there is a cache=true layer in the metadata but not in the cache", func() {
+					it("should not restore the metadata", func() {
+						if err := analyzer.Analyze(image); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack/launch-cache.toml")); !os.IsNotExist(err) {
+							t.Fatalf("Found unexpected metadata for launch-cache layer")
 						}
 					})
 				})
