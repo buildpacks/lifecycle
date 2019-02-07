@@ -20,7 +20,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle/fs"
 	"github.com/buildpack/lifecycle/image"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -50,7 +49,6 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		factory = image.Factory{
 			Docker:   dockerCli,
-			FS:       &fs.FS{},
 			Keychain: authn.DefaultKeychain,
 		}
 		repoName = "localhost:" + registryPort + "/pack-image-test-" + h.RandString(10)
@@ -385,7 +383,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer > old-layer.txt
 				`, repoName))
-			tr, err := (&fs.FS{}).CreateSingleFileTar("/new-layer.txt", "new-layer")
+			tr, err := h.CreateSingleFileTar("/new-layer.txt", "new-layer")
 			h.AssertNil(t, err)
 			tarFile, err := ioutil.TempFile("", "add-layer-test")
 			h.AssertNil(t, err)

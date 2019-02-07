@@ -3,7 +3,7 @@ package lifecycle
 import (
 	"log"
 
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/image"
 )
 
@@ -22,7 +22,6 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 	if err != nil {
 		return err
 	}
-	archiver := &fs.FS{}
 	for _, bp := range r.Buildpacks {
 		layersDir, err := readBuildpackLayersDir(r.LayersDir, *bp)
 		if err != nil {
@@ -49,7 +48,7 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 				return err
 			}
 			defer rc.Close()
-			if err := archiver.Untar(rc, "/"); err != nil {
+			if err := archive.Untar(rc, "/"); err != nil {
 				return err
 			}
 		}

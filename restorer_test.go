@@ -13,7 +13,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/image"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -131,14 +131,14 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				            "cache-only-key": "cache-only-val"
 				          },
 				          "cache": true,
-				          "sha": "sha256:%s"
+				          "sha": "%s"
 				        },
                         "cache-false": {
 				          "data": {
 				            "cache-false-key": "cache-false-val"
 				          },
 				          "cache": false,
-				          "sha": "sha256:%s"
+				          "sha": "%s"
 				        },
 						"cache-launch": {
 				          "data": {
@@ -146,7 +146,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				          },
 				          "cache": true,
 						  "launch": true,
-				          "sha": "sha256:%s"
+				          "sha": "%s"
 				        }
 				      }
 				    }, {
@@ -157,7 +157,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				            "no-group-key": "no-group-val"
 				          },
 				          "cache": true,
-				          "sha": "sha256:%s"
+				          "sha": "%s"
 				        }
 				      }
                     }, {
@@ -168,7 +168,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				            "escaped-bp-key": "escaped-bp-val"
 				          },
 				          "cache": true,
-				          "sha": "sha256:%s"
+				          "sha": "%s"
 				        }
 				      }
 					}
@@ -217,8 +217,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 				if sha, err := ioutil.ReadFile(filepath.Join(layersDir, "buildpack.id", "cache-launch.sha")); err != nil {
 					t.Fatalf("failed to read cache-launch.sha: %s", err)
-				} else if string(sha) != "sha256:"+cacheLaunchLayerSHA {
-					t.Fatalf(`Error: expected '%s' to be equal to 'sha256:%s'`, sha, cacheLaunchLayerSHA)
+				} else if string(sha) != cacheLaunchLayerSHA {
+					t.Fatalf(`Error: expected '%s' to be equal to '%s'`, sha, cacheLaunchLayerSHA)
 				}
 			})
 
@@ -264,12 +264,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 func addLayerFromPath(t *testing.T, tarTempDir string, layerPath string, cacheImage *h.FakeImage) string {
 	t.Helper()
 	tarPath := filepath.Join(tarTempDir, h.RandString(10)+".tar")
-	cacheOnlyLayerTarFile, err := os.Create(tarPath)
+	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0)
 	h.AssertNil(t, err)
-	err = (&fs.FS{}).
-		WriteTarArchive(cacheOnlyLayerTarFile, layerPath, 0, 0)
-	h.AssertNil(t, err)
-	sha := h.ComputeSHA256ForFile(t, tarPath)
 	h.AssertNil(t, cacheImage.AddLayer(tarPath))
 	return sha
 }

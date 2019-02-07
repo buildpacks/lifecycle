@@ -25,7 +25,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/image/auth"
 )
 
@@ -35,7 +35,6 @@ type local struct {
 	Inspect          types.ImageInspect
 	layerPaths       []string
 	Stdout           io.Writer
-	FS               *fs.FS
 	currentTempImage string
 	prevDir          string
 	prevMap          map[string]string
@@ -60,7 +59,6 @@ func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 		RepoName:   repoName,
 		Inspect:    inspect,
 		layerPaths: make([]string, len(inspect.RootFS.Layers)),
-		FS:         f.FS,
 		prevOnce:   &sync.Once{},
 	}, nil
 }
@@ -75,7 +73,6 @@ func (f *Factory) NewEmptyLocal(repoName string) Image {
 		Docker:     f.Docker,
 		Inspect:    inspect,
 		layerPaths: []string{},
-		FS:         f.FS,
 		prevOnce:   &sync.Once{},
 	}
 }
@@ -310,7 +307,7 @@ func (l *local) Save() (string, error) {
 		return "", err
 	}
 	imgID := fmt.Sprintf("%x", sha256.Sum256(formatted))
-	if err := l.FS.AddTextToTar(tw, imgID+".json", formatted); err != nil {
+	if err := archive.AddTextToTar(tw, imgID+".json", formatted); err != nil {
 		return "", err
 	}
 
@@ -326,7 +323,7 @@ func (l *local) Save() (string, error) {
 			return "", err
 		}
 		defer f.Close()
-		if err := l.FS.AddFileToTar(tw, layerName, f); err != nil {
+		if err := archive.AddFileToTar(tw, layerName, f); err != nil {
 			return "", err
 		}
 		f.Close()
@@ -344,7 +341,7 @@ func (l *local) Save() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := l.FS.AddTextToTar(tw, "manifest.json", formatted); err != nil {
+	if err := archive.AddTextToTar(tw, "manifest.json", formatted); err != nil {
 		return "", err
 	}
 
@@ -380,7 +377,7 @@ func (l *local) prevDownload() error {
 			return
 		}
 
-		err = l.FS.Untar(tarFile, l.prevDir)
+		err = archive.Untar(tarFile, l.prevDir)
 		if err != nil {
 			outerErr = err
 			return

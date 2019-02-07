@@ -25,7 +25,7 @@ import (
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/archive"
 )
 
 func RandString(n int) string {
@@ -116,7 +116,7 @@ var getBuildImageOnce sync.Once
 func CreateImageOnLocal(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string) {
 	ctx := context.Background()
 
-	buildContext, err := (&fs.FS{}).CreateSingleFileTar("Dockerfile", dockerFile)
+	buildContext, err := CreateSingleFileTar("Dockerfile", dockerFile)
 	AssertNil(t, err)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
@@ -290,7 +290,7 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 
 func ComputeSHA256ForPath(t *testing.T, path string, uid int, guid int) string {
 	hasher := sha256.New()
-	err := (&fs.FS{}).WriteTarArchive(hasher, path, uid, guid)
+	err := archive.WriteTarArchive(hasher, path, uid, guid)
 	AssertNil(t, err)
 	layer5sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 	return layer5sha
@@ -325,4 +325,19 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 	AssertNil(t, err)
 	err = os.Chmod(dst, 0775)
 	AssertNil(t, err)
+}
+
+func CreateSingleFileTar(path, txt string) (io.Reader, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
+		return nil, err
+	}
+	if _, err := tw.Write([]byte(txt)); err != nil {
+		return nil, err
+	}
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(buf.Bytes()), nil
 }

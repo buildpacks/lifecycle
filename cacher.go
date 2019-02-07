@@ -1,20 +1,14 @@
 package lifecycle
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/image"
 )
 
@@ -78,42 +72,13 @@ func (c *Cacher) Cache(layersDir string, oldCacheImage, newCacheImage image.Imag
 }
 
 func (c *Cacher) addOrReuseLayer(image *loggingImage, layer bpLayer, previousSHA string) (string, error) {
-	sha, err := c.exportTar(layer.Path())
+	tarPath := filepath.Join(c.ArtifactsDir, escape(layer.Identifier())+".tar")
+	sha, err := archive.WriteTarFile(layer.Path(), tarPath, c.UID, c.GID)
 	if err != nil {
-		return "", errors.Wrapf(err, "exporting layer '%s'", layer.Identifier())
+		return "", errors.Wrapf(err, "caching layer '%s'", layer.Identifier())
 	}
 	if sha == previousSHA {
 		return sha, image.ReuseLayer(layer.Identifier(), previousSHA)
 	}
-	return sha, image.AddLayer(layer.Identifier(), sha, c.tarPath(sha))
-}
-
-func (c *Cacher) exportTar(sourceDir string) (string, error) {
-	hasher := sha256.New()
-	f, err := ioutil.TempFile(c.ArtifactsDir, "tarfile")
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	w := io.MultiWriter(hasher, f)
-
-	fs := &fs.FS{}
-	err = fs.WriteTarArchive(w, sourceDir, c.UID, c.GID)
-	if err != nil {
-		return "", err
-	}
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-
-	if err := f.Close(); err != nil {
-		return "", err
-	}
-	if err := os.Rename(f.Name(), filepath.Join(c.ArtifactsDir, sha+".tar")); err != nil {
-		return "", err
-	}
-
-	return "sha256:" + sha, nil
-}
-
-func (c *Cacher) tarPath(sha string) string {
-	return filepath.Join(c.ArtifactsDir, strings.TrimPrefix(sha, "sha256:")+".tar")
+	return sha, image.AddLayer(layer.Identifier(), sha, tarPath)
 }
