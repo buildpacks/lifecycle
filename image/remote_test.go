@@ -493,13 +493,15 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Save", func() {
 		when("image exists", func() {
-			it("returns the image digest", func() {
+			it.Before(func() {
 				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=oldValue
 				`, repoName))
+			})
 
+			it("returns the image digest", func() {
 				img, err := factory.NewRemote(repoName)
 				h.AssertNil(t, err)
 
@@ -513,6 +515,34 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				label := remoteLabel(t, dockerCli, repoName+"@"+imgDigest, "mykey")
 				h.AssertEq(t, "newValue", label)
 
+			})
+
+			it("updates the createdAt time", func() {
+				h.AssertNil(t, h.PullImage(dockerCli, repoName))
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+				h.AssertNil(t, err)
+
+				originalCreatedAtTime := inspect.Created
+
+				img, err := factory.NewRemote(repoName)
+				h.AssertNil(t, err)
+
+				_, err = img.Save()
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, h.PullImage(dockerCli, repoName))
+				inspect, _, err = dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+				h.AssertNil(t, err)
+
+				originalTime, err := time.Parse(time.RFC3339Nano, originalCreatedAtTime)
+				h.AssertNil(t, err)
+
+				newTime, err := time.Parse(time.RFC3339Nano, inspect.Created)
+				h.AssertNil(t, err)
+
+				if !originalTime.Before(newTime) {
+					t.Fatalf("the new createdAt time %s was not after the original createdAt time %s", inspect.Created, originalCreatedAtTime)
+				}
 			})
 		})
 	})

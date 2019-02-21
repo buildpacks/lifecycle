@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1"
@@ -243,6 +244,11 @@ func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
 
 func (r *remote) Save() (string, error) {
 	ref, auth, err := auth.ReferenceForRepoName(r.keychain, r.RepoName)
+	if err != nil {
+		return "", err
+	}
+
+	r.Image, err = mutate.CreatedAt(r.Image, v1.Time{Time: time.Now()})
 	if err != nil {
 		return "", err
 	}
