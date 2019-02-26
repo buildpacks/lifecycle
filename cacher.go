@@ -25,12 +25,12 @@ func (c *Cacher) Cache(layersDir string, oldCacheImage, newCacheImage image.Imag
 		image: newCacheImage,
 	}
 
-	origMetadata, err := getMetadata(oldCacheImage, c.Out)
+	origMetadata, err := getAppMetadata(oldCacheImage, c.Out)
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous image")
 	}
 
-	newMetadata := AppImageMetadata{
+	newMetadata := CacheImageMetadata{
 		Buildpacks: []BuildpackMetadata{},
 	}
 
@@ -64,7 +64,7 @@ func (c *Cacher) Cache(layersDir string, oldCacheImage, newCacheImage image.Imag
 	if err != nil {
 		return errors.Wrap(err, "marshall metadata")
 	}
-	if err := loggingCacheImage.SetLabel(MetadataLabel, string(data)); err != nil {
+	if err := loggingCacheImage.SetLabel(CacheMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 	_, err = loggingCacheImage.Save()

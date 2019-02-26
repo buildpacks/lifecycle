@@ -111,10 +111,10 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 					err := cacher.Cache(layersDir, mockNonExistingOriginalImage, cacheImage)
 					h.AssertNil(t, err)
 
-					metadataJSON, err := cacheImage.Label("io.buildpacks.lifecycle.metadata")
+					metadataJSON, err := cacheImage.Label("io.buildpacks.lifecycle.cache.metadata")
 					h.AssertNil(t, err)
 
-					var metadata lifecycle.AppImageMetadata
+					var metadata lifecycle.CacheImageMetadata
 					if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
@@ -193,10 +193,10 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 						err := cacher.Cache(layersDir, fakeOriginalImage, cacheImage)
 						h.AssertNil(t, err)
 
-						metadataJSON, err := cacheImage.Label("io.buildpacks.lifecycle.metadata")
+						metadataJSON, err := cacheImage.Label("io.buildpacks.lifecycle.cache.metadata")
 						h.AssertNil(t, err)
 
-						var metadata lifecycle.AppImageMetadata
+						var metadata lifecycle.CacheImageMetadata
 						if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
 							t.Fatalf("badly formatted metadata: %s", err)
 						}

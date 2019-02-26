@@ -15,7 +15,7 @@ type Analyzer struct {
 }
 
 func (a *Analyzer) Analyze(image image.Image) error {
-	metadata, err := getMetadata(image, a.Out)
+	metadata, err := getAppMetadata(image, a.Out)
 	if err != nil {
 		return err
 	}

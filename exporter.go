@@ -33,7 +33,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 		return errors.Wrap(err, "get run image digest")
 	}
 
-	origMetadata, err := getMetadata(origImage, e.Out)
+	origMetadata, err := getAppMetadata(origImage, e.Out)
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous image")
 	}

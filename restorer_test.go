@@ -121,7 +121,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.RemoveAll(layersDir))
 				h.AssertNil(t, os.Mkdir(layersDir, 0777))
 
-				cacheImage.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{
+				cacheImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", fmt.Sprintf(`{
 				  "buildpacks": [
 				    {
 				      "key": "buildpack.id",

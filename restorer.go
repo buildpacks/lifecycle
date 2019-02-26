@@ -25,7 +25,7 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 		r.Out.Printf("cache image '%s' not found, nothing to restore", cacheImage.Name())
 		return nil
 	}
-	metadata, err := getMetadata(cacheImage, r.Out)
+	metadata, err := getCacheMetadata(cacheImage, r.Out)
 	if err != nil {
 		return err
 	}
