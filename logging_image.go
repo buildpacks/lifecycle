@@ -52,6 +52,5 @@ func (li *loggingImage) SetEmptyCmd() error {
 func (li *loggingImage) Save() (string, error) {
 	li.Out.Println("writing image")
 	sha, err := li.image.Save()
-	li.Out.Printf("\n*** Image: %s@%s\n", li.image.Name(), sha)
 	return sha, err
 }

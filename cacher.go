@@ -67,7 +67,10 @@ func (c *Cacher) Cache(layersDir string, oldCacheImage, newCacheImage image.Imag
 	if err := loggingCacheImage.SetLabel(CacheMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
-	_, err = loggingCacheImage.Save()
+	sha, err := loggingCacheImage.Save()
+	if err == nil {
+		c.Out.Printf("cache '%s@%s'", newCacheImage.Name(), sha)
+	}
 	return err
 }
 

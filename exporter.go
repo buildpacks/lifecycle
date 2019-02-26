@@ -125,7 +125,11 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	if err := appImage.SetEmptyCmd(); err != nil {
 		return errors.Wrap(err, "setting cmd")
 	}
-	_, err = appImage.Save()
+
+	sha, err := appImage.Save()
+	if err == nil {
+		e.Out.Printf("\n*** Image: %s@%s\n", runImage.Name(), sha)
+	}
 	return err
 }
 
