@@ -24,6 +24,7 @@ var (
 
 func init() {
 	cmd.FlagLayersDir(&layersDir)
+	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
@@ -31,11 +32,13 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" {
+	if flag.NArg() > 0 {
 		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
-	cacheImageTag = flag.Arg(0)
+	if cacheImageTag == "" {
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "-image flag is required"))
+	}
 	cmd.Exit(cache())
 }
 
