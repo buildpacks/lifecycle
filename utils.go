@@ -20,6 +20,6 @@ func WriteTOML(path string, data interface{}) error {
 	return toml.NewEncoder(f).Encode(data)
 }
 
-func escape(id string) string {
+func escapeIdentifier(id string) string {
 	return strings.Replace(id, "/", "_", -1)
 }
