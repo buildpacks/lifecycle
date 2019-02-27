@@ -3,12 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/BurntSushi/toml"
+
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
-	"log"
-	"os"
 )
 
 var (

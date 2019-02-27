@@ -40,22 +40,7 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 				continue
 			}
 
-			bpLayer := layersDir.newBPLayer(name)
-			r.Out.Printf("restoring cached layer '%s'", bpLayer.Identifier())
-			if err := bpLayer.writeMetadata(bpMD.Layers); err != nil {
-				return err
-			}
-			if layer.Launch {
-				if err := bpLayer.writeSha(layer.SHA); err != nil {
-					return err
-				}
-			}
-			rc, err := cacheImage.GetLayer(layer.SHA)
-			if err != nil {
-				return err
-			}
-			defer rc.Close()
-			if err := archive.Untar(rc, "/"); err != nil {
+			if err := r.restoreLayer(name, bpMD, layer, layersDir, cacheImage); err != nil {
 				return err
 			}
 		}
@@ -80,18 +65,45 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 	return nil
 }
 
+func (r *Restorer) restoreLayer(name string, bpMD BuildpackMetadata, layer LayerMetadata, layersDir bpLayersDir, cacheImage image.Image) error {
+	bpLayer := layersDir.newBPLayer(name)
+
+	r.Out.Printf("restoring cached layer '%s'", bpLayer.Identifier())
+	if err := bpLayer.writeMetadata(bpMD.Layers); err != nil {
+		return err
+	}
+
+	if layer.Launch {
+		if err := bpLayer.writeSha(layer.SHA); err != nil {
+			return err
+		}
+	}
+
+	rc, err := cacheImage.GetLayer(layer.SHA)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	return archive.Untar(rc, "/")
+}
+
 func recursiveChown(path string, uid, gid int) error {
 	fis, err := ioutil.ReadDir(path)
 	if err != nil {
 		return err
 	}
+	if err := os.Chown(path, uid, gid); err != nil {
+		return err
+	}
 	for _, fi := range fis {
-		path := filepath.Join(path, fi.Name())
-		if err := os.Chown(path, uid, gid); err != nil {
-			return err
-		}
+		filePath := filepath.Join(path, fi.Name())
 		if fi.IsDir() {
-			if err := recursiveChown(path, uid, gid); err != nil {
+			if err := recursiveChown(filePath, uid, gid); err != nil {
+				return err
+			}
+		} else {
+			if err := os.Chown(filePath, uid, gid); err != nil {
 				return err
 			}
 		}

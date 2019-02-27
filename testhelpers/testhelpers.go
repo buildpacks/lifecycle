@@ -330,7 +330,7 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 func CreateSingleFileTar(path, txt string) (io.Reader, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0644}); err != nil {
 		return nil, err
 	}
 	if _, err := tw.Write([]byte(txt)); err != nil {

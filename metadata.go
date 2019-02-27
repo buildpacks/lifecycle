@@ -82,7 +82,7 @@ func getAppMetadata(image image.Image, log *log.Logger) (AppImageMetadata, error
 
 	if err := json.Unmarshal([]byte(contents), &metadata); err != nil {
 		log.Printf("WARNING: image '%s' has incompatible '%s' label\n", image.Name(), MetadataLabel)
-		return metadata, nil
+		return AppImageMetadata{}, nil
 	}
 	return metadata, nil
 }
@@ -96,7 +96,7 @@ func getCacheMetadata(image image.Image, log *log.Logger) (CacheImageMetadata, e
 
 	if err := json.Unmarshal([]byte(contents), &metadata); err != nil {
 		log.Printf("WARNING: image '%s' has incompatible '%s' label\n", image.Name(), CacheMetadataLabel)
-		return metadata, nil
+		return CacheImageMetadata{}, nil
 	}
 	return metadata, nil
 }
@@ -114,7 +114,7 @@ func getMetadata(image image.Image, metadataLabel string, log *log.Logger) (stri
 	}
 	if contents == "" {
 		log.Printf("WARNING: image '%s' does not have '%s' label", image.Name(), metadataLabel)
-		return "metadata", nil
+		return "", nil
 	}
 	return contents, nil
 }

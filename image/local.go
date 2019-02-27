@@ -72,7 +72,6 @@ func (f *Factory) NewEmptyLocal(repoName string) Image {
 		RepoName:   repoName,
 		Docker:     f.Docker,
 		Inspect:    inspect,
-		layerPaths: []string{},
 		prevOnce:   &sync.Once{},
 	}
 }
@@ -226,11 +225,7 @@ func (l *local) GetLayer(sha string) (io.ReadCloser, error) {
 	if !ok {
 		return nil, fmt.Errorf("image '%s' does not contain layer with diff ID '%s'", l.RepoName, sha)
 	}
-	rc, err := os.Open(filepath.Join(l.prevDir, layerID))
-	if err != nil {
-		return nil, err
-	}
-	return rc, nil
+	return os.Open(filepath.Join(l.prevDir, layerID))
 }
 
 func (l *local) AddLayer(path string) error {
