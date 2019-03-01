@@ -70,7 +70,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
-		bpMD := BuildpackMetadata{ID: bp.ID, Layers: map[string]LayerMetadata{}}
+		bpMD := BuildpackMetadata{ID: bp.ID, Version: bp.Version, Layers: map[string]LayerMetadata{}}
 
 		for _, layer := range bpDir.findLayers(launch) {
 			lmd, err := layer.read()
