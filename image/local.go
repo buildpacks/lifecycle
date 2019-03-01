@@ -18,13 +18,14 @@ import (
 
 	"github.com/docker/docker/api/types"
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/term"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/image/auth"
 )
 
@@ -34,7 +35,6 @@ type local struct {
 	Inspect          types.ImageInspect
 	layerPaths       []string
 	Stdout           io.Writer
-	FS               *fs.FS
 	currentTempImage string
 	prevDir          string
 	prevMap          map[string]string
@@ -59,9 +59,21 @@ func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 		RepoName:   repoName,
 		Inspect:    inspect,
 		layerPaths: make([]string, len(inspect.RootFS.Layers)),
-		FS:         f.FS,
 		prevOnce:   &sync.Once{},
 	}, nil
+}
+
+func (f *Factory) NewEmptyLocal(repoName string) Image {
+	inspect := dockertypes.ImageInspect{}
+	inspect.Config = &container.Config{
+		Labels: map[string]string{},
+	}
+	return &local{
+		RepoName:   repoName,
+		Docker:     f.Docker,
+		Inspect:    inspect,
+		prevOnce:   &sync.Once{},
+	}
 }
 
 func (l *local) Label(key string) (string, error) {
@@ -207,6 +219,15 @@ func (l *local) TopLayer() (string, error) {
 	return topLayer, nil
 }
 
+func (l *local) GetLayer(sha string) (io.ReadCloser, error) {
+	l.prevDownload()
+	layerID, ok := l.prevMap[sha]
+	if !ok {
+		return nil, fmt.Errorf("image '%s' does not contain layer with diff ID '%s'", l.RepoName, sha)
+	}
+	return os.Open(filepath.Join(l.prevDir, layerID))
+}
+
 func (l *local) AddLayer(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -281,7 +302,7 @@ func (l *local) Save() (string, error) {
 		return "", err
 	}
 	imgID := fmt.Sprintf("%x", sha256.Sum256(formatted))
-	if err := l.FS.AddTextToTar(tw, imgID+".json", formatted); err != nil {
+	if err := archive.AddTextToTar(tw, imgID+".json", formatted); err != nil {
 		return "", err
 	}
 
@@ -297,7 +318,7 @@ func (l *local) Save() (string, error) {
 			return "", err
 		}
 		defer f.Close()
-		if err := l.FS.AddFileToTar(tw, layerName, f); err != nil {
+		if err := archive.AddFileToTar(tw, layerName, f); err != nil {
 			return "", err
 		}
 		f.Close()
@@ -315,7 +336,7 @@ func (l *local) Save() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := l.FS.AddTextToTar(tw, "manifest.json", formatted); err != nil {
+	if err := archive.AddTextToTar(tw, "manifest.json", formatted); err != nil {
 		return "", err
 	}
 
@@ -351,7 +372,7 @@ func (l *local) prevDownload() error {
 			return
 		}
 
-		err = l.FS.Untar(tarFile, l.prevDir)
+		err = archive.Untar(tarFile, l.prevDir)
 		if err != nil {
 			outerErr = err
 			return

@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -113,6 +112,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
           "sha": "new-launch-build-sha",
           "build": true,
           "launch": true
+        },
+        "launch-cache": {
+          "data": {
+            "some": "metadata"
+          },
+          "sha": "launch-cache-sha",
+          "cache": true,
+          "launch": true
         }
       }
     },
@@ -178,6 +185,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						}
 						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack/stale-launch-build.toml")); !os.IsNotExist(err) {
 							t.Fatalf("Found unexpected metadata for stale-launch-build layer")
+						}
+					})
+				})
+
+				when("there is a cache=true layer in the metadata but not in the cache", func() {
+					it("should not restore the metadata", func() {
+						if err := analyzer.Analyze(image); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack/launch-cache.toml")); !os.IsNotExist(err) {
+							t.Fatalf("Found unexpected metadata for launch-cache layer")
 						}
 					})
 				})
@@ -361,20 +379,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("there are cached layers for a buildpack that is missing from the group", func() {
-					it("removes all the layers", func() {
-						// copy to layerDir
-						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
-
-						if err := analyzer.Analyze(image); err != nil {
-							t.Fatalf("Error: %s\n", err)
-						}
-
-						var err error
-						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "not.in.group.buildpack")); !os.IsNotExist(err) {
-							t.Fatalf("Found not.in.group.buildpack dir, it should not exist")
-						}
-					})
-
 					it("does not remove app layers", func() {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
@@ -467,9 +471,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale stale-launch-build cache, it should not exist")
 				}
-				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "not.in.group.buildpack")); !os.IsNotExist(err) {
-					t.Fatalf("Found stale no group buildpack cache, it should not exist")
-				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
 					t.Fatalf("Missing some-app-dir")
 				}
@@ -499,7 +500,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
 
-				if !strings.Contains(stdout.String(), "WARNING: previous image 'image-repo-name' does not have 'io.buildpacks.lifecycle.metadata' label") {
+				if !strings.Contains(stdout.String(), "WARNING: image 'image-repo-name' does not have 'io.buildpacks.lifecycle.metadata' label") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
 				}
 
@@ -508,9 +509,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale stale-launch-build cache, it should not exist")
-				}
-				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "not.in.group.buildpack")); !os.IsNotExist(err) {
-					t.Fatalf("Found stale no group buildpack cache, it should not exist")
 				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
 					t.Fatalf("Missing some-app-dir")
@@ -530,7 +528,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
 
-				if !strings.Contains(stdout.String(), "WARNING: previous image 'image-repo-name' has incompatible 'io.buildpacks.lifecycle.metadata' label") {
+				if !strings.Contains(stdout.String(), "WARNING: image 'image-repo-name' has incompatible 'io.buildpacks.lifecycle.metadata' label") {
 					t.Fatalf("expected warning in stdout: %s", stdout.String())
 				}
 
@@ -539,9 +537,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale stale-launch-build cache, it should not exist")
-				}
-				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "not.in.group.buildpack")); !os.IsNotExist(err) {
-					t.Fatalf("Found stale no group buildpack cache, it should not exist")
 				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
 					t.Fatalf("Missing some-app-dir")
@@ -555,12 +550,5 @@ func assertNil(t *testing.T, actual interface{}) {
 	t.Helper()
 	if actual != nil {
 		t.Fatalf("Expected nil: %s", actual)
-	}
-}
-
-func assertEq(t *testing.T, actual, expected interface{}) {
-	t.Helper()
-	if diff := cmp.Diff(actual, expected); diff != "" {
-		t.Fatal(diff)
 	}
 }

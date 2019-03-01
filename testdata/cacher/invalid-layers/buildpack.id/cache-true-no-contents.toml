@@ -1,0 +1,4 @@
+cache = true
+
+[metadata]
+ cache-true-key = "cache-true-val"

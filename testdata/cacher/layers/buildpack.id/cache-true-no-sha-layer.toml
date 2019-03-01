@@ -1,0 +1,5 @@
+cache = true
+launch = false
+
+[metadata]
+ cache-true-no-sha-key = "cache-true-no-sha-val"

@@ -2,6 +2,7 @@ package image
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -189,6 +190,10 @@ func (r *remote) TopLayer() (string, error) {
 		return "", err
 	}
 	return hex.String(), nil
+}
+
+func (r *remote) GetLayer(string) (io.ReadCloser, error) {
+	panic("not implemented")
 }
 
 func (r *remote) AddLayer(path string) error {

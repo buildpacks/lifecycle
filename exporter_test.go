@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/testmock"
-	"github.com/golang/mock/gomock"
 	"io"
 	"io/ioutil"
 	"log"
@@ -19,11 +16,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/image"
 	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpack/lifecycle/testmock"
 )
 
 func TestExporter(t *testing.T) {
@@ -205,7 +205,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
 
 				var applayer, configLayer, layer2, layer3 = 1, 1, 1, 1
-				h.AssertEq(t, fakeRunImage.NumberOfLayers(), applayer+configLayer+layer2+layer3)
+				h.AssertEq(t, fakeRunImage.NumberOfAddedLayers(), applayer+configLayer+layer2+layer3)
 			})
 
 			it("only reuses expected layers", func() {
@@ -359,7 +359,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 				mockNonExistingOriginalImage := testmock.NewMockImage(gomock.NewController(t))
 
-				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name")
+				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name").AnyTimes()
 				mockNonExistingOriginalImage.EXPECT().Found().Return(false, nil)
 				mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 					Return("", errors.New("not exist")).AnyTimes()
@@ -427,7 +427,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, nonExistingOriginalImage, launcherPath))
 
 				var applayer, configLayer, launcherLayer, layer1, layer2 = 1, 1, 1, 1, 1
-				h.AssertEq(t, fakeRunImage.NumberOfLayers(), applayer+configLayer+launcherLayer+layer1+layer2)
+				h.AssertEq(t, fakeRunImage.NumberOfAddedLayers(), applayer+configLayer+launcherLayer+layer1+layer2)
 			})
 
 			it("saves metadata with layer info", func() {
@@ -518,85 +518,6 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("cleaning up layers for the cache", func() {
-			var (
-				fakeOriginalImage *h.FakeImage
-			)
-
-			it.Before(func() {
-				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "cleanup-cache", "layers"), layersDir)
-				var err error
-				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "cleanup-cache", "layers", "app"))
-				h.AssertNil(t, err)
-
-				fakeOriginalImage = h.NewFakeImage(t, "app/original-Image-Name", "original-top-layer-sha", "some-original-run-image-digest")
-				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata",
-					`{"buildpacks":[{"key": "buildpack.id", "layers": {"no-local-layer": {"sha": "no-local-layer-sha"}}}]}`)
-			})
-
-			it("deletes all non buildpack dirs", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
-
-				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "app")); !os.IsNotExist(err) {
-					t.Fatalf("Found app dir, it should not exist")
-				}
-
-				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "nonbuildpackdir")); !os.IsNotExist(err) {
-					t.Fatalf("Found nonbuildpackdir dir, it should not exist")
-				}
-
-				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "config")); !os.IsNotExist(err) {
-					t.Fatalf("Found config dir, it should not exist")
-				}
-			})
-
-			it("deletes all uncached layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
-
-				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "buildpack.id", "cache-false")); !os.IsNotExist(err) {
-					t.Fatalf("Found cache-false dir, it should not exist")
-				}
-
-				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "buildpack.id", "cache-false.toml")); !os.IsNotExist(err) {
-					t.Fatalf("Found cache-false.toml, it should not exist")
-				}
-			})
-
-			it("deletes layer.toml for all layers without local content", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
-
-				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "buildpack.id", "no-local-layer.toml")); !os.IsNotExist(err) {
-					t.Fatalf("Found no-local-layer.toml, it should not exist")
-				}
-			})
-
-			it("treats a missing layer.toml like an empty layer.toml (launch=false cache=false)", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
-
-				if _, err := ioutil.ReadDir(filepath.Join(layersDir, "buildpack.id", "no-toml-layer")); !os.IsNotExist(err) {
-					t.Fatalf("Found no-toml-layer dir, it should not exist")
-				}
-			})
-
-			it("preserves cached layers and writes a sha", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath))
-				cacheTrueLayerPath := fakeRunImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/cache-true-layer"))
-				cacheTrueLayersha := h.ComputeSHA256ForFile(t, cacheTrueLayerPath)
-
-				if txt, err := ioutil.ReadFile(filepath.Join(layersDir, "buildpack.id", "cache-true-layer", "file-from-cache-true-layer")); err != nil || string(txt) != "file-from-cache-true-contents" {
-					t.Fatal("missing file-cache-true-layer" + string(txt))
-				}
-				if _, err := ioutil.ReadFile(filepath.Join(layersDir, "buildpack.id", "cache-true-layer.toml")); err != nil {
-					t.Fatal("missing cache-true-layer.toml")
-				}
-				if txt, err := ioutil.ReadFile(filepath.Join(layersDir, "buildpack.id", "cache-true-layer.sha")); err != nil {
-					t.Fatal("missing cache-true-layer.sha	")
-				} else if string(txt) != "sha256:"+cacheTrueLayersha {
-					t.Fatalf("expected layer.sha to have sha '%s', got '%s'", cacheTrueLayersha, string(txt))
-				}
-			})
-		})
-
 		when("buildpack requires an escaped id", func() {
 			var (
 				fakeOriginalImage *h.FakeImage
@@ -649,7 +570,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is an invalid layer.toml", func() {
 			var (
-				nonExistingOriginalImage image.Image
+				mockNonExistingOriginalImage *testmock.MockImage
 			)
 
 			it.Before(func() {
@@ -658,21 +579,54 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "bad-layer", "layers", "app"))
 				h.AssertNil(t, err)
 
-				mockNonExistingOriginalImage := testmock.NewMockImage(gomock.NewController(t))
-
-				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name")
+				mockNonExistingOriginalImage = testmock.NewMockImage(gomock.NewController(t))
+				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name").AnyTimes()
 				mockNonExistingOriginalImage.EXPECT().Found().Return(false, nil)
 				mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 					Return("", errors.New("not exist")).AnyTimes()
-
-				nonExistingOriginalImage = mockNonExistingOriginalImage
 			})
 
 			it("returns an error", func() {
 				h.AssertError(
 					t,
-					exporter.Export(layersDir, appDir, fakeRunImage, nonExistingOriginalImage, launcherPath),
+					exporter.Export(layersDir, appDir, fakeRunImage, mockNonExistingOriginalImage, launcherPath),
 					"failed to parse metadata for layers '[buildpack.id:bad-layer]'",
+				)
+			})
+		})
+
+		when("there is a launch=true cache=true layer without contents", func() {
+			var (
+				fakeOriginalImage *h.FakeImage
+			)
+
+			it.Before(func() {
+				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "cache-layer-no-contents", "layers"), layersDir)
+				var err error
+				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "cache-layer-no-contents", "layers", "app"))
+				h.AssertNil(t, err)
+
+				fakeOriginalImage = h.NewFakeImage(t, "app/original-Image-Name", "original-top-layer-sha", "some-original-run-image-digest")
+				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{
+  "buildpacks": [
+    {
+      "key": "buildpack.id",
+      "layers": {
+        "cache-layer-no-contents": {
+          "sha": "some-sha",
+          "cache": true
+        }
+      }
+    }
+  ]
+}`)
+			})
+
+			it("returns an error", func() {
+				h.AssertError(
+					t,
+					exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath),
+					"layer 'buildpack.id:cache-layer-no-contents' is cache=true but has no contents",
 				)
 			})
 		})
@@ -681,7 +635,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 func assertAddLayerLog(t *testing.T, stdout bytes.Buffer, name, layerPath string) {
 	t.Helper()
-	layerSHA := h.ComputeSHA256ForFile(t, strings.Replace(layerPath, ":", "/", -1))
+	layerSHA := h.ComputeSHA256ForFile(t, layerPath)
 
 	expected := fmt.Sprintf("adding layer '%s' with diffID 'sha256:%s'", name, layerSHA)
 	if !strings.Contains(stdout.String(), expected) {

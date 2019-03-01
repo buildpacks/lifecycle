@@ -1,4 +1,4 @@
-package fs_test
+package archive_test
 
 import (
 	"archive/tar"
@@ -9,21 +9,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/fs"
-	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/lifecycle/archive"
+	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
-func TestFS(t *testing.T) {
+func TestTar(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	spec.Run(t, "fs", testFS, spec.Report(report.Terminal{}))
+	spec.Run(t, "tar", testTar, spec.Report(report.Terminal{}))
 }
 
-func testFS(t *testing.T, when spec.G, it spec.S) {
+func testTar(t *testing.T, when spec.G, it spec.S) {
 	var (
 		tmpDir, src, tarFile string
-		fs                   fs.FS
 		file                 *os.File
 		uid                  = 1234
 		gid                  = 2345
@@ -54,7 +54,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		it("writes a tar with the src filesystem contents", func() {
 			src = filepath.Join("testdata", "dir-to-tar")
 
-			h.AssertNil(t, fs.WriteTarArchive(file, src, uid, gid))
+			h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
 			h.AssertNil(t, file.Close())
 
 			file, err := os.Open(tarFile)
@@ -116,7 +116,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 				absoluteFilePath, err := filepath.Abs(filepath.Join("testdata", "dir-to-tar"))
 				h.AssertNil(t, err)
 
-				h.AssertNil(t, fs.WriteTarArchive(file, absoluteFilePath, uid, gid))
+				h.AssertNil(t, archive.WriteTarArchive(file, absoluteFilePath, uid, gid))
 				h.AssertNil(t, file.Close())
 
 				file, err = os.Open(tarFile)
@@ -145,7 +145,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 			it("writes headers for all parent directories", func() {
 				relativePath := filepath.Join("testdata", "dir-to-tar", "sub-dir")
 
-				h.AssertNil(t, fs.WriteTarArchive(file, relativePath, uid, gid))
+				h.AssertNil(t, archive.WriteTarArchive(file, relativePath, uid, gid))
 				h.AssertNil(t, file.Close())
 
 				file, err := os.Open(tarFile)
@@ -176,7 +176,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 			err = os.MkdirAll(src, 0764)
 			h.AssertNil(t, err)
 
-			h.AssertNil(t, fs.WriteTarArchive(file, src, uid, gid))
+			h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
 			h.AssertNil(t, file.Close())
 
 			file, err = os.Open(tarFile)

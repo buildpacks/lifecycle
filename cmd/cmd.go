@@ -61,6 +61,10 @@ func FlagRunImage(image *string) {
 	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
 }
 
+func FlagCacheImage(image *string) {
+	flag.StringVar(image, "image", "", "cache image tag name")
+}
+
 func FlagUseDaemon(use *bool) {
 	flag.BoolVar(use, "daemon", DefaultUseDaemon, "export to docker daemon")
 }

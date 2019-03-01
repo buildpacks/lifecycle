@@ -1,8 +1,9 @@
-package fs
+package archive
 
 import (
 	"archive/tar"
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -10,25 +11,23 @@ import (
 	"time"
 )
 
-type FS struct {
+func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
+	hasher := sha256.New()
+	f, err := os.Create(dest)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	w := io.MultiWriter(hasher, f)
+
+	if WriteTarArchive(w, sourceDir, uid, gid) != nil {
+		return "", err
+	}
+	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	return "sha256:" + sha, nil
 }
 
-func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
-		return nil, err
-	}
-	if _, err := tw.Write([]byte(txt)); err != nil {
-		return nil, err
-	}
-	if err := tw.Close(); err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(buf.Bytes()), nil
-}
-
-func (*FS) WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
+func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
@@ -109,7 +108,7 @@ func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int
 	}
 }
 
-func (*FS) AddTextToTar(tw *tar.Writer, name string, contents []byte) error {
+func AddTextToTar(tw *tar.Writer, name string, contents []byte) error {
 	hdr := &tar.Header{Name: name, Mode: 0644, Size: int64(len(contents))}
 	if err := tw.WriteHeader(hdr); err != nil {
 		return err
@@ -118,7 +117,7 @@ func (*FS) AddTextToTar(tw *tar.Writer, name string, contents []byte) error {
 	return err
 }
 
-func (*FS) AddFileToTar(tw *tar.Writer, name string, contents *os.File) error {
+func AddFileToTar(tw *tar.Writer, name string, contents *os.File) error {
 	fi, err := contents.Stat()
 	if err != nil {
 		return err
@@ -131,7 +130,7 @@ func (*FS) AddFileToTar(tw *tar.Writer, name string, contents *os.File) error {
 	return err
 }
 
-func (*FS) Untar(r io.Reader, dest string) error {
+func Untar(r io.Reader, dest string) error {
 	tr := tar.NewReader(r)
 	for {
 		hdr, err := tr.Next()
