@@ -52,11 +52,11 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 	} else if current == 0 {
 		uid, err := strconv.Atoi(os.Getenv(cmd.EnvUID))
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to convert PACK_USER_ID '%s' to int", os.Getenv(cmd.EnvUID))
 		}
 		gid, err := strconv.Atoi(os.Getenv(cmd.EnvGID))
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to convert PACK_GROUP_ID '%s' to int", os.Getenv(cmd.EnvGID))
 		}
 		if err := recursiveChown(r.LayersDir, uid, gid); err != nil {
 			return errors.Wrapf(err, "chowning layers dir to PACK_UID/PACK_GID '%d/%d'", uid, gid)

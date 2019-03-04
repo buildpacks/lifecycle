@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -75,6 +76,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
+				h.AssertNil(t, os.Setenv("PACK_USER_ID", "1234"))
+				h.AssertNil(t, os.Setenv("PACK_GROUP_ID", "4321"))
 				h.RecursiveCopy(t, filepath.Join("testdata", "restorer"), layersDir)
 				var err error
 
@@ -257,8 +260,32 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf(`Error: expected '%s' to contain '%s'`, txt, expectedText)
 				}
 			})
+
+			when("restorer is running as root", func() {
+				it.Before(func() {
+					if os.Getuid() != 0 {
+						t.Skip()
+					}
+				})
+
+				it("recursively chowns the layers dir to PACK_USER_ID:PACK_GROUP_ID", func() {
+					h.AssertNil(t, restorer.Restore(cacheImage))
+					assertUidGid(t, layersDir, 1234, 4321)
+					assertUidGid(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)
+					assertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"), 1234, 4321)
+					assertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch", "file-from-cache-launch-layer"), 1234, 4321)
+				})
+			})
 		})
 	})
+}
+
+func assertUidGid(t *testing.T, path string, uid, gid int) {
+	fi, err := os.Stat(path)
+	h.AssertNil(t, err)
+	stat := fi.Sys().(*syscall.Stat_t)
+	h.AssertEq(t, stat.Uid, uint32(uid))
+	h.AssertEq(t, stat.Gid, uint32(gid))
 }
 
 func addLayerFromPath(t *testing.T, tarTempDir string, layerPath string, cacheImage *h.FakeImage) string {

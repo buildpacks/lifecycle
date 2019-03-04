@@ -69,10 +69,10 @@ func (f *Factory) NewEmptyLocal(repoName string) Image {
 		Labels: map[string]string{},
 	}
 	return &local{
-		RepoName:   repoName,
-		Docker:     f.Docker,
-		Inspect:    inspect,
-		prevOnce:   &sync.Once{},
+		RepoName: repoName,
+		Docker:   f.Docker,
+		Inspect:  inspect,
+		prevOnce: &sync.Once{},
 	}
 }
 
