@@ -37,7 +37,7 @@ type LauncherMetadata struct {
 }
 
 type BuildpackMetadata struct {
-	ID      string                   `json:"key"`
+	ID      string                   `json:"id"`
 	Version string                   `json:"version"`
 	Layers  map[string]LayerMetadata `json:"layers"`
 }

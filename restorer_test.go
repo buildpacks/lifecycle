@@ -127,7 +127,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				cacheImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", fmt.Sprintf(`{
 				  "buildpacks": [
 				    {
-				      "key": "buildpack.id",
+				      "id": "buildpack.id",
 				      "layers": {
 				        "cache-only": {
 				          "data": {
@@ -153,7 +153,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				        }
 				      }
 				    }, {
-					  "key": "nogroup.buildpack.id",
+					  "id": "nogroup.buildpack.id",
 				      "layers": {
 				        "some-layer": {
 				          "data": {
@@ -164,7 +164,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				        }
 				      }
                     }, {
-					  "key": "escaped/buildpack/id",
+					  "id": "escaped/buildpack/id",
 				      "layers": {
 				        "escaped-bp-layer": {
 				          "data": {

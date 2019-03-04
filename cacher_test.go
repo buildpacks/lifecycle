@@ -153,7 +153,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 					metadataTemplate = `{
   "buildpacks": [
     {
-      "key": "buildpack.id",
+      "id": "buildpack.id",
       "layers": {
         "cache-true-layer": {
           "cache": true,

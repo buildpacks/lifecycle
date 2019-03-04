@@ -97,7 +97,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					fmt.Sprintf(`{
 				  "buildpacks": [
 				    {
-				      "key": "buildpack.id",
+				      "id": "buildpack.id",
 				      "layers": {
 				        "launch-layer-no-local-dir": {
 				          "sha": "sha256:orig-launch-layer-no-local-dir-sha",
@@ -108,7 +108,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				      }
 				    },
 				    {
-				      "key": "other.buildpack.id",
+				      "id": "other.buildpack.id",
 				      "layers": {
 				        "layer4": {
 				          "sha": "orig-layer4-sha",

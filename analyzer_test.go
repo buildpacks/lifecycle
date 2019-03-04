@@ -79,7 +79,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{
   "buildpacks": [
     {
-      "key": "metdata.buildpack",
+      "id": "metdata.buildpack",
       "layers": {
         "valid-launch": {
           "data": {
@@ -124,7 +124,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
       }
     },
     {
-      "key": "no.cache.buildpack",
+      "id": "no.cache.buildpack",
       "layers": {
         "go": {
           "data": {
