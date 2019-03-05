@@ -62,8 +62,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		exporter = &lifecycle.Exporter{
 			ArtifactsDir: tmpDir,
 			Buildpacks: []*lifecycle.Buildpack{
-				{ID: "buildpack.id"},
-				{ID: "other.buildpack.id"},
+				{ID: "buildpack.id", Version: "1.2.3"},
+				{ID: "other.buildpack.id", Version: "4.5.6"},
 			},
 			Out: log.New(&stdout, "", 0),
 			Err: log.New(&stderr, "", 0),
@@ -246,9 +246,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, metadata.App.SHA, "sha256:"+appLayerSHA)
 				h.AssertEq(t, metadata.Config.SHA, "sha256:"+configLayerSHA)
 				h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
+				h.AssertEq(t, metadata.Buildpacks[0].Version, "1.2.3")
 				h.AssertEq(t, metadata.Buildpacks[0].Layers["launch-layer-no-local-dir"].SHA, "sha256:orig-launch-layer-no-local-dir-sha")
 				h.AssertEq(t, metadata.Buildpacks[0].Layers["new-launch-layer"].SHA, "sha256:"+newLayerSHA)
 				h.AssertEq(t, metadata.Buildpacks[1].ID, "other.buildpack.id")
+				h.AssertEq(t, metadata.Buildpacks[1].Version, "4.5.6")
 				h.AssertEq(t, metadata.Buildpacks[1].Layers["new-launch-layer"].SHA, "sha256:"+secondBPLayerPathSHA)
 
 				t.Log("adds buildpack layer metadata to label")
