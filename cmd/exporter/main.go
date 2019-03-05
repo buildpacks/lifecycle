@@ -24,11 +24,14 @@ var (
 	useHelpers  bool
 	uid         int
 	gid         int
+	labels      cmd.Labels
 )
 
 const launcherPath = "/lifecycle/launcher"
 
 func init() {
+	labels = make(map[string]string)
+
 	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagAppDir(&appDir)
@@ -37,6 +40,7 @@ func init() {
 	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
+	cmd.FlagLabels(labels)
 }
 
 func main() {
@@ -100,7 +104,7 @@ func export() error {
 		}
 	}
 
-	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath); err != nil {
+	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath, labels); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 
