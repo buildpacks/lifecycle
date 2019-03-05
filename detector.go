@@ -197,10 +197,10 @@ func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(c *DetectConfig) ([]byte, *BuildpackGroup) {
+func (bo BuildpackOrder) Detect(c *DetectConfig) (plan []byte, group *BuildpackGroup) {
 	for i := range bo {
-		if plan, group, ok := bo[i].Detect(c); ok {
-			return plan, group
+		if p, g, ok := bo[i].Detect(c); ok {
+			return p, g
 		}
 	}
 	return nil, nil

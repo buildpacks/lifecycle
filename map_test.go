@@ -85,9 +85,9 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 
 		it("should return an ordering of buildpacks", func() {
 			m := lifecycle.BuildpackMap{
-				"buildpack1@version1.1": {Name: "buildpack1-1.1", Version: "1.1"},
-				"buildpack1@version1.2": {Name: "buildpack1-1.2", Version: "1.2"},
-				"buildpack2@latest":     {Name: "buildpack2", Version: "2.0"},
+				"buildpack1@version1.1": {Name: "buildpack1-1.1"},
+				"buildpack1@version1.2": {Name: "buildpack1-1.2"},
+				"buildpack2@latest":     {Name: "buildpack2"},
 			}
 			mkfile(t, `groups = [{ buildpacks = [{id = "buildpack1", version = "version1.1"}, {id = "buildpack2", optional = true}] }]`,
 				filepath.Join(tmpDir, "order.toml"),
@@ -97,7 +97,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			if s := cmp.Diff(actual, lifecycle.BuildpackOrder{
-				{Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1", Version: "1.1"}, {Name: "buildpack2", Optional: true, Version: "2.0"}}},
+				{Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}}},
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
