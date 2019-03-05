@@ -71,7 +71,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					mockNonExistingOriginalImage = testmock.NewMockImage(gomock.NewController(t))
 					mockNonExistingOriginalImage.EXPECT().Found().Return(false, nil)
-					mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
+					mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.cache.metadata").
 						Return("", errors.New("not exist")).AnyTimes()
 					mockNonExistingOriginalImage.EXPECT().Name().Return("existing-previous-cache-image").AnyTimes()
 				})
@@ -172,7 +172,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				when("the shas match", func() {
 					it.Before(func() {
 						h.AssertNil(t, fakeOriginalImage.SetLabel(
-							"io.buildpacks.lifecycle.metadata",
+							"io.buildpacks.lifecycle.cache.metadata",
 							fmt.Sprintf(metadataTemplate, cacheTrueLayerSHA, computedReusableLayerSHA),
 						))
 					})
@@ -234,7 +234,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				when("the shas don't match", func() {
 					it.Before(func() {
 						h.AssertNil(t, fakeOriginalImage.SetLabel(
-							"io.buildpacks.lifecycle.metadata",
+							"io.buildpacks.lifecycle.cache.metadata",
 							fmt.Sprintf(metadataTemplate, "different-sha", "not-the-sha-you-want"),
 						))
 					})
@@ -260,7 +260,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
 				fakeOriginalImage = h.NewFakeImage(t, "", "", "")
 				h.AssertNil(t, fakeOriginalImage.SetLabel(
-					"io.buildpacks.lifecycle.metadata",
+					"io.buildpacks.lifecycle.cache.metadata",
 					"{}"),
 				)
 			})

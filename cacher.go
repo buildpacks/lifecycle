@@ -25,7 +25,7 @@ func (c *Cacher) Cache(layersDir string, oldCacheImage, newCacheImage image.Imag
 		image: newCacheImage,
 	}
 
-	origMetadata, err := getAppMetadata(oldCacheImage, c.Out)
+	origMetadata, err := getCacheMetadata(oldCacheImage, c.Out)
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous image")
 	}
