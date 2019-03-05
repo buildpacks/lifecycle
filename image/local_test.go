@@ -55,6 +55,105 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		repoName = "pack-image-test-" + h.RandString(10)
 	})
 
+	when("#NewLocal", func() {
+		when("we fetch from remote registry", func() {
+			it.After(func() {
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+			})
+
+			when("image is not available on the registry", func() {
+				when("image is available locally", func() {
+					it("returns the local image", func() {
+						repoName = "test/repo-" + h.RandString(10)
+						labels := make(map[string]string)
+						labels["some.label"] = "some.value"
+
+						h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+							FROM scratch
+							LABEL repo_name_for_randomisation=%s
+							ENV MY_VAR=my_val
+							`, repoName), labels)
+
+						localImage, e := factory.NewLocal(repoName, true)
+						h.AssertNil(t, e)
+
+						labelValue, err := localImage.Label("some.label")
+						h.AssertNil(t, err)
+						h.AssertEq(t, labelValue, "some.value")
+					})
+				})
+			})
+
+			when("image is available on the registry", func() {
+				it("returns the remote image", func() {
+					repoName = "localhost:" + localTestRegistry.Port + "/pack-image-test-" + h.RandString(10)
+					remoteLabels := make(map[string]string)
+					remoteLabels["remote.label"] = "remote.value"
+
+					localLabels := make(map[string]string)
+					localLabels["local.label"] = "local.value"
+
+					h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+							FROM scratch
+							LABEL repo_name_for_randomisation=%s
+							ENV MY_VAR=my_val
+							`, repoName), remoteLabels)
+
+					localImage, e := factory.NewLocal(repoName, true)
+					h.AssertNil(t, e)
+
+					labelValue, err := localImage.Label("remote.label")
+					h.AssertNil(t, err)
+					h.AssertEq(t, labelValue, "remote.value")
+				})
+			})
+		})
+
+		when("we do not fetch from remote registry", func() {
+			when("image is available locally", func() {
+				it.After(func() {
+					h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+				})
+
+				it("returns the local image", func() {
+					repoName = "test/repo"
+					labels := make(map[string]string)
+					labels["some.label"] = "some.value"
+
+					h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+							FROM scratch
+							LABEL repo_name_for_randomisation=%s
+							ENV MY_VAR=my_val
+							`, repoName), labels)
+
+					localImage, e := factory.NewLocal(repoName, false)
+					h.AssertNil(t, e)
+
+					labelValue, err := localImage.Label("some.label")
+					h.AssertNil(t, err)
+					h.AssertEq(t, labelValue, "some.value")
+				})
+			})
+
+			when("image is not available locally", func() {
+				it("returns an error", func() {
+					repoName = "localhost:" + localTestRegistry.Port + "/pack-image-test-" + h.RandString(10)
+					h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+							FROM scratch
+							LABEL repo_name_for_randomisation=%s
+							ENV MY_VAR=my_val
+							`, repoName), map[string]string{})
+
+					localImage, e := factory.NewLocal(repoName, false)
+					h.AssertNil(t, e)
+
+					_, err := localImage.Label("remote.label")
+					h.AssertError(t, err, "does not exist")
+				})
+			})
+		})
+	})
+
 	when("#NewEmptyLocal", func() {
 		it("returns a scratch image", func() {
 			img := factory.NewEmptyLocal(repoName)
@@ -73,7 +172,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
-				`, repoName))
+				`, repoName), make(map[string]string))
 			})
 
 			it.After(func() {
@@ -117,7 +216,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					ENV MY_VAR=my_val
-				`, repoName))
+				`, repoName), make(map[string]string))
 			})
 
 			it.After(func() {
@@ -186,7 +285,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL key=val
-				`, repoName))
+				`, repoName), make(map[string]string))
 			})
 
 			it.After(func() {
@@ -215,7 +314,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL some-key=some-value
-				`, repoName))
+				`, repoName), make(map[string]string))
 				img, err = factory.NewLocal(repoName, false)
 				h.AssertNil(t, err)
 				origID = h.ImageID(t, repoName)
@@ -254,7 +353,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL some-key=some-value
-				`, repoName))
+				`, repoName), make(map[string]string))
 			img, err = factory.NewLocal(repoName, false)
 			h.AssertNil(t, err)
 			origID = h.ImageID(t, repoName)
@@ -288,7 +387,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), make(map[string]string))
 			img, err = factory.NewLocal(repoName, false)
 			h.AssertNil(t, err)
 			origID = h.ImageID(t, repoName)
@@ -323,7 +422,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), make(map[string]string))
 			img, err = factory.NewLocal(repoName, false)
 			h.AssertNil(t, err)
 			origID = h.ImageID(t, repoName)
@@ -362,7 +461,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 						LABEL repo_name_for_randomisation=%s
 						RUN echo new-base > base.txt
 						RUN echo text-new-base > otherfile.txt
-					`, newBase))
+					`, newBase), make(map[string]string))
 				}()
 
 				oldBase = "pack-oldbase-test-" + h.RandString(10)
@@ -371,7 +470,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
-				`, oldBase))
+				`, oldBase), make(map[string]string))
 				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), oldBase)
 				h.AssertNil(t, err)
 				oldTopLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
@@ -381,7 +480,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo text-from-image > myimage.txt
 					RUN echo text-from-image > myimage2.txt
-				`, oldBase, repoName))
+				`, oldBase, repoName), make(map[string]string))
 				inspect, _, err = dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 				h.AssertNil(t, err)
 				origNumLayers = len(inspect.RootFS.Layers)
@@ -443,7 +542,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				LABEL repo_name_for_randomisation=%s
 				RUN echo old-base > base.txt
 				RUN echo text-old-base > otherfile.txt
-				`, repoName))
+				`, repoName), make(map[string]string))
 
 				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 				h.AssertNil(t, err)
@@ -477,7 +576,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer > old-layer.txt
-				`, repoName))
+				`, repoName), make(map[string]string))
 			tr, err := h.CreateSingleFileTar("/new-layer.txt", "new-layer")
 			h.AssertNil(t, err)
 			tarFile, err := ioutil.TempFile("", "add-layer-test")
@@ -522,7 +621,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					RUN mkdir /dir && echo -n file-contents > /dir/file.txt
-				`, repoName))
+				`, repoName), make(map[string]string))
 			})
 
 			it("returns a layer tar", func() {
@@ -553,7 +652,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), make(map[string]string))
 			})
 
 			it("returns an error", func() {
@@ -584,7 +683,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer-1 > layer-1.txt
 					RUN echo -n old-layer-2 > layer-2.txt
-				`, repoName))
+				`, repoName), make(map[string]string))
 
 			inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 			h.AssertNil(t, err)
@@ -649,7 +748,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=oldValue
-				`, repoName))
+				`, repoName), make(map[string]string))
 				img, err = factory.NewLocal(repoName, false)
 				h.AssertNil(t, err)
 				origID = h.ImageID(t, repoName)
@@ -687,7 +786,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), make(map[string]string))
 
 					factory.Out = &outBuf
 				})
@@ -725,7 +824,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), make(map[string]string))
 				})
 
 				it.After(func() {

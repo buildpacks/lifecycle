@@ -43,15 +43,23 @@ type local struct {
 }
 
 func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
+	var pullFailureError error
+	var inspect types.ImageInspect
+	var err error
 	if pull {
-		if err := f.pullImage(f.Out, f.Docker, repoName); err != nil {
-			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
+		err = f.pullImage(f.Out, f.Docker, repoName)
+		if err != nil {
+			pullFailureError = fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
 		}
-	}
-
-	inspect, _, err := f.Docker.ImageInspectWithRaw(context.Background(), repoName)
-	if err != nil && !dockerclient.IsErrNotFound(err) {
-		return nil, errors.Wrap(err, "analyze read previous image config")
+		inspect, _ = f.inspectLocalImage(repoName)
+		if inspect.Config == nil && pullFailureError != nil {
+			return nil, pullFailureError
+		}
+	} else {
+		inspect, err = f.inspectLocalImage(repoName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &local{
@@ -61,6 +69,14 @@ func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
 		layerPaths: make([]string, len(inspect.RootFS.Layers)),
 		prevOnce:   &sync.Once{},
 	}, nil
+}
+
+func (f *Factory) inspectLocalImage(repoName string) (types.ImageInspect, error) {
+	inspect, _, err := f.Docker.ImageInspectWithRaw(context.Background(), repoName)
+	if err != nil && !dockerclient.IsErrNotFound(err) {
+		return types.ImageInspect{}, errors.Wrap(err, "analyze read previous image config")
+	}
+	return inspect, nil
 }
 
 func (f *Factory) NewEmptyLocal(repoName string) Image {
