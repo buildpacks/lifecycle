@@ -29,6 +29,25 @@ const (
 	EnvRegistryAuth       = "CNB_REGISTRY_AUTH"
 )
 
+type Labels map[string]string
+
+func (l Labels) String() string {
+	b := strings.Builder{}
+	for k, v := range l {
+		b.WriteString(fmt.Sprintf("%s=%s ", k, v))
+	}
+	return b.String()
+}
+
+func (l Labels) Set(value string) error {
+	pair := strings.Split(value, "=")
+	if len(pair) != 2 {
+		return fmt.Errorf("please provide valid labels in a key=value format")
+	}
+	l[pair[0]] = pair[1]
+	return nil
+}
+
 func FlagLayersDir(dir *string) {
 	flag.StringVar(dir, "layers", DefaultLayersDir, "path to layers directory")
 }
@@ -79,6 +98,10 @@ func FlagUID(uid *int) {
 
 func FlagGID(gid *int) {
 	flag.IntVar(gid, "gid", intEnv(EnvGID), "GID of user's group in the stack's build and run images")
+}
+
+func FlagLabels(labels Labels) {
+	flag.Var(&labels, "label", "labels to include on the app image")
 }
 
 const (

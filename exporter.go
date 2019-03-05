@@ -21,7 +21,7 @@ type Exporter struct {
 	UID, GID     int
 }
 
-func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Image, launcher string) error {
+func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Image, launcher string, labels cmd.Labels) error {
 	var err error
 	metadata := AppImageMetadata{}
 	metadata.RunImage.TopLayer, err = runImage.TopLayer()
@@ -113,11 +113,16 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	if err := appImage.SetLabel(MetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
+	for k, v := range labels {
+		if err := appImage.SetLabel(k, v); err != nil {
+			return errors.Wrapf(err, "set app image label %s", k)
+		}
+	}
 	if err := appImage.SetEnv(cmd.EnvLayersDir, layersDir); err != nil {
-		return errors.Wrap(err, "set app image metadata label")
+		return errors.Wrapf(err, "set app image env %s", cmd.EnvLayersDir)
 	}
 	if err := appImage.SetEnv(cmd.EnvAppDir, appDir); err != nil {
-		return errors.Wrap(err, "set app image metadata label")
+		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 	if err := appImage.SetEntrypoint(launcher); err != nil {
 		return errors.Wrap(err, "setting entrypoint")
