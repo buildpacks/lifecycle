@@ -55,7 +55,7 @@ func restore() error {
 		return err
 	}
 
-	cacheImage, err := factory.NewLocal(cacheImageTag, false)
+	cacheImage, err := factory.NewLocal(cacheImageTag)
 	if err != nil {
 		return err
 	}

@@ -85,11 +85,11 @@ func export() error {
 	}
 	var runImage, origImage image.Image
 	if useDaemon {
-		runImage, err = factory.NewLocal(runImageRef, false)
+		runImage, err = factory.NewLocal(runImageRef)
 		if err != nil {
 			return err
 		}
-		origImage, err = factory.NewLocal(repoName, false)
+		origImage, err = factory.NewLocal(repoName)
 		if err != nil {
 			return err
 		}

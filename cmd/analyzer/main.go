@@ -66,7 +66,7 @@ func analyzer() error {
 	}
 
 	if useDaemon {
-		previousImage, err = factory.NewLocal(repoName, false)
+		previousImage, err = factory.NewLocal(repoName)
 		if err != nil {
 			return err
 		}

@@ -67,7 +67,7 @@ func cache() error {
 		return err
 	}
 
-	origCacheImage, err := factory.NewLocal(cacheImageTag, false)
+	origCacheImage, err := factory.NewLocal(cacheImageTag)
 	if err != nil {
 		return err
 	}
