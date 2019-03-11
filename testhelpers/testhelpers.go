@@ -113,7 +113,7 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 
 var getBuildImageOnce sync.Once
 
-func CreateImageOnLocal(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string) {
+func CreateImageOnLocal(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string, labels map[string]string) {
 	ctx := context.Background()
 
 	buildContext, err := CreateSingleFileTar("Dockerfile", dockerFile)
@@ -124,6 +124,7 @@ func CreateImageOnLocal(t *testing.T, dockerCli *dockercli.Client, repoName, doc
 		SuppressOutput: true,
 		Remove:         true,
 		ForceRemove:    true,
+		Labels:         labels,
 	})
 	AssertNil(t, err)
 
@@ -131,11 +132,11 @@ func CreateImageOnLocal(t *testing.T, dockerCli *dockercli.Client, repoName, doc
 	res.Body.Close()
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string, labels map[string]string) string {
 	t.Helper()
 	defer DockerRmi(dockerCli, repoName)
 
-	CreateImageOnLocal(t, dockerCli, repoName, dockerFile)
+	CreateImageOnLocal(t, dockerCli, repoName, dockerFile, labels)
 
 	var topLayer string
 	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)

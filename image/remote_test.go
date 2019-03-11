@@ -62,7 +62,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
-				`, repoName))
+				`, repoName), nil)
 
 				var err error
 				img, err = factory.NewRemote(repoName)
@@ -100,7 +100,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					ENV MY_VAR=my_val
-				`, repoName))
+				`, repoName), nil)
 			})
 
 			it("returns the label value", func() {
@@ -161,7 +161,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
-				`, repoName))
+				`, repoName), nil)
 
 				var err error
 				img, err = factory.NewRemote(repoName)
@@ -197,7 +197,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL some-key=some-value
-				`, repoName))
+				`, repoName), nil)
 			img, err = factory.NewRemote(repoName)
 			h.AssertNil(t, err)
 		})
@@ -228,7 +228,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), nil)
 			img, err = factory.NewRemote(repoName)
 			h.AssertNil(t, err)
 		})
@@ -259,7 +259,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), nil)
 			img, err = factory.NewRemote(repoName)
 			h.AssertNil(t, err)
 		})
@@ -297,7 +297,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 						LABEL repo_name_for_randomisation=%s
 						RUN echo new-base > base.txt
 						RUN echo text-new-base > otherfile.txt
-					`, repoName))
+					`, repoName), nil)
 					newBaseLayers = manifestLayers(t, newBase)
 				}()
 
@@ -307,7 +307,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
-				`, oldBase))
+				`, oldBase), nil)
 				oldBaseLayers = manifestLayers(t, oldBase)
 
 				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
@@ -315,7 +315,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo text-from-image-1 > myimage.txt
 					RUN echo text-from-image-2 > myimage2.txt
-				`, oldBase, repoName))
+				`, oldBase, repoName), nil)
 				repoTopLayers = manifestLayers(t, repoName)[len(oldBaseLayers):]
 
 				wg.Wait()
@@ -359,7 +359,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
-				`, repoName))
+				`, repoName), nil)
 
 				img, err := factory.NewRemote(repoName)
 				h.AssertNil(t, err)
@@ -382,7 +382,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer > old-layer.txt
-				`, repoName))
+				`, repoName), nil)
 			tr, err := h.CreateSingleFileTar("/new-layer.txt", "new-layer")
 			h.AssertNil(t, err)
 			tarFile, err := ioutil.TempFile("", "add-layer-test")
@@ -436,7 +436,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer-1 > layer-1.txt
 					RUN echo -n old-layer-2 > layer-2.txt
-				`, repoName))
+				`, repoName), nil)
 
 				h.AssertNil(t, h.PullImage(dockerCli, repoName))
 				defer func() {
@@ -496,7 +496,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=oldValue
-				`, repoName))
+				`, repoName), nil)
 			})
 
 			it("returns the image digest", func() {
@@ -551,7 +551,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
-				`, repoName))
+				`, repoName), nil)
 			})
 
 			it("returns true, nil", func() {

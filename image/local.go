@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -20,13 +19,10 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/term"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/image/auth"
 )
 
 type local struct {
@@ -42,16 +38,10 @@ type local struct {
 	easyAddLayers    []string
 }
 
-func (f *Factory) NewLocal(repoName string, pull bool) (Image, error) {
-	if pull {
-		if err := f.pullImage(f.Out, f.Docker, repoName); err != nil {
-			return nil, fmt.Errorf("failed to pull image '%s' : %s", repoName, err)
-		}
-	}
-
+func (f *Factory) NewLocal(repoName string) (Image, error) {
 	inspect, _, err := f.Docker.ImageInspectWithRaw(context.Background(), repoName)
 	if err != nil && !dockerclient.IsErrNotFound(err) {
-		return nil, errors.Wrap(err, "analyze read previous image config")
+		return nil, err
 	}
 
 	return &local{
@@ -117,7 +107,9 @@ func (l *local) Found() (bool, error) {
 }
 
 func (l *local) Digest() (string, error) {
-	if l.Inspect.Config == nil {
+	if found, err := l.Found(); err != nil {
+		return "", errors.Wrap(err, "determining image existence")
+	} else if !found {
 		return "", fmt.Errorf("failed to get digest, image '%s' does not exist", l.RepoName)
 	}
 	if len(l.Inspect.RepoDigests) == 0 {
@@ -429,57 +421,4 @@ func (l *local) prevDownload() error {
 		}
 	})
 	return outerErr
-}
-
-func (f *Factory) pullImage(output io.Writer, dockerCli *dockerclient.Client, ref string) error {
-	regAuth, err := f.registryAuth(ref)
-	if err != nil {
-		return errors.Wrap(err, "auth for docker pull")
-	}
-
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{
-		RegistryAuth: regAuth,
-	})
-	if err != nil {
-		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{
-			RegistryAuth: regAuth,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	termFd, isTerm := term.GetFdInfo(output)
-	err = jsonmessage.DisplayJSONMessagesStream(rc, output, termFd, isTerm, nil)
-	if err != nil {
-		return err
-	}
-
-	return rc.Close()
-}
-
-func (f *Factory) registryAuth(ref string) (string, error) {
-	var regAuth string
-	_, a, err := auth.ReferenceForRepoName(f.Keychain, ref)
-	if err != nil {
-		return "", errors.Wrapf(err, "resolve auth for ref %s", ref)
-	}
-	authHeader, err := a.Authorization()
-	if err != nil {
-		return "", err
-	}
-	if strings.HasPrefix(authHeader, "Basic ") {
-		encoded := strings.TrimPrefix(authHeader, "Basic ")
-		decoded, _ := base64.StdEncoding.DecodeString(encoded)
-		parts := strings.SplitN(string(decoded), ":", 2)
-		regAuth = base64.StdEncoding.EncodeToString(
-			[]byte(fmt.Sprintf(
-				`{"username": "%s", "password": "%s"}`,
-				parts[0],
-				parts[1],
-			)),
-		)
-	}
-	return regAuth, nil
 }

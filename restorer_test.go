@@ -55,7 +55,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				factory, err := image.NewFactory()
 				h.AssertNil(t, err)
-				cacheImage, err = factory.NewLocal("not-exist", false)
+				cacheImage, err = factory.NewLocal("not-exist")
 				h.AssertNil(t, err)
 			})
 
