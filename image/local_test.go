@@ -210,7 +210,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the image digest", func() {
-				img, err := factory.NewLocal("busybox@sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812")
+				img, err := factory.NewRemote("busybox@sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812")
 				h.AssertNil(t, err)
 				digest, err := img.Digest()
 				h.AssertNil(t, err)
