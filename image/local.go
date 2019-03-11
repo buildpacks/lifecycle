@@ -107,8 +107,10 @@ func (l *local) Found() (bool, error) {
 }
 
 func (l *local) Digest() (string, error) {
-	if found, _ := l.Found(); !found {
-		return "", fmt.Errorf("failed to get digest, image '%s' does n1ot exist", l.RepoName)
+	if found, err := l.Found(); err != nil {
+		return "", errors.Wrap(err, "determining image existence")
+	} else if !found {
+		return "", fmt.Errorf("failed to get digest, image '%s' does not exist", l.RepoName)
 	}
 	if len(l.Inspect.RepoDigests) == 0 {
 		return "", nil
