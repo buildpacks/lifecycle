@@ -20,7 +20,7 @@ import (
 	"github.com/buildpack/lifecycle/image/auth"
 )
 
-type remote struct {
+type Remote struct {
 	keychain   authn.Keychain
 	RepoName   string
 	Image      v1.Image
@@ -28,13 +28,13 @@ type remote struct {
 	prevOnce   *sync.Once
 }
 
-func (f *Factory) NewRemote(repoName string) (Image, error) {
+func (f *Factory) NewRemote(repoName string) (*Remote, error) {
 	image, err := newV1Image(f.Keychain, repoName)
 	if err != nil {
 		return nil, err
 	}
 
-	return &remote{
+	return &Remote{
 		keychain: f.Keychain,
 		RepoName: repoName,
 		Image:    image,
@@ -54,7 +54,7 @@ func newV1Image(keychain authn.Keychain, repoName string) (v1.Image, error) {
 	return image, nil
 }
 
-func (r *remote) Label(key string) (string, error) {
+func (r *Remote) Label(key string) (string, error) {
 	cfg, err := r.Image.ConfigFile()
 	if err != nil || cfg == nil {
 		return "", fmt.Errorf("failed to get label, image '%s' does not exist", r.RepoName)
@@ -64,7 +64,7 @@ func (r *remote) Label(key string) (string, error) {
 
 }
 
-func (r *remote) Env(key string) (string, error) {
+func (r *Remote) Env(key string) (string, error) {
 	cfg, err := r.Image.ConfigFile()
 	if err != nil || cfg == nil {
 		return "", fmt.Errorf("failed to get env var, image '%s' does not exist", r.RepoName)
@@ -78,15 +78,15 @@ func (r *remote) Env(key string) (string, error) {
 	return "", nil
 }
 
-func (r *remote) Rename(name string) {
+func (r *Remote) Rename(name string) {
 	r.RepoName = name
 }
 
-func (r *remote) Name() string {
+func (r *Remote) Name() string {
 	return r.RepoName
 }
 
-func (r *remote) Found() (bool, error) {
+func (r *Remote) Found() (bool, error) {
 	if _, err := r.Image.RawManifest(); err != nil {
 		if transportErr, ok := err.(*transport.Error); ok && len(transportErr.Errors) > 0 {
 			switch transportErr.Errors[0].Code {
@@ -99,7 +99,7 @@ func (r *remote) Found() (bool, error) {
 	return true, nil
 }
 
-func (r *remote) Digest() (string, error) {
+func (r *Remote) Digest() (string, error) {
 	hash, err := r.Image.Digest()
 	if err != nil {
 		return "", fmt.Errorf("failed to get digest for image '%s': %s", r.RepoName, err)
@@ -107,8 +107,8 @@ func (r *remote) Digest() (string, error) {
 	return hash.String(), nil
 }
 
-func (r *remote) Rebase(baseTopLayer string, newBase Image) error {
-	newBaseRemote, ok := newBase.(*remote)
+func (r *Remote) Rebase(baseTopLayer string, newBase Image) error {
+	newBaseRemote, ok := newBase.(*Remote)
 	if !ok {
 		return errors.New("expected new base to be a remote image")
 	}
@@ -121,7 +121,7 @@ func (r *remote) Rebase(baseTopLayer string, newBase Image) error {
 	return nil
 }
 
-func (r *remote) SetLabel(key, val string) error {
+func (r *Remote) SetLabel(key, val string) error {
 	configFile, err := r.Image.ConfigFile()
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func (r *remote) SetLabel(key, val string) error {
 	return err
 }
 
-func (r *remote) SetEnv(key, val string) error {
+func (r *Remote) SetEnv(key, val string) error {
 	configFile, err := r.Image.ConfigFile()
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (r *remote) SetEnv(key, val string) error {
 	return err
 }
 
-func (r *remote) SetEntrypoint(ep ...string) error {
+func (r *Remote) SetEntrypoint(ep ...string) error {
 	configFile, err := r.Image.ConfigFile()
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func (r *remote) SetEntrypoint(ep ...string) error {
 	return err
 }
 
-func (r *remote) SetCmd(cmd ...string) error {
+func (r *Remote) SetCmd(cmd ...string) error {
 	configFile, err := r.Image.ConfigFile()
 	if err != nil {
 		return err
@@ -179,7 +179,7 @@ func (r *remote) SetCmd(cmd ...string) error {
 	return err
 }
 
-func (r *remote) TopLayer() (string, error) {
+func (r *Remote) TopLayer() (string, error) {
 	all, err := r.Image.Layers()
 	if err != nil {
 		return "", err
@@ -192,11 +192,11 @@ func (r *remote) TopLayer() (string, error) {
 	return hex.String(), nil
 }
 
-func (r *remote) GetLayer(string) (io.ReadCloser, error) {
+func (r *Remote) GetLayer(string) (io.ReadCloser, error) {
 	panic("not implemented")
 }
 
-func (r *remote) AddLayer(path string) error {
+func (r *Remote) AddLayer(path string) error {
 	layer, err := tarball.LayerFromFile(path)
 	if err != nil {
 		return err
@@ -208,7 +208,7 @@ func (r *remote) AddLayer(path string) error {
 	return nil
 }
 
-func (r *remote) ReuseLayer(sha string) error {
+func (r *Remote) ReuseLayer(sha string) error {
 	var outerErr error
 
 	r.prevOnce.Do(func() {
@@ -247,7 +247,7 @@ func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
 	return nil, fmt.Errorf(`previous image did not have layer with sha '%s'`, sha)
 }
 
-func (r *remote) Save() (string, error) {
+func (r *Remote) Save() (string, error) {
 	ref, auth, err := auth.ReferenceForRepoName(r.keychain, r.RepoName)
 	if err != nil {
 		return "", err
