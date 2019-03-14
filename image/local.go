@@ -25,7 +25,7 @@ import (
 	"github.com/buildpack/lifecycle/archive"
 )
 
-type Local struct {
+type local struct {
 	RepoName         string
 	Docker           *dockerclient.Client
 	Inspect          types.ImageInspect
@@ -38,13 +38,13 @@ type Local struct {
 	easyAddLayers    []string
 }
 
-func (f *Factory) NewLocal(repoName string) (*Local, error) {
+func (f *Factory) NewLocal(repoName string) (Image, error) {
 	inspect, _, err := f.Docker.ImageInspectWithRaw(context.Background(), repoName)
 	if err != nil && !dockerclient.IsErrNotFound(err) {
 		return nil, err
 	}
 
-	return &Local{
+	return &local{
 		Docker:     f.Docker,
 		RepoName:   repoName,
 		Inspect:    inspect,
@@ -53,12 +53,12 @@ func (f *Factory) NewLocal(repoName string) (*Local, error) {
 	}, nil
 }
 
-func (f *Factory) NewEmptyLocal(repoName string) *Local {
+func (f *Factory) NewEmptyLocal(repoName string) Image {
 	inspect := dockertypes.ImageInspect{}
 	inspect.Config = &container.Config{
 		Labels: map[string]string{},
 	}
-	return &Local{
+	return &local{
 		RepoName: repoName,
 		Docker:   f.Docker,
 		Inspect:  inspect,
@@ -66,7 +66,7 @@ func (f *Factory) NewEmptyLocal(repoName string) *Local {
 	}
 }
 
-func (l *Local) Label(key string) (string, error) {
+func (l *local) Label(key string) (string, error) {
 	if l.Inspect.Config == nil {
 		return "", fmt.Errorf("failed to get label, image '%s' does not exist", l.RepoName)
 	}
@@ -74,7 +74,7 @@ func (l *Local) Label(key string) (string, error) {
 	return labels[key], nil
 }
 
-func (l *Local) Env(key string) (string, error) {
+func (l *local) Env(key string) (string, error) {
 	if l.Inspect.Config == nil {
 		return "", fmt.Errorf("failed to get env var, image '%s' does not exist", l.RepoName)
 	}
@@ -87,7 +87,7 @@ func (l *Local) Env(key string) (string, error) {
 	return "", nil
 }
 
-func (l *Local) Rename(name string) {
+func (l *local) Rename(name string) {
 	l.easyAddLayers = nil
 	if inspect, _, err := l.Docker.ImageInspectWithRaw(context.TODO(), name); err == nil {
 		if len(inspect.RootFS.Layers) > len(l.Inspect.RootFS.Layers) {
@@ -98,15 +98,15 @@ func (l *Local) Rename(name string) {
 	l.RepoName = name
 }
 
-func (l *Local) Name() string {
+func (l *local) Name() string {
 	return l.RepoName
 }
 
-func (l *Local) Found() (bool, error) {
+func (l *local) Found() (bool, error) {
 	return l.Inspect.Config != nil, nil
 }
 
-func (l *Local) Digest() (string, error) {
+func (l *local) Digest() (string, error) {
 	if found, err := l.Found(); err != nil {
 		return "", errors.Wrap(err, "determining image existence")
 	} else if !found {
@@ -122,7 +122,7 @@ func (l *Local) Digest() (string, error) {
 	return parts[1], nil
 }
 
-func (l *Local) Rebase(baseTopLayer string, newBase Image) error {
+func (l *local) Rebase(baseTopLayer string, newBase Image) error {
 	ctx := context.Background()
 
 	// FIND TOP LAYER
@@ -173,7 +173,7 @@ func (l *Local) Rebase(baseTopLayer string, newBase Image) error {
 	return nil
 }
 
-func (l *Local) SetLabel(key, val string) error {
+func (l *local) SetLabel(key, val string) error {
 	if l.Inspect.Config == nil {
 		return fmt.Errorf("failed to set label, image '%s' does not exist", l.RepoName)
 	}
@@ -181,7 +181,7 @@ func (l *Local) SetLabel(key, val string) error {
 	return nil
 }
 
-func (l *Local) SetEnv(key, val string) error {
+func (l *local) SetEnv(key, val string) error {
 	if l.Inspect.Config == nil {
 		return fmt.Errorf("failed to set env var, image '%s' does not exist", l.RepoName)
 	}
@@ -189,7 +189,7 @@ func (l *Local) SetEnv(key, val string) error {
 	return nil
 }
 
-func (l *Local) SetEntrypoint(ep ...string) error {
+func (l *local) SetEntrypoint(ep ...string) error {
 	if l.Inspect.Config == nil {
 		return fmt.Errorf("failed to set entrypoint, image '%s' does not exist", l.RepoName)
 	}
@@ -197,7 +197,7 @@ func (l *Local) SetEntrypoint(ep ...string) error {
 	return nil
 }
 
-func (l *Local) SetCmd(cmd ...string) error {
+func (l *local) SetCmd(cmd ...string) error {
 	if l.Inspect.Config == nil {
 		return fmt.Errorf("failed to set cmd, image '%s' does not exist", l.RepoName)
 	}
@@ -205,13 +205,13 @@ func (l *Local) SetCmd(cmd ...string) error {
 	return nil
 }
 
-func (l *Local) TopLayer() (string, error) {
+func (l *local) TopLayer() (string, error) {
 	all := l.Inspect.RootFS.Layers
 	topLayer := all[len(all)-1]
 	return topLayer, nil
 }
 
-func (l *Local) GetLayer(sha string) (io.ReadCloser, error) {
+func (l *local) GetLayer(sha string) (io.ReadCloser, error) {
 	l.prevDownload()
 	layerID, ok := l.prevMap[sha]
 	if !ok {
@@ -220,7 +220,7 @@ func (l *Local) GetLayer(sha string) (io.ReadCloser, error) {
 	return os.Open(filepath.Join(l.prevDir, layerID))
 }
 
-func (l *Local) AddLayer(path string) error {
+func (l *local) AddLayer(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return errors.Wrapf(err, "AddLayer: open layer: %s", path)
@@ -239,7 +239,7 @@ func (l *Local) AddLayer(path string) error {
 	return nil
 }
 
-func (l *Local) ReuseLayer(sha string) error {
+func (l *local) ReuseLayer(sha string) error {
 	if len(l.easyAddLayers) > 0 && l.easyAddLayers[0] == sha {
 		l.Inspect.RootFS.Layers = append(l.Inspect.RootFS.Layers, sha)
 		l.layerPaths = append(l.layerPaths, "")
@@ -259,7 +259,7 @@ func (l *Local) ReuseLayer(sha string) error {
 	return l.AddLayer(filepath.Join(l.prevDir, reuseLayer))
 }
 
-func (l *Local) Save() (string, error) {
+func (l *local) Save() (string, error) {
 	ctx := context.Background()
 	done := make(chan error)
 
@@ -346,7 +346,7 @@ func (l *Local) Save() (string, error) {
 	return imgID, err
 }
 
-func (l *Local) Delete() error {
+func (l *local) Delete() error {
 	if found, err := l.Found(); err != nil {
 		return errors.Wrap(err, "determining image existence")
 	} else if found {
@@ -362,7 +362,7 @@ func (l *Local) Delete() error {
 	return nil
 }
 
-func (l *Local) prevDownload() error {
+func (l *local) prevDownload() error {
 	var outerErr error
 	l.prevOnce.Do(func() {
 		ctx := context.Background()

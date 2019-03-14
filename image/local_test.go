@@ -34,7 +34,7 @@ func TestLocal(t *testing.T) {
 	localTestRegistry.Start(t)
 	defer localTestRegistry.Stop(t)
 
-	spec.Run(t, "Local", testLocal, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "local", testLocal, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testLocal(t *testing.T, when spec.G, it spec.S) {
@@ -757,7 +757,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 
 		when("the image does exist", func() {
 			var (
-				origImg *image.Local
+				origImg image.Image
 				origID  string
 			)
 
@@ -793,9 +793,9 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				const newTag = "different-tag"
 
 				it.Before(func() {
-					h.AssertNil(t, dockerCli.ImageTag(context.TODO(), origImg.RepoName, newTag))
+					h.AssertNil(t, dockerCli.ImageTag(context.TODO(), origImg.Name(), newTag))
 
-					_, err := dockerCli.ImageRemove(context.TODO(), origImg.RepoName, dockertypes.ImageRemoveOptions{})
+					_, err := dockerCli.ImageRemove(context.TODO(), origImg.Name(), dockertypes.ImageRemoveOptions{})
 					h.AssertNil(t, err)
 				})
 

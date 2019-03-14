@@ -56,7 +56,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 	when("#label", func() {
 		when("image exists", func() {
-			var img *image.Remote
+			var img image.Image
 			it.Before(func() {
 				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
@@ -154,7 +154,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#SetLabel", func() {
-		var img *image.Remote
+		var img image.Image
 		when("image exists", func() {
 			it.Before(func() {
 				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
@@ -189,7 +189,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 	when("#SetEnv", func() {
 		var (
-			img *image.Remote
+			img image.Image
 		)
 		it.Before(func() {
 			var err error
@@ -221,7 +221,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 	when("#SetEntrypoint", func() {
 		var (
-			img *image.Remote
+			img image.Image
 		)
 		it.Before(func() {
 			var err error
@@ -252,7 +252,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 	when("#SetCmd", func() {
 		var (
-			img *image.Remote
+			img image.Image
 		)
 		it.Before(func() {
 			var err error
@@ -375,7 +375,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	when("#AddLayer", func() {
 		var (
 			tarPath string
-			img     *image.Remote
+			img     image.Image
 		)
 		it.Before(func() {
 			h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
@@ -425,7 +425,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		when("previous image", func() {
 			var (
 				layer2SHA string
-				img       *image.Remote
+				img       image.Image
 			)
 
 			it.Before(func() {
