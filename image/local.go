@@ -53,7 +53,7 @@ func (f *Factory) NewLocal(repoName string) (*Local, error) {
 	}, nil
 }
 
-func (f *Factory) NewEmptyLocal(repoName string) Image {
+func (f *Factory) NewEmptyLocal(repoName string) *Local {
 	inspect := dockertypes.ImageInspect{}
 	inspect.Config = &container.Config{
 		Labels: map[string]string{},
