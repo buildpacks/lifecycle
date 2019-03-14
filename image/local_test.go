@@ -744,4 +744,76 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#Delete", func() {
+		when("the image does not exist", func() {
+			it("should not error", func() {
+				img, err := factory.NewLocal("image-does-not-exist")
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, img.Delete())
+			})
+		})
+
+		when("the image does exist", func() {
+			var (
+				origImg image.Image
+				origID  string
+			)
+
+			it.Before(func() {
+				var err error
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+					FROM busybox
+					LABEL repo_name_for_randomisation=%s
+					LABEL mykey=oldValue
+				`, repoName), nil)
+				origImg, err = factory.NewLocal(repoName)
+				h.AssertNil(t, err)
+
+				origID = h.ImageID(t, repoName)
+			})
+
+			it("should delete the image", func() {
+				found, err := origImg.Found()
+				h.AssertNil(t, err)
+				h.AssertEq(t, found, true)
+
+				h.AssertNil(t, origImg.Delete())
+
+				img, err := factory.NewLocal(origID)
+				h.AssertNil(t, err)
+
+				found, err = img.Found()
+				h.AssertNil(t, err)
+				h.AssertEq(t, found, false)
+			})
+
+			when("the image has been re-tagged", func() {
+				const newTag = "different-tag"
+
+				it.Before(func() {
+					h.AssertNil(t, dockerCli.ImageTag(context.TODO(), origImg.Name(), newTag))
+
+					_, err := dockerCli.ImageRemove(context.TODO(), origImg.Name(), dockertypes.ImageRemoveOptions{})
+					h.AssertNil(t, err)
+				})
+
+				it("should delete the image", func() {
+					found, err := origImg.Found()
+					h.AssertNil(t, err)
+					h.AssertEq(t, found, true)
+
+					h.AssertNil(t, origImg.Delete())
+
+					origImg, err = factory.NewLocal(newTag)
+					h.AssertNil(t, err)
+
+					found, err = origImg.Found()
+					h.AssertNil(t, err)
+					h.AssertEq(t, found, false)
+				})
+			})
+		})
+	})
 }

@@ -71,8 +71,10 @@ func cache() error {
 	if err != nil {
 		return err
 	}
+
 	if err := cacher.Cache(layersDir, origCacheImage, factory.NewEmptyLocal(cacheImageTag)); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed)
 	}
-	return nil
+
+	return origCacheImage.Delete()
 }
