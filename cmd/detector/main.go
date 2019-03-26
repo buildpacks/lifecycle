@@ -39,9 +39,6 @@ func main() {
 }
 
 func detect() error {
-	errLog := log.New(os.Stderr, "", log.LstdFlags)
-	outLog := log.New(os.Stdout, "", log.LstdFlags)
-
 	buildpacks, err := lifecycle.NewBuildpackMap(buildpacksDir)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack directory")
@@ -54,8 +51,8 @@ func detect() error {
 	info, group := order.Detect(&lifecycle.DetectConfig{
 		AppDir:      appDir,
 		PlatformDir: platformDir,
-		Out:         outLog,
-		Err:         errLog,
+		Out:         log.New(os.Stdout, "", 0),
+		Err:         log.New(os.Stderr, "", 0),
 	})
 	if group == nil {
 		return cmd.FailCode(cmd.CodeFailedDetect, "detect")
