@@ -72,8 +72,8 @@ func export() error {
 	defer os.RemoveAll(artifactsDir)
 	exporter := &lifecycle.Exporter{
 		Buildpacks:   group.Buildpacks,
-		Out:          log.New(os.Stdout, "", log.LstdFlags),
-		Err:          log.New(os.Stderr, "", log.LstdFlags),
+		Out:          log.New(os.Stdout, "", 0),
+		Err:          log.New(os.Stderr, "", 0),
 		UID:          uid,
 		GID:          gid,
 		ArtifactsDir: artifactsDir,

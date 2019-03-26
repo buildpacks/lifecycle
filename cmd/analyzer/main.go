@@ -54,8 +54,8 @@ func analyzer() error {
 		Buildpacks: group.Buildpacks,
 		AppDir:     appDir,
 		LayersDir:  layersDir,
-		Out:        log.New(os.Stdout, "", log.LstdFlags),
-		Err:        log.New(os.Stderr, "", log.LstdFlags),
+		Out:        log.New(os.Stdout, "", 0),
+		Err:        log.New(os.Stderr, "", 0),
 	}
 
 	var err error

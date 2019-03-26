@@ -46,8 +46,8 @@ func restore() error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
 		Buildpacks: group.Buildpacks,
-		Out:        log.New(os.Stdout, "", log.LstdFlags),
-		Err:        log.New(os.Stderr, "", log.LstdFlags),
+		Out:        log.New(os.Stdout, "", 0),
+		Err:        log.New(os.Stderr, "", 0),
 	}
 
 	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))

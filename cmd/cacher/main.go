@@ -56,8 +56,8 @@ func cache() error {
 	cacher := &lifecycle.Cacher{
 		Buildpacks:   group.Buildpacks,
 		ArtifactsDir: artifactsDir,
-		Out:          log.New(os.Stdout, "", log.LstdFlags),
-		Err:          log.New(os.Stderr, "", log.LstdFlags),
+		Out:          log.New(os.Stdout, "", 0),
+		Err:          log.New(os.Stderr, "", 0),
 		UID:          uid,
 		GID:          gid,
 	}
