@@ -20,27 +20,25 @@ var (
 	layersDir   string
 	appDir      string
 	groupPath   string
+	stackPath   string
 	useDaemon   bool
 	useHelpers  bool
 	uid         int
 	gid         int
-	labels      cmd.Labels
 )
 
 const launcherPath = "/lifecycle/launcher"
 
 func init() {
-	labels = make(map[string]string)
-
 	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagStackPath(&stackPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
-	cmd.FlagLabels(labels)
 }
 
 func main() {
@@ -54,11 +52,13 @@ func main() {
 }
 
 func export() error {
-	var group lifecycle.BuildpackGroup
 	var err error
+
+	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
 		return cmd.FailErr(err, "read group")
 	}
+
 	if useHelpers {
 		if err := lifecycle.SetupCredHelpers(repoName, runImageRef); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
@@ -70,10 +70,13 @@ func export() error {
 		return cmd.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(artifactsDir)
+
+	outLog := log.New(os.Stdout, "", 0)
+	errLog := log.New(os.Stderr, "", 0)
 	exporter := &lifecycle.Exporter{
 		Buildpacks:   group.Buildpacks,
-		Out:          log.New(os.Stdout, "", 0),
-		Err:          log.New(os.Stderr, "", 0),
+		Out:          outLog,
+		Err:          errLog,
 		UID:          uid,
 		GID:          gid,
 		ArtifactsDir: artifactsDir,
@@ -83,6 +86,13 @@ func export() error {
 	if err != nil {
 		return err
 	}
+
+	var stack lifecycle.StackMetadata
+	_, err = toml.DecodeFile(stackPath, &stack)
+	if err != nil {
+		outLog.Printf("no stack.toml found at path '%s', stack metadata will not be exported\n", stackPath)
+	}
+
 	var runImage, origImage image.Image
 	if useDaemon {
 		runImage, err = factory.NewLocal(runImageRef)
@@ -104,7 +114,7 @@ func export() error {
 		}
 	}
 
-	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath, labels); err != nil {
+	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath, stack); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
 	}
 
