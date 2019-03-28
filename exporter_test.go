@@ -287,18 +287,18 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, metadata.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
 			})
 
-			it("sets PACK_LAYERS_DIR", func() {
+			it("sets CNB_LAYERS_DIR", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath, stack))
 
-				val, err := fakeRunImage.Env("PACK_LAYERS_DIR")
+				val, err := fakeRunImage.Env("CNB_LAYERS_DIR")
 				h.AssertNil(t, err)
 				h.AssertEq(t, val, layersDir)
 			})
 
-			it("sets PACK_APP_DIR", func() {
+			it("sets CNB_APP_DIR", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, fakeOriginalImage, launcherPath, stack))
 
-				val, err := fakeRunImage.Env("PACK_APP_DIR")
+				val, err := fakeRunImage.Env("CNB_APP_DIR")
 				h.AssertNil(t, err)
 				h.AssertEq(t, val, appDir)
 			})
@@ -497,18 +497,18 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("sets PACK_LAYERS_DIR", func() {
+			it("sets CNB_LAYERS_DIR", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, nonExistingOriginalImage, launcherPath, stack))
 
-				val, err := fakeRunImage.Env("PACK_LAYERS_DIR")
+				val, err := fakeRunImage.Env("CNB_LAYERS_DIR")
 				h.AssertNil(t, err)
 				h.AssertEq(t, val, layersDir)
 			})
 
-			it("sets PACK_APP_DIR", func() {
+			it("sets CNB_APP_DIR", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeRunImage, nonExistingOriginalImage, launcherPath, stack))
 
-				val, err := fakeRunImage.Env("PACK_APP_DIR")
+				val, err := fakeRunImage.Env("CNB_APP_DIR")
 				h.AssertNil(t, err)
 				h.AssertEq(t, val, appDir)
 			})

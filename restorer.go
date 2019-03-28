@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/image"
 )
@@ -12,6 +14,8 @@ type Restorer struct {
 	LayersDir  string
 	Buildpacks []*Buildpack
 	Out, Err   *log.Logger
+	UID        int
+	GID        int
 }
 
 func (r *Restorer) Restore(cacheImage image.Image) error {
@@ -44,8 +48,8 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 	if current := os.Getuid(); err != nil {
 		return err
 	} else if current == 0 {
-		if err := fixPerms(r.LayersDir); err != nil {
-			return err
+		if err := recursiveChown(r.LayersDir, r.UID, r.GID); err != nil {
+			return errors.Wrapf(err, "chowning layers dir to '%d/%d'", r.UID, r.GID)
 		}
 	}
 	return nil

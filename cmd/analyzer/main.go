@@ -19,6 +19,8 @@ var (
 	groupPath  string
 	useDaemon  bool
 	useHelpers bool
+	uid        int
+	gid        int
 )
 
 func init() {
@@ -27,6 +29,8 @@ func init() {
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
+	cmd.FlagUID(&uid)
+	cmd.FlagGID(&gid)
 }
 
 func main() {
@@ -56,11 +60,13 @@ func analyzer() error {
 		LayersDir:  layersDir,
 		Out:        log.New(os.Stdout, "", 0),
 		Err:        log.New(os.Stderr, "", 0),
+		UID:        uid,
+		GID:        gid,
 	}
 
 	var err error
 	var previousImage image.Image
-	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout), image.WithEnvKeychain, image.WithLegacyEnvKeychain)
+	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout), image.WithEnvKeychain)
 	if err != nil {
 		return err
 	}
