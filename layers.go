@@ -220,7 +220,7 @@ func recursiveChown(path string, uid, gid int) error {
 				return err
 			}
 		} else {
-			if err := os.Chown(filePath, uid, gid); err != nil {
+			if err := os.Lchown(filePath, uid, gid); err != nil {
 				return err
 			}
 		}
