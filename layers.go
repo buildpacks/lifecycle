@@ -92,7 +92,7 @@ type cacheType int
 const (
 	cacheStaleNoMetadata cacheType = iota
 	cacheStaleWrongSHA
-	cacheNotForLaunch // we can't determine whether the cache is stale for launch=false layers
+	cacheNotForLaunch  // we can't determine whether the cache is stale for launch=false layers
 	cacheValid
 	cacheMalformed
 )
@@ -212,14 +212,14 @@ type identifiableLayer interface {
 func fixPerms(path string) error {
 	uid, err := strconv.Atoi(os.Getenv(cmd.EnvUID))
 	if err != nil {
-		return errors.Wrapf(err, "failed to convert PACK_USER_ID '%s' to int", os.Getenv(cmd.EnvUID))
+		return errors.Wrapf(err, "failed to convert %s '%s' to int", cmd.EnvUID, os.Getenv(cmd.EnvUID))
 	}
 	gid, err := strconv.Atoi(os.Getenv(cmd.EnvGID))
 	if err != nil {
-		return errors.Wrapf(err, "failed to convert PACK_GROUP_ID '%s' to int", os.Getenv(cmd.EnvGID))
+		return errors.Wrapf(err, "failed to convert %s '%s' to int", cmd.EnvUID, os.Getenv(cmd.EnvGID))
 	}
 	if err := recursiveChown(path, uid, gid); err != nil {
-		return errors.Wrapf(err, "chowning layers dir to PACK_UID/PACK_GID '%d/%d'", uid, gid)
+		return errors.Wrapf(err, "chowning layers dir to %s/%s '%d/%d'", cmd.EnvUID, cmd.EnvGID, uid, gid)
 	}
 	return nil
 }

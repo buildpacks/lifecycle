@@ -22,9 +22,8 @@ RUN \
   groupadd pack --gid ${pack_gid} && \
   useradd --uid ${pack_uid} --gid ${pack_gid} -m -s /bin/bash pack
 
-ENV PACK_USER_ID=${pack_uid}
-ENV PACK_GROUP_ID=${pack_gid}
-ENV PACK_USER_GID=${pack_gid}
+ENV CNB_USER_ID=${pack_uid}
+ENV CNB_GROUP_ID=${pack_gid}
 
 COPY --from=builder /go/bin /lifecycle
 
