@@ -31,6 +31,9 @@ func init() {
 }
 
 func main() {
+	// suppress output from libraries, lifecycle will not use standard logger
+	log.SetOutput(ioutil.Discard)
+
 	flag.Parse()
 	if flag.NArg() > 0 {
 		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}

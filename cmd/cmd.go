@@ -137,7 +137,8 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	log.Printf("Error: %s\n", err)
+	logger := log.New(os.Stderr, "", 0)
+	logger.Printf("Error: %s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
