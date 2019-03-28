@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -270,22 +269,14 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 				it("recursively chowns the layers dir to PACK_USER_ID:PACK_GROUP_ID", func() {
 					h.AssertNil(t, restorer.Restore(cacheImage))
-					assertUidGid(t, layersDir, 1234, 4321)
-					assertUidGid(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)
-					assertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"), 1234, 4321)
-					assertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch", "file-from-cache-launch-layer"), 1234, 4321)
+					h.AssertUidGid(t, layersDir, 1234, 4321)
+					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)
+					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"), 1234, 4321)
+					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch", "file-from-cache-launch-layer"), 1234, 4321)
 				})
 			})
 		})
 	})
-}
-
-func assertUidGid(t *testing.T, path string, uid, gid int) {
-	fi, err := os.Stat(path)
-	h.AssertNil(t, err)
-	stat := fi.Sys().(*syscall.Stat_t)
-	h.AssertEq(t, stat.Uid, uint32(uid))
-	h.AssertEq(t, stat.Gid, uint32(gid))
 }
 
 func addLayerFromPath(t *testing.T, tarTempDir string, layerPath string, cacheImage *h.FakeImage) string {

@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"log"
+	"os"
 
 	"github.com/buildpack/lifecycle/image"
 )
@@ -63,6 +64,15 @@ func (a *Analyzer) Analyze(image image.Image) error {
 					return err
 				}
 			}
+		}
+	}
+
+	// if analyzer is running as root it needs to fix the ownership of the layers dir
+	if current := os.Getuid(); err != nil {
+		return err
+	} else if current == 0 {
+		if err := fixPerms(a.LayersDir); err != nil {
+			return err
 		}
 	}
 	return nil
