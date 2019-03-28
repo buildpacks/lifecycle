@@ -5,9 +5,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/cmd"
 )
 
 type bpLayersDir struct {
@@ -203,4 +207,42 @@ func (l *layer) Path() string {
 type identifiableLayer interface {
 	Identifier() string
 	Path() string
+}
+
+func fixPerms(path string) error {
+	uid, err := strconv.Atoi(os.Getenv(cmd.EnvUID))
+	if err != nil {
+		return errors.Wrapf(err, "failed to convert PACK_USER_ID '%s' to int", os.Getenv(cmd.EnvUID))
+	}
+	gid, err := strconv.Atoi(os.Getenv(cmd.EnvGID))
+	if err != nil {
+		return errors.Wrapf(err, "failed to convert PACK_GROUP_ID '%s' to int", os.Getenv(cmd.EnvGID))
+	}
+	if err := recursiveChown(path, uid, gid); err != nil {
+		return errors.Wrapf(err, "chowning layers dir to PACK_UID/PACK_GID '%d/%d'", uid, gid)
+	}
+	return nil
+}
+
+func recursiveChown(path string, uid, gid int) error {
+	fis, err := ioutil.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	if err := os.Chown(path, uid, gid); err != nil {
+		return err
+	}
+	for _, fi := range fis {
+		filePath := filepath.Join(path, fi.Name())
+		if fi.IsDir() {
+			if err := recursiveChown(filePath, uid, gid); err != nil {
+				return err
+			}
+		} else {
+			if err := os.Chown(filePath, uid, gid); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
