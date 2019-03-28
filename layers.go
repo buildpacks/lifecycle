@@ -5,13 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pkg/errors"
-
-	"github.com/buildpack/lifecycle/cmd"
 )
 
 type bpLayersDir struct {
@@ -92,7 +88,7 @@ type cacheType int
 const (
 	cacheStaleNoMetadata cacheType = iota
 	cacheStaleWrongSHA
-	cacheNotForLaunch  // we can't determine whether the cache is stale for launch=false layers
+	cacheNotForLaunch // we can't determine whether the cache is stale for launch=false layers
 	cacheValid
 	cacheMalformed
 )
@@ -207,21 +203,6 @@ func (l *layer) Path() string {
 type identifiableLayer interface {
 	Identifier() string
 	Path() string
-}
-
-func fixPerms(path string) error {
-	uid, err := strconv.Atoi(os.Getenv(cmd.EnvUID))
-	if err != nil {
-		return errors.Wrapf(err, "failed to convert %s '%s' to int", cmd.EnvUID, os.Getenv(cmd.EnvUID))
-	}
-	gid, err := strconv.Atoi(os.Getenv(cmd.EnvGID))
-	if err != nil {
-		return errors.Wrapf(err, "failed to convert %s '%s' to int", cmd.EnvUID, os.Getenv(cmd.EnvGID))
-	}
-	if err := recursiveChown(path, uid, gid); err != nil {
-		return errors.Wrapf(err, "chowning layers dir to %s/%s '%d/%d'", cmd.EnvUID, cmd.EnvGID, uid, gid)
-	}
-	return nil
 }
 
 func recursiveChown(path string, uid, gid int) error {

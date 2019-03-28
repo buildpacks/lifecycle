@@ -41,6 +41,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					{ID: "escaped/buildpack/id"},
 				},
 				Out: log.New(ioutil.Discard, "", 0),
+				UID: 1234,
+				GID: 4321,
 			}
 		})
 
@@ -75,8 +77,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
-				h.AssertNil(t, os.Setenv("PACK_USER_ID", "1234"))
-				h.AssertNil(t, os.Setenv("PACK_GROUP_ID", "4321"))
 				h.RecursiveCopy(t, filepath.Join("testdata", "restorer"), layersDir)
 				var err error
 
@@ -267,7 +267,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 
-				it("recursively chowns the layers dir to PACK_USER_ID:PACK_GROUP_ID", func() {
+				it("recursively chowns the layers dir to CNB_USER_ID:CNB_GROUP_ID", func() {
 					h.AssertNil(t, restorer.Restore(cacheImage))
 					h.AssertUidGid(t, layersDir, 1234, 4321)
 					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)

@@ -51,6 +51,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:  layerDir,
 			Out:        log.New(stdout, "", 0),
 			Err:        log.New(stderr, "", 0),
+			UID:        1234,
+			GID:        4321,
 		}
 		mockCtrl = gomock.NewController(t)
 	})
@@ -75,8 +77,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			when("image label has compatible metadata", func() {
 				it.Before(func() {
-					h.AssertNil(t, os.Setenv("PACK_USER_ID", "1234"))
-					h.AssertNil(t, os.Setenv("PACK_GROUP_ID", "4321"))
 					image.EXPECT().Found().Return(true, nil)
 					image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{
   "buildpacks": [
@@ -460,7 +460,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						}
 					})
 
-					it("chowns new files to PACK_USER_ID:PACK_GROUP_ID", func() {
+					it("chowns new files to CNB_USER_ID:CNB_GROUP_ID", func() {
 						h.AssertNil(t, analyzer.Analyze(image))
 						h.AssertUidGid(t, layerDir, 1234, 4321)
 						h.AssertUidGid(t, filepath.Join(layerDir, "metdata.buildpack", "valid-launch.toml"), 1234, 4321)

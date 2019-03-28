@@ -17,12 +17,16 @@ var (
 	cacheImageTag string
 	layersDir     string
 	groupPath     string
+	uid           int
+	gid           int
 )
 
 func init() {
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagUID(&uid)
+	cmd.FlagGID(&gid)
 }
 
 func main() {
@@ -48,6 +52,8 @@ func restore() error {
 		Buildpacks: group.Buildpacks,
 		Out:        log.New(os.Stdout, "", 0),
 		Err:        log.New(os.Stderr, "", 0),
+		UID:        uid,
+		GID:        gid,
 	}
 
 	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
