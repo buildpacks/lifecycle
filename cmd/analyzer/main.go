@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -34,6 +35,9 @@ func init() {
 }
 
 func main() {
+	// suppress output from libraries, lifecycle will not use standard logger
+	log.SetOutput(ioutil.Discard)
+
 	flag.Parse()
 	repoName = flag.Arg(0)
 	if flag.NArg() > 1 || repoName == "" {

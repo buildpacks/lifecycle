@@ -31,6 +31,9 @@ func init() {
 }
 
 func main() {
+	// suppress output from libraries, lifecycle will not use standard logger
+	log.SetOutput(ioutil.Discard)
+
 	flag.Parse()
 	if flag.NArg() != 0 {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
