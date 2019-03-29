@@ -677,9 +677,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Save", func() {
 		var (
-			img    image.Image
-			origID string
+			img     image.Image
+			origID  string
+			tarPath string
 		)
+
 		when("image exists", func() {
 			it.Before(func() {
 				var err error
@@ -691,14 +693,30 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				img, err = factory.NewLocal(repoName)
 				h.AssertNil(t, err)
 				origID = h.ImageID(t, repoName)
+
+				tr, err := h.CreateSingleFileTar("/new-layer.txt", "new-layer")
+				h.AssertNil(t, err)
+
+				tarFile, err := ioutil.TempFile("", "add-layer-test")
+				h.AssertNil(t, err)
+				defer tarFile.Close()
+
+				_, err = io.Copy(tarFile, tr)
+				h.AssertNil(t, err)
+
+				tarPath = tarFile.Name()
 			})
 
 			it.After(func() {
+				os.Remove(tarPath)
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName, origID))
 			})
 
 			it("returns the image digest", func() {
 				err := img.SetLabel("mykey", "newValue")
+				h.AssertNil(t, err)
+
+				err = img.AddLayer(tarPath)
 				h.AssertNil(t, err)
 
 				imgDigest, err := img.Save()
@@ -708,6 +726,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				label := inspect.Config.Labels["mykey"]
 				h.AssertEq(t, strings.TrimSpace(label), "newValue")
+
+				t.Log("image has history")
+				history, err := dockerCli.ImageHistory(context.TODO(), imgDigest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(history), len(inspect.RootFS.Layers))
 			})
 		})
 	})
