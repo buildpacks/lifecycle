@@ -67,12 +67,12 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				header, err := tr.Next()
 				h.AssertNil(t, err)
 				h.AssertEq(t, header.Name, "testdata")
-				assertModTimeZeroedOut(t, header)
+				assertModTimeNormalized(t, header)
 
 				header, err = tr.Next()
 				h.AssertNil(t, err)
 				h.AssertEq(t, header.Name, "testdata/dir-to-tar")
-				assertModTimeZeroedOut(t, header)
+				assertModTimeNormalized(t, header)
 			})
 
 			tarContains(t, "regular files", func() {
@@ -85,14 +85,14 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, string(fileContents), "some-content")
 				h.AssertEq(t, header.Uid, uid)
 				h.AssertEq(t, header.Gid, gid)
-				assertModTimeZeroedOut(t, header)
+				assertModTimeNormalized(t, header)
 			})
 
 			tarContains(t, "sub directories", func() {
 				header, err := tr.Next()
 				h.AssertNil(t, err)
 				h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
-				assertModTimeZeroedOut(t, header)
+				assertModTimeNormalized(t, header)
 			})
 
 			tarContains(t, "symlinks", func() {
@@ -103,7 +103,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, header.Uid, uid)
 				h.AssertEq(t, header.Gid, gid)
 				h.AssertEq(t, header.Linkname, "../some-file.txt")
-				assertModTimeZeroedOut(t, header)
+				assertModTimeNormalized(t, header)
 			})
 		})
 
@@ -132,7 +132,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, header.Name, expectedDir)
 
 					assertDirectory(t, header)
-					assertModTimeZeroedOut(t, header)
+					assertModTimeNormalized(t, header)
 				}
 			})
 		})
@@ -161,7 +161,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, header.Name, expectedDir)
 
 					assertDirectory(t, header)
-					assertModTimeZeroedOut(t, header)
+					assertModTimeNormalized(t, header)
 
 				}
 			})
@@ -221,10 +221,10 @@ func assertDirectory(t *testing.T, header *tar.Header) {
 	}
 }
 
-func assertModTimeZeroedOut(t *testing.T, header *tar.Header) {
+func assertModTimeNormalized(t *testing.T, header *tar.Header) {
 	t.Helper()
-	if header.ModTime.Unix() != 0 {
-		t.Fatalf(`expected %s time not to be set instead: %s`, header.Name, header.ModTime.String())
+	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
+		t.Fatalf(`expected %s time to be normalized, instead got: %s`, header.Name, header.ModTime.String())
 	}
 }
 
