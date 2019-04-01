@@ -29,6 +29,3 @@ COPY --from=builder /go/bin /lifecycle
 
 RUN wget -qO /usr/local/bin/jq "${jq_url}" && chmod +x /usr/local/bin/jq && \
   wget -qO /usr/local/bin/yj "${yj_url}" && chmod +x /usr/local/bin/yj
-
-WORKDIR /workspace
-RUN chown -R pack:pack /workspace

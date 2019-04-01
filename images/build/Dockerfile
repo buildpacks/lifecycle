@@ -12,8 +12,9 @@ FROM ${base}
 COPY --from=helpers /go/bin /usr/local/bin
 ARG stack_id="io.buildpacks.stacks.bionic"
 
-RUN mkdir -p /workspace/app /workspace/config /cache /platform/env
-RUN chown -R pack:pack /workspace /cache
+RUN mkdir -p /workspace /layers /platform/env
+RUN chown -R pack:pack /workspace /layers
+WORKDIR /layers
 
 USER pack
 LABEL io.buildpacks.stack.id=${stack_id}
