@@ -15,6 +15,7 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/image/fakes"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
@@ -67,7 +68,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is a cache image", func() {
 			var (
-				cacheImage          *h.FakeImage
+				cacheImage          *fakes.Image
 				tarTempDir          string
 				cacheOnlyLayerSHA   string
 				cacheLaunchLayerSHA string
@@ -80,7 +81,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				h.RecursiveCopy(t, filepath.Join("testdata", "restorer"), layersDir)
 				var err error
 
-				cacheImage = h.NewFakeImage(t, "cache-image-name", "", "")
+				cacheImage = fakes.NewImage(t, "cache-image-name", "", "")
 
 				tarTempDir, err = ioutil.TempDir("", "restorer-test-temp-layer")
 				h.AssertNil(t, err)
@@ -279,7 +280,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func addLayerFromPath(t *testing.T, tarTempDir string, layerPath string, cacheImage *h.FakeImage) string {
+func addLayerFromPath(t *testing.T, tarTempDir string, layerPath string, cacheImage *fakes.Image) string {
 	t.Helper()
 	tarPath := filepath.Join(tarTempDir, h.RandString(10)+".tar")
 	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0)
