@@ -2,6 +2,8 @@ package testhelpers
 
 import (
 	"archive/tar"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -100,9 +102,24 @@ func (f *FakeImage) TopLayer() (string, error) {
 func (f *FakeImage) AddLayer(path string) error {
 	f.assertNotAlreadySaved()
 
-	f.layersMap["sha256:"+ComputeSHA256ForFile(f.t, path)] = path
+	f.layersMap["sha256:"+shaForFile(f.t, path)] = path
 	f.layers = append(f.layers, path)
 	return nil
+}
+
+func shaForFile(t *testing.T, path string) string {
+	t.Helper()
+
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("failed to open file: %s", err)
+	}
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		t.Fatalf("failed to copy file to hasher: %s", err)
+	}
+
+	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
 
 func (f *FakeImage) GetLayer(sha string) (io.ReadCloser, error) {
