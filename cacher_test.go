@@ -17,7 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image/testhelpers"
+	"github.com/buildpack/lifecycle/image/fakes"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
 )
@@ -78,7 +78,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("exports cached layers to an image", func() {
-					cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+					cacheImage := fakes.NewImage(t, "cache-image", "", "")
 					err := cacher.Cache(layersDir, mockNonExistingOriginalImage, cacheImage)
 					h.AssertNil(t, err)
 
@@ -93,7 +93,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("sets the uid and gid of the layer contents", func() {
-					cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+					cacheImage := fakes.NewImage(t, "cache-image", "", "")
 					err := cacher.Cache(layersDir, mockNonExistingOriginalImage, cacheImage)
 					h.AssertNil(t, err)
 
@@ -108,7 +108,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("sets label metadata", func() {
-					cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+					cacheImage := fakes.NewImage(t, "cache-image", "", "")
 					err := cacher.Cache(layersDir, mockNonExistingOriginalImage, cacheImage)
 					h.AssertNil(t, err)
 
@@ -132,7 +132,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("doesn't export uncached layers", func() {
-					cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+					cacheImage := fakes.NewImage(t, "cache-image", "", "")
 					err := cacher.Cache(layersDir, mockNonExistingOriginalImage, cacheImage)
 					h.AssertNil(t, err)
 
@@ -144,12 +144,12 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a previous cached image", func() {
 				var (
-					fakeOriginalImage        *testhelpers.FakeImage
+					fakeOriginalImage        *fakes.Image
 					computedReusableLayerSHA string
 					metadataTemplate         string
 				)
 				it.Before(func() {
-					fakeOriginalImage = testhelpers.NewFakeImage(t, "", "", "")
+					fakeOriginalImage = fakes.NewImage(t, "", "", "")
 					computedReusableLayerSHA = "sha256:" + h.ComputeSHA256ForPath(t, filepath.Join(layersDir, "buildpack.id/cache-true-no-sha-layer"), 1234, 4321)
 					metadataTemplate = `{
   "buildpacks": [
@@ -179,7 +179,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("reuses layers when the calculated sha matches previous metadata", func() {
-						cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+						cacheImage := fakes.NewImage(t, "cache-image", "", "")
 						err := cacher.Cache(layersDir, fakeOriginalImage, cacheImage)
 						h.AssertNil(t, err)
 
@@ -190,7 +190,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("sets label metadata", func() {
-						cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+						cacheImage := fakes.NewImage(t, "cache-image", "", "")
 						err := cacher.Cache(layersDir, fakeOriginalImage, cacheImage)
 						h.AssertNil(t, err)
 
@@ -241,7 +241,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("doesn't reuse layers", func() {
-						cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+						cacheImage := fakes.NewImage(t, "cache-image", "", "")
 						err := cacher.Cache(layersDir, fakeOriginalImage, cacheImage)
 						h.AssertNil(t, err)
 
@@ -255,11 +255,11 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("there is a cache=true layer without contents", func() {
-			var fakeOriginalImage *testhelpers.FakeImage
+			var fakeOriginalImage *fakes.Image
 
 			it.Before(func() {
 				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
-				fakeOriginalImage = testhelpers.NewFakeImage(t, "", "", "")
+				fakeOriginalImage = fakes.NewImage(t, "", "", "")
 				h.AssertNil(t, fakeOriginalImage.SetLabel(
 					"io.buildpacks.lifecycle.cache.metadata",
 					"{}"),
@@ -267,7 +267,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("fails", func() {
-				cacheImage := testhelpers.NewFakeImage(t, "cache-image", "", "")
+				cacheImage := fakes.NewImage(t, "cache-image", "", "")
 				err := cacher.Cache(layersDir, fakeOriginalImage, cacheImage)
 				h.AssertError(t, err, "failed to cache layer 'buildpack.id:cache-true-no-contents' because it has no contents")
 			})

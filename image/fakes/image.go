@@ -1,4 +1,4 @@
-package testhelpers
+package fakes
 
 import (
 	"archive/tar"
@@ -14,8 +14,8 @@ import (
 	"github.com/buildpack/lifecycle/image"
 )
 
-func NewFakeImage(t *testing.T, name, topLayerSha, digest string) *FakeImage {
-	return &FakeImage{
+func NewImage(t *testing.T, name, topLayerSha, digest string) *Image {
+	return &Image{
 		t:            t,
 		alreadySaved: false,
 		labels:       make(map[string]string),
@@ -28,7 +28,7 @@ func NewFakeImage(t *testing.T, name, topLayerSha, digest string) *FakeImage {
 	}
 }
 
-type FakeImage struct {
+type Image struct {
 	t            *testing.T
 	alreadySaved bool
 	deleted      bool
@@ -45,61 +45,61 @@ type FakeImage struct {
 	base         string
 }
 
-func (f *FakeImage) Label(key string) (string, error) {
+func (f *Image) Label(key string) (string, error) {
 	return f.labels[key], nil
 }
 
-func (f *FakeImage) Rename(name string) {
+func (f *Image) Rename(name string) {
 	f.assertNotAlreadySaved()
 	f.name = name
 }
 
-func (f *FakeImage) Name() string {
+func (f *Image) Name() string {
 	return f.name
 }
 
-func (f *FakeImage) Digest() (string, error) {
+func (f *Image) Digest() (string, error) {
 	return f.digest, nil
 }
 
-func (f *FakeImage) Rebase(baseTopLayer string, newBase image.Image) error {
+func (f *Image) Rebase(baseTopLayer string, newBase image.Image) error {
 	f.base = newBase.Name()
 	return nil
 }
 
-func (f *FakeImage) SetLabel(k string, v string) error {
+func (f *Image) SetLabel(k string, v string) error {
 	f.assertNotAlreadySaved()
 	f.labels[k] = v
 	return nil
 }
 
-func (f *FakeImage) SetEnv(k string, v string) error {
+func (f *Image) SetEnv(k string, v string) error {
 	f.assertNotAlreadySaved()
 	f.env[k] = v
 	return nil
 }
 
-func (f *FakeImage) SetEntrypoint(v ...string) error {
+func (f *Image) SetEntrypoint(v ...string) error {
 	f.assertNotAlreadySaved()
 	f.entryPoint = v
 	return nil
 }
 
-func (f *FakeImage) SetCmd(v ...string) error {
+func (f *Image) SetCmd(v ...string) error {
 	f.assertNotAlreadySaved()
 	f.cmd = v
 	return nil
 }
 
-func (f *FakeImage) Env(k string) (string, error) {
+func (f *Image) Env(k string) (string, error) {
 	return f.env[k], nil
 }
 
-func (f *FakeImage) TopLayer() (string, error) {
+func (f *Image) TopLayer() (string, error) {
 	return f.topLayerSha, nil
 }
 
-func (f *FakeImage) AddLayer(path string) error {
+func (f *Image) AddLayer(path string) error {
 	f.assertNotAlreadySaved()
 
 	f.layersMap["sha256:"+shaForFile(f.t, path)] = path
@@ -122,7 +122,7 @@ func shaForFile(t *testing.T, path string) string {
 	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
 
-func (f *FakeImage) GetLayer(sha string) (io.ReadCloser, error) {
+func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
 	path, ok := f.layersMap[sha]
 	if !ok {
 		f.t.Fatalf("failed to get layer with sha '%s'", sha)
@@ -130,51 +130,51 @@ func (f *FakeImage) GetLayer(sha string) (io.ReadCloser, error) {
 	return os.Open(path)
 }
 
-func (f *FakeImage) ReuseLayer(sha string) error {
+func (f *Image) ReuseLayer(sha string) error {
 	f.assertNotAlreadySaved()
 
 	f.reusedLayers = append(f.reusedLayers, sha)
 	return nil
 }
 
-func (f *FakeImage) Save() (string, error) {
+func (f *Image) Save() (string, error) {
 	f.assertNotAlreadySaved()
 	f.alreadySaved = true
 	return "saved-digest-from-fake-run-image", nil
 }
 
-func (f *FakeImage) Delete() error {
+func (f *Image) Delete() error {
 	f.deleted = true
 	return nil
 }
 
-func (f *FakeImage) Found() (bool, error) {
+func (f *Image) Found() (bool, error) {
 	return !f.deleted, nil
 }
 
 // test methods
 
-func (f *FakeImage) AppLayerPath() string {
+func (f *Image) AppLayerPath() string {
 	return f.layers[0]
 }
 
-func (f *FakeImage) Entrypoint() ([]string, error) {
+func (f *Image) Entrypoint() ([]string, error) {
 	return f.entryPoint, nil
 }
 
-func (f *FakeImage) Cmd() ([]string, error) {
+func (f *Image) Cmd() ([]string, error) {
 	return f.cmd, nil
 }
 
-func (f *FakeImage) ConfigLayerPath() string {
+func (f *Image) ConfigLayerPath() string {
 	return f.layers[1]
 }
 
-func (f *FakeImage) ReusedLayers() []string {
+func (f *Image) ReusedLayers() []string {
 	return f.reusedLayers
 }
 
-func (f *FakeImage) FindLayerWithPath(path string) string {
+func (f *Image) FindLayerWithPath(path string) string {
 	f.t.Helper()
 
 	for _, tarPath := range f.layersMap {
@@ -201,7 +201,7 @@ func (f *FakeImage) FindLayerWithPath(path string) string {
 	return ""
 }
 
-func (f *FakeImage) tarContents() string {
+func (f *Image) tarContents() string {
 	var strBuilder = strings.Builder{}
 	for _, tarPath := range f.layers {
 		strBuilder.WriteString(fmt.Sprintf("layer %s --- \n Contents: \n", filepath.Base(tarPath)))
@@ -226,21 +226,21 @@ func (f *FakeImage) tarContents() string {
 	return strBuilder.String()
 }
 
-func (f *FakeImage) NumberOfAddedLayers() int {
+func (f *Image) NumberOfAddedLayers() int {
 	return len(f.layers)
 }
 
-func (f *FakeImage) assertNotAlreadySaved() {
+func (f *Image) assertNotAlreadySaved() {
 	f.t.Helper()
 	if f.alreadySaved {
 		f.t.Fatalf("Image has already been saved")
 	}
 }
 
-func (f *FakeImage) IsSaved() bool {
+func (f *Image) IsSaved() bool {
 	return f.alreadySaved
 }
 
-func (f *FakeImage) Base() string {
+func (f *Image) Base() string {
 	return f.base
 }

@@ -22,7 +22,7 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/image/testhelpers"
+	"github.com/buildpack/lifecycle/image/fakes"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
 )
@@ -35,7 +35,7 @@ func TestExporter(t *testing.T) {
 func testExporter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		exporter     *lifecycle.Exporter
-		fakeRunImage *testhelpers.FakeImage
+		fakeRunImage *fakes.Image
 		stderr       bytes.Buffer
 		stdout       bytes.Buffer
 		layersDir    string
@@ -59,7 +59,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.Mkdir(layersDir, 0777))
 		h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0777))
 
-		fakeRunImage = testhelpers.NewFakeImage(t, "runImageName", "some-top-layer-sha", "some-run-image-digest")
+		fakeRunImage = fakes.NewImage(t, "runImageName", "some-top-layer-sha", "some-run-image-digest")
 
 		exporter = &lifecycle.Exporter{
 			ArtifactsDir: tmpDir,
@@ -82,7 +82,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Export", func() {
 		when("previous image exists", func() {
-			var fakeOriginalImage *testhelpers.FakeImage
+			var fakeOriginalImage *fakes.Image
 
 			it.Before(func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "previous-image-exists", "layers"), layersDir)
@@ -94,7 +94,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				localReusableLayerSha := h.ComputeSHA256ForPath(t, filepath.Join(layersDir, "other.buildpack.id/local-reusable-layer"), uid, gid)
 				launcherSHA := h.ComputeSHA256ForPath(t, launcherPath, uid, gid)
 
-				fakeOriginalImage = testhelpers.NewFakeImage(t, "app/original-Image-Name", "original-top-layer-sha", "some-original-run-image-digest")
+				fakeOriginalImage = fakes.NewImage(t, "app/original-Image-Name", "original-top-layer-sha", "some-original-run-image-digest")
 				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata",
 					fmt.Sprintf(`{
 				  "buildpacks": [
@@ -545,7 +545,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		when("buildpack requires an escaped id", func() {
 			var (
-				fakeOriginalImage *testhelpers.FakeImage
+				fakeOriginalImage *fakes.Image
 			)
 
 			it.Before(func() {
@@ -559,7 +559,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "escaped-bpid", "layers", "app"))
 				h.AssertNil(t, err)
 
-				fakeOriginalImage = testhelpers.NewFakeImage(t, "app/original", "original-top-sha", "run-digest")
+				fakeOriginalImage = fakes.NewImage(t, "app/original", "original-top-sha", "run-digest")
 				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata",
 					`{"buildpacks":[{"key": "some/escaped/bp/id", "layers": {"layer": {"sha": "original-layer-sha"}}}]}`)
 			})
@@ -622,7 +622,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is a launch=true cache=true layer without contents", func() {
 			var (
-				fakeOriginalImage *testhelpers.FakeImage
+				fakeOriginalImage *fakes.Image
 			)
 
 			it.Before(func() {
@@ -631,7 +631,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "cache-layer-no-contents", "layers", "app"))
 				h.AssertNil(t, err)
 
-				fakeOriginalImage = testhelpers.NewFakeImage(t, "app/original-Image-Name", "original-top-layer-sha", "some-original-run-image-digest")
+				fakeOriginalImage = fakes.NewImage(t, "app/original-Image-Name", "original-top-layer-sha", "some-original-run-image-digest")
 				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{
   "buildpacks": [
     {
