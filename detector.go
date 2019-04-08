@@ -198,7 +198,7 @@ type BuildpackOrder []BuildpackGroup
 
 func (bo BuildpackOrder) Detect(c *DetectConfig) (plan []byte, group *BuildpackGroup) {
 	for i := range bo {
-		c.Out.Printf("Trying group %d of %d...", i + 1, len(bo))
+		c.Out.Printf("Trying group %d out of %d with %d buildpacks...", i+1, len(bo), len(bo[i].Buildpacks))
 		if p, g, ok := bo[i].Detect(c); ok {
 			return p, g
 		}
