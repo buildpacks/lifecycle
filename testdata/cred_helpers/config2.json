@@ -1,0 +1,8 @@
+{
+  "credHelpers": {
+    "fake.amazonaws.com": "some-aws-helper",
+    "fake.azurecr.io": "some-azure-helper",
+    "fake.gcr.io": "gcloud",
+    "other.gcr.io": "gcloud"
+  }
+}

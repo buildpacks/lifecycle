@@ -63,7 +63,7 @@ func export() error {
 	}
 
 	if useHelpers {
-		if err := lifecycle.SetupCredHelpers(repoName, runImageRef); err != nil {
+		if err := lifecycle.SetupCredHelpers(os.Getenv("HOME"), repoName, runImageRef); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}

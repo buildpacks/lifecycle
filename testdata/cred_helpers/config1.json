@@ -1,0 +1,6 @@
+{
+  "credHelpers": {
+    "fake.amazonaws.com": "some-aws-helper",
+    "fake.azurecr.io": "some-azure-helper"
+  }
+}
