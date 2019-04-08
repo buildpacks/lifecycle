@@ -134,6 +134,16 @@ func (l *local) Digest() (string, error) {
 	return parts[1], nil
 }
 
+func (l *local) CreatedAt() (time.Time, error) {
+	createdAtTime := l.Inspect.Created
+	createdTime, err := time.Parse(time.RFC3339Nano, createdAtTime)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+	return createdTime, nil
+}
+
 func (l *local) Rebase(baseTopLayer string, newBase Image) error {
 	ctx := context.Background()
 

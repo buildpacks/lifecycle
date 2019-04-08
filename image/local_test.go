@@ -201,16 +201,40 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#CreatedAt", func() {
+		const reference = "busybox@sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812"
+		it.Before(func() {
+			// The SHA of a particular iteration of busybox:1.29
+			err := h.PullImage(dockerCli, reference)
+			h.AssertNil(t, err)
+		})
+
+		it("returns the containers created at time", func() {
+			img, err := factory.NewLocal(reference)
+			h.AssertNil(t, err)
+
+			expectedTime := time.Date(2018, 10, 2, 17, 19, 34, 239926273, time.UTC)
+
+			createdTime, err := img.CreatedAt()
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, createdTime, expectedTime)
+		})
+	})
+
 	when("#Digest", func() {
+		const reference = "busybox@sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812"
 		when("image exists and has a digest", func() {
 			var expectedDigest string
 			it.Before(func() {
 				// The SHA of a particular iteration of busybox:1.29
-				expectedDigest = "sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812"
+				err := h.PullImage(dockerCli, reference)
+				h.AssertNil(t, err)
 			})
 
 			it("returns the image digest", func() {
-				img, err := factory.NewRemote("busybox@sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812")
+				expectedDigest = "sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812"
+				img, err := factory.NewLocal(reference)
 				h.AssertNil(t, err)
 				digest, err := img.Digest()
 				h.AssertNil(t, err)
