@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 
@@ -48,7 +49,7 @@ func main() {
 
 func analyzer() error {
 	if useHelpers {
-		if err := lifecycle.SetupCredHelpers(os.Getenv("HOME"), repoName); err != nil {
+		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), repoName); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}

@@ -42,18 +42,9 @@ func testCredHelpers(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("a docker config exists", func() {
-		var (
-			dockerDir string
-		)
-
-		it.Before(func() {
-			dockerDir = filepath.Join(tmpDir, ".docker")
-			h.AssertNil(t, os.MkdirAll(dockerDir, 0755))
-		})
-
 		when("registry credentials do not exist in the config", func() {
 			it.Before(func() {
-				copyFile(t, filepath.Join("testdata", "cred_helpers", "config1.json"), filepath.Join(dockerDir, "config.json"))
+				copyFile(t, filepath.Join("testdata", "cred_helpers", "config1.json"), filepath.Join(tmpDir, "config.json"))
 			})
 
 			it("adds the registry and helper to the credHelpers section", func() {
@@ -69,7 +60,7 @@ func testCredHelpers(t *testing.T, when spec.G, it spec.S) {
 
 		when("registry credentials do exist in the config", func() {
 			it.Before(func() {
-				copyFile(t, filepath.Join("testdata", "cred_helpers", "config2.json"), filepath.Join(dockerDir, "config.json"))
+				copyFile(t, filepath.Join("testdata", "cred_helpers", "config2.json"), filepath.Join(tmpDir, "config.json"))
 			})
 
 			it("keeps the existing the registry and helper in the credHelpers section", func() {
@@ -98,11 +89,11 @@ func testCredHelpers(t *testing.T, when spec.G, it spec.S) {
 func copyFile(t *testing.T, src, dest string) {
 	buf, err := ioutil.ReadFile(src)
 	h.AssertNil(t, err)
-	h.AssertNil(t, ioutil.WriteFile(dest, buf, 0644))
+	h.AssertNil(t, ioutil.WriteFile(dest, buf, 0666))
 }
 
-func parseCredHelpers(t *testing.T, home string) map[string]interface{} {
-	f, err := os.Open(filepath.Join(home, ".docker", "config.json"))
+func parseCredHelpers(t *testing.T, path string) map[string]interface{} {
+	f, err := os.Open(filepath.Join(path, "config.json"))
 	h.AssertNil(t, err)
 	defer f.Close()
 

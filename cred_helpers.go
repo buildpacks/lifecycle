@@ -2,15 +2,14 @@ package lifecycle
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/google/go-containerregistry/pkg/name"
 	"os"
 	"path/filepath"
 	"regexp"
 )
 
-func SetupCredHelpers(home string, refs ...string) error {
-	dockerPath := filepath.Join(home, ".docker")
+func SetupCredHelpers(dockerPath string, refs ...string) error {
 	configPath := filepath.Join(dockerPath, "config.json")
 
 	config := map[string]interface{}{}
@@ -55,17 +54,15 @@ func SetupCredHelpers(home string, refs ...string) error {
 		return nil
 	}
 
+	ch, ok := config["credHelpers"].(map[string]interface{})
+	if !ok {
+		return errors.New("failed to parse docker config 'credHelpers'")
+	}
+
 	for k, v := range credHelpers {
-		ch, ok := config["credHelpers"].(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("failed to parse docker config 'credHelpers'")
+		if _, ok := ch[k]; !ok {
+			ch[k] = v
 		}
-
-		if _, ok := ch[k]; ok {
-			continue
-		}
-
-		ch[k] = v
 	}
 
 	if err := os.MkdirAll(dockerPath, 0777); err != nil {
