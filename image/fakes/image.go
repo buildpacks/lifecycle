@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/buildpack/lifecycle/image"
 )
@@ -25,6 +26,7 @@ func NewImage(t *testing.T, name, topLayerSha, digest string) *Image {
 		name:         name,
 		cmd:          []string{"initialCMD"},
 		layersMap:    map[string]string{},
+		createdAt:    time.Now(),
 	}
 }
 
@@ -43,6 +45,11 @@ type Image struct {
 	entryPoint   []string
 	cmd          []string
 	base         string
+	createdAt    time.Time
+}
+
+func (f *Image) CreatedAt() (time.Time, error) {
+	return f.createdAt, nil
 }
 
 func (f *Image) Label(key string) (string, error) {

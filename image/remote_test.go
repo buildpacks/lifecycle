@@ -141,6 +141,21 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#CreatedAt", func() {
+		const reference = "busybox@sha256:f79f7a10302c402c052973e3fa42be0344ae6453245669783a9e16da3d56d5b4"
+		it("returns the containers created at time", func() {
+			img, err := factory.NewRemote(reference)
+			h.AssertNil(t, err)
+
+			expectedTime := time.Date(2019, 4, 2, 23, 32, 10, 727183061, time.UTC)
+
+			createdTime, err := img.CreatedAt()
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, createdTime, expectedTime)
+		})
+	})
+
 	when("#Digest", func() {
 		it("returns the image digest", func() {
 			// The SHA of a particular iteration of busybox:1.29
