@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const buildpackVersionLatest = "latest"
+
 type BuildpackMap map[string]*Buildpack
 
 type buildpackTOML struct {
@@ -31,7 +33,14 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 		if _, err := toml.DecodeFile(file, &bpTOML); err != nil {
 			return nil, err
 		}
-		buildpacks[bpTOML.Buildpack.ID+"@"+bpTOML.Buildpack.Version] = &Buildpack{
+
+		_, version := filepath.Split(buildpackDir)
+		key := bpTOML.Buildpack.ID+"@"+version
+		if version != buildpackVersionLatest {
+			key = bpTOML.Buildpack.ID+"@"+bpTOML.Buildpack.Version
+		}
+
+		buildpacks[key] = &Buildpack{
 			ID:      bpTOML.Buildpack.ID,
 			Version: bpTOML.Buildpack.Version,
 			Name:    bpTOML.Buildpack.Name,
