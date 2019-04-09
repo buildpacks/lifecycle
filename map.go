@@ -35,9 +35,9 @@ func NewBuildpackMap(dir string) (BuildpackMap, error) {
 		}
 
 		_, version := filepath.Split(buildpackDir)
-		key := bpTOML.Buildpack.ID+"@"+version
+		key := bpTOML.Buildpack.ID + "@" + version
 		if version != buildpackVersionLatest {
-			key = bpTOML.Buildpack.ID+"@"+bpTOML.Buildpack.Version
+			key = bpTOML.Buildpack.ID + "@" + bpTOML.Buildpack.Version
 		}
 
 		buildpacks[key] = &Buildpack{
