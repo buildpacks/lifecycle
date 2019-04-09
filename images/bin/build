@@ -34,13 +34,11 @@ docker pull "${base}"
 base_image=${prefix}base:${version}
 run_image=${prefix}run:${version}
 build_image=${prefix}build:${version}
-samples_image=${prefix}samples:${version}
 docker build --build-arg "base=${base}" -t "${base_image}" ..
 docker build --build-arg "base=${base_image}" -t "${build_image}" build
 docker build --build-arg "base=${base_image}" -t "${run_image}" run
-docker build --build-arg "base=${build_image}" --build-arg "run_image=${run_image}"  -t "${samples_image}" samples
 
 echo "To publish these images:"
-for image in "${base_image}" "${run_image}" "${build_image}" "${samples_image}"; do
+for image in "${base_image}" "${run_image}" "${build_image}"; do
   echo "  docker push ${image}"
 done
