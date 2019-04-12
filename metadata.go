@@ -21,7 +21,7 @@ type AppImageMetadata struct {
 	Stack      StackMetadata       `json:"stack"`
 }
 
-type CacheImageMetadata struct {
+type CacheMetadata struct {
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 }
 
@@ -74,7 +74,7 @@ func (m *AppImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
 	return BuildpackMetadata{}
 }
 
-func (m *CacheImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
+func (m *CacheMetadata) metadataForBuildpack(id string) BuildpackMetadata {
 	for _, bpMd := range m.Buildpacks {
 		if bpMd.ID == id {
 			return bpMd
@@ -85,7 +85,7 @@ func (m *CacheImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
 
 func getAppMetadata(image image.Image, log *log.Logger) (AppImageMetadata, error) {
 	metadata := AppImageMetadata{}
-	contents, err := getMetadata(image, MetadataLabel, log)
+	contents, err := GetMetadata(image, MetadataLabel, log)
 	if err != nil {
 		return metadata, err
 	}
@@ -97,21 +97,7 @@ func getAppMetadata(image image.Image, log *log.Logger) (AppImageMetadata, error
 	return metadata, nil
 }
 
-func getCacheMetadata(image image.Image, log *log.Logger) (CacheImageMetadata, error) {
-	metadata := CacheImageMetadata{}
-	contents, err := getMetadata(image, CacheMetadataLabel, log)
-	if err != nil {
-		return metadata, err
-	}
-
-	if err := json.Unmarshal([]byte(contents), &metadata); err != nil {
-		log.Printf("WARNING: image '%s' has incompatible '%s' label\n", image.Name(), CacheMetadataLabel)
-		return CacheImageMetadata{}, nil
-	}
-	return metadata, nil
-}
-
-func getMetadata(image image.Image, metadataLabel string, log *log.Logger) (string, error) {
+func GetMetadata(image image.Image, metadataLabel string, log *log.Logger) (string, error) {
 	if found, err := image.Found(); err != nil {
 		return "", err
 	} else if !found {

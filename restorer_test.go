@@ -14,8 +14,7 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/lifecycle/cache"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
@@ -26,13 +25,24 @@ func TestRestorer(t *testing.T) {
 func testRestorer(t *testing.T, when spec.G, it spec.S) {
 	when("#Restore", func() {
 		var (
-			restorer  *lifecycle.Restorer
 			layersDir string
+			cacheDir  string
+			testCache lifecycle.Cache
+			restorer  *lifecycle.Restorer
 		)
 
 		it.Before(func() {
 			var err error
+
+			emptyLogger := log.New(ioutil.Discard, "", 0)
+
 			layersDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
+			h.AssertNil(t, err)
+
+			cacheDir, err = ioutil.TempDir("", "")
+			h.AssertNil(t, err)
+
+			testCache, err = cache.NewVolumeCache(emptyLogger, cacheDir)
 			h.AssertNil(t, err)
 
 			restorer = &lifecycle.Restorer{
@@ -41,7 +51,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					{ID: "buildpack.id"},
 					{ID: "escaped/buildpack/id"},
 				},
-				Out: log.New(ioutil.Discard, "", 0),
+				Out: emptyLogger,
 				UID: 1234,
 				GID: 4321,
 			}
@@ -49,26 +59,17 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		it.After(func() {
 			h.AssertNil(t, os.RemoveAll(layersDir))
+			h.AssertNil(t, os.RemoveAll(cacheDir))
 		})
 
-		when("there is no cache image", func() {
-			var cacheImage image.Image
-
-			it.Before(func() {
-				factory, err := image.NewFactory()
-				h.AssertNil(t, err)
-				cacheImage, err = factory.NewLocal("not-exist")
-				h.AssertNil(t, err)
-			})
-
+		when("there is no previous cache", func() {
 			it("does nothing", func() {
-				h.AssertNil(t, restorer.Restore(cacheImage))
+				h.AssertNil(t, restorer.Restore(testCache))
 			})
 		})
 
-		when("there is a cache image", func() {
+		when("there is a cache", func() {
 			var (
-				cacheImage          *fakes.Image
 				tarTempDir          string
 				cacheOnlyLayerSHA   string
 				cacheLaunchLayerSHA string
@@ -81,8 +82,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				h.RecursiveCopy(t, filepath.Join("testdata", "restorer"), layersDir)
 				var err error
 
-				cacheImage = fakes.NewImage(t, "cache-image-name", "", "")
-
 				tarTempDir, err = ioutil.TempDir("", "restorer-test-temp-layer")
 				h.AssertNil(t, err)
 
@@ -90,41 +89,42 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					t,
 					tarTempDir,
 					filepath.Join(layersDir, "buildpack.id", "cache-only"),
-					cacheImage,
+					testCache,
 				)
 
 				cacheFalseLayerSHA = addLayerFromPath(
 					t,
 					tarTempDir,
 					filepath.Join(layersDir, "buildpack.id", "cache-false"),
-					cacheImage,
+					testCache,
 				)
 
 				cacheLaunchLayerSHA = addLayerFromPath(
 					t,
 					tarTempDir,
 					filepath.Join(layersDir, "buildpack.id", "cache-launch"),
-					cacheImage,
+					testCache,
 				)
 
 				noGroupLayerSHA = addLayerFromPath(
 					t,
 					tarTempDir,
 					filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"),
-					cacheImage,
+					testCache,
 				)
 
 				escapedLayerSHA = addLayerFromPath(
 					t,
 					tarTempDir,
 					filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer"),
-					cacheImage,
+					testCache,
 				)
 
+				h.AssertNil(t, testCache.Commit())
 				h.AssertNil(t, os.RemoveAll(layersDir))
 				h.AssertNil(t, os.Mkdir(layersDir, 0777))
 
-				cacheImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", fmt.Sprintf(`{
+				contents := fmt.Sprintf(`{
 				  "buildpacks": [
 				    {
 				      "key": "buildpack.id",
@@ -136,7 +136,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				          "cache": true,
 				          "sha": "%s"
 				        },
-                        "cache-false": {
+                       "cache-false": {
 				          "data": {
 				            "cache-false-key": "cache-false-val"
 				          },
@@ -163,7 +163,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				          "sha": "%s"
 				        }
 				      }
-                    }, {
+                   }, {
 					  "key": "escaped/buildpack/id",
 				      "layers": {
 				        "escaped-bp-layer": {
@@ -176,7 +176,14 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				      }
 					}
 				  ]
-				}`, cacheOnlyLayerSHA, cacheFalseLayerSHA, cacheLaunchLayerSHA, noGroupLayerSHA, escapedLayerSHA))
+				}`, cacheOnlyLayerSHA, cacheFalseLayerSHA, cacheLaunchLayerSHA, noGroupLayerSHA, escapedLayerSHA)
+
+				err = ioutil.WriteFile(
+					filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
+					[]byte(contents),
+					0666,
+				)
+				h.AssertNil(t, err)
 			})
 
 			it.After(func() {
@@ -184,7 +191,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores cached layers", func() {
-				h.AssertNil(t, restorer.Restore(cacheImage))
+				h.AssertNil(t, restorer.Restore(testCache))
 				expectedMetadata := `[metadata]
   cache-only-key = "cache-only-val"`
 				if txt, err := ioutil.ReadFile(filepath.Join(layersDir, "buildpack.id", "cache-only.toml")); err != nil {
@@ -202,7 +209,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("write a .sha file for launch layers", func() {
-				h.AssertNil(t, restorer.Restore(cacheImage))
+				h.AssertNil(t, restorer.Restore(testCache))
 				expectedMetadata := `[metadata]
   cache-launch-key = "cache-launch-val"`
 				if txt, err := ioutil.ReadFile(filepath.Join(layersDir, "buildpack.id", "cache-launch.toml")); err != nil {
@@ -226,7 +233,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("doesn't restore cache false layers", func() {
-				h.AssertNil(t, restorer.Restore(cacheImage))
+				h.AssertNil(t, restorer.Restore(testCache))
 				if _, err := os.Stat(filepath.Join(layersDir, "buildpack.id", "cache-false.toml")); !os.IsNotExist(err) {
 					t.Fatal("Error: cache-false.toml should not have been restored")
 				}
@@ -237,14 +244,14 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("doesn't restore layers from buildpacks that aren't in the group", func() {
-				h.AssertNil(t, restorer.Restore(cacheImage))
+				h.AssertNil(t, restorer.Restore(testCache))
 				if _, err := os.Stat(filepath.Join(layersDir, "nogroup.buildpack.id")); !os.IsNotExist(err) {
 					t.Fatal("Error: expected nogroup.buildpack.id not to be restored")
 				}
 			})
 
 			it("escapes buildpack IDs when restoring buildpack layers", func() {
-				h.AssertNil(t, restorer.Restore(cacheImage))
+				h.AssertNil(t, restorer.Restore(testCache))
 				expectedMetadata := `[metadata]
   escaped-bp-key = "escaped-bp-val"`
 				if txt, err := ioutil.ReadFile(filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer.toml")); err != nil {
@@ -269,7 +276,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("recursively chowns the layers dir to CNB_USER_ID:CNB_GROUP_ID", func() {
-					h.AssertNil(t, restorer.Restore(cacheImage))
+					h.AssertNil(t, restorer.Restore(testCache))
 					h.AssertUidGid(t, layersDir, 1234, 4321)
 					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)
 					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"), 1234, 4321)
@@ -280,11 +287,11 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func addLayerFromPath(t *testing.T, tarTempDir string, layerPath string, cacheImage *fakes.Image) string {
+func addLayerFromPath(t *testing.T, tarTempDir, layerPath string, c lifecycle.Cache) string {
 	t.Helper()
 	tarPath := filepath.Join(tarTempDir, h.RandString(10)+".tar")
 	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0)
 	h.AssertNil(t, err)
-	h.AssertNil(t, cacheImage.AddLayer(tarPath))
+	h.AssertNil(t, c.AddLayer("", sha, tarPath))
 	return sha
 }

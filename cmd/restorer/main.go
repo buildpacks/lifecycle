@@ -10,12 +10,14 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
 )
 
 var (
 	cacheImageTag string
+	cachePath     string
 	layersDir     string
 	groupPath     string
 	uid           int
@@ -25,6 +27,7 @@ var (
 func init() {
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagCacheImage(&cacheImageTag)
+	cmd.FlagCachePath(&cachePath)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
@@ -39,8 +42,8 @@ func main() {
 		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
-	if cacheImageTag == "" {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "-image flag is required"))
+	if cacheImageTag == "" && cachePath == "" {
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "must supply either -image or -path"))
 	}
 	cmd.Exit(restore())
 }
@@ -60,17 +63,28 @@ func restore() error {
 		GID:        gid,
 	}
 
-	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
-	if err != nil {
-		return err
+	var restorerCache lifecycle.Cache
+	if cacheImageTag != "" {
+		factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
+		if err != nil {
+			return err
+		}
+
+		cacheImage, err := factory.NewLocal(cacheImageTag)
+		if err != nil {
+			return err
+		}
+
+		restorerCache = cache.NewImageCache(restorer.Out, factory, cacheImage)
+	} else {
+		var err error
+		restorerCache, err = cache.NewVolumeCache(restorer.Out, cachePath)
+		if err != nil {
+			return err
+		}
 	}
 
-	cacheImage, err := factory.NewLocal(cacheImageTag)
-	if err != nil {
-		return err
-	}
-
-	if err := restorer.Restore(cacheImage); err != nil {
+	if err := restorer.Restore(restorerCache); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed)
 	}
 	return nil

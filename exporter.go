@@ -44,10 +44,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	}
 
 	runImage.Rename(origImage.Name())
-	appImage := &loggingImage{
-		Out:   e.Out,
-		image: runImage,
-	}
+	appImage := image.NewLoggingImage(e.Out, runImage)
 
 	metadata.App.SHA, err = e.addOrReuseLayer(appImage, &layer{path: appDir, identifier: "app"}, origMetadata.App.SHA)
 	if err != nil {
@@ -143,7 +140,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	return err
 }
 
-func (e *Exporter) addOrReuseLayer(image *loggingImage, layer identifiableLayer, previousSha string) (string, error) {
+func (e *Exporter) addOrReuseLayer(image *image.LoggingImage, layer identifiableLayer, previousSha string) (string, error) {
 	tarPath := filepath.Join(e.ArtifactsDir, escapeIdentifier(layer.Identifier())+".tar")
 	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID)
 	if err != nil {

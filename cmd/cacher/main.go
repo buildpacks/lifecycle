@@ -10,12 +10,14 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
 )
 
 var (
 	cacheImageTag string
+	cachePath     string
 	layersDir     string
 	groupPath     string
 	uid           int
@@ -25,6 +27,7 @@ var (
 func init() {
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagCacheImage(&cacheImageTag)
+	cmd.FlagCachePath(&cachePath)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
@@ -39,17 +42,18 @@ func main() {
 		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
-	if cacheImageTag == "" {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "-image flag is required"))
+	if cacheImageTag == "" && cachePath == "" {
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "must supply either -image or -path"))
 	}
-	cmd.Exit(cache())
+	cmd.Exit(doCache())
 }
 
-func cache() error {
+func doCache() error {
 	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
 		return cmd.FailErr(err, "read group")
 	}
+
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
@@ -65,19 +69,30 @@ func cache() error {
 		GID:          gid,
 	}
 
-	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
-	if err != nil {
-		return err
+	var cacherCache lifecycle.Cache
+	if cacheImageTag != "" {
+		factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
+		if err != nil {
+			return err
+		}
+
+		origCacheImage, err := factory.NewLocal(cacheImageTag)
+		if err != nil {
+			return err
+		}
+
+		cacherCache = cache.NewImageCache(cacher.Out, factory, origCacheImage)
+	} else {
+		var err error
+		cacherCache, err = cache.NewVolumeCache(cacher.Out, cachePath)
+		if err != nil {
+			return err
+		}
 	}
 
-	origCacheImage, err := factory.NewLocal(cacheImageTag)
-	if err != nil {
-		return err
-	}
-
-	if err := cacher.Cache(layersDir, origCacheImage, factory.NewEmptyLocal(cacheImageTag)); err != nil {
+	if err := cacher.Cache(layersDir, cacherCache); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed)
 	}
 
-	return origCacheImage.Delete()
+	return nil
 }

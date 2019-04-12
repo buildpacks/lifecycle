@@ -49,11 +49,6 @@ func launch(l bpLayer) bool {
 	return err == nil && md.Launch
 }
 
-func nonCached(l bpLayer) bool {
-	md, err := l.read()
-	return err == nil && !md.Cache
-}
-
 func malformed(l bpLayer) bool {
 	_, err := l.read()
 	return err != nil

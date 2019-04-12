@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/image"
 )
 
 type Restorer struct {
@@ -18,15 +17,17 @@ type Restorer struct {
 	GID        int
 }
 
-func (r *Restorer) Restore(cacheImage image.Image) error {
-	if found, err := cacheImage.Found(); !found || err != nil {
-		r.Out.Printf("cache image '%s' not found, nothing to restore", cacheImage.Name())
-		return nil
-	}
-	metadata, err := getCacheMetadata(cacheImage, r.Out)
+func (r *Restorer) Restore(cache Cache) error {
+	metadata, found, err := cache.RetrieveMetadata()
 	if err != nil {
 		return err
 	}
+
+	if !found {
+		r.Out.Printf("cache '%s': metadata not found, nothing to restore", cache.Name())
+		return nil
+	}
+
 	for _, bp := range r.Buildpacks {
 		layersDir, err := readBuildpackLayersDir(r.LayersDir, *bp)
 		if err != nil {
@@ -38,7 +39,7 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 				continue
 			}
 
-			if err := r.restoreLayer(name, bpMD, layer, layersDir, cacheImage); err != nil {
+			if err := r.restoreLayer(name, bpMD, layer, layersDir, cache); err != nil {
 				return err
 			}
 		}
@@ -55,7 +56,7 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 	return nil
 }
 
-func (r *Restorer) restoreLayer(name string, bpMD BuildpackMetadata, layer LayerMetadata, layersDir bpLayersDir, cacheImage image.Image) error {
+func (r *Restorer) restoreLayer(name string, bpMD BuildpackMetadata, layer LayerMetadata, layersDir bpLayersDir, cache Cache) error {
 	bpLayer := layersDir.newBPLayer(name)
 
 	r.Out.Printf("restoring cached layer '%s'", bpLayer.Identifier())
@@ -69,7 +70,7 @@ func (r *Restorer) restoreLayer(name string, bpMD BuildpackMetadata, layer Layer
 		}
 	}
 
-	rc, err := cacheImage.GetLayer(layer.SHA)
+	rc, err := cache.RetrieveLayer(layer.SHA)
 	if err != nil {
 		return err
 	}
