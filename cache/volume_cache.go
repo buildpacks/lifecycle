@@ -74,7 +74,9 @@ func (c *VolumeCache) RetrieveMetadata() (Metadata, error) {
 	defer file.Close()
 
 	metadata := Metadata{}
-	_ = json.NewDecoder(file).Decode(&metadata)
+	if json.NewDecoder(file).Decode(&metadata) != nil {
+		return Metadata{}, nil
+	}
 	return metadata, nil
 }
 

@@ -49,7 +49,9 @@ func (c *ImageCache) RetrieveMetadata() (Metadata, error) {
 	}
 
 	meta := Metadata{}
-	_ = json.Unmarshal([]byte(contents), &meta)
+	if json.Unmarshal([]byte(contents), &meta) != nil {
+		return Metadata{}, nil
+	}
 	return meta, nil
 }
 
