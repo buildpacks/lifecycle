@@ -89,8 +89,5 @@ func GetRawMetadata(image image.Image, metadataLabel string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "retrieving label '%s' for image '%s'", metadataLabel, image.Name())
 	}
-	if contents == "" {
-		return "", nil
-	}
 	return contents, nil
 }
