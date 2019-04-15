@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
