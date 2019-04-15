@@ -476,13 +476,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				image.EXPECT().Found().Return(false, nil)
 			})
 
-			it("warns user and clears the cached launch layers", func() {
+			it("clears the cached launch layers", func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
-				if !strings.Contains(stdout.String(), "WARNING: image 'image-repo-name' not found or requires authentication to access") {
-					t.Fatalf("expected warning in stdout: %s", stdout.String())
-				}
+
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
 				}
@@ -512,15 +510,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return("", nil)
 			})
 
-			it("warns user and returns", func() {
+			it("returns", func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
-
-				if !strings.Contains(stdout.String(), "WARNING: image 'image-repo-name' does not have 'io.buildpacks.lifecycle.metadata' label") {
-					t.Fatalf("expected warning in stdout: %s", stdout.String())
-				}
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
@@ -540,15 +534,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{["bad", "metadata"]}`, nil)
 			})
 
-			it("warns user and returns", func() {
+			it("returns", func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 				err := analyzer.Analyze(image)
 				assertNil(t, err)
-
-				if !strings.Contains(stdout.String(), "WARNING: image 'image-repo-name' has incompatible 'io.buildpacks.lifecycle.metadata' label") {
-					t.Fatalf("expected warning in stdout: %s", stdout.String())
-				}
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")

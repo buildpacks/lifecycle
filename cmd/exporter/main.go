@@ -13,6 +13,7 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/metadata"
 )
 
 var (
@@ -91,7 +92,7 @@ func export() error {
 		return err
 	}
 
-	var stack lifecycle.StackMetadata
+	var stack metadata.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stack)
 	if err != nil {
 		outLog.Printf("no stack.toml found at path '%s', stack metadata will not be exported\n", stackPath)

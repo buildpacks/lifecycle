@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,9 +131,15 @@ func shaForFile(t *testing.T, path string) string {
 }
 
 func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
+	for _, s := range f.reusedLayers {
+		if s == sha {
+			return ioutil.NopCloser(strings.NewReader("dummy data")), nil
+		}
+	}
+
 	path, ok := f.layersMap[sha]
 	if !ok {
-		f.t.Fatalf("failed to get layer with sha '%s'", sha)
+		return nil, fmt.Errorf("failed to get layer with sha '%s'", sha)
 	}
 	return os.Open(path)
 }
