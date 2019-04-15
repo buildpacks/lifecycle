@@ -2,24 +2,22 @@ package cache_test
 
 import (
 	"fmt"
-	"github.com/buildpack/lifecycle/cache/testmock"
-	"github.com/golang/mock/gomock"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/golang/mock/gomock"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle/cache"
-
+	"github.com/buildpack/lifecycle/cache/testmock"
+	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
@@ -54,7 +52,6 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		mockImageFactory.EXPECT().NewEmptyLocal("fake-image").Return(fakeNewImage).AnyTimes()
 
 		subject = cache.NewImageCache(
-			log.New(ioutil.Discard, "", 0),
 			mockImageFactory,
 			fakeOriginalImage,
 		)
@@ -85,12 +82,12 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				))
 			})
 
-			it("returns the metadata and found true", func() {
-				expected := lifecycle.CacheMetadata{
-					Buildpacks: []lifecycle.BuildpackMetadata{{
+			it("returns the metadata", func() {
+				expected := cache.Metadata{
+					Buildpacks: []metadata.BuildpackMetadata{{
 						ID:      "bp.id",
 						Version: "1.2.3",
-						Layers: map[string]lifecycle.LayerMetadata{
+						Layers: map[string]metadata.LayerMetadata{
 							"some-layer": {
 								SHA:    "some-sha",
 								Data:   "some-data",
@@ -102,10 +99,9 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					}},
 				}
 
-				metadata, found, err := subject.RetrieveMetadata()
+				meta, err := subject.RetrieveMetadata()
 				h.AssertNil(t, err)
-				h.AssertEq(t, found, true)
-				h.AssertEq(t, metadata, expected)
+				h.AssertEq(t, meta, expected)
 			})
 		})
 
@@ -114,20 +110,18 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", "garbage"))
 			})
 
-			it("returns empty metadata and found false", func() {
-				metadata, found, err := subject.RetrieveMetadata()
+			it("returns empty metadata", func() {
+				meta, err := subject.RetrieveMetadata()
 				h.AssertNil(t, err)
-				h.AssertEq(t, found, false)
-				h.AssertEq(t, len(metadata.Buildpacks), 0)
+				h.AssertEq(t, len(meta.Buildpacks), 0)
 			})
 		})
 
 		when("original image metadata label missing", func() {
-			it("returns empty metadata and found false", func() {
-				metadata, found, err := subject.RetrieveMetadata()
+			it("returns empty metadata", func() {
+				meta, err := subject.RetrieveMetadata()
 				h.AssertNil(t, err)
-				h.AssertEq(t, found, false)
-				h.AssertEq(t, len(metadata.Buildpacks), 0)
+				h.AssertEq(t, len(meta.Buildpacks), 0)
 			})
 		})
 	})
@@ -158,13 +152,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Commit", func() {
 		when("with #SetMetadata", func() {
-			var newMetadata lifecycle.CacheMetadata
+			var newMetadata cache.Metadata
 
 			it.Before(func() {
 				h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", `{"buildpacks": [{"key": "old.bp.id"}]}`))
 
-				newMetadata = lifecycle.CacheMetadata{
-					Buildpacks: []lifecycle.BuildpackMetadata{{
+				newMetadata = cache.Metadata{
+					Buildpacks: []metadata.BuildpackMetadata{{
 						ID: "new.bp.id",
 					}},
 				}
@@ -177,26 +171,24 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					err := subject.Commit()
 					h.AssertNil(t, err)
 
-					retrievedMetadata, found, err := subject.RetrieveMetadata()
+					retrievedMetadata, err := subject.RetrieveMetadata()
 					h.AssertNil(t, err)
-					h.AssertEq(t, found, true)
 					h.AssertEq(t, retrievedMetadata, newMetadata)
 				})
 			})
 
 			when("set without commit", func() {
 				it("retrieve returns the previous metadata", func() {
-					previousMetadata := lifecycle.CacheMetadata{
-						Buildpacks: []lifecycle.BuildpackMetadata{{
+					previousMetadata := cache.Metadata{
+						Buildpacks: []metadata.BuildpackMetadata{{
 							ID: "old.bp.id",
 						}},
 					}
 
 					h.AssertNil(t, subject.SetMetadata(newMetadata))
 
-					retrievedMetadata, found, err := subject.RetrieveMetadata()
+					retrievedMetadata, err := subject.RetrieveMetadata()
 					h.AssertNil(t, err)
-					h.AssertEq(t, found, true)
 					h.AssertEq(t, retrievedMetadata, previousMetadata)
 				})
 			})

@@ -5,7 +5,7 @@
 package testmock
 
 import (
-	lifecycle "github.com/buildpack/lifecycle"
+	cache "github.com/buildpack/lifecycle/cache"
 	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
@@ -49,32 +49,17 @@ func (mr *MockCacheMockRecorder) AddLayer(arg0, arg1, arg2 interface{}) *gomock.
 }
 
 // Commit mocks base method
-func (m *MockCache) Commit() (string, error) {
+func (m *MockCache) Commit() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Commit")
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Commit indicates an expected call of Commit
 func (mr *MockCacheMockRecorder) Commit() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockCache)(nil).Commit))
-}
-
-// Exists mocks base method
-func (m *MockCache) Exists() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exists")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// Exists indicates an expected call of Exists
-func (mr *MockCacheMockRecorder) Exists() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exists", reflect.TypeOf((*MockCache)(nil).Exists))
 }
 
 // Name mocks base method
@@ -107,10 +92,10 @@ func (mr *MockCacheMockRecorder) RetrieveLayer(arg0 interface{}) *gomock.Call {
 }
 
 // RetrieveMetadata mocks base method
-func (m *MockCache) RetrieveMetadata() (lifecycle.CacheMetadata, error) {
+func (m *MockCache) RetrieveMetadata() (cache.Metadata, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RetrieveMetadata")
-	ret0, _ := ret[0].(lifecycle.CacheMetadata)
+	ret0, _ := ret[0].(cache.Metadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -136,7 +121,7 @@ func (mr *MockCacheMockRecorder) ReuseLayer(arg0, arg1 interface{}) *gomock.Call
 }
 
 // SetMetadata mocks base method
-func (m *MockCache) SetMetadata(arg0 lifecycle.CacheMetadata) error {
+func (m *MockCache) SetMetadata(arg0 cache.Metadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetMetadata", arg0)
 	ret0, _ := ret[0].(error)

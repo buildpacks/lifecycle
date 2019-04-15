@@ -1,16 +1,14 @@
-package lifecycle
+package metadata
 
 import (
 	"encoding/json"
-	"log"
+
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/image"
 )
 
-const (
-	MetadataLabel      = "io.buildpacks.lifecycle.metadata"
-	CacheMetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
-)
+const AppMetadataLabel = "io.buildpacks.lifecycle.metadata"
 
 type AppImageMetadata struct {
 	App        AppMetadata         `json:"app"`
@@ -19,10 +17,6 @@ type AppImageMetadata struct {
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 	RunImage   RunImageMetadata    `json:"runImage"`
 	Stack      StackMetadata       `json:"stack"`
-}
-
-type CacheMetadata struct {
-	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 }
 
 type AppMetadata struct {
@@ -65,7 +59,7 @@ type StackRunImageMetadata struct {
 	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
 }
 
-func (m *AppImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
+func (m *AppImageMetadata) MetadataForBuildpack(id string) BuildpackMetadata {
 	for _, bpMd := range m.Buildpacks {
 		if bpMd.ID == id {
 			return bpMd
@@ -74,42 +68,28 @@ func (m *AppImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
 	return BuildpackMetadata{}
 }
 
-func (m *CacheMetadata) metadataForBuildpack(id string) BuildpackMetadata {
-	for _, bpMd := range m.Buildpacks {
-		if bpMd.ID == id {
-			return bpMd
-		}
-	}
-	return BuildpackMetadata{}
-}
-
-func getAppMetadata(image image.Image, log *log.Logger) (AppImageMetadata, error) {
-	metadata := AppImageMetadata{}
-	contents, err := GetMetadata(image, MetadataLabel, log)
+func GetAppMetadata(image image.Image) (AppImageMetadata, error) {
+	contents, err := GetRawMetadata(image, AppMetadataLabel)
 	if err != nil {
-		return metadata, err
+		return AppImageMetadata{}, err
 	}
 
-	if err := json.Unmarshal([]byte(contents), &metadata); err != nil {
-		log.Printf("WARNING: image '%s' has incompatible '%s' label\n", image.Name(), MetadataLabel)
-		return AppImageMetadata{}, nil
-	}
-	return metadata, nil
+	meta := AppImageMetadata{}
+	_ = json.Unmarshal([]byte(contents), &meta)
+	return meta, nil
 }
 
-func GetMetadata(image image.Image, metadataLabel string, log *log.Logger) (string, error) {
+func GetRawMetadata(image image.Image, metadataLabel string) (string, error) {
 	if found, err := image.Found(); err != nil {
 		return "", err
 	} else if !found {
-		log.Printf("WARNING: image '%s' not found or requires authentication to access\n", image.Name())
 		return "", nil
 	}
 	contents, err := image.Label(metadataLabel)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "retrieving label '%s' for image '%s'", metadataLabel, image.Name())
 	}
 	if contents == "" {
-		log.Printf("WARNING: image '%s' does not have '%s' label", image.Name(), metadataLabel)
 		return "", nil
 	}
 	return contents, nil

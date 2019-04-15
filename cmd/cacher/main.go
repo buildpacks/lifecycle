@@ -69,7 +69,7 @@ func doCache() error {
 		GID:          gid,
 	}
 
-	var cacherCache lifecycle.Cache
+	var cacheStore lifecycle.Cache
 	if cacheImageTag != "" {
 		factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
 		if err != nil {
@@ -81,16 +81,16 @@ func doCache() error {
 			return err
 		}
 
-		cacherCache = cache.NewImageCache(cacher.Out, factory, origCacheImage)
+		cacheStore = cache.NewImageCache(factory, origCacheImage)
 	} else {
 		var err error
-		cacherCache, err = cache.NewVolumeCache(cacher.Out, cachePath)
+		cacheStore, err = cache.NewVolumeCache(cachePath)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := cacher.Cache(layersDir, cacherCache); err != nil {
+	if err := cacher.Cache(layersDir, cacheStore); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed)
 	}
 

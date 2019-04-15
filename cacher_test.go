@@ -47,7 +47,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 			cacheDir, err = ioutil.TempDir("", "")
 			h.AssertNil(t, err)
 
-			testCache, err = cache.NewVolumeCache(emptyLogger, cacheDir)
+			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
 
 			subject = &lifecycle.Cacher{
@@ -115,13 +115,12 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 					)
 				})
 
-				it("sets label metadata", func() {
+				it("sets cache metadata", func() {
 					err := subject.Cache(layersDir, testCache)
 					h.AssertNil(t, err)
 
-					metadata, found, err := testCache.RetrieveMetadata()
+					metadata, err := testCache.RetrieveMetadata()
 					h.AssertNil(t, err)
-					h.AssertEq(t, found, true)
 
 					t.Log("adds layer shas to metadata")
 					h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
@@ -195,9 +194,8 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Cache(layersDir, testCache)
 						h.AssertNil(t, err)
 
-						metadata, found, err := testCache.RetrieveMetadata()
+						metadata, err := testCache.RetrieveMetadata()
 						h.AssertNil(t, err)
-						h.AssertEq(t, found, true)
 
 						t.Log("adds layer shas to metadata")
 						h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")

@@ -23,6 +23,7 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
 )
@@ -44,7 +45,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		launcherPath string
 		uid          = 1234
 		gid          = 4321
-		stack        = lifecycle.StackMetadata{}
+		stack        = metadata.StackMetadata{}
 	)
 
 	it.Before(func() {
@@ -235,41 +236,41 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeRunImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var metadata lifecycle.AppImageMetadata
-				if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
+				var meta metadata.AppImageMetadata
+				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
 
 				t.Log("adds run image metadata to label")
-				h.AssertEq(t, metadata.RunImage.TopLayer, "some-top-layer-sha")
-				h.AssertEq(t, metadata.RunImage.SHA, "some-run-image-digest")
+				h.AssertEq(t, meta.RunImage.TopLayer, "some-top-layer-sha")
+				h.AssertEq(t, meta.RunImage.SHA, "some-run-image-digest")
 
 				t.Log("adds layer shas to metadata label")
-				h.AssertEq(t, metadata.App.SHA, "sha256:"+appLayerSHA)
-				h.AssertEq(t, metadata.Config.SHA, "sha256:"+configLayerSHA)
-				h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
-				h.AssertEq(t, metadata.Buildpacks[0].Version, "1.2.3")
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["launch-layer-no-local-dir"].SHA, "sha256:orig-launch-layer-no-local-dir-sha")
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["new-launch-layer"].SHA, "sha256:"+newLayerSHA)
-				h.AssertEq(t, metadata.Buildpacks[1].ID, "other.buildpack.id")
-				h.AssertEq(t, metadata.Buildpacks[1].Version, "4.5.6")
-				h.AssertEq(t, metadata.Buildpacks[1].Layers["new-launch-layer"].SHA, "sha256:"+secondBPLayerPathSHA)
+				h.AssertEq(t, meta.App.SHA, "sha256:"+appLayerSHA)
+				h.AssertEq(t, meta.Config.SHA, "sha256:"+configLayerSHA)
+				h.AssertEq(t, meta.Buildpacks[0].ID, "buildpack.id")
+				h.AssertEq(t, meta.Buildpacks[0].Version, "1.2.3")
+				h.AssertEq(t, meta.Buildpacks[0].Layers["launch-layer-no-local-dir"].SHA, "sha256:orig-launch-layer-no-local-dir-sha")
+				h.AssertEq(t, meta.Buildpacks[0].Layers["new-launch-layer"].SHA, "sha256:"+newLayerSHA)
+				h.AssertEq(t, meta.Buildpacks[1].ID, "other.buildpack.id")
+				h.AssertEq(t, meta.Buildpacks[1].Version, "4.5.6")
+				h.AssertEq(t, meta.Buildpacks[1].Layers["new-launch-layer"].SHA, "sha256:"+secondBPLayerPathSHA)
 
 				t.Log("adds buildpack layer metadata to label")
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["launch-layer-no-local-dir"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[0].Layers["launch-layer-no-local-dir"].Data, map[string]interface{}{
 					"mykey": "updated launch-layer-no-local-dir val",
 				})
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["new-launch-layer"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[0].Layers["new-launch-layer"].Data, map[string]interface{}{
 					"somekey": "someval",
 				})
-				h.AssertEq(t, metadata.Buildpacks[1].Layers["local-reusable-layer"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[1].Layers["local-reusable-layer"].Data, map[string]interface{}{
 					"mykey": "updated locally reusable layer metadata val",
 				})
 			})
 
 			it("saves run image metadata to the resulting image", func() {
-				stack = lifecycle.StackMetadata{
-					RunImage: lifecycle.StackRunImageMetadata{
+				stack = metadata.StackMetadata{
+					RunImage: metadata.StackRunImageMetadata{
 						Image:   "some/run",
 						Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
 					},
@@ -279,13 +280,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeRunImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var metadata lifecycle.AppImageMetadata
-				if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
+				var meta metadata.AppImageMetadata
+				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
 				h.AssertNil(t, err)
-				h.AssertEq(t, metadata.Stack.RunImage.Image, "some/run")
-				h.AssertEq(t, metadata.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+				h.AssertEq(t, meta.Stack.RunImage.Image, "some/run")
+				h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
 			})
 
 			it("sets CNB_LAYERS_DIR", func() {
@@ -476,24 +477,24 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeRunImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var metadata lifecycle.AppImageMetadata
-				if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
+				var meta metadata.AppImageMetadata
+				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
 
 				t.Log("adds run image metadata to label")
-				h.AssertEq(t, metadata.RunImage.TopLayer, "some-top-layer-sha")
-				h.AssertEq(t, metadata.RunImage.SHA, "some-run-image-digest")
+				h.AssertEq(t, meta.RunImage.TopLayer, "some-top-layer-sha")
+				h.AssertEq(t, meta.RunImage.SHA, "some-run-image-digest")
 
 				t.Log("adds layer shas to metadata label")
-				h.AssertEq(t, metadata.App.SHA, "sha256:"+appLayerSHA)
-				h.AssertEq(t, metadata.Config.SHA, "sha256:"+configLayerSHA)
-				h.AssertEq(t, metadata.Launcher.SHA, "sha256:"+launcherLayerSHA)
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].SHA, "sha256:"+buildpackLayer1SHA)
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer2"].SHA, "sha256:"+buildpackLayer2SHA)
+				h.AssertEq(t, meta.App.SHA, "sha256:"+appLayerSHA)
+				h.AssertEq(t, meta.Config.SHA, "sha256:"+configLayerSHA)
+				h.AssertEq(t, meta.Launcher.SHA, "sha256:"+launcherLayerSHA)
+				h.AssertEq(t, meta.Buildpacks[0].Layers["layer1"].SHA, "sha256:"+buildpackLayer1SHA)
+				h.AssertEq(t, meta.Buildpacks[0].Layers["layer2"].SHA, "sha256:"+buildpackLayer2SHA)
 
 				t.Log("adds buildpack layer metadata to label")
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{
+				h.AssertEq(t, meta.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{
 					"mykey": "new val",
 				})
 			})
@@ -583,13 +584,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeRunImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var metadata lifecycle.AppImageMetadata
-				if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
+				var meta metadata.AppImageMetadata
+				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
 
-				h.AssertEq(t, metadata.Buildpacks[0].ID, "some/escaped/bp/id")
-				h.AssertEq(t, len(metadata.Buildpacks[0].Layers), 1)
+				h.AssertEq(t, meta.Buildpacks[0].ID, "some/escaped/bp/id")
+				h.AssertEq(t, len(meta.Buildpacks[0].Layers), 1)
 			})
 		})
 
@@ -662,7 +663,7 @@ func assertAddLayerLog(t *testing.T, stdout bytes.Buffer, name, layerPath string
 	t.Helper()
 	layerSHA := h.ComputeSHA256ForFile(t, layerPath)
 
-	expected := fmt.Sprintf("adding layer '%s' with diffID 'sha256:%s'", name, layerSHA)
+	expected := fmt.Sprintf("Exporting layer '%s' with SHA sha256:%s", name, layerSHA)
 	if !strings.Contains(stdout.String(), expected) {
 		t.Fatalf("Expected output \n'%s' to contain \n'%s'", stdout.String(), expected)
 	}
@@ -670,7 +671,7 @@ func assertAddLayerLog(t *testing.T, stdout bytes.Buffer, name, layerPath string
 
 func assertReuseLayerLog(t *testing.T, stdout bytes.Buffer, name, sha string) {
 	t.Helper()
-	expected := fmt.Sprintf("reusing layer '%s' with diffID 'sha256:%s'", name, sha)
+	expected := fmt.Sprintf("Reusing layer '%s' with SHA sha256:%s", name, sha)
 	if !strings.Contains(stdout.String(), expected) {
 		t.Fatalf("Expected output \n\"%s\"\n to contain \n\"%s\"", stdout.String(), expected)
 	}

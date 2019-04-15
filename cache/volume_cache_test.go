@@ -2,7 +2,6 @@ package cache_test
 
 import (
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -12,9 +11,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
-
+	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
@@ -31,7 +29,6 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		backupDir    string
 		stagingDir   string
 		committedDir string
-		emptyLogger  *log.Logger
 	)
 
 	it.Before(func() {
@@ -46,8 +43,6 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		backupDir = filepath.Join(volumeDir, "committed-backup")
 		stagingDir = filepath.Join(volumeDir, "staging")
 		committedDir = filepath.Join(volumeDir, "committed")
-
-		emptyLogger = log.New(ioutil.Discard, "", 0)
 	})
 
 	it.After(func() {
@@ -56,7 +51,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#NewVolumeCache", func() {
 		it("returns an error when the volume path does not exist", func() {
-			_, err := cache.NewVolumeCache(emptyLogger, filepath.Join(tmpDir, "does_not_exist"))
+			_, err := cache.NewVolumeCache(filepath.Join(tmpDir, "does_not_exist"))
 			if err == nil {
 				t.Fatal("expected NewVolumeCache to fail because volume path does not exist")
 			}
@@ -72,7 +67,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("clears staging", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(emptyLogger, volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(filepath.Join(stagingDir, "some-layer.tar"))
@@ -86,7 +81,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("creates staging dir", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(emptyLogger, volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(stagingDir)
@@ -98,7 +93,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("creates committed dir", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(emptyLogger, volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(committedDir)
@@ -115,7 +110,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it("clears the backup dir", func() {
 				var err error
 
-				subject, err = cache.NewVolumeCache(emptyLogger, volumeDir)
+				subject, err = cache.NewVolumeCache(volumeDir)
 				h.AssertNil(t, err)
 
 				_, err = os.Stat(filepath.Join(backupDir, "some-layer.tar"))
@@ -130,7 +125,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			var err error
 
-			subject, err = cache.NewVolumeCache(emptyLogger, volumeDir)
+			subject, err = cache.NewVolumeCache(volumeDir)
 			h.AssertNil(t, err)
 		})
 
@@ -147,12 +142,12 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), content, 0666))
 				})
 
-				it("returns the metadata and found true", func() {
-					expected := lifecycle.CacheMetadata{
-						Buildpacks: []lifecycle.BuildpackMetadata{{
+				it("returns the metadata", func() {
+					expected := cache.Metadata{
+						Buildpacks: []metadata.BuildpackMetadata{{
 							ID:      "bp.id",
 							Version: "1.2.3",
-							Layers: map[string]lifecycle.LayerMetadata{
+							Layers: map[string]metadata.LayerMetadata{
 								"some-layer": {
 									SHA:    "some-sha",
 									Data:   "some-data",
@@ -164,10 +159,9 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						}},
 					}
 
-					metadata, found, err := subject.RetrieveMetadata()
+					meta, err := subject.RetrieveMetadata()
 					h.AssertNil(t, err)
-					h.AssertEq(t, found, true)
-					h.AssertEq(t, metadata, expected)
+					h.AssertEq(t, meta, expected)
 				})
 			})
 
@@ -176,20 +170,18 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), []byte("garbage"), 0666))
 				})
 
-				it("returns empty metadata and found false", func() {
-					metadata, found, err := subject.RetrieveMetadata()
+				it("returns empty metadata", func() {
+					meta, err := subject.RetrieveMetadata()
 					h.AssertNil(t, err)
-					h.AssertEq(t, found, false)
-					h.AssertEq(t, len(metadata.Buildpacks), 0)
+					h.AssertEq(t, len(meta.Buildpacks), 0)
 				})
 			})
 
 			when("volume is empty", func() {
-				it("returns empty metadata and found false", func() {
-					metadata, found, err := subject.RetrieveMetadata()
+				it("returns empty metadata", func() {
+					meta, err := subject.RetrieveMetadata()
 					h.AssertNil(t, err)
-					h.AssertEq(t, found, false)
-					h.AssertEq(t, len(metadata.Buildpacks), 0)
+					h.AssertEq(t, len(meta.Buildpacks), 0)
 				})
 			})
 		})
@@ -233,14 +225,14 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("with #SetMetadata", func() {
-				var newMetadata lifecycle.CacheMetadata
+				var newMetadata cache.Metadata
 
 				it.Before(func() {
 					previousContents := []byte(`{"buildpacks": [{"key": "old.bp.id"}]}`)
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), previousContents, 0666))
 
-					newMetadata = lifecycle.CacheMetadata{
-						Buildpacks: []lifecycle.BuildpackMetadata{{
+					newMetadata = cache.Metadata{
+						Buildpacks: []metadata.BuildpackMetadata{{
 							ID: "new.bp.id",
 						}},
 					}
@@ -253,26 +245,24 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						retrievedMetadata, found, err := subject.RetrieveMetadata()
+						retrievedMetadata, err := subject.RetrieveMetadata()
 						h.AssertNil(t, err)
-						h.AssertEq(t, found, true)
 						h.AssertEq(t, retrievedMetadata, newMetadata)
 					})
 				})
 
 				when("set without commit", func() {
 					it("retrieve returns the previous metadata", func() {
-						previousMetadata := lifecycle.CacheMetadata{
-							Buildpacks: []lifecycle.BuildpackMetadata{{
+						previousMetadata := cache.Metadata{
+							Buildpacks: []metadata.BuildpackMetadata{{
 								ID: "old.bp.id",
 							}},
 						}
 
 						h.AssertNil(t, subject.SetMetadata(newMetadata))
 
-						retrievedMetadata, found, err := subject.RetrieveMetadata()
+						retrievedMetadata, err := subject.RetrieveMetadata()
 						h.AssertNil(t, err)
-						h.AssertEq(t, found, true)
 						h.AssertEq(t, retrievedMetadata, previousMetadata)
 					})
 				})

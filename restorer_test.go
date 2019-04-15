@@ -42,7 +42,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			cacheDir, err = ioutil.TempDir("", "")
 			h.AssertNil(t, err)
 
-			testCache, err = cache.NewVolumeCache(emptyLogger, cacheDir)
+			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
 
 			restorer = &lifecycle.Restorer{

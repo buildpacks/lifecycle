@@ -63,7 +63,7 @@ func restore() error {
 		GID:        gid,
 	}
 
-	var restorerCache lifecycle.Cache
+	var cacheStore lifecycle.Cache
 	if cacheImageTag != "" {
 		factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
 		if err != nil {
@@ -75,16 +75,16 @@ func restore() error {
 			return err
 		}
 
-		restorerCache = cache.NewImageCache(restorer.Out, factory, cacheImage)
+		cacheStore = cache.NewImageCache(factory, cacheImage)
 	} else {
 		var err error
-		restorerCache, err = cache.NewVolumeCache(restorer.Out, cachePath)
+		cacheStore, err = cache.NewVolumeCache(cachePath)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := restorer.Restore(restorerCache); err != nil {
+	if err := restorer.Restore(cacheStore); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed)
 	}
 	return nil

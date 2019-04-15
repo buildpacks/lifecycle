@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
+	"github.com/buildpack/lifecycle/cache"
+	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Cacher struct {
@@ -17,48 +19,45 @@ type Cacher struct {
 	UID, GID     int
 }
 
-func (c *Cacher) Cache(layersDir string, cache Cache) error {
-	origMetadata, _, err := cache.RetrieveMetadata()
+func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
+	origMetadata, err := cacheStore.RetrieveMetadata()
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous cache")
 	}
 
-	newMetadata := CacheMetadata{
-		Buildpacks: []BuildpackMetadata{},
-	}
-
+	newMetadata := cache.Metadata{}
 	for _, bp := range c.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(layersDir, *bp)
 		if err != nil {
 			return err
 		}
-		bpMetadata := BuildpackMetadata{
+		bpMetadata := metadata.BuildpackMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]LayerMetadata{},
+			Layers:  map[string]metadata.LayerMetadata{},
 		}
 		for _, l := range bpDir.findLayers(cached) {
 			if !l.hasLocalContents() {
 				return fmt.Errorf("failed to cache layer '%s' because it has no contents", l.Identifier())
 			}
-			metadata, err := l.read()
+			data, err := l.read()
 			if err != nil {
 				return err
 			}
-			origLayerMetadata := origMetadata.metadataForBuildpack(bp.ID).Layers[l.name()]
-			if metadata.SHA, err = c.addOrReuseLayer(cache, l, origLayerMetadata.SHA); err != nil {
+			origLayerMetadata := origMetadata.MetadataForBuildpack(bp.ID).Layers[l.name()]
+			if data.SHA, err = c.addOrReuseLayer(cacheStore, l, origLayerMetadata.SHA); err != nil {
 				return err
 			}
-			bpMetadata.Layers[l.name()] = metadata
+			bpMetadata.Layers[l.name()] = data
 		}
 		newMetadata.Buildpacks = append(newMetadata.Buildpacks, bpMetadata)
 	}
 
-	if err := cache.SetMetadata(newMetadata); err != nil {
+	if err := cacheStore.SetMetadata(newMetadata); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
-	return cache.Commit()
+	return cacheStore.Commit()
 }
 
 func (c *Cacher) addOrReuseLayer(cache Cache, layer bpLayer, previousSHA string) (string, error) {
@@ -69,8 +68,10 @@ func (c *Cacher) addOrReuseLayer(cache Cache, layer bpLayer, previousSHA string)
 	}
 
 	if sha == previousSHA {
+		c.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
 		return sha, cache.ReuseLayer(layer.Identifier(), previousSHA)
 	}
 
+	c.Out.Printf("Caching layer '%s' with SHA %s\n", layer.Identifier(), sha)
 	return sha, cache.AddLayer(layer.Identifier(), sha, tarPath)
 }
