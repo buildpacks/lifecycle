@@ -32,12 +32,14 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "com.buildpack2", "version2.2"),
 				filepath.Join(tmpDir, "com.buildpack2", "version2.3"),
 				filepath.Join(tmpDir, "com.buildpack2", "version2.4"),
+				filepath.Join(tmpDir, "com.buildpack2", "latest"),
 				filepath.Join(tmpDir, "buildpack-3", "version3"),
 				filepath.Join(tmpDir, "buildpack4", "version4"),
 			)
 			mkBuildpackTOML(t, tmpDir, "buildpack/1", "buildpack1-name", "version1")
 			mkBuildpackTOML(t, tmpDir, "com.buildpack2", "buildpack2-name", "version2.1")
 			mkBuildpackTOML(t, tmpDir, "com.buildpack2", "buildpack2-name", "version2.2")
+			mkVersionedBuildpackTOML(t, tmpDir, "com.buildpack2", "buildpack2-name", "version2.2", "latest")
 			mkfile(t, "other",
 				filepath.Join(tmpDir, "com.buildpack2", "version2.3", "not-buildpack.toml"),
 				filepath.Join(tmpDir, "buildpack-3", "version3", "not-buildpack.toml"),
@@ -61,6 +63,12 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 					Name:    "buildpack2-name",
 					Version: "version2.2",
 					Dir:     filepath.Join(tmpDir, "com.buildpack2", "version2.2"),
+				},
+				"com.buildpack2@latest": {
+					ID:      "com.buildpack2",
+					Name:    "buildpack2-name",
+					Version: "version2.2",
+					Dir:     filepath.Join(tmpDir, "com.buildpack2", "latest"),
 				},
 			}); s != "" {
 				t.Fatalf("Unexpected map:\n%s\n", s)
@@ -214,8 +222,12 @@ dir = "none"
 `
 
 func mkBuildpackTOML(t *testing.T, dir, id, name, version string) {
+	mkVersionedBuildpackTOML(t, dir, id, name, version, version)
+}
+
+func mkVersionedBuildpackTOML(t *testing.T, dir, id, name, version, dirname string) {
 	mkfile(t, fmt.Sprintf(buildpackTOML, id, name, version),
-		filepath.Join(dir, escapeID(id), version, "buildpack.toml"),
+		filepath.Join(dir, escapeID(id), dirname, "buildpack.toml"),
 	)
 }
 
