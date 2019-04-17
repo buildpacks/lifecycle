@@ -56,6 +56,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		launcherPath, err = filepath.Abs(filepath.Join("testdata", "exporter", "launcher"))
 		h.AssertNil(t, err)
+
 		layersDir = filepath.Join(tmpDir, "layers")
 		h.AssertNil(t, os.Mkdir(layersDir, 0777))
 		h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0777))
@@ -76,6 +77,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
+		fakeRunImage.Cleanup()
+
 		if err := os.RemoveAll(tmpDir); err != nil {
 			t.Fatal(err)
 		}
@@ -129,6 +132,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
                   "sha": "sha256:%s"
                 }
               }`, localReusableLayerSha, launcherSHA))
+			})
+
+			it.After(func() {
+				fakeOriginalImage.Cleanup()
 			})
 
 			it("creates app layer on Run image", func() {
@@ -561,8 +568,14 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				fakeOriginalImage = fakes.NewImage(t, "app/original", "original-top-sha", "run-digest")
-				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata",
-					`{"buildpacks":[{"key": "some/escaped/bp/id", "layers": {"layer": {"sha": "original-layer-sha"}}}]}`)
+				fakeOriginalImage.SetLabel(
+					"io.buildpacks.lifecycle.metadata",
+					`{"buildpacks":[{"key": "some/escaped/bp/id", "layers": {"layer": {"sha": "original-layer-sha"}}}]}`,
+				)
+			})
+
+			it.After(func() {
+				fakeOriginalImage.Cleanup()
 			})
 
 			it("exports layers from the escaped id path", func() {
@@ -646,6 +659,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
     }
   ]
 }`)
+			})
+
+			it.After(func() {
+				fakeOriginalImage.Cleanup()
 			})
 
 			it("returns an error", func() {
