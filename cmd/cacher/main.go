@@ -9,10 +9,11 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/buildpack/imgutil"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/docker"
 )
 
 var (
@@ -71,17 +72,21 @@ func doCache() error {
 
 	var cacheStore lifecycle.Cache
 	if cacheImageTag != "" {
-		factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
+		dockerClient, err := docker.DefaultClient()
+		if err != nil {
+			return err
+		}
+		origCacheImage, err := imgutil.NewLocalImage(cacheImageTag, dockerClient)
 		if err != nil {
 			return err
 		}
 
-		origCacheImage, err := factory.NewLocal(cacheImageTag)
-		if err != nil {
-			return err
-		}
-
-		cacheStore = cache.NewImageCache(factory, origCacheImage)
+		cacheStore = cache.NewImageCache(
+			origCacheImage,
+			func(repoName string) imgutil.Image {
+				return imgutil.EmptyLocalImage(repoName, dockerClient)
+			},
+		)
 	} else {
 		var err error
 		cacheStore, err = cache.NewVolumeCache(cachePath)

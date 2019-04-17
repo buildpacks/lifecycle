@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/imgutil"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/cache/testmock"
-	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -31,7 +31,6 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		fakeOriginalImage *fakes.Image
 		fakeNewImage      *fakes.Image
 		mockController    *gomock.Controller
-		mockImageFactory  *testmock.MockImageFactory
 		subject           *cache.ImageCache
 		testLayerTarPath  string
 		testLayerSHA      string
@@ -47,12 +46,12 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		fakeNewImage = fakes.NewImage(t, "fake-image", "", "")
 
 		mockController = gomock.NewController(t)
-		mockImageFactory = testmock.NewMockImageFactory(mockController)
-		mockImageFactory.EXPECT().NewEmptyLocal("fake-image").Return(fakeNewImage).AnyTimes()
 
 		subject = cache.NewImageCache(
-			mockImageFactory,
 			fakeOriginalImage,
+			func(_ string) imgutil.Image {
+				return fakeNewImage
+			},
 		)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")

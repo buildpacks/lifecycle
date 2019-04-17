@@ -5,7 +5,7 @@
 package testmock
 
 import (
-	image "github.com/buildpack/lifecycle/image"
+	image "github.com/buildpack/imgutil"
 	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"

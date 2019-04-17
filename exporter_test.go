@@ -20,9 +20,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/imgutil"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
@@ -381,7 +381,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		when("previous image doesn't exist", func() {
 			var (
-				nonExistingOriginalImage image.Image
+				nonExistingOriginalImage imgutil.Image
 			)
 
 			it.Before(func() {

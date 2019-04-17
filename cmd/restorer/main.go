@@ -12,7 +12,9 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/docker"
+
+	"github.com/buildpack/imgutil"
 )
 
 var (
@@ -65,17 +67,22 @@ func restore() error {
 
 	var cacheStore lifecycle.Cache
 	if cacheImageTag != "" {
-		factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
+		dockerClient, err := docker.DefaultClient()
 		if err != nil {
 			return err
 		}
 
-		cacheImage, err := factory.NewLocal(cacheImageTag)
+		cacheImage, err := imgutil.NewLocalImage(cacheImageTag, dockerClient)
 		if err != nil {
 			return err
 		}
 
-		cacheStore = cache.NewImageCache(factory, cacheImage)
+		cacheStore = cache.NewImageCache(
+			cacheImage,
+			func(repoName string) imgutil.Image {
+				return imgutil.EmptyLocalImage(repoName, dockerClient)
+			},
+		)
 	} else {
 		var err error
 		cacheStore, err = cache.NewVolumeCache(cachePath)

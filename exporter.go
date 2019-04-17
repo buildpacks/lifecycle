@@ -8,9 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/imgutil"
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -22,7 +22,7 @@ type Exporter struct {
 	UID, GID     int
 }
 
-func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Image, launcher string, stack metadata.StackMetadata) error {
+func (e *Exporter) Export(layersDir, appDir string, runImage, origImage imgutil.Image, launcher string, stack metadata.StackMetadata) error {
 	var err error
 
 	meta := metadata.AppImageMetadata{}
@@ -142,7 +142,7 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage image.Im
 	return err
 }
 
-func (e *Exporter) addOrReuseLayer(image image.Image, layer identifiableLayer, previousSha string) (string, error) {
+func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer identifiableLayer, previousSha string) (string, error) {
 	tarPath := filepath.Join(e.ArtifactsDir, escapeIdentifier(layer.Identifier())+".tar")
 	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID)
 	if err != nil {

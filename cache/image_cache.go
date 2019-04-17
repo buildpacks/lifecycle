@@ -6,27 +6,22 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
-//go:generate mockgen -package testmock -destination testmock/image_factory.go github.com/buildpack/lifecycle/cache ImageFactory
-type ImageFactory interface {
-	NewEmptyLocal(string) image.Image
-}
-
 type ImageCache struct {
-	factory   ImageFactory
-	origImage image.Image
-	newImage  image.Image
+	initializer func(string) imgutil.Image
+	origImage   imgutil.Image
+	newImage    imgutil.Image
 }
 
-func NewImageCache(factory ImageFactory, origImage image.Image) *ImageCache {
-	newImage := factory.NewEmptyLocal(origImage.Name())
+func NewImageCache(origImage imgutil.Image, initializer func(string) imgutil.Image) *ImageCache {
+	newImage := initializer(origImage.Name())
 	return &ImageCache{
-		factory:   factory,
-		origImage: origImage,
-		newImage:  newImage,
+		initializer: initializer,
+		origImage:   origImage,
+		newImage:    newImage,
 	}
 }
 
@@ -78,7 +73,7 @@ func (c *ImageCache) Commit() error {
 	}
 
 	c.origImage = c.newImage
-	c.newImage = c.factory.NewEmptyLocal(c.origImage.Name())
+	c.newImage = c.initializer(c.origImage.Name())
 
 	return nil
 }
