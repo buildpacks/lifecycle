@@ -16,12 +16,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/imgutil"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/fakes"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"

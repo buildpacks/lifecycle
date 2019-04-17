@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/buildpack/imgutil"
+
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"

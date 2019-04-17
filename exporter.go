@@ -6,9 +6,9 @@ import (
 	"log"
 	"path/filepath"
 
+	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/imgutil"
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/metadata"
