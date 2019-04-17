@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,16 +15,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/imgutil"
 	"github.com/buildpack/imgutil/fakes"
-	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
-	"github.com/buildpack/lifecycle/testmock"
 )
 
 func TestExporter(t *testing.T) {
@@ -381,7 +377,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		when("previous image doesn't exist", func() {
 			var (
-				nonExistingOriginalImage imgutil.Image
+				nonExistingOriginalImage *fakes.Image
 			)
 
 			it.Before(func() {
@@ -390,14 +386,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "previous-image-not-exist", "layers", "app"))
 				h.AssertNil(t, err)
 
-				mockNonExistingOriginalImage := testmock.NewMockImage(gomock.NewController(t))
+				// TODO : this is an hacky way to create a non-existing image and should be improved in imgutil
+				nonExistingOriginalImage = fakes.NewImage(t, "app/original-Image-Name", "", "")
+				nonExistingOriginalImage.Delete()
+			})
 
-				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name").AnyTimes()
-				mockNonExistingOriginalImage.EXPECT().Found().Return(false, nil)
-				mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
-					Return("", errors.New("not exist")).AnyTimes()
-
-				nonExistingOriginalImage = mockNonExistingOriginalImage
+			it.After(func() {
+				nonExistingOriginalImage.Cleanup()
 			})
 
 			it("creates app layer on Run image", func() {
@@ -609,26 +604,29 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is an invalid layer.toml", func() {
 			var (
-				mockNonExistingOriginalImage *testmock.MockImage
+				nonExistingOriginalImage *fakes.Image
 			)
 
 			it.Before(func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "bad-layer", "layers"), layersDir)
+
 				var err error
 				appDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "bad-layer", "layers", "app"))
 				h.AssertNil(t, err)
 
-				mockNonExistingOriginalImage = testmock.NewMockImage(gomock.NewController(t))
-				mockNonExistingOriginalImage.EXPECT().Name().Return("app/original-Image-Name").AnyTimes()
-				mockNonExistingOriginalImage.EXPECT().Found().Return(false, nil)
-				mockNonExistingOriginalImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
-					Return("", errors.New("not exist")).AnyTimes()
+				// TODO : this is an hacky way to create a non-existing image and should be improved in imgutil
+				nonExistingOriginalImage = fakes.NewImage(t, "app/original-Image-Name", "", "")
+				nonExistingOriginalImage.Delete()
+			})
+
+			it.After(func() {
+				nonExistingOriginalImage.Cleanup()
 			})
 
 			it("returns an error", func() {
 				h.AssertError(
 					t,
-					exporter.Export(layersDir, appDir, fakeRunImage, mockNonExistingOriginalImage, launcherPath, stack),
+					exporter.Export(layersDir, appDir, fakeRunImage, nonExistingOriginalImage, launcherPath, stack),
 					"failed to parse metadata for layers '[buildpack.id:bad-layer]'",
 				)
 			})
