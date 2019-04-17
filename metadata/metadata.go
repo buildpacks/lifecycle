@@ -3,9 +3,8 @@ package metadata
 import (
 	"encoding/json"
 
-	"github.com/pkg/errors"
-
 	"github.com/buildpack/imgutil"
+	"github.com/pkg/errors"
 )
 
 const AppMetadataLabel = "io.buildpacks.lifecycle.metadata"

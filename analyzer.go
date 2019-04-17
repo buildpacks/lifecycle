@@ -4,9 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/pkg/errors"
-
 	"github.com/buildpack/imgutil"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/metadata"
 )

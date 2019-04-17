@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/buildpack/imgutil"
+
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/docker"
