@@ -85,6 +85,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
       "layers": {
         "valid-launch": {
           "data": {
+            "aInt": 11,
             "akey": "avalue",
             "bkey": "bvalue"
           },
@@ -146,6 +147,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					for _, data := range []struct{ name, expected string }{
 						{"metdata.buildpack/valid-launch.toml", `[metadata]
+  aInt = 11
   akey = "avalue"
   bkey = "bvalue"`},
 						{"metdata.buildpack/stale-launch.toml", `[metadata]
@@ -233,6 +235,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						} else {
 							expected := `
 [metadata]
+  aInt = 11
   akey = "avalue"
   bkey = "bvalue"
 `
