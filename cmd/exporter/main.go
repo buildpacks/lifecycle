@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -51,8 +50,7 @@ func main() {
 
 	flag.Parse()
 	if flag.NArg() > 1 || flag.Arg(0) == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	repoName = flag.Arg(0)
 	cmd.Exit(export())
@@ -91,8 +89,9 @@ func export() error {
 
 	if runImageRef == "" {
 		if stack.RunImage.Image == "" {
-			return cmd.FailCode(cmd.CodeInvalidArgs, "--run-image is required when stack.toml is not present in builder")
+			return cmd.FailCode(cmd.CodeInvalidArgs, "-image is required when there is no stack metadata available")
 		}
+
 		runImageRef = stack.RunImage.Image
 	}
 
