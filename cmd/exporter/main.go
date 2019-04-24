@@ -50,8 +50,8 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRef == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "layersDir": layersDir}
+	if flag.NArg() > 1 || flag.Arg(0) == "" {
+		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
 	repoName = flag.Arg(0)
@@ -64,12 +64,6 @@ func export() error {
 	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
 		return cmd.FailErr(err, "read group")
-	}
-
-	if useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), repoName, runImageRef); err != nil {
-			return cmd.FailErr(err, "setup credential helpers")
-		}
 	}
 
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
@@ -93,6 +87,19 @@ func export() error {
 	_, err = toml.DecodeFile(stackPath, &stack)
 	if err != nil {
 		outLog.Printf("no stack.toml found at path '%s', stack metadata will not be exported\n", stackPath)
+	}
+
+	if runImageRef == "" {
+		if stack.RunImage.Image == "" {
+			return cmd.FailCode(cmd.CodeInvalidArgs, "--run-image is required when stack.toml is not present in builder")
+		}
+		runImageRef = stack.RunImage.Image
+	}
+
+	if useHelpers {
+		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), repoName, runImageRef); err != nil {
+			return cmd.FailErr(err, "setup credential helpers")
+		}
 	}
 
 	var runImage, origImage imgutil.Image
