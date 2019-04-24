@@ -11,17 +11,15 @@ import (
 )
 
 type ImageCache struct {
-	initializer func(string) imgutil.Image
-	origImage   imgutil.Image
-	newImage    imgutil.Image
+	committed bool
+	origImage imgutil.Image
+	newImage  imgutil.Image
 }
 
-func NewImageCache(origImage imgutil.Image, initializer func(string) imgutil.Image) *ImageCache {
-	newImage := initializer(origImage.Name())
+func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) *ImageCache {
 	return &ImageCache{
-		initializer: initializer,
-		origImage:   origImage,
-		newImage:    newImage,
+		origImage: origImage,
+		newImage:  newImage,
 	}
 }
 
@@ -30,6 +28,9 @@ func (c *ImageCache) Name() string {
 }
 
 func (c *ImageCache) SetMetadata(metadata Metadata) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	data, err := json.Marshal(metadata)
 	if err != nil {
 		return errors.Wrap(err, "serializing metadata")
@@ -51,10 +52,16 @@ func (c *ImageCache) RetrieveMetadata() (Metadata, error) {
 }
 
 func (c *ImageCache) AddLayer(identifier string, sha string, tarPath string) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	return c.newImage.AddLayer(tarPath)
 }
 
 func (c *ImageCache) ReuseLayer(identifier string, sha string) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	return c.newImage.ReuseLayer(sha)
 }
 
@@ -63,6 +70,11 @@ func (c *ImageCache) RetrieveLayer(sha string) (io.ReadCloser, error) {
 }
 
 func (c *ImageCache) Commit() error {
+	if c.committed {
+		return errCacheCommitted
+	}
+	c.committed = true
+
 	_, err := c.newImage.Save()
 	if err != nil {
 		return errors.Wrapf(err, "saving image '%s'", c.newImage.Name())
@@ -73,7 +85,6 @@ func (c *ImageCache) Commit() error {
 	}
 
 	c.origImage = c.newImage
-	c.newImage = c.initializer(c.origImage.Name())
 
 	return nil
 }

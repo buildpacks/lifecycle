@@ -251,6 +251,15 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+				when("set after commit", func() {
+					it("retrieve returns the newly set metadata", func() {
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						h.AssertError(t, subject.SetMetadata(newMetadata), "cache cannot be modified after commit")
+					})
+				})
+
 				when("set without commit", func() {
 					it("retrieve returns the previous metadata", func() {
 						previousMetadata := cache.Metadata{
@@ -292,6 +301,15 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+				when("add after commit", func() {
+					it("retrieve returns the newly set metadata", func() {
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						h.AssertError(t, subject.AddLayer("some_identifier", "some_sha", tarPath), "cache cannot be modified after commit")
+					})
+				})
+
 				when("add without commit", func() {
 					it("retrieve returns not found error", func() {
 						h.AssertNil(t, subject.AddLayer("some_identifier", "some_sha", tarPath))
@@ -324,6 +342,15 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+				when("reuse after commit", func() {
+					it("retrieve returns the newly set metadata", func() {
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						h.AssertError(t, subject.ReuseLayer("some_identifier", "some_sha"), "cache cannot be modified after commit")
+					})
+				})
+
 				when("reuse without commit", func() {
 					it("retrieve returns the previous layer", func() {
 						h.AssertNil(t, subject.ReuseLayer("some_identifier", "some_sha"))
@@ -337,6 +364,16 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+			})
+
+			when("attempting to commit more than once", func() {
+				it("should fail", func() {
+					err := subject.Commit()
+					h.AssertNil(t, err)
+
+					err = subject.Commit()
+					h.AssertError(t, err, "cache cannot be modified after commit")
+				})
 			})
 		})
 	})

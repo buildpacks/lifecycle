@@ -476,7 +476,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("the image cannot found", func() {
 			it.Before(func() {
-				image.Delete()
+				h.AssertNil(t, image.Delete())
 			})
 
 			it("clears the cached launch layers", func() {
@@ -498,7 +498,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("the image does not have the required label", func() {
 			it.Before(func() {
-				image.SetLabel("io.buildpacks.lifecycle.metadata", "")
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
 			})
 
 			it("returns", func() {
@@ -521,7 +521,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("the image label has incompatible metadata", func() {
 			it.Before(func() {
-				image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`)
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
 			})
 
 			it("returns", func() {

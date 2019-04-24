@@ -78,9 +78,7 @@ func restore() error {
 
 		cacheStore = cache.NewImageCache(
 			cacheImage,
-			func(repoName string) imgutil.Image {
-				return imgutil.EmptyLocalImage(repoName, dockerClient)
-			},
+			imgutil.EmptyLocalImage(cacheImage.Name(), dockerClient),
 		)
 	} else {
 		var err error

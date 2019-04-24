@@ -76,6 +76,7 @@ func doCache() error {
 		if err != nil {
 			return err
 		}
+
 		origCacheImage, err := imgutil.NewLocalImage(cacheImageTag, dockerClient)
 		if err != nil {
 			return err
@@ -83,9 +84,7 @@ func doCache() error {
 
 		cacheStore = cache.NewImageCache(
 			origCacheImage,
-			func(repoName string) imgutil.Image {
-				return imgutil.EmptyLocalImage(repoName, dockerClient)
-			},
+			imgutil.EmptyLocalImage(origCacheImage.Name(), dockerClient),
 		)
 	} else {
 		var err error

@@ -10,6 +10,7 @@ import (
 )
 
 type VolumeCache struct {
+	committed    bool
 	dir          string
 	backupDir    string
 	stagingDir   string
@@ -48,6 +49,9 @@ func (c *VolumeCache) Name() string {
 }
 
 func (c *VolumeCache) SetMetadata(metadata Metadata) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	metadataPath := filepath.Join(c.stagingDir, MetadataLabel)
 	file, err := os.Create(metadataPath)
 	if err != nil {
@@ -81,6 +85,9 @@ func (c *VolumeCache) RetrieveMetadata() (Metadata, error) {
 }
 
 func (c *VolumeCache) AddLayer(identifier string, sha string, tarPath string) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	if err := copyFile(tarPath, filepath.Join(c.stagingDir, sha+".tar")); err != nil {
 		return errors.Wrapf(err, "caching layer '%s' (%s)", identifier, sha)
 	}
@@ -88,6 +95,9 @@ func (c *VolumeCache) AddLayer(identifier string, sha string, tarPath string) er
 }
 
 func (c *VolumeCache) ReuseLayer(identifier string, sha string) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	if err := copyFile(filepath.Join(c.committedDir, sha+".tar"), filepath.Join(c.stagingDir, sha+".tar")); err != nil {
 		return errors.Wrapf(err, "reusing layer '%s' (%s)", identifier, sha)
 	}
@@ -106,19 +116,23 @@ func (c *VolumeCache) RetrieveLayer(sha string) (io.ReadCloser, error) {
 }
 
 func (c *VolumeCache) Commit() error {
+	if c.committed {
+		return errCacheCommitted
+	}
+	c.committed = true
 	if err := os.Rename(c.committedDir, c.backupDir); err != nil {
 		return errors.Wrap(err, "backing up cache")
 	}
 	defer os.RemoveAll(c.backupDir)
 
-	if err := os.Rename(c.stagingDir, c.committedDir); err != nil {
-		if err := os.Rename(c.backupDir, c.committedDir); err != nil {
-			return errors.Wrap(err, "rolling back cache")
+	if err1 := os.Rename(c.stagingDir, c.committedDir); err1 != nil {
+		if err2 := os.Rename(c.backupDir, c.committedDir); err2 != nil {
+			return errors.Wrap(err2, "rolling back cache")
 		}
-		return nil
+		return errors.Wrap(err1, "committing cache")
 	}
 
-	return c.setupStagingDir()
+	return nil
 }
 
 func (c *VolumeCache) setupStagingDir() error {
