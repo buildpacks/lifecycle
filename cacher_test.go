@@ -173,7 +173,13 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 
 				when("the SHAs match", func() {
 					it.Before(func() {
-						err := subject.Cache(layersDir, testCache)
+						previousCache, err := cache.NewVolumeCache(cacheDir)
+						h.AssertNil(t, err)
+
+						err = subject.Cache(layersDir, previousCache)
+						h.AssertNil(t, err)
+
+						testCache, err = cache.NewVolumeCache(cacheDir)
 						h.AssertNil(t, err)
 					})
 

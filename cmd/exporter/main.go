@@ -9,10 +9,12 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpack/imgutil"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/docker"
+	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -87,33 +89,33 @@ func export() error {
 		ArtifactsDir: artifactsDir,
 	}
 
-	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout), image.WithEnvKeychain)
-	if err != nil {
-		return err
-	}
-
 	var stack metadata.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stack)
 	if err != nil {
 		outLog.Printf("no stack.toml found at path '%s', stack metadata will not be exported\n", stackPath)
 	}
 
-	var runImage, origImage image.Image
+	var runImage, origImage imgutil.Image
 	if useDaemon {
-		runImage, err = factory.NewLocal(runImageRef)
+		dockerClient, err := docker.DefaultClient()
 		if err != nil {
 			return err
 		}
-		origImage, err = factory.NewLocal(repoName)
+
+		runImage, err = imgutil.NewLocalImage(runImageRef, dockerClient)
+		if err != nil {
+			return err
+		}
+		origImage, err = imgutil.NewLocalImage(repoName, dockerClient)
 		if err != nil {
 			return err
 		}
 	} else {
-		runImage, err = factory.NewRemote(runImageRef)
+		runImage, err = imgutil.NewRemoteImage(runImageRef, auth.DefaultEnvKeychain())
 		if err != nil {
 			return err
 		}
-		origImage, err = factory.NewRemote(repoName)
+		origImage, err = imgutil.NewRemoteImage(repoName, auth.DefaultEnvKeychain())
 		if err != nil {
 			return err
 		}

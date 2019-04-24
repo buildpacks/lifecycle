@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -20,7 +20,7 @@ type Analyzer struct {
 	GID        int
 }
 
-func (a *Analyzer) Analyze(image image.Image) error {
+func (a *Analyzer) Analyze(image imgutil.Image) error {
 	data, err := metadata.GetAppMetadata(image)
 	if err != nil {
 		return err

@@ -2,7 +2,6 @@ package lifecycle_test
 
 import (
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -25,7 +25,6 @@ func TestAnalyzer(t *testing.T) {
 
 //go:generate mockgen -mock_names Image=GGCRImage -package testmock -destination testmock/image.go github.com/google/go-containerregistry/pkg/v1 Image
 //go:generate mockgen -package testmock -destination testmock/ref.go github.com/google/go-containerregistry/pkg/name Reference
-//go:generate mockgen -package testmock -destination testmock/image.go github.com/buildpack/lifecycle/image Image
 
 func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	var (
@@ -64,21 +63,25 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 	when("Analyze", func() {
 		var (
-			image *testmock.MockImage
+			image *fakes.Image
 			ref   *testmock.MockReference
 		)
+
 		it.Before(func() {
-			image = testmock.NewMockImage(mockCtrl)
+			image = fakes.NewImage(t, "image-repo-name", "", "")
+
 			ref = testmock.NewMockReference(mockCtrl)
 			ref.EXPECT().Name().AnyTimes()
-			image.EXPECT().Name().AnyTimes().Return("image-repo-name")
+		})
+
+		it.After(func() {
+			image.Cleanup()
 		})
 
 		when("image exists", func() {
 			when("image label has compatible metadata", func() {
 				it.Before(func() {
-					image.EXPECT().Found().Return(true, nil)
-					image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{
+					image.SetLabel("io.buildpacks.lifecycle.metadata", `{
   "buildpacks": [
     {
       "key": "metdata.buildpack",
@@ -136,7 +139,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
       }
     }
   ]
-}`, nil)
+}`)
 				})
 
 				it("should use labels to populate the layer dir", func() {
@@ -473,7 +476,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("the image cannot found", func() {
 			it.Before(func() {
-				image.EXPECT().Found().Return(false, nil)
+				h.AssertNil(t, image.Delete())
 			})
 
 			it("clears the cached launch layers", func() {
@@ -493,21 +496,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("there is an error while trying to find the image", func() {
-			it.Before(func() {
-				image.EXPECT().Found().Return(false, errors.New("some-error"))
-			})
-
-			it("returns the error", func() {
-				err := analyzer.Analyze(image)
-				h.AssertError(t, err, "some-error")
-			})
-		})
-
 		when("the image does not have the required label", func() {
 			it.Before(func() {
-				image.EXPECT().Found().Return(true, nil)
-				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return("", nil)
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
 			})
 
 			it("returns", func() {
@@ -530,8 +521,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("the image label has incompatible metadata", func() {
 			it.Before(func() {
-				image.EXPECT().Found().Return(true, nil)
-				image.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{["bad", "metadata"]}`, nil)
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
 			})
 
 			it("returns", func() {

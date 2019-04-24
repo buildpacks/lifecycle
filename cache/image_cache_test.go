@@ -9,13 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/cache/testmock"
-	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -30,8 +28,6 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		tmpDir            string
 		fakeOriginalImage *fakes.Image
 		fakeNewImage      *fakes.Image
-		mockController    *gomock.Controller
-		mockImageFactory  *testmock.MockImageFactory
 		subject           *cache.ImageCache
 		testLayerTarPath  string
 		testLayerSHA      string
@@ -46,14 +42,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		fakeOriginalImage = fakes.NewImage(t, "fake-image", "", "")
 		fakeNewImage = fakes.NewImage(t, "fake-image", "", "")
 
-		mockController = gomock.NewController(t)
-		mockImageFactory = testmock.NewMockImageFactory(mockController)
-		mockImageFactory.EXPECT().NewEmptyLocal("fake-image").Return(fakeNewImage).AnyTimes()
-
-		subject = cache.NewImageCache(
-			mockImageFactory,
-			fakeOriginalImage,
-		)
+		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
 		h.AssertNil(t, ioutil.WriteFile(testLayerTarPath, []byte("dummy data"), 0666))
@@ -61,9 +50,9 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		mockController.Finish()
-
 		os.RemoveAll(tmpDir)
+		fakeOriginalImage.Cleanup()
+		fakeNewImage.Cleanup()
 	})
 
 	when("#Name", func() {
@@ -176,6 +165,15 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("set after commit", func() {
+				it("retrieve returns the newly set metadata", func() {
+					err := subject.Commit()
+					h.AssertNil(t, err)
+
+					h.AssertError(t, subject.SetMetadata(newMetadata), "cache cannot be modified after commit")
+				})
+			})
+
 			when("set without commit", func() {
 				it("retrieve returns the previous metadata", func() {
 					previousMetadata := cache.Metadata{
@@ -207,6 +205,15 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					bytes, err := ioutil.ReadAll(rc)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(bytes), "dummy data")
+				})
+			})
+
+			when("add after commit", func() {
+				it("retrieve returns the newly set metadata", func() {
+					err := subject.Commit()
+					h.AssertNil(t, err)
+
+					h.AssertError(t, subject.AddLayer("some_identifier", testLayerSHA, testLayerTarPath), "cache cannot be modified after commit")
 				})
 			})
 
@@ -242,6 +249,15 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("reuse after commit", func() {
+				it("retrieve returns the newly set metadata", func() {
+					err := subject.Commit()
+					h.AssertNil(t, err)
+
+					h.AssertError(t, subject.ReuseLayer("some_identifier", testLayerSHA), "cache cannot be modified after commit")
+				})
+			})
+
 			when("reuse without commit", func() {
 				it("retrieve returns the previous layer", func() {
 					h.AssertNil(t, subject.ReuseLayer("some_identifier", testLayerSHA))
@@ -255,6 +271,16 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+		})
+
+		when("attempting to commit more than once", func() {
+			it("should fail", func() {
+				err := subject.Commit()
+				h.AssertNil(t, err)
+
+				err = subject.Commit()
+				h.AssertError(t, err, "cache cannot be modified after commit")
+			})
 		})
 	})
 }

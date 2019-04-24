@@ -8,11 +8,12 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpack/imgutil"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/docker"
 )
 
 var (
@@ -65,17 +66,20 @@ func restore() error {
 
 	var cacheStore lifecycle.Cache
 	if cacheImageTag != "" {
-		factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
+		dockerClient, err := docker.DefaultClient()
 		if err != nil {
 			return err
 		}
 
-		cacheImage, err := factory.NewLocal(cacheImageTag)
+		cacheImage, err := imgutil.NewLocalImage(cacheImageTag, dockerClient)
 		if err != nil {
 			return err
 		}
 
-		cacheStore = cache.NewImageCache(factory, cacheImage)
+		cacheStore = cache.NewImageCache(
+			cacheImage,
+			imgutil.EmptyLocalImage(cacheImage.Name(), dockerClient),
+		)
 	} else {
 		var err error
 		cacheStore, err = cache.NewVolumeCache(cachePath)

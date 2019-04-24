@@ -4,27 +4,20 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
-//go:generate mockgen -package testmock -destination testmock/image_factory.go github.com/buildpack/lifecycle/cache ImageFactory
-type ImageFactory interface {
-	NewEmptyLocal(string) image.Image
-}
-
 type ImageCache struct {
-	factory   ImageFactory
-	origImage image.Image
-	newImage  image.Image
+	committed bool
+	origImage imgutil.Image
+	newImage  imgutil.Image
 }
 
-func NewImageCache(factory ImageFactory, origImage image.Image) *ImageCache {
-	newImage := factory.NewEmptyLocal(origImage.Name())
+func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) *ImageCache {
 	return &ImageCache{
-		factory:   factory,
 		origImage: origImage,
 		newImage:  newImage,
 	}
@@ -35,6 +28,9 @@ func (c *ImageCache) Name() string {
 }
 
 func (c *ImageCache) SetMetadata(metadata Metadata) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	data, err := json.Marshal(metadata)
 	if err != nil {
 		return errors.Wrap(err, "serializing metadata")
@@ -56,10 +52,16 @@ func (c *ImageCache) RetrieveMetadata() (Metadata, error) {
 }
 
 func (c *ImageCache) AddLayer(identifier string, sha string, tarPath string) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	return c.newImage.AddLayer(tarPath)
 }
 
 func (c *ImageCache) ReuseLayer(identifier string, sha string) error {
+	if c.committed {
+		return errCacheCommitted
+	}
 	return c.newImage.ReuseLayer(sha)
 }
 
@@ -68,6 +70,11 @@ func (c *ImageCache) RetrieveLayer(sha string) (io.ReadCloser, error) {
 }
 
 func (c *ImageCache) Commit() error {
+	if c.committed {
+		return errCacheCommitted
+	}
+	c.committed = true
+
 	_, err := c.newImage.Save()
 	if err != nil {
 		return errors.Wrapf(err, "saving image '%s'", c.newImage.Name())
@@ -78,7 +85,6 @@ func (c *ImageCache) Commit() error {
 	}
 
 	c.origImage = c.newImage
-	c.newImage = c.factory.NewEmptyLocal(c.origImage.Name())
 
 	return nil
 }

@@ -13,15 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 )
 
 func NewImage(t *testing.T, name, topLayerSha, digest string) *Image {
 	return &Image{
 		t:            t,
 		alreadySaved: false,
-		labels:       make(map[string]string),
-		env:          make(map[string]string),
+		labels:       map[string]string{},
+		env:          map[string]string{},
 		topLayerSha:  topLayerSha,
 		digest:       digest,
 		name:         name,
@@ -71,7 +71,7 @@ func (f *Image) Digest() (string, error) {
 	return f.digest, nil
 }
 
-func (f *Image) Rebase(baseTopLayer string, newBase image.Image) error {
+func (f *Image) Rebase(baseTopLayer string, newBase imgutil.Image) error {
 	f.base = newBase.Name()
 	return nil
 }

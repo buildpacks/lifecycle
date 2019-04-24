@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpack/imgutil"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/docker"
+	"github.com/buildpack/lifecycle/image/auth"
 )
 
 var (
@@ -70,19 +72,19 @@ func analyzer() error {
 	}
 
 	var err error
-	var previousImage image.Image
-	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout), image.WithEnvKeychain)
-	if err != nil {
-		return err
-	}
+	var previousImage imgutil.Image
 
 	if useDaemon {
-		previousImage, err = factory.NewLocal(repoName)
+		dockerClient, err := docker.DefaultClient()
+		if err != nil {
+			return err
+		}
+		previousImage, err = imgutil.NewLocalImage(repoName, dockerClient)
 		if err != nil {
 			return err
 		}
 	} else {
-		previousImage, err = factory.NewRemote(repoName)
+		previousImage, err = imgutil.NewRemoteImage(repoName, auth.DefaultEnvKeychain())
 		if err != nil {
 			return err
 		}
