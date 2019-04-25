@@ -13,6 +13,7 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/docker"
+	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/buildpack/lifecycle/metadata"
 )
@@ -92,7 +93,10 @@ func export() error {
 			return cmd.FailCode(cmd.CodeInvalidArgs, "-image is required when there is no stack metadata available")
 		}
 
-		runImageRef = stack.RunImage.Image
+		runImageRef, err = runImageFromStackToml(stack)
+		if err != nil {
+			return err
+		}
 	}
 
 	if useHelpers {
@@ -132,4 +136,23 @@ func export() error {
 	}
 
 	return nil
+}
+
+func runImageFromStackToml(stack metadata.StackMetadata) (string, error) {
+	if stack.RunImage.Image == "" {
+		return "", cmd.FailCode(cmd.CodeInvalidArgs, "-image is required when there is no stack metadata available")
+	}
+
+	registry, err := image.ParseRegistry(repoName)
+	if err != nil {
+		return "", cmd.FailCode(cmd.CodeInvalidArgs, "parse image name", err.Error())
+	}
+
+	runImageMirrors := []string{stack.RunImage.Image}
+	runImageMirrors = append(runImageMirrors, stack.RunImage.Mirrors...)
+	runImageRef, err := image.ByRegistry(registry, runImageMirrors)
+	if err != nil {
+		return "", cmd.FailCode(cmd.CodeInvalidArgs, "parse mirrors", err.Error())
+	}
+	return runImageRef, nil
 }
