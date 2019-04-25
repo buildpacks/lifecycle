@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/docker"
+	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/buildpack/lifecycle/metadata"
 )
@@ -50,9 +50,8 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" || runImageRef == "" {
-		args := map[string]interface{}{"narg": flag.NArg(), "runImage": runImageRef, "layersDir": layersDir}
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
+	if flag.NArg() > 1 || flag.Arg(0) == "" {
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	repoName = flag.Arg(0)
 	cmd.Exit(export())
@@ -64,12 +63,6 @@ func export() error {
 	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
 		return cmd.FailErr(err, "read group")
-	}
-
-	if useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), repoName, runImageRef); err != nil {
-			return cmd.FailErr(err, "setup credential helpers")
-		}
 	}
 
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
@@ -93,6 +86,23 @@ func export() error {
 	_, err = toml.DecodeFile(stackPath, &stack)
 	if err != nil {
 		outLog.Printf("no stack.toml found at path '%s', stack metadata will not be exported\n", stackPath)
+	}
+
+	if runImageRef == "" {
+		if stack.RunImage.Image == "" {
+			return cmd.FailCode(cmd.CodeInvalidArgs, "-image is required when there is no stack metadata available")
+		}
+
+		runImageRef, err = runImageFromStackToml(stack)
+		if err != nil {
+			return err
+		}
+	}
+
+	if useHelpers {
+		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), repoName, runImageRef); err != nil {
+			return cmd.FailErr(err, "setup credential helpers")
+		}
 	}
 
 	var runImage, origImage imgutil.Image
@@ -126,4 +136,23 @@ func export() error {
 	}
 
 	return nil
+}
+
+func runImageFromStackToml(stack metadata.StackMetadata) (string, error) {
+	if stack.RunImage.Image == "" {
+		return "", cmd.FailCode(cmd.CodeInvalidArgs, "-image is required when there is no stack metadata available")
+	}
+
+	registry, err := image.ParseRegistry(repoName)
+	if err != nil {
+		return "", cmd.FailCode(cmd.CodeInvalidArgs, "parse image name", err.Error())
+	}
+
+	runImageMirrors := []string{stack.RunImage.Image}
+	runImageMirrors = append(runImageMirrors, stack.RunImage.Mirrors...)
+	runImageRef, err := image.ByRegistry(registry, runImageMirrors)
+	if err != nil {
+		return "", cmd.FailCode(cmd.CodeInvalidArgs, "parse mirrors", err.Error())
+	}
+	return runImageRef, nil
 }
