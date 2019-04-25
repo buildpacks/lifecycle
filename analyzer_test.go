@@ -68,7 +68,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			image = fakes.NewImage(t, "image-repo-name", "", "")
+			image = fakes.NewImage("image-repo-name", "", "")
 
 			ref = testmock.NewMockReference(mockCtrl)
 			ref.EXPECT().Name().AnyTimes()

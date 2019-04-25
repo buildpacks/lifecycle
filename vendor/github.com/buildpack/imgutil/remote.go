@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RemoteImage struct {
+type remoteImage struct {
 	keychain   authn.Keychain
 	repoName   string
 	image      v1.Image
@@ -27,13 +27,13 @@ type RemoteImage struct {
 	prevOnce   *sync.Once
 }
 
-func NewRemoteImage(repoName string, keychain authn.Keychain) (*RemoteImage, error) {
+func NewRemoteImage(repoName string, keychain authn.Keychain) (Image, error) {
 	image, err := newV1Image(keychain, repoName)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RemoteImage{
+	return &remoteImage{
 		keychain: keychain,
 		repoName: repoName,
 		image:    image,
@@ -67,7 +67,7 @@ func referenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, 
 	return r, auth, nil
 }
 
-func (r *RemoteImage) Label(key string) (string, error) {
+func (r *remoteImage) Label(key string) (string, error) {
 	cfg, err := r.image.ConfigFile()
 	if err != nil || cfg == nil {
 		return "", fmt.Errorf("failed to get label, image '%s' does not exist", r.repoName)
@@ -77,7 +77,7 @@ func (r *RemoteImage) Label(key string) (string, error) {
 
 }
 
-func (r *RemoteImage) Env(key string) (string, error) {
+func (r *remoteImage) Env(key string) (string, error) {
 	cfg, err := r.image.ConfigFile()
 	if err != nil || cfg == nil {
 		return "", fmt.Errorf("failed to get env var, image '%s' does not exist", r.repoName)
@@ -91,15 +91,15 @@ func (r *RemoteImage) Env(key string) (string, error) {
 	return "", nil
 }
 
-func (r *RemoteImage) Rename(name string) {
+func (r *remoteImage) Rename(name string) {
 	r.repoName = name
 }
 
-func (r *RemoteImage) Name() string {
+func (r *remoteImage) Name() string {
 	return r.repoName
 }
 
-func (r *RemoteImage) Found() (bool, error) {
+func (r *remoteImage) Found() (bool, error) {
 	if _, err := r.image.RawManifest(); err != nil {
 		if transportErr, ok := err.(*transport.Error); ok && len(transportErr.Errors) > 0 {
 			switch transportErr.Errors[0].Code {
@@ -112,7 +112,7 @@ func (r *RemoteImage) Found() (bool, error) {
 	return true, nil
 }
 
-func (r *RemoteImage) Digest() (string, error) {
+func (r *remoteImage) Digest() (string, error) {
 	hash, err := r.image.Digest()
 	if err != nil {
 		return "", fmt.Errorf("failed to get digest for image '%s': %s", r.repoName, err)
@@ -120,7 +120,7 @@ func (r *RemoteImage) Digest() (string, error) {
 	return hash.String(), nil
 }
 
-func (r *RemoteImage) CreatedAt() (time.Time, error) {
+func (r *remoteImage) CreatedAt() (time.Time, error) {
 	configFile, err := r.image.ConfigFile()
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to get createdAt time for image '%s': %s", r.repoName, err)
@@ -128,8 +128,8 @@ func (r *RemoteImage) CreatedAt() (time.Time, error) {
 	return configFile.Created.UTC(), nil
 }
 
-func (r *RemoteImage) Rebase(baseTopLayer string, newBase Image) error {
-	newBaseRemote, ok := newBase.(*RemoteImage)
+func (r *remoteImage) Rebase(baseTopLayer string, newBase Image) error {
+	newBaseRemote, ok := newBase.(*remoteImage)
 	if !ok {
 		return errors.New("expected new base to be a remote image")
 	}
@@ -142,7 +142,7 @@ func (r *RemoteImage) Rebase(baseTopLayer string, newBase Image) error {
 	return nil
 }
 
-func (r *RemoteImage) SetLabel(key, val string) error {
+func (r *remoteImage) SetLabel(key, val string) error {
 	configFile, err := r.image.ConfigFile()
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (r *RemoteImage) SetLabel(key, val string) error {
 	return err
 }
 
-func (r *RemoteImage) SetEnv(key, val string) error {
+func (r *remoteImage) SetEnv(key, val string) error {
 	configFile, err := r.image.ConfigFile()
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func (r *RemoteImage) SetEnv(key, val string) error {
 	return err
 }
 
-func (r *RemoteImage) SetEntrypoint(ep ...string) error {
+func (r *remoteImage) SetEntrypoint(ep ...string) error {
 	configFile, err := r.image.ConfigFile()
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func (r *RemoteImage) SetEntrypoint(ep ...string) error {
 	return err
 }
 
-func (r *RemoteImage) SetCmd(cmd ...string) error {
+func (r *remoteImage) SetCmd(cmd ...string) error {
 	configFile, err := r.image.ConfigFile()
 	if err != nil {
 		return err
@@ -200,7 +200,7 @@ func (r *RemoteImage) SetCmd(cmd ...string) error {
 	return err
 }
 
-func (r *RemoteImage) TopLayer() (string, error) {
+func (r *remoteImage) TopLayer() (string, error) {
 	all, err := r.image.Layers()
 	if err != nil {
 		return "", err
@@ -213,11 +213,11 @@ func (r *RemoteImage) TopLayer() (string, error) {
 	return hex.String(), nil
 }
 
-func (r *RemoteImage) GetLayer(string) (io.ReadCloser, error) {
+func (r *remoteImage) GetLayer(string) (io.ReadCloser, error) {
 	panic("not implemented")
 }
 
-func (r *RemoteImage) AddLayer(path string) error {
+func (r *remoteImage) AddLayer(path string) error {
 	layer, err := tarball.LayerFromFile(path)
 	if err != nil {
 		return err
@@ -229,7 +229,7 @@ func (r *RemoteImage) AddLayer(path string) error {
 	return nil
 }
 
-func (r *RemoteImage) ReuseLayer(sha string) error {
+func (r *remoteImage) ReuseLayer(sha string) error {
 	var outerErr error
 
 	r.prevOnce.Do(func() {
@@ -268,7 +268,7 @@ func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
 	return nil, fmt.Errorf(`previous image did not have layer with sha '%s'`, sha)
 }
 
-func (r *RemoteImage) Save() (string, error) {
+func (r *remoteImage) Save() (string, error) {
 	ref, auth, err := referenceForRepoName(r.keychain, r.repoName)
 	if err != nil {
 		return "", err
@@ -291,7 +291,7 @@ func (r *RemoteImage) Save() (string, error) {
 	return hex.String(), nil
 }
 
-func (r *RemoteImage) Delete() error {
+func (r *remoteImage) Delete() error {
 	return errors.New("remote image does not implement Delete")
 }
 
