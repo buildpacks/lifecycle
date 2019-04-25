@@ -2,7 +2,7 @@ module github.com/buildpack/lifecycle
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/buildpack/imgutil v0.0.0-20190417181555-8dd0e4fe0219
+	github.com/buildpack/imgutil v0.0.0-20190425152312-609d2e9be7ee
 	github.com/docker/docker v0.7.3-0.20190307005417-54dddadc7d5d
 	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.2.0
