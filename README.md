@@ -64,6 +64,8 @@ Builds binaries to `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64/` for the giv
 $ make build
 ```
 
+> To clean the `out/` directory, run `make clean`.
+
 ### Package
 
 Creates an archive at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz`, using the contents of the
