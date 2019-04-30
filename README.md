@@ -30,3 +30,45 @@ A reference implementation of [Buildpack API v3](https://github.com/buildpack/sp
 
 Cache implementations (`retriever` and `cacher`) are intended to be interchangable and platform-specific.
 A platform may choose not to deduplicate cache layers.
+
+## Development
+To test, build, and package binaries into an archive, simply run:
+
+```bash
+$ make all
+```
+This will create an archive at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz`.
+
+By default, `LIFECYCLE_VERSION` is `dev`. It can be changed by prepending `LIFECYCLE_VERSION=<some version>` to the
+`make` command. For example:
+
+```bash
+$ LIFECYCLE_VERSION=1.2.3 make all
+```
+
+Steps can also be run individually as shown below.
+
+### Test
+
+Formats, vets, and tests the code.
+
+```bash
+$ make test
+```
+
+### Build
+
+Builds binaries to `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64/` for the given (or default) `LIFECYCLE_VERSION`.
+
+```bash
+$ make build
+```
+
+### Package
+
+Creates an archive at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz`, using the contents of the
+`out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64/` directory, for the given (or default) `LIFECYCLE_VERSION`.
+
+```bash
+$ make package
+```
