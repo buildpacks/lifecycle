@@ -3,4 +3,4 @@
 *.coverprofile
 *.test
 *~
-out
+/out
