@@ -11,6 +11,7 @@ import (
 	"github.com/buildpack/imgutil"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/docker"
 	"github.com/buildpack/lifecycle/image"
@@ -19,16 +20,17 @@ import (
 )
 
 var (
-	repoName    string
-	runImageRef string
-	layersDir   string
-	appDir      string
-	groupPath   string
-	stackPath   string
-	useDaemon   bool
-	useHelpers  bool
-	uid         int
-	gid         int
+	repoName       string
+	runImageRef    string
+	layersDir      string
+	appDir         string
+	groupPath      string
+	stackPath      string
+	launchCacheDir string
+	useDaemon      bool
+	useHelpers     bool
+	uid            int
+	gid            int
 )
 
 const launcherPath = "/lifecycle/launcher"
@@ -39,6 +41,7 @@ func init() {
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagStackPath(&stackPath)
+	cmd.FlagLaunchCacheDir(&launchCacheDir)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagUID(&uid)
@@ -53,6 +56,11 @@ func main() {
 	if flag.NArg() > 1 || flag.Arg(0) == "" {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
+
+	if launchCacheDir != "" && !useDaemon {
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "launch cache can only be used when exporting to a Docker daemon"))
+	}
+
 	repoName = flag.Arg(0)
 	cmd.Exit(export())
 }
@@ -116,6 +124,15 @@ func export() error {
 		if err != nil {
 			return err
 		}
+
+		if launchCacheDir != "" {
+			volumeCache, err := cache.NewVolumeCache(launchCacheDir)
+			if err != nil {
+				return err
+			}
+			runImage = lifecycle.NewCachingImage(runImage, volumeCache)
+		}
+
 		origImage, err = imgutil.NewLocalImage(repoName, dockerClient)
 		if err != nil {
 			return err

@@ -108,28 +108,6 @@ func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int
 	}
 }
 
-func AddTextToTar(tw *tar.Writer, name string, contents []byte) error {
-	hdr := &tar.Header{Name: name, Mode: 0644, Size: int64(len(contents))}
-	if err := tw.WriteHeader(hdr); err != nil {
-		return err
-	}
-	_, err := tw.Write(contents)
-	return err
-}
-
-func AddFileToTar(tw *tar.Writer, name string, contents *os.File) error {
-	fi, err := contents.Stat()
-	if err != nil {
-		return err
-	}
-	hdr := &tar.Header{Name: name, Mode: 0644, Size: int64(fi.Size())}
-	if err := tw.WriteHeader(hdr); err != nil {
-		return err
-	}
-	_, err = io.Copy(tw, contents)
-	return err
-}
-
 func Untar(r io.Reader, dest string) error {
 	tr := tar.NewReader(r)
 	for {

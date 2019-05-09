@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -22,7 +21,6 @@ import (
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-cmp/cmp"
 
@@ -54,13 +52,6 @@ func AssertContains(t *testing.T, slice []string, expected string) {
 	}
 	t.Fatalf("Expected %+v to contain: %s", slice, expected)
 
-}
-
-func AssertMatch(t *testing.T, actual string, expected *regexp.Regexp) {
-	t.Helper()
-	if !expected.Match([]byte(actual)) {
-		t.Fatal(cmp.Diff(actual, expected))
-	}
 }
 
 func AssertError(t *testing.T, actual error, expected string) {
@@ -122,45 +113,6 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 
 var getBuildImageOnce sync.Once
 
-func CreateImageOnLocal(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string, labels map[string]string) {
-	ctx := context.Background()
-
-	buildContext, err := CreateSingleFileTar("Dockerfile", dockerFile)
-	AssertNil(t, err)
-
-	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
-		Tags:           []string{repoName},
-		SuppressOutput: true,
-		Remove:         true,
-		ForceRemove:    true,
-		Labels:         labels,
-	})
-	AssertNil(t, err)
-
-	io.Copy(ioutil.Discard, res.Body)
-	res.Body.Close()
-}
-
-func CreateImageOnRemote(t *testing.T, dockerCli *dockercli.Client, repoName, dockerFile string, labels map[string]string) string {
-	t.Helper()
-	defer DockerRmi(dockerCli, repoName)
-
-	CreateImageOnLocal(t, dockerCli, repoName, dockerFile, labels)
-
-	var topLayer string
-	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
-	AssertNil(t, err)
-	if len(inspect.RootFS.Layers) > 0 {
-		topLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
-	} else {
-		topLayer = "N/A"
-	}
-
-	AssertNil(t, pushImage(dockerCli, repoName))
-
-	return topLayer
-}
-
 func PullImage(dockerCli *dockercli.Client, ref string) error {
 	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
 	if err != nil {
@@ -174,71 +126,6 @@ func PullImage(dockerCli *dockercli.Client, ref string) error {
 		return err
 	}
 	return rc.Close()
-}
-
-func DockerRmi(dockerCli *dockercli.Client, repoNames ...string) error {
-	var err error
-	ctx := context.Background()
-	for _, name := range repoNames {
-		_, e := dockerCli.ImageRemove(
-			ctx,
-			name,
-			dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true},
-		)
-		if e != nil && err == nil {
-			err = e
-		}
-	}
-	return err
-}
-
-func CopySingleFileFromContainer(dockerCli *dockercli.Client, ctrID, path string) (string, error) {
-	r, _, err := dockerCli.CopyFromContainer(context.Background(), ctrID, path)
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	tr := tar.NewReader(r)
-	hdr, err := tr.Next()
-	if hdr.Name != path && hdr.Name != filepath.Base(path) {
-		return "", fmt.Errorf("filenames did not match: %s and %s (%s)", hdr.Name, path, filepath.Base(path))
-	}
-	b, err := ioutil.ReadAll(tr)
-	return string(b), err
-}
-
-func CopySingleFileFromImage(dockerCli *dockercli.Client, repoName, path string) (string, error) {
-	ctr, err := dockerCli.ContainerCreate(context.Background(),
-		&container.Config{
-			Image: repoName,
-		}, &container.HostConfig{
-			AutoRemove: true,
-		}, nil, "",
-	)
-	if err != nil {
-		return "", err
-	}
-	defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
-	return CopySingleFileFromContainer(dockerCli, ctr.ID, path)
-}
-
-func pushImage(dockerCli *dockercli.Client, ref string) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: "{}"})
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
-	}
-	return rc.Close()
-}
-
-func packTag() string {
-	tag := os.Getenv("PACK_TAG")
-	if tag == "" {
-		return "latest"
-	}
-	return tag
 }
 
 func HttpGetE(url string) (string, error) {
@@ -350,4 +237,26 @@ func CreateSingleFileTar(path, txt string) (io.Reader, error) {
 		return nil, err
 	}
 	return bytes.NewReader(buf.Bytes()), nil
+}
+
+
+func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents []byte) {
+	r, err := CreateSingleFileTar("/some-file", RandString(10))
+	AssertNil(t, err)
+
+	path = filepath.Join(tmpDir, RandString(10)+".tar")
+	fh, err := os.Create(path)
+	AssertNil(t, err)
+	defer fh.Close()
+
+	hasher := sha256.New()
+	var contentsBuf bytes.Buffer
+	mw := io.MultiWriter(hasher, fh, &contentsBuf)
+
+	_, err = io.Copy(mw, r)
+	AssertNil(t, err)
+
+	sha = hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+
+	return path, "sha256:" + sha, contentsBuf.Bytes()
 }

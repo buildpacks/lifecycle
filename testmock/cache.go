@@ -34,18 +34,18 @@ func (m *MockCache) EXPECT() *MockCacheMockRecorder {
 	return m.recorder
 }
 
-// AddLayer mocks base method
+// AddLayerFile mocks base method
 func (m *MockCache) AddLayer(arg0, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddLayer", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "AddLayerFile", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AddLayer indicates an expected call of AddLayer
+// AddLayerFile indicates an expected call of AddLayerFile
 func (mr *MockCacheMockRecorder) AddLayer(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLayer", reflect.TypeOf((*MockCache)(nil).AddLayer), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLayerFile", reflect.TypeOf((*MockCache)(nil).AddLayer), arg0, arg1, arg2)
 }
 
 // Commit mocks base method

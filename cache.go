@@ -11,8 +11,8 @@ type Cache interface {
 	Name() string
 	SetMetadata(metadata cache.Metadata) error
 	RetrieveMetadata() (cache.Metadata, error)
-	AddLayer(identifier string, sha string, tarPath string) error
-	ReuseLayer(identifier string, sha string) error
+	AddLayerFile(sha string, tarPath string) error
+	ReuseLayer(sha string) error
 	RetrieveLayer(sha string) (io.ReadCloser, error)
 	Commit() error
 }

@@ -51,14 +51,14 @@ func (c *ImageCache) RetrieveMetadata() (Metadata, error) {
 	return meta, nil
 }
 
-func (c *ImageCache) AddLayer(identifier string, sha string, tarPath string) error {
+func (c *ImageCache) AddLayerFile(sha string, tarPath string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
 	return c.newImage.AddLayer(tarPath)
 }
 
-func (c *ImageCache) ReuseLayer(identifier string, sha string) error {
+func (c *ImageCache) ReuseLayer(sha string) error {
 	if c.committed {
 		return errCacheCommitted
 	}

@@ -1,8 +1,11 @@
 package cache
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 
@@ -84,35 +87,84 @@ func (c *VolumeCache) RetrieveMetadata() (Metadata, error) {
 	return metadata, nil
 }
 
-func (c *VolumeCache) AddLayer(identifier string, sha string, tarPath string) error {
+func (c *VolumeCache) AddLayerFile(sha string, tarPath string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
 	if err := copyFile(tarPath, filepath.Join(c.stagingDir, sha+".tar")); err != nil {
-		return errors.Wrapf(err, "caching layer '%s' (%s)", identifier, sha)
+		return errors.Wrapf(err, "caching layer (%s)", sha)
 	}
 	return nil
 }
 
-func (c *VolumeCache) ReuseLayer(identifier string, sha string) error {
+func (c *VolumeCache) AddLayer(rc io.ReadCloser) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	if err := copyFile(filepath.Join(c.committedDir, sha+".tar"), filepath.Join(c.stagingDir, sha+".tar")); err != nil {
-		return errors.Wrapf(err, "reusing layer '%s' (%s)", identifier, sha)
+
+	tarFile := filepath.Join(c.stagingDir, randString(10)+".tar")
+	fh, err := os.Create(tarFile)
+	if err != nil {
+		return errors.Wrapf(err, "create layer file in cache")
+	}
+
+	hasher := sha256.New()
+	mw := io.MultiWriter(hasher, fh)
+	if _, err := io.Copy(mw, rc); err != nil {
+		fh.Close()
+		return errors.Wrap(err, "copying layer to tar file")
+	}
+	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	if err := fh.Close(); err != nil {
+		return errors.Wrapf(err, "closing layer file (layer sha: %s)", sha)
+	}
+	if err := os.Rename(tarFile, filepath.Join(c.stagingDir, "sha256:" + sha+".tar")); err != nil {
+		return errors.Wrapf(err, "renaming layer file (layer sha: %s)", sha)
+	}
+	return nil
+}
+
+func (c *VolumeCache) ReuseLayer(sha string) error {
+	if c.committed {
+		return errCacheCommitted
+	}
+	if err := os.Link(filepath.Join(c.committedDir, sha+".tar"), filepath.Join(c.stagingDir, sha+".tar")); err != nil {
+		return errors.Wrapf(err, "reusing layer (%s)", sha)
 	}
 	return nil
 }
 
 func (c *VolumeCache) RetrieveLayer(sha string) (io.ReadCloser, error) {
-	file, err := os.Open(filepath.Join(c.committedDir, sha+".tar"))
+	path, err := c.RetrieveLayerFile(sha)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, errors.Wrapf(err, "layer with SHA '%s' not found", sha)
-		}
-		return nil, errors.Wrapf(err, "retrieving layer with SHA '%s'", sha)
+		return nil, err
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening layer with SHA '%s'", sha)
 	}
 	return file, nil
+}
+
+func (c *VolumeCache) HasLayer(sha string) (bool, error) {
+	if _, err := os.Stat(filepath.Join(c.committedDir, sha+".tar")); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "retrieving layer with SHA '%s'", sha)
+	}
+	return true, nil
+}
+
+func (c *VolumeCache) RetrieveLayerFile(sha string) (string, error) {
+	path := filepath.Join(c.committedDir, sha+".tar")
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return "", errors.Wrapf(err, "layer with SHA '%s' not found", sha)
+		}
+		return "", errors.Wrapf(err, "retrieving layer with SHA '%s'", sha)
+	}
+	return path, nil
 }
 
 func (c *VolumeCache) Commit() error {
@@ -158,4 +210,12 @@ func copyFile(from, to string) error {
 	_, err = io.Copy(out, in)
 
 	return err
+}
+
+func randString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = 'a' + byte(rand.Intn(26))
+	}
+	return string(b)
 }

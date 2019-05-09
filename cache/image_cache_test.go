@@ -191,10 +191,10 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("with #AddLayer", func() {
+		when("with #AddLayerFile", func() {
 			when("add then commit", func() {
 				it("retrieve returns newly added layer", func() {
-					h.AssertNil(t, subject.AddLayer("some_identifier", testLayerSHA, testLayerTarPath))
+					h.AssertNil(t, subject.AddLayerFile(testLayerSHA, testLayerTarPath))
 
 					err := subject.Commit()
 					h.AssertNil(t, err)
@@ -213,13 +213,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					err := subject.Commit()
 					h.AssertNil(t, err)
 
-					h.AssertError(t, subject.AddLayer("some_identifier", testLayerSHA, testLayerTarPath), "cache cannot be modified after commit")
+					h.AssertError(t, subject.AddLayerFile(testLayerSHA, testLayerTarPath), "cache cannot be modified after commit")
 				})
 			})
 
 			when("add without commit", func() {
 				it("retrieve returns not found error", func() {
-					h.AssertNil(t, subject.AddLayer("some_identifier", testLayerSHA, testLayerTarPath))
+					h.AssertNil(t, subject.AddLayerFile(testLayerSHA, testLayerTarPath))
 
 					_, err := subject.RetrieveLayer(testLayerSHA)
 					h.AssertError(t, err, fmt.Sprintf("failed to get layer with sha '%s'", testLayerSHA))
@@ -230,12 +230,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("with #ReuseLayer", func() {
 			it.Before(func() {
-				h.AssertNil(t, fakeOriginalImage.AddLayer(testLayerTarPath))
+				fakeNewImage.AddPreviousLayer(testLayerSHA, testLayerTarPath)
+				fakeOriginalImage.AddLayer(testLayerTarPath)
 			})
 
 			when("reuse then commit", func() {
 				it("returns the reused layer", func() {
-					h.AssertNil(t, subject.ReuseLayer("some_identifier", testLayerSHA))
+					h.AssertNil(t, subject.ReuseLayer(testLayerSHA))
 
 					err := subject.Commit()
 					h.AssertNil(t, err)
@@ -254,13 +255,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					err := subject.Commit()
 					h.AssertNil(t, err)
 
-					h.AssertError(t, subject.ReuseLayer("some_identifier", testLayerSHA), "cache cannot be modified after commit")
+					h.AssertError(t, subject.ReuseLayer(testLayerSHA), "cache cannot be modified after commit")
 				})
 			})
 
 			when("reuse without commit", func() {
 				it("retrieve returns the previous layer", func() {
-					h.AssertNil(t, subject.ReuseLayer("some_identifier", testLayerSHA))
+					h.AssertNil(t, subject.ReuseLayer(testLayerSHA))
 
 					rc, err := subject.RetrieveLayer(testLayerSHA)
 					h.AssertNil(t, err)
@@ -270,7 +271,6 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, string(bytes), "dummy data")
 				})
 			})
-
 		})
 
 		when("attempting to commit more than once", func() {

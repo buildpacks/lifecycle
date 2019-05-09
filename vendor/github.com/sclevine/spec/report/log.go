@@ -11,6 +11,7 @@ import (
 type Log struct{}
 
 func (Log) Start(t *testing.T, plan spec.Plan) {
+	t.Helper()
 	t.Log("Suite:", plan.Text)
 	t.Logf("Total: %d | Focused: %d | Pending: %d", plan.Total, plan.Focused, plan.Pending)
 	if plan.HasRandom {
@@ -22,6 +23,7 @@ func (Log) Start(t *testing.T, plan spec.Plan) {
 }
 
 func (Log) Specs(t *testing.T, specs <-chan spec.Spec) {
+	t.Helper()
 	var passed, failed, skipped int
 	for s := range specs {
 		switch {

@@ -1,8 +1,11 @@
 package spec
 
-import "io"
+import (
+	"io"
+	"testing"
+)
 
-// An Option is used to control the behavior of a call to Run, G, or S.
+// An Option controls the behavior of a suite, group, or spec.
 // Options are inherited by subgroups and subspecs.
 //
 // Example:
@@ -16,7 +19,8 @@ type Option func(*config)
 
 // Report specifies a Reporter for a suite.
 //
-// Valid Option for: Run
+// Valid Option for:
+// New, Run, Focus, Pend
 func Report(r Reporter) Option {
 	return func(c *config) {
 		c.report = r
@@ -27,7 +31,8 @@ func Report(r Reporter) Option {
 // The random seed is always displayed before specs are run.
 // If not specified, the current time is used.
 //
-// Valid Option for: Run
+// Valid Option for:
+// New, Run, Focus, Pend
 func Seed(s int64) Option {
 	return func(c *config) {
 		c.seed = s
@@ -37,7 +42,8 @@ func Seed(s int64) Option {
 // Sequential indicates that a group of specs should be run in order.
 // This is the default behavior.
 //
-// Valid Option for: Run, G
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend
 func Sequential() Option {
 	return func(c *config) {
 		c.order = orderSequential
@@ -47,7 +53,8 @@ func Sequential() Option {
 // Random indicates that a group of specs should be run in random order.
 // Randomization is per group, such that all groupings are maintained.
 //
-// Valid Option for: Run, G
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend
 func Random() Option {
 	return func(c *config) {
 		c.order = orderRandom
@@ -56,7 +63,8 @@ func Random() Option {
 
 // Reverse indicates that a group of specs should be run in reverse order.
 //
-// Valid Option for: Run, G
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend
 func Reverse() Option {
 	return func(c *config) {
 		c.order = orderReverse
@@ -66,7 +74,8 @@ func Reverse() Option {
 // Parallel indicates that a spec or group of specs should be run in parallel.
 // This Option is equivalent to t.Parallel().
 //
-// Valid Option for: Run, G, S
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend, S
 func Parallel() Option {
 	return func(c *config) {
 		c.order = orderParallel
@@ -79,7 +88,8 @@ func Parallel() Option {
 // different subgroups will not be interleaved.
 // This is the default behavior.
 //
-// Valid Option for: Run, G
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend
 func Local() Option {
 	return func(c *config) {
 		c.scope = scopeLocal
@@ -91,7 +101,8 @@ func Local() Option {
 // specs in random order, regardless of subgroup. Specs in different subgroups
 // may be interleaved.
 //
-// Valid Option for: Run, G
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend
 func Global() Option {
 	return func(c *config) {
 		c.scope = scopeGlobal
@@ -101,7 +112,8 @@ func Global() Option {
 // Flat indicates that a parent subtest should not be created for the group.
 // This is the default behavior.
 //
-// Valid Option for: Run, G
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend
 func Flat() Option {
 	return func(c *config) {
 		c.nest = nestOff
@@ -111,7 +123,8 @@ func Flat() Option {
 // Nested indicates that a parent subtest should be created for the group.
 // This allows for more control over parallelism.
 //
-// Valid Option for: Run, G
+// Valid Option for:
+// New, Run, Focus, Pend, Suite, Suite.Focus, Suite.Pend, G, G.Focus, G.Pend
 func Nested() Option {
 	return func(c *config) {
 		c.nest = nestOn
@@ -179,6 +192,7 @@ type config struct {
 	focus  bool
 	before bool
 	after  bool
+	t      *testing.T
 	out    func(io.Writer)
 	report Reporter
 }
