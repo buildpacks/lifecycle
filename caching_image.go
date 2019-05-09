@@ -141,7 +141,7 @@ func (c *cachingImage) TopLayer() (string, error) {
 	return c.image.TopLayer()
 }
 
-func (c *cachingImage) Found() (bool, error) {
+func (c *cachingImage) Found() bool {
 	return c.image.Found()
 }
 

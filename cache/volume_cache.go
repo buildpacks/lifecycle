@@ -118,7 +118,7 @@ func (c *VolumeCache) AddLayer(rc io.ReadCloser) error {
 	if err := fh.Close(); err != nil {
 		return errors.Wrapf(err, "closing layer file (layer sha: %s)", sha)
 	}
-	if err := os.Rename(tarFile, filepath.Join(c.stagingDir, "sha256:" + sha+".tar")); err != nil {
+	if err := os.Rename(tarFile, filepath.Join(c.stagingDir, "sha256:"+sha+".tar")); err != nil {
 		return errors.Wrapf(err, "renaming layer file (layer sha: %s)", sha)
 	}
 	return nil

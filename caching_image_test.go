@@ -1,7 +1,6 @@
 package lifecycle_test
 
 import (
-	"archive/tar"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -27,12 +26,13 @@ func TestCachingImage(t *testing.T) {
 
 func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject       imgutil.Image
-		fakeImage     *fakes.Image
-		volumeCache   *cache.VolumeCache
-		tmpDir        string
-		layerPath     string
-		layerSHA      string
+		subject     imgutil.Image
+		fakeImage   *fakes.Image
+		volumeCache *cache.VolumeCache
+		tmpDir      string
+		layerPath   string
+		layerSHA    string
+		layerData   []byte
 	)
 
 	it.Before(func() {
@@ -43,7 +43,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 		volumeCache, err = cache.NewVolumeCache(tmpDir)
 		h.AssertNil(t, err)
 		subject = lifecycle.NewCachingImage(fakeImage, volumeCache)
-		layerPath, layerSHA = h.RandomLayer(t, tmpDir)
+		layerPath, layerSHA, layerData = h.RandomLayer(t, tmpDir)
 	})
 
 	it.After(func() {
@@ -71,7 +71,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				from, err := os.Open(layerPath)
 				h.AssertNil(t, err)
 				defer from.Close()
-				to, err := os.Create(filepath.Join(tmpDir, "committed", layerSHA + ".tar"))
+				to, err := os.Create(filepath.Join(tmpDir, "committed", layerSHA+".tar"))
 				h.AssertNil(t, err)
 				defer to.Close()
 				_, err = io.Copy(to, from)
@@ -141,10 +141,9 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				rc, err := subject.GetLayer(layerSHA)
 				h.AssertNil(t, err)
 				defer rc.Close()
-				tr := tar.NewReader(rc)
-				header, err := tr.Next()
+				contents, err := ioutil.ReadAll(rc)
 				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, "/some-file")
+				h.AssertEq(t, contents, layerData)
 			})
 		})
 
@@ -159,10 +158,9 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				rc, err := subject.GetLayer(layerSHA)
 				h.AssertNil(t, err)
 				defer rc.Close()
-				tr := tar.NewReader(rc)
-				header, err := tr.Next()
+				contents, err := ioutil.ReadAll(rc)
 				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, "/some-file")
+				h.AssertEq(t, contents, layerData)
 			})
 		})
 	})

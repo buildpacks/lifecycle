@@ -239,7 +239,6 @@ func CreateSingleFileTar(path, txt string) (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-
 func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents []byte) {
 	r, err := CreateSingleFileTar("/some-file", RandString(10))
 	AssertNil(t, err)

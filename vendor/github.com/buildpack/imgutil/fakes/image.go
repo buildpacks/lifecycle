@@ -202,8 +202,8 @@ func (f *Image) Delete() error {
 	return nil
 }
 
-func (f *Image) Found() (bool, error) {
-	return !f.deleted, nil
+func (f *Image) Found() bool {
+	return !f.deleted
 }
 
 // test methods
