@@ -21,7 +21,7 @@ type node struct {
 func (n *node) parse(f func(*testing.T, G, S)) Plan {
 	// TODO: validate Options
 	plan := Plan{
-		Text: n.text[0],
+		Text: strings.Join(n.text, "/"),
 		Seed: n.seed,
 	}
 	f(nil, func(text string, f func(), opts ...Option) {
@@ -126,6 +126,7 @@ func (n *node) nested() bool {
 }
 
 func (n node) run(t *testing.T, f func(*testing.T, node)) bool {
+	t.Helper()
 	name := strings.Join(n.text, "/")
 	switch {
 	case n.nodes == nil:
@@ -140,6 +141,7 @@ func (n node) run(t *testing.T, f func(*testing.T, node)) bool {
 type tree []node
 
 func (ns tree) run(t *testing.T, f func(*testing.T, node)) bool {
+	t.Helper()
 	ok := true
 	for _, n := range ns {
 		ok = n.run(t, f) && ok

@@ -292,6 +292,6 @@ func addLayerFromPath(t *testing.T, tarTempDir, layerPath string, c lifecycle.Ca
 	tarPath := filepath.Join(tarTempDir, h.RandString(10)+".tar")
 	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0)
 	h.AssertNil(t, err)
-	h.AssertNil(t, c.AddLayer("", sha, tarPath))
+	h.AssertNil(t, c.AddLayerFile(sha, tarPath))
 	return sha
 }

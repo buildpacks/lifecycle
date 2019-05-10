@@ -98,11 +98,34 @@ With less nesting:
 
 ```go
 func TestObject(t *testing.T) {
-    spec.Run(t, "object", testObject)
+    spec.Run(t, "object", testObject, spec.Report(report.Terminal{}))
 }
 
 func testObject(t *testing.T, when spec.G, it spec.S) {
-    var someObject myapp.Object
     ...
+}
+```
+
+For focusing/reporting across multiple files in a package:
+
+```go
+var suite spec.Suite
+
+func init() {
+    suite = spec.New("my suite", spec.Report(report.Terminal{}))
+    suite("object", testObject)
+    suite("other object", testOtherObject)
+}
+
+func TestObjects(t *testing.T) {
+	suite.Run(t)
+}
+
+func testObject(t *testing.T, when spec.G, it spec.S) {
+	...
+}
+
+func testOtherObject(t *testing.T, when spec.G, it spec.S) {
+	...
 }
 ```

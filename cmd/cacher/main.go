@@ -18,7 +18,7 @@ import (
 
 var (
 	cacheImageTag string
-	cachePath     string
+	cacheDir      string
 	layersDir     string
 	groupPath     string
 	uid           int
@@ -28,7 +28,7 @@ var (
 func init() {
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagCacheImage(&cacheImageTag)
-	cmd.FlagCachePath(&cachePath)
+	cmd.FlagCacheDir(&cacheDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
@@ -43,7 +43,7 @@ func main() {
 		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
 	}
-	if cacheImageTag == "" && cachePath == "" {
+	if cacheImageTag == "" && cacheDir == "" {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "must supply either -image or -path"))
 	}
 	cmd.Exit(doCache())
@@ -88,7 +88,7 @@ func doCache() error {
 		)
 	} else {
 		var err error
-		cacheStore, err = cache.NewVolumeCache(cachePath)
+		cacheStore, err = cache.NewVolumeCache(cacheDir)
 		if err != nil {
 			return err
 		}

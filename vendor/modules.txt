@@ -2,7 +2,7 @@
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/buildpack/imgutil v0.0.0-20190425152312-609d2e9be7ee
+# github.com/buildpack/imgutil v0.0.0-20190509214933-76de939dfb34
 github.com/buildpack/imgutil
 github.com/buildpack/imgutil/fakes
 # github.com/docker/distribution v2.7.1+incompatible
@@ -31,45 +31,47 @@ github.com/docker/docker/api/types/swarm/runtime
 github.com/docker/go-connections/nat
 github.com/docker/go-connections/sockets
 github.com/docker/go-connections/tlsconfig
-# github.com/docker/go-units v0.3.3
+# github.com/docker/go-units v0.4.0
 github.com/docker/go-units
 # github.com/gogo/protobuf v1.2.1
 github.com/gogo/protobuf/proto
-# github.com/golang/mock v1.2.0
+# github.com/golang/mock v1.3.0
+github.com/golang/mock/mockgen/model
 github.com/golang/mock/gomock
-# github.com/google/go-cmp v0.2.0
+# github.com/google/go-cmp v0.3.0
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
+github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-containerregistry v0.0.0-20190110221225-f514e780f7cd
+# github.com/google/go-containerregistry v0.0.0-20190503220729-1c6c7f61e8a5
 github.com/google/go-containerregistry/pkg/name
 github.com/google/go-containerregistry/pkg/authn
 github.com/google/go-containerregistry/pkg/v1
+github.com/google/go-containerregistry/pkg/v1/types
 github.com/google/go-containerregistry/pkg/v1/mutate
+github.com/google/go-containerregistry/pkg/v1/random
 github.com/google/go-containerregistry/pkg/v1/remote
 github.com/google/go-containerregistry/pkg/v1/remote/transport
 github.com/google/go-containerregistry/pkg/v1/tarball
-github.com/google/go-containerregistry/pkg/v1/types
 github.com/google/go-containerregistry/pkg/v1/empty
 github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/v1util
-github.com/google/go-containerregistry/pkg/v1/random
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
 github.com/opencontainers/image-spec/specs-go/v1
 github.com/opencontainers/image-spec/specs-go
-# github.com/pkg/errors v0.8.0
+# github.com/pkg/errors v0.8.1
 github.com/pkg/errors
-# github.com/sclevine/spec v1.0.0
+# github.com/sclevine/spec v1.2.0
 github.com/sclevine/spec
 github.com/sclevine/spec/report
-# golang.org/x/net v0.0.0-20190415214537-1da14a5a36f2
+# golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
-# golang.org/x/sync v0.0.0-20190412183630-56d357773e84
+# golang.org/x/sync v0.0.0-20190423024810-112230192c58
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20190416152802-12500544f89f
+# golang.org/x/sys v0.0.0-20190509141414-a5b02f93d862
 golang.org/x/sys/windows

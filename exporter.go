@@ -135,11 +135,12 @@ func (e *Exporter) Export(layersDir, appDir string, runImage, origImage imgutil.
 	}
 
 	sha, err := appImage.Save()
-	if err == nil {
-		e.Out.Printf("\n*** Image: %s@%s\n", runImage.Name(), sha)
+	if err != nil {
+		return errors.Wrap(err, "saving")
 	}
+	e.Out.Printf("\n*** Image: %s@%s\n", runImage.Name(), sha)
 
-	return err
+	return nil
 }
 
 func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer identifiableLayer, previousSha string) (string, error) {

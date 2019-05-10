@@ -1,6 +1,8 @@
 package cache_test
 
 import (
+	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -210,6 +212,30 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("#RetrieveLayerFile", func() {
+			when("layer exists", func() {
+				it.Before(func() {
+					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0666))
+				})
+
+				it("returns the layer's reader", func() {
+					layerPath, err := subject.RetrieveLayerFile("some_sha")
+					h.AssertNil(t, err)
+
+					bytes, err := ioutil.ReadFile(layerPath)
+					h.AssertNil(t, err)
+					h.AssertEq(t, string(bytes), "dummy data")
+				})
+			})
+
+			when("layer does not exist", func() {
+				it("returns an error", func() {
+					_, err := subject.RetrieveLayerFile("some_nonexistent_sha")
+					h.AssertError(t, err, "layer with SHA 'some_nonexistent_sha' not found")
+				})
+			})
+		})
+
 		when("#Commit", func() {
 			it("should clear the staging dir", func() {
 				layerTarPath := filepath.Join(stagingDir, "some-layer.tar")
@@ -224,7 +250,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("with #SetMetadata", func() {
+			when("#SetMetadata", func() {
 				var newMetadata cache.Metadata
 
 				it.Before(func() {
@@ -277,7 +303,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("with #AddLayer", func() {
+			when("#AddLayerFile", func() {
 				var tarPath string
 
 				it.Before(func() {
@@ -287,7 +313,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("add then commit", func() {
 					it("retrieve returns newly added layer", func() {
-						h.AssertNil(t, subject.AddLayer("some_identifier", "some_sha", tarPath))
+						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
@@ -306,13 +332,13 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						h.AssertError(t, subject.AddLayer("some_identifier", "some_sha", tarPath), "cache cannot be modified after commit")
+						h.AssertError(t, subject.AddLayerFile("some_sha", tarPath), "cache cannot be modified after commit")
 					})
 				})
 
 				when("add without commit", func() {
 					it("retrieve returns not found error", func() {
-						h.AssertNil(t, subject.AddLayer("some_identifier", "some_sha", tarPath))
+						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
 
 						_, err := subject.RetrieveLayer("some_sha")
 						h.AssertError(t, err, "layer with SHA 'some_sha' not found")
@@ -321,14 +347,67 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 			})
 
-			when("with #ReuseLayer", func() {
+			when("#AddLayer", func() {
+				var (
+					layerReader io.ReadCloser
+					layerSha    string
+					layerData   []byte
+				)
+
+				it.Before(func() {
+					var (
+						layerPath string
+						err       error
+					)
+					layerPath, layerSha, layerData = h.RandomLayer(t, tmpDir)
+					layerReader, err = os.Open(layerPath)
+					h.AssertNil(t, err)
+				})
+
+				when("add then commit", func() {
+					it("retrieve returns newly added layer", func() {
+						h.AssertNil(t, subject.AddLayer(layerReader))
+
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						rc, err := subject.RetrieveLayer(layerSha)
+						h.AssertNil(t, err)
+
+						bytes, err := ioutil.ReadAll(rc)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bytes, layerData)
+					})
+				})
+
+				when("add after commit", func() {
+					it("retrieve returns the newly set metadata", func() {
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						h.AssertError(t, subject.AddLayer(layerReader), "cache cannot be modified after commit")
+					})
+				})
+
+				when("add without commit", func() {
+					it("retrieve returns not found error", func() {
+						h.AssertNil(t, subject.AddLayer(layerReader))
+
+						_, err := subject.RetrieveLayer(layerSha)
+						h.AssertError(t, err, fmt.Sprintf("layer with SHA '%s' not found", layerSha))
+					})
+				})
+
+			})
+
+			when("#ReuseLayer", func() {
 				it.Before(func() {
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0666))
 				})
 
 				when("reuse then commit", func() {
 					it("retrieve returns the reused layer", func() {
-						h.AssertNil(t, subject.ReuseLayer("some_identifier", "some_sha"))
+						h.AssertNil(t, subject.ReuseLayer("some_sha"))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
@@ -347,13 +426,13 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						h.AssertError(t, subject.ReuseLayer("some_identifier", "some_sha"), "cache cannot be modified after commit")
+						h.AssertError(t, subject.ReuseLayer("some_sha"), "cache cannot be modified after commit")
 					})
 				})
 
 				when("reuse without commit", func() {
 					it("retrieve returns the previous layer", func() {
-						h.AssertNil(t, subject.ReuseLayer("some_identifier", "some_sha"))
+						h.AssertNil(t, subject.ReuseLayer("some_sha"))
 
 						rc, err := subject.RetrieveLayer("some_sha")
 						h.AssertNil(t, err)
