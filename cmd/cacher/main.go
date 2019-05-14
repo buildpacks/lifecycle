@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -40,11 +40,10 @@ func main() {
 
 	flag.Parse()
 	if flag.NArg() > 0 {
-		args := map[string]interface{}{"narg": flag.NArg(), "layersDir": layersDir}
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments", fmt.Sprintf("%+v", args)))
+		cmd.Exit(cmd.FailErrCode(errors.New("received unexpected args"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	if cacheImageTag == "" && cacheDir == "" {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "must supply either -image or -path"))
+		cmd.Exit(cmd.FailErrCode(errors.New("must supply either -image or -path"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	cmd.Exit(doCache())
 }
@@ -74,12 +73,12 @@ func doCache() error {
 	if cacheImageTag != "" {
 		dockerClient, err := docker.DefaultClient()
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "create docker client")
 		}
 
 		origCacheImage, err := imgutil.NewLocalImage(cacheImageTag, dockerClient)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "access cache image")
 		}
 
 		cacheStore = cache.NewImageCache(
@@ -90,12 +89,12 @@ func doCache() error {
 		var err error
 		cacheStore, err = cache.NewVolumeCache(cacheDir)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "create volume cache")
 		}
 	}
 
 	if err := cacher.Cache(layersDir, cacheStore); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailed)
+		return cmd.FailErrCode(err, cmd.CodeFailed, "cache")
 	}
 
 	return nil

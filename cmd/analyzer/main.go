@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -42,10 +44,13 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
-	repoName = flag.Arg(0)
-	if flag.NArg() > 1 || repoName == "" {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+	if flag.NArg() > 1 {
+		cmd.Exit(cmd.FailErrCode(fmt.Errorf("received %d args expected 1", flag.NArg()), cmd.CodeInvalidArgs, "parse arguments"))
 	}
+	if flag.Arg(0) == "" {
+		cmd.Exit(cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments"))
+	}
+	repoName = flag.Arg(0)
 	cmd.Exit(analyzer())
 }
 
@@ -77,11 +82,11 @@ func analyzer() error {
 	if useDaemon {
 		dockerClient, err := docker.DefaultClient()
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "create docker client")
 		}
 		previousImage, err = imgutil.NewLocalImage(repoName, dockerClient)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "access previous image")
 		}
 	} else {
 		previousImage, err = imgutil.NewRemoteImage(repoName, auth.DefaultEnvKeychain())
@@ -89,15 +94,9 @@ func analyzer() error {
 			return err
 		}
 	}
-	if err != nil {
-		return cmd.FailErr(err, "repository configuration", repoName)
-	}
 
-	err = analyzer.Analyze(
-		previousImage,
-	)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
+	if err := analyzer.Analyze(previousImage); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailed, "analyze")
 	}
 
 	return nil
