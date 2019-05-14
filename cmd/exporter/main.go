@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -53,12 +55,15 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
-	if flag.NArg() > 1 || flag.Arg(0) == "" {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+	if flag.NArg() > 1 {
+		cmd.Exit(cmd.FailErrCode(fmt.Errorf("received %d args expected 1", flag.NArg()), cmd.CodeInvalidArgs, "parse arguments"))
+	}
+	if flag.Arg(0) == "" {
+		cmd.Exit(cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 
 	if launchCacheDir != "" && !useDaemon {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "launch cache can only be used when exporting to a Docker daemon"))
+		cmd.Exit(cmd.FailErrCode(errors.New("launch cache can only be used when exporting to a Docker daemon"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 
 	repoName = flag.Arg(0)
@@ -98,7 +103,7 @@ func export() error {
 
 	if runImageRef == "" {
 		if stack.RunImage.Image == "" {
-			return cmd.FailCode(cmd.CodeInvalidArgs, "-image is required when there is no stack metadata available")
+			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
 		}
 
 		runImageRef, err = runImageFromStackToml(stack)
@@ -122,54 +127,50 @@ func export() error {
 
 		runImage, err = imgutil.NewLocalImage(runImageRef, dockerClient)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "access run image")
 		}
 
 		if launchCacheDir != "" {
 			volumeCache, err := cache.NewVolumeCache(launchCacheDir)
 			if err != nil {
-				return err
+				return cmd.FailErr(err, "create launch cache")
 			}
 			runImage = lifecycle.NewCachingImage(runImage, volumeCache)
 		}
 
 		origImage, err = imgutil.NewLocalImage(repoName, dockerClient)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "access previous image")
 		}
 	} else {
 		runImage, err = imgutil.NewRemoteImage(runImageRef, auth.DefaultEnvKeychain())
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "access run image")
 		}
 		origImage, err = imgutil.NewRemoteImage(repoName, auth.DefaultEnvKeychain())
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "access previous image")
 		}
 	}
 
 	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath, stack); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
+		return cmd.FailErr(err, "export")
 	}
 
 	return nil
 }
 
 func runImageFromStackToml(stack metadata.StackMetadata) (string, error) {
-	if stack.RunImage.Image == "" {
-		return "", cmd.FailCode(cmd.CodeInvalidArgs, "-image is required when there is no stack metadata available")
-	}
-
 	registry, err := image.ParseRegistry(repoName)
 	if err != nil {
-		return "", cmd.FailCode(cmd.CodeInvalidArgs, "parse image name", err.Error())
+		return "", cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse image name")
 	}
 
 	runImageMirrors := []string{stack.RunImage.Image}
 	runImageMirrors = append(runImageMirrors, stack.RunImage.Mirrors...)
 	runImageRef, err := image.ByRegistry(registry, runImageMirrors)
 	if err != nil {
-		return "", cmd.FailCode(cmd.CodeInvalidArgs, "parse mirrors", err.Error())
+		return "", cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse mirrors")
 	}
 	return runImageRef, nil
 }

@@ -76,7 +76,7 @@ func build() error {
 
 	metadata, err := builder.Build()
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailedBuild)
+		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
 	metadataPath := filepath.Join(layersDir, "config", "metadata.toml")
