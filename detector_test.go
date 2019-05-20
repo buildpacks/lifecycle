@@ -113,7 +113,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				"======== Output: buildpack4-name ========\n"+
 					"stdout: 4\nstderr: 4\n"+
 					"======== Results ========\n"+
-					"buildpack1-name: pass\nbuildpack2-name: pass\nbuildpack3-name: pass\nbuildpack4-name: skip\n",
+					"pass: buildpack1-name\npass: buildpack2-name\npass: buildpack3-name\nskip: buildpack4-name\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", outLog)
 			}
@@ -137,7 +137,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				"======== Output: buildpack2-name ========\n"+
 					"stdout: 1\nstderr: 1\n"+
 					"======== Results ========\n"+
-					"buildpack1-name: fail\nbuildpack2-name: fail\n",
+					"fail: buildpack1-name\nfail: buildpack2-name\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", outLog)
 			}
@@ -161,7 +161,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				"======== Output: buildpack2-name ========\n"+
 					"stdout: 1\nstderr: 1\n"+
 					"======== Results ========\n"+
-					"buildpack1-name: error (1)\nbuildpack2-name: error (1)\n",
+					"err:  buildpack1-name: (1)\nerr:  buildpack2-name: (1)\n",
 			) {
 				t.Fatalf("Unexpected log: %s\n", outLog)
 			}

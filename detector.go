@@ -116,17 +116,17 @@ func (bg *BuildpackGroup) Detect(c *DetectConfig) (plan []byte, group *Buildpack
 		optional := bg.Buildpacks[i].Optional
 		switch code {
 		case CodeDetectPass:
-			c.Out.Printf("%s: pass", name)
+			c.Out.Printf("pass: %s", name)
 			group.Buildpacks = append(group.Buildpacks, bg.Buildpacks[i])
 		case CodeDetectFail:
 			if optional {
-				c.Out.Printf("%s: skip", name)
+				c.Out.Printf("skip: %s", name)
 			} else {
-				c.Out.Printf("%s: fail", name)
+				c.Out.Printf("fail: %s", name)
 			}
 			detected = detected && optional
 		default:
-			c.Out.Printf("%s: error (%d)", name, code)
+			c.Out.Printf("err:  %s: (%d)", name, code)
 			detected = detected && optional
 		}
 	}
