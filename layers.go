@@ -40,7 +40,7 @@ func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir,
 
 	tomls, err := filepath.Glob(filepath.Join(path, "*.toml"))
 	for _, toml := range tomls {
-		name := strings.TrimRight(filepath.Base(toml), ".toml")
+		name := strings.TrimSuffix(filepath.Base(toml), ".toml")
 		bpDir.layers[name] = *bpDir.newBPLayer(name)
 	}
 	return bpDir, nil
