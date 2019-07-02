@@ -164,7 +164,7 @@ func (bp *bpLayer) writeMetadata(metadataLayers map[string]metadata.LayerMetadat
 		return err
 	}
 	defer fh.Close()
-	return toml.NewEncoder(fh).Encode(layerMetadata)
+	return toml.NewEncoder(fh).Encode(layerMetadata.LayerMetadataFile)
 }
 
 func (bp *bpLayer) hasLocalContents() bool {
@@ -174,7 +174,7 @@ func (bp *bpLayer) hasLocalContents() bool {
 }
 
 func (bp *bpLayer) writeSha(sha string) error {
-	if err := ioutil.WriteFile(filepath.Join(bp.path+".sha"), []byte(sha), 0777); err != nil {
+	if err := ioutil.WriteFile(bp.path+".sha", []byte(sha), 0777); err != nil {
 		return err
 	}
 	return nil

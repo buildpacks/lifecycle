@@ -25,7 +25,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 
 	if len(meta.Buildpacks) == 0 {
-		r.Out.Printf("cache '%s': metadata not found, nothing to restore", cache.Name())
+		r.Out.Printf("Cache '%s': metadata not found, nothing to restore", cache.Name())
 		return nil
 	}
 
@@ -60,7 +60,7 @@ func (r *Restorer) Restore(cache Cache) error {
 func (r *Restorer) restoreLayer(name string, bpMD metadata.BuildpackMetadata, layer metadata.LayerMetadata, layersDir bpLayersDir, cache Cache) error {
 	bpLayer := layersDir.newBPLayer(name)
 
-	r.Out.Printf("restoring cached layer '%s'", bpLayer.Identifier())
+	r.Out.Printf("Restoring cached layer '%s'", bpLayer.Identifier())
 	if err := bpLayer.writeMetadata(bpMD.Layers); err != nil {
 		return err
 	}

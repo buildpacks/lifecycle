@@ -39,8 +39,8 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		tmpDir, err = ioutil.TempDir("", "")
 		h.AssertNil(t, err)
 
-		fakeOriginalImage = fakes.NewImage("fake-image", "", "")
-		fakeNewImage = fakes.NewImage("fake-image", "", "")
+		fakeOriginalImage = fakes.NewImage("fake-image", "", nil)
+		fakeNewImage = fakes.NewImage("fake-image", "", nil)
 
 		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 
@@ -77,11 +77,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 						Version: "1.2.3",
 						Layers: map[string]metadata.LayerMetadata{
 							"some-layer": {
-								SHA:    "some-sha",
-								Data:   "some-data",
-								Build:  true,
-								Launch: false,
-								Cache:  true,
+								SHA: "some-sha",
+								LayerMetadataFile: metadata.LayerMetadataFile{
+									Data:   "some-data",
+									Build:  true,
+									Launch: false,
+									Cache:  true,
+								},
 							},
 						},
 					}},

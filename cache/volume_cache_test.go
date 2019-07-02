@@ -151,11 +151,13 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 							Version: "1.2.3",
 							Layers: map[string]metadata.LayerMetadata{
 								"some-layer": {
-									SHA:    "some-sha",
-									Data:   "some-data",
-									Build:  true,
-									Launch: false,
-									Cache:  true,
+									SHA: "some-sha",
+									LayerMetadataFile: metadata.LayerMetadataFile{
+										Data:   "some-data",
+										Build:  true,
+										Launch: false,
+										Cache:  true,
+									},
 								},
 							},
 						}},

@@ -23,12 +23,12 @@ A reference implementation of [Buildpack API v3](https://github.com/buildpack/sp
 
 ### Cache
 
-* `retriever` - restores cache
+* `restorer` - restores cache
 * `cacher` - updates cache
 
 ## Notes
 
-Cache implementations (`retriever` and `cacher`) are intended to be interchangable and platform-specific.
+Cache implementations (`restorer` and `cacher`) are intended to be interchangeable and platform-specific.
 A platform may choose not to deduplicate cache layers.
 
 ## Development

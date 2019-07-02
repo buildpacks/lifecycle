@@ -2,14 +2,16 @@ package lifecycle_test
 
 import (
 	"encoding/json"
-	"github.com/buildpack/lifecycle"
-	h "github.com/buildpack/lifecycle/testhelpers"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/lifecycle"
+	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
 func TestCredHelpers(t *testing.T) {

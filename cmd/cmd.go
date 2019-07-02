@@ -17,12 +17,14 @@ const (
 	DefaultOrderPath     = "/buildpacks/order.toml"
 	DefaultGroupPath     = "./group.toml"
 	DefaultStackPath     = "/buildpacks/stack.toml"
+	DefaultAnalyzedPath  = "./analyzed.toml"
 	DefaultPlanPath      = "./plan.toml"
 
 	EnvLayersDir      = "CNB_LAYERS_DIR"
 	EnvAppDir         = "CNB_APP_DIR"
 	EnvBuildpacksDir  = "CNB_BUILDPACKS_DIR"
 	EnvPlatformDir    = "CNB_PLATFORM_DIR"
+	EnvAnalyzedPath   = "CNB_ANALYZED_PATH"
 	EnvOrderPath      = "CNB_ORDER_PATH"
 	EnvGroupPath      = "CNB_GROUP_PATH"
 	EnvStackPath      = "CNB_STACK_PATH"
@@ -36,81 +38,92 @@ const (
 	EnvUID            = "CNB_USER_ID"
 	EnvGID            = "CNB_GROUP_ID"
 	EnvRegistryAuth   = "CNB_REGISTRY_AUTH"
+	EnvSkipLayers     = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
 )
 
-func FlagLayersDir(dir *string) {
-	flag.StringVar(dir, "layers", envWithDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
+func FlagAnalyzedPath(dir *string) {
+	flag.StringVar(dir, "analyzed", envOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")
 }
 
 func FlagAppDir(dir *string) {
-	flag.StringVar(dir, "app", envWithDefault(EnvAppDir, DefaultAppDir), "path to app directory")
+	flag.StringVar(dir, "app", envOrDefault(EnvAppDir, DefaultAppDir), "path to app directory")
 }
 
 func FlagBuildpacksDir(dir *string) {
-	flag.StringVar(dir, "buildpacks", envWithDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
-}
-
-func FlagPlatformDir(dir *string) {
-	flag.StringVar(dir, "platform", envWithDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
-}
-
-func FlagOrderPath(path *string) {
-	flag.StringVar(path, "order", envWithDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
-}
-
-func FlagGroupPath(path *string) {
-	flag.StringVar(path, "group", envWithDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
-}
-
-func FlagStackPath(path *string) {
-	flag.StringVar(path, "stack", envWithDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
-}
-
-func FlagLaunchCacheDir(dir *string) {
-	flag.StringVar(dir, "launch-cache", os.Getenv(EnvLaunchCacheDir), "path to launch cache directory")
-}
-
-func FlagPlanPath(path *string) {
-	flag.StringVar(path, "plan", envWithDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
-}
-
-func FlagRunImage(image *string) {
-	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
-}
-
-func FlagCacheImage(image *string) {
-	flag.StringVar(image, "image", os.Getenv(EnvCacheImage), "cache image tag name")
+	flag.StringVar(dir, "buildpacks", envOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
 func FlagCacheDir(dir *string) {
 	flag.StringVar(dir, "path", os.Getenv(EnvCacheDir), "path to cache directory")
 }
 
-func FlagUseDaemon(use *bool) {
-	flag.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
-}
-
-func FlagUseCredHelpers(use *bool) {
-	flag.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
-}
-
-func FlagUID(uid *int) {
-	flag.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
+func FlagCacheImage(image *string) {
+	flag.StringVar(image, "image", os.Getenv(EnvCacheImage), "cache image tag name")
 }
 
 func FlagGID(gid *int) {
 	flag.IntVar(gid, "gid", intEnv(EnvGID), "GID of user's group in the stack's build and run images")
 }
 
+func FlagGroupPath(path *string) {
+	flag.StringVar(path, "group", envOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
+}
+
+func FlagLaunchCacheDir(dir *string) {
+	flag.StringVar(dir, "launch-cache", os.Getenv(EnvLaunchCacheDir), "path to launch cache directory")
+}
+
+func FlagLayersDir(dir *string) {
+	flag.StringVar(dir, "layers", envOrDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
+}
+
+func FlagOrderPath(path *string) {
+	flag.StringVar(path, "order", envOrDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
+}
+
+func FlagPlanPath(path *string) {
+	flag.StringVar(path, "plan", envOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
+}
+
+func FlagPlatformDir(dir *string) {
+	flag.StringVar(dir, "platform", envOrDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
+}
+
+func FlagRunImage(image *string) {
+	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
+}
+
+func FlagStackPath(path *string) {
+	flag.StringVar(path, "stack", envOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
+}
+
+func FlagUID(uid *int) {
+	flag.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
+}
+
+func FlagUseCredHelpers(use *bool) {
+	flag.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
+}
+
+func FlagUseDaemon(use *bool) {
+	flag.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
+}
+
+func FlagSkipLayers(skip *bool) {
+	flag.BoolVar(skip, "skip-layers", boolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
+}
+
 const (
-	CodeFailed      = 1
-	CodeInvalidArgs = iota + 2
-	CodeInvalidEnv
-	CodeNotFound
-	CodeFailedDetect
-	CodeFailedBuild
-	CodeFailedLaunch
-	CodeFailedUpdate
+	CodeFailed = 1
+	// 2: reserved
+	CodeInvalidArgs = 3
+	// 4: CodeInvalidEnv
+	// 5: CodeNotFound
+	CodeFailedDetect = 6
+	CodeFailedBuild  = 7
+	CodeFailedLaunch = 8
+	// 9: CodeFailedUpdate
+	CodeFailedSave = 10
 )
 
 type ErrorFail struct {
@@ -173,7 +186,7 @@ func boolEnv(k string) bool {
 	return b
 }
 
-func envWithDefault(key string, defaultVal string) string {
+func envOrDefault(key string, defaultVal string) string {
 	if envVal := os.Getenv(key); envVal != "" {
 		return envVal
 	}

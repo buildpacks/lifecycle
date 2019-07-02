@@ -1,9 +1,8 @@
 package image
 
 import (
-	"errors"
-
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
 )
 
 func ByRegistry(registry string, images []string) (string, error) {
@@ -29,4 +28,27 @@ func ParseRegistry(imageName string) (string, error) {
 		return "", err
 	}
 	return ref.Context().RegistryStr(), nil
+}
+
+func EnsureSingleRegistry(repoNames ...string) (string, error) {
+	set := make(map[string]interface{})
+
+	var (
+		err      error
+		registry string
+	)
+
+	for _, repoName := range repoNames {
+		registry, err = ParseRegistry(repoName)
+		if err != nil {
+			return "", errors.Wrapf(err, "parsing registry from repo '%s'", repoName)
+		}
+		set[registry] = nil
+	}
+
+	if len(set) != 1 {
+		return "", errors.New("exporting to multiple registries is unsupported")
+	}
+
+	return registry, nil
 }
