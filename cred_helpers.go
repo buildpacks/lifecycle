@@ -3,10 +3,11 @@ package lifecycle
 import (
 	"encoding/json"
 	"errors"
-	"github.com/google/go-containerregistry/pkg/name"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/google/go-containerregistry/pkg/name"
 )
 
 func SetupCredHelpers(dockerPath string, refs ...string) error {

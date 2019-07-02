@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"syscall"
@@ -43,15 +44,26 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	}
 }
 
-func AssertContains(t *testing.T, slice []string, expected string) {
+func AssertContains(t *testing.T, slice []string, elements ...string) {
 	t.Helper()
-	for _, actual := range slice {
-		if diff := cmp.Diff(actual, expected); diff == "" {
-			return
-		}
-	}
-	t.Fatalf("Expected %+v to contain: %s", slice, expected)
 
+outer:
+	for _, el := range elements {
+		for _, actual := range slice {
+			if diff := cmp.Diff(actual, el); diff == "" {
+				continue outer
+			}
+		}
+
+		t.Fatalf("Expected %+v to contain: %s", slice, el)
+	}
+}
+
+func AssertStringContains(t *testing.T, str string, expected string) {
+	t.Helper()
+	if !strings.Contains(str, expected) {
+		t.Fatalf("Expected %s to contain: %s\nDiff:\n%s", str, expected, cmp.Diff(str, expected))
+	}
 }
 
 func AssertError(t *testing.T, actual error, expected string) {
@@ -66,9 +78,13 @@ func AssertError(t *testing.T, actual error, expected string) {
 
 func AssertNil(t *testing.T, actual interface{}) {
 	t.Helper()
-	if actual != nil {
+	if !isNil(actual) {
 		t.Fatalf("Expected nil: %s", actual)
 	}
+}
+
+func isNil(value interface{}) bool {
+	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
 func AssertUidGid(t *testing.T, path string, uid, gid int) {

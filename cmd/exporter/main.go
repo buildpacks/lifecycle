@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +10,9 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/imgutil"
+	"github.com/buildpack/imgutil/local"
+	"github.com/buildpack/imgutil/remote"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
@@ -22,11 +24,12 @@ import (
 )
 
 var (
-	repoName       string
+	imageNames     []string
 	runImageRef    string
 	layersDir      string
 	appDir         string
 	groupPath      string
+	analyzedPath   string
 	stackPath      string
 	launchCacheDir string
 	useDaemon      bool
@@ -42,6 +45,7 @@ func init() {
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagAnalyzedPath(&analyzedPath)
 	cmd.FlagStackPath(&stackPath)
 	cmd.FlagLaunchCacheDir(&launchCacheDir)
 	cmd.FlagUseDaemon(&useDaemon)
@@ -55,18 +59,17 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
-	if flag.NArg() > 1 {
-		cmd.Exit(cmd.FailErrCode(fmt.Errorf("received %d args expected 1", flag.NArg()), cmd.CodeInvalidArgs, "parse arguments"))
-	}
-	if flag.Arg(0) == "" {
-		cmd.Exit(cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments"))
+
+	imageNames = flag.Args()
+
+	if len(imageNames) == 0 {
+		cmd.Exit(cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 
 	if launchCacheDir != "" && !useDaemon {
 		cmd.Exit(cmd.FailErrCode(errors.New("launch cache can only be used when exporting to a Docker daemon"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 
-	repoName = flag.Arg(0)
 	cmd.Exit(export())
 }
 
@@ -95,37 +98,61 @@ func export() error {
 		ArtifactsDir: artifactsDir,
 	}
 
-	var stack metadata.StackMetadata
-	_, err = toml.DecodeFile(stackPath, &stack)
+	analyzedMD, err := parseOptionalAnalyzedMD(outLog, analyzedPath)
 	if err != nil {
-		outLog.Printf("no stack.toml found at path '%s', stack metadata will not be exported\n", stackPath)
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+	}
+
+	var registry string
+	if registry, err = image.EnsureSingleRegistry(imageNames...); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
+	}
+
+	var stackMD metadata.StackMetadata
+	_, err = toml.DecodeFile(stackPath, &stackMD)
+	if err != nil {
+		outLog.Printf("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
 	}
 
 	if runImageRef == "" {
-		if stack.RunImage.Image == "" {
+		if stackMD.RunImage.Image == "" {
 			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
 		}
 
-		runImageRef, err = runImageFromStackToml(stack)
+		runImageRef, err = runImageFromStackToml(stackMD, registry)
 		if err != nil {
 			return err
 		}
 	}
 
 	if useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), repoName, runImageRef); err != nil {
+		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), imageNames[0], runImageRef); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
 
-	var runImage, origImage imgutil.Image
+	var appImage imgutil.Image
 	if useDaemon {
 		dockerClient, err := docker.DefaultClient()
 		if err != nil {
 			return err
 		}
 
-		runImage, err = imgutil.NewLocalImage(runImageRef, dockerClient)
+		var opts = []local.ImageOption{
+			local.FromBaseImage(runImageRef),
+		}
+
+		if analyzedMD.Image != nil {
+			outLog.Printf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
+		}
+
+		appImage, err = local.NewImage(
+			imageNames[0],
+			dockerClient,
+			opts...,
+		)
+
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}
@@ -135,37 +162,63 @@ func export() error {
 			if err != nil {
 				return cmd.FailErr(err, "create launch cache")
 			}
-			runImage = lifecycle.NewCachingImage(runImage, volumeCache)
-		}
-
-		origImage, err = imgutil.NewLocalImage(repoName, dockerClient)
-		if err != nil {
-			return cmd.FailErr(err, "access previous image")
+			appImage = lifecycle.NewCachingImage(appImage, volumeCache)
 		}
 	} else {
-		runImage, err = imgutil.NewRemoteImage(runImageRef, auth.DefaultEnvKeychain())
+		var opts = []remote.ImageOption{
+			remote.FromBaseImage(runImageRef),
+		}
+
+		if analyzedMD.Image != nil {
+			outLog.Printf("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+			analyzedRegistry, err := image.ParseRegistry(analyzedMD.Image.Reference)
+			if err != nil {
+				return cmd.FailErr(err, "parse analyzed registry")
+			}
+			if analyzedRegistry != registry {
+				return fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, registry)
+			}
+			opts = append(opts, remote.WithPreviousImage(analyzedMD.Image.Reference))
+		}
+
+		appImage, err = remote.NewImage(
+			imageNames[0],
+			auth.DefaultEnvKeychain(),
+			opts...,
+		)
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}
-		origImage, err = imgutil.NewRemoteImage(repoName, auth.DefaultEnvKeychain())
-		if err != nil {
-			return cmd.FailErr(err, "access previous image")
-		}
 	}
 
-	if err := exporter.Export(layersDir, appDir, runImage, origImage, launcherPath, stack); err != nil {
+	if err := exporter.Export(layersDir, appDir, appImage, analyzedMD.Metadata, imageNames[1:], launcherPath, stackMD); err != nil {
+		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
+			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
+		}
+
 		return cmd.FailErr(err, "export")
 	}
 
 	return nil
 }
 
-func runImageFromStackToml(stack metadata.StackMetadata) (string, error) {
-	registry, err := image.ParseRegistry(repoName)
+func parseOptionalAnalyzedMD(logger *log.Logger, path string) (metadata.AnalyzedMetadata, error) {
+	var analyzedMD metadata.AnalyzedMetadata
+
+	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
-		return "", cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse image name")
+		if os.IsNotExist(err) {
+			logger.Printf("Warning: analyzed TOML file not found at '%s'", path)
+			return metadata.AnalyzedMetadata{}, nil
+		}
+
+		return metadata.AnalyzedMetadata{}, err
 	}
 
+	return analyzedMD, nil
+}
+
+func runImageFromStackToml(stack metadata.StackMetadata, registry string) (string, error) {
 	runImageMirrors := []string{stack.RunImage.Image}
 	runImageMirrors = append(runImageMirrors, stack.RunImage.Mirrors...)
 	runImageRef, err := image.ByRegistry(registry, runImageMirrors)

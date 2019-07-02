@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +10,9 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/imgutil"
+	"github.com/buildpack/imgutil/local"
+	"github.com/buildpack/imgutil/remote"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
@@ -19,24 +21,28 @@ import (
 )
 
 var (
-	repoName   string
-	layersDir  string
-	appDir     string
-	groupPath  string
-	useDaemon  bool
-	useHelpers bool
-	uid        int
-	gid        int
+	analyzedPath string
+	appDir       string
+	gid          int
+	groupPath    string
+	layersDir    string
+	repoName     string
+	skipLayers   bool
+	uid          int
+	useDaemon    bool
+	useHelpers   bool
 )
 
 func init() {
-	cmd.FlagLayersDir(&layersDir)
+	cmd.FlagAnalyzedPath(&analyzedPath)
 	cmd.FlagAppDir(&appDir)
+	cmd.FlagGID(&gid)
 	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagLayersDir(&layersDir)
+	cmd.FlagUID(&uid)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
-	cmd.FlagUID(&uid)
-	cmd.FlagGID(&gid)
+	cmd.FlagSkipLayers(&skipLayers)
 }
 
 func main() {
@@ -67,36 +73,51 @@ func analyzer() error {
 	}
 
 	analyzer := &lifecycle.Analyzer{
-		Buildpacks: group.Buildpacks,
-		AppDir:     appDir,
-		LayersDir:  layersDir,
-		Out:        log.New(os.Stdout, "", 0),
-		Err:        log.New(os.Stderr, "", 0),
-		UID:        uid,
-		GID:        gid,
+		Buildpacks:   group.Buildpacks,
+		AppDir:       appDir,
+		LayersDir:    layersDir,
+		AnalyzedPath: analyzedPath,
+		Out:          log.New(os.Stdout, "", 0),
+		Err:          log.New(os.Stderr, "", 0),
+		UID:          uid,
+		GID:          gid,
+		SkipLayers:   skipLayers,
 	}
 
 	var err error
-	var previousImage imgutil.Image
+	var img imgutil.Image
 
 	if useDaemon {
 		dockerClient, err := docker.DefaultClient()
 		if err != nil {
 			return cmd.FailErr(err, "create docker client")
 		}
-		previousImage, err = imgutil.NewLocalImage(repoName, dockerClient)
+		img, err = local.NewImage(
+			repoName,
+			dockerClient,
+			local.FromBaseImage(repoName),
+		)
 		if err != nil {
 			return cmd.FailErr(err, "access previous image")
 		}
 	} else {
-		previousImage, err = imgutil.NewRemoteImage(repoName, auth.DefaultEnvKeychain())
+		img, err = remote.NewImage(
+			repoName,
+			auth.DefaultEnvKeychain(),
+			remote.FromBaseImage(repoName),
+		)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "access previous image")
 		}
 	}
 
-	if err := analyzer.Analyze(previousImage); err != nil {
+	md, err := analyzer.Analyze(img)
+	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "analyze")
+	}
+
+	if err := lifecycle.WriteTOML(analyzedPath, md); err != nil {
+		return errors.Wrap(err, "write analyzed.toml")
 	}
 
 	return nil

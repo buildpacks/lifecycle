@@ -10,34 +10,48 @@ import (
 const AppMetadataLabel = "io.buildpacks.lifecycle.metadata"
 
 type AppImageMetadata struct {
-	App        AppMetadata         `json:"app"`
-	Config     ConfigMetadata      `json:"config"`
-	Launcher   LauncherMetadata    `json:"launcher"`
-	Buildpacks []BuildpackMetadata `json:"buildpacks"`
-	RunImage   RunImageMetadata    `json:"runImage"`
-	Stack      StackMetadata       `json:"stack"`
+	App        AppMetadata         `json:"app" toml:"app"`
+	Config     ConfigMetadata      `json:"config" toml:"config"`
+	Launcher   LauncherMetadata    `json:"launcher" toml:"launcher"`
+	Buildpacks []BuildpackMetadata `json:"buildpacks" toml:"buildpacks"`
+	RunImage   RunImageMetadata    `json:"runImage" toml:"run-image"`
+	Stack      StackMetadata       `json:"stack" toml:"stack"`
 }
 
 type AppMetadata struct {
-	SHA string `json:"sha"`
+	SHA string `json:"sha" toml:"sha"`
+}
+
+type AnalyzedMetadata struct {
+	Image    *ImageIdentifier `toml:"image"`
+	Metadata AppImageMetadata `toml:"metadata"`
+}
+
+//FIXME: fix key names to be accurate in the daemon case
+type ImageIdentifier struct {
+	Reference string `toml:"reference"`
 }
 
 type ConfigMetadata struct {
-	SHA string `json:"sha"`
+	SHA string `json:"sha" toml:"sha"`
 }
 
 type LauncherMetadata struct {
-	SHA string `json:"sha"`
+	SHA string `json:"sha" toml:"sha"`
 }
 
 type BuildpackMetadata struct {
-	ID      string                   `json:"key"`
-	Version string                   `json:"version"`
-	Layers  map[string]LayerMetadata `json:"layers"`
+	ID      string                   `json:"key" toml:"key"`
+	Version string                   `json:"version" toml:"version"`
+	Layers  map[string]LayerMetadata `json:"layers" toml:"layers"`
 }
 
 type LayerMetadata struct {
-	SHA    string      `json:"sha" toml:"-"`
+	SHA string `json:"sha" toml:"sha"`
+	LayerMetadataFile
+}
+
+type LayerMetadataFile struct {
 	Data   interface{} `json:"data" toml:"metadata"`
 	Build  bool        `json:"build" toml:"build"`
 	Launch bool        `json:"launch" toml:"launch"`
@@ -45,12 +59,12 @@ type LayerMetadata struct {
 }
 
 type RunImageMetadata struct {
-	TopLayer string `json:"topLayer"`
-	SHA      string `json:"sha"`
+	TopLayer  string `json:"topLayer" toml:"top-layer"`
+	Reference string `json:"reference" toml:"reference"`
 }
 
 type StackMetadata struct {
-	RunImage StackRunImageMetadata `toml:"run-image" json:"runImage"`
+	RunImage StackRunImageMetadata `json:"runImage" toml:"run-image"`
 }
 
 type StackRunImageMetadata struct {

@@ -1,5 +1,5 @@
 # Go parameters
-GOCMD=go
+GOCMD?=go
 GOENV=GO111MODULE=on GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 GOBUILD=$(GOCMD) build -mod=vendor
 GOTEST=$(GOCMD) test -mod=vendor
@@ -17,13 +17,17 @@ build:
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/cacher -a ./cmd/cacher
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/launcher -a ./cmd/launcher
 
+imports:
+	$(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
+	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "./vendor/*"))
+
 format:
 	test -z $$($(GOCMD) fmt ./...)
 
 vet:
 	$(GOCMD) vet $$($(GOCMD) list ./... | grep -v /testdata/)
 
-test: format vet
+test: format imports vet
 	$(GOTEST) -v ./...
 
 clean:

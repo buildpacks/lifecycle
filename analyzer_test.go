@@ -2,6 +2,7 @@ package lifecycle_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,11 +11,13 @@ import (
 	"testing"
 
 	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpack/imgutil/local"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
 )
@@ -33,43 +36,50 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		stdout, stderr *bytes.Buffer
 		layerDir       string
 		appDir         string
+		tmpDir         string
 	)
 
 	it.Before(func() {
 		var err error
-		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
-		if err != nil {
-			t.Fatalf("Error: %s\n", err)
-		}
-		appDir = filepath.Join(layerDir, "some-app-dir")
 
+		tmpDir, err = ioutil.TempDir("", "analyzer-tests")
+		h.AssertNil(t, err)
+
+		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
+		h.AssertNil(t, err)
+
+		appDir = filepath.Join(layerDir, "some-app-dir")
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks: []*lifecycle.Buildpack{{ID: "metdata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
-			AppDir:     appDir,
-			LayersDir:  layerDir,
-			Out:        log.New(stdout, "", 0),
-			Err:        log.New(stderr, "", 0),
-			UID:        1234,
-			GID:        4321,
+			Buildpacks:   []*lifecycle.Buildpack{{ID: "metdata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
+			AppDir:       appDir,
+			LayersDir:    layerDir,
+			AnalyzedPath: filepath.Join(tmpDir, "some-previous-file.toml"),
+			Out:          log.New(stdout, "", 0),
+			Err:          log.New(stderr, "", 0),
+			UID:          1234,
+			GID:          4321,
 		}
 		mockCtrl = gomock.NewController(t)
 	})
 
 	it.After(func() {
+		os.RemoveAll(tmpDir)
 		os.RemoveAll(layerDir)
 		mockCtrl.Finish()
 	})
 
-	when("Analyze", func() {
+	when("#Analyze", func() {
 		var (
-			image *fakes.Image
-			ref   *testmock.MockReference
+			image            *fakes.Image
+			appImageMetadata metadata.AppImageMetadata
+			ref              *testmock.MockReference
 		)
 
 		it.Before(func() {
-			image = fakes.NewImage("image-repo-name", "", "")
-
+			image = fakes.NewImage("image-repo-name", "", local.IDIdentifier{
+				ImageID: "s0m3D1g3sT",
+			})
 			ref = testmock.NewMockReference(mockCtrl)
 			ref.EXPECT().Name().AnyTimes()
 		})
@@ -81,7 +91,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			when("image label has compatible metadata", func() {
 				it.Before(func() {
-					image.SetLabel("io.buildpacks.lifecycle.metadata", `{
+					metadataLabel := `{
   "buildpacks": [
     {
       "key": "metdata.buildpack",
@@ -139,11 +149,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
       }
     }
   ]
-}`)
+}`
+					h.AssertNil(t,
+						image.SetLabel(
+							"io.buildpacks.lifecycle.metadata",
+							metadataLabel,
+						))
+					h.AssertNil(t, json.Unmarshal([]byte(metadataLabel), &appImageMetadata))
 				})
 
 				it("should use labels to populate the layer dir", func() {
-					if err := analyzer.Analyze(image); err != nil {
+					if _, err := analyzer.Analyze(image); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
@@ -167,7 +183,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it("should only write layer TOML files that correspond to detected buildpacks", func() {
 					analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "no.cache.buildpack"}}
 
-					if err := analyzer.Analyze(image); err != nil {
+					if _, err := analyzer.Analyze(image); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 
@@ -183,9 +199,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 
+				it("should return the analyzed metadata", func() {
+					md, err := analyzer.Analyze(image)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
+					h.AssertEq(t, md.Metadata, appImageMetadata)
+				})
+
 				when("there is a launch/build layer that isn't cached", func() {
 					it("should not restore the metadata", func() {
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack/stale-launch-build.toml")); !os.IsNotExist(err) {
@@ -196,7 +220,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("there is a cache=true layer in the metadata but not in the cache", func() {
 					it("should not restore the metadata", func() {
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "launch-cache.toml")); !os.IsNotExist(err) {
@@ -210,7 +234,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -227,7 +251,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -251,7 +275,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -275,7 +299,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -292,7 +316,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -318,7 +342,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -340,7 +364,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -364,7 +388,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -388,7 +412,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -404,7 +428,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -422,7 +446,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -441,7 +465,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						// copy to layerDir
 						h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-						if err := analyzer.Analyze(image); err != nil {
+						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
 
@@ -459,29 +483,57 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("analyzer is running as root", func() {
 					it.Before(func() {
 						if os.Getuid() != 0 {
-							t.Skip()
+							t.Skip("Skipped when not running as root")
 						}
 					})
 
 					it("chowns new files to CNB_USER_ID:CNB_GROUP_ID", func() {
-						h.AssertNil(t, analyzer.Analyze(image))
+						_, err := analyzer.Analyze(image)
+						h.AssertNil(t, err)
 						h.AssertUidGid(t, layerDir, 1234, 4321)
 						h.AssertUidGid(t, filepath.Join(layerDir, "metdata.buildpack", "valid-launch.toml"), 1234, 4321)
 						h.AssertUidGid(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
 						h.AssertUidGid(t, filepath.Join(layerDir, "no.cache.buildpack", "go.toml"), 1234, 4321)
 					})
 				})
+
+				when("skip-layers is true", func() {
+					it.Before(func() {
+						analyzer.SkipLayers = true
+					})
+
+					it("should return the analyzed metadata", func() {
+						md, err := analyzer.Analyze(image)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
+						h.AssertEq(t, md.Metadata, appImageMetadata)
+					})
+
+					it("does not write buildpack layers", func() {
+						_, err := analyzer.Analyze(image)
+						h.AssertNil(t, err)
+
+						fileInfos, err := ioutil.ReadDir(layerDir)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, len(fileInfos), 0)
+					})
+				})
 			})
 		})
 
-		when("the image cannot found", func() {
+		when("the image cannot be found", func() {
+			var notFoundImage *fakes.Image
+
 			it.Before(func() {
-				h.AssertNil(t, image.Delete())
+				notFoundImage = fakes.NewImage("image-repo-name", "", nil)
+				h.AssertNil(t, notFoundImage.Delete())
 			})
 
 			it("clears the cached launch layers", func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
-				err := analyzer.Analyze(image)
+				_, err := analyzer.Analyze(notFoundImage)
 				assertNil(t, err)
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
@@ -494,6 +546,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Missing some-app-dir")
 				}
 			})
+
+			it("should return a nil image in the analyzed metadata", func() {
+				md, err := analyzer.Analyze(notFoundImage)
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, md.Image)
+				h.AssertEq(t, md.Metadata, metadata.AppImageMetadata{})
+			})
 		})
 
 		when("the image does not have the required label", func() {
@@ -504,7 +564,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("returns", func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-				err := analyzer.Analyze(image)
+				_, err := analyzer.Analyze(image)
 				assertNil(t, err)
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
@@ -527,7 +587,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("returns", func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
-				err := analyzer.Analyze(image)
+				_, err := analyzer.Analyze(image)
 				assertNil(t, err)
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {

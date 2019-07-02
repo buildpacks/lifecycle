@@ -5,10 +5,11 @@
 package testmock
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	types "github.com/google/go-containerregistry/pkg/v1/types"
-	reflect "reflect"
 )
 
 // GGCRImage is a mock of Image interface

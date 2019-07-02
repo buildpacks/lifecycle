@@ -5,9 +5,10 @@
 package testmock
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	name "github.com/google/go-containerregistry/pkg/name"
-	reflect "reflect"
 )
 
 // MockReference is a mock of Reference interface
