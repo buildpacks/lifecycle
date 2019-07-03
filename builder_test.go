@@ -67,8 +67,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			AppDir:      appDir,
 			Env:         env,
 			Buildpacks: []*lifecycle.Buildpack{
-				{ID: "buildpack1-id", Dir: buildpackDir},
-				{ID: "buildpack2-id", Dir: buildpackDir},
+				{ID: "buildpack1-id", Path: buildpackDir},
+				{ID: "buildpack2-id", Path: buildpackDir},
 			},
 			Plan: lifecycle.Plan{
 				"dep1":         {"v": "1"},

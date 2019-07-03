@@ -63,7 +63,7 @@ func restore() error {
 
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
-		Buildpacks: group.Buildpacks,
+		Buildpacks: group.Group,
 		Out:        log.New(os.Stdout, "", 0),
 		Err:        log.New(os.Stderr, "", 0),
 		UID:        uid,

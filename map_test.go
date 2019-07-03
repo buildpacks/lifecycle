@@ -50,25 +50,25 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 					ID:      "buildpack/1",
 					Name:    "buildpack1-name",
 					Version: "version1",
-					Dir:     filepath.Join(tmpDir, escapeID("buildpack/1"), "version1"),
+					Path:    filepath.Join(tmpDir, escapeID("buildpack/1"), "version1"),
 				},
 				"com.buildpack2@version2.1": {
 					ID:      "com.buildpack2",
 					Name:    "buildpack2-name",
 					Version: "version2.1",
-					Dir:     filepath.Join(tmpDir, "com.buildpack2", "version2.1"),
+					Path:    filepath.Join(tmpDir, "com.buildpack2", "version2.1"),
 				},
 				"com.buildpack2@version2.2": {
 					ID:      "com.buildpack2",
 					Name:    "buildpack2-name",
 					Version: "version2.2",
-					Dir:     filepath.Join(tmpDir, "com.buildpack2", "version2.2"),
+					Path:    filepath.Join(tmpDir, "com.buildpack2", "version2.2"),
 				},
 				"com.buildpack2@latest": {
 					ID:      "com.buildpack2",
 					Name:    "buildpack2-name",
 					Version: "version2.2",
-					Dir:     filepath.Join(tmpDir, "com.buildpack2", "latest"),
+					Path:    filepath.Join(tmpDir, "com.buildpack2", "latest"),
 				},
 			}); s != "" {
 				t.Fatalf("Unexpected map:\n%s\n", s)
@@ -105,7 +105,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			if s := cmp.Diff(actual, lifecycle.BuildpackOrder{
-				{Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}}},
+				{Group: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}}},
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
@@ -157,7 +157,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			if s := cmp.Diff(actual, &lifecycle.BuildpackGroup{
-				Buildpacks: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}},
+				Group: []*lifecycle.Buildpack{{Name: "buildpack1-1.1"}, {Name: "buildpack2", Optional: true}},
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
@@ -197,7 +197,7 @@ func testMap(t *testing.T, when spec.G, it spec.S) {
 
 		it("should write only ID and version", func() {
 			group := lifecycle.BuildpackGroup{
-				Buildpacks: []*lifecycle.Buildpack{{ID: "a", Name: "b", Version: "v", Dir: "d"}},
+				Group: []*lifecycle.Buildpack{{ID: "a", Name: "b", Version: "v", Path: "d"}},
 			}
 			if err := group.Write(filepath.Join(tmpDir, "group.toml")); err != nil {
 				t.Fatal(err)

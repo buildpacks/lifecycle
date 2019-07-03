@@ -130,12 +130,12 @@ func Untar(r io.Reader, dest string) error {
 		case tar.TypeReg, tar.TypeRegA:
 			_, err := os.Stat(filepath.Dir(path))
 			if os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 					return err
 				}
 			}
 
-			fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode())
+			fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, hdr.FileInfo().Mode())
 			if err != nil {
 				return err
 			}

@@ -80,7 +80,7 @@ func analyzer() error {
 	}
 
 	analyzer := &lifecycle.Analyzer{
-		Buildpacks:   group.Buildpacks,
+		Buildpacks:   group.Group,
 		AppDir:       appDir,
 		LayersDir:    layersDir,
 		AnalyzedPath: analyzedPath,

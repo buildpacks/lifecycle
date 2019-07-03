@@ -69,7 +69,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	bom := copyPlan(b.Plan)
 	var buildpackIDs []string
 	for _, bp := range b.Buildpacks {
-		bpDirName := bp.EscapedID()
+		bpDirName := bp.dir()
 		bpLayersDir := filepath.Join(layersDir, bpDirName)
 		bpPlanDir := filepath.Join(planDir, bpDirName)
 		buildpackIDs = append(buildpackIDs, bpDirName)
@@ -88,7 +88,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := toml.NewEncoder(planIn).Encode(plan); err != nil {
 			return nil, err
 		}
-		buildPath, err := filepath.Abs(filepath.Join(bp.Dir, "bin", "build"))
+		buildPath, err := filepath.Abs(filepath.Join(bp.Path, "bin", "build"))
 		if err != nil {
 			return nil, err
 		}

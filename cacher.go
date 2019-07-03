@@ -61,7 +61,7 @@ func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
 }
 
 func (c *Cacher) addOrReuseLayer(cache Cache, layer bpLayer, previousSHA string) (string, error) {
-	tarPath := filepath.Join(c.ArtifactsDir, escapeIdentifier(layer.Identifier())+".tar")
+	tarPath := filepath.Join(c.ArtifactsDir, escapeID(layer.Identifier())+".tar")
 	sha, err := archive.WriteTarFile(layer.Path(), tarPath, c.UID, c.GID)
 	if err != nil {
 		return "", errors.Wrapf(err, "caching layer '%s'", layer.Identifier())

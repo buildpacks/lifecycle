@@ -68,7 +68,7 @@ func doCache() error {
 	defer os.RemoveAll(artifactsDir)
 
 	cacher := &lifecycle.Cacher{
-		Buildpacks:   group.Buildpacks,
+		Buildpacks:   group.Group,
 		ArtifactsDir: artifactsDir,
 		Out:          log.New(os.Stdout, "", 0),
 		Err:          log.New(os.Stderr, "", 0),

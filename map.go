@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -10,90 +9,113 @@ import (
 
 const buildpackVersionLatest = "latest"
 
-type BuildpackMap map[string]*Buildpack
+type BuildpackMap struct {
+	PathByID string
+}
 
 type buildpackTOML struct {
-	Buildpack struct {
-		ID      string `toml:"id"`
-		Version string `toml:"version"`
-		Name    string `toml:"name"`
-	} `toml:"buildpack"`
+	Buildpacks []buildpackInfo `toml:"buildpacks"`
 }
 
-func NewBuildpackMap(dir string) (BuildpackMap, error) {
-	buildpacks := BuildpackMap{}
-	glob := filepath.Join(dir, "*", "*", "buildpack.toml")
-	files, err := filepath.Glob(glob)
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		buildpackDir := filepath.Dir(file)
-		var bpTOML buildpackTOML
-		if _, err := toml.DecodeFile(file, &bpTOML); err != nil {
-			return nil, err
-		}
-
-		_, version := filepath.Split(buildpackDir)
-		key := bpTOML.Buildpack.ID + "@" + version
-		if version != buildpackVersionLatest {
-			key = bpTOML.Buildpack.ID + "@" + bpTOML.Buildpack.Version
-		}
-
-		buildpacks[key] = &Buildpack{
-			ID:      bpTOML.Buildpack.ID,
-			Version: bpTOML.Buildpack.Version,
-			Name:    bpTOML.Buildpack.Name,
-			Dir:     buildpackDir,
-		}
-	}
-	return buildpacks, nil
+type buildpackInfo struct {
+	ID      string         `toml:"id"`
+	Version string         `toml:"version"`
+	Name    string         `toml:"name"`
+	Path    string         `toml:"path"`
+	Order   BuildpackOrder `toml:"order"`
 }
 
-func (m BuildpackMap) lookup(l []*Buildpack) ([]*Buildpack, error) {
-	out := make([]*Buildpack, 0, len(l))
-	for _, b := range l {
-		ref := b.ID + "@" + b.Version
-		if b.Version == "" {
-			ref += "latest"
-		}
-		if bp, ok := m[ref]; ok {
-			bp := *bp
-			bp.Optional = b.Optional
-			out = append(out, &bp)
-		} else {
-			return nil, fmt.Errorf("buildpack '%s' missing from image", ref)
-		}
-	}
-	return out, nil
-}
+//func NewBuildpackMap(path string) (BuildpackMap, error) {
+//	buildpacks := BuildpackMap{}
+//	glob := filepath.Join(blobDir, "*", "buildpack.toml")
+//	files, err := filepath.Glob(glob)
+//	if err != nil {
+//		return nil, err
+//	}
+//	for _, file := range files {
+//		buildpackDir := filepath.Dir(file)
+//		var bpTOML buildpackTOML
+//		if _, err := toml.DecodeFile(file, &bpTOML); err != nil {
+//			return nil, err
+//		}
+//
+//		_, version := filepath.Split(buildpackDir)
+//		key := bpTOML.Buildpack.ID + "@" + version
+//		if version != buildpackVersionLatest {
+//			key = bpTOML.Buildpack.ID + "@" + bpTOML.Buildpack.Version
+//		}
+//
+//		buildpacks[key] = &Buildpack{
+//			ID:      bpTOML.Buildpack.ID,
+//			Version: bpTOML.Buildpack.Version,
+//			Name:    bpTOML.Buildpack.Name,
+//			Path:    buildpackDir,
+//		}
+//	}
+//	return buildpacks, nil
+//}
+
+//func (m BuildpackMap) lookupOrder(order BuildpackOrder) (BuildpackOrder, error) {
+//	var groups BuildpackOrder
+//	for _, g := range order {
+//		group, err := m.lookupGroup(g)
+//		if err != nil {
+//			return nil, errors.Wrap(err, "lookup buildpacks")
+//		}
+//		groups = append(groups, group)
+//	}
+//	return groups, nil
+//}
+//
+//func (m BuildpackMap) lookupGroup(g BuildpackGroup) (BuildpackGroup, error) {
+//	out := make([]Buildpack, 0, len(g.Group))
+//	for _, b := range g.Group {
+//		bpTOML := buildpackTOML{
+//			path: filepath.Join(m.PathByID, b.ID, b.Version),
+//			seen: map[string]struct{}{},
+//		}
+//		if _, err := toml.DecodeFile(filepath.Join(bpTOML.path, "buildpack.toml"), &bpTOML); err != nil {
+//			return BuildpackGroup{}, err
+//		}
+//		b, err := bpTOML.lookup(b)
+//
+//	}
+//	return BuildpackGroup{Group: out}, nil
+//}
+//
+//func (bt *buildpackTOML) lookup(buildpack Buildpack) (Buildpack, error) {
+//	for _, b := range bt.Buildpacks {
+//		if b.ID == buildpack.ID && b.Version == buildpack.Version {
+//
+//			if b.Order != nil && b.Path != "" {
+//				return Buildpack{}, errors.Errorf("invalid buildpack '%s@%s'", b.ID, b.Version)
+//			}
+//			buildpack.Name = b.Name
+//			buildpack.Path = b.Path
+//
+//			if b.Order != nil {
+//
+//			}
+//			return buildpack, nil
+//		}
+//	}
+//}
 
 func (m BuildpackMap) ReadOrder(orderPath string) (BuildpackOrder, error) {
 	var order struct {
-		Groups BuildpackOrder `toml:"groups"`
+		Order BuildpackOrder `toml:"order"`
 	}
 	if _, err := toml.DecodeFile(orderPath, &order); err != nil {
 		return nil, err
 	}
-
-	var groups BuildpackOrder
-	for _, g := range order.Groups {
-		group, err := m.lookup(g.Buildpacks)
-		if err != nil {
-			return nil, errors.Wrap(err, "lookup buildpacks")
-		}
-		groups = append(groups, BuildpackGroup{
-			Buildpacks: group,
-		})
-	}
-	return groups, nil
+	return m.lookupOrder(order.Order)
 }
 
 func (g *BuildpackGroup) Write(path string) error {
 	data := struct {
-		Buildpacks []*Buildpack `toml:"buildpacks"`
+		Buildpacks []Buildpack `toml:"buildpacks"`
 	}{
-		Buildpacks: g.Buildpacks,
+		Buildpacks: g.Group,
 	}
 	return WriteTOML(path, data)
 }
@@ -104,9 +126,19 @@ func (m BuildpackMap) ReadGroup(path string) (*BuildpackGroup, error) {
 	if _, err := toml.DecodeFile(path, &group); err != nil {
 		return nil, err
 	}
-	group.Buildpacks, err = m.lookup(group.Buildpacks)
+	group, err = m.lookupGroup(group)
 	if err != nil {
 		return nil, errors.Wrap(err, "lookup buildpacks")
 	}
 	return &group, nil
+}
+
+func ReadOrder(path string) (BuildpackOrder, error) {
+	var order struct {
+		Order BuildpackOrder `toml:"order"`
+	}
+	if _, err := toml.DecodeFile(path, &order); err != nil {
+		return nil, err
+	}
+	return order.Order, nil
 }

@@ -53,38 +53,38 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		buildpackDir := filepath.Join("testdata", "buildpack")
 		list = lifecycle.BuildpackOrder{
 			{
-				Buildpacks: []*lifecycle.Buildpack{
+				Group: []*lifecycle.Buildpack{
 					// IDs should not affect directory names and other logic
-					{ID: "buildpack1", Name: "buildpack1-name", Dir: buildpackDir},
-					{ID: "com.buildpack2", Name: "buildpack2-name", Dir: buildpackDir},
-					{ID: "buildpack/3", Name: "buildpack3-name", Dir: buildpackDir},
-					{ID: "buildpack-4", Name: "buildpack4-name", Dir: buildpackDir},
+					{ID: "buildpack1", Name: "buildpack1-name", Path: buildpackDir},
+					{ID: "com.buildpack2", Name: "buildpack2-name", Path: buildpackDir},
+					{ID: "buildpack/3", Name: "buildpack3-name", Path: buildpackDir},
+					{ID: "buildpack-4", Name: "buildpack4-name", Path: buildpackDir},
 				},
 			},
 			{
-				Buildpacks: []*lifecycle.Buildpack{
-					{Name: "buildpack1-name", Dir: buildpackDir},
-					{Name: "buildpack2-name", Dir: buildpackDir},
-					{Name: "buildpack3-name", Dir: buildpackDir},
-					{Name: "buildpack4-name", Dir: buildpackDir, Optional: true},
+				Group: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Path: buildpackDir},
+					{Name: "buildpack2-name", Path: buildpackDir},
+					{Name: "buildpack3-name", Path: buildpackDir},
+					{Name: "buildpack4-name", Path: buildpackDir, Optional: true},
 				},
 			},
 			{
-				Buildpacks: []*lifecycle.Buildpack{
-					{Name: "buildpack1-name", Dir: buildpackDir, Optional: true},
+				Group: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Path: buildpackDir, Optional: true},
 				},
 			},
 			{
-				Buildpacks: []*lifecycle.Buildpack{
-					{Name: "buildpack1-name", Dir: buildpackDir},
-					{Name: "buildpack2-name", Dir: buildpackDir},
-					{Name: "buildpack3-name", Dir: buildpackDir},
+				Group: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Path: buildpackDir},
+					{Name: "buildpack2-name", Path: buildpackDir},
+					{Name: "buildpack3-name", Path: buildpackDir},
 				},
 			},
 			{
-				Buildpacks: []*lifecycle.Buildpack{
-					{Name: "buildpack1-name", Dir: buildpackDir},
-					{Name: "buildpack2-name", Dir: buildpackDir},
+				Group: []*lifecycle.Buildpack{
+					{Name: "buildpack1-name", Path: buildpackDir},
+					{Name: "buildpack2-name", Path: buildpackDir},
 				},
 			},
 		}
@@ -100,7 +100,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "3", filepath.Join(appDir, "last"))
 
 			result := list[1]
-			result.Buildpacks = result.Buildpacks[:len(result.Buildpacks)-1]
+			result.Group = result.Group[:len(result.Group)-1]
 			plan, group := list.Detect(config)
 			if s := cmp.Diff(*group, result); s != "" {
 				t.Fatalf("Unexpected group:\n%s\n", s)
