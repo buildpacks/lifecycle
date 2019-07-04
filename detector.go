@@ -178,11 +178,12 @@ func (bg *BuildpackGroup) Detect(done []Buildpack, wg *sync.WaitGroup, c *Detect
 			return info.Order.Detect(done, bg.Group[i+1:], bp.Optional, wg, c)
 		}
 		done = append(done, bp)
-
+		wg.Add(1)
 		go func() {
 			if _, ok := c.Trials.Load(bp.String()); !ok {
 				c.Trials.Store(bp.String(), info.Detect(c))
 			}
+			wg.Done()
 		}()
 	}
 
@@ -190,15 +191,22 @@ func (bg *BuildpackGroup) Detect(done []Buildpack, wg *sync.WaitGroup, c *Detect
 
 	wg.Wait()
 
-	for _, id := range done {
-		
+	for _, bp := range done {
+		t, ok := c.Trials.Load(bp.String())
+		if !ok {
+			return nil, errors.Errorf("missing detection of '%s'", bp)
+		}
+		trial := t.(Trial)
+
+
+
 
 	}
 
 
 	// check detection
 
-	return bg.Group, nil
+	return nil, nil
 
 	//group = &BuildpackGroup{}
 	//detected := true
