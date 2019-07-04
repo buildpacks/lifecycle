@@ -163,9 +163,9 @@ func hasID(bps []Buildpack, id string) bool {
 	return false
 }
 
-func (bg *BuildpackGroup) Detect(idx int, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
-	for i, bp := range bg.Group[idx:] {
-		if hasID(bg.Group[:idx+i], bp.ID) {
+func (bg *BuildpackGroup) Detect(done []Buildpack, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
+	for i, bp := range bg.Group {
+		if hasID(done, bp.ID) {
 			continue
 		}
 
@@ -175,21 +175,26 @@ func (bg *BuildpackGroup) Detect(idx int, wg *sync.WaitGroup, c *DetectConfig) (
 		}
 		if info.Order != nil {
 			// FIXME: double-check slice safety here
-			return info.Order.Detect(bg.Group[:idx+i], bg.Group[idx+i+1:], bp.Optional, wg, c)
+			return info.Order.Detect(done, bg.Group[i+1:], bp.Optional, wg, c)
 		}
+		done = append(done, bp)
 
 		go func() {
 			if _, ok := c.Trials.Load(bp.String()); !ok {
 				c.Trials.Store(bp.String(), info.Detect(c))
 			}
 		}()
+	}
+
+	// remember to use done
+
+	wg.Wait()
+
+	for _, id := range done {
+		
 
 	}
 
-	// remember to remove duplicates
-
-	wg.Wait()
-	
 
 	// check detection
 
@@ -227,10 +232,6 @@ func (bg BuildpackGroup) append(group ...BuildpackGroup) BuildpackGroup {
 		bg.Group = append(bg.Group, g.Group...)
 	}
 	return bg
-}
-
-func (bg BuildpackGroup) len() int {
-	return len(bg.Group)
 }
 
 //func (bg *BuildpackGroup) pDetect(c *DetectConfig) (plan []byte, codes []int) {
@@ -295,13 +296,12 @@ func (bg BuildpackGroup) len() int {
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(prev, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
-	pgroup := BuildpackGroup{Group: prev}
+func (bo BuildpackOrder) Detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
 	ngroup := BuildpackGroup{Group: next}
 	for _, group := range bo {
 		//c.Out.Printf("Trying group %d out of %d with %d buildpacks...", i+1, len(bo), len(bo[i].Group))
 		// FIXME: double-check slice safety here
-		result, err := pgroup.append(group, ngroup).Detect(pgroup.len(), wg, c)
+		result, err := group.append(ngroup).Detect(done, wg, c)
 		if err == ErrFail {
 			wg = &sync.WaitGroup{}
 			continue
@@ -309,7 +309,7 @@ func (bo BuildpackOrder) Detect(prev, next []Buildpack, optional bool, wg *sync.
 		return result, err
 	}
 	if optional {
-		return pgroup.append(ngroup).Detect(pgroup.len(), wg, c)
+		return ngroup.Detect(done, wg, c)
 	}
 	return nil, ErrFail
 }
