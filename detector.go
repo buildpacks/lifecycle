@@ -7,10 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"syscall"
 
-	"github.com/pkg/errors"
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -18,7 +19,10 @@ const (
 	CodeDetectFail = 100
 )
 
-var ErrFail = errors.New("detection failed")
+var (
+	ErrFail = errors.New("detection failed")
+	ErrDup = errors.New("duplicate buildpack ID")
+)
 
 type Buildpack struct {
 	ID       string `toml:"id"`
@@ -52,7 +56,7 @@ type DetectConfig struct {
 	AppDir      string
 	PlatformDir string
 	PathByID    string
-	Trials      map[string]Trial
+	Trials      *sync.Map
 	Out, Err    *log.Logger
 }
 
@@ -134,7 +138,7 @@ func (bt *buildpackTOML) lookup(bp Buildpack) (*buildpackInfo, error) {
 		if b.ID == bp.ID && b.Version == bp.Version {
 
 			if b.Order != nil && b.Path != "" {
-				return nil, errors.Errorf("invalid buildpack '%s@%s'", b.ID, b.Version)
+				return nil, errors.Errorf("invalid buildpack '%s'", bp)
 			}
 
 			if b.Order == nil && b.Path == "" {
@@ -150,22 +154,42 @@ func (bt *buildpackTOML) lookup(bp Buildpack) (*buildpackInfo, error) {
 	return nil, errors.Errorf("could not find buildpack '%s'", bp)
 }
 
-func (bg *BuildpackGroup) Detect(idx int, c *DetectConfig) ([]Buildpack, error) {
+func hasID(bps []Buildpack, id string) bool {
+	for _, bp := range bps {
+		if bp.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (bg *BuildpackGroup) Detect(idx int, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
 	for i, bp := range bg.Group[idx:] {
+		if hasID(bg.Group[:idx+i], bp.ID) {
+			continue
+		}
+
 		info, err := c.lookup(bp)
 		if err != nil {
 			return nil, err
 		}
 		if info.Order != nil {
 			// FIXME: double-check slice safety here
-			return info.Order.Detect(bg.Group[:idx+i], bg.Group[idx+i+1:], bp.Optional, c)
+			return info.Order.Detect(bg.Group[:idx+i], bg.Group[idx+i+1:], bp.Optional, wg, c)
 		}
 
-		if _, ok := c.Trials[bp.String()]; !ok {
-			// do detection
-			c.Trials[bp.String()] = info.Detect(c)
-		}
+		go func() {
+			if _, ok := c.Trials.Load(bp.String()); !ok {
+				c.Trials.Store(bp.String(), info.Detect(c))
+			}
+		}()
+
 	}
+
+	// remember to remove duplicates
+
+	wg.Wait()
+	
 
 	// check detection
 
@@ -200,7 +224,7 @@ func (bg *BuildpackGroup) Detect(idx int, c *DetectConfig) ([]Buildpack, error) 
 
 func (bg BuildpackGroup) append(group ...BuildpackGroup) BuildpackGroup {
 	for _, g := range group {
-		bg.Group = append(bg.Group, g)
+		bg.Group = append(bg.Group, g.Group...)
 	}
 	return bg
 }
@@ -271,20 +295,21 @@ func (bg BuildpackGroup) len() int {
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(prev, next []Buildpack, optional bool, c *DetectConfig) ([]Buildpack, error) {
+func (bo BuildpackOrder) Detect(prev, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
 	pgroup := BuildpackGroup{Group: prev}
 	ngroup := BuildpackGroup{Group: next}
 	for _, group := range bo {
 		//c.Out.Printf("Trying group %d out of %d with %d buildpacks...", i+1, len(bo), len(bo[i].Group))
 		// FIXME: double-check slice safety here
-		result, err := pgroup.append(group, ngroup).Detect(pgroup.len(), c)
+		result, err := pgroup.append(group, ngroup).Detect(pgroup.len(), wg, c)
 		if err == ErrFail {
+			wg = &sync.WaitGroup{}
 			continue
 		}
 		return result, err
 	}
 	if optional {
-		return pgroup.append(ngroup).Detect(pgroup.len(), c)
+		return pgroup.append(ngroup).Detect(pgroup.len(), wg, c)
 	}
 	return nil, ErrFail
 }
