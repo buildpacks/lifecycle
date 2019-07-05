@@ -19,15 +19,20 @@ const (
 	CodeDetectFail = 100
 )
 
-var (
-	ErrFail = errors.New("detection failed")
-	ErrDup = errors.New("duplicate buildpack ID")
-)
+var ErrFail = errors.New("detection failed")
 
 type Buildpack struct {
 	ID       string `toml:"id"`
 	Version  string `toml:"version"`
 	Optional bool   `toml:"optional,omitempty"`
+}
+
+func (bp Buildpack) dir() string {
+	return escapeID(bp.ID)
+}
+
+func (bp Buildpack) String() string {
+	return bp.ID + "@" + bp.Version
 }
 
 type Trial struct {
@@ -37,19 +42,24 @@ type Trial struct {
 	Err      error     `toml:"-"`
 }
 
+type Run struct {
+	Buildpack
+	Trial
+}
+
 type Require struct {
 	Name     string                 `toml:"name"`
 	Version  string                 `toml:"version"`
 	Metadata map[string]interface{} `toml:"metadata"`
 }
 
+type Provide struct {
+	Name string `toml:"name"`
+}
+
 type PlanEntry struct {
 	BuildpackID string `toml:"buildpack-id"`
 	Require
-}
-
-type Provide struct {
-	Name string `toml:"name"`
 }
 
 type DetectConfig struct {
@@ -60,12 +70,18 @@ type DetectConfig struct {
 	Out, Err    *log.Logger
 }
 
-func (bp *Buildpack) dir() string {
-	return escapeID(bp.ID)
-}
-
-func (bp *Buildpack) String() string {
-	return bp.ID + "@" + bp.Version
+func (c *DetectConfig) lookup(bp Buildpack) (*buildpackInfo, error) {
+	bpTOML := buildpackTOML{}
+	bpPath := filepath.Join(c.PathByID, bp.dir(), bp.Version)
+	if _, err := toml.DecodeFile(filepath.Join(bpPath, "buildpack.toml"), &bpTOML); err != nil {
+		return nil, err
+	}
+	info, err := bpTOML.lookup(bp)
+	if err != nil {
+		return nil, err
+	}
+	info.Path = filepath.Join(bpPath, info.Path)
+	return info, nil
 }
 
 func (bp *buildpackInfo) Detect(c *DetectConfig) Trial {
@@ -119,41 +135,6 @@ type BuildpackGroup struct {
 	Group []Buildpack `toml:"group"`
 }
 
-func (c *DetectConfig) lookup(bp Buildpack) (*buildpackInfo, error) {
-	bpTOML := buildpackTOML{}
-	bpPath := filepath.Join(c.PathByID, bp.dir(), bp.Version)
-	if _, err := toml.DecodeFile(filepath.Join(bpPath, "buildpack.toml"), &bpTOML); err != nil {
-		return nil, err
-	}
-	info, err := bpTOML.lookup(bp)
-	if err != nil {
-		return nil, err
-	}
-	info.Path = filepath.Join(bpPath, info.Path)
-	return info, nil
-}
-
-func (bt *buildpackTOML) lookup(bp Buildpack) (*buildpackInfo, error) {
-	for _, b := range bt.Buildpacks {
-		if b.ID == bp.ID && b.Version == bp.Version {
-
-			if b.Order != nil && b.Path != "" {
-				return nil, errors.Errorf("invalid buildpack '%s'", bp)
-			}
-
-			if b.Order == nil && b.Path == "" {
-				b.Path = "."
-			}
-
-			// TODO: validate that stack matches $BP_STACK_ID
-			// TODO: validate that orders don't have stacks
-
-			return &b, nil
-		}
-	}
-	return nil, errors.Errorf("could not find buildpack '%s'", bp)
-}
-
 func hasID(bps []Buildpack, id string) bool {
 	for _, bp := range bps {
 		if bp.ID == id {
@@ -164,6 +145,10 @@ func hasID(bps []Buildpack, id string) bool {
 }
 
 func (bg *BuildpackGroup) Detect(done []Buildpack, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
+	return bg.detect(nil, &sync.WaitGroup{}, c)
+}
+
+func (bg *BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
 	for i, bp := range bg.Group {
 		if hasID(done, bp.ID) {
 			continue
@@ -175,7 +160,7 @@ func (bg *BuildpackGroup) Detect(done []Buildpack, wg *sync.WaitGroup, c *Detect
 		}
 		if info.Order != nil {
 			// FIXME: double-check slice safety here
-			return info.Order.Detect(done, bg.Group[i+1:], bp.Optional, wg, c)
+			return info.Order.detect(done, bg.Group[i+1:], bp.Optional, wg, c)
 		}
 		done = append(done, bp)
 		wg.Add(1)
@@ -187,9 +172,12 @@ func (bg *BuildpackGroup) Detect(done []Buildpack, wg *sync.WaitGroup, c *Detect
 		}()
 	}
 
-	// remember to use done
-
 	wg.Wait()
+
+	var out []Buildpack
+	var trials []Trial
+	detected := true
+	c.Out.Printf("======== Results ========")
 
 	for _, bp := range done {
 		t, ok := c.Trials.Load(bp.String())
@@ -198,42 +186,97 @@ func (bg *BuildpackGroup) Detect(done []Buildpack, wg *sync.WaitGroup, c *Detect
 		}
 		trial := t.(Trial)
 
-
-
-
+		switch trial.Code {
+		case CodeDetectPass:
+			c.Out.Printf("pass: %s", bp)
+			out = append(out, bp)
+			trials = append(trials, trial)
+		case CodeDetectFail:
+			if bp.Optional {
+				c.Out.Printf("skip: %s", bp)
+			} else {
+				c.Out.Printf("fail: %s", bp)
+			}
+			detected = detected && bp.Optional
+		default:
+			c.Out.Printf("err:  %s: (%d)", bp, trial.Code)
+			detected = detected && bp.Optional
+		}
+	}
+	if !detected || len(out) == 0 {
+		return nil, ErrFail
 	}
 
+	provides := provideMap{}
+	for i, bp := range out {
+		for _, p := range trials[i].Provides {
+			provides[p.Name] = append(provides[p.Name], PlanEntry{BuildpackID: bp.ID})
+		}
+		for _, r := range trials[i].Requires {
+			if _, ok := provides[r.Name]; !ok {
+				// fail
+			}
+			provides[r.Name]
 
-	// check detection
 
-	return nil, nil
+			if _, ok := provides[r.Name]; !ok {
+				requires[r.Name] = append(requires[r.Name], bp.ID)
+			}
+			delete(provides, r.Name)
+		}
+	}
 
-	//group = &BuildpackGroup{}
-	//detected := true
-	//plan, codes := bg.pDetect(c)
-	//c.Out.Printf("======== Results ========")
-	//for i, code := range codes {
-	//	name := bg.Group[i].Name
-	//	optional := bg.Group[i].Optional
-	//	switch code {
-	//	case CodeDetectPass:
-	//		c.Out.Printf("pass: %s", name)
-	//		group.Group = append(group.Group, bg.Group[i])
-	//	case CodeDetectFail:
-	//		if optional {
-	//			c.Out.Printf("skip: %s", name)
-	//		} else {
-	//			c.Out.Printf("fail: %s", name)
+	//provides := constraintMap{}
+	//requires := constraintMap{}
+	//for i, bp := range out {
+	//	for _, p := range trials[i].Provides {
+	//		provides[p.Name] = append(provides[p.Name], bp.ID)
+	//	}
+	//	for _, r := range trials[i].Requires {
+	//		if _, ok := provides[r.Name]; !ok {
+	//			requires[r.Name] = append(requires[r.Name], bp.ID)
 	//		}
-	//		detected = detected && optional
-	//	default:
-	//		c.Out.Printf("err:  %s: (%d)", name, code)
-	//		detected = detected && optional
+	//		delete(provides, r.Name)
 	//	}
 	//}
-	//detected = detected && len(group.Group) > 0
-	//return plan, group, detected
+	//var newOut []Buildpack
+	//for _, bp := range out {
+	//	if provides.contains(bp.ID) {
+	//		if !bp.Optional {
+	//			c.Out.Printf("fail: %s provides unrequired %s", bp, )
+	//			return nil, ErrFail
+	//		}
+	//		continue
+	//	}
+	//	if requires.contains(bp.ID) {
+	//		continue
+	//	}
+	//	newOut = append(newOut, bp)
+	//}
+
+	// validate requires / provides
+
+	return out, nil
 }
+
+//type constraintMap map[string][]string
+//
+//func (c constraintMap) contains(elem string) bool {
+//	for _, v := range c {
+//		for _, e := range v {
+//			if elem == e {
+//				return true
+//			}
+//		}
+//	}
+//	return false
+//}
+
+// play
+
+type provideMap map[string][]PlanEntry
+
+/////
 
 func (bg BuildpackGroup) append(group ...BuildpackGroup) BuildpackGroup {
 	for _, g := range group {
@@ -242,74 +285,17 @@ func (bg BuildpackGroup) append(group ...BuildpackGroup) BuildpackGroup {
 	return bg
 }
 
-//func (bg *BuildpackGroup) pDetect(c *DetectConfig) (plan []byte, codes []int) {
-//	codes = make([]int, len(bg.Group))
-//	wg := sync.WaitGroup{}
-//	defer wg.Wait()
-//	wg.Add(len(bg.Group))
-//	var lastIn io.ReadCloser
-//	for i := range bg.Group {
-//		in, out := io.Pipe()
-//		go func(i int, last io.ReadCloser) {
-//			defer wg.Done()
-//			defer out.Close()
-//			add := &bytes.Buffer{}
-//			if last != nil {
-//				defer last.Close()
-//				orig := &bytes.Buffer{}
-//				last := io.TeeReader(last, orig)
-//				codes[i] = bg.Group[i].Detect(c, last, add)
-//				io.Copy(ioutil.Discard, last)
-//				if codes[i] == CodeDetectPass {
-//					mergeTOML(c.Err, out, orig, add)
-//				} else {
-//					mergeTOML(c.Err, out, orig)
-//				}
-//			} else {
-//				codes[i] = bg.Group[i].Detect(c, nil, add)
-//				if codes[i] == CodeDetectPass {
-//					mergeTOML(c.Err, out, add)
-//				}
-//			}
-//		}(i, lastIn)
-//		lastIn = in
-//	}
-//	if lastIn != nil {
-//		defer lastIn.Close()
-//		if p, err := ioutil.ReadAll(lastIn); err != nil {
-//			c.Err.Print("Warning: ", err)
-//		} else {
-//			plan = p
-//		}
-//	}
-//	return plan, codes
-//}
-
-//func mergeTOML(l *log.Logger, out io.Writer, in ...io.Reader) {
-//	result := map[string]interface{}{}
-//	for _, r := range in {
-//		var m map[string]interface{}
-//		if _, err := toml.DecodeReader(r, &m); err != nil {
-//			l.Print("Warning: ", err)
-//			continue
-//		}
-//		for k, v := range m {
-//			result[k] = v
-//		}
-//	}
-//	if err := toml.NewEncoder(out).Encode(result); err != nil {
-//		l.Print("Warning: ", err)
-//	}
-//}
-
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
+func (bo BuildpackOrder) Detect(c *DetectConfig) ([]Buildpack, error) {
+	return bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
+}
+
+func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, error) {
 	ngroup := BuildpackGroup{Group: next}
 	for _, group := range bo {
-		//c.Out.Printf("Trying group %d out of %d with %d buildpacks...", i+1, len(bo), len(bo[i].Group))
 		// FIXME: double-check slice safety here
-		result, err := group.append(ngroup).Detect(done, wg, c)
+		result, err := group.append(ngroup).detect(done, wg, c)
 		if err == ErrFail {
 			wg = &sync.WaitGroup{}
 			continue
@@ -317,7 +303,7 @@ func (bo BuildpackOrder) Detect(done, next []Buildpack, optional bool, wg *sync.
 		return result, err
 	}
 	if optional {
-		return ngroup.Detect(done, wg, c)
+		return ngroup.detect(done, wg, c)
 	}
 	return nil, ErrFail
 }
