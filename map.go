@@ -38,15 +38,6 @@ type buildpackInfo struct {
 	Order   BuildpackOrder `toml:"order"`
 }
 
-func (g *BuildpackGroup) Write(path string) error {
-	data := struct {
-		Buildpacks []Buildpack `toml:"buildpacks"`
-	}{
-		Buildpacks: g.Group,
-	}
-	return WriteTOML(path, data)
-}
-
 func ReadGroup(path string) (BuildpackGroup, error) {
 	var group BuildpackGroup
 	_, err := toml.DecodeFile(path, &group)

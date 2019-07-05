@@ -35,6 +35,15 @@ func (bp Buildpack) String() string {
 	return bp.ID + "@" + bp.Version
 }
 
+type DetectPlan struct {
+	Entries []DetectPlanEntry ``
+}
+
+type DetectPlanEntry struct {
+	Providers []Buildpack `toml:"providers"`
+	Requires  []Require   `toml:"requires"`
+}
+
 type Require struct {
 	Name     string                 `toml:"name"`
 	Version  string                 `toml:"version"`
@@ -45,22 +54,17 @@ type Provide struct {
 	Name string `toml:"name"`
 }
 
-type PlanEntry struct {
-	Providers []Buildpack
-	Requires  []Require
-}
-
 type DetectConfig struct {
-	AppDir      string
-	PlatformDir string
-	PathByID    string
-	Out, Err    *log.Logger
-	trials      *sync.Map
+	AppDir        string
+	PlatformDir   string
+	BuildpacksDir string
+	Out, Err      *log.Logger
+	trials        *sync.Map
 }
 
-func (c *DetectConfig) lookup(bp Buildpack) (*buildpackInfo, error) {
+func (bp Buildpack) lookup(buildpacksDir string) (*buildpackInfo, error) {
 	bpTOML := buildpackTOML{}
-	bpPath := filepath.Join(c.PathByID, bp.dir(), bp.Version)
+	bpPath := filepath.Join(buildpacksDir, bp.dir(), bp.Version)
 	if _, err := toml.DecodeFile(filepath.Join(bpPath, "buildpack.toml"), &bpTOML); err != nil {
 		return nil, err
 	}
@@ -72,7 +76,7 @@ func (c *DetectConfig) lookup(bp Buildpack) (*buildpackInfo, error) {
 	return info, nil
 }
 
-func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []PlanEntry, error) {
+func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []DetectPlanEntry, error) {
 	var results detectResults
 	detected := true
 	c.Out.Printf("======== Results ========")
@@ -108,27 +112,31 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []PlanEntry, erro
 	for retry := true; retry; {
 		retry = false
 		deps = newDepMap(results)
-		for name, bps := range deps.unmetRequires() {
+
+		if err := deps.eachUnmetRequire(func(name string, bp Buildpack) error {
 			retry = true
-			for _, bp := range bps {
-				if !bp.Optional {
-					c.Out.Printf("fail: %s requires %s", bp, name)
-					return nil, nil, ErrFail
-				}
-				c.Out.Printf("skip: %s requires %s", bp, name)
-				results = results.remove(bp)
+			if !bp.Optional {
+				c.Out.Printf("fail: %s requires %s", bp, name)
+				return ErrFail
 			}
+			c.Out.Printf("skip: %s requires %s", bp, name)
+			results = results.remove(bp)
+			return nil
+		}); err != nil {
+			return nil, nil, err
 		}
-		for name, bps := range deps.unmetProvides() {
+
+		if err := deps.eachUnmetProvide(func(name string, bp Buildpack) error {
 			retry = true
-			for _, bp := range bps {
-				if !bp.Optional {
-					c.Out.Printf("fail: %s provides unused %s", bp, name)
-					return nil, nil, ErrFail
-				}
-				c.Out.Printf("skip: %s provides unused %s", bp, name)
-				results = results.remove(bp)
+			if !bp.Optional {
+				c.Out.Printf("fail: %s provides unused %s", bp, name)
+				return ErrFail
 			}
+			c.Out.Printf("skip: %s provides unused %s", bp, name)
+			results = results.remove(bp)
+			return nil
+		}); err != nil {
+			return nil, nil, err
 		}
 	}
 
@@ -141,9 +149,9 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []PlanEntry, erro
 	for _, r := range results {
 		found = append(found, r.Buildpack)
 	}
-	var plan []PlanEntry
+	var plan []DetectPlanEntry
 	for _, dep := range deps {
-		plan = append(plan, dep.PlanEntry)
+		plan = append(plan, dep.DetectPlanEntry)
 	}
 	return found, plan, nil
 }
@@ -199,19 +207,20 @@ type BuildpackGroup struct {
 	Group []Buildpack `toml:"group"`
 }
 
-func (bg *BuildpackGroup) Detect(c *DetectConfig) ([]Buildpack, []PlanEntry, error) {
+func (bg BuildpackGroup) Detect(c *DetectConfig) (BuildpackGroup, DetectPlan, error) {
 	if c.trials == nil {
 		c.trials = &sync.Map{}
 	}
-	return bg.detect(nil, &sync.WaitGroup{}, c)
+	bps, entries, err := bg.detect(nil, &sync.WaitGroup{}, c)
+	return BuildpackGroup{Group: bps}, DetectPlan{Entries: entries}, err
 }
 
-func (bg *BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []PlanEntry, error) {
+func (bg BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []DetectPlanEntry, error) {
 	for i, bp := range bg.Group {
 		if hasID(done, bp.ID) {
 			continue
 		}
-		info, err := c.lookup(bp)
+		info, err := bp.lookup(c.BuildpacksDir)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -250,7 +259,6 @@ func hasID(bps []Buildpack, id string) bool {
 	return false
 }
 
-
 type detectTrial struct {
 	Requires []Require `toml:"requires"`
 	Provides []Provide `toml:"provides"`
@@ -276,7 +284,7 @@ func (rs detectResults) remove(bp Buildpack) detectResults {
 }
 
 type depEntry struct {
-	PlanEntry
+	DetectPlanEntry
 	earlyReqs []Buildpack
 }
 
@@ -286,22 +294,22 @@ func newDepMap(results []detectResult) depMap {
 	m := depMap{}
 	for _, result := range results {
 		for _, p := range result.Provides {
-			m.addProvide(result.Buildpack, p)
+			m.provide(result.Buildpack, p)
 		}
 		for _, r := range result.Requires {
-			m.addRequire(result.Buildpack, r)
+			m.require(result.Buildpack, r)
 		}
 	}
 	return m
 }
 
-func (m depMap) addProvide(bp Buildpack, provide Provide) {
+func (m depMap) provide(bp Buildpack, provide Provide) {
 	entry := m[provide.Name]
 	entry.Providers = append(entry.Providers, bp)
 	m[provide.Name] = entry
 }
 
-func (m depMap) addRequire(bp Buildpack, require Require) {
+func (m depMap) require(bp Buildpack, require Require) {
 	entry := m[require.Name]
 	if len(entry.Providers) == 0 {
 		entry.earlyReqs = append(entry.earlyReqs, bp)
@@ -311,36 +319,43 @@ func (m depMap) addRequire(bp Buildpack, require Require) {
 	m[require.Name] = entry
 }
 
-func (m depMap) unmetProvides() map[string][]Buildpack {
-	n := map[string][]Buildpack{}
+func (m depMap) eachUnmetProvide(f func(name string, bp Buildpack) error) error {
 	for name, entry := range m {
 		if len(entry.Requires) == 0 {
-			n[name] = entry.Providers
+			for _, bp := range entry.Providers {
+				if err := f(name, bp); err != nil {
+					return err
+				}
+			}
 		}
 	}
-	return n
+	return nil
 }
 
-func (m depMap) unmetRequires() map[string][]Buildpack {
-	n := map[string][]Buildpack{}
+func (m depMap) eachUnmetRequire(f func(name string, bp Buildpack) error) error {
 	for name, entry := range m {
 		if len(entry.earlyReqs) != 0 {
-			n[name] = entry.earlyReqs
+			for _, bp := range entry.earlyReqs {
+				if err := f(name, bp); err != nil {
+					return err
+				}
+			}
 		}
 	}
-	return n
+	return nil
 }
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(c *DetectConfig) ([]Buildpack, []PlanEntry, error) {
+func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, DetectPlan, error) {
 	if c.trials == nil {
 		c.trials = &sync.Map{}
 	}
-	return bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
+	bps, entries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
+	return BuildpackGroup{Group: bps}, DetectPlan{Entries: entries}, err
 }
 
-func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []PlanEntry, error) {
+func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []DetectPlanEntry, error) {
 	ngroup := BuildpackGroup{Group: next}
 	for _, group := range bo {
 		// FIXME: double-check slice safety here

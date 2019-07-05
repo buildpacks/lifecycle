@@ -50,18 +50,14 @@ func main() {
 }
 
 func build() error {
-	buildpacks, err := lifecycle.NewBuildpackMap(buildpacksDir)
-	if err != nil {
-		return cmd.FailErr(err, "read buildpack directory")
-	}
-	group, err := buildpacks.ReadGroup(groupPath)
+	group, err := lifecycle.ReadGroup(groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	var plan lifecycle.Plan
+	var plan lifecycle.DetectPlan
 	if _, err := toml.DecodeFile(planPath, &plan); err != nil {
-		return cmd.FailErr(err, "parse build plan")
+		return cmd.FailErr(err, "parse detect plan")
 	}
 
 	env := &lifecycle.Env{
@@ -72,14 +68,15 @@ func build() error {
 	}
 
 	builder := &lifecycle.Builder{
-		PlatformDir: platformDir,
-		LayersDir:   layersDir,
-		AppDir:      appDir,
-		Env:         env,
-		Buildpacks:  group.Group,
-		Plan:        plan,
-		Out:         log.New(os.Stdout, "", 0),
-		Err:         log.New(os.Stderr, "", 0),
+		AppDir:        appDir,
+		LayersDir:     layersDir,
+		PlatformDir:   platformDir,
+		BuildpacksDir: buildpacksDir,
+		Env:           env,
+		Group:         group,
+		Plan:          plan,
+		Out:           log.New(os.Stdout, "", 0),
+		Err:           log.New(os.Stderr, "", 0),
 	}
 
 	md, err := builder.Build()

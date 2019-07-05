@@ -8,6 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+
 func WriteTOML(path string, data interface{}) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err

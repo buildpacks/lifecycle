@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"bytes"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,13 +12,14 @@ import (
 )
 
 type Builder struct {
-	PlatformDir string
-	LayersDir   string
-	AppDir      string
-	Env         BuildEnv
-	Buildpacks  []*Buildpack
-	Plan        Plan
-	Out, Err    *log.Logger
+	AppDir        string
+	LayersDir     string
+	PlatformDir   string
+	BuildpacksDir string
+	Env           BuildEnv
+	Group         BuildpackGroup
+	Plan          DetectPlan
+	Out, Err      *log.Logger
 }
 
 type BuildEnv interface {
@@ -37,12 +37,19 @@ type LaunchTOML struct {
 	Processes []Process `toml:"processes"`
 }
 
-type Plan map[string]map[string]interface{}
+type BOMEntry struct {
+	Require
+	Buildpack Buildpack `toml:"buildpack"`
+}
+
+type BuildPlan struct {
+	Entries []Require `toml:"entries"`
+}
 
 type BuildMetadata struct {
-	Processes  []Process `toml:"processes"`
-	Buildpacks []string  `toml:"buildpacks"`
-	BOM        Plan      `toml:"bom"`
+	Processes  []Process  `toml:"processes"`
+	Buildpacks []string   `toml:"buildpacks"`
+	BOM        []BOMEntry `toml:"bom"`
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
@@ -65,10 +72,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	defer os.RemoveAll(planDir)
 
 	procMap := processMap{}
-	plan := copyPlan(b.Plan)
-	bom := copyPlan(b.Plan)
+	plan := b.Plan
+	var bom []BOMEntry
 	var buildpackIDs []string
-	for _, bp := range b.Buildpacks {
+	for _, bp := range b.Group.Group {
+		bpInfo, err := bp.lookup(b.BuildpacksDir)
+		if err != nil {
+			return nil, err
+		}
 		bpDirName := bp.dir()
 		bpLayersDir := filepath.Join(layersDir, bpDirName)
 		bpPlanDir := filepath.Join(planDir, bpDirName)
@@ -81,21 +92,17 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-		if ioutil.WriteFile(bpPlanPath, nil, 0777); err != nil {
+		if err := WriteTOML(bpPlanPath, plan.toBuild(bp)); err != nil {
 			return nil, err
 		}
-		planIn := &bytes.Buffer{}
-		if err := toml.NewEncoder(planIn).Encode(plan); err != nil {
-			return nil, err
-		}
-		buildPath, err := filepath.Abs(filepath.Join(bp.Path, "bin", "build"))
+
+		buildPath, err := filepath.Abs(filepath.Join(bpInfo.Path, "bin", "build"))
 		if err != nil {
 			return nil, err
 		}
 		cmd := exec.Command(buildPath, bpLayersDir, platformDir, bpPlanPath)
 		cmd.Env = b.Env.List()
 		cmd.Dir = appDir
-		cmd.Stdin = planIn
 		cmd.Stdout = b.Out.Writer()
 		cmd.Stderr = b.Err.Writer()
 		if err := cmd.Run(); err != nil {
@@ -104,9 +111,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := setupEnv(b.Env, bpLayersDir); err != nil {
 			return nil, err
 		}
-		if err := consumePlan(bpPlanPath, plan, bom); err != nil {
+		var bpPlanOut BuildPlan
+		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
 			return nil, err
 		}
+		var bpBOM []BOMEntry
+		plan, bpBOM = plan.filter(bp, bpPlanOut)
+		bom = append(bom, bpBOM...)
+
 		var launch LaunchTOML
 		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
 		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
@@ -122,6 +134,44 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		Buildpacks: buildpackIDs,
 		BOM:        bom,
 	}, nil
+}
+
+func (p DetectPlan) toBuild(bp Buildpack) BuildPlan {
+	var out []Require
+	for _, entry := range p.Entries {
+		for _, provider := range entry.Providers {
+			if provider == bp {
+				out = append(out, entry.Requires...)
+				break
+			}
+		}
+	}
+	return BuildPlan{Entries: out}
+}
+
+func (p DetectPlan) filter(bp Buildpack, plan BuildPlan) (DetectPlan, []BOMEntry) {
+	var out []DetectPlanEntry
+	for _, entry := range p.Entries {
+		if !plan.has(entry) {
+			out = append(out, entry)
+		}
+	}
+	var bom []BOMEntry
+	for _, entry := range plan.Entries {
+		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp})
+	}
+	return DetectPlan{Entries: out}, bom
+}
+
+func (p BuildPlan) has(entry DetectPlanEntry) bool {
+	for _, buildEntry := range p.Entries {
+		for _, req := range entry.Requires {
+			if req.Name == buildEntry.Name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func setupEnv(env BuildEnv, layersDir string) error {
@@ -153,20 +203,6 @@ func isBuild(path string) bool {
 	return err == nil && layerTOML.Build
 }
 
-func consumePlan(path string, plan, bom Plan) error {
-	var input map[string]map[string]interface{}
-	if _, err := toml.DecodeFile(path, &input); err != nil {
-		return err
-	}
-	for k, v := range input {
-		delete(plan, k)
-		if len(v) > 0 {
-			bom[k] = v
-		}
-	}
-	return nil
-}
-
 type processMap map[string]Process
 
 func (m processMap) add(l []Process) {
@@ -186,12 +222,4 @@ func (m processMap) list() []Process {
 		procs = append(procs, m[key])
 	}
 	return procs
-}
-
-func copyPlan(m Plan) Plan {
-	out := Plan{}
-	for k, v := range m {
-		out[k] = v
-	}
-	return out
 }
