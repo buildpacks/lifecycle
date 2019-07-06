@@ -17,7 +17,6 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/docker"
 	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/buildpack/lifecycle/metadata"
@@ -137,7 +136,7 @@ func export() error {
 
 	var appImage imgutil.Image
 	if useDaemon {
-		dockerClient, err := docker.DefaultClient()
+		dockerClient, err := cmd.DockerClient()
 		if err != nil {
 			return err
 		}

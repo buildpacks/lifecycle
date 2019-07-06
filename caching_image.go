@@ -4,24 +4,22 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
-	"os"
-	"time"
-
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
+	"io"
+	"os"
 
 	"github.com/buildpack/lifecycle/cache"
 )
 
 type cachingImage struct {
-	image imgutil.Image
+	imgutil.Image
 	cache *cache.VolumeCache
 }
 
 func NewCachingImage(image imgutil.Image, cache *cache.VolumeCache) imgutil.Image {
 	return &cachingImage{
-		image: image,
+		Image: image,
 		cache: cache,
 	}
 }
@@ -43,13 +41,16 @@ func (c *cachingImage) AddLayer(path string) error {
 		return err
 	}
 
-	return c.image.AddLayer(path)
+	return c.Image.AddLayer(path)
 }
 
 func (c *cachingImage) ReuseLayer(sha string) error {
-	if found, err := c.cache.HasLayer(sha); err != nil {
+	found, err := c.cache.HasLayer(sha)
+	if err != nil {
 		return err
-	} else if found {
+	}
+
+	if found {
 		if err := c.cache.ReuseLayer(sha); err != nil {
 			return err
 		}
@@ -57,17 +58,17 @@ func (c *cachingImage) ReuseLayer(sha string) error {
 		if err != nil {
 			return err
 		}
-		return c.image.AddLayer(path)
-	} else {
-		if err := c.image.ReuseLayer(sha); err != nil {
-			return err
-		}
-		rc, err := c.image.GetLayer(sha)
-		if err != nil {
-			return err
-		}
-		return c.cache.AddLayer(rc)
+		return c.Image.AddLayer(path)
 	}
+
+	if err := c.Image.ReuseLayer(sha); err != nil {
+		return err
+	}
+	rc, err := c.Image.GetLayer(sha)
+	if err != nil {
+		return err
+	}
+	return c.cache.AddLayer(rc)
 }
 
 func (c *cachingImage) GetLayer(sha string) (io.ReadCloser, error) {
@@ -76,19 +77,18 @@ func (c *cachingImage) GetLayer(sha string) (io.ReadCloser, error) {
 	} else if found {
 		return c.cache.RetrieveLayer(sha)
 	} else {
-		return c.image.GetLayer(sha)
+		return c.Image.GetLayer(sha)
 	}
 }
 
 func (c *cachingImage) Save(additionalNames ...string) error {
-	err := c.image.Save(additionalNames...)
+	err := c.Image.Save(additionalNames...)
 
 	if saveSucceededFor(c.Name(), err) {
 		if err := c.cache.Commit(); err != nil {
 			return errors.Wrap(err, "failed to commit cache")
 		}
 	}
-
 	return err
 }
 
@@ -106,66 +106,4 @@ func saveSucceededFor(imageName string, err error) bool {
 		return true
 	}
 	return false
-}
-
-// delegates to image
-
-func (c *cachingImage) Name() string {
-	return c.image.Name()
-}
-
-func (c *cachingImage) Rename(name string) {
-	c.image.Rename(name)
-}
-
-func (c *cachingImage) Identifier() (imgutil.Identifier, error) {
-	return c.image.Identifier()
-}
-
-func (c *cachingImage) Label(label string) (string, error) {
-	return c.image.Label(label)
-}
-
-func (c *cachingImage) SetLabel(key, value string) error {
-	return c.image.SetLabel(key, value)
-}
-
-func (c *cachingImage) Env(key string) (string, error) {
-	return c.image.Env(key)
-}
-
-func (c *cachingImage) SetEnv(key, value string) error {
-	return c.image.SetEnv(key, value)
-}
-
-func (c *cachingImage) SetEntrypoint(entrypoint ...string) error {
-	return c.image.SetEntrypoint(entrypoint...)
-}
-
-func (c *cachingImage) SetWorkingDir(wd string) error {
-	return c.image.SetWorkingDir(wd)
-}
-
-func (c *cachingImage) SetCmd(cmd ...string) error {
-	return c.image.SetCmd(cmd...)
-}
-
-func (c *cachingImage) Rebase(topLayer string, newBase imgutil.Image) error {
-	return c.image.Rebase(topLayer, newBase)
-}
-
-func (c *cachingImage) TopLayer() (string, error) {
-	return c.image.TopLayer()
-}
-
-func (c *cachingImage) Found() bool {
-	return c.image.Found()
-}
-
-func (c *cachingImage) Delete() error {
-	return c.image.Delete()
-}
-
-func (c *cachingImage) CreatedAt() (time.Time, error) {
-	return c.image.CreatedAt()
 }

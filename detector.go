@@ -250,6 +250,33 @@ func (bg BuildpackGroup) append(group ...BuildpackGroup) BuildpackGroup {
 	return bg
 }
 
+type BuildpackOrder []BuildpackGroup
+
+func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, DetectPlan, error) {
+	if c.trials == nil {
+		c.trials = &sync.Map{}
+	}
+	bps, entries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
+	return BuildpackGroup{Group: bps}, DetectPlan{Entries: entries}, err
+}
+
+func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []DetectPlanEntry, error) {
+	ngroup := BuildpackGroup{Group: next}
+	for _, group := range bo {
+		// FIXME: double-check slice safety here
+		found, plan, err := group.append(ngroup).detect(done, wg, c)
+		if err == ErrFail {
+			wg = &sync.WaitGroup{}
+			continue
+		}
+		return found, plan, err
+	}
+	if optional {
+		return ngroup.detect(done, wg, c)
+	}
+	return nil, nil, ErrFail
+}
+
 func hasID(bps []Buildpack, id string) bool {
 	for _, bp := range bps {
 		if bp.ID == id {
@@ -343,31 +370,4 @@ func (m depMap) eachUnmetRequire(f func(name string, bp Buildpack) error) error 
 		}
 	}
 	return nil
-}
-
-type BuildpackOrder []BuildpackGroup
-
-func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, DetectPlan, error) {
-	if c.trials == nil {
-		c.trials = &sync.Map{}
-	}
-	bps, entries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
-	return BuildpackGroup{Group: bps}, DetectPlan{Entries: entries}, err
-}
-
-func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []DetectPlanEntry, error) {
-	ngroup := BuildpackGroup{Group: next}
-	for _, group := range bo {
-		// FIXME: double-check slice safety here
-		found, plan, err := group.append(ngroup).detect(done, wg, c)
-		if err == ErrFail {
-			wg = &sync.WaitGroup{}
-			continue
-		}
-		return found, plan, err
-	}
-	if optional {
-		return ngroup.detect(done, wg, c)
-	}
-	return nil, nil, ErrFail
 }

@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"path/filepath"
 
@@ -11,6 +12,18 @@ import (
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/metadata"
 )
+
+
+//go:generate mockgen -package testmock -destination testmock/cache.go github.com/buildpack/lifecycle Cache
+type Cache interface {
+	Name() string
+	SetMetadata(metadata cache.Metadata) error
+	RetrieveMetadata() (cache.Metadata, error)
+	AddLayerFile(sha string, tarPath string) error
+	ReuseLayer(sha string) error
+	RetrieveLayer(sha string) (io.ReadCloser, error)
+	Commit() error
+}
 
 type Cacher struct {
 	ArtifactsDir string

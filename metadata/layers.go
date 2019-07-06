@@ -81,7 +81,9 @@ func GetLayersMetdata(image imgutil.Image) (LayersMetadata, error) {
 	}
 
 	meta := LayersMetadata{}
-	_ = json.Unmarshal([]byte(contents), &meta)
+	if err := json.Unmarshal([]byte(contents), &meta); err != nil {
+		return LayersMetadata{}, nil
+	}
 	return meta, nil
 }
 
