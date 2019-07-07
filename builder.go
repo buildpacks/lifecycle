@@ -47,9 +47,9 @@ type BuildPlan struct {
 }
 
 type BuildMetadata struct {
-	Processes  []Process  `toml:"processes"`
-	Buildpacks []string   `toml:"buildpacks"`
-	BOM        []BOMEntry `toml:"bom"`
+	Processes  []Process   `toml:"processes"`
+	Buildpacks []Buildpack `toml:"buildpacks"`
+	BOM        []BOMEntry  `toml:"bom"`
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
@@ -74,7 +74,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	procMap := processMap{}
 	plan := b.Plan
 	var bom []BOMEntry
-	var buildpackIDs []string
 	for _, bp := range b.Group.Group {
 		bpInfo, err := bp.lookup(b.BuildpacksDir)
 		if err != nil {
@@ -83,7 +82,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		bpDirName := bp.dir()
 		bpLayersDir := filepath.Join(layersDir, bpDirName)
 		bpPlanDir := filepath.Join(planDir, bpDirName)
-		buildpackIDs = append(buildpackIDs, bpDirName)
 		if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
 			return nil, err
 		}
@@ -101,7 +99,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		cmd := exec.Command(buildPath, bpLayersDir, platformDir, bpPlanPath)
-		cmd.Env = b.Env.List()
+		cmd.Env = append(b.Env.List(), "BP_ID=" + bpInfo.ID)
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out.Writer()
 		cmd.Stderr = b.Err.Writer()
@@ -131,7 +129,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 
 	return &BuildMetadata{
 		Processes:  procMap.list(),
-		Buildpacks: buildpackIDs,
+		Buildpacks: b.Group.Group,
 		BOM:        bom,
 	}, nil
 }

@@ -95,7 +95,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Detect", func() {
-		it("should return the first matching group without optional buildpacks", func() {
+		it("should return the first matching group without any failed optional buildpacks", func() {
 			mkfile(t, "1", filepath.Join(appDir, "add"))
 			mkfile(t, "3", filepath.Join(appDir, "last"))
 

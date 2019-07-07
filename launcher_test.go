@@ -59,7 +59,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				{Type: "web", Command: "some-web-process"},
 				{Type: "worker", Command: "some-worker-process"},
 			},
-			Buildpacks: []string{},
 			Env:        env,
 			Exec: func(argv0 string, argv []string, envv []string) error {
 				syscallExecArgsColl = append(syscallExecArgsColl, syscallExecArgs{
@@ -163,7 +162,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				launcher.Processes = []lifecycle.Process{
 					{Type: "start", Command: "./start"},
 				}
-				launcher.Buildpacks = []string{"bp.1", "bp.2"}
+				launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
 				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
@@ -206,7 +205,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		when("metadata includes buildpacks that have not contributed layers", func() {
 			it.Before(func() {
-				launcher.Buildpacks = []string{"bp.3"}
+				launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.3"}}
 			})
 
 			it("ignores those buildpacks when setting the env", func() {
@@ -228,7 +227,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				launcher.Processes = []lifecycle.Process{
 					{Type: "start", Command: "./start"},
 				}
-				launcher.Buildpacks = []string{"bp.1", "bp.2"}
+				launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
 				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
@@ -259,7 +258,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 			when("changing the buildpack order", func() {
 				it.Before(func() {
-					launcher.Buildpacks = []string{"bp.2", "bp.1"}
+					launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.2"}, {ID: "bp.1"}}
 				})
 
 				it("should run them in buildpack order", func() {

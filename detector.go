@@ -188,6 +188,7 @@ func (bp *buildpackInfo) Detect(c *DetectConfig) detectTrial {
 	cmd.Dir = appDir
 	cmd.Stdout = log
 	cmd.Stderr = log
+	cmd.Env = append(os.Environ(), "BP_ID=" + bp.ID)
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			if status, ok := err.Sys().(syscall.WaitStatus); ok {
