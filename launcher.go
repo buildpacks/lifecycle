@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -24,24 +25,37 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 	if err := l.env(); err != nil {
 		return errors.Wrap(err, "modify env")
 	}
-	startCommand, err := l.processFor(startCommand)
+	process, err := l.processFor(startCommand)
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
+	}
+	if err := os.Chdir(l.AppDir); err != nil {
+		return errors.Wrap(err, "change to app directory")
+	}
+	if process.Args != nil {
+		binary, err := exec.LookPath(process.Command)
+		if err != nil {
+			return errors.Wrap(err, "path lookup")
+		}
+
+		if err := l.Exec(binary,
+			append([]string{process.Command}, process.Args...),
+			l.Env.List(),
+		); err != nil {
+			return errors.Wrap(err, "direct exec")
+		}
+		return nil
 	}
 	launcher, err := l.profileD()
 	if err != nil {
 		return errors.Wrap(err, "determine profile")
 	}
-
-	if err := os.Chdir(l.AppDir); err != nil {
-		return errors.Wrap(err, "change to app directory")
-	}
 	if err := l.Exec("/bin/bash", []string{
 		"bash", "-c",
 		launcher, executable,
-		startCommand,
+		process.Command,
 	}, l.Env.List()); err != nil {
-		return errors.Wrap(err, "exec")
+		return errors.Wrap(err, "bash exec")
 	}
 	return nil
 }
@@ -120,30 +134,30 @@ func (l *Launcher) profileD() (string, error) {
 	return strings.Join(out, "\n"), nil
 }
 
-func (l *Launcher) processFor(cmd string) (string, error) {
+func (l *Launcher) processFor(cmd string) (Process, error) {
 	if cmd == "" {
 		if process, ok := l.findProcessType(l.DefaultProcessType); ok {
 			return process, nil
 		}
 
-		return "", fmt.Errorf("process type %s was not found", l.DefaultProcessType)
+		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
 	}
 
 	if process, ok := l.findProcessType(cmd); ok {
 		return process, nil
 	}
 
-	return cmd, nil
+	return Process{Command: cmd}, nil
 }
 
-func (l *Launcher) findProcessType(kind string) (string, bool) {
+func (l *Launcher) findProcessType(kind string) (Process, bool) {
 	for _, p := range l.Processes {
 		if p.Type == kind {
-			return p.Command, true
+			return p, true
 		}
 	}
 
-	return "", false
+	return Process{}, false
 }
 
 func eachDir(dir string, fn func(path string) error) error {

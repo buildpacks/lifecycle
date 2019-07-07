@@ -29,8 +29,9 @@ type BuildEnv interface {
 }
 
 type Process struct {
-	Type    string `toml:"type"`
-	Command string `toml:"command"`
+	Type    string   `toml:"type"`
+	Command string   `toml:"command"`
+	Args    []string `toml:"args"`
 }
 
 type LaunchTOML struct {
