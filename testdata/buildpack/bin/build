@@ -1,36 +1,34 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-set -eo pipefail
+set -euo pipefail
 
 layers_dir=$1
 platform_dir=$2
 plan_path=$3
 
-cat - > "plan${ID}.toml"
-echo -e "[dep${ID}-keep]\n" >> "$plan_path"
-if [[ -f dep-replace ]]; then
-  echo -e "[dep${ID}-replace]\n$(cat dep-replace)" >> "$plan_path"
+echo "build out: ${BP_ID}@${BP_VERSION}"
+>&2 echo "build err: ${BP_ID}@${BP_VERSION}"
+
+echo "Path: ${BP_PATH}" > "build-info-${BP_ID}-${BP_VERSION}"
+echo "TOML: ${BP_TOML}" >> "build-info-${BP_ID}-${BP_VERSION}"
+
+ls -1 "$platform_dir/env" > "build-env-${BP_ID}-${BP_VERSION}"
+
+cat "$plan_path" > "build-plan-${BP_ID}-${BP_VERSION}.toml"
+
+if [[ -f launch-${BP_ID}-${BP_VERSION}.toml ]]; then
+  cat "launch-${BP_ID}-${BP_VERSION}.toml" > "$layers_dir/launch.toml"
 fi
 
-echo "STDOUT${ID}"
->&2 echo "STDERR${ID}"
-
-if [[ -d buildpack${ID} ]]; then
-  cp -a "buildpack${ID}/." "$layers_dir"
+if [[ -d layers-${BP_ID}-${BP_VERSION} ]]; then
+  cp -a "layers-${BP_ID}-${BP_VERSION}/." "$layers_dir"
 fi
 
-cp -a "$platform_dir/env" "./env-buildpack${ID}"
-
-if [[ -f skip-processes ]]; then
- exit 0
+if [[ -f build-status-${BP_ID}-${BP_VERSION} ]]; then
+  exit "$(cat "build-status-${BP_ID}-${BP_VERSION}")"
+fi
+if [[ -f build-status ]]; then
+  exit "$(cat build-status)"
 fi
 
-cat > "$layers_dir/launch.toml" <<EOF
-[[processes]]
-type = "process${ID}-type"
-command = "process${ID}-command"
-
-[[processes]]
-type = "override-type"
-command = "process${ID}-command"
-EOF
+exit 0

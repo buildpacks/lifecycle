@@ -1,15 +1,27 @@
 #!/bin/bash
 
-set -eu
+set -euo pipefail
 
 platform_dir=$1
 plan_path=$2
 
-i=$(cat -|grep -Eo '[0-9]'|tail -n1)
-let r=$(<add)+${i:-0}
-echo -e "[${r}]\n${r} = true\n" >> "$plan_path"
-echo "stdout: $r"
->&2 echo "stderr: $r"
+echo "detect out: ${BP_ID}@${BP_VERSION}"
+>&2 echo "detect err: ${BP_ID}@${BP_VERSION}"
 
-[[ -f "$platform_dir/env/ERROR" ]] && exit 1
-(( $r > $(<last) )) && exit 100 || exit 0
+echo "Path: ${BP_PATH}" > "detect-info-${BP_ID}-${BP_VERSION}"
+echo "TOML: ${BP_TOML}" >> "detect-info-${BP_ID}-${BP_VERSION}"
+
+ls -1 "$platform_dir/env" > "detect-env-${BP_ID}-${BP_VERSION}"
+
+if [[ -f detect-plan-${BP_ID}-${BP_VERSION}.toml ]]; then
+  cat "detect-plan-${BP_ID}-${BP_VERSION}.toml" > "$plan_path"
+fi
+
+if [[ -f detect-status-${BP_ID}-${BP_VERSION} ]]; then
+  exit "$(cat "detect-status-${BP_ID}-${BP_VERSION}")"
+fi
+if [[ -f detect-status ]]; then
+  exit "$(cat detect-status)"
+fi
+
+exit 0

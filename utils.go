@@ -43,14 +43,6 @@ type buildpackTOML struct {
 	Buildpacks []buildpackInfo `toml:"buildpacks"`
 }
 
-type buildpackInfo struct {
-	ID      string         `toml:"id"`
-	Version string         `toml:"version"`
-	Name    string         `toml:"name"`
-	Path    string         `toml:"path"`
-	Order   BuildpackOrder `toml:"order"`
-}
-
 func (bt *buildpackTOML) lookup(bp Buildpack) (*buildpackInfo, error) {
 	for _, b := range bt.Buildpacks {
 		if b.ID == bp.ID && b.Version == bp.Version {
@@ -68,4 +60,17 @@ func (bt *buildpackTOML) lookup(bp Buildpack) (*buildpackInfo, error) {
 		}
 	}
 	return nil, errors.Errorf("could not find buildpack '%s'", bp)
+}
+
+type buildpackInfo struct {
+	ID      string         `toml:"id"`
+	Version string         `toml:"version"`
+	Name    string         `toml:"name"`
+	Path    string         `toml:"path"`
+	Order   BuildpackOrder `toml:"order"`
+	TOML    string         `toml:"-"`
+}
+
+func (bp buildpackInfo) String() string {
+	return bp.Name + " " + bp.Version
 }

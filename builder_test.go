@@ -345,6 +345,21 @@ func mkfile(t *testing.T, data string, paths ...string) {
 	}
 }
 
+func tofile(t *testing.T, data string, paths ...string) {
+	t.Helper()
+	for _, p := range paths {
+		f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0777)
+		if err != nil {
+			t.Fatalf("Error: %s\n", err)
+		}
+		if _, err := f.Write([]byte(data)); err != nil {
+			f.Close()
+			t.Fatalf("Error: %s\n", err)
+		}
+		f.Close()
+	}
+}
+
 func rdfile(t *testing.T, path string) string {
 	t.Helper()
 	out, err := ioutil.ReadFile(path)
