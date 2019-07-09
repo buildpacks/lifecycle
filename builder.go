@@ -94,8 +94,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		cmd := exec.Command(filepath.Join(bpInfo.Path, "bin", "build"), bpLayersDir, platformDir, bpPlanPath)
-		cmd.Env = append(b.Env.List(), "BP_ID="+bpInfo.ID)
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(b.Env.List(),
 			"BP_ID="+bpInfo.ID,
 			"BP_VERSION="+bpInfo.Version,
 			"BP_PATH="+bpInfo.Path,
@@ -148,6 +147,7 @@ func (p DetectPlan) toBuild(bp Buildpack) buildPlan {
 	return buildPlan{Entries: out}
 }
 
+// TODO: ensure at least one claimed entry of each name is provided by the BP
 func (p DetectPlan) filter(bp Buildpack, plan buildPlan) (DetectPlan, []BOMEntry) {
 	var out []DetectPlanEntry
 	for _, entry := range p.Entries {

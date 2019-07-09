@@ -59,7 +59,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				{Type: "web", Command: "some-web-process"},
 				{Type: "worker", Command: "some-worker-process"},
 			},
-			Env:        env,
+			Env: env,
 			Exec: func(argv0 string, argv []string, envv []string) error {
 				syscallExecArgsColl = append(syscallExecArgsColl, syscallExecArgs{
 					argv0: argv0,

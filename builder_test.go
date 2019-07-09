@@ -2,7 +2,6 @@ package lifecycle_test
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,6 +15,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -55,28 +55,22 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
-		mkfile(t, "replace = true", filepath.Join(appDir, "dep-replace"))
 
 		outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
 		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
 
-		buildpackDir := filepath.Join("testdata", "buildpack")
+		buildpacksDir := filepath.Join("testdata", "by-id")
 		builder = &lifecycle.Builder{
-			PlatformDir: platformDir,
-			LayersDir:   layersDir,
-			AppDir:      appDir,
-			Env:         env,
-			Buildpacks: []*lifecycle.Buildpack{
-				{ID: "buildpack1-id", Path: buildpackDir},
-				{ID: "buildpack2-id", Path: buildpackDir},
-			},
-			Plan: lifecycle.Plan{
-				"dep1":         {"v": "1"},
-				"dep1-keep":    {"v": "2"},
-				"dep1-replace": {"v": "3"},
-				"dep2":         {"v": "4"},
-				"dep2-keep":    {"v": "5"},
-				"dep2-replace": {"v": "6"},
+			AppDir:        appDir,
+			LayersDir:     layersDir,
+			PlatformDir:   platformDir,
+			BuildpacksDir: buildpacksDir,
+			Env:           env,
+			Group: lifecycle.BuildpackGroup{
+				Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1"},
+					{ID: "B", Version: "v2"},
+				},
 			},
 			Out: outLog,
 			Err: errLog,
@@ -91,70 +85,83 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Build", func() {
 		when("building succeeds", func() {
 			it.Before(func() {
-				env.EXPECT().List().Return([]string{"ID=1"})
-				env.EXPECT().List().Return([]string{"ID=2"})
+				env.EXPECT().List().Return([]string{"TEST_ENV=Av1"})
+				env.EXPECT().List().Return([]string{"TEST_ENV=Bv2"})
 			})
 
 			it("should ensure each buildpack's layers dir exists and process build layers", func() {
 				mkdir(t,
-					filepath.Join(layersDir, "buildpack1-id"),
+					filepath.Join(layersDir, "A"),
 
-					filepath.Join(appDir, "buildpack1", "layer1"),
-					filepath.Join(appDir, "buildpack1", "layer2"),
-					filepath.Join(appDir, "buildpack1", "layer3"),
-					filepath.Join(appDir, "buildpack2", "layer4"),
-					filepath.Join(appDir, "buildpack2", "layer5"),
-					filepath.Join(appDir, "buildpack2", "layer6"),
+					filepath.Join(appDir, "layers-A-v1", "layer1"),
+					filepath.Join(appDir, "layers-A-v1", "layer2"),
+					filepath.Join(appDir, "layers-A-v1", "layer3"),
+					filepath.Join(appDir, "layers-B-v2", "layer4"),
+					filepath.Join(appDir, "layers-B-v2", "layer5"),
+					filepath.Join(appDir, "layers-B-v2", "layer6"),
 				)
 				mkfile(t, "build = true",
-					filepath.Join(appDir, "buildpack1", "layer1.toml"),
-					filepath.Join(appDir, "buildpack1", "layer3.toml"),
-					filepath.Join(appDir, "buildpack2", "layer4.toml"),
-					filepath.Join(appDir, "buildpack2", "layer6.toml"),
+					filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
+					filepath.Join(appDir, "layers-A-v1", "layer3.toml"),
+					filepath.Join(appDir, "layers-B-v2", "layer4.toml"),
+					filepath.Join(appDir, "layers-B-v2", "layer6.toml"),
 				)
 				gomock.InOrder(
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "buildpack1-id", "layer1")),
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "buildpack1-id", "layer3")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack1-id", "layer1", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack1-id", "layer1", "env.build")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack1-id", "layer3", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack1-id", "layer3", "env.build")),
+					env.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
+					env.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build")),
 
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "buildpack2-id", "layer4")),
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "buildpack2-id", "layer6")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack2-id", "layer4", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack2-id", "layer4", "env.build")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack2-id", "layer6", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "buildpack2-id", "layer6", "env.build")),
+					env.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer4")),
+					env.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer6")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env.build")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env")),
+					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env.build")),
 				)
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 				testExists(t,
-					filepath.Join(layersDir, "buildpack1-id"),
-					filepath.Join(layersDir, "buildpack2-id"),
+					filepath.Join(layersDir, "A"),
+					filepath.Join(layersDir, "B"),
 				)
 			})
 
 			it("should return build metadata when processes are present", func() {
+				mkfile(t,
+					`[[processes]]`+"\n"+
+						`type = "A-type"`+"\n"+
+						`command = "A-cmd"`+"\n"+
+						`[[processes]]`+"\n"+
+						`type = "override-type"`+"\n"+
+						`command = "A-cmd"`+"\n",
+					filepath.Join(appDir, "launch-A-v1.toml"),
+				)
+				mkfile(t,
+					`[[processes]]`+"\n"+
+						`type = "B-type"`+"\n"+
+						`command = "B-cmd"`+"\n"+
+						`[[processes]]`+"\n"+
+						`type = "override-type"`+"\n"+
+						`command = "B-cmd"`+"\n",
+					filepath.Join(appDir, "launch-B-v2.toml"),
+				)
 				metadata, err := builder.Build()
 				if err != nil {
-					t.Fatalf("Error: %s\n", err)
+					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []lifecycle.Process{
-						{Type: "override-type", Command: "process2-command"},
-						{Type: "process1-type", Command: "process1-command"},
-						{Type: "process2-type", Command: "process2-command"},
+						{Type: "A-type", Command: "A-cmd"},
+						{Type: "B-type", Command: "B-cmd"},
+						{Type: "override-type", Command: "B-cmd"},
 					},
-					Buildpacks: []string{"buildpack1-id", "buildpack2-id"},
-					BOM: lifecycle.Plan{
-						"dep1":         {"v": "1"},
-						"dep1-keep":    {"v": "2"},
-						"dep1-replace": {"replace": true},
-						"dep2":         {"v": "4"},
-						"dep2-keep":    {"v": "5"},
-						"dep2-replace": {"replace": true},
+					Buildpacks: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "B", Version: "v2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected metadata:\n%s\n", s)
@@ -162,21 +169,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should return build metadata when processes are not present", func() {
-				mkfile(t, "test", filepath.Join(appDir, "skip-processes"))
 				metadata, err := builder.Build()
 				if err != nil {
-					t.Fatalf("Error: %s\n", err)
+					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes:  []lifecycle.Process{},
-					Buildpacks: []string{"buildpack1-id", "buildpack2-id"},
-					BOM: lifecycle.Plan{
-						"dep1":         {"v": "1"},
-						"dep1-keep":    {"v": "2"},
-						"dep1-replace": {"replace": true},
-						"dep2":         {"v": "4"},
-						"dep2-keep":    {"v": "5"},
-						"dep2-replace": {"replace": true},
+					Processes: []lifecycle.Process{},
+					Buildpacks: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "B", Version: "v2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected:\n%s\n", s)
@@ -191,53 +192,189 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Error: %s\n", err)
 				}
 				testExists(t,
-					filepath.Join(appDir, "env-buildpack1", "SOME_VAR"),
-					filepath.Join(appDir, "env-buildpack2", "SOME_VAR"),
+					filepath.Join(appDir, "build-env-A-v1", "SOME_VAR"),
+					filepath.Join(appDir, "build-env-B-v2", "SOME_VAR"),
 				)
+			})
+
+			it("should provide environment variables", func() {
+				if _, err := builder.Build(); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				aDir, err := filepath.Abs(filepath.Join(builder.BuildpacksDir, "A", "v1"))
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-A-v1")),
+					"Path: "+aDir+"\n"+
+						"TOML: "+filepath.Join(aDir, "buildpack.toml")+"\n"+
+						"TEST_ENV: Av1\n",
+				); s != "" {
+					t.Fatalf("Unexpected info:\n%s\n", s)
+				}
+				bDir, err := filepath.Abs(filepath.Join(builder.BuildpacksDir, "B", "v2"))
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-B-v2")),
+					"Path: "+bDir+"\n"+
+						"TOML: "+filepath.Join(bDir, "buildpack.toml")+"\n"+
+						"TEST_ENV: Bv2\n",
+				); s != "" {
+					t.Fatalf("Unexpected info:\n%s\n", s)
+				}
 			})
 
 			it("should connect stdout and stdin to the terminal", func() {
 				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Error: %s\n", err)
+					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
-				if stdout.String() != "STDOUT1\nSTDOUT2\n" {
-					t.Fatalf("Unexpected: %s", stdout)
+				if stdout.String() != "build out: A@v1\nbuild out: B@v2\n" {
+					t.Fatalf("Unexpected stdout:\n%s\n", stdout)
 				}
-				if stderr.String() != "STDERR1\nSTDERR2\n" {
-					t.Fatalf("Unexpected: %s", stderr)
+				if stderr.String() != "build err: A@v1\nbuild err: B@v2\n" {
+					t.Fatalf("Unexpected stderr:\n%s\n", stderr)
 				}
 			})
 
 			it("should provide a subset of the build plan to each buildpack", func() {
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Error: %s\n", err)
+				builder.Plan = lifecycle.DetectPlan{
+					Entries: []lifecycle.DetectPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "A", Version: "v1"},
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep1", Version: "v1"},
+							},
+						},
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "A", Version: "v1"},
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep1-next", Version: "v2"},
+							},
+						},
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "A", Version: "v1"},
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep1-replace", Version: "v3"},
+							},
+						},
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep2", Version: "v4"},
+							},
+						},
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep2-next", Version: "v5"},
+							},
+						},
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep2-replace", Version: "v6"},
+							},
+						},
+					},
 				}
-				testPlan(t,
-					lifecycle.Plan{
-						"dep1":         {"v": "1"},
-						"dep1-keep":    {"v": "2"},
-						"dep1-replace": {"v": "3"},
-						"dep2":         {"v": "4"},
-						"dep2-keep":    {"v": "5"},
-						"dep2-replace": {"v": "6"},
-					},
-					filepath.Join(appDir, "plan1.toml"),
+
+				mkfile(t,
+					"[[entries]]\n"+
+						`name = "dep1"`+"\n"+
+						`version = "v1"`+"\n"+
+						"[[entries]]\n"+
+						`name = "dep1-replace"`+"\n"+
+						`version = "v7"`+"\n",
+					filepath.Join(appDir, "build-plan-out-A-v1.toml"),
 				)
-				testPlan(t,
-					lifecycle.Plan{
-						"dep1":         {"v": "1"},
-						"dep2":         {"v": "4"},
-						"dep2-keep":    {"v": "5"},
-						"dep2-replace": {"v": "6"},
+				mkfile(t,
+					"[[entries]]\n"+
+						`name = "dep1-next"`+"\n"+
+						`version = "v9"`+"\n"+
+						"[[entries]]\n"+
+						`name = "dep2"`+"\n"+
+						`version = "v4"`+"\n"+
+						"[[entries]]\n"+
+						`name = "dep2-replace"`+"\n"+
+						`version = "v8"`+"\n",
+					filepath.Join(appDir, "build-plan-out-B-v2.toml"),
+				)
+				metadata, err := builder.Build()
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
+					Processes: []lifecycle.Process{},
+					Buildpacks: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "B", Version: "v2"},
 					},
-					filepath.Join(appDir, "plan2.toml"),
+					BOM: []lifecycle.BOMEntry{
+						{
+							Require:   lifecycle.Require{Name: "dep1", Version: "v1"},
+							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+						},
+						{
+							Require:   lifecycle.Require{Name: "dep1-replace", Version: "v7"},
+							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+						},
+						{
+							Require:   lifecycle.Require{Name: "dep1-next", Version: "v9"},
+							Buildpack: lifecycle.Buildpack{ID: "B", Version: "v2"},
+						},
+						{
+							Require:   lifecycle.Require{Name: "dep2", Version: "v4"},
+							Buildpack: lifecycle.Buildpack{ID: "B", Version: "v2"},
+						},
+						{
+							Require:   lifecycle.Require{Name: "dep2-replace", Version: "v8"},
+							Buildpack: lifecycle.Buildpack{ID: "B", Version: "v2"},
+						},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected:\n%s\n", s)
+				}
+
+				testPlan(t,
+					[]lifecycle.Require{
+						{Name: "dep1", Version: "v1"},
+						{Name: "dep1-next", Version: "v2"},
+						{Name: "dep1-replace", Version: "v3"},
+					},
+					filepath.Join(appDir, "build-plan-in-A-v1.toml"),
+				)
+
+				testPlan(t,
+					[]lifecycle.Require{
+						{Name: "dep1-next", Version: "v2"},
+						{Name: "dep2", Version: "v4"},
+						{Name: "dep2-next", Version: "v5"},
+						{Name: "dep2-replace", Version: "v6"},
+					},
+					filepath.Join(appDir, "build-plan-in-B-v2.toml"),
 				)
 			})
 		})
 
 		when("building fails", func() {
 			it("should error when layer directories cannot be created", func() {
-				mkfile(t, "some-data", filepath.Join(layersDir, "buildpack1-id"))
+				mkfile(t, "some-data", filepath.Join(layersDir, "A"))
 				_, err := builder.Build()
 				if _, ok := err.(*os.PathError); !ok {
 					t.Fatalf("Incorrect error: %s\n", err)
@@ -245,7 +382,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when the provided build plan is invalid", func() {
-				builder.Plan = lifecycle.Plan{"bad-entry": {"f": map[int64]int64{1: 2}}}
+				builder.Plan = lifecycle.DetectPlan{
+					Entries: []lifecycle.DetectPlanEntry{{
+						Providers: []lifecycle.Buildpack{{ID: "A", Version: "v1"}},
+						Requires: []lifecycle.Require{{
+							Metadata: map[string]interface{}{"a": map[int64]int64{1: 2}},
+						}},
+					}}}
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error.\n")
 				} else if !strings.Contains(err.Error(), "toml") {
@@ -254,8 +397,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when any build plan entry is invalid", func() {
-				env.EXPECT().List().Return([]string{"ID=1"})
-				mkfile(t, "bad-key", filepath.Join(appDir, "dep-replace"))
+				env.EXPECT().List().Return([]string{"TEST_ENV=Av1"})
+				mkfile(t, "bad-key", filepath.Join(appDir, "build-plan-out-A-v1.toml"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error.\n")
 				} else if !strings.Contains(err.Error(), "key") {
@@ -264,7 +407,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when the command fails", func() {
-				env.EXPECT().List().Return([]string{"ID=1"})
+				env.EXPECT().List().Return([]string{"TEST_ENV=Av1"})
 				if err := os.RemoveAll(platformDir); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -301,14 +444,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 					},
 				}, "should error", func() {
-					env.EXPECT().List().Return([]string{"ID=1"})
+					env.EXPECT().List().Return([]string{"TEST_ENV=Av1"})
 					mkdir(t,
-						filepath.Join(appDir, "buildpack1", "layer1"),
-						filepath.Join(appDir, "buildpack1", "layer2"),
+						filepath.Join(appDir, "layers-A-v1", "layer1"),
+						filepath.Join(appDir, "layers-A-v1", "layer2"),
 					)
 					mkfile(t, "build = true",
-						filepath.Join(appDir, "buildpack1", "layer1.toml"),
-						filepath.Join(appDir, "buildpack1", "layer2.toml"),
+						filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
+						filepath.Join(appDir, "layers-A-v1", "layer2.toml"),
 					)
 					if _, err := builder.Build(); err != appendErr {
 						t.Fatalf("Incorrect error: %s\n", err)
@@ -317,8 +460,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when launch.toml is not writable", func() {
-				env.EXPECT().List().Return([]string{"ID=1"})
-				mkdir(t, filepath.Join(layersDir, "buildpack1-id", "launch.toml"))
+				env.EXPECT().List().Return([]string{"TEST_ENV=Av1"})
+				mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error")
 				}
@@ -378,14 +521,16 @@ func testExists(t *testing.T, paths ...string) {
 	}
 }
 
-func testPlan(t *testing.T, plan lifecycle.Plan, paths ...string) {
+func testPlan(t *testing.T, plan []lifecycle.Require, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		var c lifecycle.Plan
+		var c struct {
+			Entries []lifecycle.Require `toml:"entries"`
+		}
 		if _, err := toml.DecodeFile(p, &c); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
-		if s := cmp.Diff(c, plan); s != "" {
+		if s := cmp.Diff(c.Entries, plan); s != "" {
 			t.Fatalf("Unexpected plan:\n%s\n", s)
 		}
 	}

@@ -11,10 +11,15 @@ echo "build out: ${BP_ID}@${BP_VERSION}"
 
 echo "Path: ${BP_PATH}" > "build-info-${BP_ID}-${BP_VERSION}"
 echo "TOML: ${BP_TOML}" >> "build-info-${BP_ID}-${BP_VERSION}"
+echo "TEST_ENV: ${TEST_ENV}" >> "build-info-${BP_ID}-${BP_VERSION}"
 
-ls -1 "$platform_dir/env" > "build-env-${BP_ID}-${BP_VERSION}"
+cp -a "$platform_dir/env" "build-env-${BP_ID}-${BP_VERSION}"
 
-cat "$plan_path" > "build-plan-${BP_ID}-${BP_VERSION}.toml"
+cat "$plan_path" > "build-plan-in-${BP_ID}-${BP_VERSION}.toml"
+
+if [[ -f build-plan-out-${BP_ID}-${BP_VERSION}.toml ]]; then
+  cat "build-plan-out-${BP_ID}-${BP_VERSION}.toml" > "$plan_path"
+fi
 
 if [[ -f launch-${BP_ID}-${BP_VERSION}.toml ]]; then
   cat "launch-${BP_ID}-${BP_VERSION}.toml" > "$layers_dir/launch.toml"

@@ -85,7 +85,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		exporter = &lifecycle.Exporter{
 			ArtifactsDir: tmpDir,
-			Buildpacks: []*lifecycle.Buildpack{
+			Buildpacks: []lifecycle.Buildpack{
 				{ID: "buildpack.id", Version: "1.2.3"},
 				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
@@ -831,9 +831,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
-				exporter.Buildpacks = []*lifecycle.Buildpack{
-					{ID: "some/escaped/bp/id"},
-				}
+				exporter.Buildpacks = []lifecycle.Buildpack{{ID: "some/escaped/bp/id"}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), layersDir)
 

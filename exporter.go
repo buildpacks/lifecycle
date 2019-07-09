@@ -18,7 +18,7 @@ import (
 )
 
 type Exporter struct {
-	Buildpacks   []*Buildpack
+	Buildpacks   []Buildpack
 	ArtifactsDir string
 	In           []byte
 	Out, Err     *log.Logger
@@ -72,7 +72,7 @@ func (e *Exporter) Export(
 	}
 
 	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, *bp)
+		bpDir, err := readBuildpackLayersDir(layersDir, bp)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}

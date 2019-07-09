@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/buildpack/imgutil"
 	"github.com/buildpack/imgutil/local"
 	"github.com/buildpack/imgutil/remote"
@@ -73,9 +72,9 @@ func analyzer() error {
 		}
 	}
 
-	var group lifecycle.BuildpackGroup
-	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
-		return cmd.FailErr(err, "read group")
+	group, err := lifecycle.ReadGroup(groupPath)
+	if err != nil {
+		return cmd.FailErr(err, "read buildpack group")
 	}
 
 	analyzer := &lifecycle.Analyzer{
@@ -90,9 +89,7 @@ func analyzer() error {
 		SkipLayers:   skipLayers,
 	}
 
-	var err error
 	var img imgutil.Image
-
 	if useDaemon {
 		dockerClient, err := cmd.DockerClient()
 		if err != nil {

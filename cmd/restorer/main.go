@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/BurntSushi/toml"
 	"github.com/buildpack/imgutil/remote"
 
 	"github.com/buildpack/lifecycle"
@@ -56,9 +55,9 @@ func main() {
 }
 
 func restore() error {
-	var group lifecycle.BuildpackGroup
-	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
-		return cmd.FailErr(err, "read group")
+	group, err := lifecycle.ReadGroup(groupPath)
+	if err != nil {
+		return cmd.FailErr(err, "read buildpack group")
 	}
 
 	restorer := &lifecycle.Restorer{

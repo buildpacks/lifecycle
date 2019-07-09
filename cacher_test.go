@@ -52,7 +52,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 
 			subject = &lifecycle.Cacher{
 				ArtifactsDir: tmpDir,
-				Buildpacks: []*lifecycle.Buildpack{
+				Buildpacks: []lifecycle.Buildpack{
 					{ID: "buildpack.id"},
 					{ID: "other.buildpack.id"},
 				},

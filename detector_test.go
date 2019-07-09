@@ -209,7 +209,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							{ID: "A", Version: "v1"},
 							{ID: "C", Version: "v2"},
 						},
-						Requires:  []lifecycle.Require{{Name: "dep1"}, {Name: "dep1"}},
+						Requires: []lifecycle.Require{{Name: "dep1"}, {Name: "dep1"}},
 					},
 					{
 						Providers: []lifecycle.Buildpack{
@@ -217,7 +217,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							{ID: "C", Version: "v2"},
 							{ID: "D", Version: "v2"},
 						},
-						Requires:  []lifecycle.Require{{Name: "dep2"}, {Name: "dep2"}, {Name: "dep2"}},
+						Requires: []lifecycle.Require{{Name: "dep2"}, {Name: "dep2"}, {Name: "dep2"}},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected :\n%s\n", s)

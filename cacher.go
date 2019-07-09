@@ -13,7 +13,6 @@ import (
 	"github.com/buildpack/lifecycle/metadata"
 )
 
-
 //go:generate mockgen -package testmock -destination testmock/cache.go github.com/buildpack/lifecycle Cache
 type Cache interface {
 	Name() string
@@ -27,7 +26,7 @@ type Cache interface {
 
 type Cacher struct {
 	ArtifactsDir string
-	Buildpacks   []*Buildpack
+	Buildpacks   []Buildpack
 	Out, Err     *log.Logger
 	UID, GID     int
 }
@@ -40,7 +39,7 @@ func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
 
 	newMetadata := cache.Metadata{}
 	for _, bp := range c.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, *bp)
+		bpDir, err := readBuildpackLayersDir(layersDir, bp)
 		if err != nil {
 			return err
 		}
