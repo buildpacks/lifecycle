@@ -86,7 +86,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	when("#Launch", func() {
 		when("no start command has been specified", func() {
 			it("should run the default process type", func() {
-				if err := launcher.Launch("/path/to/launcher", ""); err != nil {
+				if err := launcher.Launch("/path/to/launcher", nil); err != nil {
 					t.Fatal(err)
 				}
 
@@ -110,7 +110,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				it("should return an error", func() {
 					launcher.DefaultProcessType = "not-exist"
 
-					if err := launcher.Launch("/path/to/launcher", ""); err == nil {
+					if err := launcher.Launch("/path/to/launcher", nil); err == nil {
 						t.Fatal("expected launch to return an error")
 					}
 
@@ -124,7 +124,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		when("start command has been specified", func() {
 			when("start command matches a process type", func() {
 				it("should run that process type", func() {
-					if err := launcher.Launch("/path/to/launcher", "worker"); err != nil {
+					if err := launcher.Launch("/path/to/launcher", []string{"worker"}); err != nil {
 						t.Fatal(err)
 					}
 
@@ -140,7 +140,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 			when("start command does NOT match a process type", func() {
 				it("should run the start command", func() {
-					if err := launcher.Launch("/path/to/launcher", "some-different-process"); err != nil {
+					if err := launcher.Launch("/path/to/launcher", []string{"some-different-process"}); err != nil {
 						t.Fatal(err)
 					}
 
@@ -156,8 +156,29 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("a start command provides a list of arguments", func() {
-			it("should invoke the command directly", func() {
-				if err := launcher.Launch("/path/to/launcher", "direct"); err != nil {
+			it("should invoke a process type's start command directly", func() {
+				if err := launcher.Launch("/path/to/launcher", []string{"direct"}); err != nil {
+					t.Fatal(err)
+				}
+
+				if len(syscallExecArgsColl) != 1 {
+					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
+				}
+
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "/bin/sh"); diff != "" {
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
+
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "sh"); diff != "" {
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "some-arg"); diff != "" {
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
+			})
+
+			it("should invoke a provided start command directly", func() {
+				if err := launcher.Launch("/path/to/launcher", []string{"sh", "some-arg"}); err != nil {
 					t.Fatal(err)
 				}
 
@@ -179,7 +200,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 			when("the list of arguments is empty", func() {
 				it("should invoke the command directly without arguments", func() {
-					if err := launcher.Launch("/path/to/launcher", "direct-empty"); err != nil {
+					if err := launcher.Launch("/path/to/launcher", []string{"direct-empty"}); err != nil {
 						t.Fatal(err)
 					}
 
@@ -234,7 +255,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.2", "layer4", "env")),
 					env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "bp.2", "layer4", "env.launch")),
 				)
-				if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
+				if err := launcher.Launch("/path/to/launcher", []string{"start"}); err != nil {
 					t.Fatal(err)
 				}
 				stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
@@ -254,7 +275,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("ignores those buildpacks when setting the env", func() {
-				if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
+				if err := launcher.Launch("/path/to/launcher", []string{"start"}); err != nil {
 					t.Fatal(err)
 				}
 				if len(syscallExecArgsColl) != 1 {
@@ -287,7 +308,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should run them in buildpack order", func() {
-				if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
+				if err := launcher.Launch("/path/to/launcher", []string{"start"}); err != nil {
 					t.Fatal(err)
 				}
 
@@ -307,7 +328,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should run them in buildpack order", func() {
-					if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
+					if err := launcher.Launch("/path/to/launcher", []string{"start"}); err != nil {
 						t.Fatal(err)
 					}
 
@@ -330,7 +351,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should source .profile", func() {
-					if err := launcher.Launch("/path/to/launcher", "start"); err != nil {
+					if err := launcher.Launch("/path/to/launcher", []string{"start"}); err != nil {
 						t.Fatal(err)
 					}
 

@@ -21,11 +21,11 @@ type Launcher struct {
 	Exec               func(argv0 string, argv []string, envv []string) error
 }
 
-func (l *Launcher) Launch(executable, startCommand string) error {
+func (l *Launcher) Launch(self string, cmd []string) error {
 	if err := l.env(); err != nil {
 		return errors.Wrap(err, "modify env")
 	}
-	process, err := l.processFor(startCommand)
+	process, err := l.processFor(cmd)
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
 	}
@@ -52,7 +52,7 @@ func (l *Launcher) Launch(executable, startCommand string) error {
 	}
 	if err := l.Exec("/bin/bash", []string{
 		"bash", "-c",
-		launcher, executable,
+		launcher, self,
 		process.Command,
 	}, l.Env.List()); err != nil {
 		return errors.Wrap(err, "bash exec")
@@ -134,8 +134,8 @@ func (l *Launcher) profileD() (string, error) {
 	return strings.Join(out, "\n"), nil
 }
 
-func (l *Launcher) processFor(cmd string) (Process, error) {
-	if cmd == "" {
+func (l *Launcher) processFor(cmd []string) (Process, error) {
+	if len(cmd) == 0 {
 		if process, ok := l.findProcessType(l.DefaultProcessType); ok {
 			return process, nil
 		}
@@ -143,11 +143,14 @@ func (l *Launcher) processFor(cmd string) (Process, error) {
 		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
 	}
 
-	if process, ok := l.findProcessType(cmd); ok {
-		return process, nil
+	if len(cmd) == 1 {
+		if process, ok := l.findProcessType(cmd[0]); ok {
+			return process, nil
+		}
+		return Process{Command: cmd[0]}, nil
 	}
 
-	return Process{Command: cmd}, nil
+	return Process{Command: cmd[0], Args: cmd[1:]}, nil
 }
 
 func (l *Launcher) findProcessType(kind string) (Process, bool) {
