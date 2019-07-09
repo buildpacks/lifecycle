@@ -4,10 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/buildpack/imgutil"
-	"github.com/pkg/errors"
 	"io"
 	"os"
+
+	"github.com/buildpack/imgutil"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/cache"
 )
