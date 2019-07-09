@@ -36,7 +36,7 @@ func (bp Buildpack) String() string {
 }
 
 type DetectPlan struct {
-	Entries []DetectPlanEntry ``
+	Entries []DetectPlanEntry `toml:"entries"`
 }
 
 type DetectPlanEntry struct {
@@ -58,7 +58,7 @@ type DetectConfig struct {
 	AppDir        string
 	PlatformDir   string
 	BuildpacksDir string
-	Out, Err      *log.Logger
+	Out           *log.Logger
 	trials        *sync.Map
 }
 
@@ -160,7 +160,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []DetectPlanEntry
 	}
 
 	if len(results) == 0 {
-		c.Out.Print("fail: no buildpacks detected")
+		c.Out.Print("fail: no viable buildpacks in group")
 		return nil, nil, ErrFail
 	}
 

@@ -42,14 +42,14 @@ type BOMEntry struct {
 	Buildpack Buildpack `toml:"buildpack"`
 }
 
-type BuildPlan struct {
-	Entries []Require `toml:"entries"`
-}
-
 type BuildMetadata struct {
 	Processes  []Process   `toml:"processes"`
 	Buildpacks []Buildpack `toml:"buildpacks"`
 	BOM        []BOMEntry  `toml:"bom"`
+}
+
+type buildPlan struct {
+	Entries []Require `toml:"entries"`
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
@@ -110,7 +110,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := setupEnv(b.Env, bpLayersDir); err != nil {
 			return nil, err
 		}
-		var bpPlanOut BuildPlan
+		var bpPlanOut buildPlan
 		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
 			return nil, err
 		}
@@ -135,7 +135,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}, nil
 }
 
-func (p DetectPlan) toBuild(bp Buildpack) BuildPlan {
+func (p DetectPlan) toBuild(bp Buildpack) buildPlan {
 	var out []Require
 	for _, entry := range p.Entries {
 		for _, provider := range entry.Providers {
@@ -145,10 +145,10 @@ func (p DetectPlan) toBuild(bp Buildpack) BuildPlan {
 			}
 		}
 	}
-	return BuildPlan{Entries: out}
+	return buildPlan{Entries: out}
 }
 
-func (p DetectPlan) filter(bp Buildpack, plan BuildPlan) (DetectPlan, []BOMEntry) {
+func (p DetectPlan) filter(bp Buildpack, plan buildPlan) (DetectPlan, []BOMEntry) {
 	var out []DetectPlanEntry
 	for _, entry := range p.Entries {
 		if !plan.has(entry) {
@@ -162,7 +162,7 @@ func (p DetectPlan) filter(bp Buildpack, plan BuildPlan) (DetectPlan, []BOMEntry
 	return DetectPlan{Entries: out}, bom
 }
 
-func (p BuildPlan) has(entry DetectPlanEntry) bool {
+func (p buildPlan) has(entry DetectPlanEntry) bool {
 	for _, buildEntry := range p.Entries {
 		for _, req := range entry.Requires {
 			if req.Name == buildEntry.Name {

@@ -53,7 +53,6 @@ func detect() error {
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
 		Out:           log.New(os.Stdout, "", 0),
-		Err:           log.New(os.Stderr, "", 0),
 	})
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
