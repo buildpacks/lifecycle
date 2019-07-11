@@ -32,7 +32,7 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	if err := os.Chdir(l.AppDir); err != nil {
 		return errors.Wrap(err, "change to app directory")
 	}
-	if process.Args != nil {
+	if process.Direct {
 		binary, err := exec.LookPath(process.Command)
 		if err != nil {
 			return errors.Wrap(err, "path lookup")
@@ -50,11 +50,10 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	if err != nil {
 		return errors.Wrap(err, "determine profile")
 	}
-	if err := l.Exec("/bin/bash", []string{
+	if err := l.Exec("/bin/bash", append([]string{
 		"bash", "-c",
-		launcher, self,
-		process.Command,
-	}, l.Env.List()); err != nil {
+		launcher, self, process.Command,
+	}, process.Args...), l.Env.List()); err != nil {
 		return errors.Wrap(err, "bash exec")
 	}
 	return nil
@@ -147,7 +146,10 @@ func (l *Launcher) processFor(cmd []string) (Process, error) {
 		if process, ok := l.findProcessType(cmd[0]); ok {
 			return process, nil
 		}
-		return Process{Command: cmd[0]}, nil
+	}
+
+	if len(cmd) > 1 && cmd[0] == "-" {
+		return Process{Command: cmd[1], Args: cmd[2:], Direct: true}, nil
 	}
 
 	return Process{Command: cmd[0], Args: cmd[1:]}, nil

@@ -56,10 +56,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			AppDir:             filepath.Join(tmpDir, "launch", "app"),
 			Processes: []lifecycle.Process{
 				{Type: "other", Command: "some-other-process"},
-				{Type: "web", Command: "some-web-process"},
+				{Type: "web", Command: "some-web-process", Args: []string{"arg1", "arg2"}},
 				{Type: "worker", Command: "some-worker-process"},
-				{Type: "direct", Command: "sh", Args: []string{"some-arg"}},
-				{Type: "direct-empty", Command: "sh", Args: []string{}},
+				{Type: "direct", Command: "sh", Args: []string{"arg1", "arg2"}, Direct: true},
 			},
 			Env: env,
 			Exec: func(argv0 string, argv []string, envv []string) error {
@@ -101,7 +100,14 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[3], "/path/to/launcher"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
+
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-web-process"); diff != "" {
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[5], "arg1"); diff != "" {
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[6], "arg2"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
 			})
@@ -155,7 +161,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("a start command provides a list of arguments", func() {
+		when("a start command is marked as direct", func() {
 			it("should invoke a process type's start command directly", func() {
 				if err := launcher.Launch("/path/to/launcher", []string{"direct"}); err != nil {
 					t.Fatal(err)
@@ -172,13 +178,16 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "sh"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "some-arg"); diff != "" {
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "arg1"); diff != "" {
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], "arg2"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
 			})
 
 			it("should invoke a provided start command directly", func() {
-				if err := launcher.Launch("/path/to/launcher", []string{"sh", "some-arg"}); err != nil {
+				if err := launcher.Launch("/path/to/launcher", []string{"-", "sh", "arg1", "arg2"}); err != nil {
 					t.Fatal(err)
 				}
 
@@ -193,29 +202,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "sh"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "some-arg"); diff != "" {
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "arg1"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
-			})
-
-			when("the list of arguments is empty", func() {
-				it("should invoke the command directly without arguments", func() {
-					if err := launcher.Launch("/path/to/launcher", []string{"direct-empty"}); err != nil {
-						t.Fatal(err)
-					}
-
-					if len(syscallExecArgsColl) != 1 {
-						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "/bin/sh"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "sh"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-				})
+				if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], "arg2"); diff != "" {
+					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
 			})
 		})
 
