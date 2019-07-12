@@ -148,7 +148,7 @@ func (l *Launcher) processFor(cmd []string) (Process, error) {
 		}
 	}
 
-	if len(cmd) > 1 && cmd[0] == "-" {
+	if len(cmd) > 1 && cmd[0] == "--" {
 		return Process{Command: cmd[1], Args: cmd[2:], Direct: true}, nil
 	}
 

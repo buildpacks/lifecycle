@@ -187,7 +187,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should invoke a provided start command directly", func() {
-				if err := launcher.Launch("/path/to/launcher", []string{"-", "sh", "arg1", "arg2"}); err != nil {
+				if err := launcher.Launch("/path/to/launcher", []string{"--", "sh", "arg1", "arg2"}); err != nil {
 					t.Fatal(err)
 				}
 
