@@ -19,26 +19,29 @@ const (
 	DefaultStackPath     = "/buildpacks/stack.toml"
 	DefaultAnalyzedPath  = "./analyzed.toml"
 	DefaultPlanPath      = "./plan.toml"
+	DefaultProcessType   = "web"
 
-	EnvLayersDir      = "CNB_LAYERS_DIR"
-	EnvAppDir         = "CNB_APP_DIR"
-	EnvBuildpacksDir  = "CNB_BUILDPACKS_DIR"
-	EnvPlatformDir    = "CNB_PLATFORM_DIR"
-	EnvAnalyzedPath   = "CNB_ANALYZED_PATH"
-	EnvOrderPath      = "CNB_ORDER_PATH"
-	EnvGroupPath      = "CNB_GROUP_PATH"
-	EnvStackPath      = "CNB_STACK_PATH"
-	EnvPlanPath       = "CNB_PLAN_PATH"
-	EnvUseDaemon      = "CNB_USE_DAEMON"       // defaults to false
-	EnvUseHelpers     = "CNB_USE_CRED_HELPERS" // defaults to false
-	EnvRunImage       = "CNB_RUN_IMAGE"
-	EnvCacheImage     = "CNB_CACHE_IMAGE"
-	EnvCacheDir       = "CNB_CACHE_DIR"
-	EnvLaunchCacheDir = "CNB_LAUNCH_CACHE_DIR"
-	EnvUID            = "CNB_USER_ID"
-	EnvGID            = "CNB_GROUP_ID"
-	EnvRegistryAuth   = "CNB_REGISTRY_AUTH"
-	EnvSkipLayers     = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
+	EnvLayersDir         = "CNB_LAYERS_DIR"
+	EnvAppDir            = "CNB_APP_DIR"
+	EnvBuildpacksDir     = "CNB_BUILDPACKS_DIR"
+	EnvPlatformDir       = "CNB_PLATFORM_DIR"
+	EnvAnalyzedPath      = "CNB_ANALYZED_PATH"
+	EnvOrderPath         = "CNB_ORDER_PATH"
+	EnvGroupPath         = "CNB_GROUP_PATH"
+	EnvStackPath         = "CNB_STACK_PATH"
+	EnvPlanPath          = "CNB_PLAN_PATH"
+	EnvUseDaemon         = "CNB_USE_DAEMON"       // defaults to false
+	EnvUseHelpers        = "CNB_USE_CRED_HELPERS" // defaults to false
+	EnvRunImage          = "CNB_RUN_IMAGE"
+	EnvCacheImage        = "CNB_CACHE_IMAGE"
+	EnvCacheDir          = "CNB_CACHE_DIR"
+	EnvLaunchCacheDir    = "CNB_LAUNCH_CACHE_DIR"
+	EnvUID               = "CNB_USER_ID"
+	EnvGID               = "CNB_GROUP_ID"
+	EnvRegistryAuth      = "CNB_REGISTRY_AUTH"
+	EnvSkipLayers        = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
+	EnvProcessType       = "CNB_PROCESS_TYPE"
+	EnvProcessTypeLegacy = "PACK_PROCESS_TYPE" // deprecated
 )
 
 func FlagAnalyzedPath(dir *string) {
