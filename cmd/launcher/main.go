@@ -22,22 +22,26 @@ func main() {
 }
 
 func launch() error {
-	defaultProcessType := "web"
-	if v := os.Getenv("PACK_PROCESS_TYPE"); v != "" {
+	defaultProcessType := cmd.DefaultProcessType
+	if v := os.Getenv(cmd.EnvProcessType); v != "" {
+		defaultProcessType = v
+	} else if v := os.Getenv(cmd.EnvProcessTypeLegacy); v != "" {
 		defaultProcessType = v
 	}
+	_ = os.Unsetenv(cmd.EnvProcessType)
+	_ = os.Unsetenv(cmd.EnvProcessTypeLegacy)
 
 	layersDir := cmd.DefaultLayersDir
 	if v := os.Getenv(cmd.EnvLayersDir); v != "" {
 		layersDir = v
 	}
-	os.Unsetenv(cmd.EnvLayersDir)
+	_ = os.Unsetenv(cmd.EnvLayersDir)
 
 	appDir := cmd.DefaultAppDir
 	if v := os.Getenv(cmd.EnvAppDir); v != "" {
 		appDir = v
 	}
-	os.Unsetenv(cmd.EnvAppDir)
+	_ = os.Unsetenv(cmd.EnvAppDir)
 
 	var metadata lifecycle.BuildMetadata
 	metadataPath := filepath.Join(layersDir, "config", "metadata.toml")
