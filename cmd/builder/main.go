@@ -20,6 +20,7 @@ var (
 	layersDir     string
 	appDir        string
 	platformDir   string
+	printVersion  bool
 )
 
 func init() {
@@ -29,6 +30,7 @@ func init() {
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagPlatformDir(&platformDir)
+	cmd.FlagVersion(&printVersion)
 }
 
 func main() {
@@ -36,6 +38,11 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	if printVersion {
+		cmd.ExitWithVersion()
+	}
+
 	if flag.NArg() != 0 {
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 	}
@@ -63,6 +70,7 @@ func build() error {
 		Environ: os.Environ,
 		Map:     lifecycle.POSIXBuildEnv,
 	}
+
 	builder := &lifecycle.Builder{
 		PlatformDir: platformDir,
 		LayersDir:   layersDir,
@@ -70,8 +78,8 @@ func build() error {
 		Env:         env,
 		Buildpacks:  group.Buildpacks,
 		Plan:        plan,
-		Out:         os.Stdout,
-		Err:         os.Stderr,
+		Out:         log.New(os.Stdout, "", 0),
+		Err:         log.New(os.Stderr, "", 0),
 	}
 
 	metadata, err := builder.Build()

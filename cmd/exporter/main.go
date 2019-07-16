@@ -36,6 +36,7 @@ var (
 	useHelpers     bool
 	uid            int
 	gid            int
+	printVersion   bool
 )
 
 const launcherPath = "/lifecycle/launcher"
@@ -52,6 +53,7 @@ func init() {
 	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
+	cmd.FlagVersion(&printVersion)
 }
 
 func main() {
@@ -59,6 +61,10 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	if printVersion {
+		cmd.ExitWithVersion()
+	}
 
 	imageNames = flag.Args()
 
@@ -87,18 +93,16 @@ func export() error {
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	outLog := log.New(os.Stdout, "", 0)
-	errLog := log.New(os.Stderr, "", 0)
 	exporter := &lifecycle.Exporter{
 		Buildpacks:   group.Buildpacks,
-		Out:          outLog,
-		Err:          errLog,
+		Out:          log.New(os.Stdout, "", 0),
+		Err:          log.New(os.Stderr, "", 0),
 		UID:          uid,
 		GID:          gid,
 		ArtifactsDir: artifactsDir,
 	}
 
-	analyzedMD, err := parseOptionalAnalyzedMD(outLog, analyzedPath)
+	analyzedMD, err := parseOptionalAnalyzedMD(cmd.OutLogger, analyzedPath)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
@@ -111,7 +115,7 @@ func export() error {
 	var stackMD metadata.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
-		outLog.Printf("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
+		cmd.OutLogger.Printf("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
 	}
 
 	if runImageRef == "" {
@@ -143,7 +147,7 @@ func export() error {
 		}
 
 		if analyzedMD.Image != nil {
-			outLog.Printf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+			cmd.OutLogger.Printf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
 			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 		}
 
@@ -170,7 +174,7 @@ func export() error {
 		}
 
 		if analyzedMD.Image != nil {
-			outLog.Printf("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+			cmd.OutLogger.Printf("Reusing layers from image '%s'", analyzedMD.Image.Reference)
 			analyzedRegistry, err := image.ParseRegistry(analyzedMD.Image.Reference)
 			if err != nil {
 				return cmd.FailErr(err, "parse analyzed registry")

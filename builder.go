@@ -2,8 +2,8 @@ package lifecycle
 
 import (
 	"bytes"
-	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +19,7 @@ type Builder struct {
 	Env         BuildEnv
 	Buildpacks  []*Buildpack
 	Plan        Plan
-	Out, Err    io.Writer
+	Out, Err    *log.Logger
 }
 
 type BuildEnv interface {
@@ -96,8 +96,8 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		cmd.Env = b.Env.List()
 		cmd.Dir = appDir
 		cmd.Stdin = planIn
-		cmd.Stdout = b.Out
-		cmd.Stderr = b.Err
+		cmd.Stdout = b.Out.Writer()
+		cmd.Stderr = b.Err.Writer()
 		if err := cmd.Run(); err != nil {
 			return nil, err
 		}

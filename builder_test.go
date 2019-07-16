@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,6 +57,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 		mkfile(t, "replace = true", filepath.Join(appDir, "dep-replace"))
 
+		outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
+		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
+
 		buildpackDir := filepath.Join("testdata", "buildpack")
 		builder = &lifecycle.Builder{
 			PlatformDir: platformDir,
@@ -74,8 +78,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				"dep2-keep":    {"v": "5"},
 				"dep2-replace": {"v": "6"},
 			},
-			Out: io.MultiWriter(stdout, it.Out()),
-			Err: io.MultiWriter(stderr, it.Out()),
+			Out: outLog,
+			Err: errLog,
 		}
 	})
 
