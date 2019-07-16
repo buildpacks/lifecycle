@@ -23,6 +23,7 @@ var (
 	groupPath     string
 	uid           int
 	gid           int
+	printVersion  bool
 )
 
 func init() {
@@ -32,6 +33,7 @@ func init() {
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
+	cmd.FlagVersion(&printVersion)
 }
 
 func main() {
@@ -39,6 +41,11 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	if printVersion {
+		cmd.ExitWithVersion()
+	}
+
 	if flag.NArg() > 0 {
 		cmd.Exit(cmd.FailErrCode(errors.New("received unexpected args"), cmd.CodeInvalidArgs, "parse arguments"))
 	}

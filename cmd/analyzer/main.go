@@ -31,6 +31,7 @@ var (
 	uid          int
 	useDaemon    bool
 	useHelpers   bool
+	printVersion bool
 )
 
 func init() {
@@ -43,6 +44,7 @@ func init() {
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagSkipLayers(&skipLayers)
+	cmd.FlagVersion(&printVersion)
 }
 
 func main() {
@@ -50,6 +52,11 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	if printVersion {
+		cmd.ExitWithVersion()
+	}
+
 	if flag.NArg() > 1 {
 		cmd.Exit(cmd.FailErrCode(fmt.Errorf("received %d args expected 1", flag.NArg()), cmd.CodeInvalidArgs, "parse arguments"))
 	}

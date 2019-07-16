@@ -116,6 +116,10 @@ func FlagSkipLayers(skip *bool) {
 	flag.BoolVar(skip, "skip-layers", boolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
 }
 
+func FlagVersion(version *bool) {
+	flag.BoolVar(version, "version", false, "show version")
+}
+
 const (
 	CodeFailed = 1
 	// 2: reserved
@@ -127,6 +131,12 @@ const (
 	CodeFailedLaunch = 8
 	// 9: CodeFailedUpdate
 	CodeFailedSave = 10
+)
+
+var (
+	buildVersion = "0.0.0"
+	OutLogger    = log.New(os.Stdout, "", 0)
+	ErrLogger    = log.New(os.Stderr, "", 0)
 )
 
 type ErrorFail struct {
@@ -163,12 +173,16 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	logger := log.New(os.Stderr, "", 0)
-	logger.Printf("Error: %s\n", err)
+	ErrLogger.Printf("Error: %s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
 	os.Exit(CodeFailed)
+}
+
+func ExitWithVersion() {
+	OutLogger.Printf(buildVersion)
+	os.Exit(0)
 }
 
 func intEnv(k string) int {

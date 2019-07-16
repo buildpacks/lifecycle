@@ -1,16 +1,22 @@
 sudo: required
 services:
 - docker
+
 install:
 - set -e
+
 jobs:
   include:
   - stage: unit test
     language: go
     go:
-    - 1.11.x
+    - 1.12.x
     env:
     - GO111MODULE=on
     go_import_path: github.com/buildpack/lifecycle
     script: |
       make test
+
+branches:
+  only:
+    - master

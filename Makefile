@@ -1,10 +1,11 @@
-# Go parameters
+export GO111MODULE = on
 GOCMD?=go
-GOENV=GO111MODULE=on GOOS=linux GOARCH=amd64 CGO_ENABLED=0
-GOBUILD=$(GOCMD) build -mod=vendor
+GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
+GOBUILD=$(GOCMD) build -mod=vendor -ldflags '-X "github.com/buildpack/lifecycle/cmd.buildVersion=$(LIFECYCLE_BUILD_VERSION)"'
 GOTEST=$(GOCMD) test -mod=vendor
-LIFECYCLE_VERSION?=dev
-ARCHIVE_NAME=lifecycle-$(LIFECYCLE_VERSION)+linux.x86-64
+LIFECYCLE_VERSION?=0.0.0
+LIFECYCLE_BUILD_VERSION?=$(LIFECYCLE_VERSION)+$$(git rev-parse --short HEAD)
+ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 
 all: test build package
 build:
@@ -27,8 +28,13 @@ format:
 vet:
 	$(GOCMD) vet $$($(GOCMD) list ./... | grep -v /testdata/)
 
-test: format imports vet
-	$(GOTEST) -v ./...
+test: unit acceptance
+
+unit: format imports vet
+	$(GOTEST) -v -count=1 ./...
+
+acceptance: format imports vet
+	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 
 clean:
 	rm -rf ./out

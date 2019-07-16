@@ -15,9 +15,9 @@ var (
 	appDir        string
 	platformDir   string
 	orderPath     string
-
-	groupPath string
-	planPath  string
+	groupPath     string
+	planPath      string
+	printVersion  bool
 )
 
 func init() {
@@ -25,9 +25,9 @@ func init() {
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagPlatformDir(&platformDir)
 	cmd.FlagOrderPath(&orderPath)
-
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagPlanPath(&planPath)
+	cmd.FlagVersion(&printVersion)
 }
 
 func main() {
@@ -35,8 +35,9 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
-	if flag.NArg() != 0 {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+
+	if printVersion {
+		cmd.ExitWithVersion()
 	}
 	cmd.Exit(detect())
 }
@@ -57,6 +58,7 @@ func detect() error {
 		Out:         log.New(os.Stdout, "", 0),
 		Err:         log.New(os.Stderr, "", 0),
 	})
+
 	if group == nil {
 		return cmd.FailCode(cmd.CodeFailedDetect, "detect")
 	}
