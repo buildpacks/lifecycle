@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -81,6 +82,22 @@ func AssertNil(t *testing.T, actual interface{}) {
 	if !isNil(actual) {
 		t.Fatalf("Expected nil: %s", actual)
 	}
+}
+
+func AssertJSONEq(t *testing.T, expected, actual string) {
+	t.Helper()
+
+	var expectedJSONAsInterface, actualJSONAsInterface interface{}
+
+	if err := json.Unmarshal([]byte(expected), &expectedJSONAsInterface); err != nil {
+		t.Fatalf("Expected value ('%s') is not valid json.\nJSON parsing error: '%s'", expected, err.Error())
+	}
+
+	if err := json.Unmarshal([]byte(actual), &actualJSONAsInterface); err != nil {
+		t.Fatalf("Input ('%s') needs to be valid json.\nJSON parsing error: '%s'", actual, err.Error())
+	}
+
+	AssertEq(t, expectedJSONAsInterface, actualJSONAsInterface)
 }
 
 func isNil(value interface{}) bool {

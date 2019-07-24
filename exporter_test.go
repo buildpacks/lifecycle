@@ -320,6 +320,88 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
 			})
 
+			when("metadata.toml does not include BOM", func() {
+				it.Before(func() {
+					err := ioutil.WriteFile(filepath.Join(layersDir, "config", "metadata.toml"), []byte(`
+[[processes]]
+  type = "web"
+  command = "npm start"
+`),
+						os.ModePerm,
+					)
+					h.AssertNil(t, err)
+				})
+
+				it("BOM is not present in that label", func() {
+					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherPath, stack))
+
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+					h.AssertNil(t, err)
+
+					h.AssertJSONEq(t, `
+{
+  "bom": null
+}
+`,
+						metadataJSON)
+
+				})
+			})
+
+			when("metadata.toml includes BOM", func() {
+				it.Before(func() {
+					err := ioutil.WriteFile(filepath.Join(layersDir, "config", "metadata.toml"), []byte(`
+[[processes]]
+  type = "web"
+  command = "npm start"
+[bom]
+  [bom.auto-reconfiguration]
+    version = "2.7.0"
+    [bom.auto-reconfiguration.metadata]
+      name = "Spring Auto-reconfiguration"
+      sha256 = "0d524877db7344ec34620f7e46254053568292f5ce514f74e3a0e9b2dbfc338b"
+      stacks = ["io.buildpacks.stacks.bionic", "org.cloudfoundry.stacks.cflinuxfs3"]
+      uri = "https://example.com"
+
+      [[bom.auto-reconfiguration.metadata.licenses]]
+        type = "Apache-2.0"
+`),
+						os.ModePerm,
+					)
+					h.AssertNil(t, err)
+				})
+
+				it("saves BOM metadata to the resulting image", func() {
+					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherPath, stack))
+
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+					h.AssertNil(t, err)
+					h.AssertJSONEq(t, `
+{
+  "bom": {
+    "auto-reconfiguration": {
+      "metadata": {
+        "licenses": [
+          {
+            "type": "Apache-2.0"
+          }
+        ],
+        "name": "Spring Auto-reconfiguration",
+        "sha256": "0d524877db7344ec34620f7e46254053568292f5ce514f74e3a0e9b2dbfc338b",
+        "stacks": [
+          "io.buildpacks.stacks.bionic",
+          "org.cloudfoundry.stacks.cflinuxfs3"
+        ],
+        "uri": "https://example.com"
+      },
+      "version": "2.7.0"
+    }
+  }
+}
+`, metadataJSON)
+				})
+			})
+
 			it("sets CNB_LAYERS_DIR", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherPath, stack))
 

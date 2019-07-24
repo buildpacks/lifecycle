@@ -2,12 +2,18 @@ package metadata
 
 import (
 	"encoding/json"
+	"path"
 
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 )
 
 const AppMetadataLabel = "io.buildpacks.lifecycle.metadata"
+const BuildMetadataLabel = "io.buildpacks.build.metadata"
+
+type BuildMetadata struct {
+	BOM map[string]map[string]interface{} `json:"bom"`
+}
 
 type AppImageMetadata struct {
 	App        AppMetadata         `json:"app" toml:"app"`
@@ -101,4 +107,8 @@ func GetRawMetadata(image imgutil.Image, metadataLabel string) (string, error) {
 		return "", errors.Wrapf(err, "retrieving label '%s' for image '%s'", metadataLabel, image.Name())
 	}
 	return contents, nil
+}
+
+func MetadataFilePath(layersDir string) string {
+	return path.Join(layersDir, "config", "metadata.toml")
 }

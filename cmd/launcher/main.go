@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -10,6 +9,7 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/metadata"
 )
 
 var (
@@ -43,9 +43,9 @@ func launch() error {
 	}
 	_ = os.Unsetenv(cmd.EnvAppDir)
 
-	var metadata lifecycle.BuildMetadata
-	metadataPath := filepath.Join(layersDir, "config", "metadata.toml")
-	if _, err := toml.DecodeFile(metadataPath, &metadata); err != nil {
+	var md lifecycle.BuildMetadata
+	metadataPath := metadata.MetadataFilePath(layersDir)
+	if _, err := toml.DecodeFile(metadataPath, &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 
@@ -59,8 +59,8 @@ func launch() error {
 		DefaultProcessType: defaultProcessType,
 		LayersDir:          layersDir,
 		AppDir:             appDir,
-		Processes:          metadata.Processes,
-		Buildpacks:         metadata.Buildpacks,
+		Processes:          md.Processes,
+		Buildpacks:         md.Buildpacks,
 		Env:                env,
 		Exec:               syscall.Exec,
 	}
