@@ -2,6 +2,7 @@ package cache
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/buildpack/imgutil"
@@ -73,17 +74,18 @@ func (c *ImageCache) Commit() error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	c.committed = true
 
 	if err := c.newImage.Save(); err != nil {
 		return errors.Wrapf(err, "saving image '%s'", c.newImage.Name())
 	}
+	c.committed = true
 
-	if err := c.origImage.Delete(); err != nil {
-		return errors.Wrapf(err, "deleting image '%s'", c.origImage.Name())
+	if c.origImage.Found() {
+		// Deleting the original image is for cleanup only and should not fail the commit.
+		if err := c.origImage.Delete(); err != nil {
+			fmt.Printf("Unable to delete previous cache image: %v", err)
+		}
 	}
-
 	c.origImage = c.newImage
-
 	return nil
 }

@@ -8,12 +8,13 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/imgutil/local"
+
+	"github.com/buildpack/imgutil/remote"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/docker"
+	"github.com/buildpack/lifecycle/image/auth"
 )
 
 var (
@@ -78,17 +79,20 @@ func doCache() error {
 
 	var cacheStore lifecycle.Cache
 	if cacheImageTag != "" {
-		dockerClient, err := docker.DefaultClient()
+		origCacheImage, err := remote.NewImage(
+			cacheImageTag,
+			auth.DefaultEnvKeychain(),
+			remote.FromBaseImage(cacheImageTag),
+		)
 		if err != nil {
-			return cmd.FailErr(err, "create docker client")
+			return cmd.FailErr(err, "accessing cache image")
 		}
 
-		origCacheImage, err := local.NewImage(cacheImageTag, dockerClient, local.FromBaseImage(cacheImageTag))
-		if err != nil {
-			return cmd.FailErr(err, "access cache image")
-		}
-
-		emptyImage, err := local.NewImage(cacheImageTag, dockerClient, local.WithPreviousImage(cacheImageTag))
+		emptyImage, err := remote.NewImage(
+			cacheImageTag,
+			auth.DefaultEnvKeychain(),
+			remote.WithPreviousImage(cacheImageTag),
+		)
 		if err != nil {
 			return cmd.FailErr(err, "creating new cache image")
 		}
