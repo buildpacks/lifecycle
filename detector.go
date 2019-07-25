@@ -218,8 +218,9 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Env = append(os.Environ(),
-		"BP_ID="+bp.ID,
-		"BP_VERSION="+bp.Version,
+		"BP_ID="+bp.Buildpack.ID,
+		"BP_VERSION="+bp.Buildpack.Version,
+		"BP_DIR="+bp.Path,
 	)
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
@@ -344,7 +345,7 @@ func (r *detectResult) options() []detectOption {
 	out := []detectOption{{r.Buildpack, r.planSections}}
 	for i, sections := range r.Or {
 		bp := r.Buildpack
-		bp.Optional = bp.Optional && i == len(r.Or) - 1
+		bp.Optional = bp.Optional && i == len(r.Or)-1
 		out = append(out, detectOption{bp, sections})
 	}
 	return out
@@ -360,7 +361,7 @@ func (rs detectResults) runTrials(f func(int, detectTrial) (depMap, error)) (dep
 func (rs detectResults) runTrialsFrom(i int, prefix detectTrial, f func(int, detectTrial) (depMap, error)) (int, depMap, detectTrial, error) {
 	if len(rs) == 0 {
 		deps, err := f(i, prefix)
-		return i+1, deps, prefix, err
+		return i + 1, deps, prefix, err
 	}
 
 	var lastErr error
@@ -391,7 +392,6 @@ func (ts detectTrial) remove(bp Buildpack) detectTrial {
 	}
 	return out
 }
-
 
 type depEntry struct {
 	BuildPlanEntry

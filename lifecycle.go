@@ -25,13 +25,17 @@ var POSIXLaunchEnv = map[string][]string{
 }
 
 type buildpackTOML struct {
-	ID      string         `toml:"id"`
-	Version string         `toml:"version"`
-	Name    string         `toml:"name"`
-	Order   BuildpackOrder `toml:"order"`
-	Path    string         `toml:"-"`
+	Buildpack buildpackInfo  `toml:"buildpack"`
+	Order     BuildpackOrder `toml:"order"`
+	Path      string         `toml:"-"`
+}
+
+type buildpackInfo struct {
+	ID      string `toml:"id"`
+	Version string `toml:"version"`
+	Name    string `toml:"name"`
 }
 
 func (bp buildpackTOML) String() string {
-	return bp.Name + " " + bp.Version
+	return bp.Buildpack.Name + " " + bp.Buildpack.Version
 }
