@@ -35,6 +35,11 @@ func (bp Buildpack) String() string {
 	return bp.ID + "@" + bp.Version
 }
 
+func (bp Buildpack) noOpt() Buildpack {
+	bp.Optional = false
+	return bp
+}
+
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
 }
@@ -42,6 +47,15 @@ type BuildPlan struct {
 type BuildPlanEntry struct {
 	Providers []Buildpack `toml:"providers"`
 	Requires  []Require   `toml:"requires"`
+}
+
+func (be BuildPlanEntry) noOpt() BuildPlanEntry {
+	var out []Buildpack
+	for _, p := range be.Providers {
+		out = append(out, p.noOpt())
+	}
+	be.Providers = out
+	return be
 }
 
 type Require struct {
@@ -129,11 +143,11 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 
 	var found []Buildpack
 	for _, r := range trial {
-		found = append(found, r.Buildpack)
+		found = append(found, r.Buildpack.noOpt())
 	}
 	var plan []BuildPlanEntry
 	for _, dep := range deps {
-		plan = append(plan, dep.BuildPlanEntry)
+		plan = append(plan, dep.BuildPlanEntry.noOpt())
 	}
 	return found, plan, nil
 }
@@ -328,8 +342,10 @@ type detectResult struct {
 
 func (r *detectResult) options() []detectOption {
 	out := []detectOption{{r.Buildpack, r.planSections}}
-	for _, sections := range r.Or {
-		out = append(out, detectOption{r.Buildpack, sections})
+	for i, sections := range r.Or {
+		bp := r.Buildpack
+		bp.Optional = bp.Optional && i == len(r.Or) - 1
+		out = append(out, detectOption{bp, sections})
 	}
 	return out
 }
