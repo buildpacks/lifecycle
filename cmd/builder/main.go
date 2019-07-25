@@ -55,7 +55,7 @@ func build() error {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	var plan lifecycle.DetectPlan
+	var plan lifecycle.BuildPlan
 	if _, err := toml.DecodeFile(planPath, &plan); err != nil {
 		return cmd.FailErr(err, "parse detect plan")
 	}

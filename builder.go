@@ -18,7 +18,7 @@ type Builder struct {
 	BuildpacksDir string
 	Env           BuildEnv
 	Group         BuildpackGroup
-	Plan          DetectPlan
+	Plan          BuildPlan
 	Out, Err      *log.Logger
 }
 
@@ -48,7 +48,7 @@ type BuildMetadata struct {
 	BOM        []BOMEntry  `toml:"bom"`
 }
 
-type buildPlan struct {
+type buildpackPlan struct {
 	Entries []Require `toml:"entries"`
 }
 
@@ -90,7 +90,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-		if err := WriteTOML(bpPlanPath, plan.toBuild(bp)); err != nil {
+		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
 			return nil, err
 		}
 		cmd := exec.Command(filepath.Join(bpInfo.Path, "bin", "build"), bpLayersDir, platformDir, bpPlanPath)
@@ -98,7 +98,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			"BP_ID="+bpInfo.ID,
 			"BP_VERSION="+bpInfo.Version,
 			"BP_PATH="+bpInfo.Path,
-			"BP_TOML="+bpInfo.TOML,
 		)
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out.Writer()
@@ -109,7 +108,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := setupEnv(b.Env, bpLayersDir); err != nil {
 			return nil, err
 		}
-		var bpPlanOut buildPlan
+		var bpPlanOut buildpackPlan
 		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
 			return nil, err
 		}
@@ -134,7 +133,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}, nil
 }
 
-func (p DetectPlan) toBuild(bp Buildpack) buildPlan {
+func (p BuildPlan) find(bp Buildpack) buildpackPlan {
 	var out []Require
 	for _, entry := range p.Entries {
 		for _, provider := range entry.Providers {
@@ -144,12 +143,12 @@ func (p DetectPlan) toBuild(bp Buildpack) buildPlan {
 			}
 		}
 	}
-	return buildPlan{Entries: out}
+	return buildpackPlan{Entries: out}
 }
 
 // TODO: ensure at least one claimed entry of each name is provided by the BP
-func (p DetectPlan) filter(bp Buildpack, plan buildPlan) (DetectPlan, []BOMEntry) {
-	var out []DetectPlanEntry
+func (p BuildPlan) filter(bp Buildpack, plan buildpackPlan) (BuildPlan, []BOMEntry) {
+	var out []BuildPlanEntry
 	for _, entry := range p.Entries {
 		if !plan.has(entry) {
 			out = append(out, entry)
@@ -159,10 +158,10 @@ func (p DetectPlan) filter(bp Buildpack, plan buildPlan) (DetectPlan, []BOMEntry
 	for _, entry := range plan.Entries {
 		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp})
 	}
-	return DetectPlan{Entries: out}, bom
+	return BuildPlan{Entries: out}, bom
 }
 
-func (p buildPlan) has(entry DetectPlanEntry) bool {
+func (p buildpackPlan) has(entry BuildPlanEntry) bool {
 	for _, buildEntry := range p.Entries {
 		for _, req := range entry.Requires {
 			if req.Name == buildEntry.Name {

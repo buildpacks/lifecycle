@@ -238,8 +238,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should provide a subset of the build plan to each buildpack", func() {
-				builder.Plan = lifecycle.DetectPlan{
-					Entries: []lifecycle.DetectPlanEntry{
+				builder.Plan = lifecycle.BuildPlan{
+					Entries: []lifecycle.BuildPlanEntry{
 						{
 							Providers: []lifecycle.Buildpack{
 								{ID: "A", Version: "v1"},
@@ -382,8 +382,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when the provided build plan is invalid", func() {
-				builder.Plan = lifecycle.DetectPlan{
-					Entries: []lifecycle.DetectPlanEntry{{
+				builder.Plan = lifecycle.BuildPlan{
+					Entries: []lifecycle.BuildPlanEntry{{
 						Providers: []lifecycle.Buildpack{{ID: "A", Version: "v1"}},
 						Requires: []lifecycle.Require{{
 							Metadata: map[string]interface{}{"a": map[int64]int64{1: 2}},

@@ -106,7 +106,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if s := cmp.Diff(plan.Entries, []lifecycle.DetectPlanEntry(nil)); s != "" {
+			if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry(nil)); s != "" {
 				t.Fatalf("Unexpected :\n%s\n", s)
 			}
 
@@ -203,7 +203,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected group:\n%s\n", s)
 				}
 
-				if s := cmp.Diff(plan.Entries, []lifecycle.DetectPlanEntry{
+				if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{
 							{ID: "A", Version: "v1"},
@@ -313,7 +313,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected group:\n%s\n", s)
 				}
 
-				if s := cmp.Diff(plan.Entries, []lifecycle.DetectPlanEntry{
+				if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{{ID: "B", Version: "v1"}},
 						Requires:  []lifecycle.Require{{Name: "dep-present"}},
