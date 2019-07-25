@@ -136,7 +136,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		return nil, nil, ErrFail
 	}
 
-	deps, trial, err := results.runTrials(nil, c.runTrial)
+	deps, trial, err := results.runTrials(c.runTrial)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -152,8 +152,8 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 	return found, plan, nil
 }
 
-func (c *DetectConfig) runTrial(trial detectTrial) (depMap, error) {
-	c.Out.Print("Trial...")
+func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, error) {
+	c.Out.Printf("Trial #%d...", i)
 
 	var deps depMap
 	for retry := true; retry; {
@@ -352,21 +352,27 @@ func (r *detectResult) options() []detectOption {
 
 type detectResults []detectResult
 
-func (rs detectResults) runTrials(prefix detectTrial, f func(detectTrial) (depMap, error)) (depMap, detectTrial, error) {
+func (rs detectResults) runTrials(f func(int, detectTrial) (depMap, error)) (depMap, detectTrial, error) {
+	_, deps, trial, err := rs.runTrialsFrom(0, nil, f)
+	return deps, trial, err
+}
+
+func (rs detectResults) runTrialsFrom(i int, prefix detectTrial, f func(int, detectTrial) (depMap, error)) (int, depMap, detectTrial, error) {
 	if len(rs) == 0 {
-		deps, err := f(prefix)
-		return deps, prefix, err
+		deps, err := f(i, prefix)
+		return i+1, deps, prefix, err
 	}
 
 	var lastErr error
 	for _, option := range rs[0].options() {
-		dm, trial, err := rs[1:].runTrials(append(prefix, option), f)
+		count, deps, trial, err := rs[1:].runTrialsFrom(i, append(prefix, option), f)
 		if err == nil {
-			return dm, trial, nil
+			return count, deps, trial, nil
 		}
+		i = count
 		lastErr = err
 	}
-	return nil, nil, lastErr
+	return 0, nil, nil, lastErr
 }
 
 type detectOption struct {
