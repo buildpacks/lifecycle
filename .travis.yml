@@ -1,22 +1,13 @@
-sudo: required
-services:
-- docker
-
-install:
-- set -e
-
-jobs:
-  include:
-  - stage: unit test
-    language: go
-    go:
-    - 1.12.x
-    env:
-    - GO111MODULE=on
-    go_import_path: github.com/buildpack/lifecycle
-    script: |
-      make test
-
+language: go
+go:
+- 1.12.x
+before_script:
+- mkdir /tmp/yj
+- wget https://github.com/sclevine/yj/releases/download/v4.0.0/yj-linux -O /tmp/yj/yj
+- chmod +x "/tmp/yj/yj"
+- export PATH=/tmp/yj:$PATH
+script:
+- make test
 branches:
   only:
-    - master
+  - master
