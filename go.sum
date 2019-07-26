@@ -7,6 +7,8 @@ github.com/Microsoft/go-winio v0.4.12 h1:xAfWHN1IrQ0NJ9TBC0KBZoqLjzDTr1ML+4MywiU
 github.com/Microsoft/go-winio v0.4.12/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/buildpack/imgutil v0.0.0-20190702194220-aa6eb76474d3 h1:aSZAFY7Fux4lds6QQwN13SuzJFF7iUe1T0JkO7HLnAA=
 github.com/buildpack/imgutil v0.0.0-20190702194220-aa6eb76474d3/go.mod h1:X0yFLGZtSyTXsEJq9NaPP9Rdnaq+3wouZ7xaTgw1680=
+github.com/buildpack/imgutil v0.0.0-20190726132853-1f31ed20483a h1:N9h8e7nYvJKpfQdEGU3RK/xSLXIuhPQURH0g3KIGgM0=
+github.com/buildpack/imgutil v0.0.0-20190726132853-1f31ed20483a/go.mod h1:X0yFLGZtSyTXsEJq9NaPP9Rdnaq+3wouZ7xaTgw1680=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

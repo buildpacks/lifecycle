@@ -296,7 +296,7 @@ func (i *Image) GetLayer(sha string) (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	return layer.Compressed()
+	return layer.Uncompressed()
 }
 
 func (i *Image) AddLayer(path string) error {
@@ -361,16 +361,19 @@ func (i *Image) doSave(imageName string) error {
 	if err != nil {
 		return err
 	}
-
-	if err := remote.Write(ref, i.image, remote.WithAuth(auth)); err != nil {
-		return err
-	}
-
-	return nil
+	return remote.Write(ref, i.image, remote.WithAuth(auth))
 }
 
 func (i *Image) Delete() error {
-	return errors.New("remote image does not implement Delete")
+	id, err := i.Identifier()
+	if err != nil {
+		return err
+	}
+	ref, auth, err := referenceForRepoName(i.keychain, id.String())
+	if err != nil {
+		return err
+	}
+	return remote.Delete(ref, remote.WithAuth(auth))
 }
 
 type subImage struct {

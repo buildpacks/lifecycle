@@ -2,7 +2,7 @@
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/buildpack/imgutil v0.0.0-20190702194220-aa6eb76474d3
+# github.com/buildpack/imgutil v0.0.0-20190726132853-1f31ed20483a
 github.com/buildpack/imgutil
 github.com/buildpack/imgutil/local
 github.com/buildpack/imgutil/remote
