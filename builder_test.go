@@ -201,25 +201,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
-				aDir, err := filepath.Abs(filepath.Join(builder.BuildpacksDir, "A", "v1"))
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
 				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-A-v1")),
-					"Path: "+aDir+"\n"+
-						"TOML: "+filepath.Join(aDir, "buildpack.toml")+"\n"+
-						"TEST_ENV: Av1\n",
+					"TEST_ENV: Av1\n",
 				); s != "" {
 					t.Fatalf("Unexpected info:\n%s\n", s)
 				}
-				bDir, err := filepath.Abs(filepath.Join(builder.BuildpacksDir, "B", "v2"))
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
 				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-B-v2")),
-					"Path: "+bDir+"\n"+
-						"TOML: "+filepath.Join(bDir, "buildpack.toml")+"\n"+
-						"TEST_ENV: Bv2\n",
+					"TEST_ENV: Bv2\n",
 				); s != "" {
 					t.Fatalf("Unexpected info:\n%s\n", s)
 				}

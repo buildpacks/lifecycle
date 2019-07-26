@@ -65,10 +65,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			tofile(t, data, filepath.Join(config.AppDir, p))
 		}
 	}
-	rdappfile := func(path string) string {
-		t.Helper()
-		return rdfile(t, filepath.Join(config.AppDir, path))
-	}
 
 	when("#Detect", func() {
 		it("should expand order-containing buildpack IDs", func() {
@@ -113,21 +109,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			if s := outLog.String(); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"pass: A@v1\n"+
-					"pass: B@v1\n",
+					"pass: B@v1\n"+
+					"Resolving plan... (try #1)\n"+
+					"Success! (2)\n",
 			) {
 				t.Fatalf("Unexpected results:\n%s\n", s)
-			}
-
-			bpDir, err := filepath.Abs(filepath.Join(config.BuildpacksDir, "A", "v1"))
-			if err != nil {
-				t.Fatalf("Unexpected error:\n%s\n", err)
-			}
-
-			if s := cmp.Diff(rdappfile("detect-info-A-v1"),
-				"Path: "+bpDir+"\n"+
-					"TOML: "+filepath.Join(bpDir, "buildpack.toml")+"\n",
-			); s != "" {
-				t.Fatalf("Unexpected :\n%s\n", s)
 			}
 		})
 
@@ -139,6 +125,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			if s := cmp.Diff(outLog.String(),
 				"======== Results ========\n"+
+					"Resolving plan... (try #1)\n"+
 					"fail: no viable buildpacks in group\n",
 			); s != "" {
 				t.Fatalf("Unexpected log:\n%s\n", s)
@@ -161,6 +148,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				"======== Results ========\n"+
 					"skip: A@v1\n"+
 					"skip: B@v1\n"+
+					"Resolving plan... (try #1)\n"+
 					"fail: no viable buildpacks in group\n",
 			) {
 				t.Fatalf("Unexpected results:\n%s\n", s)
@@ -228,7 +216,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: A@v1\n"+
 						"pass: C@v2\n"+
 						"pass: D@v2\n"+
-						"pass: B@v1\n",
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"Success! (4)\n",
 				) {
 					t.Fatalf("Unexpected results:\n%s\n", s)
 				}
@@ -255,6 +245,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"skip: A@v1\n"+
 						"pass: B@v1\n"+
 						"pass: C@v1\n"+
+						"Resolving plan... (try #1)\n"+
 						"fail: B@v1 requires dep1\n",
 				) {
 					t.Fatalf("Unexpected results:\n%s\n", s)
@@ -282,6 +273,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"skip: C@v1\n"+
+						"Resolving plan... (try #1)\n"+
 						"fail: B@v1 provides unused dep1\n",
 				) {
 					t.Fatalf("Unexpected results:\n%s\n", s)
@@ -327,8 +319,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"pass: C@v1\n"+
+						"Resolving plan... (try #1)\n"+
 						"skip: A@v1 requires dep-missing\n"+
-						"skip: C@v1 provides unused dep-missing\n",
+						"skip: C@v1 provides unused dep-missing\n"+
+						"Success! (1)\n",
 				) {
 					t.Fatalf("Unexpected results:\n%s\n", s)
 				}

@@ -5,20 +5,21 @@ set -euo pipefail
 platform_dir=$1
 plan_path=$2
 
-echo "detect out: ${BP_ID}@${BP_VERSION}"
->&2 echo "detect err: ${BP_ID}@${BP_VERSION}"
+bp_dir=$(cd $(dirname "$0")/.. && pwd)
+bp_id=$(cat "$bp_dir/buildpack.toml"|yj -t|jq -r .buildpack.id)
+bp_version=$(cat "$bp_dir/buildpack.toml"|yj -t|jq -r .buildpack.version)
 
-echo "Path: ${BP_PATH}" > "detect-info-${BP_ID}-${BP_VERSION}"
-echo "TOML: ${BP_TOML}" >> "detect-info-${BP_ID}-${BP_VERSION}"
+echo "detect out: ${bp_id}@${bp_version}"
+>&2 echo "detect err: ${bp_id}@${bp_version}"
 
-ls -1 "$platform_dir/env" > "detect-env-${BP_ID}-${BP_VERSION}"
+ls -1 "$platform_dir/env" > "detect-env-${bp_id}-${bp_version}"
 
-if [[ -f detect-plan-${BP_ID}-${BP_VERSION}.toml ]]; then
-  cat "detect-plan-${BP_ID}-${BP_VERSION}.toml" > "$plan_path"
+if [[ -f detect-plan-${bp_id}-${bp_version}.toml ]]; then
+  cat "detect-plan-${bp_id}-${bp_version}.toml" > "$plan_path"
 fi
 
-if [[ -f detect-status-${BP_ID}-${BP_VERSION} ]]; then
-  exit "$(cat "detect-status-${BP_ID}-${BP_VERSION}")"
+if [[ -f detect-status-${bp_id}-${bp_version} ]]; then
+  exit "$(cat "detect-status-${bp_id}-${bp_version}")"
 fi
 if [[ -f detect-status ]]; then
   exit "$(cat detect-status)"

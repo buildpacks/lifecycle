@@ -94,11 +94,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		cmd := exec.Command(filepath.Join(bpInfo.Path, "bin", "build"), bpLayersDir, platformDir, bpPlanPath)
-		cmd.Env = append(b.Env.List(),
-			"BP_ID="+bpInfo.Buildpack.ID,
-			"BP_VERSION="+bpInfo.Buildpack.Version,
-			"BP_DIR="+bpInfo.Path,
-		)
+		cmd.Env = b.Env.List()
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out.Writer()
 		cmd.Stderr = b.Err.Writer()

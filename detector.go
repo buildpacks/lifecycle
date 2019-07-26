@@ -140,6 +140,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 	if err != nil {
 		return nil, nil, err
 	}
+	c.Out.Printf("Success! (%d)", len(trial))
 
 	var found []Buildpack
 	for _, r := range trial {
@@ -152,8 +153,8 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 	return found, plan, nil
 }
 
-func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, error) {
-	c.Out.Printf("Trial #%d...", i)
+func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
+	c.Out.Printf("Resolving plan... (try #%d)", i+1)
 
 	var deps depMap
 	for retry := true; retry; {
@@ -170,7 +171,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, error) {
 			trial = trial.remove(bp)
 			return nil
 		}); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if err := deps.eachUnmetProvide(func(name string, bp Buildpack) error {
@@ -183,15 +184,15 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, error) {
 			trial = trial.remove(bp)
 			return nil
 		}); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if len(trial) == 0 {
 		c.Out.Print("fail: no viable buildpacks in group")
-		return nil, ErrFail
+		return nil, nil, ErrFail
 	}
-	return deps, nil
+	return deps, trial, nil
 }
 
 func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
@@ -217,11 +218,6 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	cmd.Dir = appDir
 	cmd.Stdout = out
 	cmd.Stderr = out
-	cmd.Env = append(os.Environ(),
-		"BP_ID="+bp.Buildpack.ID,
-		"BP_VERSION="+bp.Buildpack.Version,
-		"BP_DIR="+bp.Path,
-	)
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			if status, ok := err.Sys().(syscall.WaitStatus); ok {
@@ -352,16 +348,17 @@ func (r *detectResult) options() []detectOption {
 }
 
 type detectResults []detectResult
+type detectFunc func(int, detectTrial) (depMap, detectTrial, error)
 
-func (rs detectResults) runTrials(f func(int, detectTrial) (depMap, error)) (depMap, detectTrial, error) {
+func (rs detectResults) runTrials(f detectFunc) (depMap, detectTrial, error) {
 	_, deps, trial, err := rs.runTrialsFrom(0, nil, f)
 	return deps, trial, err
 }
 
-func (rs detectResults) runTrialsFrom(i int, prefix detectTrial, f func(int, detectTrial) (depMap, error)) (int, depMap, detectTrial, error) {
+func (rs detectResults) runTrialsFrom(i int, prefix detectTrial, f detectFunc) (int, depMap, detectTrial, error) {
 	if len(rs) == 0 {
-		deps, err := f(i, prefix)
-		return i + 1, deps, prefix, err
+		deps, trial, err := f(i, prefix)
+		return i + 1, deps, trial, err
 	}
 
 	var lastErr error

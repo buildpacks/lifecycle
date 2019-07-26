@@ -1,0 +1,13 @@
+[buildpack]
+id = "F"
+name = "Buildpack F"
+version = "v1"
+
+[[order]]
+group = [{id = "C", version = "v1"}]
+
+[[order]]
+group = [{id = "G", version = "v1", optional = true}]
+
+[[order]]
+group = [{id = "D", version = "v1"}]
