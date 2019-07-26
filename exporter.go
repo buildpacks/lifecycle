@@ -25,13 +25,18 @@ type Exporter struct {
 	UID, GID     int
 }
 
+type LauncherConfig struct {
+	Path     string
+	Metadata metadata.LauncherMetadata
+}
+
 func (e *Exporter) Export(
 	layersDir,
 	appDir string,
 	workingImage imgutil.Image,
 	origMetadata metadata.LayersMetadata,
 	additionalNames []string,
-	launcher string,
+	launcherConfig LauncherConfig,
 	stack metadata.StackMetadata,
 ) error {
 	var err error
@@ -61,7 +66,7 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "exporting config layer")
 	}
 
-	meta.Launcher.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: launcher, identifier: "launcher"}, origMetadata.Launcher.SHA)
+	meta.Launcher.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: launcherConfig.Path, identifier: "launcher"}, origMetadata.Launcher.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting launcher layer")
 	}
@@ -128,7 +133,7 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "read build metadata")
 	}
 
-	if err := e.addBuildMetadataLabel(workingImage, buildMD.BOM); err != nil {
+	if err := e.addBuildMetadataLabel(workingImage, buildMD.BOM, launcherConfig.Metadata); err != nil {
 		return errors.Wrapf(err, "add build metadata label")
 	}
 
@@ -140,7 +145,7 @@ func (e *Exporter) Export(
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
-	if err = workingImage.SetEntrypoint(launcher); err != nil {
+	if err = workingImage.SetEntrypoint(launcherConfig.Path); err != nil {
 		return errors.Wrap(err, "setting entrypoint")
 	}
 
@@ -151,7 +156,7 @@ func (e *Exporter) Export(
 	return e.saveImage(workingImage, additionalNames)
 }
 
-func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan Plan) error {
+func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan Plan, launcherMD metadata.LauncherMetadata) error {
 	var bps []metadata.BuildpackMetadata
 	for _, bp := range e.Buildpacks {
 		bps = append(bps, metadata.BuildpackMetadata{
@@ -163,7 +168,9 @@ func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan Plan) error {
 	buildJson, err := json.Marshal(metadata.BuildMetadata{
 		BOM:        plan,
 		Buildpacks: bps,
+		Launcher:   launcherMD,
 	})
+
 	if err != nil {
 		return errors.Wrap(err, "parse build metadata")
 	}

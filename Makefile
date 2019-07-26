@@ -1,10 +1,11 @@
 export GO111MODULE = on
 GOCMD?=go
 GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
-GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-X 'github.com/buildpack/lifecycle/cmd.buildVersion=$(LIFECYCLE_BUILD_VERSION)'"
+GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-X 'github.com/buildpack/lifecycle.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpack/lifecycle.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpack/lifecycle.SCMCommit=$(SCM_COMMIT)'"
 GOTEST=$(GOCMD) test -mod=vendor
 LIFECYCLE_VERSION?=0.0.0
-LIFECYCLE_BUILD_VERSION?=$(LIFECYCLE_VERSION)+$$(git rev-parse --short HEAD)
+SCM_REPO?=
+SCM_COMMIT=$$(git rev-parse --short HEAD)
 ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 
 all: test build package
