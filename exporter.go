@@ -6,6 +6,7 @@ import (
 	"log"
 	"path/filepath"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpack/imgutil"
 	"github.com/buildpack/imgutil/local"
 	"github.com/buildpack/imgutil/remote"
@@ -48,10 +49,6 @@ func (e *Exporter) Export(
 	}
 
 	meta.RunImage.Reference = identifier.String()
-	if err != nil {
-		return errors.Wrap(err, "get run image digest")
-	}
-
 	meta.Stack = stack
 
 	meta.App.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: appDir, identifier: "app"}, origMetadata.App.SHA)
@@ -124,6 +121,20 @@ func (e *Exporter) Export(
 
 	if err = workingImage.SetLabel(metadata.AppMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
+	}
+
+	buildMD := &BuildMetadata{}
+	if _, err := toml.DecodeFile(metadata.MetadataFilePath(layersDir), buildMD); err != nil {
+		return errors.Wrap(err, "read build metadata")
+	} else {
+		buildJson, err := json.Marshal(metadata.BuildMetadata{BOM: buildMD.BOM})
+		if err != nil {
+			return errors.Wrap(err, "parse build metadata")
+		}
+
+		if err = workingImage.SetLabel(metadata.BuildMetadataLabel, string(buildJson)); err != nil {
+			return errors.Wrap(err, "set build image metadata label")
+		}
 	}
 
 	if err = workingImage.SetEnv(cmd.EnvLayersDir, layersDir); err != nil {

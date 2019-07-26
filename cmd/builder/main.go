@@ -5,12 +5,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/metadata"
 )
 
 var (
@@ -82,13 +82,13 @@ func build() error {
 		Err:         log.New(os.Stderr, "", 0),
 	}
 
-	metadata, err := builder.Build()
+	md, err := builder.Build()
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	metadataPath := filepath.Join(layersDir, "config", "metadata.toml")
-	if err := lifecycle.WriteTOML(metadataPath, metadata); err != nil {
+	metadataPath := metadata.MetadataFilePath(layersDir)
+	if err := lifecycle.WriteTOML(metadataPath, md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil
