@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -102,8 +103,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry(nil)); s != "" {
-				t.Fatalf("Unexpected :\n%s\n", s)
+			if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+				t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 			}
 
 			if s := outLog.String(); !strings.HasSuffix(s,
@@ -191,7 +192,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected group:\n%s\n", s)
 				}
 
-				if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry{
+				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{
 							{ID: "A", Version: "v1"},
@@ -207,8 +208,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						},
 						Requires: []lifecycle.Require{{Name: "dep2"}, {Name: "dep2"}, {Name: "dep2"}},
 					},
-				}); s != "" {
-					t.Fatalf("Unexpected results:\n%s\n", s)
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 				}
 
 				if s := outLog.String(); !strings.HasSuffix(s,
@@ -305,13 +306,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected group:\n%s\n", s)
 				}
 
-				if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry{
+				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{{ID: "B", Version: "v1"}},
 						Requires:  []lifecycle.Require{{Name: "dep-present"}},
 					},
-				}); s != "" {
-					t.Fatalf("Unexpected results:\n%s\n", s)
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 				}
 
 				if s := outLog.String(); !strings.HasSuffix(s,
@@ -371,7 +372,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected group:\n%s\n", s)
 				}
 
-				if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry{
+				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{{ID: "A", Version: "v1"}},
 						Requires:  []lifecycle.Require{{Name: "dep1-present"}},
@@ -380,8 +381,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Providers: []lifecycle.Buildpack{{ID: "C", Version: "v1"}},
 						Requires:  []lifecycle.Require{{Name: "dep6-present"}},
 					},
-				}); s != "" {
-					t.Fatalf("Unexpected :\n%s\n", s)
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 				}
 
 				if s := outLog.String(); !strings.HasSuffix(s,
@@ -395,6 +396,27 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+func hasEntry(l []lifecycle.BuildPlanEntry, entry lifecycle.BuildPlanEntry) bool {
+	for _, e := range l {
+		if reflect.DeepEqual(e, entry) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasEntries(a, b []lifecycle.BuildPlanEntry) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, e := range a {
+		if !hasEntry(b, e) {
+			return false
+		}
+	}
+	return true
 }
 
 const outputFailureEv1 = `
