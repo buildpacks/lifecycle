@@ -136,7 +136,11 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		return nil, nil, ErrFail
 	}
 
-	deps, trial, err := results.runTrials(c.runTrial)
+	i := 0
+	deps, trial, err := results.runTrials(func(trial detectTrial) (depMap, detectTrial, error) {
+		i++
+		return c.runTrial(i, trial)
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -154,7 +158,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 }
 
 func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
-	c.Out.Printf("Resolving plan... (try #%d)", i+1)
+	c.Out.Printf("Resolving plan... (try #%d)", i)
 
 	var deps depMap
 	for retry := true; retry; {
@@ -338,39 +342,37 @@ type detectResult struct {
 }
 
 func (r *detectResult) options() []detectOption {
-	out := []detectOption{{r.Buildpack, r.planSections}}
-	for i, sections := range r.Or {
+	var out []detectOption
+	for i, sections := range append([]planSections{r.planSections}, r.Or...) {
 		bp := r.Buildpack
-		bp.Optional = bp.Optional && i == len(r.Or)-1
+		bp.Optional = bp.Optional && i == len(r.Or)
 		out = append(out, detectOption{bp, sections})
 	}
 	return out
 }
 
 type detectResults []detectResult
-type detectFunc func(int, detectTrial) (depMap, detectTrial, error)
+type trialFunc func(detectTrial) (depMap, detectTrial, error)
 
-func (rs detectResults) runTrials(f detectFunc) (depMap, detectTrial, error) {
-	_, deps, trial, err := rs.runTrialsFrom(0, nil, f)
-	return deps, trial, err
+func (rs detectResults) runTrials(f trialFunc) (depMap, detectTrial, error) {
+	return rs.runTrialsFrom(nil, f)
 }
 
-func (rs detectResults) runTrialsFrom(i int, prefix detectTrial, f detectFunc) (int, depMap, detectTrial, error) {
+func (rs detectResults) runTrialsFrom(prefix detectTrial, f trialFunc) (depMap, detectTrial, error) {
 	if len(rs) == 0 {
-		deps, trial, err := f(i, prefix)
-		return i + 1, deps, trial, err
+		deps, trial, err := f(prefix)
+		return deps, trial, err
 	}
 
 	var lastErr error
 	for _, option := range rs[0].options() {
-		count, deps, trial, err := rs[1:].runTrialsFrom(i, append(prefix, option), f)
+		deps, trial, err := rs[1:].runTrialsFrom(append(prefix, option), f)
 		if err == nil {
-			return count, deps, trial, nil
+			return deps, trial, nil
 		}
-		i = count
 		lastErr = err
 	}
-	return 0, nil, nil, lastErr
+	return nil, nil, lastErr
 }
 
 type detectOption struct {

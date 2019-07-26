@@ -113,7 +113,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"Resolving plan... (try #1)\n"+
 					"Success! (2)\n",
 			) {
-				t.Fatalf("Unexpected results:\n%s\n", s)
+				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
 		})
 
@@ -151,7 +151,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"Resolving plan... (try #1)\n"+
 					"fail: no viable buildpacks in group\n",
 			) {
-				t.Fatalf("Unexpected results:\n%s\n", s)
+				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
 		})
 
@@ -208,7 +208,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Requires: []lifecycle.Require{{Name: "dep2"}, {Name: "dep2"}, {Name: "dep2"}},
 					},
 				}); s != "" {
-					t.Fatalf("Unexpected :\n%s\n", s)
+					t.Fatalf("Unexpected results:\n%s\n", s)
 				}
 
 				if s := outLog.String(); !strings.HasSuffix(s,
@@ -220,7 +220,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"Resolving plan... (try #1)\n"+
 						"Success! (4)\n",
 				) {
-					t.Fatalf("Unexpected results:\n%s\n", s)
+					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
 			})
 
@@ -248,7 +248,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"Resolving plan... (try #1)\n"+
 						"fail: B@v1 requires dep1\n",
 				) {
-					t.Fatalf("Unexpected results:\n%s\n", s)
+					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
 			})
 
@@ -276,7 +276,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"Resolving plan... (try #1)\n"+
 						"fail: B@v1 provides unused dep1\n",
 				) {
-					t.Fatalf("Unexpected results:\n%s\n", s)
+					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
 			})
 
@@ -311,7 +311,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Requires:  []lifecycle.Require{{Name: "dep-present"}},
 					},
 				}); s != "" {
-					t.Fatalf("Unexpected :\n%s\n", s)
+					t.Fatalf("Unexpected results:\n%s\n", s)
 				}
 
 				if s := outLog.String(); !strings.HasSuffix(s,
@@ -324,14 +324,80 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"skip: C@v1 provides unused dep-missing\n"+
 						"Success! (1)\n",
 				) {
-					t.Fatalf("Unexpected results:\n%s\n", s)
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should fallback to alternate build plans", func() {
+				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"", "detect-plan-B-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep7-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep8-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep9-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep10-missing\"", "detect-plan-D-v1.toml")
+
+				group, plan, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Optional: true},
+						{ID: "B", Version: "v1", Optional: true},
+						{ID: "C", Version: "v1"},
+						{ID: "D", Version: "v1", Optional: true},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "B", Version: "v1"},
+						{ID: "C", Version: "v1"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(plan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{{ID: "A", Version: "v1"}},
+						Requires:  []lifecycle.Require{{Name: "dep1-present"}},
+					},
+					{
+						Providers: []lifecycle.Buildpack{{ID: "C", Version: "v1"}},
+						Requires:  []lifecycle.Require{{Name: "dep6-present"}},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected :\n%s\n", s)
+				}
+
+				if s := outLog.String(); !strings.HasSuffix(s,
+					"Resolving plan... (try #16)\n"+
+						"skip: D@v1 requires dep9-missing\n"+
+						"skip: D@v1 provides unused dep10-missing\n"+
+						"Success! (3)\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
 			})
 		})
 	})
 }
 
-var outputFailureEv1 = `
+const outputFailureEv1 = `
 ======== Output: A@v1 ========
 detect out: A@v1
 detect err: A@v1
