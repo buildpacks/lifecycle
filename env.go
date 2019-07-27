@@ -36,31 +36,58 @@ func (p *Env) AddRootDir(baseDir string) error {
 	return nil
 }
 
-func prefix(s string, prefix byte) string {
-	if s == "" {
-		return ""
-	} else {
-		return string(prefix) + s
-	}
-}
-
 func (p *Env) AddEnvDir(envDir string) error {
 	return eachEnvFile(envDir, func(k, v string) error {
 		parts := strings.SplitN(k, ".", 2)
 		name := parts[0]
 		var action string
 		if len(parts) > 1 {
-			action = strings.ToLower(parts[1])
+			action = parts[1]
 		}
 		switch action {
+		case "prepend":
+			return p.Setenv(name, v+prefix(p.Getenv(name), delim(envDir, name)...))
 		case "append":
-			return p.Setenv(name, v+p.Getenv(name))
+			return p.Setenv(name, suffix(p.Getenv(name), delim(envDir, name)...)+v)
 		case "override":
 			return p.Setenv(name, v)
+		case "default":
+			if p.Getenv(name) != "" {
+				return nil
+			}
+			return p.Setenv(name, v)
+		case "":
+			return p.Setenv(name, v+prefix(p.Getenv(name), delim(envDir, name, os.PathListSeparator)...))
 		default:
-			return p.Setenv(name, v+prefix(p.Getenv(name), os.PathListSeparator))
+			return nil
 		}
 	})
+}
+
+func (p *Env) List() []string {
+	return p.Environ()
+}
+
+func prefix(s string, prefix ...byte) string {
+	if s == "" {
+		return ""
+	}
+	return string(prefix) + s
+}
+
+func suffix(s string, suffix ...byte) string {
+	if s == "" {
+		return ""
+	}
+	return s + string(suffix)
+}
+
+func delim(dir, name string, def ...byte) []byte {
+	value, err := ioutil.ReadFile(filepath.Join(dir, name+".delim"))
+	if err != nil {
+		return def
+	}
+	return value
 }
 
 func eachEnvFile(dir string, fn func(k, v string) error) error {
@@ -83,8 +110,4 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 		}
 	}
 	return nil
-}
-
-func (p *Env) List() []string {
-	return p.Environ()
 }

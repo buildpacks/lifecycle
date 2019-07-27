@@ -116,26 +116,52 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#AddEnvDir", func() {
 		it("should append env vars as filename=file-contents", func() {
 			mkdir(t, filepath.Join(tmpDir, "some-dir"))
-			mkfile(t, "some-value-default", filepath.Join(tmpDir, "SOME_VAR_DEFAULT"), filepath.Join(tmpDir, "SOME_VAR_DEFAULT_NEW"))
-			mkfile(t, "some-value-append", filepath.Join(tmpDir, "SOME_VAR_APPEND.append"), filepath.Join(tmpDir, "SOME_VAR_APPEND_NEW.append"))
-			mkfile(t, "some-value-override", filepath.Join(tmpDir, "SOME_VAR_OVERRIDE.override"), filepath.Join(tmpDir, "SOME_VAR_OVERRIDE_NEW.override"))
-			mkfile(t, "some-value-ignore", filepath.Join(tmpDir, "SOME_VAR_IGNORE.ignore"))
+			mkfile(t, "value-normal", filepath.Join(tmpDir, "VAR_NORMAL"), filepath.Join(tmpDir, "VAR_NORMAL_NEW"))
+			mkfile(t, "value-normal-delim", filepath.Join(tmpDir, "VAR_NORMAL_DELIM"), filepath.Join(tmpDir, "VAR_NORMAL_DELIM_NEW"))
+			mkfile(t, "[]", filepath.Join(tmpDir, "VAR_NORMAL_DELIM.delim"), filepath.Join(tmpDir, "VAR_NORMAL_DELIM_NEW.delim"))
+
+			mkfile(t, "value-append", filepath.Join(tmpDir, "VAR_APPEND.append"), filepath.Join(tmpDir, "VAR_APPEND_NEW.append"))
+			mkfile(t, "value-append-delim", filepath.Join(tmpDir, "VAR_APPEND_DELIM.append"), filepath.Join(tmpDir, "VAR_APPEND_DELIM_NEW.append"))
+			mkfile(t, "[]", filepath.Join(tmpDir, "VAR_APPEND_DELIM.delim"), filepath.Join(tmpDir, "VAR_APPEND_DELIM_NEW.delim"))
+
+			mkfile(t, "value-prepend", filepath.Join(tmpDir, "VAR_PREPEND.prepend"), filepath.Join(tmpDir, "VAR_PREPEND_NEW.prepend"))
+			mkfile(t, "value-prepend-delim", filepath.Join(tmpDir, "VAR_PREPEND_DELIM.prepend"), filepath.Join(tmpDir, "VAR_PREPEND_DELIM_NEW.prepend"))
+			mkfile(t, "[]", filepath.Join(tmpDir, "VAR_PREPEND_DELIM.delim"), filepath.Join(tmpDir, "VAR_PREPEND_DELIM_NEW.delim"))
+
+			mkfile(t, "value-default", filepath.Join(tmpDir, "VAR_DEFAULT.default"), filepath.Join(tmpDir, "VAR_DEFAULT_NEW.default"))
+			mkfile(t, "value-override", filepath.Join(tmpDir, "VAR_OVERRIDE.override"), filepath.Join(tmpDir, "VAR_OVERRIDE_NEW.override"))
+			mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
+
 			result = map[string]string{
-				"SOME_VAR_DEFAULT":  "some-value-default-orig",
-				"SOME_VAR_APPEND":   "some-value-append-orig",
-				"SOME_VAR_OVERRIDE": "some-value-override-orig",
+				"VAR_NORMAL":        "value-normal-orig",
+				"VAR_NORMAL_DELIM":  "value-normal-delim-orig",
+				"VAR_APPEND":        "value-append-orig",
+				"VAR_APPEND_DELIM":  "value-append-delim-orig",
+				"VAR_PREPEND":       "value-prepend-orig",
+				"VAR_PREPEND_DELIM": "value-prepend-delim-orig",
+				"VAR_DEFAULT":       "value-default-orig",
+				"VAR_OVERRIDE":      "value-override-orig",
 			}
 			if err := env.AddEnvDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			if s := cmp.Diff(result, map[string]string{
-				"SOME_VAR_DEFAULT":      "some-value-default:some-value-default-orig",
-				"SOME_VAR_DEFAULT_NEW":  "some-value-default",
-				"SOME_VAR_APPEND":       "some-value-appendsome-value-append-orig",
-				"SOME_VAR_APPEND_NEW":   "some-value-append",
-				"SOME_VAR_OVERRIDE":     "some-value-override",
-				"SOME_VAR_OVERRIDE_NEW": "some-value-override",
-				"SOME_VAR_IGNORE":       "some-value-ignore",
+				"VAR_NORMAL":            "value-normal:value-normal-orig",
+				"VAR_NORMAL_NEW":        "value-normal",
+				"VAR_NORMAL_DELIM":      "value-normal-delim[]value-normal-delim-orig",
+				"VAR_NORMAL_DELIM_NEW":  "value-normal-delim",
+				"VAR_APPEND":            "value-append-origvalue-append",
+				"VAR_APPEND_NEW":        "value-append",
+				"VAR_APPEND_DELIM":      "value-append-delim-orig[]value-append-delim",
+				"VAR_APPEND_DELIM_NEW":  "value-append-delim",
+				"VAR_PREPEND":           "value-prependvalue-prepend-orig",
+				"VAR_PREPEND_NEW":       "value-prepend",
+				"VAR_PREPEND_DELIM":     "value-prepend-delim[]value-prepend-delim-orig",
+				"VAR_PREPEND_DELIM_NEW": "value-prepend-delim",
+				"VAR_DEFAULT":           "value-default-orig",
+				"VAR_DEFAULT_NEW":       "value-default",
+				"VAR_OVERRIDE":          "value-override",
+				"VAR_OVERRIDE_NEW":      "value-override",
 			}); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
