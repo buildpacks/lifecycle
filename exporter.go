@@ -29,14 +29,14 @@ func (e *Exporter) Export(
 	layersDir,
 	appDir string,
 	workingImage imgutil.Image,
-	origMetadata metadata.AppImageMetadata,
+	origMetadata metadata.LayersMetadata,
 	additionalNames []string,
 	launcher string,
 	stack metadata.StackMetadata,
 ) error {
 	var err error
 
-	meta := metadata.AppImageMetadata{}
+	meta := metadata.LayersMetadata{}
 
 	meta.RunImage.TopLayer, err = workingImage.TopLayer()
 	if err != nil {
@@ -71,7 +71,7 @@ func (e *Exporter) Export(
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
-		bpMD := metadata.BuildpackMetadata{ID: bp.ID, Version: bp.Version, Layers: map[string]metadata.LayerMetadata{}}
+		bpMD := metadata.BuildpackLayersMetadata{ID: bp.ID, Version: bp.Version, Layers: map[string]metadata.BuildpackLayerMetadata{}}
 
 		for _, layer := range bpDir.findLayers(launch) {
 			lmd, err := layer.read()
@@ -119,22 +119,17 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	if err = workingImage.SetLabel(metadata.AppMetadataLabel, string(data)); err != nil {
+	if err = workingImage.SetLabel(metadata.LayerMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
 	buildMD := &BuildMetadata{}
 	if _, err := toml.DecodeFile(metadata.MetadataFilePath(layersDir), buildMD); err != nil {
 		return errors.Wrap(err, "read build metadata")
-	} else {
-		buildJson, err := json.Marshal(metadata.BuildMetadata{BOM: buildMD.BOM})
-		if err != nil {
-			return errors.Wrap(err, "parse build metadata")
-		}
+	}
 
-		if err = workingImage.SetLabel(metadata.BuildMetadataLabel, string(buildJson)); err != nil {
-			return errors.Wrap(err, "set build image metadata label")
-		}
+	if err := e.addBuildMetadataLabel(workingImage, buildMD.BOM); err != nil {
+		return errors.Wrapf(err, "add build metadata label")
 	}
 
 	if err = workingImage.SetEnv(cmd.EnvLayersDir, layersDir); err != nil {
@@ -154,6 +149,30 @@ func (e *Exporter) Export(
 	}
 
 	return e.saveImage(workingImage, additionalNames)
+}
+
+func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan Plan) error {
+	var bps []metadata.BuildpackMetadata
+	for _, bp := range e.Buildpacks {
+		bps = append(bps, metadata.BuildpackMetadata{
+			ID:      bp.ID,
+			Version: bp.Version,
+		})
+	}
+
+	buildJson, err := json.Marshal(metadata.BuildMetadata{
+		BOM:        plan,
+		Buildpacks: bps,
+	})
+	if err != nil {
+		return errors.Wrap(err, "parse build metadata")
+	}
+
+	if err := image.SetLabel(metadata.BuildMetadataLabel, string(buildJson)); err != nil {
+		return errors.Wrap(err, "set build image metadata label")
+	}
+
+	return nil
 }
 
 func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer identifiableLayer, previousSha string) (string, error) {

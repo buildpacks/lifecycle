@@ -57,7 +57,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	return nil
 }
 
-func (r *Restorer) restoreLayer(name string, bpMD metadata.BuildpackMetadata, layer metadata.LayerMetadata, layersDir bpLayersDir, cache Cache) error {
+func (r *Restorer) restoreLayer(name string, bpMD metadata.BuildpackLayersMetadata, layer metadata.BuildpackLayerMetadata, layersDir bpLayersDir, cache Cache) error {
 	bpLayer := layersDir.newBPLayer(name)
 
 	r.Out.Printf("Restoring cached layer '%s'", bpLayer.Identifier())

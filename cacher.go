@@ -31,10 +31,10 @@ func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
 		if err != nil {
 			return err
 		}
-		bpMetadata := metadata.BuildpackMetadata{
+		bpMetadata := metadata.BuildpackLayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]metadata.LayerMetadata{},
+			Layers:  map[string]metadata.BuildpackLayerMetadata{},
 		}
 		for _, l := range bpDir.findLayers(cached) {
 			if !l.hasLocalContents() {

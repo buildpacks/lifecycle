@@ -13,14 +13,14 @@ var (
 )
 
 type Metadata struct {
-	Buildpacks []metadata.BuildpackMetadata `json:"buildpacks"`
+	Buildpacks []metadata.BuildpackLayersMetadata `json:"buildpacks"`
 }
 
-func (m *Metadata) MetadataForBuildpack(id string) metadata.BuildpackMetadata {
+func (m *Metadata) MetadataForBuildpack(id string) metadata.BuildpackLayersMetadata {
 	for _, bpMd := range m.Buildpacks {
 		if bpMd.ID == id {
 			return bpMd
 		}
 	}
-	return metadata.BuildpackMetadata{}
+	return metadata.BuildpackLayersMetadata{}
 }

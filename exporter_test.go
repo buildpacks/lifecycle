@@ -74,7 +74,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			ArtifactsDir: tmpDir,
 			Buildpacks: []*lifecycle.Buildpack{
 				{ID: "buildpack.id", Version: "1.2.3"},
-				{ID: "other.buildpack.id", Version: "4.5.6"},
+				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
 			Out: log.New(&stdout, "", 0),
 			Err: log.New(&stderr, "", 0),
@@ -95,7 +95,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		when("previous image exists", func() {
 			var (
 				fakeOriginalImage *fakes.Image
-				fakeImageMetadata metadata.AppImageMetadata
+				fakeImageMetadata metadata.LayersMetadata
 			)
 
 			it.Before(func() {
@@ -150,7 +150,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
                 }
               }`, localReusableLayerSha, launcherSHA)))
 
-				fakeImageMetadata, err = metadata.GetAppMetadata(fakeOriginalImage)
+				fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
 				h.AssertNil(t, err)
 			})
 
@@ -267,7 +267,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta metadata.AppImageMetadata
+				var meta metadata.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -311,7 +311,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta metadata.AppImageMetadata
+				var meta metadata.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -332,19 +332,28 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 				})
 
-				it("BOM is not present in that label", func() {
+				it("BOM is not present in the label", func() {
 					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherPath, stack))
 
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 					h.AssertNil(t, err)
 
-					h.AssertJSONEq(t, `
+					expectedJSON := `
 {
-  "bom": null
+  "bom": null,
+  "buildpacks": [
+    {
+      "id": "buildpack.id",
+      "version": "1.2.3"
+    },
+    {
+      "id": "other.buildpack.id",
+      "version": "4.5.6"
+    }
+  ]
 }
-`,
-						metadataJSON)
-
+`
+					h.AssertJSONEq(t, expectedJSON, metadataJSON)
 				})
 			})
 
@@ -376,7 +385,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 					h.AssertNil(t, err)
-					h.AssertJSONEq(t, `
+
+					expectedJSON := `
 {
   "bom": {
     "auto-reconfiguration": {
@@ -396,10 +406,46 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
       },
       "version": "2.7.0"
     }
-  }
+  },
+  "buildpacks": [
+    {
+      "id": "buildpack.id",
+      "version": "1.2.3"
+    },
+    {
+      "id": "other.buildpack.id",
+      "version": "4.5.6"
+    }
+  ]
 }
-`, metadataJSON)
+`
+
+					h.AssertJSONEq(t, expectedJSON, metadataJSON)
 				})
+			})
+
+			it("saves buildpacks to build metadata label", func() {
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherPath, stack))
+
+				metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+				h.AssertNil(t, err)
+
+				expectedJSON := `
+{
+  "bom": null,
+  "buildpacks": [
+    {
+      "id": "buildpack.id",
+      "version": "1.2.3"
+    },
+    {
+      "id": "other.buildpack.id",
+      "version": "4.5.6"
+    }
+  ]
+}
+`
+				h.AssertJSONEq(t, expectedJSON, metadataJSON)
 			})
 
 			it("sets CNB_LAYERS_DIR", func() {
@@ -529,7 +575,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{"buildpacks":[{}]}`)
 
 					var err error
-					fakeImageMetadata, err = metadata.GetAppMetadata(fakeOriginalImage)
+					fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
 					h.AssertNil(t, err)
 				})
 
@@ -549,7 +595,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						`{"buildpacks":[{"key": "buildpack.id", "layers": {}}]}`)
 
 					var err error
-					fakeImageMetadata, err = metadata.GetAppMetadata(fakeOriginalImage)
+					fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
 					h.AssertNil(t, err)
 				})
 
@@ -589,7 +635,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates app layer on Run image", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				appLayerPath := fakeAppImage.AppLayerPath()
 
@@ -599,7 +645,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates config layer on Run image", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				configLayerPath := fakeAppImage.ConfigLayerPath()
 
@@ -613,7 +659,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates a launcher layer", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				launcherLayerPath, err := fakeAppImage.FindLayerWithPath(launcherPath)
 				h.AssertNil(t, err)
@@ -626,7 +672,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds launch layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				layer1Path, err := fakeAppImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/layer1"))
 				h.AssertNil(t, err)
@@ -648,14 +694,14 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("only creates expected layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				var applayer, configLayer, launcherLayer, layer1, layer2 = 1, 1, 1, 1, 1
 				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), applayer+configLayer+launcherLayer+layer1+layer2)
 			})
 
 			it("saves metadata with layer info", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				appLayerPath := fakeAppImage.AppLayerPath()
 				appLayerSHA := h.ComputeSHA256ForFile(t, appLayerPath)
@@ -678,7 +724,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta metadata.AppImageMetadata
+				var meta metadata.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -701,7 +747,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets CNB_LAYERS_DIR", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				val, err := fakeAppImage.Env("CNB_LAYERS_DIR")
 				h.AssertNil(t, err)
@@ -709,7 +755,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets CNB_APP_DIR", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				val, err := fakeAppImage.Env("CNB_APP_DIR")
 				h.AssertNil(t, err)
@@ -717,7 +763,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets ENTRYPOINT to launcher", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				val, err := fakeAppImage.Entrypoint()
 				h.AssertNil(t, err)
@@ -725,7 +771,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets empty CMD", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 
 				val, err := fakeAppImage.Cmd()
 				h.AssertNil(t, err)
@@ -733,7 +779,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("saves the image for all provided additionalNames", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack))
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(additionalNames, fakeAppImage.Name())...)
 			})
 		})
@@ -741,7 +787,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		when("buildpack requires an escaped id", func() {
 			var (
 				fakeOriginalImage *fakes.Image
-				fakeImageMetadata metadata.AppImageMetadata
+				fakeImageMetadata metadata.LayersMetadata
 			)
 
 			it.Before(func() {
@@ -761,7 +807,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					`{"buildpacks":[{"key": "some/escaped/bp/id", "layers": {"layer": {"sha": "original-layer-sha"}}}]}`,
 				))
 
-				fakeImageMetadata, err = metadata.GetAppMetadata(fakeOriginalImage)
+				fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
 				h.AssertNil(t, err)
 			})
 
@@ -789,7 +835,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta metadata.AppImageMetadata
+				var meta metadata.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -823,7 +869,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			it("returns an error", func() {
 				h.AssertError(
 					t,
-					exporter.Export(layersDir, appDir, fakeAppImage, metadata.AppImageMetadata{}, additionalNames, launcherPath, stack),
+					exporter.Export(layersDir, appDir, fakeAppImage, metadata.LayersMetadata{}, additionalNames, launcherPath, stack),
 					"failed to parse metadata for layers '[buildpack.id:bad-layer]'",
 				)
 			})
@@ -832,7 +878,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		when("there is a launch=true cache=true layer without contents", func() {
 			var (
 				fakeOriginalImage *fakes.Image
-				fakeImageMetadata metadata.AppImageMetadata
+				fakeImageMetadata metadata.LayersMetadata
 			)
 
 			it.Before(func() {
@@ -860,7 +906,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
   ]
 }`)
 
-				fakeImageMetadata, err = metadata.GetAppMetadata(fakeOriginalImage)
+				fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
 				h.AssertNil(t, err)
 			})
 

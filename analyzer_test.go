@@ -72,7 +72,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	when("#Analyze", func() {
 		var (
 			image            *fakes.Image
-			appImageMetadata metadata.AppImageMetadata
+			appImageMetadata metadata.LayersMetadata
 			ref              *testmock.MockReference
 		)
 
@@ -552,7 +552,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				h.AssertNil(t, md.Image)
-				h.AssertEq(t, md.Metadata, metadata.AppImageMetadata{})
+				h.AssertEq(t, md.Metadata, metadata.LayersMetadata{})
 			})
 		})
 
