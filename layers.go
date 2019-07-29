@@ -94,7 +94,7 @@ type bpLayer struct {
 	layer
 }
 
-func (bp *bpLayer) classifyCache(metadataLayers map[string]metadata.LayerMetadata) cacheType {
+func (bp *bpLayer) classifyCache(metadataLayers map[string]metadata.BuildpackLayerMetadata) cacheType {
 	cachedLayer, err := bp.read()
 	if err != nil {
 		return cacheMalformed
@@ -115,25 +115,25 @@ func (bp *bpLayer) classifyCache(metadataLayers map[string]metadata.LayerMetadat
 	return cacheValid
 }
 
-func (bp *bpLayer) read() (metadata.LayerMetadata, error) {
-	var data metadata.LayerMetadata
+func (bp *bpLayer) read() (metadata.BuildpackLayerMetadata, error) {
+	var data metadata.BuildpackLayerMetadata
 	tomlPath := bp.path + ".toml"
 	fh, err := os.Open(tomlPath)
 	if os.IsNotExist(err) {
-		return metadata.LayerMetadata{}, nil
+		return metadata.BuildpackLayerMetadata{}, nil
 	} else if err != nil {
-		return metadata.LayerMetadata{}, err
+		return metadata.BuildpackLayerMetadata{}, err
 	}
 	defer fh.Close()
 	if _, err := toml.DecodeFile(tomlPath, &data); err != nil {
-		return metadata.LayerMetadata{}, err
+		return metadata.BuildpackLayerMetadata{}, err
 	}
 	sha, err := ioutil.ReadFile(bp.path + ".sha")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return data, nil
 		} else {
-			return metadata.LayerMetadata{}, err
+			return metadata.BuildpackLayerMetadata{}, err
 		}
 	}
 	data.SHA = string(sha)
@@ -153,7 +153,7 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadata(metadataLayers map[string]metadata.LayerMetadata) error {
+func (bp *bpLayer) writeMetadata(metadataLayers map[string]metadata.BuildpackLayerMetadata) error {
 	layerMetadata := metadataLayers[bp.name()]
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
@@ -164,7 +164,7 @@ func (bp *bpLayer) writeMetadata(metadataLayers map[string]metadata.LayerMetadat
 		return err
 	}
 	defer fh.Close()
-	return toml.NewEncoder(fh).Encode(layerMetadata.LayerMetadataFile)
+	return toml.NewEncoder(fh).Encode(layerMetadata.BuildpackLayerMetadataFile)
 }
 
 func (bp *bpLayer) hasLocalContents() bool {

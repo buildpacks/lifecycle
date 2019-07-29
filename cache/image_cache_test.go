@@ -72,13 +72,15 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns the metadata", func() {
 				expected := cache.Metadata{
-					Buildpacks: []metadata.BuildpackMetadata{{
+					Buildpacks: []metadata.BuildpackLayersMetadata{{
 						ID:      "bp.id",
 						Version: "1.2.3",
-						Layers: map[string]metadata.LayerMetadata{
+						Layers: map[string]metadata.BuildpackLayerMetadata{
 							"some-layer": {
-								SHA: "some-sha",
-								LayerMetadataFile: metadata.LayerMetadataFile{
+								LayerMetadata: metadata.LayerMetadata{
+									SHA: "some-sha",
+								},
+								BuildpackLayerMetadataFile: metadata.BuildpackLayerMetadataFile{
 									Data:   "some-data",
 									Build:  true,
 									Launch: false,
@@ -148,7 +150,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", `{"buildpacks": [{"key": "old.bp.id"}]}`))
 
 				newMetadata = cache.Metadata{
-					Buildpacks: []metadata.BuildpackMetadata{{
+					Buildpacks: []metadata.BuildpackLayersMetadata{{
 						ID: "new.bp.id",
 					}},
 				}
@@ -179,7 +181,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			when("set without commit", func() {
 				it("retrieve returns the previous metadata", func() {
 					previousMetadata := cache.Metadata{
-						Buildpacks: []metadata.BuildpackMetadata{{
+						Buildpacks: []metadata.BuildpackLayersMetadata{{
 							ID: "old.bp.id",
 						}},
 					}

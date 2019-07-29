@@ -26,7 +26,7 @@ func (a *Analyzer) Analyze(image imgutil.Image) (metadata.AnalyzedMetadata, erro
 		return metadata.AnalyzedMetadata{}, errors.Wrap(err, "retrieve image identifier")
 	}
 
-	data, err := metadata.GetAppMetadata(image)
+	data, err := metadata.GetLayersMetdata(image)
 	if err != nil {
 		return metadata.AnalyzedMetadata{}, err
 	}
