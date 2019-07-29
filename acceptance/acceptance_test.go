@@ -52,7 +52,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 							t.Error(err)
 						}
 
-						h.AssertStringContains(t, string(output), "some-version")
+						h.AssertStringContains(t, string(output), "some-version+asdf123")
 					})
 				})
 			}
@@ -64,7 +64,9 @@ func lifecycleCmd(t *testing.T, name string, args ...string) *exec.Cmd {
 	cmdArgs := append(
 		[]string{
 			"run",
-			"-ldflags", "-X github.com/buildpack/lifecycle/cmd.buildVersion=some-version",
+			"-ldflags",
+			"-X github.com/buildpack/lifecycle/cmd.Version=some-version " +
+				"-X github.com/buildpack/lifecycle/cmd.SCMCommit=asdf123",
 			"./cmd/" + name + "/main.go",
 		}, args...,
 	)

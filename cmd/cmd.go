@@ -134,10 +134,25 @@ const (
 )
 
 var (
-	buildVersion = "0.0.0"
-	OutLogger    = log.New(os.Stdout, "", 0)
-	ErrLogger    = log.New(os.Stderr, "", 0)
+	// Version is the version of the lifecycle and all produced binaries. It is injected at compile time.
+	Version = "0.0.0"
+	// SCMCommit is the commit information provided by SCM. It is injected at compile time.
+	SCMCommit = ""
+	// SCMRepository is the source repository. It is injected at compile time.
+	SCMRepository = ""
+	OutLogger     = log.New(os.Stdout, "", 0)
+	ErrLogger     = log.New(os.Stderr, "", 0)
 )
+
+// buildVersion is a display format of the version and build metadata in compliance with semver.
+func buildVersion() string {
+	// noinspection GoBoolExpressions
+	if SCMCommit == "" {
+		return Version
+	}
+
+	return fmt.Sprintf("%s+%s", Version, SCMCommit)
+}
 
 type ErrorFail struct {
 	Err    error
@@ -181,7 +196,7 @@ func Exit(err error) {
 }
 
 func ExitWithVersion() {
-	OutLogger.Printf(buildVersion)
+	OutLogger.Printf(buildVersion())
 	os.Exit(0)
 }
 

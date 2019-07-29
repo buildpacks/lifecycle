@@ -195,7 +195,20 @@ func export() error {
 		}
 	}
 
-	if err := exporter.Export(layersDir, appDir, appImage, analyzedMD.Metadata, imageNames[1:], launcherPath, stackMD); err != nil {
+	launcherConfig := lifecycle.LauncherConfig{
+		Path: launcherPath,
+		Metadata: metadata.LauncherMetadata{
+			Version: cmd.Version,
+			Source: metadata.SourceMetadata{
+				Git: metadata.GitMetadata{
+					Repository: cmd.SCMRepository,
+					Commit:     cmd.SCMCommit,
+				},
+			},
+		},
+	}
+
+	if err := exporter.Export(layersDir, appDir, appImage, analyzedMD.Metadata, imageNames[1:], launcherConfig, stackMD); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}
