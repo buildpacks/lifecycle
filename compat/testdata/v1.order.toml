@@ -1,0 +1,15 @@
+[[groups]]
+[[groups.buildpacks]]
+  id = "buildpack.a"
+  version = "buildpack.a.v1"
+
+[[groups.buildpacks]]
+  id = "buildpack.b"
+  version = "buildpack.b.v1"
+  optional = true
+
+[[groups]]
+[[groups.buildpacks]]
+  id = "buildpack.c"
+  version = "buildpack.c.v1"
+  optional = false

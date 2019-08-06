@@ -1,0 +1,4 @@
+[[groups]]
+[[groups.buildpacks]]
+  id = "buildpack.nonexistent"
+  version = "latest"
