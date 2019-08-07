@@ -25,7 +25,7 @@ imports:
 	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "./vendor/*"))
 
 tools:
-    $(GOCMD) install -mod=vendor github.com/sclevine/yj
+	$(GOCMD) install -mod=vendor github.com/sclevine/yj
 
 format:
 	test -z $$($(GOCMD) fmt ./...)
