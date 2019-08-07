@@ -43,32 +43,27 @@ func main() {
 }
 
 func detect() error {
-	buildpacks, err := lifecycle.NewBuildpackMap(buildpacksDir)
-	if err != nil {
-		return cmd.FailErr(err, "read buildpack directory")
-	}
-	order, err := buildpacks.ReadOrder(orderPath)
+	order, err := lifecycle.ReadOrder(orderPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack order file")
 	}
 
-	info, group := order.Detect(&lifecycle.DetectConfig{
-		AppDir:      appDir,
-		PlatformDir: platformDir,
-		Out:         log.New(os.Stdout, "", 0),
-		Err:         log.New(os.Stderr, "", 0),
+	group, plan, err := order.Detect(&lifecycle.DetectConfig{
+		AppDir:        appDir,
+		PlatformDir:   platformDir,
+		BuildpacksDir: buildpacksDir,
+		Out:           log.New(os.Stdout, "", 0),
 	})
-
-	if group == nil {
-		return cmd.FailCode(cmd.CodeFailedDetect, "detect")
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
 	}
 
-	if err := group.Write(groupPath); err != nil {
+	if err := lifecycle.WriteTOML(groupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
 
-	if err := ioutil.WriteFile(planPath, info, 0666); err != nil {
-		return cmd.FailErr(err, "write detect info")
+	if err := lifecycle.WriteTOML(planPath, plan); err != nil {
+		return cmd.FailErr(err, "write detect plan")
 	}
 
 	return nil

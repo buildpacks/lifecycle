@@ -13,7 +13,7 @@ import (
 type Analyzer struct {
 	AnalyzedPath string
 	AppDir       string
-	Buildpacks   []*Buildpack
+	Buildpacks   []Buildpack
 	GID, UID     int
 	LayersDir    string
 	Out, Err     *log.Logger
@@ -33,7 +33,7 @@ func (a *Analyzer) Analyze(image imgutil.Image) (metadata.AnalyzedMetadata, erro
 
 	if !a.SkipLayers {
 		for _, buildpack := range a.Buildpacks {
-			bpLayersDir, err := readBuildpackLayersDir(a.LayersDir, *buildpack)
+			bpLayersDir, err := readBuildpackLayersDir(a.LayersDir, buildpack)
 			if err != nil {
 				return metadata.AnalyzedMetadata{}, err
 			}

@@ -17,7 +17,6 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/docker"
 	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/buildpack/lifecycle/metadata"
@@ -80,11 +79,9 @@ func main() {
 }
 
 func export() error {
-	var err error
-
-	var group lifecycle.BuildpackGroup
-	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
-		return cmd.FailErr(err, "read group")
+	group, err := lifecycle.ReadGroup(groupPath)
+	if err != nil {
+		return cmd.FailErr(err, "read buildpack group")
 	}
 
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
@@ -94,7 +91,7 @@ func export() error {
 	defer os.RemoveAll(artifactsDir)
 
 	exporter := &lifecycle.Exporter{
-		Buildpacks:   group.Buildpacks,
+		Buildpacks:   group.Group,
 		Out:          log.New(os.Stdout, "", 0),
 		Err:          log.New(os.Stderr, "", 0),
 		UID:          uid,
@@ -137,7 +134,7 @@ func export() error {
 
 	var appImage imgutil.Image
 	if useDaemon {
-		dockerClient, err := docker.DefaultClient()
+		dockerClient, err := cmd.DockerClient()
 		if err != nil {
 			return err
 		}

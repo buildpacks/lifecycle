@@ -7,6 +7,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/docker/docker/client"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -223,4 +226,12 @@ func envOrDefault(key string, defaultVal string) string {
 		return envVal
 	}
 	return defaultVal
+}
+
+func DockerClient() (*client.Client, error) {
+	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	if err != nil {
+		return nil, errors.Wrap(err, "new docker client")
+	}
+	return docker, nil
 }

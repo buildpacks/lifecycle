@@ -3,9 +3,9 @@ package metadata
 const BuildMetadataLabel = "io.buildpacks.build.metadata"
 
 type BuildMetadata struct {
-	BOM        map[string]map[string]interface{} `json:"bom"`
-	Buildpacks []BuildpackMetadata               `json:"buildpacks"`
-	Launcher   LauncherMetadata                  `json:"launcher"`
+	BOM        interface{}         `json:"bom"`
+	Buildpacks []BuildpackMetadata `json:"buildpacks"`
+	Launcher   LauncherMetadata    `json:"launcher"`
 }
 
 type BuildpackMetadata struct {

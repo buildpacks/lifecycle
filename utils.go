@@ -20,6 +20,20 @@ func WriteTOML(path string, data interface{}) error {
 	return toml.NewEncoder(f).Encode(data)
 }
 
-func escapeIdentifier(id string) string {
+func ReadGroup(path string) (BuildpackGroup, error) {
+	var group BuildpackGroup
+	_, err := toml.DecodeFile(path, &group)
+	return group, err
+}
+
+func ReadOrder(path string) (BuildpackOrder, error) {
+	var order struct {
+		Order BuildpackOrder `toml:"order"`
+	}
+	_, err := toml.DecodeFile(path, &order)
+	return order.Order, err
+}
+
+func escapeID(id string) string {
 	return strings.Replace(id, "/", "_", -1)
 }

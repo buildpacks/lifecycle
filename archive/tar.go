@@ -31,7 +31,7 @@ func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
-	err := writeParentDirectoryHeaders(srcDir, tw, uid, gid)
+	err := addParentDirs(srcDir, tw, uid, gid)
 	if err != nil {
 		return err
 	}
@@ -40,21 +40,20 @@ func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 		if err != nil {
 			return err
 		}
+		if fi.Mode()&os.ModeSocket != 0 {
+			return nil
+		}
 		var header *tar.Header
+		var target string
 		if fi.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Readlink(file)
+			target, err = os.Readlink(file)
 			if err != nil {
 				return err
 			}
-			header, err = tar.FileInfoHeader(fi, target)
-			if err != nil {
-				return err
-			}
-		} else {
-			header, err = tar.FileInfoHeader(fi, fi.Name())
-			if err != nil {
-				return err
-			}
+		}
+		header, err = tar.FileInfoHeader(fi, target)
+		if err != nil {
+			return err
 		}
 		header.Name = file
 		header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
@@ -80,32 +79,29 @@ func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 	})
 }
 
-func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int) error {
+func addParentDirs(tarDir string, tw *tar.Writer, uid, gid int) error {
 	parent := filepath.Dir(tarDir)
 	if parent == "." || parent == "/" {
 		return nil
-	} else {
-		if err := writeParentDirectoryHeaders(parent, tw, uid, gid); err != nil {
-			return err
-		}
-
-		info, err := os.Stat(parent)
-		if err != nil {
-			return err
-		}
-
-		header, err := tar.FileInfoHeader(info, parent)
-		if err != nil {
-			return err
-		}
-		header.Name = parent
-		header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
-
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-		return nil
 	}
+
+	if err := addParentDirs(parent, tw, uid, gid); err != nil {
+		return err
+	}
+
+	info, err := os.Stat(parent)
+	if err != nil {
+		return err
+	}
+
+	header, err := tar.FileInfoHeader(info, parent)
+	if err != nil {
+		return err
+	}
+	header.Name = parent
+	header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
+
+	return tw.WriteHeader(header)
 }
 
 func Untar(r io.Reader, dest string) error {
@@ -113,7 +109,6 @@ func Untar(r io.Reader, dest string) error {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			// end of tar archive
 			return nil
 		}
 		if err != nil {
@@ -130,20 +125,13 @@ func Untar(r io.Reader, dest string) error {
 		case tar.TypeReg, tar.TypeRegA:
 			_, err := os.Stat(filepath.Dir(path))
 			if os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 					return err
 				}
 			}
-
-			fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode())
-			if err != nil {
+			if err := writeFile(tr, path, hdr.FileInfo().Mode()); err != nil {
 				return err
 			}
-			if _, err := io.Copy(fh, tr); err != nil {
-				fh.Close()
-				return err
-			}
-			fh.Close()
 		case tar.TypeSymlink:
 			if err := os.Symlink(hdr.Linkname, path); err != nil {
 				return err
@@ -152,4 +140,14 @@ func Untar(r io.Reader, dest string) error {
 			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
 		}
 	}
+}
+
+func writeFile(in io.Reader, path string, mode os.FileMode) error {
+	fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	_, err = io.Copy(fh, in)
+	return err
 }

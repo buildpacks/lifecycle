@@ -1,0 +1,4 @@
+[buildpack]
+id = "A"
+name = "Buildpack A"
+version = "v1"

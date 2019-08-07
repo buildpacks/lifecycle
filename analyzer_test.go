@@ -51,7 +51,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		appDir = filepath.Join(layerDir, "some-app-dir")
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks:   []*lifecycle.Buildpack{{ID: "metdata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
+			Buildpacks:   []lifecycle.Buildpack{{ID: "metdata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
 			AppDir:       appDir,
 			LayersDir:    layerDir,
 			AnalyzedPath: filepath.Join(tmpDir, "some-previous-file.toml"),
@@ -181,7 +181,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should only write layer TOML files that correspond to detected buildpacks", func() {
-					analyzer.Buildpacks = []*lifecycle.Buildpack{{ID: "no.cache.buildpack"}}
+					analyzer.Buildpacks = []lifecycle.Buildpack{{ID: "no.cache.buildpack"}}
 
 					if _, err := analyzer.Analyze(image); err != nil {
 						t.Fatalf("Error: %s\n", err)

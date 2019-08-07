@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/buildpack/imgutil"
 	"github.com/buildpack/imgutil/local"
 	"github.com/buildpack/imgutil/remote"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/docker"
 	"github.com/buildpack/lifecycle/image/auth"
 )
 
@@ -74,13 +72,13 @@ func analyzer() error {
 		}
 	}
 
-	var group lifecycle.BuildpackGroup
-	if _, err := toml.DecodeFile(groupPath, &group); err != nil {
-		return cmd.FailErr(err, "read group")
+	group, err := lifecycle.ReadGroup(groupPath)
+	if err != nil {
+		return cmd.FailErr(err, "read buildpack group")
 	}
 
 	analyzer := &lifecycle.Analyzer{
-		Buildpacks:   group.Buildpacks,
+		Buildpacks:   group.Group,
 		AppDir:       appDir,
 		LayersDir:    layersDir,
 		AnalyzedPath: analyzedPath,
@@ -91,11 +89,9 @@ func analyzer() error {
 		SkipLayers:   skipLayers,
 	}
 
-	var err error
 	var img imgutil.Image
-
 	if useDaemon {
-		dockerClient, err := docker.DefaultClient()
+		dockerClient, err := cmd.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "create docker client")
 		}

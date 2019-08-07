@@ -15,7 +15,7 @@ type Launcher struct {
 	LayersDir          string
 	AppDir             string
 	Processes          []Process
-	Buildpacks         []string
+	Buildpacks         []Buildpack
 	Env                BuildEnv
 	Exec               func(argv0 string, argv []string, envv []string) error
 }
@@ -101,7 +101,7 @@ func (l *Launcher) profileD() (string, error) {
 		return "", err
 	}
 	for _, bp := range l.Buildpacks {
-		scripts, err := filepath.Glob(filepath.Join(layersDir, bp, "*", "profile.d", "*"))
+		scripts, err := filepath.Glob(filepath.Join(layersDir, bp.dir(), "*", "profile.d", "*"))
 		if err != nil {
 			return "", err
 		}
@@ -166,7 +166,7 @@ func eachDir(dir string, fn func(path string) error) error {
 
 func (l *Launcher) eachBuildpack(dir string, fn func(path string) error) error {
 	for _, bp := range l.Buildpacks {
-		if err := fn(filepath.Join(l.LayersDir, bp)); err != nil {
+		if err := fn(filepath.Join(l.LayersDir, bp.dir())); err != nil {
 			return err
 		}
 	}

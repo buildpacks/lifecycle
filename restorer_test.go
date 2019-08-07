@@ -47,7 +47,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			restorer = &lifecycle.Restorer{
 				LayersDir: layersDir,
-				Buildpacks: []*lifecycle.Buildpack{
+				Buildpacks: []lifecycle.Buildpack{
 					{ID: "buildpack.id"},
 					{ID: "escaped/buildpack/id"},
 				},

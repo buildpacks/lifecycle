@@ -18,7 +18,7 @@ import (
 )
 
 type Exporter struct {
-	Buildpacks   []*Buildpack
+	Buildpacks   []Buildpack
 	ArtifactsDir string
 	In           []byte
 	Out, Err     *log.Logger
@@ -56,23 +56,23 @@ func (e *Exporter) Export(
 	meta.RunImage.Reference = identifier.String()
 	meta.Stack = stack
 
-	meta.App.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: appDir, identifier: "app"}, origMetadata.App.SHA)
+	meta.App.SHA, err = e.addLayer(workingImage, &layer{path: appDir, identifier: "app"}, origMetadata.App.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting app layer")
 	}
 
-	meta.Config.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: filepath.Join(layersDir, "config"), identifier: "config"}, origMetadata.Config.SHA)
+	meta.Config.SHA, err = e.addLayer(workingImage, &layer{path: filepath.Join(layersDir, "config"), identifier: "config"}, origMetadata.Config.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting config layer")
 	}
 
-	meta.Launcher.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: launcherConfig.Path, identifier: "launcher"}, origMetadata.Launcher.SHA)
+	meta.Launcher.SHA, err = e.addLayer(workingImage, &layer{path: launcherConfig.Path, identifier: "launcher"}, origMetadata.Launcher.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting launcher layer")
 	}
 
 	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, *bp)
+		bpDir, err := readBuildpackLayersDir(layersDir, bp)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
@@ -86,7 +86,7 @@ func (e *Exporter) Export(
 
 			if layer.hasLocalContents() {
 				origLayerMetadata := origMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
-				lmd.SHA, err = e.addOrReuseLayer(workingImage, &layer, origLayerMetadata.SHA)
+				lmd.SHA, err = e.addLayer(workingImage, &layer, origLayerMetadata.SHA)
 				if err != nil {
 					return err
 				}
@@ -156,7 +156,21 @@ func (e *Exporter) Export(
 	return e.saveImage(workingImage, additionalNames)
 }
 
-func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan Plan, launcherMD metadata.LauncherMetadata) error {
+func (e *Exporter) addLayer(image imgutil.Image, layer identifiableLayer, previousSHA string) (string, error) {
+	tarPath := filepath.Join(e.ArtifactsDir, escapeID(layer.Identifier())+".tar")
+	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID)
+	if err != nil {
+		return "", errors.Wrapf(err, "exporting layer '%s'", layer.Identifier())
+	}
+	if sha == previousSHA {
+		e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
+		return sha, image.ReuseLayer(previousSHA)
+	}
+	e.Out.Printf("Exporting layer '%s' with SHA %s\n", layer.Identifier(), sha)
+	return sha, image.AddLayer(tarPath)
+}
+
+func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan []BOMEntry, launcherMD metadata.LauncherMetadata) error {
 	var bps []metadata.BuildpackMetadata
 	for _, bp := range e.Buildpacks {
 		bps = append(bps, metadata.BuildpackMetadata{
@@ -165,35 +179,20 @@ func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan Plan, launche
 		})
 	}
 
-	buildJson, err := json.Marshal(metadata.BuildMetadata{
+	buildJSON, err := json.Marshal(metadata.BuildMetadata{
 		BOM:        plan,
 		Buildpacks: bps,
 		Launcher:   launcherMD,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "parse build metadata")
 	}
 
-	if err := image.SetLabel(metadata.BuildMetadataLabel, string(buildJson)); err != nil {
+	if err := image.SetLabel(metadata.BuildMetadataLabel, string(buildJSON)); err != nil {
 		return errors.Wrap(err, "set build image metadata label")
 	}
 
 	return nil
-}
-
-func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer identifiableLayer, previousSha string) (string, error) {
-	tarPath := filepath.Join(e.ArtifactsDir, escapeIdentifier(layer.Identifier())+".tar")
-	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID)
-	if err != nil {
-		return "", errors.Wrapf(err, "exporting layer '%s'", layer.Identifier())
-	}
-	if sha == previousSha {
-		e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
-		return sha, image.ReuseLayer(previousSha)
-	}
-	e.Out.Printf("Exporting layer '%s' with SHA %s\n", layer.Identifier(), sha)
-	return sha, image.AddLayer(tarPath)
 }
 
 func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) error {

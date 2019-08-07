@@ -20,7 +20,7 @@ type bpLayersDir struct {
 }
 
 func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir, error) {
-	path := filepath.Join(layersDir, buildpack.EscapedID())
+	path := filepath.Join(layersDir, buildpack.dir())
 	bpDir := bpLayersDir{
 		name:      buildpack.ID,
 		path:      path,

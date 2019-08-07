@@ -85,7 +85,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		exporter = &lifecycle.Exporter{
 			ArtifactsDir: tmpDir,
-			Buildpacks: []*lifecycle.Buildpack{
+			Buildpacks: []lifecycle.Buildpack{
 				{ID: "buildpack.id", Version: "1.2.3"},
 				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
@@ -383,19 +383,22 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					err := ioutil.WriteFile(filepath.Join(layersDir, "config", "metadata.toml"), []byte(`
 [[processes]]
-  type = "web"
-  command = "npm start"
-[bom]
-  [bom.auto-reconfiguration]
-    version = "2.7.0"
-    [bom.auto-reconfiguration.metadata]
-      name = "Spring Auto-reconfiguration"
-      sha256 = "0d524877db7344ec34620f7e46254053568292f5ce514f74e3a0e9b2dbfc338b"
-      stacks = ["io.buildpacks.stacks.bionic", "org.cloudfoundry.stacks.cflinuxfs3"]
-      uri = "https://example.com"
+type = "web"
+command = "npm start"
 
-      [[bom.auto-reconfiguration.metadata.licenses]]
-        type = "Apache-2.0"
+[[bom]]
+name = "Spring Auto-reconfiguration"
+version = "2.7.0"
+[bom.metadata]
+sha256 = "0d524877db7344ec34620f7e46254053568292f5ce514f74e3a0e9b2dbfc338b"
+stacks = ["io.buildpacks.stacks.bionic", "org.cloudfoundry.stacks.cflinuxfs3"]
+uri = "https://example.com"
+[bom.buildpack]
+id = "buildpack.id"
+version = "1.2.3"
+
+[[bom.metadata.licenses]]
+type = "Apache-2.0"
 `),
 						os.ModePerm,
 					)
@@ -410,25 +413,29 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 					expectedJSON := `
 {
-  "bom": {
-    "auto-reconfiguration": {
+  "bom": [
+	{
+      "name": "Spring Auto-reconfiguration",
+      "version": "2.7.0",
+      "buildpack": {
+        "id": "buildpack.id",
+        "version": "1.2.3"
+      },
       "metadata": {
         "licenses": [
           {
             "type": "Apache-2.0"
           }
         ],
-        "name": "Spring Auto-reconfiguration",
         "sha256": "0d524877db7344ec34620f7e46254053568292f5ce514f74e3a0e9b2dbfc338b",
         "stacks": [
           "io.buildpacks.stacks.bionic",
           "org.cloudfoundry.stacks.cflinuxfs3"
         ],
         "uri": "https://example.com"
-      },
-      "version": "2.7.0"
+      }
     }
-  },
+  ],
   "buildpacks": [
     {
       "id": "buildpack.id",
@@ -831,9 +838,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
-				exporter.Buildpacks = []*lifecycle.Buildpack{
-					{ID: "some/escaped/bp/id"},
-				}
+				exporter.Buildpacks = []lifecycle.Buildpack{{ID: "some/escaped/bp/id"}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), layersDir)
 

@@ -12,7 +12,7 @@ import (
 
 type Restorer struct {
 	LayersDir  string
-	Buildpacks []*Buildpack
+	Buildpacks []Buildpack
 	Out, Err   *log.Logger
 	UID        int
 	GID        int
@@ -30,7 +30,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 
 	for _, bp := range r.Buildpacks {
-		layersDir, err := readBuildpackLayersDir(r.LayersDir, *bp)
+		layersDir, err := readBuildpackLayersDir(r.LayersDir, bp)
 		if err != nil {
 			return err
 		}
@@ -47,8 +47,8 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 
 	// if restorer is running as root it needs to fix the ownership of the layers dir
-	if current := os.Getuid(); err != nil {
-		return err
+	if current := os.Getuid(); current == -1 {
+		return errors.New("cannot determine UID")
 	} else if current == 0 {
 		if err := recursiveChown(r.LayersDir, r.UID, r.GID); err != nil {
 			return errors.Wrapf(err, "chowning layers dir to '%d/%d'", r.UID, r.GID)

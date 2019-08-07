@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"path/filepath"
 
@@ -12,9 +13,20 @@ import (
 	"github.com/buildpack/lifecycle/metadata"
 )
 
+//go:generate mockgen -package testmock -destination testmock/cache.go github.com/buildpack/lifecycle Cache
+type Cache interface {
+	Name() string
+	SetMetadata(metadata cache.Metadata) error
+	RetrieveMetadata() (cache.Metadata, error)
+	AddLayerFile(sha string, tarPath string) error
+	ReuseLayer(sha string) error
+	RetrieveLayer(sha string) (io.ReadCloser, error)
+	Commit() error
+}
+
 type Cacher struct {
 	ArtifactsDir string
-	Buildpacks   []*Buildpack
+	Buildpacks   []Buildpack
 	Out, Err     *log.Logger
 	UID, GID     int
 }
@@ -27,7 +39,7 @@ func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
 
 	newMetadata := cache.Metadata{}
 	for _, bp := range c.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, *bp)
+		bpDir, err := readBuildpackLayersDir(layersDir, bp)
 		if err != nil {
 			return err
 		}
@@ -61,7 +73,7 @@ func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
 }
 
 func (c *Cacher) addOrReuseLayer(cache Cache, layer bpLayer, previousSHA string) (string, error) {
-	tarPath := filepath.Join(c.ArtifactsDir, escapeIdentifier(layer.Identifier())+".tar")
+	tarPath := filepath.Join(c.ArtifactsDir, escapeID(layer.Identifier())+".tar")
 	sha, err := archive.WriteTarFile(layer.Path(), tarPath, c.UID, c.GID)
 	if err != nil {
 		return "", errors.Wrapf(err, "caching layer '%s'", layer.Identifier())

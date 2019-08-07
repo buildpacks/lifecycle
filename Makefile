@@ -1,4 +1,5 @@
 export GO111MODULE = on
+
 GOCMD?=go
 GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-X 'github.com/buildpack/lifecycle.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpack/lifecycle.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpack/lifecycle.SCMCommit=$(SCM_COMMIT)'"
@@ -23,6 +24,9 @@ imports:
 	$(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
 	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "./vendor/*"))
 
+tools:
+	$(GOCMD) install -mod=vendor github.com/sclevine/yj
+
 format:
 	test -z $$($(GOCMD) fmt ./...)
 
@@ -31,10 +35,10 @@ vet:
 
 test: unit acceptance
 
-unit: format imports vet
+unit: format imports tools vet
 	$(GOTEST) -v -count=1 ./...
 
-acceptance: format imports vet
+acceptance: format imports tools vet
 	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 
 clean:
