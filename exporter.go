@@ -179,17 +179,16 @@ func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan []BOMEntry, l
 		})
 	}
 
-	buildJson, err := json.Marshal(metadata.BuildMetadata{
+	buildJSON, err := json.Marshal(metadata.BuildMetadata{
 		BOM:        plan,
 		Buildpacks: bps,
 		Launcher:   launcherMD,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "parse build metadata")
 	}
 
-	if err := image.SetLabel(metadata.BuildMetadataLabel, string(buildJson)); err != nil {
+	if err := image.SetLabel(metadata.BuildMetadataLabel, string(buildJSON)); err != nil {
 		return errors.Wrap(err, "set build image metadata label")
 	}
 

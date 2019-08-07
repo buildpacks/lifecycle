@@ -39,7 +39,7 @@ type LaunchTOML struct {
 
 type BOMEntry struct {
 	Require
-	Buildpack Buildpack `toml:"buildpack"`
+	Buildpack Buildpack `toml:"buildpack" json:"buildpack"`
 }
 
 type BuildMetadata struct {

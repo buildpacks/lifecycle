@@ -22,9 +22,9 @@ const (
 var ErrFail = errors.New("detection failed")
 
 type Buildpack struct {
-	ID       string `toml:"id"`
-	Version  string `toml:"version"`
-	Optional bool   `toml:"optional,omitempty"`
+	ID       string `toml:"id" json:"id"`
+	Version  string `toml:"version" json:"version"`
+	Optional bool   `toml:"optional,omitempty" json:"optional,omitempty"`
 }
 
 func (bp Buildpack) dir() string {
@@ -59,9 +59,9 @@ func (be BuildPlanEntry) noOpt() BuildPlanEntry {
 }
 
 type Require struct {
-	Name     string                 `toml:"name"`
-	Version  string                 `toml:"version"`
-	Metadata map[string]interface{} `toml:"metadata"`
+	Name     string                 `toml:"name" json:"name"`
+	Version  string                 `toml:"version" json:"version"`
+	Metadata map[string]interface{} `toml:"metadata" json:"metadata"`
 }
 
 type Provide struct {
