@@ -8,6 +8,7 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/compat"
 )
 
 var (
@@ -43,9 +44,16 @@ func main() {
 }
 
 func detect() error {
-	order, err := lifecycle.ReadOrder(orderPath)
+	order, err := compat.ReadOrder(orderPath, buildpacksDir)
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack order file")
+		return cmd.FailErr(err, "read legacy buildpack order file")
+	}
+
+	if len(order) == 0 {
+		order, err = lifecycle.ReadOrder(orderPath)
+		if err != nil {
+			return cmd.FailErr(err, "read buildpack order file")
+		}
 	}
 
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
