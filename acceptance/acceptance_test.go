@@ -64,6 +64,7 @@ func lifecycleCmd(t *testing.T, name string, args ...string) *exec.Cmd {
 	cmdArgs := append(
 		[]string{
 			"run",
+			"-mod=vendor",
 			"-ldflags",
 			"-X github.com/buildpack/lifecycle/cmd.Version=some-version " +
 				"-X github.com/buildpack/lifecycle/cmd.SCMCommit=asdf123",
