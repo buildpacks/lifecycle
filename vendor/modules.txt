@@ -59,6 +59,17 @@ github.com/google/go-containerregistry/pkg/v1/empty
 github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/v1util
+# github.com/hashicorp/hcl v1.0.0
+github.com/hashicorp/hcl
+github.com/hashicorp/hcl/hcl/printer
+github.com/hashicorp/hcl/json/parser
+github.com/hashicorp/hcl/hcl/ast
+github.com/hashicorp/hcl/hcl/parser
+github.com/hashicorp/hcl/hcl/token
+github.com/hashicorp/hcl/json/scanner
+github.com/hashicorp/hcl/json/token
+github.com/hashicorp/hcl/hcl/scanner
+github.com/hashicorp/hcl/hcl/strconv
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
@@ -69,6 +80,10 @@ github.com/pkg/errors
 # github.com/sclevine/spec v1.2.0
 github.com/sclevine/spec
 github.com/sclevine/spec/report
+# github.com/sclevine/yj v0.0.0-20190506050358-d9a48607cc5c
+github.com/sclevine/yj
+github.com/sclevine/yj/convert
+github.com/sclevine/yj/yaml
 # golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
@@ -89,3 +104,5 @@ golang.org/x/tools/go/internal/packagesdriver
 golang.org/x/tools/internal/semver
 golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/go/internal/gcimporter
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2

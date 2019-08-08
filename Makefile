@@ -11,6 +11,7 @@ ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 
 all: test build package
 build:
+	@echo "> Building lifecycle..."
 	mkdir -p ./out/$(ARCHIVE_NAME)
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/detector -a ./cmd/detector
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/restorer -a ./cmd/restorer
@@ -20,29 +21,36 @@ build:
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/cacher -a ./cmd/cacher
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/launcher -a ./cmd/launcher
 
-imports:
+install-goimports:
+	@echo "> Installing goimports..."
 	$(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
-	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "./vendor/*"))
 
-tools:
+install-yj:
+	@echo "> Installing yj..."
 	$(GOCMD) install -mod=vendor github.com/sclevine/yj
 
-format:
-	test -z $$($(GOCMD) fmt ./...)
+format: install-goimports
+	@echo "> Formating code..."
+	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "./vendor/*"))
 
 vet:
-	$(GOCMD) vet $$($(GOCMD) list ./... | grep -v /testdata/)
+	@echo "> Vetting code..."
+	$(GOCMD) vet -mod=vendor $$($(GOCMD) list -mod=vendor ./... | grep -v /testdata/)
 
 test: unit acceptance
 
-unit: format imports tools vet
+unit: format vet install-yj
+	@echo "> Running unit tests..."
 	$(GOTEST) -v -count=1 ./...
 
-acceptance: format imports tools vet
+acceptance: format vet
+	@echo "> Running acceptance tests..."
 	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 
 clean:
+	@echo "> Cleaning workspace..."
 	rm -rf ./out
 
 package:
+	@echo "> Packaging lifecycle..."
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out $(ARCHIVE_NAME)

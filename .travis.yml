@@ -1,11 +1,6 @@
 language: go
 go:
 - 1.12.x
-before_script:
-- mkdir /tmp/yj
-- wget https://github.com/sclevine/yj/releases/download/v4.0.0/yj-linux -O /tmp/yj/yj
-- chmod +x "/tmp/yj/yj"
-- export PATH=/tmp/yj:$PATH
 script:
 - make test
 branches:
