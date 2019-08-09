@@ -33,7 +33,7 @@ install-mockgen:
 	@echo "> Installing mockgen..."
 	$(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
 
-generate:
+generate: install-mockgen
 	@echo "> Generating..."
 	$(GOCMD) generate
 

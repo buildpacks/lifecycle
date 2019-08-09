@@ -5,10 +5,12 @@
 package testmock
 
 import (
-	cache "github.com/buildpack/lifecycle/cache"
-	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	cache "github.com/buildpack/lifecycle/cache"
 )
 
 // MockCache is a mock of Cache interface

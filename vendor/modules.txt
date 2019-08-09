@@ -37,8 +37,10 @@ github.com/docker/go-connections/tlsconfig
 github.com/docker/go-units
 # github.com/gogo/protobuf v1.2.1
 github.com/gogo/protobuf/proto
-# github.com/golang/mock v1.3.0
+# github.com/golang/mock v1.3.1
 github.com/golang/mock/gomock
+github.com/golang/mock/mockgen
+github.com/golang/mock/mockgen/model
 # github.com/google/go-cmp v0.3.0
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
@@ -84,25 +86,25 @@ github.com/sclevine/spec/report
 github.com/sclevine/yj
 github.com/sclevine/yj/convert
 github.com/sclevine/yj/yaml
-# golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
+# golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
 # golang.org/x/sync v0.0.0-20190423024810-112230192c58
 golang.org/x/sync/singleflight
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20190509141414-a5b02f93d862
+# golang.org/x/sys v0.0.0-20190804053845-51ab0e2deafa
 golang.org/x/sys/windows
-# golang.org/x/tools v0.0.0-20190624190245-7f2218787638
+# golang.org/x/tools v0.0.0-20190808195139-e713427fea3f
 golang.org/x/tools/cmd/goimports
-golang.org/x/tools/internal/imports
-golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/go/packages
-golang.org/x/tools/internal/gopathwalk
-golang.org/x/tools/internal/module
+golang.org/x/tools/internal/imports
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/packagesdriver
+golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/semver
-golang.org/x/tools/internal/fastwalk
+golang.org/x/tools/go/ast/astutil
+golang.org/x/tools/internal/module
 golang.org/x/tools/go/internal/gcimporter
+golang.org/x/tools/internal/fastwalk
 # gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2

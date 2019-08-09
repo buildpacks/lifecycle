@@ -171,7 +171,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{ID: "A", Version: "v1.clear"},
 					{ID: "B", Version: "v1"},
 				},
-				}}.Detect(config)
+			}}.Detect(config)
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
