@@ -360,6 +360,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("building succeeds with a clear env", func() {
+			it("should not apply user-provided env vars", func() {
+				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1.clear"))
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv1"), nil)
+				builder.Group.Group[0].Version = "v1.clear"
+				if _, err := builder.Build(); err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+			})
+		})
+
 		when("building fails", func() {
 			it("should error when layer directories cannot be created", func() {
 				mkfile(t, "some-data", filepath.Join(layersDir, "A"))

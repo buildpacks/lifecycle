@@ -63,8 +63,13 @@ func detect() error {
 		Environ:   os.Environ,
 		Map:       lifecycle.POSIXBuildEnv,
 	}
+	fullEnv, err := env.WithPlatform(platformDir)
+	if err != nil {
+		return cmd.FailErr(err, "read full env")
+	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
-		Env:           env,
+		FullEnv:       fullEnv,
+		ClearEnv:      env.List(),
 		AppDir:        appDir,
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,

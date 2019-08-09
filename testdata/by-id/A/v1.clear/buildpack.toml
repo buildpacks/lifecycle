@@ -1,0 +1,5 @@
+[buildpack]
+id = "A"
+name = "Buildpack A"
+version = "v1.clear"
+clear-env = true
