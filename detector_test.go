@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildpack/lifecycle/testmock"
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -24,18 +26,24 @@ func TestDetector(t *testing.T) {
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	var (
-		config *lifecycle.DetectConfig
-		outLog *bytes.Buffer
-		tmpDir string
+		mockCtrl    *gomock.Controller
+		env         *testmock.MockBuildEnv
+		config      *lifecycle.DetectConfig
+		outLog      *bytes.Buffer
+		platformDir string
+		tmpDir      string
 	)
 
 	it.Before(func() {
+		mockCtrl = gomock.NewController(t)
+		env = testmock.NewMockBuildEnv(mockCtrl)
+
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
-		platformDir := filepath.Join(tmpDir, "platform")
+		platformDir = filepath.Join(tmpDir, "platform")
 		appDir := filepath.Join(tmpDir, "app")
 		mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
@@ -43,6 +51,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		outLog = &bytes.Buffer{}
 		config = &lifecycle.DetectConfig{
+			Env:           env,
 			AppDir:        appDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
@@ -52,6 +61,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		os.RemoveAll(tmpDir)
+		mockCtrl.Finish()
 	})
 
 	mkappfile := func(data string, paths ...string) {
@@ -69,6 +79,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Detect", func() {
 		it("should expand order-containing buildpack IDs", func() {
+			env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil).MinTimes(1)
 			mkappfile("100", "detect-status")
 
 			_, _, err := lifecycle.BuildpackOrder{
@@ -84,6 +95,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should select the first passing group", func() {
+			env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil).MinTimes(1)
 			mkappfile("100", "detect-status")
 			mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
 
@@ -119,6 +131,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail if the group is empty", func() {
+			env.EXPECT().WithPlatform(gomock.Any()).Times(0)
 			_, _, err := lifecycle.BuildpackOrder([]lifecycle.BuildpackGroup{{}}).Detect(config)
 			if err != lifecycle.ErrFail {
 				t.Fatalf("Unexpected error:\n%s\n", err)
@@ -134,6 +147,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail if the group has no viable buildpacks, even if no required buildpacks fail", func() {
+			env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil).MinTimes(1)
 			mkappfile("100", "detect-status")
 			_, _, err := lifecycle.BuildpackOrder{
 				{Group: []lifecycle.Buildpack{
@@ -157,6 +171,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("a build plan is employed", func() {
+			it.Before(func() {
+				env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil).MinTimes(1)
+			})
+
 			it("should return a build plan with matched dependencies", func() {
 				mkappfile("100", "detect-status-C-v1")
 				mkappfile("100", "detect-status-B-v2")

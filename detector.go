@@ -69,6 +69,7 @@ type Provide struct {
 }
 
 type DetectConfig struct {
+	Env           BuildEnv
 	AppDir        string
 	PlatformDir   string
 	BuildpacksDir string
@@ -217,9 +218,14 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	if err := ioutil.WriteFile(planPath, nil, 0777); err != nil {
 		return detectRun{Code: -1, Err: err}
 	}
+	env, err := c.Env.WithPlatform(platformDir)
+	if err != nil {
+		return detectRun{Code: -1, Err: err}
+	}
 	out := &bytes.Buffer{}
 	cmd := exec.Command(filepath.Join(bp.Path, "bin", "detect"), platformDir, planPath)
 	cmd.Dir = appDir
+	cmd.Env = env
 	cmd.Stdout = out
 	cmd.Stderr = out
 	if err := cmd.Run(); err != nil {

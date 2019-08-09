@@ -187,12 +187,12 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 
 	when("#WithPlatform", func() {
 		it("should apply platform env vars as filename=file-contents", func() {
-			mkdir(t, filepath.Join(tmpDir, "some-dir"))
-			mkfile(t, "value-path", filepath.Join(tmpDir, "PATH"))
-			mkfile(t, "value-ld-library-path", filepath.Join(tmpDir, "LD_LIBRARY_PATH"))
-			mkfile(t, "value-library-path", filepath.Join(tmpDir, "LIBRARY_PATH"))
-			mkfile(t, "value-normal", filepath.Join(tmpDir, "VAR_NORMAL"))
-			mkfile(t, "value-override", filepath.Join(tmpDir, "VAR_OVERRIDE"))
+			mkdir(t, filepath.Join(tmpDir, "env", "some-dir"))
+			mkfile(t, "value-path", filepath.Join(tmpDir, "env", "PATH"))
+			mkfile(t, "value-ld-library-path", filepath.Join(tmpDir, "env", "LD_LIBRARY_PATH"))
+			mkfile(t, "value-library-path", filepath.Join(tmpDir, "env", "LIBRARY_PATH"))
+			mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
+			mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
 
 			result = map[string]string{
 				"VAR_EMPTY":       "",
@@ -227,7 +227,8 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 
 		it("should return an error when setenv fails", func() {
 			retErr = errors.New("some error")
-			mkfile(t, "some-value", filepath.Join(tmpDir, "SOME_VAR"))
+			mkdir(t, filepath.Join(tmpDir, "env"))
+			mkfile(t, "some-value", filepath.Join(tmpDir, "env", "SOME_VAR"))
 			if _, err := env.WithPlatform(tmpDir); err != retErr {
 				t.Fatalf("Unexpected error: %s\n", err)
 			}

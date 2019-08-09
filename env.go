@@ -81,7 +81,7 @@ func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
 			}
 		}
 	}()
-	if err := eachEnvFile(platformDir, func(k, v string) error {
+	if err := eachEnvFile(filepath.Join(platformDir, "env"), func(k, v string) error {
 		restore[k] = string([]byte{0})
 		if old, ok := p.LookupEnv(k); ok {
 			restore[k] = old

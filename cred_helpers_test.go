@@ -15,7 +15,7 @@ import (
 )
 
 func TestCredHelpers(t *testing.T) {
-	spec.Run(t, "Builder", testCredHelpers, spec.Report(report.Terminal{}))
+	spec.Run(t, "Cred Helpers", testCredHelpers, spec.Report(report.Terminal{}))
 }
 
 func testCredHelpers(t *testing.T, when spec.G, it spec.S) {

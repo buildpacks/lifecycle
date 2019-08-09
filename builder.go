@@ -96,8 +96,12 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
 			return nil, err
 		}
+		env, err := b.Env.WithPlatform(platformDir)
+		if err != nil {
+			return nil, err
+		}
 		cmd := exec.Command(filepath.Join(bpInfo.Path, "bin", "build"), bpLayersDir, platformDir, bpPlanPath)
-		cmd.Env = b.Env.List()
+		cmd.Env = env
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out.Writer()
 		cmd.Stderr = b.Err.Writer()

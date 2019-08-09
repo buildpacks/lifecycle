@@ -85,8 +85,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Build", func() {
 		when("building succeeds", func() {
 			it.Before(func() {
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1"))
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Bv2"))
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
 			})
 
 			it("should ensure each buildpack's layers dir exists and process build layers", func() {
@@ -385,7 +385,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when any build plan entry is invalid", func() {
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1"))
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				mkfile(t, "bad-key", filepath.Join(appDir, "build-plan-out-A-v1.toml"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error.\n")
@@ -394,8 +394,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should error when the env cannot be found", func() {
+				env.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
+				if _, err := builder.Build(); err == nil {
+					t.Fatal("Expected error.\n")
+				} else if !strings.Contains(err.Error(), "some error") {
+					t.Fatalf("Incorrect error: %s\n", err)
+				}
+			})
+
 			it("should error when the command fails", func() {
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1"))
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				if err := os.RemoveAll(platformDir); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -432,7 +441,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
 					},
 				}, "should error", func() {
-					env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1"))
+					env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 					mkdir(t,
 						filepath.Join(appDir, "layers-A-v1", "layer1"),
 						filepath.Join(appDir, "layers-A-v1", "layer2"),
@@ -448,7 +457,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when launch.toml is not writable", func() {
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1"))
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error")
