@@ -44,8 +44,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		outLog = &bytes.Buffer{}
 		config = &lifecycle.DetectConfig{
-			FullEnv:       []string{"ENV_TYPE=full"},
-			ClearEnv:      []string{"ENV_TYPE=clear"},
+			FullEnv:       append(os.Environ(), "ENV_TYPE=full"),
+			ClearEnv:      append(os.Environ(), "ENV_TYPE=clear"),
 			AppDir:        appDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
