@@ -8,10 +8,12 @@ import (
 )
 
 type Env struct {
-	Getenv  func(key string) string
-	Setenv  func(key, value string) error
-	Environ func() []string
-	Map     map[string][]string
+	LookupEnv func(key string) (string, bool)
+	Getenv    func(key string) string
+	Setenv    func(key, value string) error
+	Unsetenv  func(key string) error
+	Environ   func() []string
+	Map       map[string][]string
 }
 
 func (p *Env) AddRootDir(baseDir string) error {
@@ -64,6 +66,36 @@ func (p *Env) AddEnvDir(envDir string) error {
 	})
 }
 
+func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
+	restore := map[string]string{}
+	defer func() {
+		for k, v := range restore {
+			var rErr error
+			if v == string([]byte{0}) {
+				rErr = p.Unsetenv(k)
+			} else {
+				rErr = p.Setenv(k, v)
+			}
+			if err == nil {
+				err = rErr
+			}
+		}
+	}()
+	if err := eachEnvFile(platformDir, func(k, v string) error {
+		restore[k] = string([]byte{0})
+		if old, ok := p.LookupEnv(k); ok {
+			restore[k] = old
+		}
+		if p.isRootEnv(k) {
+			return p.Setenv(k, v+prefix(p.Getenv(k), os.PathListSeparator))
+		}
+		return p.Setenv(k, v)
+	}); err != nil {
+		return nil, err
+	}
+	return p.List(), nil
+}
+
 func (p *Env) List() []string {
 	return p.Environ()
 }
@@ -110,4 +142,15 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 		}
 	}
 	return nil
+}
+
+func (p *Env) isRootEnv(name string) bool {
+	for _, m := range p.Map {
+		for _, k := range m {
+			if k == name {
+				return true
+			}
+		}
+	}
+	return false
 }

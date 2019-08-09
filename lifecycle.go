@@ -10,9 +10,6 @@ var POSIXBuildEnv = map[string][]string{
 	},
 	"include": {
 		"CPATH",
-		"C_INCLUDE_PATH",
-		"CPLUS_INCLUDE_PATH",
-		"OBJC_INCLUDE_PATH",
 	},
 	"pkgconfig": {
 		"PKG_CONFIG_PATH",

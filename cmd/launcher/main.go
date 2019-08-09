@@ -49,10 +49,12 @@ func launch() error {
 	}
 
 	env := &lifecycle.Env{
-		Getenv:  os.Getenv,
-		Setenv:  os.Setenv,
-		Environ: os.Environ,
-		Map:     lifecycle.POSIXLaunchEnv,
+		LookupEnv: os.LookupEnv,
+		Getenv:    os.Getenv,
+		Setenv:    os.Setenv,
+		Unsetenv:  os.Unsetenv,
+		Environ:   os.Environ,
+		Map:       lifecycle.POSIXLaunchEnv,
 	}
 	launcher := &lifecycle.Launcher{
 		DefaultProcessType: defaultProcessType,

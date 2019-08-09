@@ -25,6 +25,7 @@ type Builder struct {
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string) error
+	WithPlatform(platformDir string) ([]string, error)
 	List() []string
 }
 

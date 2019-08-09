@@ -61,10 +61,12 @@ func build() error {
 	}
 
 	env := &lifecycle.Env{
-		Getenv:  os.Getenv,
-		Setenv:  os.Setenv,
-		Environ: os.Environ,
-		Map:     lifecycle.POSIXBuildEnv,
+		LookupEnv: os.LookupEnv,
+		Getenv:    os.Getenv,
+		Setenv:    os.Setenv,
+		Unsetenv:  os.Unsetenv,
+		Environ:   os.Environ,
+		Map:       lifecycle.POSIXBuildEnv,
 	}
 
 	builder := &lifecycle.Builder{
