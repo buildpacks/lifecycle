@@ -84,7 +84,7 @@ func resolveVersion(bpRef buildpackRefConfig, buildpacksDir string) (string, err
 		return "", err
 	}
 
-	var matchVersions []string
+	matchVersions := map[string]interface{}{}
 	for _, tomlPath := range tomlPaths {
 		bpTOML := buildpackTOML{}
 		if _, err := toml.DecodeFile(tomlPath, &bpTOML); err != nil {
@@ -92,17 +92,17 @@ func resolveVersion(bpRef buildpackRefConfig, buildpacksDir string) (string, err
 		}
 
 		if bpTOML.Buildpack.ID == bpRef.ID {
-			matchVersions = append(matchVersions, bpTOML.Buildpack.Version)
+			matchVersions[bpTOML.Buildpack.Version] = nil
 		}
 	}
 
-	if len(matchVersions) == 0 {
-		return "", errors.Errorf("no buildpacks with matching ID '%s'", bpRef.ID)
-	}
-
 	if len(matchVersions) > 1 {
-		return "", errors.Errorf("too many buildpacks with matching ID '%s'", bpRef.ID)
+		return "", errors.Errorf("too many buildpacks with matching ID '%s': %s", bpRef.ID, matchVersions)
 	}
 
-	return matchVersions[0], nil
+	for k := range matchVersions {
+		return k, nil
+	}
+
+	return "", errors.Errorf("no buildpacks with matching ID '%s'", bpRef.ID)
 }

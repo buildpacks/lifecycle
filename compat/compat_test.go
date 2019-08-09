@@ -68,6 +68,24 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+				when("latest symlink is present", func() {
+					it("should resolve version", func() {
+						order, err := compat.ReadOrder(filepath.Join("testdata", "v1.order.latest.toml"), filepath.Join("testdata", "buildpacks"))
+						h.AssertNil(t, err)
+						h.AssertEq(t, order, lifecycle.BuildpackOrder{
+							{
+								Group: []lifecycle.Buildpack{
+									{
+										ID:       "buildpack.latest",
+										Version:  "buildpack.latest.v1",
+										Optional: false,
+									},
+								},
+							},
+						})
+					})
+				})
+
 				when("multiple matching buildpacks", func() {
 					it("should error out", func() {
 						_, err := compat.ReadOrder(filepath.Join("testdata", "v1.order.dup.toml"), filepath.Join("testdata", "buildpacks"))

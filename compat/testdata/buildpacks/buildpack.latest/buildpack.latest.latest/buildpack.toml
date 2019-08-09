@@ -1,0 +1,4 @@
+# in reality this would be a symlink to `buildpack.latest.v1`
+[buildpack]
+  id = "buildpack.latest"
+  version = "buildpack.latest.v1"

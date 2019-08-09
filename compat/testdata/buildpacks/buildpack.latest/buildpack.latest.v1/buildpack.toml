@@ -1,0 +1,3 @@
+[buildpack]
+  id = "buildpack.latest"
+  version = "buildpack.latest.v1"
