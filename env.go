@@ -67,14 +67,14 @@ func (p *Env) AddEnvDir(envDir string) error {
 }
 
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
-	restore := map[string]string{}
+	restore := map[string]*string{}
 	defer func() {
 		for k, v := range restore {
 			var rErr error
-			if v == string([]byte{0}) {
+			if v == nil {
 				rErr = p.Unsetenv(k)
 			} else {
-				rErr = p.Setenv(k, v)
+				rErr = p.Setenv(k, *v)
 			}
 			if err == nil {
 				err = rErr
@@ -82,9 +82,9 @@ func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
 		}
 	}()
 	if err := eachEnvFile(filepath.Join(platformDir, "env"), func(k, v string) error {
-		restore[k] = string([]byte{0})
+		restore[k] = nil
 		if old, ok := p.LookupEnv(k); ok {
-			restore[k] = old
+			restore[k] = &old
 		}
 		if p.isRootEnv(k) {
 			return p.Setenv(k, v+prefix(p.Getenv(k), os.PathListSeparator))
