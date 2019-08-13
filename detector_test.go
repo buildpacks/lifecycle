@@ -24,9 +24,10 @@ func TestDetector(t *testing.T) {
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	var (
-		config *lifecycle.DetectConfig
-		outLog *bytes.Buffer
-		tmpDir string
+		config      *lifecycle.DetectConfig
+		outLog      *bytes.Buffer
+		platformDir string
+		tmpDir      string
 	)
 
 	it.Before(func() {
@@ -35,7 +36,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
-		platformDir := filepath.Join(tmpDir, "platform")
+		platformDir = filepath.Join(tmpDir, "platform")
 		appDir := filepath.Join(tmpDir, "app")
 		mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
@@ -43,6 +44,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		outLog = &bytes.Buffer{}
 		config = &lifecycle.DetectConfig{
+			FullEnv:       append(os.Environ(), "ENV_TYPE=full"),
+			ClearEnv:      append(os.Environ(), "ENV_TYPE=clear"),
 			AppDir:        appDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
@@ -65,6 +68,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		for _, p := range paths {
 			tofile(t, data, filepath.Join(config.AppDir, p))
 		}
+	}
+	rdappfile := func(path string) string {
+		t.Helper()
+		return rdfile(t, filepath.Join(config.AppDir, path))
 	}
 
 	when("#Detect", func() {
@@ -153,6 +160,28 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"fail: no viable buildpacks in group\n",
 			) {
 				t.Fatalf("Unexpected log:\n%s\n", s)
+			}
+		})
+
+		it("should select an appropriate env type", func() {
+			mkappfile("0", "detect-status-A-v1.clear", "detect-status-B-v1")
+
+			_, _, err := lifecycle.BuildpackOrder{{
+				Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1.clear"},
+					{ID: "B", Version: "v1"},
+				},
+			}}.Detect(config)
+			if err != nil {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+
+			if typ := rdappfile("detect-env-type-A-v1.clear"); typ != "clear" {
+				t.Fatalf("Unexpected env type: %s\n", typ)
+			}
+
+			if typ := rdappfile("detect-env-type-B-v1"); typ != "full" {
+				t.Fatalf("Unexpected env type: %s\n", typ)
 			}
 		})
 

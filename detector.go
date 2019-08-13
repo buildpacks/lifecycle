@@ -69,6 +69,8 @@ type Provide struct {
 }
 
 type DetectConfig struct {
+	FullEnv       []string
+	ClearEnv      []string
 	AppDir        string
 	PlatformDir   string
 	BuildpacksDir string
@@ -222,6 +224,11 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	cmd.Dir = appDir
 	cmd.Stdout = out
 	cmd.Stderr = out
+	cmd.Env = c.FullEnv
+	if bp.Buildpack.ClearEnv {
+		cmd.Env = c.ClearEnv
+	}
+
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			if status, ok := err.Sys().(syscall.WaitStatus); ok {

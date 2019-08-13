@@ -37,6 +37,7 @@ func (m *GGCRImage) EXPECT() *GGCRImageMockRecorder {
 
 // ConfigFile mocks base method
 func (m *GGCRImage) ConfigFile() (*v1.ConfigFile, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConfigFile")
 	ret0, _ := ret[0].(*v1.ConfigFile)
 	ret1, _ := ret[1].(error)
@@ -45,11 +46,13 @@ func (m *GGCRImage) ConfigFile() (*v1.ConfigFile, error) {
 
 // ConfigFile indicates an expected call of ConfigFile
 func (mr *GGCRImageMockRecorder) ConfigFile() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFile", reflect.TypeOf((*GGCRImage)(nil).ConfigFile))
 }
 
 // ConfigName mocks base method
 func (m *GGCRImage) ConfigName() (v1.Hash, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConfigName")
 	ret0, _ := ret[0].(v1.Hash)
 	ret1, _ := ret[1].(error)
@@ -58,11 +61,13 @@ func (m *GGCRImage) ConfigName() (v1.Hash, error) {
 
 // ConfigName indicates an expected call of ConfigName
 func (mr *GGCRImageMockRecorder) ConfigName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigName", reflect.TypeOf((*GGCRImage)(nil).ConfigName))
 }
 
 // Digest mocks base method
 func (m *GGCRImage) Digest() (v1.Hash, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Digest")
 	ret0, _ := ret[0].(v1.Hash)
 	ret1, _ := ret[1].(error)
@@ -71,11 +76,13 @@ func (m *GGCRImage) Digest() (v1.Hash, error) {
 
 // Digest indicates an expected call of Digest
 func (mr *GGCRImageMockRecorder) Digest() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Digest", reflect.TypeOf((*GGCRImage)(nil).Digest))
 }
 
 // LayerByDiffID mocks base method
 func (m *GGCRImage) LayerByDiffID(arg0 v1.Hash) (v1.Layer, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LayerByDiffID", arg0)
 	ret0, _ := ret[0].(v1.Layer)
 	ret1, _ := ret[1].(error)
@@ -84,11 +91,13 @@ func (m *GGCRImage) LayerByDiffID(arg0 v1.Hash) (v1.Layer, error) {
 
 // LayerByDiffID indicates an expected call of LayerByDiffID
 func (mr *GGCRImageMockRecorder) LayerByDiffID(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LayerByDiffID", reflect.TypeOf((*GGCRImage)(nil).LayerByDiffID), arg0)
 }
 
 // LayerByDigest mocks base method
 func (m *GGCRImage) LayerByDigest(arg0 v1.Hash) (v1.Layer, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LayerByDigest", arg0)
 	ret0, _ := ret[0].(v1.Layer)
 	ret1, _ := ret[1].(error)
@@ -97,11 +106,13 @@ func (m *GGCRImage) LayerByDigest(arg0 v1.Hash) (v1.Layer, error) {
 
 // LayerByDigest indicates an expected call of LayerByDigest
 func (mr *GGCRImageMockRecorder) LayerByDigest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LayerByDigest", reflect.TypeOf((*GGCRImage)(nil).LayerByDigest), arg0)
 }
 
 // Layers mocks base method
 func (m *GGCRImage) Layers() ([]v1.Layer, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Layers")
 	ret0, _ := ret[0].([]v1.Layer)
 	ret1, _ := ret[1].(error)
@@ -110,11 +121,13 @@ func (m *GGCRImage) Layers() ([]v1.Layer, error) {
 
 // Layers indicates an expected call of Layers
 func (mr *GGCRImageMockRecorder) Layers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Layers", reflect.TypeOf((*GGCRImage)(nil).Layers))
 }
 
 // Manifest mocks base method
 func (m *GGCRImage) Manifest() (*v1.Manifest, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Manifest")
 	ret0, _ := ret[0].(*v1.Manifest)
 	ret1, _ := ret[1].(error)
@@ -123,11 +136,13 @@ func (m *GGCRImage) Manifest() (*v1.Manifest, error) {
 
 // Manifest indicates an expected call of Manifest
 func (mr *GGCRImageMockRecorder) Manifest() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Manifest", reflect.TypeOf((*GGCRImage)(nil).Manifest))
 }
 
 // MediaType mocks base method
 func (m *GGCRImage) MediaType() (types.MediaType, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MediaType")
 	ret0, _ := ret[0].(types.MediaType)
 	ret1, _ := ret[1].(error)
@@ -136,11 +151,13 @@ func (m *GGCRImage) MediaType() (types.MediaType, error) {
 
 // MediaType indicates an expected call of MediaType
 func (mr *GGCRImageMockRecorder) MediaType() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MediaType", reflect.TypeOf((*GGCRImage)(nil).MediaType))
 }
 
 // RawConfigFile mocks base method
 func (m *GGCRImage) RawConfigFile() ([]byte, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RawConfigFile")
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
@@ -149,11 +166,13 @@ func (m *GGCRImage) RawConfigFile() ([]byte, error) {
 
 // RawConfigFile indicates an expected call of RawConfigFile
 func (mr *GGCRImageMockRecorder) RawConfigFile() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawConfigFile", reflect.TypeOf((*GGCRImage)(nil).RawConfigFile))
 }
 
 // RawManifest mocks base method
 func (m *GGCRImage) RawManifest() ([]byte, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RawManifest")
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
@@ -162,5 +181,6 @@ func (m *GGCRImage) RawManifest() ([]byte, error) {
 
 // RawManifest indicates an expected call of RawManifest
 func (mr *GGCRImageMockRecorder) RawManifest() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawManifest", reflect.TypeOf((*GGCRImage)(nil).RawManifest))
 }

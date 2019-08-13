@@ -29,6 +29,14 @@ install-yj:
 	@echo "> Installing yj..."
 	$(GOCMD) install -mod=vendor github.com/sclevine/yj
 
+install-mockgen:
+	@echo "> Installing mockgen..."
+	$(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
+
+generate: install-mockgen
+	@echo "> Generating..."
+	$(GOCMD) generate
+
 format: install-goimports
 	@echo "> Formating code..."
 	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "./vendor/*"))

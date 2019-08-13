@@ -13,6 +13,7 @@ echo "detect out: ${bp_id}@${bp_version}"
 >&2 echo "detect err: ${bp_id}@${bp_version}"
 
 ls -1 "$platform_dir/env" > "detect-env-${bp_id}-${bp_version}"
+echo -n "$ENV_TYPE" > "detect-env-type-${bp_id}-${bp_version}"
 
 if [[ -f detect-plan-${bp_id}-${bp_version}.toml ]]; then
   cat "detect-plan-${bp_id}-${bp_version}.toml" > "$plan_path"

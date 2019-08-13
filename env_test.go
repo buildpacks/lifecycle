@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -35,11 +36,19 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 		}
 		result = map[string]string{}
 		env = &lifecycle.Env{
+			LookupEnv: func(key string) (string, bool) {
+				v, ok := result[key]
+				return v, ok
+			},
 			Getenv: func(key string) string {
 				return result[key]
 			},
 			Setenv: func(key, value string) error {
 				result[key] = strings.Replace(value, tmpDir, "/tmpDir", -1)
+				return retErr
+			},
+			Unsetenv: func(key string) error {
+				delete(result, key)
 				return retErr
 			},
 			Environ: func() (out []string) {
@@ -171,6 +180,56 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			retErr = errors.New("some error")
 			mkfile(t, "some-value", filepath.Join(tmpDir, "SOME_VAR"))
 			if err := env.AddEnvDir(tmpDir); err != retErr {
+				t.Fatalf("Unexpected error: %s\n", err)
+			}
+		})
+	})
+
+	when("#WithPlatform", func() {
+		it("should apply platform env vars as filename=file-contents", func() {
+			mkdir(t, filepath.Join(tmpDir, "env", "some-dir"))
+			mkfile(t, "value-path", filepath.Join(tmpDir, "env", "PATH"))
+			mkfile(t, "value-ld-library-path", filepath.Join(tmpDir, "env", "LD_LIBRARY_PATH"))
+			mkfile(t, "value-library-path", filepath.Join(tmpDir, "env", "LIBRARY_PATH"))
+			mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
+			mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
+
+			result = map[string]string{
+				"VAR_EMPTY":       "",
+				"VAR_OVERRIDE":    "value-override-orig",
+				"PATH":            "value-path-orig",
+				"LD_LIBRARY_PATH": "value-ld-library-path-orig1:value-ld-library-path-orig2",
+			}
+			out, err := env.WithPlatform(tmpDir)
+			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			sort.Strings(out)
+			if s := cmp.Diff(out, []string{
+				"LD_LIBRARY_PATH=value-ld-library-path:value-ld-library-path-orig1:value-ld-library-path-orig2",
+				"LIBRARY_PATH=value-library-path",
+				"PATH=value-path:value-path-orig",
+				"VAR_EMPTY=",
+				"VAR_NORMAL=value-normal",
+				"VAR_OVERRIDE=value-override",
+			}); s != "" {
+				t.Fatalf("Unexpected env:\n%s\n", s)
+			}
+			if s := cmp.Diff(result, map[string]string{
+				"VAR_EMPTY":       "",
+				"VAR_OVERRIDE":    "value-override-orig",
+				"PATH":            "value-path-orig",
+				"LD_LIBRARY_PATH": "value-ld-library-path-orig1:value-ld-library-path-orig2",
+			}); s != "" {
+				t.Fatalf("Unexpected env:\n%s\n", s)
+			}
+		})
+
+		it("should return an error when setenv fails", func() {
+			retErr = errors.New("some error")
+			mkdir(t, filepath.Join(tmpDir, "env"))
+			mkfile(t, "some-value", filepath.Join(tmpDir, "env", "SOME_VAR"))
+			if _, err := env.WithPlatform(tmpDir); err != retErr {
 				t.Fatalf("Unexpected error: %s\n", err)
 			}
 		})

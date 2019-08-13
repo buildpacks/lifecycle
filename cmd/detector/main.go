@@ -55,8 +55,21 @@ func detect() error {
 			return cmd.FailErr(err, "read buildpack order file")
 		}
 	}
-
+	env := &lifecycle.Env{
+		LookupEnv: os.LookupEnv,
+		Getenv:    os.Getenv,
+		Setenv:    os.Setenv,
+		Unsetenv:  os.Unsetenv,
+		Environ:   os.Environ,
+		Map:       lifecycle.POSIXBuildEnv,
+	}
+	fullEnv, err := env.WithPlatform(platformDir)
+	if err != nil {
+		return cmd.FailErr(err, "read full env")
+	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
+		FullEnv:       fullEnv,
+		ClearEnv:      env.List(),
 		AppDir:        appDir,
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
