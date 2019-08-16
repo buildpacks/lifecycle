@@ -5,11 +5,14 @@ GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-X 'github.com/buildpack/lifecycle.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpack/lifecycle.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpack/lifecycle.SCMCommit=$(SCM_COMMIT)'"
 GOTEST=$(GOCMD) test -mod=vendor
 LIFECYCLE_VERSION?=0.0.0
+PLATFORM_API=0.1
+BUILDPACK_API=0.2
 SCM_REPO?=
 SCM_COMMIT=$$(git rev-parse --short HEAD)
 ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 
 all: test build package
+
 build:
 	@echo "> Building lifecycle..."
 	mkdir -p ./out/$(ARCHIVE_NAME)
@@ -20,6 +23,13 @@ build:
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/exporter -a ./cmd/exporter
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/cacher -a ./cmd/cacher
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/launcher -a ./cmd/launcher
+
+descriptor: install-yj
+	@echo "> Writing descriptor file..."
+	mkdir -p ./out
+	echo '{"api": {"platform": "$(PLATFORM_API)", "buildpack": "$(BUILDPACK_API)"}, "lifecycle": {"version": "$(LIFECYCLE_VERSION)"}}' \
+	| yj -jt > ./out/lifecycle.toml
+
 
 install-goimports:
 	@echo "> Installing goimports..."
@@ -59,6 +69,6 @@ clean:
 	@echo "> Cleaning workspace..."
 	rm -rf ./out
 
-package:
+package: descriptor
 	@echo "> Packaging lifecycle..."
-	tar czf ./out/$(ARCHIVE_NAME).tgz -C out $(ARCHIVE_NAME)
+	tar czf ./out/$(ARCHIVE_NAME).tgz -C out $(ARCHIVE_NAME) lifecycle.toml
