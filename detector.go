@@ -45,7 +45,7 @@ type BuildPlan struct {
 }
 
 type BuildPlanEntry struct {
-	Providers []Buildpack `toml:"providers"`
+	Providers []Buildpack `toml:"provides"`
 	Requires  []Require   `toml:"requires"`
 }
 
