@@ -11,6 +11,15 @@ SCM_REPO?=
 SCM_COMMIT=$$(git rev-parse --short HEAD)
 ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 
+define LIFECYCLE_DESCRIPTOR
+[api]
+  platform = "$(PLATFORM_API)"
+  buildpack = "$(BUILDPACK_API)"
+
+[lifecycle]
+  version = "$(LIFECYCLE_VERSION)"
+endef
+
 all: test build package
 
 build:
@@ -24,11 +33,11 @@ build:
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/cacher -a ./cmd/cacher
 	$(GOENV) $(GOBUILD) -o ./out/$(ARCHIVE_NAME)/launcher -a ./cmd/launcher
 
-descriptor: install-yj
+descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
+descriptor:
 	@echo "> Writing descriptor file..."
 	mkdir -p ./out
-	echo '{"api": {"platform": "$(PLATFORM_API)", "buildpack": "$(BUILDPACK_API)"}, "lifecycle": {"version": "$(LIFECYCLE_VERSION)"}}' \
-	| yj -jt > ./out/lifecycle.toml
+	echo "$${LIFECYCLE_DESCRIPTOR}" > ./out/lifecycle.toml
 
 
 install-goimports:
