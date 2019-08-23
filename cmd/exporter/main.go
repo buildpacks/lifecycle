@@ -31,14 +31,13 @@ var (
 	analyzedPath   string
 	stackPath      string
 	launchCacheDir string
+	launcherPath   string
 	useDaemon      bool
 	useHelpers     bool
 	uid            int
 	gid            int
 	printVersion   bool
 )
-
-const launcherPath = "/lifecycle/launcher"
 
 func init() {
 	cmd.FlagRunImage(&runImageRef)
@@ -53,6 +52,7 @@ func init() {
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
+	cmd.FlagLauncherPath(&launcherPath)
 }
 
 func main() {
