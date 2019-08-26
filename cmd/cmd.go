@@ -15,14 +15,15 @@ import (
 const (
 	DefaultLayersDir     = "/layers"
 	DefaultAppDir        = "/workspace"
-	DefaultBuildpacksDir = "/buildpacks"
+	DefaultBuildpacksDir = "/cnb/buildpacks"
 	DefaultPlatformDir   = "/platform"
-	DefaultOrderPath     = "/buildpacks/order.toml"
+	DefaultOrderPath     = "/cnb/order.toml"
 	DefaultGroupPath     = "./group.toml"
-	DefaultStackPath     = "/buildpacks/stack.toml"
+	DefaultStackPath     = "/cnb/stack.toml"
 	DefaultAnalyzedPath  = "./analyzed.toml"
 	DefaultPlanPath      = "./plan.toml"
 	DefaultProcessType   = "web"
+	DefaultLauncherPath  = "/cnb/lifecycle/launcher"
 
 	EnvLayersDir         = "CNB_LAYERS_DIR"
 	EnvAppDir            = "CNB_APP_DIR"
@@ -77,6 +78,10 @@ func FlagGroupPath(path *string) {
 
 func FlagLaunchCacheDir(dir *string) {
 	flag.StringVar(dir, "launch-cache", os.Getenv(EnvLaunchCacheDir), "path to launch cache directory")
+}
+
+func FlagLauncherPath(path *string) {
+	flag.StringVar(path, "launcher", DefaultLauncherPath, "path to launcher binary")
 }
 
 func FlagLayersDir(dir *string) {
