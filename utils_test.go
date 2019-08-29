@@ -118,4 +118,29 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 	})
+
+	when(".DisplaySha", func() {
+		it("should truncate the sha", func() {
+			actual := lifecycle.DisplaySha("ed649d0a36b218c476b64d61f85027477ef5742045799f45c8c353562279065a")
+			if s := cmp.Diff(actual, "ed649d0a36b2"); s != "" {
+				t.Fatalf("Unexpected sha:\n%s\n", s)
+			}
+		})
+
+		it("should not truncate the sha with it's short", func() {
+			sha := "not-a-sha"
+			actual := lifecycle.DisplaySha(sha)
+			if s := cmp.Diff(actual, sha); s != "" {
+				t.Fatalf("Unexpected sha:\n%s\n", s)
+			}
+		})
+
+		it("should remove the prefix", func() {
+			sha := "sha256:ed649d0a36b218c476b64d61f85027477ef5742045799f45c8c353562279065a"
+			actual := lifecycle.DisplaySha(sha)
+			if s := cmp.Diff(actual, "ed649d0a36b2"); s != "" {
+				t.Fatalf("Unexpected sha:\n%s\n", s)
+			}
+		})
+	})
 }

@@ -99,7 +99,7 @@ func (e *Exporter) Export(
 					return fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())
 				}
 
-				e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), origLayerMetadata.SHA)
+				e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), DisplaySha(origLayerMetadata.SHA))
 				if err := workingImage.ReuseLayer(origLayerMetadata.SHA); err != nil {
 					return errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
 				}
@@ -163,10 +163,10 @@ func (e *Exporter) addLayer(image imgutil.Image, layer identifiableLayer, previo
 		return "", errors.Wrapf(err, "exporting layer '%s'", layer.Identifier())
 	}
 	if sha == previousSHA {
-		e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
+		e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), DisplaySha(sha))
 		return sha, image.ReuseLayer(previousSHA)
 	}
-	e.Out.Printf("Exporting layer '%s' with SHA %s\n", layer.Identifier(), sha)
+	e.Out.Printf("Exporting layer '%s' with SHA %s\n", layer.Identifier(), DisplaySha(sha))
 	return sha, image.AddLayer(tarPath)
 }
 
@@ -224,7 +224,7 @@ func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) erro
 func (e *Exporter) logReference(identifier imgutil.Identifier) {
 	switch v := identifier.(type) {
 	case local.IDIdentifier:
-		e.Out.Printf("\n*** Image ID: %s\n", v.String())
+		e.Out.Printf("\n*** Image ID: %s\n", DisplaySha(v.String()))
 	case remote.DigestIdentifier:
 		e.Out.Printf("\n*** Digest: %s\n", v.Digest.DigestStr())
 	default:

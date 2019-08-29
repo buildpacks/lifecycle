@@ -80,10 +80,10 @@ func (c *Cacher) addOrReuseLayer(cache Cache, layer bpLayer, previousSHA string)
 	}
 
 	if sha == previousSHA {
-		c.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
+		c.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), DisplaySha(sha))
 		return sha, cache.ReuseLayer(previousSHA)
 	}
 
-	c.Out.Printf("Caching layer '%s' with SHA %s\n", layer.Identifier(), sha)
+	c.Out.Printf("Caching layer '%s' with SHA %s\n", layer.Identifier(), DisplaySha(sha))
 	return sha, cache.AddLayerFile(sha, tarPath)
 }

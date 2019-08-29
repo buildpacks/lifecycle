@@ -144,7 +144,7 @@ func export() error {
 		}
 
 		if analyzedMD.Image != nil {
-			cmd.OutLogger.Printf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+			cmd.OutLogger.Printf("Reusing layers from image with id %s", lifecycle.DisplaySha(analyzedMD.Image.Reference))
 			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 		}
 

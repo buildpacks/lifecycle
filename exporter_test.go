@@ -199,7 +199,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				launcherLayerSHA := h.ComputeSHA256ForPath(t, launcherConfig.Path, uid, gid)
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherConfig, stack))
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:"+launcherLayerSHA)
-				assertReuseLayerLog(t, stdout, "launcher", launcherLayerSHA)
+				assertReuseLayerLog(t, stdout, "launcher", lifecycle.DisplaySha(launcherLayerSHA))
 			})
 
 			it("reuses launch layers when only layer.toml is present", func() {
@@ -560,7 +560,7 @@ type = "Apache-2.0"
 
 					h.AssertStringContains(t,
 						stdout.String(),
-						`*** Image ID: some-image-id`,
+						`*** Image ID: some-image-`,
 					)
 				})
 			})
@@ -607,7 +607,7 @@ type = "Apache-2.0"
       %s - succeeded
       %s - could not parse reference
 
-*** Image ID: some-image-id`,
+*** Image ID: some-image-`,
 							fakeAppImage.Name(),
 							additionalNames[0],
 							additionalNames[1],
@@ -974,13 +974,13 @@ func assertAddLayerLog(t *testing.T, stdout bytes.Buffer, name, layerPath string
 	t.Helper()
 	layerSHA := h.ComputeSHA256ForFile(t, layerPath)
 
-	expected := fmt.Sprintf("Exporting layer '%s' with SHA sha256:%s", name, layerSHA)
+	expected := fmt.Sprintf("Exporting layer '%s' with SHA %s", name, lifecycle.DisplaySha(layerSHA))
 	h.AssertStringContains(t, stdout.String(), expected)
 }
 
 func assertReuseLayerLog(t *testing.T, stdout bytes.Buffer, name, sha string) {
 	t.Helper()
-	expected := fmt.Sprintf("Reusing layer '%s' with SHA sha256:%s", name, sha)
+	expected := fmt.Sprintf("Reusing layer '%s' with SHA %s", name, lifecycle.DisplaySha(sha))
 	h.AssertStringContains(t, stdout.String(), expected)
 }
 

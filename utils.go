@@ -34,6 +34,14 @@ func ReadOrder(path string) (BuildpackOrder, error) {
 	return order.Order, err
 }
 
+func DisplaySha(sha string) string {
+	rawSha := strings.TrimPrefix(sha, "sha256:")
+	if len(sha) > 12 {
+		return rawSha[0:12]
+	}
+	return rawSha
+}
+
 func escapeID(id string) string {
 	return strings.Replace(id, "/", "_", -1)
 }
