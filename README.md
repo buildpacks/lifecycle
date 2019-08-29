@@ -39,7 +39,7 @@ $ make all
 ```
 This will create an archive at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz`.
 
-By default, `LIFECYCLE_VERSION` is `dev`. It can be changed by prepending `LIFECYCLE_VERSION=<some version>` to the
+By default, `LIFECYCLE_VERSION` is `0.0.0`. It can be changed by prepending `LIFECYCLE_VERSION=<some version>` to the
 `make` command. For example:
 
 ```bash
@@ -58,7 +58,7 @@ $ make test
 
 ### Build
 
-Builds binaries to `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64/` for the given (or default) `LIFECYCLE_VERSION`.
+Builds binaries to `out/lifecycle/`.
 
 ```bash
 $ make build
@@ -69,7 +69,7 @@ $ make build
 ### Package
 
 Creates an archive at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz`, using the contents of the
-`out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64/` directory, for the given (or default) `LIFECYCLE_VERSION`.
+`out/lifecycle/` directory, for the given (or default) `LIFECYCLE_VERSION`.
 
 ```bash
 $ make package
