@@ -29,6 +29,53 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		gid                  = 2345
 	)
 
+	when("#ReadTarArchive", func() {
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "extract-tar-test")
+
+			if err != nil {
+				t.Fatalf("failed to create tmp dir %s: %s", tmpDir, err)
+			}
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			err := os.RemoveAll(tmpDir)
+			h.AssertNil(t, err)
+		})
+
+		it("extracts a tar file", func() {
+
+			var pathModes = []archive.PathMode{
+				{"root", os.ModeDir + 0755},
+				{"root/readonly", os.ModeDir + 0500},
+				{"root/standarddir", os.ModeDir + 0755},
+				{"root/standarddir/somefile", 0644},
+				{"root/readonly/readonlysub/somefile", 0444},
+				{"root/readonly/readonlysub", os.ModeDir + 0500},
+			}
+
+			src = filepath.Join("testdata", "tar-to-dir", "some-layer.tar")
+			file, err := os.Open(src)
+			h.AssertNil(t, err)
+			h.AssertNil(t, archive.Untar(file, tmpDir))
+
+			for _, pathMode := range pathModes {
+				file := filepath.Join(tmpDir, pathMode.Path)
+				fileInfo, err := os.Stat(file)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fileInfo.Mode(), pathMode.Mode)
+				// Make all files os.ModePerm where they can all be cleaned up.
+				if err := os.Chmod(file, os.ModePerm); err != nil {
+					h.AssertNil(t, err)
+				}
+			}
+		})
+
+	})
+
 	when("#WriteTarArchive", func() {
 		it.Before(func() {
 			var err error

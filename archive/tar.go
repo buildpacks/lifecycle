@@ -104,11 +104,22 @@ func addParentDirs(tarDir string, tw *tar.Writer, uid, gid int) error {
 	return tw.WriteHeader(header)
 }
 
+type PathMode struct {
+	Path string
+	Mode os.FileMode
+}
+
 func Untar(r io.Reader, dest string) error {
 	tr := tar.NewReader(r)
+	var pathModes []PathMode
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
+			for _, pathMode := range pathModes {
+				if err := os.Chmod(pathMode.Path, pathMode.Mode); err != nil {
+					return err
+				}
+			}
 			return nil
 		}
 		if err != nil {
@@ -119,13 +130,15 @@ func Untar(r io.Reader, dest string) error {
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(path, hdr.FileInfo().Mode()); err != nil {
+			pathMode := PathMode{path, hdr.FileInfo().Mode()}
+			pathModes = append(pathModes, pathMode)
+			if err := os.MkdirAll(path, os.ModePerm); err != nil {
 				return err
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			_, err := os.Stat(filepath.Dir(path))
 			if os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
+				if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 					return err
 				}
 			}
