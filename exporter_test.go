@@ -35,7 +35,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		exporter        *lifecycle.Exporter
 		fakeAppImage    *fakes.Image
-		outLog          *bytes.Buffer
+		outLog          bytes.Buffer
 		layersDir       string
 		tmpDir          string
 		appDir          string
@@ -47,7 +47,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		outLog = &bytes.Buffer{}
+		outLog = bytes.Buffer{}
 
 		tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 		h.AssertNil(t, err)
@@ -88,7 +88,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				{ID: "buildpack.id", Version: "1.2.3"},
 				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
-			Logger: mocks.NewMockLogger(io.MultiWriter(outLog, it.Out())),
+			Logger: mocks.NewMockLogger(io.MultiWriter(&outLog, it.Out())),
 			UID: uid,
 			GID: gid,
 		}
@@ -176,7 +176,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 				assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
 				assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
-				assertAddLayerLog(t, *outLog, "app", appLayerPath)
+				assertAddLayerLog(t, outLog, "app", appLayerPath)
 			})
 
 			it("creates config layer on Run image", func() {
@@ -190,21 +190,21 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(layersDir, "config"), uid, gid)
-				assertAddLayerLog(t, *outLog, "config", configLayerPath)
+				assertAddLayerLog(t, outLog, "config", configLayerPath)
 			})
 
 			it("reuses launcher layer if the sha matches the sha in the metadata", func() {
 				launcherLayerSHA := h.ComputeSHA256ForPath(t, launcherConfig.Path, uid, gid)
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherConfig, stack))
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:"+launcherLayerSHA)
-				assertReuseLayerLog(t, *outLog, "launcher", launcherLayerSHA)
+				assertReuseLayerLog(t, outLog, "launcher", launcherLayerSHA)
 			})
 
 			it("reuses launch layers when only layer.toml is present", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:orig-launch-layer-no-local-dir-sha")
-				assertReuseLayerLog(t, *outLog, "buildpack.id:launch-layer-no-local-dir", "orig-launch-layer-no-local-dir-sha")
+				assertReuseLayerLog(t, outLog, "buildpack.id:launch-layer-no-local-dir", "orig-launch-layer-no-local-dir-sha")
 			})
 
 			it("reuses cached launch layers if the local sha matches the sha in the metadata", func() {
@@ -213,7 +213,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:"+layer5sha)
-				assertReuseLayerLog(t, *outLog, "other.buildpack.id:local-reusable-layer", layer5sha)
+				assertReuseLayerLog(t, outLog, "other.buildpack.id:local-reusable-layer", layer5sha)
 			})
 
 			it("adds new launch layers", func() {
@@ -227,7 +227,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "buildpack.id/new-launch-layer/file-from-new-launch-layer"),
 					"echo text from layer 2\n")
 				assertTarFileOwner(t, layer2Path, filepath.Join(layersDir, "buildpack.id/new-launch-layer"), uid, gid)
-				assertAddLayerLog(t, *outLog, "buildpack.id:new-launch-layer", layer2Path)
+				assertAddLayerLog(t, outLog, "buildpack.id:new-launch-layer", layer2Path)
 			})
 
 			it("adds new launch layers from a second buildpack", func() {
@@ -241,7 +241,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "other.buildpack.id/new-launch-layer/new-launch-layer-file"),
 					"echo text from new layer\n")
 				assertTarFileOwner(t, layer3Path, filepath.Join(layersDir, "other.buildpack.id/new-launch-layer"), uid, gid)
-				assertAddLayerLog(t, *outLog, "other.buildpack.id:new-launch-layer", layer3Path)
+				assertAddLayerLog(t, outLog, "other.buildpack.id:new-launch-layer", layer3Path)
 			})
 
 			it("only creates expected layers", func() {
@@ -686,7 +686,7 @@ type = "Apache-2.0"
 
 				assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
 				assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
-				assertAddLayerLog(t, *outLog, "app", appLayerPath)
+				assertAddLayerLog(t, outLog, "app", appLayerPath)
 			})
 
 			it("creates config layer on Run image", func() {
@@ -700,7 +700,7 @@ type = "Apache-2.0"
 					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(layersDir, "config"), uid, gid)
-				assertAddLayerLog(t, *outLog, "config", configLayerPath)
+				assertAddLayerLog(t, outLog, "config", configLayerPath)
 			})
 
 			it("creates a launcher layer", func() {
@@ -713,7 +713,7 @@ type = "Apache-2.0"
 					launcherConfig.Path,
 					"some-launcher")
 				assertTarFileOwner(t, launcherLayerPath, launcherConfig.Path, uid, gid)
-				assertAddLayerLog(t, *outLog, "launcher", launcherLayerPath)
+				assertAddLayerLog(t, outLog, "launcher", launcherLayerPath)
 			})
 
 			it("adds launch layers", func() {
@@ -726,7 +726,7 @@ type = "Apache-2.0"
 					filepath.Join(layersDir, "buildpack.id/layer1/file-from-layer-1"),
 					"echo text from layer 1\n")
 				assertTarFileOwner(t, layer1Path, filepath.Join(layersDir, "buildpack.id/layer1"), uid, gid)
-				assertAddLayerLog(t, *outLog, "buildpack.id:layer1", layer1Path)
+				assertAddLayerLog(t, outLog, "buildpack.id:layer1", layer1Path)
 
 				layer2Path, err := fakeAppImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/layer2"))
 				h.AssertNil(t, err)
@@ -735,7 +735,7 @@ type = "Apache-2.0"
 					filepath.Join(layersDir, "buildpack.id/layer2/file-from-layer-2"),
 					"echo text from layer 2\n")
 				assertTarFileOwner(t, layer2Path, filepath.Join(layersDir, "buildpack.id/layer2"), uid, gid)
-				assertAddLayerLog(t, *outLog, "buildpack.id:layer2", layer2Path)
+				assertAddLayerLog(t, outLog, "buildpack.id:layer2", layer2Path)
 			})
 
 			it("only creates expected layers", func() {
@@ -869,7 +869,7 @@ type = "Apache-2.0"
 					filepath.Join(layersDir, "some_escaped_bp_id/some-layer/some-file"),
 					"some-file-contents\n")
 				assertTarFileOwner(t, layerPath, filepath.Join(layersDir, "some_escaped_bp_id/some-layer/some-file"), uid, gid)
-				assertAddLayerLog(t, *outLog, "some/escaped/bp/id:some-layer", layerPath)
+				assertAddLayerLog(t, outLog, "some/escaped/bp/id:some-layer", layerPath)
 			})
 
 			it("exports buildpack metadata with unescaped id", func() {
