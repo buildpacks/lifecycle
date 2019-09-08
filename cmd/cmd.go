@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/buildpack/lifecycle/internal/logging"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/internal/logging"
 )
 
 const (

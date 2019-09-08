@@ -9,10 +9,10 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/buildpack/lifecycle/logging"
-
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/logging"
 )
 
 const (

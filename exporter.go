@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/buildpack/lifecycle/logging"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 

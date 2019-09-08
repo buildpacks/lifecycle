@@ -10,13 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpack/lifecycle/internal/mocks"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/internal/mocks"
 )
 
 func TestDetector(t *testing.T) {

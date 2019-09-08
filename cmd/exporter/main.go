@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/buildpack/lifecycle/logging"
 	"io/ioutil"
 	"log"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/auth"
+	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
