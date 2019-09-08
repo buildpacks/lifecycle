@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -103,7 +102,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		}
 		run := t.(detectRun)
 		if len(run.Output) > 0 {
-			c.Logger.Debug(fmt.Sprintf("======== Output: %s ========\n%s", bp, run.Output))
+			c.Logger.Debugf("======== Output: %s ========\n%s", bp, run.Output)
 		}
 		if run.Err != nil {
 			c.Logger.Debugf("======== Error: %s ========\n%s", bp, run.Err)
