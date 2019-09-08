@@ -130,8 +130,10 @@ func Untar(r io.Reader, dest string) error {
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			pathMode := PathMode{path, hdr.FileInfo().Mode()}
-			pathModes = append(pathModes, pathMode)
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				pathMode := PathMode{path, hdr.FileInfo().Mode()}
+				pathModes = append(pathModes, pathMode)
+			}
 			if err := os.MkdirAll(path, os.ModePerm); err != nil {
 				return err
 			}
