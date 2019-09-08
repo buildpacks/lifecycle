@@ -3,11 +3,11 @@ package cmd
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/buildpack/lifecycle/internal/logging"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 )
@@ -24,6 +24,7 @@ const (
 	DefaultPlanPath      = "./plan.toml"
 	DefaultProcessType   = "web"
 	DefaultLauncherPath  = "/cnb/lifecycle/launcher"
+	DefaultLogLevel      = logging.InfoLevel
 
 	EnvLayersDir         = "CNB_LAYERS_DIR"
 	EnvAppDir            = "CNB_APP_DIR"
@@ -128,6 +129,10 @@ func FlagVersion(version *bool) {
 	flag.BoolVar(version, "version", false, "show version")
 }
 
+func FlagLogLevel(level *string) {
+	flag.StringVar(level, "log-level", DefaultLogLevel, "show version")
+}
+
 const (
 	CodeFailed = 1
 	// 2: reserved
@@ -148,8 +153,7 @@ var (
 	SCMCommit = ""
 	// SCMRepository is the source repository. It is injected at compile time.
 	SCMRepository = ""
-	OutLogger     = log.New(os.Stdout, "", 0)
-	ErrLogger     = log.New(os.Stderr, "", 0)
+	Logger        = logging.NewLogWithWriters()
 )
 
 // buildVersion is a display format of the version and build metadata in compliance with semver.
@@ -196,7 +200,7 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	ErrLogger.Printf("Error: %s\n", err)
+	Logger.Errorf("Error: %s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
@@ -204,7 +208,7 @@ func Exit(err error) {
 }
 
 func ExitWithVersion() {
-	OutLogger.Printf(buildVersion())
+	Logger.Infof(buildVersion())
 	os.Exit(0)
 }
 

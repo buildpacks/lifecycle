@@ -19,6 +19,7 @@ var (
 	groupPath     string
 	planPath      string
 	printVersion  bool
+	logLevel      string
 )
 
 func init() {
@@ -29,6 +30,9 @@ func init() {
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagPlanPath(&planPath)
 	cmd.FlagVersion(&printVersion)
+	cmd.FlagLogLevel(&logLevel)
+
+	cmd.Logger.WantLevel(logLevel)
 }
 
 func main() {
@@ -73,7 +77,7 @@ func detect() error {
 		AppDir:        appDir,
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
-		Out:           log.New(os.Stdout, "", 0),
+		Logger:        cmd.Logger,
 	})
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")

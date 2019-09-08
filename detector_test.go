@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/buildpack/lifecycle/internal/mocks"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -49,7 +50,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			AppDir:        appDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
-			Out:           log.New(io.MultiWriter(outLog, it.Out()), "", 0),
+			Logger:        mocks.NewMockLogger(io.MultiWriter(outLog, it.Out())),
 		}
 	})
 
