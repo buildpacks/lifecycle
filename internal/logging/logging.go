@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	InfoLevel = "info"
+	InfoLevel  = "info"
 	DebugLevel = "debug"
 
 	errorLevelText = "ERROR: "

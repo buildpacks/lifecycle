@@ -89,8 +89,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
 			Logger: mocks.NewMockLogger(io.MultiWriter(&outLog, it.Out())),
-			UID: uid,
-			GID: gid,
+			UID:    uid,
+			GID:    gid,
 		}
 	})
 
