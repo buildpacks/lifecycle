@@ -7,6 +7,12 @@ import (
 	"github.com/buildpack/lifecycle/style"
 )
 
+const (
+	InfoLevel  = "info"
+	DebugLevel = "debug"
+	WarnLevel  = "warn"
+)
+
 // Logger defines behavior required by a logging package used by pack libraries
 type Logger interface {
 	Debug(msg string)

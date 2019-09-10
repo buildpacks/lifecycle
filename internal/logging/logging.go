@@ -11,13 +11,11 @@ import (
 
 	"github.com/apex/log"
 
+	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/style"
 )
 
 const (
-	InfoLevel  = "info"
-	DebugLevel = "debug"
-
 	errorLevelText = "ERROR: "
 	warnLevelText  = "Warning: "
 
@@ -66,11 +64,11 @@ func (h *handler) HandleLog(e *log.Entry) error {
 
 	if h.wantTime {
 		ts := h.timer().Format(timeFmt)
-		_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s %s%-25s", ts, formatLevel(e.Level), e.Message)))
+		_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s %s%s", ts, formatLevel(e.Level), e.Message)))
 		return nil
 	}
 
-	_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s%-25s", formatLevel(e.Level), e.Message)))
+	_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s%s", formatLevel(e.Level), e.Message)))
 
 	return nil
 }
@@ -107,10 +105,12 @@ func (lw *logWithWriters) WantTime(f bool) {
 }
 
 func (lw *logWithWriters) WantLevel(f string) {
-	if f == InfoLevel {
+	if f == logging.InfoLevel {
 		lw.Level = log.InfoLevel
-	} else if f == DebugLevel {
+	} else if f == logging.DebugLevel {
 		lw.Level = log.DebugLevel
+	} else if f == logging.WarnLevel {
+		lw.Level = log.WarnLevel
 	} else {
 		lw.Level = log.ErrorLevel
 	}

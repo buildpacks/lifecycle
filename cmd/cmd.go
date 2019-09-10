@@ -10,7 +10,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/internal/logging"
+	internallog "github.com/buildpack/lifecycle/internal/logging"
+	"github.com/buildpack/lifecycle/logging"
 )
 
 const (
@@ -154,7 +155,7 @@ var (
 	SCMCommit = ""
 	// SCMRepository is the source repository. It is injected at compile time.
 	SCMRepository = ""
-	Logger        = logging.NewLogWithWriters()
+	Logger        = internallog.NewLogWithWriters()
 )
 
 // buildVersion is a display format of the version and build metadata in compliance with semver.
