@@ -161,7 +161,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 }
 
 func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
-	c.Logger.Infof("Resolving plan... (try #%d)", i)
+	c.Logger.Debugf("Resolving plan... (try #%d)", i)
 
 	var deps depMap
 	for retry := true; retry; {
