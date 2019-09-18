@@ -104,12 +104,12 @@ func (lw *logWithWriters) WantTime(f bool) {
 	lw.handler.wantTime = f
 }
 
-func (lw *logWithWriters) WantLevel(f string) {
-	if f == logging.InfoLevel {
+func (lw *logWithWriters) WantLevel(level string) {
+	if level == logging.InfoLevel {
 		lw.Level = log.InfoLevel
-	} else if f == logging.DebugLevel {
+	} else if level == logging.DebugLevel {
 		lw.Level = log.DebugLevel
-	} else if f == logging.WarnLevel {
+	} else if level == logging.WarnLevel {
 		lw.Level = log.WarnLevel
 	} else {
 		lw.Level = log.ErrorLevel

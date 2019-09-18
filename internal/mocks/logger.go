@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/buildpack/lifecycle/logging"
+
 	"github.com/apex/log"
 )
 
@@ -38,4 +40,16 @@ func (ml *mockLog) HandleLog(e *log.Entry) error {
 
 func (ml *mockLog) Writer() io.Writer {
 	return ml.w
+}
+
+func (ml *mockLog) WantLevel(level string) {
+	if level == logging.InfoLevel {
+		ml.Logger.Level = log.InfoLevel
+	} else if level == logging.DebugLevel {
+		ml.Logger.Level = log.DebugLevel
+	} else if level == logging.WarnLevel {
+		ml.Logger.Level = log.WarnLevel
+	} else {
+		ml.Logger.Level = log.ErrorLevel
+	}
 }
