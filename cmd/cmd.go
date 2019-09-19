@@ -155,8 +155,17 @@ var (
 	SCMCommit = ""
 	// SCMRepository is the source repository. It is injected at compile time.
 	SCMRepository = ""
-	Logger        = internallog.NewLogWithWriters()
+
+	Logger = newLogger()
 )
+
+func newLogger() logging.Logger {
+	stdout := internallog.New(os.Stdout)
+	defer stdout.Close()
+	stderr := internallog.New(os.Stderr)
+	defer stderr.Close()
+	return internallog.NewLogWithWriters(stdout, stderr)
+}
 
 // buildVersion is a display format of the version and build metadata in compliance with semver.
 func buildVersion() string {

@@ -11,6 +11,7 @@ const (
 	InfoLevel  = "info"
 	DebugLevel = "debug"
 	WarnLevel  = "warn"
+	ErrorLevel = "error"
 )
 
 // Logger defines behavior required by a logging package used by pack libraries
