@@ -23,6 +23,7 @@ var (
 	uid           int
 	gid           int
 	printVersion  bool
+	logLevel      string
 )
 
 func init() {
@@ -33,6 +34,8 @@ func init() {
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
+
+	cmd.Logger.WantLevel(logLevel)
 }
 
 func main() {
@@ -69,8 +72,7 @@ func doCache() error {
 	cacher := &lifecycle.Cacher{
 		Buildpacks:   group.Group,
 		ArtifactsDir: artifactsDir,
-		Out:          log.New(os.Stdout, "", 0),
-		Err:          log.New(os.Stderr, "", 0),
+		Logger:       cmd.Logger,
 		UID:          uid,
 		GID:          gid,
 	}

@@ -3,13 +3,13 @@ package lifecycle
 import (
 	"fmt"
 	"io"
-	"log"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cache"
+	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -27,7 +27,7 @@ type Cache interface {
 type Cacher struct {
 	ArtifactsDir string
 	Buildpacks   []Buildpack
-	Out, Err     *log.Logger
+	Logger       logging.Logger
 	UID, GID     int
 }
 
@@ -80,10 +80,12 @@ func (c *Cacher) addOrReuseLayer(cache Cache, layer bpLayer, previousSHA string)
 	}
 
 	if sha == previousSHA {
-		c.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
+		c.Logger.Infof("Reusing layer '%s'", layer.Identifier())
+		c.Logger.Debugf("  - with SHA %s\n", sha)
 		return sha, cache.ReuseLayer(previousSHA)
 	}
 
-	c.Out.Printf("Caching layer '%s' with SHA %s\n", layer.Identifier(), sha)
+	c.Logger.Infof("Caching layer '%s'\n", layer.Identifier())
+	c.Logger.Debugf("  - with SHA %s\n", sha)
 	return sha, cache.AddLayerFile(sha, tarPath)
 }
