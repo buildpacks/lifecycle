@@ -34,6 +34,7 @@ func init() {
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
+	cmd.FlagLogLevel(&logLevel)
 
 	cmd.Logger.WantLevel(logLevel)
 }
