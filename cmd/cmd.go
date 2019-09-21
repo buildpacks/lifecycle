@@ -132,7 +132,7 @@ func FlagVersion(version *bool) {
 }
 
 func FlagLogLevel(level *string) {
-	flag.StringVar(level, "log-level", DefaultLogLevel, "show version")
+	flag.StringVar(level, "log-level", DefaultLogLevel, "set the logging level")
 }
 
 const (
