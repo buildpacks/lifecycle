@@ -45,8 +45,6 @@ func init() {
 	cmd.FlagSkipLayers(&skipLayers)
 	cmd.FlagVersion(&printVersion)
 	cmd.FlagLogLevel(&logLevel)
-
-	cmd.Logger.WantLevel(logLevel)
 }
 
 func main() {
@@ -54,6 +52,8 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	cmd.Logger.WantLevel(logLevel)
 
 	if printVersion {
 		cmd.ExitWithVersion()
