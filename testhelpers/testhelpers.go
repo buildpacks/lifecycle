@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -35,6 +36,21 @@ func RandString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
+}
+
+func AssertMatch(t *testing.T, actual string, expected string) {
+	t.Helper()
+	if !regexp.MustCompile(expected).MatchString(actual) {
+		t.Fatalf("Expected: '%s' to match regex '%s'", actual, expected)
+	}
+}
+
+// Assert the simplistic pointer (or literal value) equality
+func AssertSameInstance(t *testing.T, actual, expected interface{}) {
+	t.Helper()
+	if actual != expected {
+		t.Fatalf("Expected %s and %s to be pointers to the variable", actual, expected)
+	}
 }
 
 // Assert deep equality (and provide useful difference as a test failure)

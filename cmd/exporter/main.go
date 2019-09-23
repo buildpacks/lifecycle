@@ -19,6 +19,7 @@ import (
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/auth"
+	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -37,6 +38,7 @@ var (
 	uid            int
 	gid            int
 	printVersion   bool
+	logLevel       string
 )
 
 func init() {
@@ -53,6 +55,7 @@ func init() {
 	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
 	cmd.FlagLauncherPath(&launcherPath)
+	cmd.FlagLogLevel(&logLevel)
 }
 
 func main() {
@@ -60,6 +63,8 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	cmd.Logger.WantLevel(logLevel)
 
 	if printVersion {
 		cmd.ExitWithVersion()
@@ -92,14 +97,13 @@ func export() error {
 
 	exporter := &lifecycle.Exporter{
 		Buildpacks:   group.Group,
-		Out:          log.New(os.Stdout, "", 0),
-		Err:          log.New(os.Stderr, "", 0),
+		Logger:       cmd.Logger,
 		UID:          uid,
 		GID:          gid,
 		ArtifactsDir: artifactsDir,
 	}
 
-	analyzedMD, err := parseOptionalAnalyzedMD(cmd.OutLogger, analyzedPath)
+	analyzedMD, err := parseOptionalAnalyzedMD(cmd.Logger, analyzedPath)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
@@ -112,7 +116,7 @@ func export() error {
 	var stackMD metadata.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
-		cmd.OutLogger.Printf("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
+		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
 	}
 
 	if runImageRef == "" {
@@ -144,7 +148,7 @@ func export() error {
 		}
 
 		if analyzedMD.Image != nil {
-			cmd.OutLogger.Printf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+			cmd.Logger.Infof("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
 			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 		}
 
@@ -171,7 +175,7 @@ func export() error {
 		}
 
 		if analyzedMD.Image != nil {
-			cmd.OutLogger.Printf("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+			cmd.Logger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
 			analyzedRegistry, err := image.ParseRegistry(analyzedMD.Image.Reference)
 			if err != nil {
 				return cmd.FailErr(err, "parse analyzed registry")
@@ -216,13 +220,13 @@ func export() error {
 	return nil
 }
 
-func parseOptionalAnalyzedMD(logger *log.Logger, path string) (metadata.AnalyzedMetadata, error) {
+func parseOptionalAnalyzedMD(logger logging.Logger, path string) (metadata.AnalyzedMetadata, error) {
 	var analyzedMD metadata.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Printf("Warning: analyzed TOML file not found at '%s'", path)
+			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)
 			return metadata.AnalyzedMetadata{}, nil
 		}
 

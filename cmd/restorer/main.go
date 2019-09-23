@@ -5,7 +5,6 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"os"
 
 	"github.com/buildpack/imgutil/remote"
 
@@ -23,6 +22,7 @@ var (
 	uid           int
 	gid           int
 	printVersion  bool
+	logLevel      string
 )
 
 func init() {
@@ -33,6 +33,7 @@ func init() {
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
+	cmd.FlagLogLevel(&logLevel)
 }
 
 func main() {
@@ -40,6 +41,8 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	cmd.Logger.WantLevel(logLevel)
 
 	if printVersion {
 		cmd.ExitWithVersion()
@@ -63,8 +66,7 @@ func restore() error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
 		Buildpacks: group.Group,
-		Out:        log.New(os.Stdout, "", 0),
-		Err:        log.New(os.Stderr, "", 0),
+		Logger:     cmd.Logger,
 		UID:        uid,
 		GID:        gid,
 	}

@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"bytes"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +11,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/logging"
 )
 
 const (
@@ -74,7 +75,7 @@ type DetectConfig struct {
 	AppDir        string
 	PlatformDir   string
 	BuildpacksDir string
-	Out           *log.Logger
+	Logger        logging.Logger
 	runs          *sync.Map
 }
 
@@ -101,15 +102,15 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		}
 		run := t.(detectRun)
 		if len(run.Output) > 0 {
-			c.Out.Printf("======== Output: %s ========\n%s", bp, run.Output)
+			c.Logger.Debugf("======== Output: %s ========\n%s", bp, run.Output)
 		}
 		if run.Err != nil {
-			c.Out.Printf("======== Error: %s ========\n%s", bp, run.Err)
+			c.Logger.Debugf("======== Error: %s ========\n%s", bp, run.Err)
 		}
 		runs = append(runs, run)
 	}
 
-	c.Out.Printf("======== Results ========")
+	c.Logger.Debugf("======== Results ========")
 
 	results := detectResults{}
 	detected := true
@@ -117,20 +118,20 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		run := runs[i]
 		switch run.Code {
 		case CodeDetectPass:
-			c.Out.Printf("pass: %s", bp)
+			c.Logger.Debugf("pass: %s", bp)
 			results = append(results, detectResult{bp, run})
 		case CodeDetectFail:
 			if bp.Optional {
-				c.Out.Printf("skip: %s", bp)
+				c.Logger.Debugf("skip: %s", bp)
 			} else {
-				c.Out.Printf("fail: %s", bp)
+				c.Logger.Debugf("fail: %s", bp)
 			}
 			detected = detected && bp.Optional
 		case -1:
-			c.Out.Printf("err:  %s", bp)
+			c.Logger.Debugf("err:  %s", bp)
 			detected = detected && bp.Optional
 		default:
-			c.Out.Printf("err:  %s (%d)", bp, run.Code)
+			c.Logger.Debugf("err:  %s (%d)", bp, run.Code)
 			detected = detected && bp.Optional
 		}
 	}
@@ -146,7 +147,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Out.Printf("Success! (%d)", len(trial))
+	c.Logger.Infof("Success! (%d)", len(trial))
 
 	var found []Buildpack
 	for _, r := range trial {
@@ -160,7 +161,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 }
 
 func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
-	c.Out.Printf("Resolving plan... (try #%d)", i)
+	c.Logger.Debugf("Resolving plan... (try #%d)", i)
 
 	var deps depMap
 	for retry := true; retry; {
@@ -170,10 +171,10 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 		if err := deps.eachUnmetRequire(func(name string, bp Buildpack) error {
 			retry = true
 			if !bp.Optional {
-				c.Out.Printf("fail: %s requires %s", bp, name)
+				c.Logger.Debugf("fail: %s requires %s", bp, name)
 				return ErrFail
 			}
-			c.Out.Printf("skip: %s requires %s", bp, name)
+			c.Logger.Debugf("skip: %s requires %s", bp, name)
 			trial = trial.remove(bp)
 			return nil
 		}); err != nil {
@@ -183,10 +184,10 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 		if err := deps.eachUnmetProvide(func(name string, bp Buildpack) error {
 			retry = true
 			if !bp.Optional {
-				c.Out.Printf("fail: %s provides unused %s", bp, name)
+				c.Logger.Debugf("fail: %s provides unused %s", bp, name)
 				return ErrFail
 			}
-			c.Out.Printf("skip: %s provides unused %s", bp, name)
+			c.Logger.Debugf("skip: %s provides unused %s", bp, name)
 			trial = trial.remove(bp)
 			return nil
 		}); err != nil {
@@ -195,7 +196,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 	}
 
 	if len(trial) == 0 {
-		c.Out.Print("fail: no viable buildpacks in group")
+		c.Logger.Debugf("fail: no viable buildpacks in group")
 		return nil, nil, ErrFail
 	}
 	return deps, trial, nil

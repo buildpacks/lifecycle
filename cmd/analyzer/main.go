@@ -30,6 +30,7 @@ var (
 	useDaemon    bool
 	useHelpers   bool
 	printVersion bool
+	logLevel     string
 )
 
 func init() {
@@ -43,6 +44,7 @@ func init() {
 	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagSkipLayers(&skipLayers)
 	cmd.FlagVersion(&printVersion)
+	cmd.FlagLogLevel(&logLevel)
 }
 
 func main() {
@@ -50,6 +52,8 @@ func main() {
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
+
+	cmd.Logger.WantLevel(logLevel)
 
 	if printVersion {
 		cmd.ExitWithVersion()
@@ -82,8 +86,7 @@ func analyzer() error {
 		AppDir:       appDir,
 		LayersDir:    layersDir,
 		AnalyzedPath: analyzedPath,
-		Out:          log.New(os.Stdout, "", 0),
-		Err:          log.New(os.Stderr, "", 0),
+		Logger:       cmd.Logger,
 		UID:          uid,
 		GID:          gid,
 		SkipLayers:   skipLayers,

@@ -1,19 +1,19 @@
 package lifecycle
 
 import (
-	"log"
 	"os"
 
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
+	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Restorer struct {
 	LayersDir  string
 	Buildpacks []Buildpack
-	Out, Err   *log.Logger
+	Logger     logging.Logger
 	UID        int
 	GID        int
 }
@@ -25,7 +25,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 
 	if len(meta.Buildpacks) == 0 {
-		r.Out.Printf("Cache '%s': metadata not found, nothing to restore", cache.Name())
+		r.Logger.Infof("Cache '%s': metadata not found, nothing to restore", cache.Name())
 		return nil
 	}
 
@@ -60,7 +60,7 @@ func (r *Restorer) Restore(cache Cache) error {
 func (r *Restorer) restoreLayer(name string, bpMD metadata.BuildpackLayersMetadata, layer metadata.BuildpackLayerMetadata, layersDir bpLayersDir, cache Cache) error {
 	bpLayer := layersDir.newBPLayer(name)
 
-	r.Out.Printf("Restoring cached layer '%s'", bpLayer.Identifier())
+	r.Logger.Infof("Restoring cached layer '%s'", bpLayer.Identifier())
 	if err := bpLayer.writeMetadata(bpMD.Layers); err != nil {
 		return err
 	}

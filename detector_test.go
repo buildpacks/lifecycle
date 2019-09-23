@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -16,6 +15,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/internal/mocks"
 )
 
 func TestDetector(t *testing.T) {
@@ -49,7 +49,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			AppDir:        appDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
-			Out:           log.New(io.MultiWriter(outLog, it.Out()), "", 0),
+			Logger:        mocks.NewMockLogger(io.MultiWriter(outLog, it.Out())),
 		}
 	})
 

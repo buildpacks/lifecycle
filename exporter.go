@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -21,7 +21,7 @@ type Exporter struct {
 	Buildpacks   []Buildpack
 	ArtifactsDir string
 	In           []byte
-	Out, Err     *log.Logger
+	Logger       logging.Logger
 	UID, GID     int
 }
 
@@ -99,7 +99,7 @@ func (e *Exporter) Export(
 					return fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())
 				}
 
-				e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), origLayerMetadata.SHA)
+				e.Logger.Debugf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), origLayerMetadata.SHA)
 				if err := workingImage.ReuseLayer(origLayerMetadata.SHA); err != nil {
 					return errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
 				}
@@ -163,10 +163,10 @@ func (e *Exporter) addLayer(image imgutil.Image, layer identifiableLayer, previo
 		return "", errors.Wrapf(err, "exporting layer '%s'", layer.Identifier())
 	}
 	if sha == previousSHA {
-		e.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
+		e.Logger.Debugf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
 		return sha, image.ReuseLayer(previousSHA)
 	}
-	e.Out.Printf("Exporting layer '%s' with SHA %s\n", layer.Identifier(), sha)
+	e.Logger.Debugf("Exporting layer '%s' with SHA %s\n", layer.Identifier(), sha)
 	return sha, image.AddLayer(tarPath)
 }
 
@@ -204,9 +204,9 @@ func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) erro
 		}
 	}
 
-	e.Out.Println("*** Images:")
+	e.Logger.Info("*** Images:")
 	for _, n := range append([]string{image.Name()}, additionalNames...) {
-		e.Out.Printf("      %s - %s\n", n, getSaveStatus(saveErr, n))
+		e.Logger.Infof("      %s - %s\n", n, getSaveStatus(saveErr, n))
 	}
 
 	id, idErr := image.Identifier()
@@ -224,11 +224,11 @@ func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) erro
 func (e *Exporter) logReference(identifier imgutil.Identifier) {
 	switch v := identifier.(type) {
 	case local.IDIdentifier:
-		e.Out.Printf("\n*** Image ID: %s\n", v.String())
+		e.Logger.Infof("\n*** Image ID: %s\n", v.String())
 	case remote.DigestIdentifier:
-		e.Out.Printf("\n*** Digest: %s\n", v.Digest.DigestStr())
+		e.Logger.Infof("\n*** Digest: %s\n", v.Digest.DigestStr())
 	default:
-		e.Out.Printf("\n*** Reference: %s\n", v.String())
+		e.Logger.Infof("\n*** Reference: %s\n", v.String())
 	}
 }
 

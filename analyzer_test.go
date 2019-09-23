@@ -1,10 +1,8 @@
 package lifecycle_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +15,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/internal/mocks"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
@@ -31,12 +30,11 @@ func TestAnalyzer(t *testing.T) {
 
 func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	var (
-		analyzer       *lifecycle.Analyzer
-		mockCtrl       *gomock.Controller
-		stdout, stderr *bytes.Buffer
-		layerDir       string
-		appDir         string
-		tmpDir         string
+		analyzer *lifecycle.Analyzer
+		mockCtrl *gomock.Controller
+		layerDir string
+		appDir   string
+		tmpDir   string
 	)
 
 	it.Before(func() {
@@ -49,14 +47,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		appDir = filepath.Join(layerDir, "some-app-dir")
-		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		analyzer = &lifecycle.Analyzer{
 			Buildpacks:   []lifecycle.Buildpack{{ID: "metdata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
 			AppDir:       appDir,
 			LayersDir:    layerDir,
 			AnalyzedPath: filepath.Join(tmpDir, "some-previous-file.toml"),
-			Out:          log.New(stdout, "", 0),
-			Err:          log.New(stderr, "", 0),
+			Logger:       mocks.NewMockLogger(ioutil.Discard),
 			UID:          1234,
 			GID:          4321,
 		}
