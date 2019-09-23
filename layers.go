@@ -14,7 +14,7 @@ import (
 
 type bpLayersDir struct {
 	path      string
-	layers    map[string]bpLayer
+	layers    []bpLayer
 	name      string
 	buildpack Buildpack
 }
@@ -24,24 +24,32 @@ func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir,
 	bpDir := bpLayersDir{
 		name:      buildpack.ID,
 		path:      path,
-		layers:    map[string]bpLayer{},
+		layers:    []bpLayer{},
 		buildpack: buildpack,
 	}
 
 	fis, err := ioutil.ReadDir(path)
 	if err != nil && !os.IsNotExist(err) {
-		return bpDir, err
+		return bpLayersDir{}, err
 	}
+
+	names := map[string]struct{}{}
 	for _, fi := range fis {
 		if fi.IsDir() {
-			bpDir.layers[fi.Name()] = *bpDir.newBPLayer(fi.Name())
+			bpDir.layers = append(bpDir.layers, *bpDir.newBPLayer(fi.Name()))
+			names[fi.Name()] = struct{}{}
 		}
 	}
 
 	tomls, err := filepath.Glob(filepath.Join(path, "*.toml"))
+	if err != nil {
+		return bpLayersDir{}, err
+	}
 	for _, toml := range tomls {
 		name := strings.TrimSuffix(filepath.Base(toml), ".toml")
-		bpDir.layers[name] = *bpDir.newBPLayer(name)
+		if _, ok := names[name]; !ok {
+			bpDir.layers = append(bpDir.layers, *bpDir.newBPLayer(name))
+		}
 	}
 	return bpDir, nil
 }
