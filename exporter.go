@@ -224,11 +224,11 @@ func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) erro
 func (e *Exporter) logReference(identifier imgutil.Identifier) {
 	switch v := identifier.(type) {
 	case local.IDIdentifier:
-		e.Logger.Infof("\n*** Image ID: %s\n", v.String())
+		e.Logger.Debugf("\n*** Image ID: %s\n", v.String())
 	case remote.DigestIdentifier:
-		e.Logger.Infof("\n*** Digest: %s\n", v.Digest.DigestStr())
+		e.Logger.Debugf("\n*** Digest: %s\n", v.Digest.DigestStr())
 	default:
-		e.Logger.Infof("\n*** Reference: %s\n", v.String())
+		e.Logger.Debugf("\n*** Reference: %s\n", v.String())
 	}
 }
 

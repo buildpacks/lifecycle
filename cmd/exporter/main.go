@@ -148,7 +148,7 @@ func export() error {
 		}
 
 		if analyzedMD.Image != nil {
-			cmd.Logger.Infof("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+			cmd.Logger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
 			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 		}
 
