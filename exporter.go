@@ -219,7 +219,7 @@ func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) erro
 	e.Logger.Info("*** Images:")
 	for _, n := range append([]string{image.Name()}, additionalNames...) {
 		if ok, message := getSaveStatus(saveErr, n); !ok {
-			e.Logger.Infof("      %s - %s\n", n, TruncateSha(ref), message)
+			e.Logger.Infof("      %s - %s\n", n, message)
 		} else {
 			e.Logger.Infof("      %s (%s)\n", n, TruncateSha(ref))
 		}

@@ -569,9 +569,9 @@ type = "Apache-2.0"
 				h.AssertStringContains(t,
 					outLog.String(),
 					fmt.Sprintf(`*** Images:
-      %s - succeeded
-      %s - succeeded
-      %s - succeeded
+      %s (some-image-i)
+      %s (some-image-i)
+      %s (some-image-i)
 `,
 						fakeAppImage.Name(),
 						additionalNames[0],
@@ -600,9 +600,9 @@ type = "Apache-2.0"
 						outLog.String(),
 						fmt.Sprintf(
 							`*** Images:
-      %s - succeeded
-      %s - succeeded
-      %s - succeeded
+      %s (some-image-i)
+      %s (some-image-i)
+      %s (some-image-i)
       %s - could not parse reference
 
 *** Image ID: some-image-id`,
@@ -972,13 +972,17 @@ func assertAddLayerLog(t *testing.T, stdout bytes.Buffer, name, layerPath string
 	t.Helper()
 	layerSHA := h.ComputeSHA256ForFile(t, layerPath)
 
-	expected := fmt.Sprintf("Exporting layer '%s' with SHA sha256:%s", name, layerSHA)
+	expected := fmt.Sprintf("Adding layer '%s'", name)
+	h.AssertStringContains(t, stdout.String(), expected)
+	expected = fmt.Sprintf("Layer '%s' SHA: sha256:%s", name, layerSHA)
 	h.AssertStringContains(t, stdout.String(), expected)
 }
 
 func assertReuseLayerLog(t *testing.T, stdout bytes.Buffer, name, sha string) {
 	t.Helper()
-	expected := fmt.Sprintf("Reusing layer '%s' with SHA sha256:%s", name, sha)
+	expected := fmt.Sprintf("Reusing layer '%s'", name)
+	h.AssertStringContains(t, stdout.String(), expected)
+	expected = fmt.Sprintf("Layer '%s' SHA: sha256:%s", name, sha)
 	h.AssertStringContains(t, stdout.String(), expected)
 }
 
