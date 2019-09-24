@@ -104,7 +104,7 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*metadata.ImageIdent
 	if err != nil {
 		return nil, err
 	}
-	a.Logger.Infof("Analyzing image '%s'", identifier.String())
+	a.Logger.Debugf("Analyzing image '%s'", identifier.String())
 	return &metadata.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
