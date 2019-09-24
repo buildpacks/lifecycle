@@ -19,9 +19,11 @@ import (
 const (
 	CodeDetectPass = 0
 	CodeDetectFail = 100
+
+	DetectFailureMessage = "None of the provided buildpack groups passed detection for this repository.\nPlease check that you are running against the correct path."
 )
 
-var ErrFail = errors.New("detection failed")
+var ErrFail = errors.New("no buildpacks match this repository")
 
 type Buildpack struct {
 	ID       string `toml:"id" json:"id"`
@@ -146,6 +148,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		return c.runTrial(i, trial)
 	})
 	if err != nil {
+		c.Logger.Info(DetectFailureMessage)
 		return nil, nil, err
 	}
 

@@ -135,7 +135,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			if s := cmp.Diff(outLog.String(),
 				"======== Results ========\n"+
 					"Resolving plan... (try #1)\n"+
-					"fail: no viable buildpacks in group\n",
+					"fail: no viable buildpacks in group\n"+
+					lifecycle.DetectFailureMessage+"\n",
 			); s != "" {
 				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
@@ -158,7 +159,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"skip: A@v1\n"+
 					"skip: B@v1\n"+
 					"Resolving plan... (try #1)\n"+
-					"fail: no viable buildpacks in group\n",
+					"fail: no viable buildpacks in group\n"+
+					lifecycle.DetectFailureMessage+"\n",
 			) {
 				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
@@ -280,7 +282,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: B@v1\n"+
 						"pass: C@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"fail: B@v1 requires dep1\n",
+						"fail: B@v1 requires dep1\n"+
+						lifecycle.DetectFailureMessage+"\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
@@ -308,7 +311,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: B@v1\n"+
 						"skip: C@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"fail: B@v1 provides unused dep1\n",
+						"fail: B@v1 provides unused dep1\n"+
+						lifecycle.DetectFailureMessage+"\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
