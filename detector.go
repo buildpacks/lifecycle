@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -147,7 +148,24 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Logger.Infof("Success! (%d)", len(trial))
+
+	if len(done) != len(trial) {
+		c.Logger.Infof("%d of %d buildpacks participating", len(trial), len(done))
+	}
+
+	maxLength := 0
+	for _, t := range trial {
+		l := len(t.ID)
+		if l > maxLength {
+			maxLength = l
+		}
+	}
+
+	f := fmt.Sprintf("%%-%ds %%s", maxLength)
+
+	for _, t := range trial {
+		c.Logger.Infof(f, t.ID, t.Version)
+	}
 
 	var found []Buildpack
 	for _, r := range trial {
