@@ -169,7 +169,6 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 
 	var found []Buildpack
 	for _, r := range trial {
-		c.Logger.Infof("Detected %s", r.Buildpack.ID)
 		found = append(found, r.Buildpack.noOpt())
 	}
 	var plan []BuildPlanEntry
