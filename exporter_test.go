@@ -161,7 +161,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
                 }
               }`, localReusableLayerSha, launcherSHA)))
 
-				fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
+				fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
 				h.AssertNil(t, err)
 			})
 
@@ -620,7 +620,7 @@ type = "Apache-2.0"
 					_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{"buildpacks":[{}]}`)
 
 					var err error
-					fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
+					fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
 					h.AssertNil(t, err)
 				})
 
@@ -640,7 +640,7 @@ type = "Apache-2.0"
 						`{"buildpacks":[{"key": "buildpack.id", "layers": {}}]}`)
 
 					var err error
-					fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
+					fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
 					h.AssertNil(t, err)
 				})
 
@@ -850,7 +850,7 @@ type = "Apache-2.0"
 					`{"buildpacks":[{"key": "some/escaped/bp/id", "layers": {"layer": {"sha": "original-layer-sha"}}}]}`,
 				))
 
-				fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
+				fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
 				h.AssertNil(t, err)
 			})
 
@@ -949,7 +949,7 @@ type = "Apache-2.0"
   ]
 }`)
 
-				fakeImageMetadata, err = metadata.GetLayersMetdata(fakeOriginalImage)
+				fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
 				h.AssertNil(t, err)
 			})
 

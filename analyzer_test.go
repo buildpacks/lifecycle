@@ -48,7 +48,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		appDir = filepath.Join(layerDir, "some-app-dir")
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks:   []lifecycle.Buildpack{{ID: "metdata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
+			Buildpacks:   []lifecycle.Buildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
 			AppDir:       appDir,
 			LayersDir:    layerDir,
 			AnalyzedPath: filepath.Join(tmpDir, "some-previous-file.toml"),
@@ -90,7 +90,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					metadataLabel := `{
   "buildpacks": [
     {
-      "key": "metdata.buildpack",
+      "key": "metadata.buildpack",
       "layers": {
         "valid-launch": {
           "data": {
@@ -160,10 +160,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					for _, data := range []struct{ name, expected string }{
-						{"metdata.buildpack/valid-launch.toml", `[metadata]
+						{"metadata.buildpack/valid-launch.toml", `[metadata]
   akey = "avalue"
   bkey = "bvalue"`},
-						{"metdata.buildpack/stale-launch.toml", `[metadata]
+						{"metadata.buildpack/stale-launch.toml", `[metadata]
   version = "1234"`},
 						{"no.cache.buildpack/go.toml", `[metadata]
   version = "1.10"`},
@@ -190,8 +190,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf(`Error: expected "%s" to be toml encoded go.toml`, txt)
 					}
 
-					if _, err := os.Stat(filepath.Join(layerDir, "metdata.buildpack")); !os.IsNotExist(err) {
-						t.Fatalf(`Error: expected /layer/metdata.buildpack to not exist`)
+					if _, err := os.Stat(filepath.Join(layerDir, "metadata.buildpack")); !os.IsNotExist(err) {
+						t.Fatalf(`Error: expected /layer/metadata.buildpack to not exist`)
 					}
 				})
 
@@ -208,7 +208,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack/stale-launch-build.toml")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack/stale-launch-build.toml")); !os.IsNotExist(err) {
 							t.Fatalf("Found unexpected metadata for stale-launch-build layer")
 						}
 					})
@@ -219,7 +219,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						if _, err := analyzer.Analyze(image); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						}
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "launch-cache.toml")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "launch-cache.toml")); !os.IsNotExist(err) {
 							t.Fatalf("Found unexpected metadata for launch-cache layer")
 						}
 					})
@@ -234,7 +234,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Error: %s\n", err)
 						}
 
-						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "valid-launch", "valid-launch-file")); err != nil {
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "valid-launch", "valid-launch-file")); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						} else if string(txt) != "valid-launch cached file" {
 							t.Fatalf("Error: expected cached node file to remain")
@@ -251,7 +251,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Error: %s\n", err)
 						}
 
-						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "valid-launch.toml")); err != nil {
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "valid-launch.toml")); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						} else {
 							expected := `
@@ -275,7 +275,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Error: %s\n", err)
 						}
 
-						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "valid-launch-build.toml")); err != nil {
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "valid-launch-build.toml")); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						} else {
 							expected := `
@@ -299,7 +299,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Error: %s\n", err)
 						}
 
-						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "build-layer", "build-layer-file")); err != nil {
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "build-layer", "build-layer-file")); err != nil {
 							t.Fatalf("Error: %s\n", err)
 						} else if string(txt) != "build-layer-file-contents" {
 							t.Fatalf("Error: expected cached node file to remain")
@@ -317,17 +317,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						}
 
 						var err error
-						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "node_modules")); !os.IsNotExist(err) {
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack", "node_modules")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale node_modules layer dir, it should not exist")
 						}
-						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "stale-launch.toml")); err != nil {
+						if txt, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "stale-launch.toml")); err != nil {
 							t.Fatalf("failed to read stale-launch.toml: %s", err)
 						} else if !strings.Contains(string(txt), `[metadata]
   version = "1234"`) {
 							t.Fatalf(`Error: expected "%s" to be equal %s`, txt, `metadata.version = "1234"`)
 						}
 
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "stale-launch.sha")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "stale-launch.sha")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale stale-launch.sha, it should be removed")
 						}
 					})
@@ -343,13 +343,13 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						}
 
 						var err error
-						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "bad-layer")); !os.IsNotExist(err) {
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack", "bad-layer")); !os.IsNotExist(err) {
 							t.Fatalf("Found bad-layer layer dir, it should be removed")
 						}
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "bad-layer.toml")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "bad-layer.toml")); !os.IsNotExist(err) {
 							t.Fatalf("found bad-layer.toml, it should be removed")
 						}
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "bad-layer.sha")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "bad-layer.sha")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale bad-layer.sha, it should be removed")
 						}
 					})
@@ -365,15 +365,15 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						}
 
 						var err error
-						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale stale-launch-build layer dir, it should not exist")
 						}
 
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build.toml")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "stale-launch-build.toml")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale stale-launch-build.toml, it should be removed")
 						}
 
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build.sha")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "stale-launch-build.sha")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale stale-launch-build.sha, it should be removed")
 						}
 					})
@@ -389,15 +389,15 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						}
 
 						var err error
-						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "old-layer")); !os.IsNotExist(err) {
+						if _, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack", "old-layer")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale old-layer layer dir, it should not exist")
 						}
 
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "old-layer.toml")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "old-layer.toml")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale old-layer.toml, it should be removed")
 						}
 
-						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metdata.buildpack", "old-layer.sha")); !os.IsNotExist(err) {
+						if _, err := ioutil.ReadFile(filepath.Join(layerDir, "metadata.buildpack", "old-layer.sha")); !os.IsNotExist(err) {
 							t.Fatalf("Found stale old-layer.sha, it should be removed")
 						}
 					})
@@ -487,7 +487,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						_, err := analyzer.Analyze(image)
 						h.AssertNil(t, err)
 						h.AssertUidGid(t, layerDir, 1234, 4321)
-						h.AssertUidGid(t, filepath.Join(layerDir, "metdata.buildpack", "valid-launch.toml"), 1234, 4321)
+						h.AssertUidGid(t, filepath.Join(layerDir, "metadata.buildpack", "valid-launch.toml"), 1234, 4321)
 						h.AssertUidGid(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
 						h.AssertUidGid(t, filepath.Join(layerDir, "no.cache.buildpack", "go.toml"), 1234, 4321)
 					})
@@ -535,7 +535,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
 				}
-				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale stale-launch-build cache, it should not exist")
 				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
@@ -566,7 +566,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
 				}
-				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale stale-launch-build cache, it should not exist")
 				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {
@@ -589,7 +589,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
 				}
-				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metdata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
+				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack", "stale-launch-build")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale stale-launch-build cache, it should not exist")
 				}
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "some-app-dir")); err != nil {

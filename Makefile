@@ -32,6 +32,7 @@ build:
 	$(GOENV) $(GOBUILD) -o ./out/lifecycle/exporter -a ./cmd/exporter
 	$(GOENV) $(GOBUILD) -o ./out/lifecycle/cacher -a ./cmd/cacher
 	$(GOENV) $(GOBUILD) -o ./out/lifecycle/launcher -a ./cmd/launcher
+	$(GOENV) $(GOBUILD) -o ./out/lifecycle/rebaser -a ./cmd/rebaser
 
 descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 descriptor:

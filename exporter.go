@@ -7,8 +7,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/local"
-	"github.com/buildpack/imgutil/remote"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
@@ -154,7 +152,7 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "setting cmd")
 	}
 
-	return e.saveImage(workingImage, additionalNames)
+	return saveImage(workingImage, additionalNames, e.Logger)
 }
 
 func (e *Exporter) addLayer(image imgutil.Image, layer identifiableLayer, previousSHA string) (string, error) {
@@ -196,67 +194,4 @@ func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan []BOMEntry, l
 	}
 
 	return nil
-}
-
-func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) error {
-	var saveErr error
-	if err := image.Save(additionalNames...); err != nil {
-		var ok bool
-		if saveErr, ok = err.(imgutil.SaveError); !ok {
-			return errors.Wrap(err, "saving image")
-		}
-	}
-
-	id, idErr := image.Identifier()
-	if idErr != nil {
-		if saveErr != nil {
-			return &MultiError{Errors: []error{idErr, saveErr}}
-		}
-		return idErr
-	}
-
-	refType, ref := getReference(id)
-	e.Logger.Info("*** Images:")
-	for _, n := range append([]string{image.Name()}, additionalNames...) {
-		if ok, message := getSaveStatus(saveErr, n); !ok {
-			e.Logger.Infof("      %s - %s\n", n, message)
-		} else {
-			e.Logger.Infof("      %s (%s)\n", n, TruncateSha(ref))
-		}
-	}
-
-	e.Logger.Debugf("\n*** %s: %s\n", refType, ref)
-	return saveErr
-}
-
-type MultiError struct {
-	Errors []error
-}
-
-func (me *MultiError) Error() string {
-	return fmt.Sprintf("failed with multiple errors %+v", me.Errors)
-}
-
-func getReference(identifier imgutil.Identifier) (string, string) {
-	switch v := identifier.(type) {
-	case local.IDIdentifier:
-		return "Image ID", v.String()
-	case remote.DigestIdentifier:
-		return "Digest", v.Digest.DigestStr()
-	default:
-		return "Reference", v.String()
-	}
-}
-
-func getSaveStatus(err error, imageName string) (bool, string) {
-	if err != nil {
-		if saveErr, ok := err.(imgutil.SaveError); ok {
-			for _, d := range saveErr.Errors {
-				if d.ImageName == imageName {
-					return false, d.Cause.Error()
-				}
-			}
-		}
-	}
-	return true, ""
 }
