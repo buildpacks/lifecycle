@@ -99,7 +99,8 @@ func (e *Exporter) Export(
 					return fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())
 				}
 
-				e.Logger.Debugf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), origLayerMetadata.SHA)
+				e.Logger.Infof("Reusing layer '%s'\n", layer.Identifier())
+				e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), origLayerMetadata.SHA)
 				if err := workingImage.ReuseLayer(origLayerMetadata.SHA); err != nil {
 					return errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
 				}
@@ -163,10 +164,12 @@ func (e *Exporter) addLayer(image imgutil.Image, layer identifiableLayer, previo
 		return "", errors.Wrapf(err, "exporting layer '%s'", layer.Identifier())
 	}
 	if sha == previousSHA {
-		e.Logger.Debugf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
+		e.Logger.Infof("Reusing layer '%s'\n", layer.Identifier())
+		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
 		return sha, image.ReuseLayer(previousSHA)
 	}
-	e.Logger.Debugf("Exporting layer '%s' with SHA %s\n", layer.Identifier(), sha)
+	e.Logger.Infof("Adding layer '%s'\n", layer.Identifier())
+	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
 	return sha, image.AddLayer(tarPath)
 }
 
@@ -204,11 +207,6 @@ func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) erro
 		}
 	}
 
-	e.Logger.Info("*** Images:")
-	for _, n := range append([]string{image.Name()}, additionalNames...) {
-		e.Logger.Infof("      %s - %s\n", n, getSaveStatus(saveErr, n))
-	}
-
 	id, idErr := image.Identifier()
 	if idErr != nil {
 		if saveErr != nil {
@@ -217,19 +215,18 @@ func (e *Exporter) saveImage(image imgutil.Image, additionalNames []string) erro
 		return idErr
 	}
 
-	e.logReference(id)
-	return saveErr
-}
-
-func (e *Exporter) logReference(identifier imgutil.Identifier) {
-	switch v := identifier.(type) {
-	case local.IDIdentifier:
-		e.Logger.Infof("\n*** Image ID: %s\n", v.String())
-	case remote.DigestIdentifier:
-		e.Logger.Infof("\n*** Digest: %s\n", v.Digest.DigestStr())
-	default:
-		e.Logger.Infof("\n*** Reference: %s\n", v.String())
+	refType, ref := getReference(id)
+	e.Logger.Info("*** Images:")
+	for _, n := range append([]string{image.Name()}, additionalNames...) {
+		if ok, message := getSaveStatus(saveErr, n); !ok {
+			e.Logger.Infof("      %s - %s\n", n, message)
+		} else {
+			e.Logger.Infof("      %s (%s)\n", n, TruncateSha(ref))
+		}
 	}
+
+	e.Logger.Debugf("\n*** %s: %s\n", refType, ref)
+	return saveErr
 }
 
 type MultiError struct {
@@ -240,15 +237,26 @@ func (me *MultiError) Error() string {
 	return fmt.Sprintf("failed with multiple errors %+v", me.Errors)
 }
 
-func getSaveStatus(err error, imageName string) string {
+func getReference(identifier imgutil.Identifier) (string, string) {
+	switch v := identifier.(type) {
+	case local.IDIdentifier:
+		return "Image ID", v.String()
+	case remote.DigestIdentifier:
+		return "Digest", v.Digest.DigestStr()
+	default:
+		return "Reference", v.String()
+	}
+}
+
+func getSaveStatus(err error, imageName string) (bool, string) {
 	if err != nil {
 		if saveErr, ok := err.(imgutil.SaveError); ok {
 			for _, d := range saveErr.Errors {
 				if d.ImageName == imageName {
-					return d.Cause.Error()
+					return false, d.Cause.Error()
 				}
 			}
 		}
 	}
-	return "succeeded"
+	return true, ""
 }

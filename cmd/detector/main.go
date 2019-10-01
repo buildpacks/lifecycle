@@ -80,6 +80,10 @@ func detect() error {
 		Logger:        cmd.Logger,
 	})
 	if err != nil {
+		if err == lifecycle.ErrFail {
+			cmd.Logger.Error("No buildpack groups passed detection.")
+			cmd.Logger.Error("Please check that you are running against the correct path.")
+		}
 		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
 	}
 

@@ -21,7 +21,7 @@ const (
 	CodeDetectFail = 100
 )
 
-var ErrFail = errors.New("detection failed")
+var ErrFail = errors.New("no buildpacks participating")
 
 type Buildpack struct {
 	ID       string `toml:"id" json:"id"`

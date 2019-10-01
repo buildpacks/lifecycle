@@ -211,7 +211,7 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	Logger.Errorf("Error: %s\n", err)
+	Logger.Errorf("%s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
