@@ -21,7 +21,7 @@ const (
 	CodeDetectFail = 100
 )
 
-var ErrFail = errors.New("No buildpack groups passed detection.\nPlease check that you are running against the correct path.")
+var ErrFail = errors.New("no buildpacks participating")
 
 type Buildpack struct {
 	ID       string `toml:"id" json:"id"`
