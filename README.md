@@ -26,6 +26,10 @@ A reference implementation of [Buildpack API v3](https://github.com/buildpack/sp
 * `restorer` - restores cache
 * `cacher` - updates cache
 
+### Rebase
+
+* `rebaser` - remotely patches images with new base image
+
 ## Notes
 
 Cache implementations (`restorer` and `cacher`) are intended to be interchangeable and platform-specific.

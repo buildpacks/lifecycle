@@ -12,6 +12,7 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/buildpack/imgutil/local"
 	"github.com/buildpack/imgutil/remote"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle"
@@ -124,7 +125,7 @@ func export() error {
 			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
 		}
 
-		runImageRef, err = runImageFromStackToml(stackMD, registry)
+		runImageRef, err = stackMD.BestRunImageMirror(registry)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,6 @@ func export() error {
 			dockerClient,
 			opts...,
 		)
-
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}
@@ -176,10 +176,11 @@ func export() error {
 
 		if analyzedMD.Image != nil {
 			cmd.Logger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
-			analyzedRegistry, err := image.ParseRegistry(analyzedMD.Image.Reference)
+			ref, err := name.ParseReference(analyzedMD.Image.Reference, name.WeakValidation)
 			if err != nil {
 				return cmd.FailErr(err, "parse analyzed registry")
 			}
+			analyzedRegistry := ref.Context().RegistryStr()
 			if analyzedRegistry != registry {
 				return fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, registry)
 			}
@@ -234,14 +235,4 @@ func parseOptionalAnalyzedMD(logger logging.Logger, path string) (metadata.Analy
 	}
 
 	return analyzedMD, nil
-}
-
-func runImageFromStackToml(stack metadata.StackMetadata, registry string) (string, error) {
-	runImageMirrors := []string{stack.RunImage.Image}
-	runImageMirrors = append(runImageMirrors, stack.RunImage.Mirrors...)
-	runImageRef, err := image.ByRegistry(registry, runImageMirrors)
-	if err != nil {
-		return "", cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse mirrors")
-	}
-	return runImageRef, nil
 }
