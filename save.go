@@ -38,7 +38,7 @@ func saveImage(image imgutil.Image, additionalNames []string, logger logging.Log
 		}
 	}
 
-	logger.Debugf("\n*** %s: %s\n", refType, ref)
+	logger.Infof("\n*** %s: %s\n", refType, ref)
 	return saveErr
 }
 
