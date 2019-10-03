@@ -42,6 +42,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				ImageID: "some-image-id",
 			},
 		)
+		h.AssertNil(t, fakeWorkingImage.SetLabel(metadata.StackMetadataLabel, "io.buildpacks.stacks.bionic"))
 
 		fakeNewBaseImage = fakes.NewImage(
 			"some-repo/new-base-image",
@@ -50,6 +51,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				ImageID: "new-run-id",
 			},
 		)
+		h.AssertNil(t, fakeNewBaseImage.SetLabel(metadata.StackMetadataLabel, "io.buildpacks.stacks.bionic"))
 
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
@@ -102,6 +104,32 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(md.Buildpacks), 1)
 				h.AssertEq(t, md.Buildpacks[0].ID, "buildpack.id")
+			})
+		})
+
+		when("app image and run image are based on different stacks", func() {
+			it("returns an error and prevents the rebase from taking place when the stacks are different", func() {
+				h.AssertNil(t, fakeWorkingImage.SetLabel(metadata.StackMetadataLabel, "io.buildpacks.stacks.bionic"))
+				h.AssertNil(t, fakeNewBaseImage.SetLabel(metadata.StackMetadataLabel, "io.buildpacks.stacks.cflinuxfs3"))
+
+				err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+				h.AssertError(t, err, "incompatible stack: 'io.buildpacks.stacks.cflinuxfs3' is not compatible with 'io.buildpacks.stacks.bionic'")
+			})
+
+			it("returns an error and prevents the rebase from taking place when the new base image has no stack defined", func() {
+				h.AssertNil(t, fakeWorkingImage.SetLabel(metadata.StackMetadataLabel, "io.buildpacks.stacks.bionic"))
+				h.AssertNil(t, fakeNewBaseImage.SetLabel(metadata.StackMetadataLabel, ""))
+
+				err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+				h.AssertError(t, err, "stack not defined on new base image")
+			})
+
+			it("returns an error and prevents the rebase from taking place when the working image has no stack defined", func() {
+				h.AssertNil(t, fakeWorkingImage.SetLabel(metadata.StackMetadataLabel, ""))
+				h.AssertNil(t, fakeNewBaseImage.SetLabel(metadata.StackMetadataLabel, "io.buildpacks.stacks.cflinuxfs3"))
+
+				err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+				h.AssertError(t, err, "stack not defined on working image")
 			})
 		})
 	})
