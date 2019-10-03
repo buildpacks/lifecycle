@@ -29,6 +29,72 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		gid                  = 2345
 	)
 
+	when("#ReadTarArchive", func() {
+		var pathModes = []archive.PathMode{
+			{"root", os.ModeDir + 0755},
+			{"root/readonly", os.ModeDir + 0500},
+			{"root/standarddir", os.ModeDir + 0755},
+			{"root/standarddir/somefile", 0644},
+			{"root/readonly/readonlysub/somefile", 0444},
+			{"root/readonly/readonlysub", os.ModeDir + 0500},
+		}
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "extract-tar-test")
+
+			if err != nil {
+				t.Fatalf("failed to create tmp dir %s: %s", tmpDir, err)
+			}
+
+			tarFile = filepath.Join("testdata", "tar-to-dir", "some-layer.tar")
+			file, err = os.Open(tarFile)
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+
+			// Make all files os.ModePerm so they can all be cleaned up.
+			for _, pathMode := range pathModes {
+				extractedFile := filepath.Join(tmpDir, pathMode.Path)
+				if _, err := os.Stat(extractedFile); err == nil {
+					if err := os.Chmod(extractedFile, os.ModePerm); err != nil {
+						h.AssertNil(t, err)
+					}
+				}
+			}
+
+			err := os.RemoveAll(tmpDir)
+			h.AssertNil(t, err)
+		})
+
+		it("extracts a tar file", func() {
+			h.AssertNil(t, archive.Untar(file, tmpDir))
+
+			for _, pathMode := range pathModes {
+				extractedFile := filepath.Join(tmpDir, pathMode.Path)
+				fileInfo, err := os.Stat(extractedFile)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fileInfo.Mode(), pathMode.Mode)
+			}
+		})
+
+		it("fails if file exists where directory needs to be created", func() {
+			_, err := os.Create(filepath.Join(tmpDir, "root"))
+			h.AssertNil(t, err)
+			h.AssertError(t, archive.Untar(file, tmpDir), "root: not a directory")
+		})
+
+		it("doesn't alter permissions of existing folders", func() {
+			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "root"), 0744))
+			h.AssertNil(t, archive.Untar(file, tmpDir))
+			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
+			h.AssertNil(t, err)
+			h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
+		})
+
+	})
+
 	when("#WriteTarArchive", func() {
 		it.Before(func() {
 			var err error
