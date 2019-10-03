@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
@@ -22,6 +23,28 @@ func (r *Rebaser) Rebase(
 	origMetadata, err := metadata.GetLayersMetadata(workingImage)
 	if err != nil {
 		return errors.Wrap(err, "get image metadata")
+	}
+
+	workingImageStack, err := metadata.GetStackMetadata(workingImage)
+	if err != nil {
+		return errors.Wrap(err, "get working image stack")
+	}
+
+	newBaseImageStack, err := metadata.GetStackMetadata(newBaseImage)
+	if err != nil {
+		return errors.Wrap(err, "get new base image stack")
+	}
+
+	if workingImageStack.Id == "" {
+		return errors.New("stack not defined on working image")
+	}
+
+	if newBaseImageStack.Id == "" {
+		return errors.New("stack not defined on new base image")
+	}
+
+	if workingImageStack.Id != newBaseImageStack.Id {
+		return errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseImageStack.Id, workingImageStack.Id))
 	}
 
 	err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage)
