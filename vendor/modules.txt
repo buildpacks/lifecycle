@@ -4,7 +4,7 @@ github.com/BurntSushi/toml
 github.com/Microsoft/go-winio
 # github.com/apex/log v1.1.1
 github.com/apex/log
-# github.com/buildpack/imgutil v0.0.0-20190726132853-1f31ed20483a
+# github.com/buildpack/imgutil v0.0.0-20191010153712-78959154ded1
 github.com/buildpack/imgutil
 github.com/buildpack/imgutil/local
 github.com/buildpack/imgutil/remote
