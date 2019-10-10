@@ -3,7 +3,7 @@ module github.com/buildpack/lifecycle
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/apex/log v1.1.1
-	github.com/buildpack/imgutil v0.0.0-20190726132853-1f31ed20483a
+	github.com/buildpack/imgutil v0.0.0-20191010153712-78959154ded1
 	github.com/docker/docker v0.7.3-0.20190307005417-54dddadc7d5d
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect

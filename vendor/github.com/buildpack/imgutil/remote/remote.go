@@ -343,6 +343,22 @@ func (i *Image) Save(additionalNames ...string) error {
 		return errors.Wrap(err, "set creation time")
 	}
 
+	cfg, err := i.image.ConfigFile()
+	if err != nil {
+		return errors.Wrap(err, "get image config")
+	}
+
+	layers, err := i.image.Layers()
+	if err != nil {
+		return errors.Wrap(err, "get image layers")
+	}
+
+	cfg.History = make([]v1.History, len(layers))
+	i.image, err = mutate.ConfigFile(i.image, cfg)
+	if err != nil {
+		return errors.Wrap(err, "zeroing history")
+	}
+
 	var diagnostics []imgutil.SaveDiagnostic
 	for _, n := range allNames {
 		if err := i.doSave(n); err != nil {

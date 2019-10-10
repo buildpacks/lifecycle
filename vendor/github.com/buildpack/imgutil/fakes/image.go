@@ -280,30 +280,47 @@ func (i *Image) FindLayerWithPath(path string) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("Could not find %s in any layer. \n \n %s", path, i.tarContents())
+	return "", fmt.Errorf("could not find '%s' in any layer.\n\n%s", path, i.tarContents())
 }
 
 func (i *Image) tarContents() string {
 	var strBuilder = strings.Builder{}
-	for _, tarPath := range i.layers {
-		strBuilder.WriteString(fmt.Sprintf("layer %s --- \n Contents: \n", filepath.Base(tarPath)))
+	strBuilder.WriteString("Layers\n-------\n")
+	for idx, tarPath := range i.layers {
+		strBuilder.WriteString(fmt.Sprintf("%s\n", filepath.Base(tarPath)))
 
 		r, _ := os.Open(tarPath)
 		defer r.Close()
 
 		tr := tar.NewReader(r)
 
+		hasFiles := false
 		for {
 			header, err := tr.Next()
 			if err == io.EOF {
+				if !hasFiles {
+					strBuilder.WriteString("  (empty)\n")
+				}
 				break
 			}
 
-			if header.Typeflag != tar.TypeDir {
-				strBuilder.WriteString(fmt.Sprintf("%s \n", header.Name))
+			var typ = "F"
+			var extra = ""
+			switch header.Typeflag {
+			case tar.TypeDir:
+				typ = "D"
+			case tar.TypeSymlink:
+				typ = "S"
+				extra = fmt.Sprintf(" -> %s", header.Linkname)
 			}
+
+			strBuilder.WriteString(fmt.Sprintf("  - [%s] %s%s\n", typ, header.Name, extra))
+			hasFiles = true
 		}
-		strBuilder.WriteString("\n \n")
+
+		if idx < len(i.layers)-1 {
+			strBuilder.WriteString("\n")
+		}
 	}
 	return strBuilder.String()
 }

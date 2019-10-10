@@ -9,7 +9,7 @@ Helpful utilities for working with images
 To format:
 
 ```bash
-$ make format imports
+$ make format
 ```
 
 To run tests:
