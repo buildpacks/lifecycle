@@ -120,7 +120,7 @@ func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
-func AssertUidGid(t *testing.T, path string, uid, gid int) {
+func AssertUIDGID(t *testing.T, path string, uid, gid int) {
 	fi, err := os.Stat(path)
 	AssertNil(t, err)
 	stat := fi.Sys().(*syscall.Stat_t)
@@ -160,8 +160,6 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-var getBuildImageOnce sync.Once
-
 func PullImage(dockerCli *dockercli.Client, ref string) error {
 	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
 	if err != nil {
@@ -177,7 +175,7 @@ func PullImage(dockerCli *dockercli.Client, ref string) error {
 	return rc.Close()
 }
 
-func HttpGetE(url string) (string, error) {
+func HTTPGetE(url string) (string, error) {
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return "", err
@@ -213,7 +211,7 @@ func RunE(cmd *exec.Cmd) (string, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("Failed to execute command: %v, %s, %s, %s", cmd.Args, err, stderr.String(), output)
+		return "", fmt.Errorf("failed to execute command: %v, %s, %s, %s", cmd.Args, err, stderr.String(), output)
 	}
 
 	return string(output), nil

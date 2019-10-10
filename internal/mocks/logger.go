@@ -16,7 +16,7 @@ type mockLog struct {
 }
 
 // NewMockLogger create a logger to capture output for testing purposes.
-func NewMockLogger(w io.Writer) *mockLog {
+func NewMockLogger(w io.Writer) logging.Logger {
 	ml := &mockLog{
 		w: w,
 	}
@@ -43,13 +43,14 @@ func (ml *mockLog) Writer() io.Writer {
 }
 
 func (ml *mockLog) WantLevel(level string) {
-	if level == logging.InfoLevel {
+	switch {
+	case level == logging.InfoLevel:
 		ml.Logger.Level = log.InfoLevel
-	} else if level == logging.DebugLevel {
+	case level == logging.DebugLevel:
 		ml.Logger.Level = log.DebugLevel
-	} else if level == logging.WarnLevel {
+	case level == logging.WarnLevel:
 		ml.Logger.Level = log.WarnLevel
-	} else {
+	default:
 		ml.Logger.Level = log.ErrorLevel
 	}
 }

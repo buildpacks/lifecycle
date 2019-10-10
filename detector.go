@@ -182,7 +182,8 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 	c.Logger.Debugf("Resolving plan... (try #%d)", i)
 
 	var deps depMap
-	for retry := true; retry; {
+	retry := true
+	for retry {
 		retry = false
 		deps = newDepMap(trial)
 
@@ -447,9 +448,7 @@ func (m depMap) provide(bp Buildpack, provide Provide) {
 
 func (m depMap) require(bp Buildpack, require Require) {
 	entry := m[require.Name]
-	for _, bp := range entry.extraProvides {
-		entry.Providers = append(entry.Providers, bp)
-	}
+	entry.Providers = append(entry.Providers, entry.extraProvides...)
 	entry.extraProvides = nil
 
 	if len(entry.Providers) == 0 {

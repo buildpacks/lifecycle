@@ -486,10 +486,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					it("chowns new files to CNB_USER_ID:CNB_GROUP_ID", func() {
 						_, err := analyzer.Analyze(image)
 						h.AssertNil(t, err)
-						h.AssertUidGid(t, layerDir, 1234, 4321)
-						h.AssertUidGid(t, filepath.Join(layerDir, "metadata.buildpack", "valid-launch.toml"), 1234, 4321)
-						h.AssertUidGid(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
-						h.AssertUidGid(t, filepath.Join(layerDir, "no.cache.buildpack", "go.toml"), 1234, 4321)
+						h.AssertUIDGID(t, layerDir, 1234, 4321)
+						h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack", "valid-launch.toml"), 1234, 4321)
+						h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
+						h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack", "go.toml"), 1234, 4321)
 					})
 				})
 

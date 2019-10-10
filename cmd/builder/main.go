@@ -86,7 +86,7 @@ func build() error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	metadataPath := metadata.MetadataFilePath(layersDir)
+	metadataPath := metadata.FilePath(layersDir)
 	if err := lifecycle.WriteTOML(metadataPath, md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}

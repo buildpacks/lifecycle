@@ -107,24 +107,23 @@ func (lw *logWithWriters) WantTime(f bool) {
 }
 
 func (lw *logWithWriters) WantLevel(level string) {
-	if level == logging.InfoLevel {
+	switch {
+	case level == logging.InfoLevel:
 		lw.Level = log.InfoLevel
-	} else if level == logging.DebugLevel {
+	case level == logging.DebugLevel:
 		lw.Level = log.DebugLevel
-	} else if level == logging.WarnLevel {
+	case level == logging.WarnLevel:
 		lw.Level = log.WarnLevel
-	} else {
+	default:
 		lw.Level = log.ErrorLevel
 	}
 }
 
 // NewLogWithWriters creates a logger to be used with pack CLI.
-func NewLogWithWriters(stdout, stderr io.Writer) *logWithWriters {
+func NewLogWithWriters(stdout, stderr io.Writer) *logWithWriters { //nolint:golint,gosimple
 	hnd := &handler{
 		writer: os.Stdout,
-		timer: func() time.Time {
-			return time.Now()
-		},
+		timer:  time.Now,
 	}
 	var lw logWithWriters
 	lw.handler = hnd
