@@ -28,17 +28,17 @@ func saveImage(image imgutil.Image, additionalNames []string, logger logging.Log
 		return idErr
 	}
 
-	refType, ref := getReference(id)
+	refType, ref, shortRef := getReference(id)
 	logger.Info("*** Images:")
 	for _, n := range append([]string{image.Name()}, additionalNames...) {
 		if ok, message := getSaveStatus(saveErr, n); !ok {
 			logger.Infof("      %s - %s\n", n, message)
 		} else {
-			logger.Infof("      %s (%s)\n", n, TruncateSha(ref))
+			logger.Infof("      %s (%s)\n", n, shortRef)
 		}
 	}
 
-	logger.Infof("\n*** %s: %s\n", refType, ref)
+	logger.Debugf("\n*** %s: %s\n", refType, ref)
 	return saveErr
 }
 
@@ -50,14 +50,14 @@ func (me *MultiError) Error() string {
 	return fmt.Sprintf("failed with multiple errors %+v", me.Errors)
 }
 
-func getReference(identifier imgutil.Identifier) (string, string) {
+func getReference(identifier imgutil.Identifier) (string, string, string) {
 	switch v := identifier.(type) {
 	case local.IDIdentifier:
-		return "Image ID", v.String()
+		return "Image ID", v.String(), TruncateSha(v.String())
 	case remote.DigestIdentifier:
-		return "Digest", v.Digest.DigestStr()
+		return "Digest", v.Digest.DigestStr(), v.Digest.DigestStr()
 	default:
-		return "Reference", v.String()
+		return "Reference", v.String(), v.String()
 	}
 }
 
