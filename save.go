@@ -29,12 +29,12 @@ func saveImage(image imgutil.Image, additionalNames []string, logger logging.Log
 	}
 
 	refType, ref, shortRef := getReference(id)
-	logger.Info("*** Images:")
+	logger.Infof("*** Images (%s):\n", shortRef)
 	for _, n := range append([]string{image.Name()}, additionalNames...) {
 		if ok, message := getSaveStatus(saveErr, n); !ok {
 			logger.Infof("      %s - %s\n", n, message)
 		} else {
-			logger.Infof("      %s (%s)\n", n, shortRef)
+			logger.Infof("      %s\n", n)
 		}
 	}
 
