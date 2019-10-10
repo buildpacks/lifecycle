@@ -43,15 +43,15 @@ descriptor:
 
 install-goimports:
 	@echo "> Installing goimports..."
-	$(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
+	cd tools; $(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
 
 install-yj:
 	@echo "> Installing yj..."
-	$(GOCMD) install -mod=vendor github.com/sclevine/yj
+	cd tools; $(GOCMD) install -mod=vendor github.com/sclevine/yj
 
 install-mockgen:
 	@echo "> Installing mockgen..."
-	$(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
+	cd tools; $(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
 
 generate: install-mockgen
 	@echo "> Generating..."
@@ -59,7 +59,7 @@ generate: install-mockgen
 
 format: install-goimports
 	@echo "> Formating code..."
-	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "./vendor/*"))
+	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "*/vendor/*"))
 
 vet:
 	@echo "> Vetting code..."
