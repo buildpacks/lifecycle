@@ -16,9 +16,7 @@ require (
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/sclevine/spec v1.2.0
-	github.com/sclevine/yj v0.0.0-20190506050358-d9a48607cc5c
 	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80 // indirect
-	golang.org/x/tools v0.0.0-20190808195139-e713427fea3f
 	google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8 // indirect
 	google.golang.org/grpc v1.20.1 // indirect
 )
