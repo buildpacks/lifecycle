@@ -45,6 +45,14 @@ install-mockgen:
 	@echo "> Installing mockgen..."
 	cd tools; $(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
 
+install-golangci-lint:
+	@echo "> Installing golangci-lint..."
+	cd tools; $(GOCMD) install -mod=vendor github.com/golangci/golangci-lint/cmd/golangci-lint
+
+lint: install-golangci-lint
+	@echo "> Linting code..."
+	@golangci-lint run -c golangci.yaml
+
 generate: install-mockgen
 	@echo "> Generating..."
 	$(GOCMD) generate
@@ -53,17 +61,13 @@ format: install-goimports
 	@echo "> Formating code..."
 	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "*/vendor/*"))
 
-vet:
-	@echo "> Vetting code..."
-	$(GOCMD) vet -mod=vendor $$($(GOCMD) list -mod=vendor ./... | grep -v /testdata/)
-
 test: unit acceptance
 
-unit: format vet install-yj
+unit: format lint install-yj
 	@echo "> Running unit tests..."
 	$(GOTEST) -v -count=1 ./...
 
-acceptance: format vet
+acceptance: format lint
 	@echo "> Running acceptance tests..."
 	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 
