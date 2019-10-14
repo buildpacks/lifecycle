@@ -568,10 +568,10 @@ type = "Apache-2.0"
 
 				h.AssertStringContains(t,
 					outLog.String(),
-					fmt.Sprintf(`*** Images:
-      %s (some-image-i)
-      %s (some-image-i)
-      %s (some-image-i)
+					fmt.Sprintf(`*** Images (some-image-i):
+      %s
+      %s
+      %s
 `,
 						fakeAppImage.Name(),
 						additionalNames[0],
@@ -599,10 +599,10 @@ type = "Apache-2.0"
 					h.AssertStringContains(t,
 						outLog.String(),
 						fmt.Sprintf(
-							`*** Images:
-      %s (some-image-i)
-      %s (some-image-i)
-      %s (some-image-i)
+							`*** Images (some-image-i):
+      %s
+      %s
+      %s
       %s - could not parse reference
 
 *** Image ID: some-image-id`,
