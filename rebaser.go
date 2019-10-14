@@ -35,16 +35,16 @@ func (r *Rebaser) Rebase(
 		return errors.Wrap(err, "get new base image stack")
 	}
 
-	if workingImageStack.Id == "" {
+	if workingImageStack.ID == "" {
 		return errors.New("stack not defined on working image")
 	}
 
-	if newBaseImageStack.Id == "" {
+	if newBaseImageStack.ID == "" {
 		return errors.New("stack not defined on new base image")
 	}
 
-	if workingImageStack.Id != newBaseImageStack.Id {
-		return errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseImageStack.Id, workingImageStack.Id))
+	if workingImageStack.ID != newBaseImageStack.ID {
+		return errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseImageStack.ID, workingImageStack.ID))
 	}
 
 	err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage)

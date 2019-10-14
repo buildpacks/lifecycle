@@ -277,10 +277,10 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 				it("recursively chowns the layers dir to CNB_USER_ID:CNB_GROUP_ID", func() {
 					h.AssertNil(t, restorer.Restore(testCache))
-					h.AssertUidGid(t, layersDir, 1234, 4321)
-					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)
-					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"), 1234, 4321)
-					h.AssertUidGid(t, filepath.Join(layersDir, "buildpack.id", "cache-launch", "file-from-cache-launch-layer"), 1234, 4321)
+					h.AssertUIDGID(t, layersDir, 1234, 4321)
+					h.AssertUIDGID(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)
+					h.AssertUIDGID(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"), 1234, 4321)
+					h.AssertUIDGID(t, filepath.Join(layersDir, "buildpack.id", "cache-launch", "file-from-cache-launch-layer"), 1234, 4321)
 				})
 			})
 		})

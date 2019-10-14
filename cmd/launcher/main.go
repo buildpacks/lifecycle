@@ -11,11 +11,6 @@ import (
 	"github.com/buildpack/lifecycle/metadata"
 )
 
-var (
-	layersDir string
-	appDir    string
-)
-
 func main() {
 	cmd.Exit(launch())
 }
@@ -43,7 +38,7 @@ func launch() error {
 	_ = os.Unsetenv(cmd.EnvAppDir)
 
 	var md lifecycle.BuildMetadata
-	metadataPath := metadata.MetadataFilePath(layersDir)
+	metadataPath := metadata.FilePath(layersDir)
 	if _, err := toml.DecodeFile(metadataPath, &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}

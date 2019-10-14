@@ -44,7 +44,7 @@ func (registry *DockerRegistry) Start(t *testing.T) {
 	registry.Port = inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
 
 	Eventually(t, func() bool {
-		txt, err := HttpGetE(fmt.Sprintf("http://localhost:%s/v2/", registry.Port))
+		txt, err := HTTPGetE(fmt.Sprintf("http://localhost:%s/v2/", registry.Port))
 		return err == nil && txt != ""
 	}, 100*time.Millisecond, 10*time.Second)
 }

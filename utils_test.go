@@ -109,7 +109,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal(err)
 			}
 			b := rdfile(t, filepath.Join(tmpDir, "subdir", "group.toml"))
-			if s := cmp.Diff(string(b),
+			if s := cmp.Diff(b,
 				"[[group]]\n"+
 					`  id = "A"`+"\n"+
 					`  version = "v1"`+"\n",

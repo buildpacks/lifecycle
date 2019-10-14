@@ -545,7 +545,8 @@ func testPlan(t *testing.T, plan []lifecycle.Require, paths ...string) {
 }
 
 func each(it spec.S, befores []func(), text string, f func()) {
-	for i, before := range befores {
+	for i := range befores {
+		before := befores[i]
 		it(fmt.Sprintf("%s #%d", text, i), func() { before(); f() })
 	}
 }

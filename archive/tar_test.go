@@ -146,7 +146,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, header.Name, "testdata/dir-to-tar/some-file.txt")
 
-				fileContents := make([]byte, header.Size, header.Size)
+				fileContents := make([]byte, header.Size)
 				tr.Read(fileContents)
 				h.AssertEq(t, string(fileContents), "some-content")
 				h.AssertEq(t, header.Uid, uid)
@@ -298,7 +298,6 @@ func allParentDirectories(directory string) []string {
 	parent := filepath.Dir(directory)
 	if parent == "." || parent == "/" {
 		return []string{}
-	} else {
-		return append(allParentDirectories(parent), parent)
 	}
+	return append(allParentDirectories(parent), parent)
 }
