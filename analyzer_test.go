@@ -530,7 +530,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("clears the cached launch layers", func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 				_, err := analyzer.Analyze(notFoundImage)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
@@ -561,7 +561,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 				_, err := analyzer.Analyze(image)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
@@ -584,7 +584,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.RecursiveCopy(t, filepath.Join("testdata", "analyzer", "cached-layers"), layerDir)
 
 				_, err := analyzer.Analyze(image)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
 				if _, err := ioutil.ReadDir(filepath.Join(layerDir, "no.metadata.buildpack", "launchlayer")); !os.IsNotExist(err) {
 					t.Fatalf("Found stale launchlayer cache, it should not exist")
@@ -598,11 +598,4 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func assertNil(t *testing.T, actual interface{}) {
-	t.Helper()
-	if actual != nil {
-		t.Fatalf("Expected nil: %s", actual)
-	}
 }

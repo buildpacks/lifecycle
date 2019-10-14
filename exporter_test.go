@@ -998,7 +998,7 @@ func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
 func tarFileContext(t *testing.T, tarfile, path string) (exist bool, contents string) {
 	t.Helper()
 	r, err := os.Open(tarfile)
-	assertNil(t, err)
+	h.AssertNil(t, err)
 	defer r.Close()
 
 	tr := tar.NewReader(r)
@@ -1007,11 +1007,11 @@ func tarFileContext(t *testing.T, tarfile, path string) (exist bool, contents st
 		if err == io.EOF {
 			break
 		}
-		assertNil(t, err)
+		h.AssertNil(t, err)
 
 		if header.Name == path {
 			buf, err := ioutil.ReadAll(tr)
-			assertNil(t, err)
+			h.AssertNil(t, err)
 			return true, string(buf)
 		}
 	}
@@ -1022,7 +1022,7 @@ func assertTarFileOwner(t *testing.T, tarfile, path string, expectedUID, expecte
 	t.Helper()
 	var foundPath bool
 	r, err := os.Open(tarfile)
-	assertNil(t, err)
+	h.AssertNil(t, err)
 	defer r.Close()
 
 	tr := tar.NewReader(r)
@@ -1031,7 +1031,7 @@ func assertTarFileOwner(t *testing.T, tarfile, path string, expectedUID, expecte
 		if err == io.EOF {
 			break
 		}
-		assertNil(t, err)
+		h.AssertNil(t, err)
 
 		if header.Name == path {
 			foundPath = true
