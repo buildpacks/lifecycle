@@ -7,12 +7,11 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Rebaser struct {
-	Logger logging.Logger
+	Logger Logger
 }
 
 func (r *Rebaser) Rebase(

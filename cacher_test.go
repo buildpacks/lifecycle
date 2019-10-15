@@ -10,12 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/discard"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/internal/mocks"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
@@ -39,8 +40,6 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			var err error
 
-			emptyLogger := mocks.NewMockLogger(ioutil.Discard)
-
 			tmpDir, err = ioutil.TempDir("", "lifecycle.cacher.layer")
 			h.AssertNil(t, err)
 
@@ -56,7 +55,7 @@ func testCacher(t *testing.T, when spec.G, it spec.S) {
 					{ID: "buildpack.id"},
 					{ID: "other.buildpack.id"},
 				},
-				Logger: emptyLogger,
+				Logger: &log.Logger{Handler: &discard.Handler{}},
 				UID:    1234,
 				GID:    4321,
 			}

@@ -43,10 +43,12 @@ func main() {
 
 	flag.Parse()
 
-	cmd.Logger.WantLevel(logLevel)
-
 	if printVersion {
 		cmd.ExitWithVersion()
+	}
+
+	if err := cmd.SetLogLevel(logLevel); err != nil {
+		cmd.Exit(err)
 	}
 
 	if flag.NArg() > 0 {

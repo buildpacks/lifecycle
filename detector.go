@@ -12,8 +12,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/lifecycle/logging"
 )
 
 const (
@@ -76,7 +74,7 @@ type DetectConfig struct {
 	AppDir        string
 	PlatformDir   string
 	BuildpacksDir string
-	Logger        logging.Logger
+	Logger        Logger
 	runs          *sync.Map
 }
 
@@ -103,10 +101,12 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		}
 		run := t.(detectRun)
 		if len(run.Output) > 0 {
-			c.Logger.Debugf("======== Output: %s ========\n%s", bp, run.Output)
+			c.Logger.Debugf("======== Output: %s ========", bp)
+			c.Logger.Debug(string(run.Output))
 		}
 		if run.Err != nil {
-			c.Logger.Debugf("======== Error: %s ========\n%s", bp, run.Err)
+			c.Logger.Debugf("======== Error: %s ========", bp)
+			c.Logger.Debug(run.Err.Error())
 		}
 		runs = append(runs, run)
 	}

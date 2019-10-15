@@ -1,19 +1,18 @@
 package lifecycle_test
 
 import (
-	"bytes"
-	"io"
 	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/discard"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/buildpack/imgutil/local"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/internal/mocks"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -28,13 +27,10 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		rebaser          *lifecycle.Rebaser
 		fakeWorkingImage *fakes.Image
 		fakeNewBaseImage *fakes.Image
-		outLog           bytes.Buffer
 		additionalNames  []string
 	)
 
 	it.Before(func() {
-		outLog = bytes.Buffer{}
-
 		fakeWorkingImage = fakes.NewImage(
 			"some-repo/app-image",
 			"some-top-layer-sha",
@@ -56,7 +52,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
 		rebaser = &lifecycle.Rebaser{
-			Logger: mocks.NewMockLogger(io.MultiWriter(&outLog, it.Out())),
+			Logger: &log.Logger{Handler: &discard.Handler{}},
 		}
 	})
 

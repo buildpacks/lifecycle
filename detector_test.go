@@ -1,8 +1,6 @@
 package lifecycle_test
 
 import (
-	"bytes"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/internal/mocks"
 )
 
 func TestDetector(t *testing.T) {
@@ -25,9 +24,9 @@ func TestDetector(t *testing.T) {
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	var (
 		config      *lifecycle.DetectConfig
-		outLog      *bytes.Buffer
 		platformDir string
 		tmpDir      string
+		logHandler  *memory.Handler
 	)
 
 	it.Before(func() {
@@ -42,14 +41,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		buildpacksDir := filepath.Join("testdata", "by-id")
 
-		outLog = &bytes.Buffer{}
+		logHandler = memory.New()
 		config = &lifecycle.DetectConfig{
 			FullEnv:       append(os.Environ(), "ENV_TYPE=full"),
 			ClearEnv:      append(os.Environ(), "ENV_TYPE=clear"),
 			AppDir:        appDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
-			Logger:        mocks.NewMockLogger(io.MultiWriter(outLog, it.Out())),
+			Logger:        &log.Logger{Handler: logHandler},
 		}
 	})
 
@@ -85,7 +84,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := cmp.Diff("\n"+outLog.String(), outputFailureEv1); s != "" {
+			if s := cmp.Diff("\n"+allLogs(logHandler), outputFailureEv1); s != "" {
 				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
 		})
@@ -114,7 +113,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 			}
 
-			if s := outLog.String(); !strings.HasSuffix(s,
+			if s := allLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"pass: A@v1\n"+
 					"pass: B@v1\n"+
@@ -132,7 +131,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := cmp.Diff(outLog.String(),
+			if s := cmp.Diff(allLogs(logHandler),
 				"======== Results ========\n"+
 					"Resolving plan... (try #1)\n"+
 					"fail: no viable buildpacks in group\n",
@@ -153,7 +152,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := outLog.String(); !strings.HasSuffix(s,
+			if s := allLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"skip: A@v1\n"+
 					"skip: B@v1\n"+
@@ -242,7 +241,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 				}
 
-				if s := outLog.String(); !strings.HasSuffix(s,
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
 						"pass: A@v1\n"+
 						"pass: C@v2\n"+
@@ -274,7 +273,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
-				if s := outLog.String(); !strings.HasSuffix(s,
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
 						"skip: A@v1\n"+
 						"pass: B@v1\n"+
@@ -302,7 +301,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
-				if s := outLog.String(); !strings.HasSuffix(s,
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
@@ -348,7 +347,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 				}
 
-				if s := outLog.String(); !strings.HasSuffix(s,
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
@@ -419,7 +418,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 				}
 
-				if s := outLog.String(); !strings.HasSuffix(s,
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"Resolving plan... (try #16)\n"+
 						"skip: D@v1 requires dep9-missing\n"+
 						"skip: D@v1 provides unused dep10-missing\n"+
@@ -454,6 +453,14 @@ func hasEntries(a, b []lifecycle.BuildPlanEntry) bool {
 		}
 	}
 	return true
+}
+
+func allLogs(logHandler *memory.Handler) string {
+	var out string
+	for _, le := range logHandler.Entries {
+		out = out + le.Message + "\n"
+	}
+	return out
 }
 
 const outputFailureEv1 = `
