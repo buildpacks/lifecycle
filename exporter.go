@@ -32,6 +32,7 @@ func (e *Exporter) Export(
 	layersDir,
 	appDir string,
 	workingImage imgutil.Image,
+	runImageRef string,
 	origMetadata metadata.LayersMetadata,
 	additionalNames []string,
 	launcherConfig LauncherConfig,
@@ -46,12 +47,7 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "get run image top layer SHA")
 	}
 
-	identifier, err := workingImage.Identifier()
-	if err != nil {
-		return errors.Wrap(err, "get run image id or digest")
-	}
-
-	meta.RunImage.Reference = identifier.String()
+	meta.RunImage.Reference = runImageRef
 	meta.Stack = stack
 
 	meta.App.SHA, err = e.addLayer(workingImage, &layer{path: appDir, identifier: "app"}, origMetadata.App.SHA)
