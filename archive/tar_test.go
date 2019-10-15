@@ -53,7 +53,6 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-
 			// Make all files os.ModePerm so they can all be cleaned up.
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
@@ -92,7 +91,6 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
 		})
-
 	})
 
 	when("#WriteTarArchive", func() {
@@ -228,7 +226,6 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 
 					assertDirectory(t, header)
 					assertModTimeNormalized(t, header)
-
 				}
 			})
 		})

@@ -79,7 +79,6 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					it("should error out", func() {
 						_, err := compat.ReadOrder(filepath.Join("testdata", "v1.order.nonexistent.toml"), filepath.Join("testdata", "buildpacks"))
 						h.AssertError(t, err, "no buildpacks with matching ID 'buildpack.nonexistent'")
-
 					})
 				})
 			})

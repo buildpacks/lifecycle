@@ -229,7 +229,6 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, err, fmt.Sprintf("failed to get layer with sha '%s'", testLayerSHA))
 				})
 			})
-
 		})
 
 		when("with #ReuseLayer", func() {

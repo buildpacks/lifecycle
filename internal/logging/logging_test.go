@@ -164,7 +164,6 @@ func TestColor(t *testing.T) {
 				got := out.String()
 				h.AssertEq(t, got, want)
 			})
-
 		})
 
 		when("color disabled", func() {
@@ -282,6 +281,5 @@ func TestMaybeStripColors(t *testing.T) {
 				}
 			}
 		})
-
 	})
 }
