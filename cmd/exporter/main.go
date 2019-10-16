@@ -138,6 +138,8 @@ func export() error {
 	}
 
 	var appImage imgutil.Image
+	var runImageID imgutil.Identifier
+
 	if useDaemon {
 		dockerClient, err := cmd.DockerClient()
 		if err != nil {
@@ -160,6 +162,11 @@ func export() error {
 		)
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
+		}
+
+		runImageID, err = appImage.Identifier()
+		if err != nil {
+			return cmd.FailErr(err, "get run image ID")
 		}
 
 		if launchCacheDir != "" {
@@ -195,6 +202,15 @@ func export() error {
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}
+
+		runImage, err := remote.NewImage(runImageRef, auth.DefaultEnvKeychain(), remote.FromBaseImage(runImageRef))
+		if err != nil {
+			return cmd.FailErr(err, "access run image")
+		}
+		runImageID, err = runImage.Identifier()
+		if err != nil {
+			return cmd.FailErr(err, "get run image reference")
+		}
 	}
 
 	launcherConfig := lifecycle.LauncherConfig{
@@ -210,7 +226,7 @@ func export() error {
 		},
 	}
 
-	if err := exporter.Export(layersDir, appDir, appImage, analyzedMD.Metadata, imageNames[1:], launcherConfig, stackMD); err != nil {
+	if err := exporter.Export(layersDir, appDir, appImage, runImageID.String(), analyzedMD.Metadata, imageNames[1:], launcherConfig, stackMD); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}
