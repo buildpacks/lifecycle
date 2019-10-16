@@ -24,14 +24,17 @@ build: build-linux
 
 build-macos:
 	@echo "> Building for macos..."
+	mkdir -p ./out/lifecycle
 	GOOS=darwin $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
 
 build-linux:
 	@echo "> Building for linux..."
+	mkdir -p ./out/lifecycle
 	GOOS=linux $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
 
 build-windows:
 	@echo "> Building for windows..."
+	mkdir -p ./out/lifecycle
 	GOOS=windows $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
 
 descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
