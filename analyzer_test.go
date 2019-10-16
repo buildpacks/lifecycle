@@ -452,7 +452,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						} else if !strings.Contains(string(txt), "buildlayer file contents") {
 							t.Fatalf(`Error: expected "%s" to still exist`, buildLayerFile)
 						}
-
 					})
 				})
 

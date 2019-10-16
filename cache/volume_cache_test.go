@@ -348,7 +348,6 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, "layer with SHA 'some_sha' not found")
 					})
 				})
-
 			})
 
 			when("#AddLayer", func() {
@@ -401,7 +400,6 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, fmt.Sprintf("layer with SHA '%s' not found", layerSha))
 					})
 				})
-
 			})
 
 			when("#ReuseLayer", func() {
@@ -446,7 +444,6 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, string(bytes), "dummy data")
 					})
 				})
-
 			})
 
 			when("attempting to commit more than once", func() {
