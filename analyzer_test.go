@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/discard"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/buildpack/imgutil/local"
 	"github.com/golang/mock/gomock"
@@ -15,7 +17,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/internal/mocks"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
@@ -52,7 +53,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			AppDir:       appDir,
 			LayersDir:    layerDir,
 			AnalyzedPath: filepath.Join(tmpDir, "some-previous-file.toml"),
-			Logger:       mocks.NewMockLogger(ioutil.Discard),
+			Logger:       &log.Logger{Handler: &discard.Handler{}},
 			UID:          1234,
 			GID:          4321,
 		}

@@ -11,7 +11,6 @@ import (
 
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -19,7 +18,7 @@ type Exporter struct {
 	Buildpacks   []Buildpack
 	ArtifactsDir string
 	In           []byte
-	Logger       logging.Logger
+	Logger       Logger
 	UID, GID     int
 }
 

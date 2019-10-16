@@ -1,7 +1,5 @@
-export GO111MODULE = on
-
 GOCMD?=go
-GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
+GOENV=GOARCH=amd64 CGO_ENABLED=0
 GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-s -w -X 'github.com/buildpack/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpack/lifecycle/cmd.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpack/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'"
 GOTEST=$(GOCMD) test -mod=vendor
 LIFECYCLE_VERSION?=0.0.0
@@ -22,10 +20,19 @@ endef
 
 all: test build package
 
-build:
-	@echo "> Building lifecycle..."
-	mkdir -p ./out/lifecycle
-	$(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
+build: build-linux
+
+build-macos:
+	@echo "> Building for macos..."
+	GOOS=darwin $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
+
+build-linux:
+	@echo "> Building for linux..."
+	GOOS=linux $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
+
+build-windows:
+	@echo "> Building for windows..."
+	GOOS=windows $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
 
 descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 descriptor:

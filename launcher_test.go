@@ -7,11 +7,10 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/golang/mock/gomock"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/testmock"

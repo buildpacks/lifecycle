@@ -20,7 +20,6 @@ import (
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
 	"github.com/buildpack/lifecycle/image/auth"
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -65,10 +64,12 @@ func main() {
 
 	flag.Parse()
 
-	cmd.Logger.WantLevel(logLevel)
-
 	if printVersion {
 		cmd.ExitWithVersion()
+	}
+
+	if err := cmd.SetLogLevel(logLevel); err != nil {
+		cmd.Exit(err)
 	}
 
 	imageNames = flag.Args()
@@ -237,7 +238,7 @@ func export() error {
 	return nil
 }
 
-func parseOptionalAnalyzedMD(logger logging.Logger, path string) (metadata.AnalyzedMetadata, error) {
+func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (metadata.AnalyzedMetadata, error) {
 	var analyzedMD metadata.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)

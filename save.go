@@ -7,11 +7,9 @@ import (
 	"github.com/buildpack/imgutil/local"
 	"github.com/buildpack/imgutil/remote"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/lifecycle/logging"
 )
 
-func saveImage(image imgutil.Image, additionalNames []string, logger logging.Logger) error {
+func saveImage(image imgutil.Image, additionalNames []string, logger Logger) error {
 	var saveErr error
 	if err := image.Save(additionalNames...); err != nil {
 		var ok bool

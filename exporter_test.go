@@ -2,7 +2,6 @@ package lifecycle_test
 
 import (
 	"archive/tar"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,9 +9,12 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/buildpack/imgutil/local"
 	"github.com/buildpack/imgutil/remote"
@@ -21,7 +23,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/internal/mocks"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -35,7 +36,6 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		exporter        *lifecycle.Exporter
 		fakeAppImage    *fakes.Image
-		outLog          bytes.Buffer
 		layersDir       string
 		tmpDir          string
 		appDir          string
@@ -45,11 +45,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		stack           = metadata.StackMetadata{}
 		additionalNames []string
 		runImageRef     = "run-image-reference"
+		logHandler      = memory.New()
 	)
 
 	it.Before(func() {
-		outLog = bytes.Buffer{}
-
 		tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 		h.AssertNil(t, err)
 
@@ -89,7 +88,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				{ID: "buildpack.id", Version: "1.2.3"},
 				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
-			Logger: mocks.NewMockLogger(io.MultiWriter(&outLog, it.Out())),
+			Logger: &log.Logger{Handler: logHandler},
 			UID:    uid,
 			GID:    gid,
 		}
@@ -177,7 +176,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 				assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
 				assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
-				assertAddLayerLog(t, outLog, "app", appLayerPath)
+				assertAddLayerLog(t, logHandler, "app", appLayerPath)
 			})
 
 			it("creates config layer on Run image", func() {
@@ -191,21 +190,21 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(layersDir, "config"), uid, gid)
-				assertAddLayerLog(t, outLog, "config", configLayerPath)
+				assertAddLayerLog(t, logHandler, "config", configLayerPath)
 			})
 
 			it("reuses launcher layer if the sha matches the sha in the metadata", func() {
 				launcherLayerSHA := h.ComputeSHA256ForPath(t, launcherConfig.Path, uid, gid)
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:"+launcherLayerSHA)
-				assertReuseLayerLog(t, outLog, "launcher", launcherLayerSHA)
+				assertReuseLayerLog(t, logHandler, "launcher", launcherLayerSHA)
 			})
 
 			it("reuses launch layers when only layer.toml is present", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:orig-launch-layer-no-local-dir-sha")
-				assertReuseLayerLog(t, outLog, "buildpack.id:launch-layer-no-local-dir", "orig-launch-layer-no-local-dir-sha")
+				assertReuseLayerLog(t, logHandler, "buildpack.id:launch-layer-no-local-dir", "orig-launch-layer-no-local-dir-sha")
 			})
 
 			it("reuses cached launch layers if the local sha matches the sha in the metadata", func() {
@@ -214,7 +213,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:"+layer5sha)
-				assertReuseLayerLog(t, outLog, "other.buildpack.id:local-reusable-layer", layer5sha)
+				assertReuseLayerLog(t, logHandler, "other.buildpack.id:local-reusable-layer", layer5sha)
 			})
 
 			it("adds new launch layers", func() {
@@ -228,7 +227,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "buildpack.id/new-launch-layer/file-from-new-launch-layer"),
 					"echo text from layer 2\n")
 				assertTarFileOwner(t, layer2Path, filepath.Join(layersDir, "buildpack.id/new-launch-layer"), uid, gid)
-				assertAddLayerLog(t, outLog, "buildpack.id:new-launch-layer", layer2Path)
+				assertAddLayerLog(t, logHandler, "buildpack.id:new-launch-layer", layer2Path)
 			})
 
 			it("adds new launch layers from a second buildpack", func() {
@@ -242,7 +241,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(layersDir, "other.buildpack.id/new-launch-layer/new-launch-layer-file"),
 					"echo text from new layer\n")
 				assertTarFileOwner(t, layer3Path, filepath.Join(layersDir, "other.buildpack.id/new-launch-layer"), uid, gid)
-				assertAddLayerLog(t, outLog, "other.buildpack.id:new-launch-layer", layer3Path)
+				assertAddLayerLog(t, logHandler, "other.buildpack.id:new-launch-layer", layer3Path)
 			})
 
 			it("only creates expected layers", func() {
@@ -546,10 +545,7 @@ type = "Apache-2.0"
 				it("outputs the digest", func() {
 					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
-					h.AssertStringContains(t,
-						outLog.String(),
-						`*** Digest: `+fakeRemoteDigest,
-					)
+					assertLogEntry(t, logHandler, `*** Digest: `+fakeRemoteDigest)
 				})
 			})
 
@@ -557,28 +553,17 @@ type = "Apache-2.0"
 				it("outputs the image ID", func() {
 					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
-					h.AssertStringContains(t,
-						outLog.String(),
-						`*** Image ID: some-image-id`,
-					)
+					assertLogEntry(t, logHandler, `*** Image ID: some-image-id`)
 				})
 			})
 
 			it("outputs image names", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
-				h.AssertStringContains(t,
-					outLog.String(),
-					fmt.Sprintf(`*** Images (some-image-i):
-      %s
-      %s
-      %s
-`,
-						fakeAppImage.Name(),
-						additionalNames[0],
-						additionalNames[1],
-					),
-				)
+				assertLogEntry(t, logHandler, `*** Images (some-image-i):`)
+				assertLogEntry(t, logHandler, fakeAppImage.Name())
+				assertLogEntry(t, logHandler, additionalNames[0])
+				assertLogEntry(t, logHandler, additionalNames[1])
 			})
 
 			when("one of the additional names fails", func() {
@@ -598,22 +583,11 @@ type = "Apache-2.0"
 
 					h.AssertError(t, err, fmt.Sprintf("failed to write image to the following tags: [%s]", failingName))
 
-					h.AssertStringContains(t,
-						outLog.String(),
-						fmt.Sprintf(
-							`*** Images (some-image-i):
-      %s
-      %s
-      %s
-      %s - could not parse reference
-
-*** Image ID: some-image-id`,
-							fakeAppImage.Name(),
-							additionalNames[0],
-							additionalNames[1],
-							failingName,
-						),
-					)
+					assertLogEntry(t, logHandler, `*** Images (some-image-i):`)
+					assertLogEntry(t, logHandler, fakeAppImage.Name())
+					assertLogEntry(t, logHandler, additionalNames[0])
+					assertLogEntry(t, logHandler, additionalNames[1])
+					assertLogEntry(t, logHandler, fmt.Sprintf("%s - could not parse reference", failingName))
 				})
 			})
 
@@ -688,7 +662,7 @@ type = "Apache-2.0"
 
 				assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
 				assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
-				assertAddLayerLog(t, outLog, "app", appLayerPath)
+				assertAddLayerLog(t, logHandler, "app", appLayerPath)
 			})
 
 			it("creates config layer on Run image", func() {
@@ -702,7 +676,7 @@ type = "Apache-2.0"
 					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(layersDir, "config"), uid, gid)
-				assertAddLayerLog(t, outLog, "config", configLayerPath)
+				assertAddLayerLog(t, logHandler, "config", configLayerPath)
 			})
 
 			it("creates a launcher layer", func() {
@@ -715,7 +689,7 @@ type = "Apache-2.0"
 					launcherConfig.Path,
 					"some-launcher")
 				assertTarFileOwner(t, launcherLayerPath, launcherConfig.Path, uid, gid)
-				assertAddLayerLog(t, outLog, "launcher", launcherLayerPath)
+				assertAddLayerLog(t, logHandler, "launcher", launcherLayerPath)
 			})
 
 			it("adds launch layers", func() {
@@ -728,7 +702,7 @@ type = "Apache-2.0"
 					filepath.Join(layersDir, "buildpack.id/layer1/file-from-layer-1"),
 					"echo text from layer 1\n")
 				assertTarFileOwner(t, layer1Path, filepath.Join(layersDir, "buildpack.id/layer1"), uid, gid)
-				assertAddLayerLog(t, outLog, "buildpack.id:layer1", layer1Path)
+				assertAddLayerLog(t, logHandler, "buildpack.id:layer1", layer1Path)
 
 				layer2Path, err := fakeAppImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/layer2"))
 				h.AssertNil(t, err)
@@ -737,7 +711,7 @@ type = "Apache-2.0"
 					filepath.Join(layersDir, "buildpack.id/layer2/file-from-layer-2"),
 					"echo text from layer 2\n")
 				assertTarFileOwner(t, layer2Path, filepath.Join(layersDir, "buildpack.id/layer2"), uid, gid)
-				assertAddLayerLog(t, outLog, "buildpack.id:layer2", layer2Path)
+				assertAddLayerLog(t, logHandler, "buildpack.id:layer2", layer2Path)
 			})
 
 			it("only creates expected layers", func() {
@@ -871,7 +845,7 @@ type = "Apache-2.0"
 					filepath.Join(layersDir, "some_escaped_bp_id/some-layer/some-file"),
 					"some-file-contents\n")
 				assertTarFileOwner(t, layerPath, filepath.Join(layersDir, "some_escaped_bp_id/some-layer/some-file"), uid, gid)
-				assertAddLayerLog(t, outLog, "some/escaped/bp/id:some-layer", layerPath)
+				assertAddLayerLog(t, logHandler, "some/escaped/bp/id:some-layer", layerPath)
 			})
 
 			it("exports buildpack metadata with unescaped id", func() {
@@ -970,22 +944,29 @@ type = "Apache-2.0"
 	})
 }
 
-func assertAddLayerLog(t *testing.T, stdout bytes.Buffer, name, layerPath string) {
+func assertAddLayerLog(t *testing.T, logHandler *memory.Handler, name, layerPath string) {
 	t.Helper()
 	layerSHA := h.ComputeSHA256ForFile(t, layerPath)
-
-	expected := fmt.Sprintf("Adding layer '%s'", name)
-	h.AssertStringContains(t, stdout.String(), expected)
-	expected = fmt.Sprintf("Layer '%s' SHA: sha256:%s", name, layerSHA)
-	h.AssertStringContains(t, stdout.String(), expected)
+	assertLogEntry(t, logHandler, fmt.Sprintf("Adding layer '%s'", name))
+	assertLogEntry(t, logHandler, fmt.Sprintf("Layer '%s' SHA: sha256:%s", name, layerSHA))
 }
 
-func assertReuseLayerLog(t *testing.T, stdout bytes.Buffer, name, sha string) {
+func assertLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
 	t.Helper()
-	expected := fmt.Sprintf("Reusing layer '%s'", name)
-	h.AssertStringContains(t, stdout.String(), expected)
-	expected = fmt.Sprintf("Layer '%s' SHA: sha256:%s", name, sha)
-	h.AssertStringContains(t, stdout.String(), expected)
+	var messages []string
+	for _, le := range logHandler.Entries {
+		messages = append(messages, le.Message)
+		if strings.Contains(le.Message, expected) {
+			return
+		}
+	}
+	t.Fatalf("Expected log entries %+v to contain %s", messages, expected)
+}
+
+func assertReuseLayerLog(t *testing.T, logHandler *memory.Handler, name, sha string) {
+	t.Helper()
+	assertLogEntry(t, logHandler, fmt.Sprintf("Reusing layer '%s'", name))
+	assertLogEntry(t, logHandler, fmt.Sprintf("Layer '%s' SHA: sha256:%s", name, sha))
 }
 
 func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
