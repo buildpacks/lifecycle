@@ -593,7 +593,7 @@ type = "Apache-2.0"
 						testCache,
 					)
 
-					h.AssertError(t, err, fmt.Sprintf("failed to write image to the following tags: [%s]", failingName))
+					h.AssertError(t, err, fmt.Sprintf("failed to write image to the following tags: [%s:", failingName))
 
 					assertLogEntry(t, logHandler, `*** Images (some-image-i):`)
 					assertLogEntry(t, logHandler, fakeAppImage.Name())
