@@ -38,6 +38,8 @@ var (
 	gid            int
 	printVersion   bool
 	logLevel       string
+	cacheImageTag  string
+	cacheDir       string
 )
 
 func init() {
@@ -55,6 +57,8 @@ func init() {
 	cmd.FlagVersion(&printVersion)
 	cmd.FlagLauncherPath(&launcherPath)
 	cmd.FlagLogLevel(&logLevel)
+	cmd.FlagCacheImage(&cacheImageTag)
+	cmd.FlagCacheDir(&cacheDir)
 }
 
 func main() {
@@ -230,11 +234,49 @@ func export() error {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}
-
 		return cmd.FailErr(err, "export")
 	}
 
+	// Failing to export cache should not be an error if the app image export was successful.
+	if cacheErr := exportCache(exporter); cacheErr != nil {
+		cmd.Logger.Warnf("failed to export cache: %v\n", cacheErr)
+	}
 	return nil
+}
+
+func exportCache(exporter *lifecycle.Exporter) error {
+	var cacheStore lifecycle.Cache
+	if cacheImageTag != "" {
+		origCacheImage, err := remote.NewImage(
+			cacheImageTag,
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			remote.FromBaseImage(cacheImageTag),
+		)
+		if err != nil {
+			return cmd.FailErr(err, "accessing cache image")
+		}
+
+		emptyImage, err := remote.NewImage(
+			cacheImageTag,
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			remote.WithPreviousImage(cacheImageTag),
+		)
+		if err != nil {
+			return cmd.FailErr(err, "creating new cache image")
+		}
+
+		cacheStore = cache.NewImageCache(
+			origCacheImage,
+			emptyImage,
+		)
+	} else {
+		var err error
+		cacheStore, err = cache.NewVolumeCache(cacheDir)
+		if err != nil {
+			return cmd.FailErr(err, "create volume cache")
+		}
+	}
+	return exporter.Cache(layersDir, cacheStore)
 }
 
 func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (lifecycle.AnalyzedMetadata, error) {
