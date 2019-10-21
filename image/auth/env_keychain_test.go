@@ -110,7 +110,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#BuildAuthEnvVar", func() {
+	when("#BuildEnvVar", func() {
 		var keychain authn.Keychain
 
 		it.Before(func() {
@@ -131,7 +131,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("builds json encoded env with auth headers", func() {
-			envVar, err := auth.BuildAuthEnvVar(keychain,
+			envVar, err := auth.BuildEnvVar(keychain,
 				"some-registry.com/image",
 				"some-registry.com/image2",
 				"other-registry.com/image3",
@@ -148,7 +148,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns an empty result for Anonymous registries", func() {
-			envVar, err := auth.BuildAuthEnvVar(keychain, "anonymous.com/dockerhub/image")
+			envVar, err := auth.BuildEnvVar(keychain, "anonymous.com/dockerhub/image")
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, envVar, "{}")
