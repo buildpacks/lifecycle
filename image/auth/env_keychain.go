@@ -22,7 +22,7 @@ type EnvKeychain struct {
 }
 
 func (k *EnvKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
-	authHeaders, err := ReadAuthEnvVar(k.EnvVar)
+	authHeaders, err := ReadEnvVar(k.EnvVar)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading auth env var")
 	}
@@ -48,9 +48,9 @@ func (p *providedAuth) Authorization() (*authn.AuthConfig, error) {
 	return p.config, nil
 }
 
-// ReadAuthEnvVar parses an environment variable to produce a map of 'registry url' to 'authorization header'.
+// ReadEnvVar parses an environment variable to produce a map of 'registry url' to 'authorization header'.
 //
-// Complementary to `BuildAuthEnvVar`.
+// Complementary to `BuildEnvVar`.
 //
 // Example Input:
 // 	{"gcr.io": "Bearer asdf=", "docker.io": "Basic qwerty="}
@@ -58,7 +58,7 @@ func (p *providedAuth) Authorization() (*authn.AuthConfig, error) {
 // Example Output:
 //  gcr.io -> Bearer asdf=
 //  docker.io -> Basic qwerty=
-func ReadAuthEnvVar(envVar string) (map[string]string, error) {
+func ReadEnvVar(envVar string) (map[string]string, error) {
 	authMap := map[string]string{}
 
 	env := os.Getenv(envVar)
@@ -72,10 +72,10 @@ func ReadAuthEnvVar(envVar string) (map[string]string, error) {
 	return authMap, nil
 }
 
-// BuildAuthEnvVar creates the contents to use for authentication environment variable.
+// BuildEnvVar creates the contents to use for authentication environment variable.
 //
-// Complementary to `ReadAuthEnvVar`.
-func BuildAuthEnvVar(keychain authn.Keychain, images ...string) (string, error) {
+// Complementary to `ReadEnvVar`.
+func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
 	registryAuths := map[string]string{}
 
 	for _, image := range images {
