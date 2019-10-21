@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/apex/log/handlers/discard"
 	"github.com/apex/log/handlers/memory"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/buildpack/imgutil/local"
@@ -23,6 +24,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -46,9 +48,19 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		additionalNames []string
 		runImageRef     = "run-image-reference"
 		logHandler      = memory.New()
+		cacheDir        string
+		testCache       lifecycle.Cache
 	)
 
 	it.Before(func() {
+		var err error
+
+		cacheDir, err = ioutil.TempDir("", "")
+		h.AssertNil(t, err)
+
+		testCache, err = cache.NewVolumeCache(cacheDir)
+		h.AssertNil(t, err)
+
 		tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 		h.AssertNil(t, err)
 
@@ -97,9 +109,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	it.After(func() {
 		fakeAppImage.Cleanup()
 
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Fatal(err)
-		}
+		h.AssertNil(t, os.RemoveAll(cacheDir))
+		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
 	when("#Export", func() {
@@ -170,7 +181,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates app layer on Run image", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				appLayerPath := fakeAppImage.AppLayerPath()
 
@@ -180,7 +191,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates config layer on Run image", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				configLayerPath := fakeAppImage.ConfigLayerPath()
 
@@ -195,13 +206,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 			it("reuses launcher layer if the sha matches the sha in the metadata", func() {
 				launcherLayerSHA := h.ComputeSHA256ForPath(t, launcherConfig.Path, uid, gid)
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:"+launcherLayerSHA)
 				assertReuseLayerLog(t, logHandler, "launcher", launcherLayerSHA)
 			})
 
 			it("reuses launch layers when only layer.toml is present", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:orig-launch-layer-no-local-dir-sha")
 				assertReuseLayerLog(t, logHandler, "buildpack.id:launch-layer-no-local-dir", "orig-launch-layer-no-local-dir-sha")
@@ -210,14 +221,14 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			it("reuses cached launch layers if the local sha matches the sha in the metadata", func() {
 				layer5sha := h.ComputeSHA256ForPath(t, filepath.Join(layersDir, "other.buildpack.id/local-reusable-layer"), uid, gid)
 
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "sha256:"+layer5sha)
 				assertReuseLayerLog(t, logHandler, "other.buildpack.id:local-reusable-layer", layer5sha)
 			})
 
 			it("adds new launch layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				layer2Path, err := fakeAppImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/new-launch-layer"))
 				h.AssertNil(t, err)
@@ -231,7 +242,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds new launch layers from a second buildpack", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				layer3Path, err := fakeAppImage.FindLayerWithPath(filepath.Join(layersDir, "other.buildpack.id/new-launch-layer"))
 				h.AssertNil(t, err)
@@ -245,21 +256,21 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("only creates expected layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				var applayer, configLayer, layer2, layer3 = 1, 1, 1, 1
 				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), applayer+configLayer+layer2+layer3)
 			})
 
 			it("only reuses expected layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				var launcherLayer, layer1, layer5 = 1, 1, 1
 				h.AssertEq(t, len(fakeAppImage.ReusedLayers()), launcherLayer+layer1+layer5)
 			})
 
 			it("saves lifecycle metadata with layer info", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				appLayerPath := fakeAppImage.AppLayerPath()
 				appLayerSHA := h.ComputeSHA256ForFile(t, appLayerPath)
@@ -317,7 +328,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
 					},
 				}
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
@@ -344,7 +355,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("BOM is not present in the label", func() {
-					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 					h.AssertNil(t, err)
@@ -404,7 +415,7 @@ type = "Apache-2.0"
 				})
 
 				it("saves BOM metadata to the resulting image", func() {
-					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 					h.AssertNil(t, err)
@@ -461,7 +472,7 @@ type = "Apache-2.0"
 			})
 
 			it("saves buildpacks to build metadata label", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 				h.AssertNil(t, err)
@@ -494,7 +505,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets CNB_LAYERS_DIR", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Env("CNB_LAYERS_DIR")
 				h.AssertNil(t, err)
@@ -502,7 +513,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets CNB_APP_DIR", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Env("CNB_APP_DIR")
 				h.AssertNil(t, err)
@@ -510,7 +521,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets ENTRYPOINT to launcher", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Entrypoint()
 				h.AssertNil(t, err)
@@ -518,7 +529,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets empty CMD", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Cmd()
 				h.AssertNil(t, err)
@@ -526,7 +537,7 @@ type = "Apache-2.0"
 			})
 
 			it("saves run image", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				h.AssertEq(t, fakeAppImage.IsSaved(), true)
 			})
@@ -543,7 +554,7 @@ type = "Apache-2.0"
 				})
 
 				it("outputs the digest", func() {
-					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 					assertLogEntry(t, logHandler, `*** Digest: `+fakeRemoteDigest)
 				})
@@ -551,14 +562,14 @@ type = "Apache-2.0"
 
 			when("image has an ID identifier", func() {
 				it("outputs the image ID", func() {
-					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 					assertLogEntry(t, logHandler, `*** Image ID: some-image-id`)
 				})
 			})
 
 			it("outputs image names", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				assertLogEntry(t, logHandler, `*** Images (some-image-i):`)
 				assertLogEntry(t, logHandler, fakeAppImage.Name())
@@ -579,6 +590,7 @@ type = "Apache-2.0"
 						append(additionalNames, failingName),
 						launcherConfig,
 						stack,
+						testCache,
 					)
 
 					h.AssertError(t, err, fmt.Sprintf("failed to write image to the following tags: [%s]", failingName))
@@ -603,7 +615,7 @@ type = "Apache-2.0"
 				it("returns an error", func() {
 					h.AssertError(
 						t,
-						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack),
+						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache),
 						"cannot reuse 'buildpack.id:launch-layer-no-local-dir', previous image has no metadata for layer 'buildpack.id:launch-layer-no-local-dir'",
 					)
 				})
@@ -623,14 +635,14 @@ type = "Apache-2.0"
 				it("returns an error", func() {
 					h.AssertError(
 						t,
-						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack),
+						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache),
 						"cannot reuse 'buildpack.id:launch-layer-no-local-dir', previous image has no metadata for layer 'buildpack.id:launch-layer-no-local-dir'",
 					)
 				})
 			})
 
 			it("saves the image for all provided additionalNames", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(additionalNames, fakeAppImage.Name())...)
 			})
 		})
@@ -656,7 +668,7 @@ type = "Apache-2.0"
 			})
 
 			it("creates app layer on Run image", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				appLayerPath := fakeAppImage.AppLayerPath()
 
@@ -666,7 +678,7 @@ type = "Apache-2.0"
 			})
 
 			it("creates config layer on Run image", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				configLayerPath := fakeAppImage.ConfigLayerPath()
 
@@ -680,7 +692,7 @@ type = "Apache-2.0"
 			})
 
 			it("creates a launcher layer", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				launcherLayerPath, err := fakeAppImage.FindLayerWithPath(launcherConfig.Path)
 				h.AssertNil(t, err)
@@ -693,7 +705,7 @@ type = "Apache-2.0"
 			})
 
 			it("adds launch layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				layer1Path, err := fakeAppImage.FindLayerWithPath(filepath.Join(layersDir, "buildpack.id/layer1"))
 				h.AssertNil(t, err)
@@ -715,14 +727,14 @@ type = "Apache-2.0"
 			})
 
 			it("only creates expected layers", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				var applayer, configLayer, launcherLayer, layer1, layer2 = 1, 1, 1, 1, 1
 				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), applayer+configLayer+launcherLayer+layer1+layer2)
 			})
 
 			it("saves metadata with layer info", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				appLayerPath := fakeAppImage.AppLayerPath()
 				appLayerSHA := h.ComputeSHA256ForFile(t, appLayerPath)
@@ -768,7 +780,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets CNB_LAYERS_DIR", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Env("CNB_LAYERS_DIR")
 				h.AssertNil(t, err)
@@ -776,7 +788,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets CNB_APP_DIR", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Env("CNB_APP_DIR")
 				h.AssertNil(t, err)
@@ -784,7 +796,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets ENTRYPOINT to launcher", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Entrypoint()
 				h.AssertNil(t, err)
@@ -792,7 +804,7 @@ type = "Apache-2.0"
 			})
 
 			it("sets empty CMD", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 
 				val, err := fakeAppImage.Cmd()
 				h.AssertNil(t, err)
@@ -800,7 +812,7 @@ type = "Apache-2.0"
 			})
 
 			it("saves the image for all provided additionalNames", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache))
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(additionalNames, fakeAppImage.Name())...)
 			})
 		})
@@ -835,7 +847,7 @@ type = "Apache-2.0"
 			})
 
 			it("exports layers from the escaped id path", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				layerPath, err := fakeAppImage.FindLayerWithPath(filepath.Join(layersDir, "some_escaped_bp_id/some-layer"))
 				h.AssertNil(t, err)
@@ -849,7 +861,7 @@ type = "Apache-2.0"
 			})
 
 			it("exports buildpack metadata with unescaped id", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
+				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache))
 
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
@@ -888,7 +900,7 @@ type = "Apache-2.0"
 			it("returns an error", func() {
 				h.AssertError(
 					t,
-					exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack),
+					exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, metadata.LayersMetadata{}, additionalNames, launcherConfig, stack, testCache),
 					"failed to parse metadata for layers '[buildpack.id:bad-layer]'",
 				)
 			})
@@ -936,12 +948,273 @@ type = "Apache-2.0"
 			it("returns an error", func() {
 				h.AssertError(
 					t,
-					exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack),
+					exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, testCache),
 					"layer 'buildpack.id:cache-layer-no-contents' is cache=true but has no contents",
 				)
 			})
 		})
 	})
+
+	when("#Cacher", func() {
+		var (
+			tmpDir                 string
+			cacheDir               string
+			testCache              lifecycle.Cache
+			layersDir              string
+			cacheTrueLayerSHA      string
+			otherBuildpackLayerSHA string
+			subject                *lifecycle.Cacher
+		)
+
+		it.Before(func() {
+			var err error
+
+			tmpDir, err = ioutil.TempDir("", "lifecycle.cacher.layer")
+			h.AssertNil(t, err)
+
+			cacheDir, err = ioutil.TempDir("", "")
+			h.AssertNil(t, err)
+
+			testCache, err = cache.NewVolumeCache(cacheDir)
+			h.AssertNil(t, err)
+
+			subject = &lifecycle.Cacher{
+				ArtifactsDir: tmpDir,
+				Buildpacks: []lifecycle.Buildpack{
+					{ID: "buildpack.id"},
+					{ID: "other.buildpack.id"},
+				},
+				Logger: &log.Logger{Handler: &discard.Handler{}},
+				UID:    1234,
+				GID:    4321,
+			}
+		})
+
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(cacheDir))
+			h.AssertNil(t, os.RemoveAll(tmpDir))
+		})
+
+		when("the layers are valid", func() {
+			it.Before(func() {
+				layersDir = filepath.Join("testdata", "cacher", "layers")
+				cacheTrueLayerSHA = "sha256:" + h.ComputeSHA256ForPath(t, filepath.Join(layersDir, "buildpack.id/cache-true-layer"), 1234, 4321)
+				otherBuildpackLayerSHA = "sha256:" + h.ComputeSHA256ForPath(t, filepath.Join(layersDir, "other.buildpack.id/other-buildpack-layer"), 1234, 4321)
+			})
+
+			when("there is no previous cache", func() {
+				it("adds layers with 'cache=true' to the cache", func() {
+					err := subject.Cache(layersDir, testCache)
+					h.AssertNil(t, err)
+
+					assertTarFileContents(
+						t,
+						filepath.Join(cacheDir, "committed", cacheTrueLayerSHA+".tar"),
+						filepath.Join(layersDir, "buildpack.id/cache-true-layer/file-from-cache-true-layer"),
+						"file-from-cache-true-contents",
+					)
+
+					assertTarFileContents(
+						t,
+						filepath.Join(cacheDir, "committed", otherBuildpackLayerSHA+".tar"),
+						filepath.Join(layersDir, "other.buildpack.id/other-buildpack-layer/other-buildpack-layer-file"),
+						"other-buildpack-layer-contents",
+					)
+				})
+
+				it("sets the uid and gid of the layer contents", func() {
+					err := subject.Cache(layersDir, testCache)
+					h.AssertNil(t, err)
+
+					assertTarFileOwner(
+						t,
+						filepath.Join(cacheDir, "committed", cacheTrueLayerSHA+".tar"),
+						filepath.Join(layersDir, "buildpack.id/cache-true-layer/file-from-cache-true-layer"),
+						1234,
+						4321,
+					)
+
+					assertTarFileOwner(
+						t,
+						filepath.Join(cacheDir, "committed", otherBuildpackLayerSHA+".tar"),
+						filepath.Join(layersDir, "other.buildpack.id/other-buildpack-layer/other-buildpack-layer-file"),
+						1234,
+						4321,
+					)
+				})
+
+				it("sets cache metadata", func() {
+					err := subject.Cache(layersDir, testCache)
+					h.AssertNil(t, err)
+
+					metadata, err := testCache.RetrieveMetadata()
+					h.AssertNil(t, err)
+
+					t.Log("adds layer shas to metadata")
+					h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, cacheTrueLayerSHA)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
+						"cache-true-key": "cache-true-val",
+					})
+				})
+
+				it("doesn't export uncached layers", func() {
+					err := subject.Cache(layersDir, testCache)
+					h.AssertNil(t, err)
+
+					matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(matches), 3)
+				})
+			})
+
+			when("there are previously cached layers", func() {
+				var (
+					computedReusableLayerSHA string
+					metadataTemplate         string
+				)
+
+				it.Before(func() {
+					computedReusableLayerSHA = "sha256:" + h.ComputeSHA256ForPath(t, filepath.Join(layersDir, "buildpack.id/cache-true-no-sha-layer"), 1234, 4321)
+					metadataTemplate = `{
+					"buildpacks": [
+					 {
+					   "key": "buildpack.id",
+					   "layers": {
+					     "cache-true-layer": {
+					       "cache": true,
+					       "sha": "%s",
+					       "data": {"old":"data"}
+					     },
+					     "cache-true-no-sha-layer": {
+					       "cache": true,
+					       "sha": "%s"
+					     }
+					   }
+					 }
+					]
+					}`
+				})
+
+				when("the SHAs match", func() {
+					it.Before(func() {
+						previousCache, err := cache.NewVolumeCache(cacheDir)
+						h.AssertNil(t, err)
+
+						err = subject.Cache(layersDir, previousCache)
+						h.AssertNil(t, err)
+
+						testCache, err = cache.NewVolumeCache(cacheDir)
+						h.AssertNil(t, err)
+					})
+
+					it("reuses layers when the calculated sha matches previous metadata", func() {
+						previousLayers, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
+						h.AssertNil(t, err)
+
+						err = subject.Cache(layersDir, testCache)
+						h.AssertNil(t, err)
+
+						reusedLayers, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, previousLayers, reusedLayers)
+					})
+
+					it("sets cache metadata", func() {
+						err := subject.Cache(layersDir, testCache)
+						h.AssertNil(t, err)
+
+						metadata, err := testCache.RetrieveMetadata()
+						h.AssertNil(t, err)
+
+						t.Log("adds layer shas to metadata")
+						h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, cacheTrueLayerSHA)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
+							"cache-true-key": "cache-true-val",
+						})
+
+						h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].SHA, computedReusableLayerSHA)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Launch, false)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Build, false)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Cache, true)
+						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Data, map[string]interface{}{
+							"cache-true-no-sha-key": "cache-true-no-sha-val",
+						})
+
+						h.AssertEq(t, metadata.Buildpacks[1].ID, "other.buildpack.id")
+						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].SHA, otherBuildpackLayerSHA)
+						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Launch, true)
+						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Build, false)
+						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Cache, true)
+						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Data, map[string]interface{}{
+							"other-buildpack-key": "other-buildpack-val",
+						})
+					})
+				})
+
+				when("the shas don't match", func() {
+					it.Before(func() {
+						err := ioutil.WriteFile(
+							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
+							[]byte(fmt.Sprintf(metadataTemplate, "different-sha", "not-the-sha-you-want")),
+							0666,
+						)
+						h.AssertNil(t, err)
+
+						err = ioutil.WriteFile(
+							filepath.Join(cacheDir, "committed", "some-layer.tar"),
+							[]byte("some data"),
+							0666,
+						)
+						h.AssertNil(t, err)
+					})
+
+					it("doesn't reuse layers", func() {
+						err := subject.Cache(layersDir, testCache)
+						h.AssertNil(t, err)
+
+						matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(matches), 3)
+
+						for _, m := range matches {
+							if strings.Contains(m, "some-layer.tar") {
+								t.Fatal("expected layer 'some-layer.tar' not to exist")
+							}
+						}
+					})
+				})
+			})
+		})
+
+		when("there is a cache=true layer without contents", func() {
+			it.Before(func() {
+				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
+
+				err := ioutil.WriteFile(
+					filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
+					[]byte("{}"),
+					0666,
+				)
+				h.AssertNil(t, err)
+			})
+
+			it("fails", func() {
+				err := subject.Cache(layersDir, testCache)
+				h.AssertError(t, err, "failed to cache layer 'buildpack.id:cache-true-no-contents' because it has no contents")
+			})
+		})
+	})
+
 }
 
 func assertAddLayerLog(t *testing.T, logHandler *memory.Handler, name, layerPath string) {

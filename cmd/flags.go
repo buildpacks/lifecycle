@@ -65,7 +65,7 @@ func FlagCacheDir(dir *string) {
 }
 
 func FlagCacheImage(image *string) {
-	flag.StringVar(image, "image", os.Getenv(EnvCacheImage), "cache image tag name")
+	flag.StringVar(image, "cache-image", os.Getenv(EnvCacheImage), "cache image tag name")
 }
 
 func FlagGID(gid *int) {
