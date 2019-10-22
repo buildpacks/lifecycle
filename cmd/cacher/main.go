@@ -10,9 +10,9 @@ import (
 	"github.com/buildpack/imgutil/remote"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image/auth"
 )
 
 var (
@@ -84,7 +84,7 @@ func doCache() error {
 	if cacheImageTag != "" {
 		origCacheImage, err := remote.NewImage(
 			cacheImageTag,
-			auth.DefaultEnvKeychain(),
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
 			remote.FromBaseImage(cacheImageTag),
 		)
 		if err != nil {
@@ -93,7 +93,7 @@ func doCache() error {
 
 		emptyImage, err := remote.NewImage(
 			cacheImageTag,
-			auth.DefaultEnvKeychain(),
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
 			remote.WithPreviousImage(cacheImageTag),
 		)
 		if err != nil {

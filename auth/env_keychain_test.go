@@ -11,7 +11,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle/image/auth"
+	"github.com/buildpack/lifecycle/auth"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
@@ -24,9 +24,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 		var envKeyChain authn.Keychain
 
 		it.Before(func() {
-			envKeyChain = &auth.EnvKeychain{
-				EnvVar: "CNB_REGISTRY_AUTH",
-			}
+			envKeyChain = auth.EnvKeychain("CNB_REGISTRY_AUTH")
 		})
 
 		it.After(func() {
