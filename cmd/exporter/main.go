@@ -60,7 +60,6 @@ func init() {
 	cmd.FlagLogLevel(&logLevel)
 	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagCacheDir(&cacheDir)
-
 }
 
 func main() {

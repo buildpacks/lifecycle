@@ -32,7 +32,7 @@ type Exporter struct {
 	ArtifactsDir string
 	Logger       Logger
 	UID, GID     int
-	tarHashes    map[string]string
+	tarHashes    map[string]string // Stores hashes of layer tarballs for reuse between the export and cache steps.
 }
 
 type LauncherConfig struct {
@@ -165,7 +165,6 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "setting cache metadata")
 	}
 	if err := cacheStore.Commit(); err != nil {
-		// TODO Should this be an error or a warning?
 		return errors.Wrap(err, "committing cache")
 	}
 
