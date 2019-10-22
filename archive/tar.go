@@ -147,6 +147,10 @@ func Untar(r io.Reader, dest string) error {
 			if err := writeFile(tr, path, hdr.FileInfo().Mode()); err != nil {
 				return err
 			}
+			// Update permissions in case umask was applied.
+			if err := os.Chmod(path, hdr.FileInfo().Mode()); err != nil {
+				return err
+			}
 		case tar.TypeSymlink:
 			if err := os.Symlink(hdr.Linkname, path); err != nil {
 				return err
