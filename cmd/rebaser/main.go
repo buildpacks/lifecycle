@@ -13,9 +13,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -85,7 +85,7 @@ func rebase() error {
 					return nil, cmd.FailErr(err, "setup credential helpers")
 				}
 			}
-			return remote.NewImage(ref, auth.DefaultEnvKeychain(), remote.FromBaseImage(ref))
+			return remote.NewImage(ref, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(ref))
 		}
 	}
 
