@@ -18,6 +18,7 @@ type BuildMetadata struct {
 	Buildpacks []Buildpack      `toml:"buildpacks" json:"buildpacks"`
 	BOM        []BOMEntry       `toml:"bom" json:"bom"`
 	Launcher   LauncherMetadata `toml:"-" json:"launcher"`
+	Slices     []Slice          `toml:"slices" json:"-"`
 }
 
 type LauncherMetadata struct {
@@ -52,7 +53,7 @@ func (cm *CacheMetadata) MetadataForBuildpack(id string) BuildpackLayersMetadata
 }
 
 type LayersMetadata struct {
-	App        LayerMetadata             `json:"app" toml:"app"`
+	App        []LayerMetadata           `json:"app" toml:"app"`
 	Config     LayerMetadata             `json:"config" toml:"config"`
 	Launcher   LayerMetadata             `json:"launcher" toml:"launcher"`
 	Buildpacks []BuildpackLayersMetadata `json:"buildpacks" toml:"buildpacks"`

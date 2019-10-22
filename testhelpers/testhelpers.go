@@ -258,6 +258,12 @@ func ComputeSHA256ForPath(t *testing.T, path string, uid int, guid int) string {
 	return layer5sha
 }
 
+func ComputeSHA256ForFiles(t *testing.T, path string, uid int, guid int, files ...string) string {
+	sha, _, err := archive.WriteFilesToTar(path, uid, guid, files...)
+	AssertNil(t, err)
+	return sha[len("sha256:"):]
+}
+
 func RecursiveCopy(t *testing.T, src, dst string) {
 	t.Helper()
 	fis, err := ioutil.ReadDir(src)

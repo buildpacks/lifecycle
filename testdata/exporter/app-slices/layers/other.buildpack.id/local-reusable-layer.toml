@@ -1,0 +1,3 @@
+launch = true
+[metadata]
+  mykey = "updated locally reusable layer metadata val"
