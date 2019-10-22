@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/buildpack/imgutil/remote"
 
@@ -56,21 +57,27 @@ func main() {
 	if cacheImageTag == "" && cacheDir == "" {
 		cmd.Exit(cmd.FailErrCode(errors.New("must supply either -image or -path"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
-	cmd.Exit(restore())
+	cmd.Exit(doCache())
 }
 
-func restore() error {
+func doCache() error {
 	group, err := lifecycle.ReadGroup(groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	restorer := &lifecycle.Restorer{
-		LayersDir:  layersDir,
-		Buildpacks: group.Group,
-		Logger:     cmd.Logger,
-		UID:        uid,
-		GID:        gid,
+	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
+	if err != nil {
+		return cmd.FailErr(err, "create temp directory")
+	}
+	defer os.RemoveAll(artifactsDir)
+
+	cacher := &lifecycle.Cacher{
+		Buildpacks:   group.Group,
+		ArtifactsDir: artifactsDir,
+		Logger:       cmd.Logger,
+		UID:          uid,
+		GID:          gid,
 	}
 
 	var cacheStore lifecycle.Cache
@@ -90,7 +97,7 @@ func restore() error {
 			remote.WithPreviousImage(cacheImageTag),
 		)
 		if err != nil {
-			return cmd.FailErr(err, "creating empty image")
+			return cmd.FailErr(err, "creating new cache image")
 		}
 
 		cacheStore = cache.NewImageCache(
@@ -105,8 +112,9 @@ func restore() error {
 		}
 	}
 
-	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailed, "restore")
+	if err := cacher.Cache(layersDir, cacheStore); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailed, "cache")
 	}
+
 	return nil
 }

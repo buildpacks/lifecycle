@@ -16,10 +16,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -201,14 +201,14 @@ func export() error {
 
 		appImage, err = remote.NewImage(
 			imageNames[0],
-			auth.DefaultEnvKeychain(),
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
 			opts...,
 		)
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}
 
-		runImage, err := remote.NewImage(runImageRef, auth.DefaultEnvKeychain(), remote.FromBaseImage(runImageRef))
+		runImage, err := remote.NewImage(runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}

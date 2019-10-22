@@ -14,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image/auth"
 )
 
 var (
@@ -111,7 +111,7 @@ func analyzer() error {
 	} else {
 		img, err = remote.NewImage(
 			repoName,
-			auth.DefaultEnvKeychain(),
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
 			remote.FromBaseImage(repoName),
 		)
 		if err != nil {

@@ -8,21 +8,23 @@ import (
 	"regexp"
 
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/lifecycle/cmd"
 )
 
-func DefaultEnvKeychain() authn.Keychain {
-	return authn.NewMultiKeychain(&EnvKeychain{cmd.EnvRegistryAuth}, authn.DefaultKeychain)
+// EnvKeychain creates a keychain augmenting the default keychain with information from an environment variable.
+//
+// See `ReadEnvVar`.
+func EnvKeychain(envVar string) authn.Keychain {
+	return authn.NewMultiKeychain(&envKeychain{envVar: envVar}, authn.DefaultKeychain)
 }
 
-type EnvKeychain struct {
-	EnvVar string
+type envKeychain struct {
+	envVar string
 }
 
-func (k *EnvKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
-	authHeaders, err := ReadEnvVar(k.EnvVar)
+func (k *envKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+	authHeaders, err := ReadEnvVar(k.envVar)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading auth env var")
 	}
@@ -142,4 +144,18 @@ func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
 	}
 
 	return nil, errors.Errorf("unknown auth type from header: %s", header)
+}
+
+func ReferenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
+	var auth authn.Authenticator
+	r, err := name.ParseReference(ref, name.WeakValidation)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	auth, err = keychain.Resolve(r.Context().Registry)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r, auth, nil
 }
