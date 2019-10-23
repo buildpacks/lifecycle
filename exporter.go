@@ -49,18 +49,10 @@ func (e *Exporter) Export(
 	additionalNames []string,
 	launcherConfig LauncherConfig,
 	stack metadata.StackMetadata,
-	cacheStore Cache,
 ) error {
 	var err error
 
-	origCacheMetadata, err := cacheStore.RetrieveMetadata()
-	if err != nil {
-		return errors.Wrap(err, "metadata for previous cache")
-	}
-
 	meta := metadata.LayersMetadata{}
-	cacheMeta := cache.Metadata{}
-
 	meta.RunImage.TopLayer, err = workingImage.TopLayer()
 	if err != nil {
 		return errors.Wrap(err, "get run image top layer SHA")
@@ -91,13 +83,13 @@ func (e *Exporter) Export(
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
 
-		// Process launch layers.
 		bpMD := metadata.BuildpackLayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
 			Layers:  map[string]metadata.BuildpackLayerMetadata{},
 		}
 		for _, layer := range bpDir.findLayers(launch) {
+			layer := layer
 			lmd, err := layer.read()
 			if err != nil {
 				return errors.Wrapf(err, "reading '%s' metadata", layer.Identifier())
@@ -129,28 +121,6 @@ func (e *Exporter) Export(
 		}
 		meta.Buildpacks = append(meta.Buildpacks, bpMD)
 
-		// Process cached layers.
-		bpCacheMD := metadata.BuildpackLayersMetadata{
-			ID:      bp.ID,
-			Version: bp.Version,
-			Layers:  map[string]metadata.BuildpackLayerMetadata{},
-		}
-		for _, layer := range bpDir.findLayers(cached) {
-			if !layer.hasLocalContents() {
-				return fmt.Errorf("failed to cache layer %q because it has no contents", layer.Identifier())
-			}
-			lmd, err := layer.read()
-			if err != nil {
-				return errors.Wrapf(err, "reading %q metadata", layer.Identifier())
-			}
-			origLayerMetadata := origCacheMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
-			if lmd.SHA, err = e.addOrReuseCacheLayer(cacheStore, &layer, origLayerMetadata.SHA); err != nil {
-				return err
-			}
-			bpCacheMD.Layers[layer.name()] = lmd
-		}
-		cacheMeta.Buildpacks = append(cacheMeta.Buildpacks, bpCacheMD)
-
 		if malformedLayers := bpDir.findLayers(malformed); len(malformedLayers) > 0 {
 			ids := make([]string, 0, len(malformedLayers))
 			for _, ml := range malformedLayers {
@@ -158,14 +128,6 @@ func (e *Exporter) Export(
 			}
 			return fmt.Errorf("failed to parse metadata for layers '%s'", ids)
 		}
-
-	}
-
-	if err := cacheStore.SetMetadata(cacheMeta); err != nil {
-		return errors.Wrap(err, "setting cache metadata")
-	}
-	if err := cacheStore.Commit(); err != nil {
-		return errors.Wrap(err, "committing cache")
 	}
 
 	data, err := json.Marshal(meta)
@@ -205,6 +167,53 @@ func (e *Exporter) Export(
 	return saveImage(workingImage, additionalNames, e.Logger)
 }
 
+func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
+	var err error
+	origMeta, err := cacheStore.RetrieveMetadata()
+	if err != nil {
+		return errors.Wrap(err, "metadata for previous cache")
+	}
+	meta := cache.Metadata{}
+
+	for _, bp := range e.Buildpacks {
+		bpDir, err := readBuildpackLayersDir(layersDir, bp)
+		if err != nil {
+			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
+		}
+
+		bpMD := metadata.BuildpackLayersMetadata{
+			ID:      bp.ID,
+			Version: bp.Version,
+			Layers:  map[string]metadata.BuildpackLayerMetadata{},
+		}
+		for _, layer := range bpDir.findLayers(cached) {
+			layer := layer
+			if !layer.hasLocalContents() {
+				return fmt.Errorf("failed to cache layer '%s' because it has no contents", layer.Identifier())
+			}
+			lmd, err := layer.read()
+			if err != nil {
+				return errors.Wrapf(err, "reading %q metadata", layer.Identifier())
+			}
+			origLayerMetadata := origMeta.MetadataForBuildpack(bp.ID).Layers[layer.name()]
+			if lmd.SHA, err = e.addOrReuseCacheLayer(cacheStore, &layer, origLayerMetadata.SHA); err != nil {
+				return err
+			}
+			bpMD.Layers[layer.name()] = lmd
+		}
+		meta.Buildpacks = append(meta.Buildpacks, bpMD)
+	}
+
+	if err := cacheStore.SetMetadata(meta); err != nil {
+		return errors.Wrap(err, "setting cache metadata")
+	}
+	if err := cacheStore.Commit(); err != nil {
+		return errors.Wrap(err, "committing cache")
+	}
+
+	return nil
+}
+
 func (e *Exporter) tarLayer(layer identifiableLayer) (string, string, error) {
 	tarPath := filepath.Join(e.ArtifactsDir, escapeID(layer.Identifier())+".tar")
 	if e.tarHashes == nil {
@@ -215,12 +224,12 @@ func (e *Exporter) tarLayer(layer identifiableLayer) (string, string, error) {
 		return tarPath, sha, nil
 	}
 	e.Logger.Debugf("Writing tarball for layer %q\n", layer.Identifier())
-	if sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID); err != nil {
+	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID)
+	if err != nil {
 		return "", "", err
-	} else {
-		e.tarHashes[tarPath] = sha
-		return tarPath, sha, nil
 	}
+	e.tarHashes[tarPath] = sha
+	return tarPath, sha, nil
 }
 
 func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer identifiableLayer, previousSHA string) (string, error) {
