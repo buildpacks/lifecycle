@@ -30,9 +30,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				{"builder: only -version is present", "builder -version"},
 				{"builder: other params are set", "builder -app=/some/dir -version some/image"},
 
-				{"cacher: only -version is present", "cacher -version"},
-				{"cacher: other params are set", "cacher -path=/some/dir -version"},
-
 				{"detector: only -version is present", "detector -version"},
 				{"detector: other params are set", "detector -app=/some/dir -version"},
 
@@ -40,7 +37,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				{"exporter: other params are set", "exporter -analyzed=/some/file -version some/image"},
 
 				{"restorer: only -version is present", "restorer -version"},
-				{"restorer: other params are set", "restorer -path=/some/dir -version"},
+				{"restorer: other params are set", "restorer -cache-dir=/some/dir -version"},
 			} {
 				desc := data[0]
 				binary, args := parseCommand(data[1])
