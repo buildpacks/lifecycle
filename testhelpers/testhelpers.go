@@ -116,6 +116,24 @@ func AssertJSONEq(t *testing.T, expected, actual string) {
 	AssertEq(t, expectedJSONAsInterface, actualJSONAsInterface)
 }
 
+func AssertPathExists(t *testing.T, path string) {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		t.Errorf("Expected %q to exist", path)
+	} else if err != nil {
+		t.Fatalf("Error stating %q: %v", path, err)
+	}
+}
+
+func AssertPathDoesNotExist(t *testing.T, path string) {
+	_, err := os.Stat(path)
+	if err == nil {
+		t.Errorf("Expected %q to not exist", path)
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("Error stating %q: %v", path, err)
+	}
+}
+
 func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
@@ -305,4 +323,12 @@ func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents
 	sha = hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 
 	return path, "sha256:" + sha, contentsBuf.Bytes()
+}
+
+func MustReadFile(t *testing.T, path string) []byte {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Error reading %q: %v", path, err)
+	}
+	return data
 }

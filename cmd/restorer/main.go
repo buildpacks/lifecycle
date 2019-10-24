@@ -15,10 +15,10 @@ import (
 )
 
 var (
-	cacheImageTag string
 	cacheDir      string
-	layersDir     string
+	cacheImageTag string
 	groupPath     string
+	layersDir     string
 	uid           int
 	gid           int
 	printVersion  bool
@@ -26,10 +26,10 @@ var (
 )
 
 func init() {
-	cmd.FlagLayersDir(&layersDir)
-	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagCacheDir(&cacheDir)
+	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
@@ -37,7 +37,7 @@ func init() {
 }
 
 func main() {
-	// suppress output from libraries, lifecycle will not use standard logger
+	// Suppress output from libraries, lifecycle will not use standard logger.
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
