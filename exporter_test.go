@@ -48,12 +48,9 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		additionalNames []string
 		runImageRef     = "run-image-reference"
 		logHandler      = memory.New()
-		cacheDir        string
 	)
 
 	it.Before(func() {
-		var err error
-
 		tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 		h.AssertNil(t, err)
 
@@ -101,8 +98,6 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		fakeAppImage.Cleanup()
-
-		h.AssertNil(t, os.RemoveAll(cacheDir))
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
