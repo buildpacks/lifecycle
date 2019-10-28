@@ -86,6 +86,8 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 
 		it("doesn't alter permissions of existing folders", func() {
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "root"), 0744))
+			// Update permissions in case umask was applied.
+			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
 			h.AssertNil(t, archive.Untar(file, tmpDir))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
