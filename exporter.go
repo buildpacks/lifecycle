@@ -56,7 +56,6 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "get run image top layer SHA")
 	}
 
-	// TODO why are we saving stack in addition to runImageRef when the two can be different?
 	meta.RunImage.Reference = runImageRef
 	meta.Stack = stack
 
