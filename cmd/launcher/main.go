@@ -8,7 +8,6 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 func main() {
@@ -38,8 +37,7 @@ func launch() error {
 	_ = os.Unsetenv(cmd.EnvAppDir)
 
 	var md lifecycle.BuildMetadata
-	metadataPath := metadata.FilePath(layersDir)
-	if _, err := toml.DecodeFile(metadataPath, &md); err != nil {
+	if _, err := toml.DecodeFile(lifecycle.MetadataFilePath(layersDir), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 

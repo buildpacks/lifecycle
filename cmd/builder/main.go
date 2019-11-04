@@ -10,7 +10,6 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 var (
@@ -86,8 +85,7 @@ func build() error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	metadataPath := metadata.FilePath(layersDir)
-	if err := lifecycle.WriteTOML(metadataPath, md); err != nil {
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(layersDir), md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil

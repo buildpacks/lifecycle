@@ -17,7 +17,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/buildpack/lifecycle/testmock"
 )
@@ -69,7 +68,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	when("#Analyze", func() {
 		var (
 			image            *fakes.Image
-			appImageMetadata metadata.LayersMetadata
+			appImageMetadata lifecycle.LayersMetadata
 			ref              *testmock.MockReference
 		)
 
@@ -548,7 +547,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				h.AssertNil(t, md.Image)
-				h.AssertEq(t, md.Metadata, metadata.LayersMetadata{})
+				h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
 			})
 		})
 

@@ -1,10 +1,11 @@
-package metadata
+package lifecycle_test
 
 import (
 	"testing"
 
 	"github.com/sclevine/spec"
 
+	"github.com/buildpack/lifecycle"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
 
@@ -14,10 +15,10 @@ func TestStackMetadata(t *testing.T) {
 
 func testMetadata(t *testing.T, when spec.G, it spec.S) {
 	when("BestRunImageMirror", func() {
-		var stackMD *StackMetadata
+		var stackMD *lifecycle.StackMetadata
 
 		it.Before(func() {
-			stackMD = &StackMetadata{RunImage: StackRunImageMetadata{
+			stackMD = &lifecycle.StackMetadata{RunImage: lifecycle.StackRunImageMetadata{
 				Image: "first.com/org/repo",
 				Mirrors: []string{
 					"myorg/myrepo",

@@ -1,4 +1,4 @@
-package lifecycle
+package cache
 
 import (
 	"crypto/sha256"
@@ -9,16 +9,14 @@ import (
 
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/lifecycle/cache"
 )
 
 type cachingImage struct {
 	imgutil.Image
-	cache *cache.VolumeCache
+	cache *VolumeCache
 }
 
-func NewCachingImage(image imgutil.Image, cache *cache.VolumeCache) imgutil.Image {
+func NewCachingImage(image imgutil.Image, cache *VolumeCache) imgutil.Image {
 	return &cachingImage{
 		Image: image,
 		cache: cache,

@@ -1,15 +1,55 @@
-package metadata
+package lifecycle
 
 import (
-	"encoding/json"
 	"path"
 
-	"github.com/buildpack/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 )
 
-const LayerMetadataLabel = "io.buildpacks.lifecycle.metadata"
+const (
+	BuildMetadataLabel = "io.buildpacks.build.metadata"
+	LayerMetadataLabel = "io.buildpacks.lifecycle.metadata"
+	StackIDLabel       = "io.buildpacks.stack.id"
+)
+
+type BuildMetadata struct {
+	Processes  []Process        `toml:"processes" json:"processes"`
+	Buildpacks []Buildpack      `toml:"buildpacks" json:"buildpacks"`
+	BOM        []BOMEntry       `toml:"bom" json:"bom"`
+	Launcher   LauncherMetadata `toml:"-" json:"launcher"`
+}
+
+type LauncherMetadata struct {
+	Version string         `json:"version"`
+	Source  SourceMetadata `json:"source"`
+}
+
+type SourceMetadata struct {
+	Git GitMetadata `json:"git"`
+}
+
+type GitMetadata struct {
+	Repository string `json:"repository"`
+	Commit     string `json:"commit"`
+}
+
+func MetadataFilePath(layersDir string) string {
+	return path.Join(layersDir, "config", "metadata.toml")
+}
+
+type CacheMetadata struct {
+	Buildpacks []BuildpackLayersMetadata `json:"buildpacks"`
+}
+
+func (cm *CacheMetadata) MetadataForBuildpack(id string) BuildpackLayersMetadata {
+	for _, bpMd := range cm.Buildpacks {
+		if bpMd.ID == id {
+			return bpMd
+		}
+	}
+	return BuildpackLayersMetadata{}
+}
 
 type LayersMetadata struct {
 	App        LayerMetadata             `json:"app" toml:"app"`
@@ -86,34 +126,6 @@ func (m *LayersMetadata) MetadataForBuildpack(id string) BuildpackLayersMetadata
 		}
 	}
 	return BuildpackLayersMetadata{}
-}
-
-func GetLayersMetadata(image imgutil.Image) (LayersMetadata, error) {
-	contents, err := GetRawMetadata(image, LayerMetadataLabel)
-	if err != nil {
-		return LayersMetadata{}, err
-	}
-
-	meta := LayersMetadata{}
-	if err := json.Unmarshal([]byte(contents), &meta); err != nil {
-		return LayersMetadata{}, nil
-	}
-	return meta, nil
-}
-
-func GetRawMetadata(image imgutil.Image, metadataLabel string) (string, error) {
-	if !image.Found() {
-		return "", nil
-	}
-	contents, err := image.Label(metadataLabel)
-	if err != nil {
-		return "", errors.Wrapf(err, "retrieving label '%s' for image '%s'", metadataLabel, image.Name())
-	}
-	return contents, nil
-}
-
-func FilePath(layersDir string) string {
-	return path.Join(layersDir, "config", "metadata.toml")
 }
 
 func byRegistry(reg string, imgs []string) (string, error) {

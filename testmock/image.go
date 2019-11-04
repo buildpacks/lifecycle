@@ -184,3 +184,18 @@ func (mr *GGCRImageMockRecorder) RawManifest() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawManifest", reflect.TypeOf((*GGCRImage)(nil).RawManifest))
 }
+
+// Size mocks base method
+func (m *GGCRImage) Size() (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Size")
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Size indicates an expected call of Size
+func (mr *GGCRImageMockRecorder) Size() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Size", reflect.TypeOf((*GGCRImage)(nil).Size))
+}

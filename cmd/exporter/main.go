@@ -20,7 +20,6 @@ import (
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 var (
@@ -115,7 +114,7 @@ func export() error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	var stackMD metadata.StackMetadata
+	var stackMD lifecycle.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
@@ -175,7 +174,7 @@ func export() error {
 			if err != nil {
 				return cmd.FailErr(err, "create launch cache")
 			}
-			appImage = lifecycle.NewCachingImage(appImage, volumeCache)
+			appImage = cache.NewCachingImage(appImage, volumeCache)
 		}
 	} else {
 		var opts = []remote.ImageOption{
@@ -216,10 +215,10 @@ func export() error {
 
 	launcherConfig := lifecycle.LauncherConfig{
 		Path: launcherPath,
-		Metadata: metadata.LauncherMetadata{
+		Metadata: lifecycle.LauncherMetadata{
 			Version: cmd.Version,
-			Source: metadata.SourceMetadata{
-				Git: metadata.GitMetadata{
+			Source: lifecycle.SourceMetadata{
+				Git: lifecycle.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},
@@ -238,17 +237,17 @@ func export() error {
 	return nil
 }
 
-func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (metadata.AnalyzedMetadata, error) {
-	var analyzedMD metadata.AnalyzedMetadata
+func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (lifecycle.AnalyzedMetadata, error) {
+	var analyzedMD lifecycle.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)
-			return metadata.AnalyzedMetadata{}, nil
+			return lifecycle.AnalyzedMetadata{}, nil
 		}
 
-		return metadata.AnalyzedMetadata{}, err
+		return lifecycle.AnalyzedMetadata{}, err
 	}
 
 	return analyzedMD, nil
