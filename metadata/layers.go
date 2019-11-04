@@ -1,10 +1,6 @@
 package metadata
 
 import (
-	"encoding/json"
-	"path"
-
-	"github.com/buildpack/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 )
@@ -86,34 +82,6 @@ func (m *LayersMetadata) MetadataForBuildpack(id string) BuildpackLayersMetadata
 		}
 	}
 	return BuildpackLayersMetadata{}
-}
-
-func GetLayersMetadata(image imgutil.Image) (LayersMetadata, error) {
-	contents, err := GetRawMetadata(image, LayerMetadataLabel)
-	if err != nil {
-		return LayersMetadata{}, err
-	}
-
-	meta := LayersMetadata{}
-	if err := json.Unmarshal([]byte(contents), &meta); err != nil {
-		return LayersMetadata{}, nil
-	}
-	return meta, nil
-}
-
-func GetRawMetadata(image imgutil.Image, metadataLabel string) (string, error) {
-	if !image.Found() {
-		return "", nil
-	}
-	contents, err := image.Label(metadataLabel)
-	if err != nil {
-		return "", errors.Wrapf(err, "retrieving label '%s' for image '%s'", metadataLabel, image.Name())
-	}
-	return contents, nil
-}
-
-func FilePath(layersDir string) string {
-	return path.Join(layersDir, "config", "metadata.toml")
 }
 
 func byRegistry(reg string, imgs []string) (string, error) {

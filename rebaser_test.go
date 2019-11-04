@@ -28,6 +28,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		fakeWorkingImage *fakes.Image
 		fakeNewBaseImage *fakes.Image
 		additionalNames  []string
+		md               metadata.LayersMetadata
 	)
 
 	it.Before(func() {
@@ -75,16 +76,14 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 			it("sets the top layer in the metadata", func() {
 				h.AssertNil(t, rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames))
-				md, err := metadata.GetLayersMetadata(fakeWorkingImage)
-				h.AssertNil(t, err)
+				h.AssertNil(t, lifecycle.DecodeLabel(fakeWorkingImage, metadata.LayerMetadataLabel, &md))
 
 				h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
 			})
 
 			it("sets the run image reference in the metadata", func() {
 				h.AssertNil(t, rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames))
-				md, err := metadata.GetLayersMetadata(fakeWorkingImage)
-				h.AssertNil(t, err)
+				h.AssertNil(t, lifecycle.DecodeLabel(fakeWorkingImage, metadata.LayerMetadataLabel, &md))
 
 				h.AssertEq(t, md.RunImage.Reference, "new-run-id")
 			})
@@ -95,8 +94,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					`{"buildpacks":[{"key": "buildpack.id", "layers": {}}]}`,
 				))
 				h.AssertNil(t, rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames))
-				md, err := metadata.GetLayersMetadata(fakeWorkingImage)
-				h.AssertNil(t, err)
+				h.AssertNil(t, lifecycle.DecodeLabel(fakeWorkingImage, metadata.LayerMetadataLabel, &md))
 
 				h.AssertEq(t, len(md.Buildpacks), 1)
 				h.AssertEq(t, md.Buildpacks[0].ID, "buildpack.id")

@@ -1,4 +1,4 @@
-package lifecycle_test
+package cache_test
 
 import (
 	"io"
@@ -14,7 +14,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	h "github.com/buildpack/lifecycle/testhelpers"
 )
@@ -42,7 +41,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		volumeCache, err = cache.NewVolumeCache(tmpDir)
 		h.AssertNil(t, err)
-		subject = lifecycle.NewCachingImage(fakeImage, volumeCache)
+		subject = cache.NewCachingImage(fakeImage, volumeCache)
 		layerPath, layerSHA, layerData = h.RandomLayer(t, tmpDir)
 	})
 

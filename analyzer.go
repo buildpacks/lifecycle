@@ -25,10 +25,9 @@ func (a *Analyzer) Analyze(image imgutil.Image) (metadata.AnalyzedMetadata, erro
 		return metadata.AnalyzedMetadata{}, errors.Wrap(err, "retrieve image identifier")
 	}
 
-	data, err := metadata.GetLayersMetadata(image)
-	if err != nil {
-		return metadata.AnalyzedMetadata{}, err
-	}
+	var data metadata.LayersMetadata
+	// continue even if the label cannot be decoded
+	_ = DecodeLabel(image, metadata.LayerMetadataLabel, &data)
 
 	if !a.SkipLayers {
 		for _, buildpack := range a.Buildpacks {

@@ -57,10 +57,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		launcherConfig = lifecycle.LauncherConfig{
 			Path: launcherPath,
-			Metadata: metadata.LauncherMetadata{
+			Metadata: lifecycle.LauncherMetadata{
 				Version: "1.2.3",
-				Source: metadata.SourceMetadata{
-					Git: metadata.GitMetadata{
+				Source: lifecycle.SourceMetadata{
+					Git: lifecycle.GitMetadata{
 						Repository: "github.com/buildpack/lifecycle",
 						Commit:     "asdf1234",
 					},
@@ -161,8 +161,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
                 }
               }`, localReusableLayerSha, launcherSHA)))
 
-				fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
-				h.AssertNil(t, err)
+				h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, metadata.LayerMetadataLabel, &fakeImageMetadata))
 			})
 
 			it.After(func() {
@@ -331,19 +330,31 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
 			})
 
-			when("metadata.toml does not include BOM", func() {
+			when("metadata.toml is missing", func() {
+				it("errors", func() {
+
+				})
+			})
+
+			when("metadata.toml is missing bom and has empty process list", func() {
 				it.Before(func() {
 					err := ioutil.WriteFile(filepath.Join(layersDir, "config", "metadata.toml"), []byte(`
-[[processes]]
-  type = "web"
-  command = "npm start"
+processes = []
+
+[[buildpacks]]
+id = "buildpack.id"
+version = "1.2.3"
+
+[[buildpacks]]
+id = "other.buildpack.id"
+version = "4.5.6"
 `),
 						os.ModePerm,
 					)
 					h.AssertNil(t, err)
 				})
 
-				it("BOM is not present in the label", func() {
+				it("BOM is null and processes is an empty array in the label", func() {
 					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
@@ -370,19 +381,36 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
         "commit": "asdf1234"
       }
     }
-  }
+  },
+  "processes": []
 }
 `
 					h.AssertJSONEq(t, expectedJSON, metadataJSON)
 				})
 			})
 
-			when("metadata.toml includes BOM", func() {
+			when("there is a complete metadata.toml", func() {
 				it.Before(func() {
 					err := ioutil.WriteFile(filepath.Join(layersDir, "config", "metadata.toml"), []byte(`
 [[processes]]
 type = "web"
-command = "npm start"
+direct = true
+command = "/web/command"
+args = ["web", "command", "args"]
+
+[[processes]]
+type = "worker"
+direct = false
+command = "/worker/command"
+args = ["worker", "command", "args"]
+
+[[buildpacks]]
+id = "buildpack.id"
+version = "1.2.3"
+
+[[buildpacks]]
+id = "other.buildpack.id"
+version = "4.5.6"
 
 [[bom]]
 name = "Spring Auto-reconfiguration"
@@ -403,16 +431,15 @@ type = "Apache-2.0"
 					h.AssertNil(t, err)
 				})
 
-				it("saves BOM metadata to the resulting image", func() {
+				it("combines metadata.toml with launcher config to create build label", func() {
 					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
 
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 					h.AssertNil(t, err)
 
-					expectedJSON := `
-{
+					expectedJSON := `{
   "bom": [
-	{
+    {
       "name": "Spring Auto-reconfiguration",
       "version": "2.7.0",
       "buildpack": {
@@ -452,45 +479,25 @@ type = "Apache-2.0"
         "commit": "asdf1234"
       }
     }
-  }
-}
-`
-
-					h.AssertJSONEq(t, expectedJSON, metadataJSON)
-				})
-			})
-
-			it("saves buildpacks to build metadata label", func() {
-				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack))
-
-				metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
-				h.AssertNil(t, err)
-
-				expectedJSON := `
-{
-  "bom": null,
-  "buildpacks": [
+  },
+  "processes": [
     {
-      "id": "buildpack.id",
-      "version": "1.2.3"
+      "type": "web",
+      "direct": true,
+      "command": "/web/command",
+      "args": ["web", "command", "args"]
     },
     {
-      "id": "other.buildpack.id",
-      "version": "4.5.6"
+      "type": "worker",
+      "direct": false,
+      "command": "/worker/command",
+      "args": ["worker", "command", "args"]
     }
-  ],
-  "launcher": {
-    "version": "1.2.3",
-    "source": {
-      "git": {
-        "repository": "github.com/buildpack/lifecycle",
-        "commit": "asdf1234"
-      }
-    }
-  }
+  ]
 }
 `
-				h.AssertJSONEq(t, expectedJSON, metadataJSON)
+					h.AssertJSONEq(t, expectedJSON, metadataJSON)
+				})
 			})
 
 			it("sets CNB_LAYERS_DIR", func() {
@@ -592,38 +599,37 @@ type = "Apache-2.0"
 			})
 
 			when("previous image metadata is missing buildpack for reused layer", func() {
-				it.Before(func() {
-					_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{"buildpacks":[{}]}`)
+				var incompleteMetadata metadata.LayersMetadata
 
-					var err error
-					fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
-					h.AssertNil(t, err)
+				it.Before(func() {
+					h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{"buildpacks":[{}]}`))
+					h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, metadata.LayerMetadataLabel, &incompleteMetadata))
 				})
 
 				it("returns an error", func() {
 					h.AssertError(
 						t,
-						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack),
+						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, incompleteMetadata, additionalNames, launcherConfig, stack),
 						"cannot reuse 'buildpack.id:launch-layer-no-local-dir', previous image has no metadata for layer 'buildpack.id:launch-layer-no-local-dir'",
 					)
 				})
 			})
 
 			when("previous image metadata is missing reused layer", func() {
+				var incompleteMetadata metadata.LayersMetadata
+
 				it.Before(func() {
 					_ = fakeOriginalImage.SetLabel(
 						"io.buildpacks.lifecycle.metadata",
 						`{"buildpacks":[{"key": "buildpack.id", "layers": {}}]}`)
 
-					var err error
-					fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
-					h.AssertNil(t, err)
+					h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, metadata.LayerMetadataLabel, &incompleteMetadata))
 				})
 
 				it("returns an error", func() {
 					h.AssertError(
 						t,
-						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack),
+						exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, incompleteMetadata, additionalNames, launcherConfig, stack),
 						"cannot reuse 'buildpack.id:launch-layer-no-local-dir', previous image has no metadata for layer 'buildpack.id:launch-layer-no-local-dir'",
 					)
 				})
@@ -826,8 +832,7 @@ type = "Apache-2.0"
 					`{"buildpacks":[{"key": "some/escaped/bp/id", "layers": {"layer": {"sha": "original-layer-sha"}}}]}`,
 				))
 
-				fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
-				h.AssertNil(t, err)
+				h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, metadata.LayerMetadataLabel, &fakeImageMetadata))
 			})
 
 			it.After(func() {
@@ -925,8 +930,7 @@ type = "Apache-2.0"
   ]
 }`)
 
-				fakeImageMetadata, err = metadata.GetLayersMetadata(fakeOriginalImage)
-				h.AssertNil(t, err)
+				h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, metadata.LayerMetadataLabel, &fakeImageMetadata))
 			})
 
 			it.After(func() {

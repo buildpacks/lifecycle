@@ -175,7 +175,7 @@ func export() error {
 			if err != nil {
 				return cmd.FailErr(err, "create launch cache")
 			}
-			appImage = lifecycle.NewCachingImage(appImage, volumeCache)
+			appImage = cache.NewCachingImage(appImage, volumeCache)
 		}
 	} else {
 		var opts = []remote.ImageOption{
@@ -216,10 +216,10 @@ func export() error {
 
 	launcherConfig := lifecycle.LauncherConfig{
 		Path: launcherPath,
-		Metadata: metadata.LauncherMetadata{
+		Metadata: lifecycle.LauncherMetadata{
 			Version: cmd.Version,
-			Source: metadata.SourceMetadata{
-				Git: metadata.GitMetadata{
+			Source: lifecycle.SourceMetadata{
+				Git: lifecycle.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},

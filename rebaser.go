@@ -19,31 +19,31 @@ func (r *Rebaser) Rebase(
 	newBaseImage imgutil.Image,
 	additionalNames []string,
 ) error {
-	origMetadata, err := metadata.GetLayersMetadata(workingImage)
-	if err != nil {
+	var origMetadata metadata.LayersMetadata
+	if err := DecodeLabel(workingImage, metadata.LayerMetadataLabel, &origMetadata); err != nil {
 		return errors.Wrap(err, "get image metadata")
 	}
 
-	workingImageStack, err := metadata.GetStackMetadata(workingImage)
+	workingStackID, err := workingImage.Label(metadata.StackMetadataLabel)
 	if err != nil {
 		return errors.Wrap(err, "get working image stack")
 	}
 
-	newBaseImageStack, err := metadata.GetStackMetadata(newBaseImage)
+	newBaseStackID, err := newBaseImage.Label(metadata.StackMetadataLabel)
 	if err != nil {
-		return errors.Wrap(err, "get new base image stack")
+		return errors.Wrap(err, "get  new base image stack")
 	}
 
-	if workingImageStack.ID == "" {
+	if workingStackID == "" {
 		return errors.New("stack not defined on working image")
 	}
 
-	if newBaseImageStack.ID == "" {
+	if newBaseStackID == "" {
 		return errors.New("stack not defined on new base image")
 	}
 
-	if workingImageStack.ID != newBaseImageStack.ID {
-		return errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseImageStack.ID, workingImageStack.ID))
+	if workingStackID != newBaseStackID {
+		return errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, workingStackID))
 	}
 
 	err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage)

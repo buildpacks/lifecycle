@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	cache "github.com/buildpack/lifecycle/cache"
+	lifecycle "github.com/buildpack/lifecycle"
 )
 
 // MockCache is a mock of Cache interface
@@ -94,10 +94,10 @@ func (mr *MockCacheMockRecorder) RetrieveLayer(arg0 interface{}) *gomock.Call {
 }
 
 // RetrieveMetadata mocks base method
-func (m *MockCache) RetrieveMetadata() (cache.Metadata, error) {
+func (m *MockCache) RetrieveMetadata() (lifecycle.CacheMetadata, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RetrieveMetadata")
-	ret0, _ := ret[0].(cache.Metadata)
+	ret0, _ := ret[0].(lifecycle.CacheMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -123,7 +123,7 @@ func (mr *MockCacheMockRecorder) ReuseLayer(arg0 interface{}) *gomock.Call {
 }
 
 // SetMetadata mocks base method
-func (m *MockCache) SetMetadata(arg0 cache.Metadata) error {
+func (m *MockCache) SetMetadata(arg0 lifecycle.CacheMetadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetMetadata", arg0)
 	ret0, _ := ret[0].(error)

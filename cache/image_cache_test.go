@@ -13,6 +13,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/metadata"
 	h "github.com/buildpack/lifecycle/testhelpers"
@@ -71,7 +72,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the metadata", func() {
-				expected := cache.Metadata{
+				expected := lifecycle.CacheMetadata{
 					Buildpacks: []metadata.BuildpackLayersMetadata{{
 						ID:      "bp.id",
 						Version: "1.2.3",
@@ -144,12 +145,12 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Commit", func() {
 		when("with #SetMetadata", func() {
-			var newMetadata cache.Metadata
+			var newMetadata lifecycle.CacheMetadata
 
 			it.Before(func() {
 				h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", `{"buildpacks": [{"key": "old.bp.id"}]}`))
 
-				newMetadata = cache.Metadata{
+				newMetadata = lifecycle.CacheMetadata{
 					Buildpacks: []metadata.BuildpackLayersMetadata{{
 						ID: "new.bp.id",
 					}},
@@ -180,7 +181,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("set without commit", func() {
 				it("retrieve returns the previous metadata", func() {
-					previousMetadata := cache.Metadata{
+					previousMetadata := lifecycle.CacheMetadata{
 						Buildpacks: []metadata.BuildpackLayersMetadata{{
 							ID: "old.bp.id",
 						}},

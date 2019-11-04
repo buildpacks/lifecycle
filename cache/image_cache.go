@@ -8,8 +8,10 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/metadata"
+	"github.com/buildpack/lifecycle"
 )
+
+const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
 
 type ImageCache struct {
 	committed bool
@@ -28,7 +30,7 @@ func (c *ImageCache) Name() string {
 	return c.origImage.Name()
 }
 
-func (c *ImageCache) SetMetadata(metadata Metadata) error {
+func (c *ImageCache) SetMetadata(metadata lifecycle.CacheMetadata) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -39,15 +41,10 @@ func (c *ImageCache) SetMetadata(metadata Metadata) error {
 	return c.newImage.SetLabel(MetadataLabel, string(data))
 }
 
-func (c *ImageCache) RetrieveMetadata() (Metadata, error) {
-	contents, err := metadata.GetRawMetadata(c.origImage, MetadataLabel)
-	if err != nil {
-		return Metadata{}, errors.Wrap(err, "retrieving metadata")
-	}
-
-	meta := Metadata{}
-	if json.Unmarshal([]byte(contents), &meta) != nil {
-		return Metadata{}, nil
+func (c *ImageCache) RetrieveMetadata() (lifecycle.CacheMetadata, error) {
+	var meta lifecycle.CacheMetadata
+	if err := lifecycle.DecodeLabel(c.origImage, MetadataLabel, &meta); err != nil {
+		return lifecycle.CacheMetadata{}, nil
 	}
 	return meta, nil
 }

@@ -24,7 +24,7 @@ type Exporter struct {
 
 type LauncherConfig struct {
 	Path     string
-	Metadata metadata.LauncherMetadata
+	Metadata LauncherMetadata
 }
 
 func (e *Exporter) Export(
@@ -124,12 +124,16 @@ func (e *Exporter) Export(
 	}
 
 	buildMD := &BuildMetadata{}
-	if _, err := toml.DecodeFile(metadata.FilePath(layersDir), buildMD); err != nil {
+	if _, err := toml.DecodeFile(MetadataFilePath(layersDir), buildMD); err != nil {
 		return errors.Wrap(err, "read build metadata")
 	}
-
-	if err := e.addBuildMetadataLabel(workingImage, buildMD.BOM, launcherConfig.Metadata); err != nil {
-		return errors.Wrapf(err, "add build metadata label")
+	buildMD.Launcher = launcherConfig.Metadata
+	buildJSON, err := json.Marshal(buildMD)
+	if err != nil {
+		return errors.Wrap(err, "parse build metadata")
+	}
+	if err := workingImage.SetLabel(BuildMetadataLabel, string(buildJSON)); err != nil {
+		return errors.Wrap(err, "set build image metadata label")
 	}
 
 	if err = workingImage.SetEnv(cmd.EnvLayersDir, layersDir); err != nil {
@@ -165,29 +169,4 @@ func (e *Exporter) addLayer(image imgutil.Image, layer identifiableLayer, previo
 	e.Logger.Infof("Adding layer '%s'\n", layer.Identifier())
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
 	return sha, image.AddLayer(tarPath)
-}
-
-func (e *Exporter) addBuildMetadataLabel(image imgutil.Image, plan []BOMEntry, launcherMD metadata.LauncherMetadata) error {
-	var bps []metadata.BuildpackMetadata
-	for _, bp := range e.Buildpacks {
-		bps = append(bps, metadata.BuildpackMetadata{
-			ID:      bp.ID,
-			Version: bp.Version,
-		})
-	}
-
-	buildJSON, err := json.Marshal(metadata.BuildMetadata{
-		BOM:        plan,
-		Buildpacks: bps,
-		Launcher:   launcherMD,
-	})
-	if err != nil {
-		return errors.Wrap(err, "parse build metadata")
-	}
-
-	if err := image.SetLabel(metadata.BuildMetadataLabel, string(buildJSON)); err != nil {
-		return errors.Wrap(err, "set build image metadata label")
-	}
-
-	return nil
 }

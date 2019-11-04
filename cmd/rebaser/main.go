@@ -94,8 +94,8 @@ func rebase() error {
 		return cmd.FailErr(err, "access image to rebase")
 	}
 
-	md, err := metadata.GetLayersMetadata(appImage)
-	if err != nil {
+	var md metadata.LayersMetadata
+	if err := lifecycle.DecodeLabel(appImage, metadata.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 
