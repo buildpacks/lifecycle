@@ -1,5 +1,0 @@
-[[order]]
-[[order.group]]
-  id = "buildpack.a"
-  version = "buildpack.a.v1"
-  optional = false

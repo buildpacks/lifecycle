@@ -1,4 +1,0 @@
-[[groups]]
-[[groups.buildpacks]]
-  id = "buildpack.dup"
-  version = "latest"

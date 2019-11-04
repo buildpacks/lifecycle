@@ -1,3 +1,0 @@
-[buildpack]
-  id = "buildpack.dup"
-  version = "buildpack.dup.v1"
