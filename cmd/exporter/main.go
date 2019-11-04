@@ -20,7 +20,6 @@ import (
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 var (
@@ -115,7 +114,7 @@ func export() error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	var stackMD metadata.StackMetadata
+	var stackMD lifecycle.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
@@ -238,17 +237,17 @@ func export() error {
 	return nil
 }
 
-func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (metadata.AnalyzedMetadata, error) {
-	var analyzedMD metadata.AnalyzedMetadata
+func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (lifecycle.AnalyzedMetadata, error) {
+	var analyzedMD lifecycle.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)
-			return metadata.AnalyzedMetadata{}, nil
+			return lifecycle.AnalyzedMetadata{}, nil
 		}
 
-		return metadata.AnalyzedMetadata{}, err
+		return lifecycle.AnalyzedMetadata{}, err
 	}
 
 	return analyzedMD, nil

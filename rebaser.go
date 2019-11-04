@@ -6,8 +6,6 @@ import (
 
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Rebaser struct {
@@ -19,17 +17,17 @@ func (r *Rebaser) Rebase(
 	newBaseImage imgutil.Image,
 	additionalNames []string,
 ) error {
-	var origMetadata metadata.LayersMetadata
-	if err := DecodeLabel(workingImage, metadata.LayerMetadataLabel, &origMetadata); err != nil {
+	var origMetadata LayersMetadata
+	if err := DecodeLabel(workingImage, LayerMetadataLabel, &origMetadata); err != nil {
 		return errors.Wrap(err, "get image metadata")
 	}
 
-	workingStackID, err := workingImage.Label(metadata.StackMetadataLabel)
+	workingStackID, err := workingImage.Label(StackIDLabel)
 	if err != nil {
 		return errors.Wrap(err, "get working image stack")
 	}
 
-	newBaseStackID, err := newBaseImage.Label(metadata.StackMetadataLabel)
+	newBaseStackID, err := newBaseImage.Label(StackIDLabel)
 	if err != nil {
 		return errors.Wrap(err, "get  new base image stack")
 	}
@@ -67,7 +65,7 @@ func (r *Rebaser) Rebase(
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	if err := workingImage.SetLabel(metadata.LayerMetadataLabel, string(data)); err != nil {
+	if err := workingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 

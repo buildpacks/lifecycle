@@ -11,7 +11,6 @@ import (
 
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Exporter struct {
@@ -32,14 +31,14 @@ func (e *Exporter) Export(
 	appDir string,
 	workingImage imgutil.Image,
 	runImageRef string,
-	origMetadata metadata.LayersMetadata,
+	origMetadata LayersMetadata,
 	additionalNames []string,
 	launcherConfig LauncherConfig,
-	stack metadata.StackMetadata,
+	stack StackMetadata,
 ) error {
 	var err error
 
-	meta := metadata.LayersMetadata{}
+	meta := LayersMetadata{}
 
 	meta.RunImage.TopLayer, err = workingImage.TopLayer()
 	if err != nil {
@@ -69,7 +68,7 @@ func (e *Exporter) Export(
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
-		bpMD := metadata.BuildpackLayersMetadata{ID: bp.ID, Version: bp.Version, Layers: map[string]metadata.BuildpackLayerMetadata{}}
+		bpMD := BuildpackLayersMetadata{ID: bp.ID, Version: bp.Version, Layers: map[string]BuildpackLayerMetadata{}}
 
 		layers := bpDir.findLayers(launch)
 		for i, layer := range layers {
@@ -119,7 +118,7 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	if err = workingImage.SetLabel(metadata.LayerMetadataLabel, string(data)); err != nil {
+	if err = workingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 

@@ -16,7 +16,6 @@ import (
 	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 var (
@@ -94,8 +93,8 @@ func rebase() error {
 		return cmd.FailErr(err, "access image to rebase")
 	}
 
-	var md metadata.LayersMetadata
-	if err := lifecycle.DecodeLabel(appImage, metadata.LayerMetadataLabel, &md); err != nil {
+	var md lifecycle.LayersMetadata
+	if err := lifecycle.DecodeLabel(appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 

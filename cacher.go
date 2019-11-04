@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 //go:generate mockgen -package testmock -destination testmock/cache.go github.com/buildpack/lifecycle Cache
@@ -41,10 +40,10 @@ func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
 		if err != nil {
 			return err
 		}
-		bpMetadata := metadata.BuildpackLayersMetadata{
+		bpMetadata := BuildpackLayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]metadata.BuildpackLayerMetadata{},
+			Layers:  map[string]BuildpackLayerMetadata{},
 		}
 		for _, l := range bpDir.findLayers(cached) {
 			if !l.hasLocalContents() {
