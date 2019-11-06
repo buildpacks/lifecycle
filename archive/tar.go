@@ -20,7 +20,7 @@ func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
 	defer f.Close()
 	w := io.MultiWriter(hasher, f)
 
-	if WriteTarArchive(w, sourceDir, uid, gid) != nil {
+	if err := WriteTarArchive(w, sourceDir, uid, gid); err != nil {
 		return "", err
 	}
 	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
