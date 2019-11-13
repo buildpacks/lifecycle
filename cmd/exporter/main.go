@@ -246,7 +246,8 @@ func export() error {
 
 func exportCache(exporter *lifecycle.Exporter) error {
 	var cacheStore lifecycle.Cache
-	if cacheImageTag != "" {
+	switch {
+	case cacheImageTag != "":
 		origCacheImage, err := remote.NewImage(
 			cacheImageTag,
 			auth.EnvKeychain(cmd.EnvRegistryAuth),
@@ -269,12 +270,15 @@ func exportCache(exporter *lifecycle.Exporter) error {
 			origCacheImage,
 			emptyImage,
 		)
-	} else {
+	case cacheDir != "":
 		var err error
 		cacheStore, err = cache.NewVolumeCache(cacheDir)
 		if err != nil {
 			return cmd.FailErr(err, "create volume cache")
 		}
+	default:
+		exporter.Logger.Warn("skipping caching: neither cache image nor cache directory specified")
+		return nil
 	}
 	return exporter.Cache(layersDir, cacheStore)
 }

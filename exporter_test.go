@@ -953,7 +953,7 @@ type = "Apache-2.0"
 			layersDir              string
 			cacheTrueLayerSHA      string
 			otherBuildpackLayerSHA string
-			subject                *lifecycle.Exporter
+			exporter               *lifecycle.Exporter
 		)
 
 		it.Before(func() {
@@ -968,7 +968,7 @@ type = "Apache-2.0"
 			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
 
-			subject = &lifecycle.Exporter{
+			exporter = &lifecycle.Exporter{
 				ArtifactsDir: tmpDir,
 				Buildpacks: []lifecycle.Buildpack{
 					{ID: "buildpack.id"},
@@ -994,7 +994,7 @@ type = "Apache-2.0"
 
 			when("there is no previous cache", func() {
 				it("adds layers with 'cache=true' to the cache", func() {
-					err := subject.Cache(layersDir, testCache)
+					err := exporter.Cache(layersDir, testCache)
 					h.AssertNil(t, err)
 
 					assertTarFileContents(
@@ -1013,7 +1013,7 @@ type = "Apache-2.0"
 				})
 
 				it("sets the uid and gid of the layer contents", func() {
-					err := subject.Cache(layersDir, testCache)
+					err := exporter.Cache(layersDir, testCache)
 					h.AssertNil(t, err)
 
 					assertTarFileOwner(
@@ -1034,7 +1034,7 @@ type = "Apache-2.0"
 				})
 
 				it("sets cache metadata", func() {
-					err := subject.Cache(layersDir, testCache)
+					err := exporter.Cache(layersDir, testCache)
 					h.AssertNil(t, err)
 
 					metadata, err := testCache.RetrieveMetadata()
@@ -1052,7 +1052,7 @@ type = "Apache-2.0"
 				})
 
 				it("doesn't export uncached layers", func() {
-					err := subject.Cache(layersDir, testCache)
+					err := exporter.Cache(layersDir, testCache)
 					h.AssertNil(t, err)
 
 					matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
@@ -1094,7 +1094,7 @@ type = "Apache-2.0"
 						previousCache, err := cache.NewVolumeCache(cacheDir)
 						h.AssertNil(t, err)
 
-						err = subject.Cache(layersDir, previousCache)
+						err = exporter.Cache(layersDir, previousCache)
 						h.AssertNil(t, err)
 
 						testCache, err = cache.NewVolumeCache(cacheDir)
@@ -1105,7 +1105,7 @@ type = "Apache-2.0"
 						previousLayers, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
 						h.AssertNil(t, err)
 
-						err = subject.Cache(layersDir, testCache)
+						err = exporter.Cache(layersDir, testCache)
 						h.AssertNil(t, err)
 
 						reusedLayers, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
@@ -1115,7 +1115,7 @@ type = "Apache-2.0"
 					})
 
 					it("sets cache metadata", func() {
-						err := subject.Cache(layersDir, testCache)
+						err := exporter.Cache(layersDir, testCache)
 						h.AssertNil(t, err)
 
 						metadata, err := testCache.RetrieveMetadata()
@@ -1169,7 +1169,7 @@ type = "Apache-2.0"
 					})
 
 					it("doesn't reuse layers", func() {
-						err := subject.Cache(layersDir, testCache)
+						err := exporter.Cache(layersDir, testCache)
 						h.AssertNil(t, err)
 
 						matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
@@ -1199,7 +1199,7 @@ type = "Apache-2.0"
 			})
 
 			it("fails", func() {
-				err := subject.Cache(layersDir, testCache)
+				err := exporter.Cache(layersDir, testCache)
 				h.AssertError(t, err, "failed to cache layer 'buildpack.id:cache-true-no-contents' because it has no contents")
 			})
 		})
