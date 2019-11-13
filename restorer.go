@@ -18,10 +18,18 @@ type Restorer struct {
 }
 
 // Restore attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
+// If a usable cache is not provided, Restore will remove all cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
-	meta, err := cache.RetrieveMetadata()
-	if err != nil {
-		return errors.Wrapf(err, "retrieving cache metadata")
+	// Create empty cache metadata in case a usable cache is not provided.
+	var meta CacheMetadata
+	if cache != nil {
+		var err error
+		meta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return errors.Wrapf(err, "retrieving cache metadata")
+		}
+	} else {
+		r.Logger.Debug("Usable cache not provided, using empty cache metadata.")
 	}
 
 	var g errgroup.Group
@@ -76,6 +84,10 @@ func (r *Restorer) Restore(cache Cache) error {
 }
 
 func (r *Restorer) restoreLayer(cache Cache, sha string) error {
+	// Sanity check to prevent panic.
+	if cache == nil {
+		return errors.New("restoring layer: cache not provided")
+	}
 	r.Logger.Debugf("Retrieving data for %q", sha)
 	rc, err := cache.RetrieveLayer(sha)
 	if err != nil {

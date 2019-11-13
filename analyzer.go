@@ -19,6 +19,7 @@ type Analyzer struct {
 }
 
 // Analyze restores metadata for launch and cache layers into the layers directory.
+// If a usable cache is not provided, Analyze will not restore any cache=true layer metadata.
 func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata, error) {
 	imageID, err := a.getImageIdentifier(image)
 	if err != nil {
@@ -39,9 +40,16 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata,
 		}, nil
 	}
 
-	cacheMeta, err := cache.RetrieveMetadata()
-	if err != nil {
-		return nil, errors.Wrap(err, "retrieving cache metadata")
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta CacheMetadata
+	if cache != nil {
+		var err error
+		cacheMeta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return nil, errors.Wrap(err, "retrieving cache metadata")
+		}
+	} else {
+		a.Logger.Debug("Usable cache not provided, using empty cache metadata.")
 	}
 
 	for _, buildpack := range a.Buildpacks {
@@ -56,11 +64,11 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata,
 		for name, layer := range appLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
 			if !layer.Launch {
-				a.Logger.Infof("Not restoring metadata for %q, marked as launch=false", identifier)
+				a.Logger.Debugf("Not restoring metadata for %q, marked as launch=false", identifier)
 				continue
 			}
 			if layer.Build && !layer.Cache {
-				a.Logger.Infof("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
+				a.Logger.Debugf("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
 				continue
 			}
 			a.Logger.Infof("Restoring metadata for %q from app image", identifier)

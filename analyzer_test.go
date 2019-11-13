@@ -293,17 +293,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertStringContains(t, string(got), want)
 				})
 
-				it("restores escaped buildpack layer metadata", func() {
-					_, err := analyzer.Analyze(image, testCache)
-					h.AssertNil(t, err)
-
-					path := filepath.Join(layerDir, "escaped_buildpack_id", "escaped-bp-layer.toml")
-					got := h.MustReadFile(t, path)
-					want := "[metadata]\n  escaped-bp-layer-key = \"escaped-bp-layer-value\""
-
-					h.AssertStringContains(t, string(got), want)
-				})
-
 				when("subset of buildpacks are detected", func() {
 					it.Before(func() {
 						analyzer.Buildpacks = []lifecycle.Buildpack{{ID: "no.group.buildpack"}}
@@ -422,7 +411,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
 				})
 			})
-			when("cache does not exist", func() {
+			when("cache is empty", func() {
 				it("does not restore any metadata", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
@@ -433,6 +422,23 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 				it("returns a nil image in the analyzed metadata", func() {
 					md, err := analyzer.Analyze(image, testCache)
+					h.AssertNil(t, err)
+
+					h.AssertNil(t, md.Image)
+					h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
+				})
+			})
+			when("cache is not provided", func() {
+				it("does not restore any metadata", func() {
+					_, err := analyzer.Analyze(image, nil)
+					h.AssertNil(t, err)
+
+					files, err := ioutil.ReadDir(layerDir)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(files), 0)
+				})
+				it("returns a nil image in the analyzed metadata", func() {
+					md, err := analyzer.Analyze(image, nil)
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)

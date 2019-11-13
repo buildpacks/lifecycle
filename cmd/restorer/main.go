@@ -6,10 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/buildpack/imgutil/remote"
-
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 )
@@ -73,38 +70,13 @@ func restore() error {
 		GID:        gid,
 	}
 
-	var cacheStore lifecycle.Cache
-	if cacheImageTag != "" {
-		origCacheImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(cacheImageTag),
-		)
-		if err != nil {
-			return cmd.FailErr(err, "accessing cache image")
-		}
-
-		emptyImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.WithPreviousImage(cacheImageTag),
-		)
-		if err != nil {
-			return cmd.FailErr(err, "creating empty image")
-		}
-
-		cacheStore = cache.NewImageCache(
-			origCacheImage,
-			emptyImage,
-		)
-	} else {
-		var err error
-		cacheStore, err = cache.NewVolumeCache(cacheDir)
-		if err != nil {
-			return cmd.FailErr(err, "create volume cache")
-		}
+	cacheStore, err := cache.MaybeCache(cacheImageTag, cacheDir)
+	if err != nil {
+		return cmd.FailErr(err, "set up cache")
 	}
-
+	if cacheStore == nil {
+		restorer.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
+	}
 	if err := restorer.Restore(cacheStore); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "restore")
 	}

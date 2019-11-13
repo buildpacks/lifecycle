@@ -66,7 +66,40 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(cacheDir))
 		})
 
-		when("there is no cache", func() {
+		when("there is an no cache", func() {
+			when("there is a cache=true layer", func() {
+				it.Before(func() {
+					meta := "cache=true"
+					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
+					h.AssertNil(t, restorer.Restore(nil))
+				})
+
+				it("removes metadata and sha file", func() {
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.toml"))
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha"))
+				})
+				it("does not restore layer data", func() {
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true"))
+				})
+			})
+			when("there is a cache=false layer", func() {
+				it.Before(func() {
+					meta := "cache=false"
+					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
+					h.AssertNil(t, restorer.Restore(testCache))
+				})
+
+				it("keeps metadata and sha file", func() {
+					h.AssertPathExists(t, filepath.Join(layersDir, "buildpack.id", "cache-false.toml"))
+					h.AssertPathExists(t, filepath.Join(layersDir, "buildpack.id", "cache-false.sha"))
+				})
+				it("does not restore layer data", func() {
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-false"))
+				})
+			})
+		})
+
+		when("there is an empty cache", func() {
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
 					meta := "cache=true"
@@ -317,38 +350,17 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("there is a cache=true an unknown buildpack", func() {
-				it.Before(func() {
-					meta := "cache=true"
-					h.AssertNil(t, writeLayer(layersDir, "some.unknown.buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
-					h.AssertNil(t, restorer.Restore(testCache))
-				})
-
-				it("keeps metadata and sha file", func() {
-					h.AssertPathExists(t, filepath.Join(layersDir, "some.unknown.buildpack.id", "cache-only.toml"))
-					h.AssertPathExists(t, filepath.Join(layersDir, "some.unknown.buildpack.id", "cache-only.sha"))
-				})
-				it("does not restore layer data", func() {
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "some.unknown.buildpack.id", "cache-only"))
-				})
-			})
-
 			when("there is a cache=true layer in cache but not in group", func() {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "nogroup.buildpack.id", "some-layer", meta, noGroupLayerSHA))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
-
-				it("keeps metadata and sha file", func() {
-					h.AssertPathExists(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer.toml"))
-					h.AssertPathExists(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer.sha"))
-				})
 				it("does not restore layer data", func() {
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"))
 				})
 
-				when("subset of buildpacks are detected", func() {
+				when("the buildpack is detected", func() {
 					it.Before(func() {
 						restorer.Buildpacks = []lifecycle.Buildpack{{ID: "nogroup.buildpack.id"}}
 						h.AssertNil(t, restorer.Restore(testCache))
