@@ -239,7 +239,7 @@ func export() error {
 
 	// Failing to export cache should not be an error if the app image export was successful.
 	if cacheErr := exportCache(exporter); cacheErr != nil {
-		cmd.Logger.Warnf("failed to export cache: %v\n", cacheErr)
+		cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
 	}
 	return nil
 }
@@ -277,7 +277,7 @@ func exportCache(exporter *lifecycle.Exporter) error {
 			return cmd.FailErr(err, "create volume cache")
 		}
 	default:
-		exporter.Logger.Warn("skipping caching: neither cache image nor cache directory specified")
+		exporter.Logger.Warn("Not exporting cache: no cache flag specified.")
 		return nil
 	}
 	return exporter.Cache(layersDir, cacheStore)
