@@ -51,7 +51,7 @@ func main() {
 		cmd.Exit(cmd.FailErrCode(errors.New("received unexpected args"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	if cacheImageTag == "" && cacheDir == "" {
-		cmd.Exit(cmd.FailErrCode(errors.New("must supply either -image or -path"), cmd.CodeInvalidArgs, "parse arguments"))
+		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 	cmd.Exit(restore())
 }
@@ -73,9 +73,6 @@ func restore() error {
 	cacheStore, err := cache.MaybeCache(cacheImageTag, cacheDir)
 	if err != nil {
 		return cmd.FailErr(err, "set up cache")
-	}
-	if cacheStore == nil {
-		restorer.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 	if err := restorer.Restore(cacheStore); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "restore")

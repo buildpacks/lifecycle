@@ -73,6 +73,10 @@ func main() {
 		cmd.Exit(cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	imageName = flag.Arg(0)
+
+	if cacheImageTag == "" && cacheDir == "" {
+		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
+	}
 	cmd.Exit(analyzer())
 }
 
@@ -127,9 +131,6 @@ func analyzer() error {
 	cacheStore, err := cache.MaybeCache(cacheImageTag, cacheDir)
 	if err != nil {
 		return cmd.FailErr(err, "set up cache")
-	}
-	if cacheStore == nil {
-		analyzer.Logger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 	}
 	md, err := analyzer.Analyze(img, cacheStore)
 	if err != nil {
