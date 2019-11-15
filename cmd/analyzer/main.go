@@ -128,10 +128,19 @@ func analyzer() error {
 		}
 	}
 
-	cacheStore, err := cache.MaybeCache(cacheImageTag, cacheDir)
-	if err != nil {
-		return cmd.FailErr(err, "set up cache")
+	var cacheStore lifecycle.Cache
+	if cacheImageTag != "" {
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.EnvKeychain(cmd.EnvRegistryAuth))
+		if err != nil {
+			return cmd.FailErr(err, "create image cache")
+		}
+	} else if cacheDir != "" {
+		cacheStore, err = cache.NewVolumeCache(cacheDir)
+		if err != nil {
+			return cmd.FailErr(err, "create volume cache")
+		}
 	}
+
 	md, err := analyzer.Analyze(img, cacheStore)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "analyze")

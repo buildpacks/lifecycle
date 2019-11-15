@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 )
@@ -70,10 +71,19 @@ func restore() error {
 		GID:        gid,
 	}
 
-	cacheStore, err := cache.MaybeCache(cacheImageTag, cacheDir)
-	if err != nil {
-		return cmd.FailErr(err, "set up cache")
+	var cacheStore lifecycle.Cache
+	if cacheImageTag != "" {
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.EnvKeychain(cmd.EnvRegistryAuth))
+		if err != nil {
+			return cmd.FailErr(err, "create image cache")
+		}
+	} else if cacheDir != "" {
+		cacheStore, err = cache.NewVolumeCache(cacheDir)
+		if err != nil {
+			return cmd.FailErr(err, "create volume cache")
+		}
 	}
+
 	if err := restorer.Restore(cacheStore); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "restore")
 	}
