@@ -74,7 +74,7 @@ func main() {
 	}
 	imageName = flag.Arg(0)
 
-	if cacheImageTag == "" && cacheDir == "" {
+	if !skipLayers && cacheImageTag == "" && cacheDir == "" {
 		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 	cmd.Exit(analyzer())
