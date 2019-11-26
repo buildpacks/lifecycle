@@ -6,9 +6,12 @@ import (
 	"io"
 
 	"github.com/buildpack/imgutil"
+	"github.com/buildpack/imgutil/remote"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle"
+
+	"github.com/google/go-containerregistry/pkg/authn"
 )
 
 const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
@@ -24,6 +27,26 @@ func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) *ImageCache 
 		origImage: origImage,
 		newImage:  newImage,
 	}
+}
+
+func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, error) {
+	origImage, err := remote.NewImage(
+		name,
+		keychain,
+		remote.FromBaseImage(name),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("accessing cache image %q: %v", name, err)
+	}
+	emptyImage, err := remote.NewImage(
+		name,
+		keychain,
+		remote.WithPreviousImage(name),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
+	}
+	return NewImageCache(origImage, emptyImage), nil
 }
 
 func (c *ImageCache) Name() string {

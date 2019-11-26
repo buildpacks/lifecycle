@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/buildpack/imgutil/remote"
-
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/auth"
 	"github.com/buildpack/lifecycle/cache"
@@ -15,10 +13,10 @@ import (
 )
 
 var (
-	cacheImageTag string
 	cacheDir      string
-	layersDir     string
+	cacheImageTag string
 	groupPath     string
+	layersDir     string
 	uid           int
 	gid           int
 	printVersion  bool
@@ -26,10 +24,10 @@ var (
 )
 
 func init() {
-	cmd.FlagLayersDir(&layersDir)
-	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagCacheDir(&cacheDir)
+	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagGroupPath(&groupPath)
+	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagUID(&uid)
 	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
@@ -37,7 +35,7 @@ func init() {
 }
 
 func main() {
-	// suppress output from libraries, lifecycle will not use standard logger
+	// Suppress output from libraries, lifecycle will not use standard logger.
 	log.SetOutput(ioutil.Discard)
 
 	flag.Parse()
@@ -54,7 +52,7 @@ func main() {
 		cmd.Exit(cmd.FailErrCode(errors.New("received unexpected args"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
 	if cacheImageTag == "" && cacheDir == "" {
-		cmd.Exit(cmd.FailErrCode(errors.New("must supply either -image or -path"), cmd.CodeInvalidArgs, "parse arguments"))
+		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 	cmd.Exit(restore())
 }
@@ -75,30 +73,11 @@ func restore() error {
 
 	var cacheStore lifecycle.Cache
 	if cacheImageTag != "" {
-		origCacheImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(cacheImageTag),
-		)
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.EnvKeychain(cmd.EnvRegistryAuth))
 		if err != nil {
-			return cmd.FailErr(err, "accessing cache image")
+			return cmd.FailErr(err, "create image cache")
 		}
-
-		emptyImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.WithPreviousImage(cacheImageTag),
-		)
-		if err != nil {
-			return cmd.FailErr(err, "creating empty image")
-		}
-
-		cacheStore = cache.NewImageCache(
-			origCacheImage,
-			emptyImage,
-		)
-	} else {
-		var err error
+	} else if cacheDir != "" {
 		cacheStore, err = cache.NewVolumeCache(cacheDir)
 		if err != nil {
 			return cmd.FailErr(err, "create volume cache")

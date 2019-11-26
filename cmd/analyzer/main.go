@@ -15,34 +15,39 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/auth"
+	"github.com/buildpack/lifecycle/cache"
 	"github.com/buildpack/lifecycle/cmd"
 )
 
 var (
-	analyzedPath string
-	appDir       string
-	gid          int
-	groupPath    string
-	layersDir    string
-	repoName     string
-	skipLayers   bool
-	uid          int
-	useDaemon    bool
-	useHelpers   bool
-	printVersion bool
-	logLevel     string
+	analyzedPath  string
+	appDir        string
+	cacheDir      string
+	cacheImageTag string
+	groupPath     string
+	imageName     string
+	layersDir     string
+	skipLayers    bool
+	useDaemon     bool
+	useHelpers    bool
+	uid           int
+	gid           int
+	printVersion  bool
+	logLevel      string
 )
 
 func init() {
 	cmd.FlagAnalyzedPath(&analyzedPath)
 	cmd.FlagAppDir(&appDir)
-	cmd.FlagGID(&gid)
+	cmd.FlagCacheDir(&cacheDir)
+	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagLayersDir(&layersDir)
-	cmd.FlagUID(&uid)
-	cmd.FlagUseDaemon(&useDaemon)
-	cmd.FlagUseCredHelpers(&useHelpers)
 	cmd.FlagSkipLayers(&skipLayers)
+	cmd.FlagUseCredHelpers(&useHelpers)
+	cmd.FlagUseDaemon(&useDaemon)
+	cmd.FlagUID(&uid)
+	cmd.FlagGID(&gid)
 	cmd.FlagVersion(&printVersion)
 	cmd.FlagLogLevel(&logLevel)
 }
@@ -67,13 +72,17 @@ func main() {
 	if flag.Arg(0) == "" {
 		cmd.Exit(cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments"))
 	}
-	repoName = flag.Arg(0)
+	imageName = flag.Arg(0)
+
+	if !skipLayers && cacheImageTag == "" && cacheDir == "" {
+		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
+	}
 	cmd.Exit(analyzer())
 }
 
 func analyzer() error {
 	if useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), repoName); err != nil {
+		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), imageName); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -101,25 +110,38 @@ func analyzer() error {
 			return cmd.FailErr(err, "create docker client")
 		}
 		img, err = local.NewImage(
-			repoName,
+			imageName,
 			dockerClient,
-			local.FromBaseImage(repoName),
+			local.FromBaseImage(imageName),
 		)
 		if err != nil {
 			return cmd.FailErr(err, "access previous image")
 		}
 	} else {
 		img, err = remote.NewImage(
-			repoName,
+			imageName,
 			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(repoName),
+			remote.FromBaseImage(imageName),
 		)
 		if err != nil {
 			return cmd.FailErr(err, "access previous image")
 		}
 	}
 
-	md, err := analyzer.Analyze(img)
+	var cacheStore lifecycle.Cache
+	if cacheImageTag != "" {
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.EnvKeychain(cmd.EnvRegistryAuth))
+		if err != nil {
+			return cmd.FailErr(err, "create image cache")
+		}
+	} else if cacheDir != "" {
+		cacheStore, err = cache.NewVolumeCache(cacheDir)
+		if err != nil {
+			return cmd.FailErr(err, "create volume cache")
+		}
+	}
+
+	md, err := analyzer.Analyze(img, cacheStore)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "analyze")
 	}
