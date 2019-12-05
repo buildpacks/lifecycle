@@ -348,6 +348,29 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, "layer with SHA 'some_sha' not found")
 					})
 				})
+
+				when("a layer with the same sha already exists", func() {
+					it.Before(func() {
+						existingLayerTar, err := ioutil.TempFile("", "*.tar")
+						h.AssertNil(t, err)
+						h.AssertNil(t, ioutil.WriteFile(existingLayerTar.Name(), []byte("existing data"), 0666))
+						h.AssertNil(t, subject.AddLayerFile("some_sha", existingLayerTar.Name()))
+					})
+
+					it("does nothing", func() {
+						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
+
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						rc, err := subject.RetrieveLayer("some_sha")
+						h.AssertNil(t, err)
+
+						bytes, err := ioutil.ReadAll(rc)
+						h.AssertNil(t, err)
+						h.AssertEq(t, string(bytes), "existing data")
+					})
+				})
 			})
 
 			when("#AddLayer", func() {
@@ -400,6 +423,29 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, fmt.Sprintf("layer with SHA '%s' not found", layerSha))
 					})
 				})
+
+				when("a layer with the same sha already exists", func() {
+					it.Before(func() {
+						existingLayerTar, err := ioutil.TempFile("", "*.tar")
+						h.AssertNil(t, err)
+						h.AssertNil(t, ioutil.WriteFile(existingLayerTar.Name(), layerData, 0666))
+						h.AssertNil(t, subject.AddLayerFile(layerSha, existingLayerTar.Name()))
+					})
+
+					it("succeeds", func() {
+						h.AssertNil(t, subject.AddLayer(layerReader))
+
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						rc, err := subject.RetrieveLayer(layerSha)
+						h.AssertNil(t, err)
+
+						bytes, err := ioutil.ReadAll(rc)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bytes, layerData)
+					})
+				})
 			})
 
 			when("#ReuseLayer", func() {
@@ -442,6 +488,28 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						bytes, err := ioutil.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, string(bytes), "dummy data")
+					})
+				})
+
+				when("a layer with the same sha already exists", func() {
+					it.Before(func() {
+						tarPath := filepath.Join(tmpDir, "some-layer.tar")
+						h.AssertNil(t, ioutil.WriteFile(tarPath, []byte("existing data"), 0666))
+						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
+					})
+
+					it("does nothing", func() {
+						h.AssertNil(t, subject.ReuseLayer("some_sha"))
+
+						err := subject.Commit()
+						h.AssertNil(t, err)
+
+						rc, err := subject.RetrieveLayer("some_sha")
+						h.AssertNil(t, err)
+
+						bytes, err := ioutil.ReadAll(rc)
+						h.AssertNil(t, err)
+						h.AssertEq(t, string(bytes), "existing data")
 					})
 				})
 			})
