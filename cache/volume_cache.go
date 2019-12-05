@@ -93,6 +93,10 @@ func (c *VolumeCache) AddLayerFile(sha string, tarPath string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
+	if _, err := os.Stat(filepath.Join(c.stagingDir, sha+".tar")); err == nil {
+		// don't waste time rewriting an identical layer
+		return nil
+	}
 	if err := copyFile(tarPath, filepath.Join(c.stagingDir, sha+".tar")); err != nil {
 		return errors.Wrapf(err, "caching layer (%s)", sha)
 	}
@@ -130,7 +134,7 @@ func (c *VolumeCache) ReuseLayer(sha string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	if err := os.Link(filepath.Join(c.committedDir, sha+".tar"), filepath.Join(c.stagingDir, sha+".tar")); err != nil {
+	if err := os.Link(filepath.Join(c.committedDir, sha+".tar"), filepath.Join(c.stagingDir, sha+".tar")); err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "reusing layer (%s)", sha)
 	}
 	return nil
