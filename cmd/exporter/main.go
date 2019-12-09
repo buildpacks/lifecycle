@@ -245,33 +245,15 @@ func export() error {
 }
 
 func exportCache(exporter *lifecycle.Exporter) error {
+	var err error
 	var cacheStore lifecycle.Cache
 	switch {
 	case cacheImageTag != "":
-		origCacheImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(cacheImageTag),
-		)
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.EnvKeychain(cmd.EnvRegistryAuth))
 		if err != nil {
-			return cmd.FailErr(err, "accessing cache image")
+			return cmd.FailErr(err, "create image cache")
 		}
-
-		emptyImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.WithPreviousImage(cacheImageTag),
-		)
-		if err != nil {
-			return cmd.FailErr(err, "creating new cache image")
-		}
-
-		cacheStore = cache.NewImageCache(
-			origCacheImage,
-			emptyImage,
-		)
 	case cacheDir != "":
-		var err error
 		cacheStore, err = cache.NewVolumeCache(cacheDir)
 		if err != nil {
 			return cmd.FailErr(err, "create volume cache")
