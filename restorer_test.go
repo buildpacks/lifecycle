@@ -13,11 +13,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/cmd"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/cmd"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestRestorer(t *testing.T) {

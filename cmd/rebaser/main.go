@@ -7,15 +7,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/local"
-	"github.com/buildpack/imgutil/remote"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/auth"
-	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/image"
 )
 
 var (

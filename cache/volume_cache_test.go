@@ -13,9 +13,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/cache"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/cache"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestVolumeCache(t *testing.T) {

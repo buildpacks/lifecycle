@@ -12,8 +12,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle/archive"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/archive"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestTar(t *testing.T) {

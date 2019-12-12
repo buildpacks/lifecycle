@@ -27,7 +27,7 @@ import (
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/buildpack/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/archive"
 )
 
 func RandString(n int) string {

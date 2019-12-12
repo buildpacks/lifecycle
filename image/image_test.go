@@ -5,8 +5,8 @@ import (
 
 	"github.com/sclevine/spec"
 
-	"github.com/buildpack/lifecycle/image"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/image"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestImage(t *testing.T) {

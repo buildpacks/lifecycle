@@ -12,8 +12,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/testmock"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestLauncher(t *testing.T) {
