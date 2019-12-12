@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/buildpack/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/archive"
 )
 
 type Restorer struct {

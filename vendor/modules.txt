@@ -7,11 +7,11 @@ github.com/Microsoft/go-winio/pkg/guid
 github.com/apex/log
 github.com/apex/log/handlers/discard
 github.com/apex/log/handlers/memory
-# github.com/buildpack/imgutil v0.0.0-20191021214009-9ad9206a7b17
-github.com/buildpack/imgutil
-github.com/buildpack/imgutil/fakes
-github.com/buildpack/imgutil/local
-github.com/buildpack/imgutil/remote
+# github.com/buildpacks/imgutil v0.0.0-20191212154113-dc184e0d403b
+github.com/buildpacks/imgutil
+github.com/buildpacks/imgutil/fakes
+github.com/buildpacks/imgutil/local
+github.com/buildpacks/imgutil/remote
 # github.com/containerd/containerd v1.3.0
 github.com/containerd/containerd/errdefs
 # github.com/docker/cli v0.0.0-20191017083524-a8ff7f821017

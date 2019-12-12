@@ -8,8 +8,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/cmd"
 )
 
 var (

@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle/cache"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/cache"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestCachingImage(t *testing.T) {

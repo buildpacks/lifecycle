@@ -16,16 +16,16 @@ import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/apex/log/handlers/memory"
-	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/imgutil/local"
-	"github.com/buildpack/imgutil/remote"
+	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/cache"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/cache"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestExporter(t *testing.T) {
@@ -62,7 +62,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				Version: "1.2.3",
 				Source: lifecycle.SourceMetadata{
 					Git: lifecycle.GitMetadata{
-						Repository: "github.com/buildpack/lifecycle",
+						Repository: "github.com/buildpacks/lifecycle",
 						Commit:     "asdf1234",
 					},
 				},
@@ -375,7 +375,7 @@ version = "4.5.6"
     "version": "1.2.3",
     "source": {
       "git": {
-        "repository": "github.com/buildpack/lifecycle",
+        "repository": "github.com/buildpacks/lifecycle",
         "commit": "asdf1234"
       }
     }
@@ -473,7 +473,7 @@ type = "Apache-2.0"
     "version": "1.2.3",
     "source": {
       "git": {
-        "repository": "github.com/buildpack/lifecycle",
+        "repository": "github.com/buildpacks/lifecycle",
         "commit": "asdf1234"
       }
     }

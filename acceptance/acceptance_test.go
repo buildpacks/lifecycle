@@ -12,7 +12,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	h "github.com/buildpack/lifecycle/testhelpers"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -63,8 +63,8 @@ func lifecycleCmd(t *testing.T, name string, args ...string) *exec.Cmd {
 			"run",
 			"-mod=vendor",
 			"-ldflags",
-			"-X github.com/buildpack/lifecycle/cmd.Version=some-version " +
-				"-X github.com/buildpack/lifecycle/cmd.SCMCommit=asdf123",
+			"-X github.com/buildpacks/lifecycle/cmd.Version=some-version " +
+				"-X github.com/buildpacks/lifecycle/cmd.SCMCommit=asdf123",
 			"./cmd/" + name + "/main.go",
 		}, args...,
 	)

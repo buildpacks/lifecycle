@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle"
+	"github.com/buildpacks/lifecycle"
 )
 
 type VolumeCache struct {

@@ -1,4 +1,4 @@
-module github.com/buildpack/lifecycle/tools
+module github.com/buildpacks/lifecycle/tools
 
 go 1.12
 

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/remote"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle"
+	"github.com/buildpacks/lifecycle"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 )

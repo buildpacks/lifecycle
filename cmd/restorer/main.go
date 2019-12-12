@@ -6,10 +6,10 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/auth"
-	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/cmd"
 )
 
 var (
