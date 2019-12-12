@@ -11,8 +11,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle/auth"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/auth"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestEnvKeychain(t *testing.T) {

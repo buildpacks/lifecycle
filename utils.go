@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 )
 

@@ -9,17 +9,17 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/local"
-	"github.com/buildpack/imgutil/remote"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/auth"
-	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/image"
 )
 
 var (
@@ -245,33 +245,15 @@ func export() error {
 }
 
 func exportCache(exporter *lifecycle.Exporter) error {
+	var err error
 	var cacheStore lifecycle.Cache
 	switch {
 	case cacheImageTag != "":
-		origCacheImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(cacheImageTag),
-		)
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.EnvKeychain(cmd.EnvRegistryAuth))
 		if err != nil {
-			return cmd.FailErr(err, "accessing cache image")
+			return cmd.FailErr(err, "create image cache")
 		}
-
-		emptyImage, err := remote.NewImage(
-			cacheImageTag,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.WithPreviousImage(cacheImageTag),
-		)
-		if err != nil {
-			return cmd.FailErr(err, "creating new cache image")
-		}
-
-		cacheStore = cache.NewImageCache(
-			origCacheImage,
-			emptyImage,
-		)
 	case cacheDir != "":
-		var err error
 		cacheStore, err = cache.NewVolumeCache(cacheDir)
 		if err != nil {
 			return cmd.FailErr(err, "create volume cache")

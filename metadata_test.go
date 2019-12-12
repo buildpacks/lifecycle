@@ -5,8 +5,8 @@ import (
 
 	"github.com/sclevine/spec"
 
-	"github.com/buildpack/lifecycle"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestStackMetadata(t *testing.T) {

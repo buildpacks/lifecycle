@@ -10,17 +10,17 @@ import (
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
-	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/imgutil/local"
+	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/cmd"
-	h "github.com/buildpack/lifecycle/testhelpers"
-	"github.com/buildpack/lifecycle/testmock"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/cmd"
+	h "github.com/buildpacks/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestAnalyzer(t *testing.T) {

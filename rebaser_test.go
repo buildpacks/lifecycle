@@ -7,13 +7,13 @@ import (
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
-	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/imgutil/local"
+	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle"
-	h "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestRebaser(t *testing.T) {
