@@ -1,0 +1,11 @@
+[[processes]]
+  type = "web"
+  command = "npm start"
+
+[[slices]]
+
+[[slices]]
+  Paths = ["static/**/*.txt", "static/**/*.svg"]
+
+[[slices]]
+  Paths = ["static/misc/resources/**/*.csv", "static/misc/resources/**/*.tps"]
