@@ -27,7 +27,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		fakeWorkingImage *fakes.Image
 		fakeNewBaseImage *fakes.Image
 		additionalNames  []string
-		md               lifecycle.LayersMetadata
+		md               lifecycle.LayersMetadataCompat
 	)
 
 	it.Before(func() {
@@ -90,13 +90,14 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 			it("preserves other existing metadata", func() {
 				h.AssertNil(t, fakeWorkingImage.SetLabel(
 					lifecycle.LayerMetadataLabel,
-					`{"buildpacks":[{"key": "buildpack.id", "layers": {}}]}`,
+					`{"app": [{"sha": "123456"}], "buildpacks":[{"key": "buildpack.id", "layers": {}}]}`,
 				))
 				h.AssertNil(t, rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames))
 				h.AssertNil(t, lifecycle.DecodeLabel(fakeWorkingImage, lifecycle.LayerMetadataLabel, &md))
 
 				h.AssertEq(t, len(md.Buildpacks), 1)
 				h.AssertEq(t, md.Buildpacks[0].ID, "buildpack.id")
+				h.AssertEq(t, md.App, []interface{}{map[string]interface{}{"sha": "123456"}})
 			})
 		})
 
