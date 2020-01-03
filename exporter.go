@@ -59,6 +59,11 @@ func (e *Exporter) Export(
 ) error {
 	var err error
 
+	appDir, err = filepath.Abs(appDir)
+	if err != nil {
+		return errors.Wrapf(err, "resolve absolute path")
+	}
+
 	meta := LayersMetadata{}
 	meta.RunImage.TopLayer, err = workingImage.TopLayer()
 	if err != nil {

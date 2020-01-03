@@ -816,6 +816,51 @@ type = "Apache-2.0"
 				assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
 			})
 
+			when("app dir has ending path separator", func() {
+				it("creates app layer on Run image", func() {
+					h.AssertNil(t, exporter.Export(layersDir, appDir+string(os.PathSeparator), fakeAppImage, runImageRef, lifecycle.LayersMetadata{}, additionalNames, launcherConfig, stack))
+
+					appLayerPath, err := fakeAppImage.FindLayerWithPath(filepath.Join(appDir, ".hidden.txt"))
+					h.AssertNil(t, err)
+
+					assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
+					assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
+					assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
+				})
+			})
+
+			when("app dir has dot element", func() {
+				it("creates app layer on Run image", func() {
+					h.AssertNil(t, exporter.Export(layersDir, appDir+string(os.PathSeparator)+".", fakeAppImage, runImageRef, lifecycle.LayersMetadata{}, additionalNames, launcherConfig, stack))
+
+					appLayerPath, err := fakeAppImage.FindLayerWithPath(filepath.Join(appDir, ".hidden.txt"))
+					h.AssertNil(t, err)
+
+					assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
+					assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
+					assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
+				})
+			})
+
+			when("app dir is relative", func() {
+				it("creates app layer on Run image", func() {
+					cwd, err := os.Getwd()
+					h.AssertNil(t, err)
+
+					relAppDir, err := filepath.Rel(cwd, appDir)
+					h.AssertNil(t, err)
+
+					h.AssertNil(t, exporter.Export(layersDir, relAppDir, fakeAppImage, runImageRef, lifecycle.LayersMetadata{}, additionalNames, launcherConfig, stack))
+
+					appLayerPath, err := fakeAppImage.FindLayerWithPath(filepath.Join(appDir, ".hidden.txt"))
+					h.AssertNil(t, err)
+
+					assertTarFileContents(t, appLayerPath, filepath.Join(appDir, ".hidden.txt"), "some-hidden-text\n")
+					assertTarFileOwner(t, appLayerPath, appDir, uid, gid)
+					assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
+				})
+			})
+
 			it("creates config layer on Run image", func() {
 				h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, lifecycle.LayersMetadata{}, additionalNames, launcherConfig, stack))
 
