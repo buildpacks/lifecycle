@@ -9,6 +9,8 @@ SCM_REPO?=
 SCM_COMMIT=$$(git rev-parse --short HEAD)
 ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 
+.PHONY: verify-jq
+
 define LIFECYCLE_DESCRIPTOR
 [api]
   platform = "$(PLATFORM_API)"
@@ -71,9 +73,14 @@ format: install-goimports
 	@echo "> Formating code..."
 	test -z $$(goimports -l -w -local github.com/buildpacks/lifecycle $$(find . -type f -name '*.go' -not -path "*/vendor/*"))
 
+verify-jq:
+ifeq (, $(shell which jq))
+	$(error "No jq in $$PATH, please install jq")
+endif
+
 test: unit acceptance
 
-unit: format lint install-yj
+unit: verify-jq format lint install-yj
 	@echo "> Running unit tests..."
 	$(GOTEST) -v -count=1 ./...
 
