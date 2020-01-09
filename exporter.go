@@ -59,9 +59,14 @@ func (e *Exporter) Export(
 ) error {
 	var err error
 
+	layersDir, err = filepath.Abs(layersDir)
+	if err != nil {
+		return errors.Wrapf(err, "layers dir absolute path")
+	}
+
 	appDir, err = filepath.Abs(appDir)
 	if err != nil {
-		return errors.Wrapf(err, "resolve absolute path")
+		return errors.Wrapf(err, "app dir absolute path")
 	}
 
 	meta := LayersMetadata{}

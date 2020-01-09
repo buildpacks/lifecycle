@@ -118,7 +118,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("writes a tar with the src filesystem contents", func() {
-			src = filepath.Join("testdata", "dir-to-tar")
+			src = filepath.Join("testdata", "dir-to-tar") + "/"
 
 			h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
 			h.AssertNil(t, file.Close())
