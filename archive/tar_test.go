@@ -2,6 +2,7 @@ package archive_test
 
 import (
 	"archive/tar"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -22,12 +23,17 @@ func TestTar(t *testing.T) {
 }
 
 func testTar(t *testing.T, when spec.G, it spec.S) {
-	var (
-		tmpDir, src, tarFile string
-		file                 *os.File
-		uid                  = 1234
-		gid                  = 2345
-	)
+	var tmpDir string
+
+	it.Before(func() {
+		var err error
+		tmpDir, err = ioutil.TempDir("", "extract-tar-test")
+		h.AssertNil(t, err)
+	})
+
+	it.After(func() {
+		h.AssertNil(t, os.RemoveAll(tmpDir))
+	})
 
 	when("#ReadTarArchive", func() {
 		var pathModes = []archive.PathMode{
@@ -38,19 +44,6 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/readonly/readonlysub", os.ModeDir + 0500},
 		}
-
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "extract-tar-test")
-
-			if err != nil {
-				t.Fatalf("failed to create tmp dir %s: %s", tmpDir, err)
-			}
-
-			tarFile = filepath.Join("testdata", "tar-to-dir", "some-layer.tar")
-			file, err = os.Open(tarFile)
-			h.AssertNil(t, err)
-		})
 
 		it.After(func() {
 			// Make all files os.ModePerm so they can all be cleaned up.
@@ -68,6 +61,10 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("extracts a tar file", func() {
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
+
 			h.AssertNil(t, archive.Untar(file, tmpDir))
 
 			for _, pathMode := range pathModes {
@@ -81,6 +78,11 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		it("fails if file exists where directory needs to be created", func() {
 			_, err := os.Create(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
+
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
+
 			h.AssertError(t, archive.Untar(file, tmpDir), "root: not a directory")
 		})
 
@@ -88,6 +90,11 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "root"), 0744))
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
+
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
+
 			h.AssertNil(t, archive.Untar(file, tmpDir))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
@@ -96,82 +103,73 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#WriteTarArchive", func() {
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "create-tar-test")
-			if err != nil {
-				t.Fatalf("failed to create tmp dir %s: %s", tmpDir, err)
-			}
+		for _, src := range []string{
+			filepath.Join("testdata", "dir-to-tar"),
+			filepath.Join("testdata", "dir-to-tar") + string(filepath.Separator),
+			filepath.Join("testdata", "dir-to-tar") + string(filepath.Separator) + ".",
+		} {
+			src := src
+			it(fmt.Sprintf("writes a tar with the src filesystem contents (%s)", src), func() {
+				uid := 1234
+				gid := 4567
 
-			tarFile = filepath.Join(tmpDir, "tar_test-go.tar")
-
-			file, err = os.Create(tarFile)
-			h.AssertNil(t, err)
-		})
-
-		it.After(func() {
-			err := os.RemoveAll(tmpDir)
-			h.AssertNil(t, err)
-
-			err = os.RemoveAll(tarFile)
-			h.AssertNil(t, err)
-		})
-
-		it("writes a tar with the src filesystem contents", func() {
-			src = filepath.Join("testdata", "dir-to-tar") + "/"
-
-			h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
-			h.AssertNil(t, file.Close())
-
-			file, err := os.Open(tarFile)
-			h.AssertNil(t, err)
-
-			defer file.Close()
-			tr := tar.NewReader(file)
-
-			tarContains(t, "directories", func() {
-				header, err := tr.Next()
+				file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
 				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, "testdata")
-				assertModTimeNormalized(t, header)
+				defer file.Close()
 
-				header, err = tr.Next()
+				h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
+				h.AssertNil(t, file.Close())
+
+				file, err = os.Open(file.Name())
 				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, "testdata/dir-to-tar")
-				assertModTimeNormalized(t, header)
+
+				defer file.Close()
+				tr := tar.NewReader(file)
+
+				tarContains(t, "directories", func() {
+					header, err := tr.Next()
+					h.AssertNil(t, err)
+					h.AssertEq(t, header.Name, "testdata")
+					assertModTimeNormalized(t, header)
+
+					header, err = tr.Next()
+					h.AssertNil(t, err)
+					h.AssertEq(t, header.Name, "testdata/dir-to-tar")
+					assertModTimeNormalized(t, header)
+				})
+
+				tarContains(t, "regular files", func() {
+					header, err := tr.Next()
+					h.AssertNil(t, err)
+					h.AssertEq(t, header.Name, "testdata/dir-to-tar/some-file.txt")
+
+					fileContents := make([]byte, header.Size)
+					tr.Read(fileContents)
+					h.AssertEq(t, string(fileContents), "some-content")
+					h.AssertEq(t, header.Uid, uid)
+					h.AssertEq(t, header.Gid, gid)
+					assertModTimeNormalized(t, header)
+				})
+
+				tarContains(t, "sub directories", func() {
+					header, err := tr.Next()
+					h.AssertNil(t, err)
+					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
+					assertModTimeNormalized(t, header)
+				})
+
+				tarContains(t, "symlinks", func() {
+					header, err := tr.Next()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir/link-file")
+					h.AssertEq(t, header.Uid, uid)
+					h.AssertEq(t, header.Gid, gid)
+					h.AssertEq(t, header.Linkname, "../some-file.txt")
+					assertModTimeNormalized(t, header)
+				})
 			})
-
-			tarContains(t, "regular files", func() {
-				header, err := tr.Next()
-				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, "testdata/dir-to-tar/some-file.txt")
-
-				fileContents := make([]byte, header.Size)
-				tr.Read(fileContents)
-				h.AssertEq(t, string(fileContents), "some-content")
-				h.AssertEq(t, header.Uid, uid)
-				h.AssertEq(t, header.Gid, gid)
-				assertModTimeNormalized(t, header)
-			})
-
-			tarContains(t, "sub directories", func() {
-				header, err := tr.Next()
-				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
-				assertModTimeNormalized(t, header)
-			})
-
-			tarContains(t, "symlinks", func() {
-				header, err := tr.Next()
-				h.AssertNil(t, err)
-
-				h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir/link-file")
-				h.AssertEq(t, header.Uid, uid)
-				h.AssertEq(t, header.Gid, gid)
-				h.AssertEq(t, header.Linkname, "../some-file.txt")
-				assertModTimeNormalized(t, header)
-			})
-		})
+		}
 
 		when("a absolute path is given", func() {
 			it("has working test helpers", func() {
@@ -182,10 +180,14 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				absoluteFilePath, err := filepath.Abs(filepath.Join("testdata", "dir-to-tar"))
 				h.AssertNil(t, err)
 
-				h.AssertNil(t, archive.WriteTarArchive(file, absoluteFilePath, uid, gid))
+				file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				h.AssertNil(t, archive.WriteTarArchive(file, absoluteFilePath, 1234, 5678))
 				h.AssertNil(t, file.Close())
 
-				file, err = os.Open(tarFile)
+				file, err = os.Open(file.Name())
 				h.AssertNil(t, err)
 
 				defer file.Close()
@@ -211,15 +213,18 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			it("writes headers for all parent directories", func() {
 				relativePath := filepath.Join("testdata", "dir-to-tar", "sub-dir")
 
-				h.AssertNil(t, archive.WriteTarArchive(file, relativePath, uid, gid))
+				file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				h.AssertNil(t, archive.WriteTarArchive(file, relativePath, 1234, 5678))
 				h.AssertNil(t, file.Close())
 
-				file, err := os.Open(tarFile)
+				file, err = os.Open(file.Name())
 				h.AssertNil(t, err)
-
 				defer file.Close()
-				tr := tar.NewReader(file)
 
+				tr := tar.NewReader(file)
 				for _, expectedDir := range allParentDirectories(relativePath) {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
@@ -241,10 +246,14 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			err = os.MkdirAll(src, 0764)
 			h.AssertNil(t, err)
 
-			h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
+			file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
+
+			h.AssertNil(t, archive.WriteTarArchive(file, src, 1234, 5678))
 			h.AssertNil(t, file.Close())
 
-			file, err = os.Open(tarFile)
+			file, err = os.Open(file.Name())
 			h.AssertNil(t, err)
 
 			defer file.Close()
@@ -268,7 +277,6 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 
 func tarContains(t *testing.T, m string, r func()) {
 	t.Helper()
-	t.Log(m)
 	r()
 }
 
