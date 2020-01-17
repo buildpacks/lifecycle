@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"io/ioutil"
 	"reflect"
+	"strings"
 )
 
 type Configuration struct {
@@ -49,6 +50,20 @@ type Configuration struct {
 	//  }
 	AllowMultiLineAssignCuddle bool
 
+	// If the number of lines in a case block is equal to or lager than this
+	// number, the case *must* end white a newline.
+	CaseForceTrailingWhitespaceLimit int
+
+	// AllowTrailingComment will allow blocks to end with comments.
+	AllowTrailingComment bool
+
+	// AllowCuddleDeclaration will allow multiple var/declaration statements to
+	// be cuddled. This defaults to false but setting it to true will enable the
+	// following example:
+	//  var foo bool
+	//  var err error
+	AllowCuddleDeclaration bool
+
 	// AllowCuddleWithCalls is a list of call idents that everything can be
 	// cuddled with. Defaults to calls looking like locks to support a flow like
 	// this:
@@ -69,11 +84,13 @@ type Configuration struct {
 // DefaultConfig returns default configuration
 func DefaultConfig() Configuration {
 	return Configuration{
-		StrictAppend:               true,
-		AllowAssignAndCallCuddle:   true,
-		AllowMultiLineAssignCuddle: true,
-		AllowCuddleWithCalls:       []string{"Lock", "RLock"},
-		AllowCuddleWithRHS:         []string{"Unlock", "RUnlock"},
+		StrictAppend:                     true,
+		AllowAssignAndCallCuddle:         true,
+		AllowMultiLineAssignCuddle:       true,
+		AllowTrailingComment:             false,
+		CaseForceTrailingWhitespaceLimit: 0,
+		AllowCuddleWithCalls:             []string{"Lock", "RLock"},
+		AllowCuddleWithRHS:               []string{"Unlock", "RUnlock"},
 	}
 }
 
@@ -113,6 +130,7 @@ func NewProcessor() *Processor {
 
 // ProcessFiles takes a string slice with file names (full paths) and lints
 // them.
+// nolint: gocritic
 func (p *Processor) ProcessFiles(filenames []string) ([]Result, []string) {
 	for _, filename := range filenames {
 		data, err := ioutil.ReadFile(filename)
@@ -147,7 +165,7 @@ func (p *Processor) process(filename string, data []byte) {
 	for _, d := range p.file.Decls {
 		switch v := d.(type) {
 		case *ast.FuncDecl:
-			p.parseBlockBody(v.Body)
+			p.parseBlockBody(v.Name, v.Body)
 		case *ast.GenDecl:
 			// `go fmt` will handle proper spacing for GenDecl such as imports,
 			// constants etc.
@@ -159,14 +177,14 @@ func (p *Processor) process(filename string, data []byte) {
 
 // parseBlockBody will parse any kind of block statements such as switch cases
 // and if statements. A list of Result is returned.
-func (p *Processor) parseBlockBody(block *ast.BlockStmt) {
+func (p *Processor) parseBlockBody(ident *ast.Ident, block *ast.BlockStmt) {
 	// Nothing to do if there's no value.
 	if reflect.ValueOf(block).IsNil() {
 		return
 	}
 
 	// Start by finding leading and trailing whitespaces.
-	p.findLeadingAndTrailingWhitespaces(block, nil)
+	p.findLeadingAndTrailingWhitespaces(ident, block, nil)
 
 	// Parse the block body contents.
 	p.parseBlockStatements(block.List)
@@ -177,14 +195,12 @@ func (p *Processor) parseBlockBody(block *ast.BlockStmt) {
 // nolint: gocognit
 func (p *Processor) parseBlockStatements(statements []ast.Stmt) {
 	for i, stmt := range statements {
-		// TODO: How to tell when and where func literals may exist to enforce
-		// linting.
-		if as, isAssignStmt := stmt.(*ast.AssignStmt); isAssignStmt {
-			for _, rhs := range as.Rhs {
-				if fl, isFuncLit := rhs.(*ast.FuncLit); isFuncLit {
-					p.parseBlockBody(fl.Body)
-				}
-			}
+		// Start by checking if this statement is another block (other than if,
+		// for and range). This could be assignment to a function, defer or go
+		// call with an inline function or similar. If this is found we start by
+		// parsing this body block before moving on.
+		for _, stmtBlocks := range p.findBlockStmt(stmt) {
+			p.parseBlockBody(nil, stmtBlocks)
 		}
 
 		firstBodyStatement := p.firstBodyStatement(i, statements)
@@ -244,14 +260,6 @@ func (p *Processor) parseBlockStatements(statements []ast.Stmt) {
 			calledOrAssignedOnLineAbove = append(calledOnLineAbove, assignedOnLineAbove...)
 		)
 
-		/*
-			DEBUG:
-			fmt.Println("LHS: ", leftHandSide)
-			fmt.Println("RHS: ", rightHandSide)
-			fmt.Println("Assigned above: ", assignedOnLineAbove)
-			fmt.Println("Assigned first: ", assignedFirstInBlock)
-		*/
-
 		// If we called some kind of lock on the line above we allow cuddling
 		// anything.
 		if atLeastOneInListsMatch(calledOnLineAbove, p.config.AllowCuddleWithCalls) {
@@ -282,6 +290,7 @@ func (p *Processor) parseBlockStatements(statements []ast.Stmt) {
 			//     t.X = true
 			//     return t
 			// }
+			// nolint: gocritic
 			if i == len(statements)-1 && i == 1 {
 				if p.nodeEnd(stmt)-p.nodeStart(previousStatement) <= 2 {
 					return true
@@ -303,11 +312,15 @@ func (p *Processor) parseBlockStatements(statements []ast.Stmt) {
 				continue
 			}
 
-			if !atLeastOneInListsMatch(rightAndLeftHandSide, assignedOnLineAbove) {
-				if !atLeastOneInListsMatch(assignedOnLineAbove, assignedFirstInBlock) {
-					p.addError(t.Pos(), "if statements should only be cuddled with assignments used in the if statement itself")
-				}
+			if atLeastOneInListsMatch(rightAndLeftHandSide, assignedOnLineAbove) {
+				continue
 			}
+
+			if atLeastOneInListsMatch(assignedOnLineAbove, assignedFirstInBlock) {
+				continue
+			}
+
+			p.addError(t.Pos(), "if statements should only be cuddled with assignments used in the if statement itself")
 		case *ast.ReturnStmt:
 			if isLastStatementInBlockOfOnlyTwoLines() {
 				continue
@@ -351,7 +364,9 @@ func (p *Processor) parseBlockStatements(statements []ast.Stmt) {
 
 			p.addError(t.Pos(), "assignments should only be cuddled with other assignments")
 		case *ast.DeclStmt:
-			p.addError(t.Pos(), "declarations should never be cuddled")
+			if !p.config.AllowCuddleDeclaration {
+				p.addError(t.Pos(), "declarations should never be cuddled")
+			}
 		case *ast.ExprStmt:
 			switch previousStatement.(type) {
 			case *ast.DeclStmt, *ast.ReturnStmt:
@@ -394,6 +409,25 @@ func (p *Processor) parseBlockStatements(statements []ast.Stmt) {
 				continue
 			}
 
+			// Special treatment of deferring body closes after error checking
+			// according to best practices. See
+			// https://github.com/bombsimon/wsl/issues/31 which links to
+			// discussion about error handling after HTTP requests. This is hard
+			// coded and very specific but for now this is to be seen as a
+			// special case. What this does is that it *only* allows a defer
+			// statement with `Close` on the right hand side to be cuddled with
+			// an if-statement to support this:
+			//  resp, err := client.Do(req)
+			//  if err != nil {
+			//      return err
+			//  }
+			//  defer resp.Body.Close()
+			if _, ok := previousStatement.(*ast.IfStmt); ok {
+				if atLeastOneInListsMatch(rightHandSide, []string{"Close"}) {
+					continue
+				}
+			}
+
 			if moreThanOneStatementAbove() {
 				p.addError(t.Pos(), "only one cuddle assignment allowed before defer statement")
 
@@ -433,6 +467,10 @@ func (p *Processor) parseBlockStatements(statements []ast.Stmt) {
 				}
 			}
 		case *ast.GoStmt:
+			if _, ok := previousStatement.(*ast.GoStmt); ok {
+				continue
+			}
+
 			if moreThanOneStatementAbove() {
 				p.addError(t.Pos(), "only one cuddle assignment allowed before go statement")
 
@@ -517,7 +555,7 @@ func (p *Processor) firstBodyStatement(i int, allStmt []ast.Stmt) ast.Node {
 			}
 		}
 
-		p.parseBlockBody(statementBodyContent)
+		p.parseBlockBody(nil, statementBodyContent)
 	case []ast.Stmt:
 		// The Body field for an *ast.CaseClause or *ast.CommClause is of type
 		// []ast.Stmt. We must check leading and trailing whitespaces and then
@@ -530,7 +568,7 @@ func (p *Processor) firstBodyStatement(i int, allStmt []ast.Stmt) ast.Node {
 			nextStatement = allStmt[i+1]
 		}
 
-		p.findLeadingAndTrailingWhitespaces(stmt, nextStatement)
+		p.findLeadingAndTrailingWhitespaces(nil, stmt, nextStatement)
 		p.parseBlockStatements(statementBodyContent)
 	default:
 		p.addWarning(
@@ -555,9 +593,10 @@ func (p *Processor) findLHS(node ast.Node) []string {
 		*ast.ReturnStmt, *ast.GoStmt, *ast.CaseClause,
 		*ast.CommClause, *ast.CallExpr, *ast.UnaryExpr,
 		*ast.BranchStmt, *ast.TypeSpec, *ast.ChanType,
-		*ast.DeferStmt, *ast.TypeAssertExpr, *ast.IncDecStmt,
-		*ast.RangeStmt:
-		// Nothing to add to LHS
+		*ast.DeferStmt, *ast.TypeAssertExpr, *ast.RangeStmt:
+	// Nothing to add to LHS
+	case *ast.IncDecStmt:
+		return p.findLHS(t.X)
 	case *ast.Ident:
 		return []string{t.Name}
 	case *ast.AssignStmt:
@@ -664,6 +703,13 @@ func (p *Processor) findRHS(node ast.Node) []string {
 		return p.findRHS(t.Call)
 	case *ast.SendStmt:
 		return p.findLHS(t.Value)
+	case *ast.IndexExpr:
+		rhs = append(rhs, p.findRHS(t.Index)...)
+		rhs = append(rhs, p.findRHS(t.X)...)
+	case *ast.SliceExpr:
+		rhs = append(rhs, p.findRHS(t.X)...)
+		rhs = append(rhs, p.findRHS(t.Low)...)
+		rhs = append(rhs, p.findRHS(t.High)...)
 	default:
 		if x, ok := maybeX(t); ok {
 			return p.findRHS(x)
@@ -675,11 +721,38 @@ func (p *Processor) findRHS(node ast.Node) []string {
 	return rhs
 }
 
+func (p *Processor) findBlockStmt(node ast.Node) []*ast.BlockStmt {
+	var blocks []*ast.BlockStmt
+
+	switch t := node.(type) {
+	case *ast.AssignStmt:
+		for _, x := range t.Rhs {
+			blocks = append(blocks, p.findBlockStmt(x)...)
+		}
+	case *ast.CallExpr:
+		blocks = append(blocks, p.findBlockStmt(t.Fun)...)
+	case *ast.FuncLit:
+		blocks = append(blocks, t.Body)
+	case *ast.ExprStmt:
+		blocks = append(blocks, p.findBlockStmt(t.X)...)
+	case *ast.ReturnStmt:
+		for _, x := range t.Results {
+			blocks = append(blocks, p.findBlockStmt(x)...)
+		}
+	case *ast.DeferStmt:
+		blocks = append(blocks, p.findBlockStmt(t.Call)...)
+	case *ast.GoStmt:
+		blocks = append(blocks, p.findBlockStmt(t.Call)...)
+	}
+
+	return blocks
+}
+
 // maybeX extracts the X field from an AST node and returns it with a true value
 // if it exists. If the node doesn't have an X field nil and false is returned.
 // Known fields with X that are handled:
 // IndexExpr, ExprStmt, SelectorExpr, StarExpr, ParentExpr, TypeAssertExpr,
-// RangeStmt, UnaryExpr, ParenExpr, SLiceExpr, IncDecStmt.
+// RangeStmt, UnaryExpr, ParenExpr, SliceExpr, IncDecStmt.
 func maybeX(node interface{}) (ast.Node, bool) {
 	maybeHasX := reflect.Indirect(reflect.ValueOf(node)).FieldByName("X")
 	if !maybeHasX.IsValid() {
@@ -726,7 +799,8 @@ func atLeastOneInListsMatch(listOne, listTwo []string) bool {
 // findLeadingAndTrailingWhitespaces will find leading and trailing whitespaces
 // in a node. The method takes comments in consideration which will make the
 // parser more gentle.
-func (p *Processor) findLeadingAndTrailingWhitespaces(stmt, nextStatement ast.Node) {
+// nolint: gocognit
+func (p *Processor) findLeadingAndTrailingWhitespaces(ident *ast.Ident, stmt, nextStatement ast.Node) {
 	var (
 		allowedLinesBeforeFirstStatement = 1
 		commentMap                       = ast.NewCommentMap(p.fileSet, stmt, p.file.Comments)
@@ -791,7 +865,10 @@ func (p *Processor) findLeadingAndTrailingWhitespaces(stmt, nextStatement ast.No
 				break
 			}
 
-			allowedLinesBeforeFirstStatement += len(commentGroup.List)
+			// Support both /* multiline */ and //single line comments
+			for _, c := range commentGroup.List {
+				allowedLinesBeforeFirstStatement += len(strings.Split(c.Text, "\n"))
+			}
 		}
 	}
 
@@ -802,34 +879,97 @@ func (p *Processor) findLeadingAndTrailingWhitespaces(stmt, nextStatement ast.No
 		)
 	}
 
-	// If the blockEndLine is 0 we're a case clause. If we don't have any
-	// nextStatement the trailing whitespace will be handled when parsing the
-	// switch. If we do have a next statement we can see where it starts by
-	// getting it's colon position.
-	if blockEndLine == 0 {
-		if nextStatement == nil {
-			return
+	// If the blockEndLine is not 0 we're a regular block (not case).
+	if blockEndLine != 0 {
+		if p.config.AllowTrailingComment {
+			if lastComment, ok := commentMap[lastStatement]; ok {
+				var (
+					lastCommentGroup = lastComment[len(lastComment)-1]
+					lastCommentLine  = lastCommentGroup.List[len(lastCommentGroup.List)-1]
+					countNewlines    = 0
+				)
+
+				countNewlines += len(strings.Split(lastCommentLine.Text, "\n"))
+
+				// No newlines between trailing comments and end of block.
+				if p.nodeStart(lastCommentLine)+countNewlines != blockEndLine-1 {
+					return
+				}
+			}
 		}
 
-		switch n := nextStatement.(type) {
-		case *ast.CaseClause:
-			blockEndPos = n.Colon
-		case *ast.CommClause:
-			blockEndPos = n.Colon
-		default:
-			// We're not at the end of the case?
-			return
+		if p.nodeEnd(lastStatement) != blockEndLine-1 && !isExampleFunc(ident) {
+			p.addError(blockEndPos, "block should not end with a whitespace (or comment)")
 		}
 
-		blockEndLine = p.fileSet.Position(blockEndPos).Line
+		return
 	}
 
-	if p.nodeEnd(lastStatement) != blockEndLine-1 {
-		p.addError(
-			blockEndPos,
-			"block should not end with a whitespace (or comment)",
-		)
+	// If we don't have any nextStatement the trailing whitespace will be
+	// handled when parsing the switch. If we do have a next statement we can
+	// see where it starts by getting it's colon position. We set the end of the
+	// current case to the position of the next case.
+	switch n := nextStatement.(type) {
+	case *ast.CaseClause:
+		blockEndPos = n.Case
+	case *ast.CommClause:
+		blockEndPos = n.Case
+	default:
+		// No more cases
+		return
 	}
+
+	blockEndLine = p.fileSet.Position(blockEndPos).Line - 1
+
+	var (
+		blockSize                = blockEndLine - blockStartLine
+		caseTrailingCommentLines int
+	)
+
+	// TODO: I don't know what comments are bound to in cases. For regular
+	// blocks the last comment is bound to the last statement but for cases
+	// they are bound to the case clause expression. This will however get us all
+	// comments and depending on the case expression this gets tricky.
+	//
+	// To handle this I get the comment map from the current statement (the case
+	// itself) and iterate through all groups and all comment within all groups.
+	// I then get the comments after the last statement but before the next case
+	// clause and just map each line of comment that way.
+	for _, commentGroups := range commentMap {
+		for _, commentGroup := range commentGroups {
+			for _, comment := range commentGroup.List {
+				commentLine := p.fileSet.Position(comment.Pos()).Line
+
+				// Ignore comments before the last statement.
+				if commentLine <= p.nodeStart(lastStatement) {
+					continue
+				}
+
+				// Ignore comments after the end of this case.
+				if commentLine > blockEndLine {
+					continue
+				}
+
+				// This allows /* multiline */ comments with newlines as well
+				// as regular (//) ones
+				caseTrailingCommentLines += len(strings.Split(comment.Text, "\n"))
+			}
+		}
+	}
+
+	hasTrailingWhitespace := p.nodeEnd(lastStatement)+caseTrailingCommentLines != blockEndLine
+
+	// If the force trailing limit is configured and we don't end with a newline.
+	if p.config.CaseForceTrailingWhitespaceLimit > 0 && !hasTrailingWhitespace {
+		// Check if the block size is too big to miss the newline.
+		if blockSize >= p.config.CaseForceTrailingWhitespaceLimit {
+			p.addError(lastStatement.Pos(), "case block should end with newline at this size")
+		}
+	}
+}
+
+func isExampleFunc(ident *ast.Ident) bool {
+	return ident != nil && strings.HasPrefix(ident.Name, "Example")
 }
 
 func (p *Processor) nodeStart(node ast.Node) int {

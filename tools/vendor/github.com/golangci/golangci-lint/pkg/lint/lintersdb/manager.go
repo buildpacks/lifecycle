@@ -76,6 +76,7 @@ func (m Manager) GetAllSupportedLinterConfigs() []*linter.Config {
 			WithPresets(linter.PresetBugs).
 			WithURL("https://github.com/kisielk/errcheck"),
 		linter.NewConfig(golinters.NewGolint()).
+			WithLoadForGoAnalysis().
 			WithPresets(linter.PresetStyle).
 			WithURL("https://github.com/golang/lint"),
 
@@ -207,6 +208,9 @@ func (m Manager) GetAllSupportedLinterConfigs() []*linter.Config {
 		linter.NewConfig(golinters.NewWSL()).
 			WithPresets(linter.PresetStyle).
 			WithURL("https://github.com/bombsimon/wsl"),
+		linter.NewConfig(golinters.NewGoMND()).
+			WithPresets(linter.PresetStyle).
+			WithURL("https://github.com/tommy-muehle/go-mnd"),
 	}
 
 	isLocalRun := os.Getenv("GOLANGCI_COM_RUN") == ""
