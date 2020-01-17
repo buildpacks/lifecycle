@@ -74,9 +74,14 @@ format: install-goimports
 	@echo "> Formating code..."
 	test -z $$(goimports -l -w -local github.com/buildpacks/lifecycle $$(find . -type f -name '*.go' -not -path "*/vendor/*"))
 
+verify-jq:
+ifeq (, $(shell which jq))
+	$(error "No jq in $$PATH, please install jq")
+endif
+
 test: unit acceptance
 
-unit: format lint install-yj
+unit: verify-jq format lint install-yj
 	@echo "> Running unit tests..."
 	$(GOTEST) -v -count=1 ./...
 
@@ -91,3 +96,5 @@ clean:
 package: descriptor
 	@echo "> Packaging lifecycle..."
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out lifecycle.toml lifecycle
+
+.PHONY: verify-jq
