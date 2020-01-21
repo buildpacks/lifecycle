@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -107,6 +108,13 @@ func (e *exportCmd) Exec() error {
 	_, err = toml.DecodeFile(e.stackPath, &stackMD)
 	if err != nil {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
+	}
+
+	projectMetadataPath := path.Join(".", lifecycle.ProjectMetadataFileName)
+	var projectMD lifecycle.ProjectMetadata
+	_, err = toml.DecodeFile(projectMetadataPath, &projectMD)
+	if err != nil {
+		cmd.Logger.Infof("no project metadata found at path '%s', project metadata will not be exported\n", projectMetadataPath)
 	}
 
 	if e.runImageRef == "" {
@@ -215,7 +223,7 @@ func (e *exportCmd) Exec() error {
 		},
 	}
 
-	if err := exporter.Export(e.layersDir, e.appDir, appImage, runImageID.String(), analyzedMD.Metadata, e.imageNames[1:], launcherConfig, stackMD); err != nil {
+	if err := exporter.Export(e.layersDir, e.appDir, appImage, runImageID.String(), analyzedMD.Metadata, e.imageNames[1:], launcherConfig, stackMD, projectMD); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}

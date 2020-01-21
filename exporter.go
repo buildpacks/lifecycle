@@ -55,6 +55,7 @@ func (e *Exporter) Export(
 	additionalNames []string,
 	launcherConfig LauncherConfig,
 	stack StackMetadata,
+	project ProjectMetadata,
 ) error {
 	var err error
 
@@ -175,6 +176,14 @@ func (e *Exporter) Export(
 	}
 	if err := workingImage.SetLabel(BuildMetadataLabel, string(buildJSON)); err != nil {
 		return errors.Wrap(err, "set build image metadata label")
+	}
+
+	projectJSON, err := json.Marshal(project)
+	if err != nil {
+		return errors.Wrap(err, "parse project metadata")
+	}
+	if err := workingImage.SetLabel(ProjectMetadataLabel, string(projectJSON)); err != nil {
+		return errors.Wrap(err, "set project metadata label")
 	}
 
 	if err = workingImage.SetEnv(cmd.EnvLayersDir, layersDir); err != nil {
