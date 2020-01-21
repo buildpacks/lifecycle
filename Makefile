@@ -1,7 +1,8 @@
 GOCMD?=go
+GOFLAGS?=-mod=vendor
 GOENV=GOARCH=amd64 CGO_ENABLED=0
-GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-s -w -X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'"
-GOTEST=$(GOCMD) test -mod=vendor
+GOBUILD=$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'"
+GOTEST=$(GOCMD) test
 LIFECYCLE_VERSION?=0.0.0
 PLATFORM_API=0.2
 BUILDPACK_API=0.2
@@ -9,7 +10,7 @@ SCM_REPO?=
 SCM_COMMIT=$$(git rev-parse --short HEAD)
 ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 
-.PHONY: verify-jq
+export GOFLAGS:=$(GOFLAGS)
 
 define LIFECYCLE_DESCRIPTOR
 [api]
@@ -47,19 +48,19 @@ descriptor:
 
 install-goimports:
 	@echo "> Installing goimports..."
-	cd tools; $(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
+	cd tools; $(GOCMD) install golang.org/x/tools/cmd/goimports
 
 install-yj:
 	@echo "> Installing yj..."
-	cd tools; $(GOCMD) install -mod=vendor github.com/sclevine/yj
+	cd tools; $(GOCMD) install github.com/sclevine/yj
 
 install-mockgen:
 	@echo "> Installing mockgen..."
-	cd tools; $(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
+	cd tools; $(GOCMD) install github.com/golang/mock/mockgen
 
 install-golangci-lint:
 	@echo "> Installing golangci-lint..."
-	cd tools; $(GOCMD) install -mod=vendor github.com/golangci/golangci-lint/cmd/golangci-lint
+	cd tools; $(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint
 
 lint: install-golangci-lint
 	@echo "> Linting code..."
@@ -95,3 +96,5 @@ clean:
 package: descriptor
 	@echo "> Packaging lifecycle..."
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out lifecycle.toml lifecycle
+
+.PHONY: verify-jq
