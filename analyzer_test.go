@@ -35,7 +35,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		analyzer  *lifecycle.Analyzer
 		mockCtrl  *gomock.Controller
 		layerDir  string
-		appDir    string
 		tmpDir    string
 		cacheDir  string
 		testCache lifecycle.Cache
@@ -56,15 +55,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		testCache, err = cache.NewVolumeCache(cacheDir)
 		h.AssertNil(t, err)
 
-		appDir = filepath.Join(layerDir, "some-app-dir")
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks:   []lifecycle.Buildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
-			AppDir:       appDir,
-			LayersDir:    layerDir,
-			AnalyzedPath: filepath.Join(tmpDir, "some-previous-file.toml"),
-			Logger:       &log.Logger{Handler: &discard.Handler{}},
-			UID:          1234,
-			GID:          4321,
+			Buildpacks: []lifecycle.Buildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
+			LayersDir:  layerDir,
+			Logger:     &log.Logger{Handler: &discard.Handler{}},
+			UID:        1234,
+			GID:        4321,
 		}
 		if testing.Verbose() {
 			analyzer.Logger = cmd.Logger

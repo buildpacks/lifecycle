@@ -21,7 +21,6 @@ import (
 
 var (
 	analyzedPath  string
-	appDir        string
 	cacheDir      string
 	cacheImageTag string
 	groupPath     string
@@ -38,7 +37,6 @@ var (
 
 func init() {
 	cmd.FlagAnalyzedPath(&analyzedPath)
-	cmd.FlagAppDir(&appDir)
 	cmd.FlagCacheDir(&cacheDir)
 	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagGroupPath(&groupPath)
@@ -93,14 +91,12 @@ func analyzer() error {
 	}
 
 	analyzer := &lifecycle.Analyzer{
-		Buildpacks:   group.Group,
-		AppDir:       appDir,
-		LayersDir:    layersDir,
-		AnalyzedPath: analyzedPath,
-		Logger:       cmd.Logger,
-		UID:          uid,
-		GID:          gid,
-		SkipLayers:   skipLayers,
+		Buildpacks: group.Group,
+		LayersDir:  layersDir,
+		Logger:     cmd.Logger,
+		UID:        uid,
+		GID:        gid,
+		SkipLayers: skipLayers,
 	}
 
 	var img imgutil.Image
