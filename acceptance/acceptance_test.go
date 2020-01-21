@@ -1,12 +1,11 @@
-// +build acceptance
-
 package acceptance
 
 import (
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -15,40 +14,111 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
+var dir string
+
 func TestAcceptance(t *testing.T) {
+	if os.Getenv("ACCEPTANCE") == "" {
+		t.Skip("not running acceptance tests, ACCEPTANCE env var is unset")
+	}
+	var err error
+	dir, err = ioutil.TempDir("", "lifecycle-acceptance")
+	h.AssertNil(t, err)
+	defer func() {
+		h.AssertNil(t, os.RemoveAll(dir))
+	}()
+	buildBinaries(t)
 	spec.Run(t, "acceptance", testAcceptance, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testAcceptance(t *testing.T, when spec.G, it spec.S) {
+type testCase struct {
+	description string
+	command     string
+	args        []string
+}
 
+func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 	when("All", func() {
 		when("version flag is set", func() {
-			for _, data := range [][]string{
-				{"analyzer: only -version is present", "analyzer -version"},
-				{"analyzer: other params are set", "analyzer -daemon -version some/image"},
-
-				{"builder: only -version is present", "builder -version"},
-				{"builder: other params are set", "builder -app=/some/dir -version some/image"},
-
-				{"detector: only -version is present", "detector -version"},
-				{"detector: other params are set", "detector -app=/some/dir -version"},
-
-				{"exporter: only -version is present", "exporter -version"},
-				{"exporter: other params are set", "exporter -analyzed=/some/file -version some/image"},
-
-				{"restorer: only -version is present", "restorer -version"},
-				{"restorer: other params are set", "restorer -cache-dir=/some/dir -version"},
+			for _, tc := range []testCase{
+				{
+					description: "detector: only -version is present",
+					command:     "detector",
+					args:        []string{"-version"},
+				},
+				{
+					description: "detector: other params are set",
+					command:     "detector",
+					args:        []string{"-app=/some/dir", "-version"},
+				},
+				{
+					description: "analyzer: only -version is present",
+					command:     "analyzer",
+					args:        []string{"-version"},
+				},
+				{
+					description: "analyzer: other params are set",
+					command:     "analyzer",
+					args:        []string{"-daemon", "-version"},
+				},
+				{
+					description: "restorer: only -version is present",
+					command:     "restorer",
+					args:        []string{"-version"},
+				},
+				{
+					description: "restorer: other params are set",
+					command:     "restorer",
+					args:        []string{"-cache-dir=/some/dir", "-version"},
+				},
+				{
+					description: "restorer: only -version is present",
+					command:     "restorer",
+					args:        []string{"-version"},
+				},
+				{
+					description: "restorer: other params are set",
+					command:     "restorer",
+					args:        []string{"-cache-dir=/some/dir", "-version"},
+				},
+				{
+					description: "builder: only -version is present",
+					command:     "builder",
+					args:        []string{"-version"},
+				},
+				{
+					description: "builder: other params are set",
+					command:     "builder",
+					args:        []string{"-app=/some/dir", "-version"},
+				},
+				{
+					description: "exporter: only -version is present",
+					command:     "exporter",
+					args:        []string{"-version"},
+				},
+				{
+					description: "exporter: other params are set",
+					command:     "exporter",
+					args:        []string{"-app=/some/dir", "-version"},
+				},
+				{
+					description: "rebaser: only -version is present",
+					command:     "rebaser",
+					args:        []string{"-version"},
+				},
+				{
+					description: "rebaser: other params are set",
+					command:     "rebaser",
+					args:        []string{"-daemon", "-version"},
+				},
 			} {
-				desc := data[0]
-				binary, args := parseCommand(data[1])
-
-				when(desc, func() {
+				tc := tc
+				when(tc.description, func() {
 					it("only prints the version", func() {
-						output, err := lifecycleCmd(t, binary, args...).CombinedOutput()
+						cmd := exec.Command(filepath.Join(dir, "lifecycle", tc.command), tc.args...)
+						output, err := cmd.CombinedOutput()
 						if err != nil {
-							t.Error(err)
+							t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
 						}
-
 						h.AssertStringContains(t, string(output), "some-version+asdf123")
 					})
 				})
@@ -57,31 +127,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func lifecycleCmd(t *testing.T, name string, args ...string) *exec.Cmd {
-	cmdArgs := append(
-		[]string{
-			"run",
-			"-mod=vendor",
-			"-ldflags",
-			"-X github.com/buildpacks/lifecycle/cmd.Version=some-version " +
-				"-X github.com/buildpacks/lifecycle/cmd.SCMCommit=asdf123",
-			"./cmd/" + name + "/main.go",
-		}, args...,
-	)
-
-	wd, err := os.Getwd()
-	h.AssertNil(t, err)
-
-	cmd := exec.Command(
-		"go",
-		cmdArgs...,
-	)
-	cmd.Dir = filepath.Dir(wd)
-
-	return cmd
-}
-
-func parseCommand(command string) (binary string, args []string) {
-	parts := strings.Split(command, " ")
-	return parts[0], parts[1:]
+func buildBinaries(t *testing.T) {
+	cmd := exec.Command("make", "build-"+runtime.GOOS)
+	cmd.Dir = ".."
+	cmd.Env = append(os.Environ(), "BUILD_DIR="+dir, "LIFECYCLE_VERSION=some-version", "SCM_COMMIT=asdf123")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
+	}
 }

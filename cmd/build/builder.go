@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -12,50 +11,42 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
-var (
+type buildFlags struct {
 	buildpacksDir string
 	groupPath     string
 	planPath      string
 	layersDir     string
 	appDir        string
 	platformDir   string
-	printVersion  bool
-)
-
-func init() {
-	cmd.FlagBuildpacksDir(&buildpacksDir)
-	cmd.FlagGroupPath(&groupPath)
-	cmd.FlagPlanPath(&planPath)
-	cmd.FlagLayersDir(&layersDir)
-	cmd.FlagAppDir(&appDir)
-	cmd.FlagPlatformDir(&platformDir)
-	cmd.FlagVersion(&printVersion)
 }
 
-func main() {
-	// suppress output from libraries, lifecycle will not use standard logger
-	log.SetOutput(ioutil.Discard)
+func parseBuildFlags() (buildFlags, error) {
+	f := buildFlags{}
+	cmd.FlagBuildpacksDir(&f.buildpacksDir)
+	cmd.FlagGroupPath(&f.groupPath)
+	cmd.FlagPlanPath(&f.planPath)
+	cmd.FlagLayersDir(&f.layersDir)
+	cmd.FlagAppDir(&f.appDir)
+	cmd.FlagPlatformDir(&f.platformDir)
 
 	flag.Parse()
-
-	if printVersion {
-		cmd.ExitWithVersion()
-	}
+	commonFlags()
 
 	if flag.NArg() != 0 {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+		return buildFlags{}, cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments")
 	}
-	cmd.Exit(build())
+
+	return f, nil
 }
 
-func build() error {
-	group, err := lifecycle.ReadGroup(groupPath)
+func build(f buildFlags) error {
+	group, err := lifecycle.ReadGroup(f.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
 	var plan lifecycle.BuildPlan
-	if _, err := toml.DecodeFile(planPath, &plan); err != nil {
+	if _, err := toml.DecodeFile(f.planPath, &plan); err != nil {
 		return cmd.FailErr(err, "parse detect plan")
 	}
 
@@ -69,10 +60,10 @@ func build() error {
 	}
 
 	builder := &lifecycle.Builder{
-		AppDir:        appDir,
-		LayersDir:     layersDir,
-		PlatformDir:   platformDir,
-		BuildpacksDir: buildpacksDir,
+		AppDir:        f.appDir,
+		LayersDir:     f.layersDir,
+		PlatformDir:   f.platformDir,
+		BuildpacksDir: f.buildpacksDir,
 		Env:           env,
 		Group:         group,
 		Plan:          plan,
@@ -85,7 +76,7 @@ func build() error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(layersDir), md); err != nil {
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(f.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil
