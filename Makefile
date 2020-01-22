@@ -111,11 +111,11 @@ unit: verify-jq format lint install-yj
 
 acceptance: format lint
 	@echo "> Running acceptance tests..."
-	ACCEPTANCE=true $(GOTEST) -v -count=1 ./acceptance/...
-
+	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
+	
 acceptance-darwin: format lint
 	@echo "> Running acceptance tests..."
-	ACCEPTANCE=true $(GOTEST) -v -count=1 ./acceptance/...
+	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 
 clean:
 	@echo "> Cleaning workspace..."

@@ -19,9 +19,6 @@ import (
 var buildDir string
 
 func TestAcceptance(t *testing.T) {
-	if os.Getenv("ACCEPTANCE") == "" {
-		t.Skip("not running acceptance tests, ACCEPTANCE env var is unset")
-	}
 	var err error
 	buildDir, err = ioutil.TempDir("", "lifecycle-acceptance")
 	h.AssertNil(t, err)
