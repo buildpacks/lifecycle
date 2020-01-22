@@ -1,3 +1,5 @@
+// +build acceptance
+
 package acceptance
 
 import (
@@ -17,16 +19,13 @@ import (
 var dir string
 
 func TestAcceptance(t *testing.T) {
-	if os.Getenv("ACCEPTANCE") == "" {
-		t.Skip("not running acceptance tests, ACCEPTANCE env var is unset")
-	}
 	var err error
 	dir, err = ioutil.TempDir("", "lifecycle-acceptance")
 	h.AssertNil(t, err)
 	defer func() {
 		h.AssertNil(t, os.RemoveAll(dir))
 	}()
-	buildBinaries(t)
+	buildBinaries(t, dir)
 	spec.Run(t, "acceptance", testAcceptance, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -127,7 +126,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func buildBinaries(t *testing.T) {
+func buildBinaries(t *testing.T, dir string) {
 	cmd := exec.Command("make", "build-"+runtime.GOOS)
 	cmd.Dir = ".."
 	cmd.Env = append(os.Environ(), "BUILD_DIR="+dir, "LIFECYCLE_VERSION=some-version", "SCM_COMMIT=asdf123")
