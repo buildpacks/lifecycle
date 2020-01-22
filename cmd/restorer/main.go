@@ -24,6 +24,10 @@ var (
 )
 
 func init() {
+	if err := cmd.VerifyCompatibility(); err != nil {
+		cmd.Exit(err)
+	}
+
 	cmd.FlagCacheDir(&cacheDir)
 	cmd.FlagCacheImage(&cacheImageTag)
 	cmd.FlagGroupPath(&groupPath)

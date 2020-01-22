@@ -85,7 +85,7 @@ func (v *Version) UnmarshalText(text []byte) error {
 //		lifecycle's Platform API version("1.2").SupportsVersion(platform's Platform API version ("1.3")) == true
 //		lifecycle's Platform API version("1.2").SupportsVersion(platform's Platform API version ("1.1")) == false
 //
-//  buildpack <-> lifecycle:
+//	buildpack <-> lifecycle:
 //		buildpack's Buildpack API version("1.2").SupportsVersion(lifecycle's Platform API version ("1.3")) == true
 //		buildpack's Buildpack API version("1.2").SupportsVersion(lifecycle's Platform API version ("1.1")) == false
 //

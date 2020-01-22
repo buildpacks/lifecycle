@@ -74,15 +74,23 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, lifecycleCmd lifecycle
 			})
 
 			when("is set and incompatible", func() {
-				it("should complete successfully", func() {
-					cmd := lifecycleCmd("analyzer", "some/image")
-					cmd.Dir = tmpWorkingDir(filepath.Join("testdata", "analyzer"))
-					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=99.99")
+				for _, binary := range []string{
+					"analyzer",
+					"builder",
+					"detector",
+					"exporter",
+					"restorer",
+				} {
+					binary := binary
+					it(binary+"/should fail with error message and exit code 11", func() {
+						cmd := lifecycleCmd(binary)
+						cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=99.99")
 
-					_, exitCode, err := h.RunE(cmd)
-					h.AssertError(t, err, "the Lifecycle's Platform API version is 0.2 which is incompatible with Platform API version 99.99")
-					h.AssertEq(t, exitCode, 11)
-				})
+						_, exitCode, err := h.RunE(cmd)
+						h.AssertError(t, err, "the Lifecycle's Platform API version is 0.2 which is incompatible with Platform API version 99.99")
+						h.AssertEq(t, exitCode, 11)
+					})
+				}
 			})
 		})
 

@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -37,6 +36,10 @@ var (
 )
 
 func init() {
+	if err := cmd.VerifyCompatibility(); err != nil {
+		cmd.Exit(err)
+	}
+
 	cmd.FlagAnalyzedPath(&analyzedPath)
 	cmd.FlagCacheDir(&cacheDir)
 	cmd.FlagCacheImage(&cacheImageTag)
@@ -51,33 +54,9 @@ func init() {
 	cmd.FlagLogLevel(&logLevel)
 }
 
-func verifyCompatibility() error {
-	platformsAPI := os.Getenv("CNB_PLATFORM_API")
-	if platformsAPI != "" {
-		providedVersion, err := api.NewVersion(platformsAPI)
-		if err != nil {
-			return err
-		}
-
-		lcPlatformAPI := api.MustParse(cmd.PlatformAPI)
-		if !lcPlatformAPI.SupportsVersion(providedVersion) {
-			return cmd.FailErrCode(
-				fmt.Errorf("the Lifecycle's Platform API version is %s which is incompatible with Platform API version %s", lcPlatformAPI.String(), platformsAPI),
-				11,
-			)
-		}
-	}
-
-	return nil
-}
-
 func main() {
 	// suppress output from libraries, lifecycle will not use standard logger
 	log.SetOutput(ioutil.Discard)
-
-	if err := verifyCompatibility(); err != nil {
-		cmd.Exit(err)
-	}
 
 	flag.Parse()
 
