@@ -51,13 +51,13 @@ build-linux:
 build-windows:
 	@echo "> Building for windows..."
 	mkdir -p $(BUILD_DIR)/lifecycle
-	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
-	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/detector -a ./cmd/build
-	ln -sf detector $(BUILD_DIR)/lifecycle/analyzer.exe
-	ln -sf detector $(BUILD_DIR)/lifecycle/restorer.exe
-	ln -sf detector $(BUILD_DIR)/lifecycle/builder.exe
-	ln -sf detector $(BUILD_DIR)/lifecycle/exporter.exe
-	ln -sf detector $(BUILD_DIR)/lifecycle/rebaser.exe
+	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
+	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/detector.exe -a ./cmd/build
+	ln -sf detector.exe $(BUILD_DIR)/lifecycle/analyzer.exe
+	ln -sf detector.exe $(BUILD_DIR)/lifecycle/restorer.exe
+	ln -sf detector.exe $(BUILD_DIR)/lifecycle/builder.exe
+	ln -sf detector.exe $(BUILD_DIR)/lifecycle/exporter.exe
+	ln -sf detector.exe $(BUILD_DIR)/lifecycle/rebaser.exe
 
 descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 descriptor:
