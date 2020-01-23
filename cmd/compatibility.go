@@ -10,15 +10,19 @@ import (
 func VerifyCompatibility() error {
 	platformsAPI := os.Getenv("CNB_PLATFORM_API")
 	if platformsAPI != "" {
-		providedVersion, err := api.NewVersion(platformsAPI)
+		platformAPIFromPlatform, err := api.NewVersion(platformsAPI)
 		if err != nil {
 			return err
 		}
 
-		lcPlatformAPI := api.MustParse(PlatformAPI)
-		if !lcPlatformAPI.SupportsVersion(providedVersion) {
+		platformAPIFromLifecycle := api.MustParse(PlatformAPI)
+		if !api.IsPlatformAPICompatible(platformAPIFromLifecycle, platformAPIFromPlatform) {
 			return FailErrCode(
-				fmt.Errorf("the Lifecycle's Platform API version is %s which is incompatible with Platform API version %s", lcPlatformAPI.String(), platformsAPI),
+				fmt.Errorf(
+					"the Lifecycle's Platform API version is %s which is incompatible with Platform API version %s",
+					platformAPIFromLifecycle.String(),
+					platformAPIFromPlatform.String(),
+				),
 				CodeIncompatible,
 			)
 		}

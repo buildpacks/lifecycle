@@ -75,32 +75,6 @@ func (v *Version) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// SupportsVersion determines whether this version supports a given version. If comparing two pre-stable (major == 0)
-// versions, minors must match exactly. Otherwise, this minor must be greater than or equal to the given minor. Majors
-// must always match.
-//
-//	Examples:
-//
-//	lifecycle <-> platform:
-//		lifecycle's Platform API version("1.2").SupportsVersion(platform's Platform API version ("1.3")) == true
-//		lifecycle's Platform API version("1.2").SupportsVersion(platform's Platform API version ("1.1")) == false
-//
-//	buildpack <-> lifecycle:
-//		buildpack's Buildpack API version("1.2").SupportsVersion(lifecycle's Platform API version ("1.3")) == true
-//		buildpack's Buildpack API version("1.2").SupportsVersion(lifecycle's Platform API version ("1.1")) == false
-//
-func (v *Version) SupportsVersion(o *Version) bool {
-	if v.Equal(o) {
-		return true
-	}
-
-	if v.major != 0 {
-		return v.major == o.major && v.minor >= o.minor
-	}
-
-	return false
-}
-
 func (v *Version) Equal(o *Version) bool {
 	return v.Compare(o) == 0
 }
@@ -127,4 +101,32 @@ func (v *Version) Compare(o *Version) int {
 	}
 
 	return 0
+}
+
+// IsPlatformAPICompatible determines if the lifecycle's Platform API version is compatible with the platform's
+// Platform API version based on the spec.
+func IsPlatformAPICompatible(fromLifecycle, fromPlatform *Version) bool {
+	if fromLifecycle.Equal(fromPlatform) {
+		return true
+	}
+
+	if fromLifecycle.major != 0 {
+		return fromLifecycle.major == fromPlatform.major && fromLifecycle.minor >= fromPlatform.minor
+	}
+
+	return false
+}
+
+// IsBuildpackAPICompatible determines if the lifecycle's Buildpack API version is compatible with the buildpack's
+// Buildpack API version based on the spec.
+func IsBuildpackAPICompatible(fromLifecycle, fromBuildpack *Version) bool {
+	if fromLifecycle.Equal(fromBuildpack) {
+		return true
+	}
+
+	if fromLifecycle.major != 0 {
+		return fromLifecycle.major == fromBuildpack.major && fromLifecycle.minor >= fromBuildpack.minor
+	}
+
+	return false
 }

@@ -31,64 +31,126 @@ func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#SupportsVersion", func() {
+	when("IsPlatformAPICompatible", func() {
 		when("pre-stable", func() {
 			it("matching minor value", func() {
-				subject := api.MustParse("0.2")
-				comparison := api.MustParse("0.2")
+				lifecycle := api.MustParse("0.2")
+				platform := api.MustParse("0.2")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), true)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, platform), true)
 			})
 
-			it("subject minor > comparison minor", func() {
-				subject := api.MustParse("0.2")
-				comparison := api.MustParse("0.1")
+			it("lifecycle minor > platform minor", func() {
+				lifecycle := api.MustParse("0.2")
+				platform := api.MustParse("0.1")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), false)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, platform), false)
 			})
 
-			it("subject minor < comparison minor", func() {
-				subject := api.MustParse("0.1")
-				comparison := api.MustParse("0.2")
+			it("lifecycle minor < platform minor", func() {
+				lifecycle := api.MustParse("0.1")
+				platform := api.MustParse("0.2")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), false)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, platform), false)
 			})
 		})
 
 		when("stable", func() {
 			it("matching major and minor", func() {
-				subject := api.MustParse("1.2")
+				lifecycle := api.MustParse("1.2")
 				comparison := api.MustParse("1.2")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), true)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, comparison), true)
 			})
 
-			it("matching major but minor > comparison minor", func() {
-				subject := api.MustParse("1.2")
-				comparison := api.MustParse("1.1")
+			it("matching major but minor > platform minor", func() {
+				lifecycle := api.MustParse("1.2")
+				platform := api.MustParse("1.1")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), true)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, platform), true)
 			})
 
-			it("matching major but minor < comparison minor", func() {
-				subject := api.MustParse("1.1")
-				comparison := api.MustParse("1.2")
+			it("matching major but minor < platform minor", func() {
+				lifecycle := api.MustParse("1.1")
+				platform := api.MustParse("1.2")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), false)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, platform), false)
 			})
 
-			it("major < comparison major", func() {
-				subject := api.MustParse("1.0")
-				comparison := api.MustParse("2.0")
+			it("major < platform major", func() {
+				lifecycle := api.MustParse("1.0")
+				platform := api.MustParse("2.0")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), false)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, platform), false)
 			})
 
-			it("major > comparison major", func() {
-				subject := api.MustParse("2.0")
-				comparison := api.MustParse("1.0")
+			it("major > platform major", func() {
+				lifecycle := api.MustParse("2.0")
+				platform := api.MustParse("1.0")
 
-				h.AssertEq(t, subject.SupportsVersion(comparison), false)
+				h.AssertEq(t, api.IsPlatformAPICompatible(lifecycle, platform), false)
+			})
+		})
+	})
+
+	when("IsBuildpackAPICompatible", func() {
+		when("pre-stable", func() {
+			it("matching minor value", func() {
+				lifecycle := api.MustParse("0.2")
+				buildpack := api.MustParse("0.2")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), true)
+			})
+
+			it("lifecycle minor > buildpack minor", func() {
+				lifecycle := api.MustParse("0.2")
+				buildpack := api.MustParse("0.1")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), false)
+			})
+
+			it("lifecycle minor < buildpack minor", func() {
+				lifecycle := api.MustParse("0.1")
+				buildpack := api.MustParse("0.2")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), false)
+			})
+		})
+
+		when("stable", func() {
+			it("matching major and minor", func() {
+				lifecycle := api.MustParse("1.2")
+				buildpack := api.MustParse("1.2")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), true)
+			})
+
+			it("matching major but minor > buildpack minor", func() {
+				lifecycle := api.MustParse("1.2")
+				buildpack := api.MustParse("1.1")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), true)
+			})
+
+			it("matching major but minor < buildpack minor", func() {
+				lifecycle := api.MustParse("1.1")
+				buildpack := api.MustParse("1.2")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), false)
+			})
+
+			it("major < buildpack major", func() {
+				lifecycle := api.MustParse("1.0")
+				buildpack := api.MustParse("2.0")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), false)
+			})
+
+			it("major > buildpack major", func() {
+				lifecycle := api.MustParse("2.0")
+				buildpack := api.MustParse("1.0")
+
+				h.AssertEq(t, api.IsBuildpackAPICompatible(lifecycle, buildpack), false)
 			})
 		})
 	})
