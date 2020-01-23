@@ -43,6 +43,10 @@ var (
 )
 
 func init() {
+	if err := cmd.VerifyCompatibility(); err != nil {
+		cmd.Exit(err)
+	}
+
 	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagLayersDir(&layersDir)
 	cmd.FlagAppDir(&appDir)

@@ -22,6 +22,10 @@ var (
 )
 
 func init() {
+	if err := cmd.VerifyCompatibility(); err != nil {
+		cmd.Exit(err)
+	}
+
 	cmd.FlagBuildpacksDir(&buildpacksDir)
 	cmd.FlagAppDir(&appDir)
 	cmd.FlagPlatformDir(&platformDir)

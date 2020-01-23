@@ -1,14 +1,20 @@
 GOCMD?=go
 GOFLAGS?=-mod=vendor
 GOENV=GOARCH=amd64 CGO_ENABLED=0
-GOBUILD=$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'"
+LDFLAGS=-s -w
+LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)' 
+LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
+LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
+LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.PlatformAPI=$(PLATFORM_API)'
+GOBUILD=$(GOCMD) build -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test
 LIFECYCLE_VERSION?=0.0.0
-PLATFORM_API=0.2
+PLATFORM_API?=0.2
 BUILDPACK_API=0.2
 SCM_REPO?=
-SCM_COMMIT=$$(git rev-parse --short HEAD)
+SCM_COMMIT?=$$(git rev-parse --short HEAD)
 ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
+BUILD_DIR?=out
 
 export GOFLAGS:=$(GOFLAGS)
 
@@ -25,26 +31,26 @@ all: test build package
 
 build: build-linux
 
-build-macos:
+build-darwin:
 	@echo "> Building for macos..."
-	mkdir -p ./out/lifecycle
-	GOOS=darwin $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
+	mkdir -p $(BUILD_DIR)/lifecycle
+	GOOS=darwin $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/...
 
 build-linux:
 	@echo "> Building for linux..."
-	mkdir -p ./out/lifecycle
-	GOOS=linux $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
+	mkdir -p $(BUILD_DIR)/lifecycle
+	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/...
 
 build-windows:
 	@echo "> Building for windows..."
-	mkdir -p ./out/lifecycle
-	GOOS=windows $(GOENV) $(GOBUILD) -o ./out/lifecycle -a ./cmd/...
+	mkdir -p $(BUILD_DIR)/lifecycle
+	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/...
 
 descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 descriptor:
 	@echo "> Writing descriptor file..."
-	mkdir -p ./out
-	echo "$${LIFECYCLE_DESCRIPTOR}" > ./out/lifecycle.toml
+	mkdir -p $(BUILD_DIR)
+	echo "$${LIFECYCLE_DESCRIPTOR}" > $(BUILD_DIR)/lifecycle.toml
 
 install-goimports:
 	@echo "> Installing goimports..."
@@ -91,10 +97,10 @@ acceptance: format lint
 
 clean:
 	@echo "> Cleaning workspace..."
-	rm -rf ./out
+	rm -rf $(BUILD_DIR)
 
 package: descriptor
 	@echo "> Packaging lifecycle..."
-	tar czf ./out/$(ARCHIVE_NAME).tgz -C out lifecycle.toml lifecycle
+	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C out lifecycle.toml lifecycle
 
 .PHONY: verify-jq

@@ -218,21 +218,26 @@ func ImageID(t *testing.T, repoName string) string {
 
 func Run(t *testing.T, cmd *exec.Cmd) string {
 	t.Helper()
-	txt, err := RunE(cmd)
+	txt, _, err := RunE(cmd)
 	AssertNil(t, err)
 	return txt
 }
 
-func RunE(cmd *exec.Cmd) (string, error) {
+func RunE(cmd *exec.Cmd) (output string, exitCode int, err error) {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	output, err := cmd.Output()
+	stdout, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to execute command: %v, %s, %s, %s", cmd.Args, err, stderr.String(), output)
+		formattedErr := fmt.Errorf("failed to execute command: %v, %s, %s, %s", cmd.Args, err, stderr.String(), stdout)
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return "", exitError.ExitCode(), formattedErr
+		}
+
+		return "", -1, formattedErr
 	}
 
-	return string(output), nil
+	return string(stdout), 0, nil
 }
 
 func ComputeSHA256ForFile(t *testing.T, path string) string {

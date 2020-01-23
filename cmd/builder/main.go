@@ -23,6 +23,10 @@ var (
 )
 
 func init() {
+	if err := cmd.VerifyCompatibility(); err != nil {
+		cmd.Exit(err)
+	}
+
 	cmd.FlagBuildpacksDir(&buildpacksDir)
 	cmd.FlagGroupPath(&groupPath)
 	cmd.FlagPlanPath(&planPath)
