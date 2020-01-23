@@ -103,29 +103,20 @@ func (v *Version) Compare(o *Version) int {
 	return 0
 }
 
-// IsPlatformAPICompatible determines if the lifecycle's Platform API version is compatible with the platform's
-// Platform API version based on the spec.
-func IsPlatformAPICompatible(fromLifecycle, fromPlatform *Version) bool {
-	if fromLifecycle.Equal(fromPlatform) {
+// IsAPICompatible determines if the lifecycle's API version is compatible with another's API version.
+//
+// Example Usage Pseudocode:
+//
+//	IsAPICompatible(Platform API from Lifecycle, Platform API from Platform)
+//	IsAPICompatible(Buildpack API from Lifecycle, Buildpack API from Buildpack)
+//
+func IsAPICompatible(apiFromLifecycle, apiFromOther *Version) bool {
+	if apiFromLifecycle.Equal(apiFromOther) {
 		return true
 	}
 
-	if fromLifecycle.major != 0 {
-		return fromLifecycle.major == fromPlatform.major && fromLifecycle.minor >= fromPlatform.minor
-	}
-
-	return false
-}
-
-// IsBuildpackAPICompatible determines if the lifecycle's Buildpack API version is compatible with the buildpack's
-// Buildpack API version based on the spec.
-func IsBuildpackAPICompatible(fromLifecycle, fromBuildpack *Version) bool {
-	if fromLifecycle.Equal(fromBuildpack) {
-		return true
-	}
-
-	if fromLifecycle.major != 0 {
-		return fromLifecycle.major == fromBuildpack.major && fromLifecycle.minor >= fromBuildpack.minor
+	if apiFromLifecycle.major != 0 {
+		return apiFromLifecycle.major == apiFromOther.major && apiFromLifecycle.minor >= apiFromOther.minor
 	}
 
 	return false

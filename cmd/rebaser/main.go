@@ -28,6 +28,10 @@ var (
 )
 
 func init() {
+	if err := cmd.VerifyCompatibility(); err != nil {
+		cmd.Exit(err)
+	}
+
 	cmd.FlagRunImage(&runImageRef)
 	cmd.FlagUseDaemon(&useDaemon)
 	cmd.FlagUseCredHelpers(&useHelpers)

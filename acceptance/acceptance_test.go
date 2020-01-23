@@ -17,81 +17,51 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-type lifecycleCmd func(binary string, args ...string) *exec.Cmd
+var buildDir string
 
 func TestAcceptance(t *testing.T) {
-	buildDir, err := ioutil.TempDir("", "lifecycle-acceptance")
+	var err error
+	buildDir, err = ioutil.TempDir("", "lifecycle-acceptance")
 	h.AssertNil(t, err)
 	defer h.AssertNil(t, os.RemoveAll(buildDir))
 	buildBinaries(t, buildDir)
 
-	spec.Run(t, "acceptance", func(t *testing.T, when spec.G, it spec.S) {
-		testAcceptance(t, when, it, func(binary string, args ...string) *exec.Cmd {
-			return exec.Command(filepath.Join(buildDir, "lifecycle", binary), args...)
-		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "acceptance", testAcceptance, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testAcceptance(t *testing.T, when spec.G, it spec.S, lifecycleCmd lifecycleCmd) {
-	var tmpDir string
-
-	it.Before(func() {
-		var err error
-		tmpDir, err = ioutil.TempDir("", "acceptance-*")
-		h.AssertNil(t, err)
-	})
-
-	it.After(func() {
-		os.RemoveAll(tmpDir)
-	})
-
+func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 	when("All", func() {
-		when("CNB_PLATFORM_API", func() {
-			tmpWorkingDir := func(sourceDir string) string {
-				d, err := ioutil.TempDir(tmpDir, "")
-				h.AssertNil(t, err)
-				h.RecursiveCopy(t, sourceDir, d)
-				return d
+		var tmpDir string
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "acceptance-*")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+
+		when("CNB_PLATFORM_API is set and incompatible", func() {
+			for _, binary := range []string{
+				"analyzer",
+				"builder",
+				"detector",
+				"exporter",
+				"restorer",
+				"rebaser",
+			} {
+				binary := binary
+				it(binary+"/should fail with error message and exit code 11", func() {
+					cmd := lifecycleCmd(binary)
+					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")
+
+					_, exitCode, err := h.RunE(cmd)
+					h.AssertError(t, err, "the Lifecycle's Platform API version is 0.9 which is incompatible with Platform API version 0.8")
+					h.AssertEq(t, exitCode, 11)
+				})
 			}
-
-			when("is not set", func() {
-				it("should complete successfully", func() {
-					cmd := lifecycleCmd("analyzer", "some/image")
-					cmd.Dir = tmpWorkingDir(filepath.Join("testdata", "analyzer"))
-
-					h.Run(t, cmd)
-				})
-			})
-
-			when("is set and compatible", func() {
-				it("should complete successfully", func() {
-					cmd := lifecycleCmd("analyzer", "some/image")
-					cmd.Dir = tmpWorkingDir(filepath.Join("testdata", "analyzer"))
-					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.2")
-
-					h.Run(t, cmd)
-				})
-			})
-
-			when("is set and incompatible", func() {
-				for _, binary := range []string{
-					"analyzer",
-					"builder",
-					"detector",
-					"exporter",
-					"restorer",
-				} {
-					binary := binary
-					it(binary+"/should fail with error message and exit code 11", func() {
-						cmd := lifecycleCmd(binary)
-						cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=99.99")
-
-						_, exitCode, err := h.RunE(cmd)
-						h.AssertError(t, err, "the Lifecycle's Platform API version is 0.2 which is incompatible with Platform API version 99.99")
-						h.AssertEq(t, exitCode, 11)
-					})
-				}
-			})
 		})
 
 		when("version flag is set", func() {
@@ -129,6 +99,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, lifecycleCmd lifecycle
 	})
 }
 
+func lifecycleCmd(binary string, args ...string) *exec.Cmd {
+	return exec.Command(filepath.Join(buildDir, "lifecycle", binary), args...)
+}
+
 func parseCommand(command string) (binary string, args []string) {
 	parts := strings.Split(command, " ")
 	return parts[0], parts[1:]
@@ -137,7 +111,13 @@ func parseCommand(command string) (binary string, args []string) {
 func buildBinaries(t *testing.T, dir string) {
 	cmd := exec.Command("make", "build-"+runtime.GOOS)
 	cmd.Dir = ".."
-	cmd.Env = append(os.Environ(), "BUILD_DIR="+dir, "LIFECYCLE_VERSION=some-version", "SCM_COMMIT=asdf123")
+	cmd.Env = append(
+		os.Environ(),
+		"BUILD_DIR="+dir,
+		"PLATFORM_API=0.9",
+		"LIFECYCLE_VERSION=some-version",
+		"SCM_COMMIT=asdf123",
+	)
 
 	t.Log("Building binaries: ", cmd.Args)
 	if output, err := cmd.CombinedOutput(); err != nil {
