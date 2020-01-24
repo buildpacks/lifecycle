@@ -6,13 +6,26 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
 var (
 	printVersion bool
 	logLevel     string
+	env          *lifecycle.Env
 )
+
+func init() {
+	env = &lifecycle.Env{
+		LookupEnv: os.LookupEnv,
+		Getenv:    os.Getenv,
+		Setenv:    os.Setenv,
+		Unsetenv:  os.Unsetenv,
+		Environ:   os.Environ,
+		Map:       lifecycle.POSIXBuildEnv,
+	}
+}
 
 func main() {
 	// suppress output from libraries, lifecycle will not use standard logger
@@ -23,33 +36,39 @@ func main() {
 
 	phase := filepath.Base(os.Args[0])
 	switch phase {
+	case "make":
+		flags, err := parseMakeFlags()
+		if err != nil {
+			cmd.Exit(err)
+		}
+		cmd.Exit(doMake(flags))
 	case "detector":
 		flags := parseDetectFlags()
-		cmd.Exit(detect(flags))
+		cmd.Exit(detector(flags))
 	case "analyzer":
 		flags, err := parseAnalyzeFlags()
 		if err != nil {
 			cmd.Exit(err)
 		}
-		cmd.Exit(analyze(flags))
+		cmd.Exit(analyzer(flags))
 	case "restorer":
 		flags, err := parseRestoreFlags()
 		if err != nil {
 			cmd.Exit(err)
 		}
-		cmd.Exit(restore(flags))
+		cmd.Exit(restorer(flags))
 	case "builder":
 		flags, err := parseBuildFlags()
 		if err != nil {
 			cmd.Exit(err)
 		}
-		cmd.Exit(build(flags))
+		cmd.Exit(builder(flags))
 	case "exporter":
 		flags, err := parseExportFlags()
 		if err != nil {
 			cmd.Exit(err)
 		}
-		cmd.Exit(export(flags))
+		cmd.Exit(exporter(flags))
 	case "rebaser":
 		flags, err := parseRebaseFlags()
 		if err != nil {

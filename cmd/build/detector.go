@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -30,38 +29,10 @@ func parseDetectFlags() detectFlags {
 	return f
 }
 
-func detect(f detectFlags) error {
-	order, err := lifecycle.ReadOrder(f.orderPath)
+func detector(f detectFlags) error {
+	group, plan, err := detect(f.orderPath, f.platformDir, f.appDir, f.buildpacksDir)
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack order file")
-	}
-
-	env := &lifecycle.Env{
-		LookupEnv: os.LookupEnv,
-		Getenv:    os.Getenv,
-		Setenv:    os.Setenv,
-		Unsetenv:  os.Unsetenv,
-		Environ:   os.Environ,
-		Map:       lifecycle.POSIXBuildEnv,
-	}
-	fullEnv, err := env.WithPlatform(f.platformDir)
-	if err != nil {
-		return cmd.FailErr(err, "read full env")
-	}
-	group, plan, err := order.Detect(&lifecycle.DetectConfig{
-		FullEnv:       fullEnv,
-		ClearEnv:      env.List(),
-		AppDir:        f.appDir,
-		PlatformDir:   f.platformDir,
-		BuildpacksDir: f.buildpacksDir,
-		Logger:        cmd.Logger,
-	})
-	if err != nil {
-		if err == lifecycle.ErrFail {
-			cmd.Logger.Error("No buildpack groups passed detection.")
-			cmd.Logger.Error("Please check that you are running against the correct path.")
-		}
-		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
+		return err
 	}
 
 	if err := lifecycle.WriteTOML(f.groupPath, group); err != nil {
@@ -73,4 +44,32 @@ func detect(f detectFlags) error {
 	}
 
 	return nil
+}
+
+func detect(orderPath, platformDir, appDir, buildpacksDir string) (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
+	order, err := lifecycle.ReadOrder(orderPath)
+	if err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
+	}
+
+	fullEnv, err := env.WithPlatform(platformDir)
+	if err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read full env")
+	}
+	group, plan, err := order.Detect(&lifecycle.DetectConfig{
+		FullEnv:       fullEnv,
+		ClearEnv:      env.List(),
+		AppDir:        appDir,
+		PlatformDir:   platformDir,
+		BuildpacksDir: buildpacksDir,
+		Logger:        cmd.Logger,
+	})
+	if err != nil {
+		if err == lifecycle.ErrFail {
+			cmd.Logger.Error("No buildpack groups passed detection.")
+			cmd.Logger.Error("Please check that you are running against the correct path.")
+		}
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
+	}
+	return group, plan, nil
 }

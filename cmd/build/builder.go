@@ -39,7 +39,7 @@ func parseBuildFlags() (buildFlags, error) {
 	return f, nil
 }
 
-func build(f buildFlags) error {
+func builder(f buildFlags) error {
 	group, err := lifecycle.ReadGroup(f.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
@@ -50,20 +50,15 @@ func build(f buildFlags) error {
 		return cmd.FailErr(err, "parse detect plan")
 	}
 
-	env := &lifecycle.Env{
-		LookupEnv: os.LookupEnv,
-		Getenv:    os.Getenv,
-		Setenv:    os.Setenv,
-		Unsetenv:  os.Unsetenv,
-		Environ:   os.Environ,
-		Map:       lifecycle.POSIXBuildEnv,
-	}
+	return build(f.appDir, f.layersDir, f.platformDir, f.buildpacksDir, group, plan)
+}
 
+func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	builder := &lifecycle.Builder{
-		AppDir:        f.appDir,
-		LayersDir:     f.layersDir,
-		PlatformDir:   f.platformDir,
-		BuildpacksDir: f.buildpacksDir,
+		AppDir:        appDir,
+		LayersDir:     layersDir,
+		PlatformDir:   platformDir,
+		BuildpacksDir: buildpacksDir,
 		Env:           env,
 		Group:         group,
 		Plan:          plan,
@@ -76,7 +71,7 @@ func build(f buildFlags) error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(f.layersDir), md); err != nil {
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(layersDir), md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil

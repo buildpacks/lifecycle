@@ -38,23 +38,27 @@ func parseRestoreFlags() (restoreFlags, error) {
 	return f, nil
 }
 
-func restore(f restoreFlags) error {
+func restorer(f restoreFlags) error {
 	group, err := lifecycle.ReadGroup(f.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	restorer := &lifecycle.Restorer{
-		LayersDir:  f.layersDir,
-		Buildpacks: group.Group,
-		Logger:     cmd.Logger,
-		UID:        f.uid,
-		GID:        f.gid,
-	}
-
 	cacheStore, err := initCache(f.cacheImageTag, f.cacheDir)
 	if err != nil {
 		return err
+	}
+
+	return restore(f.layersDir, f.uid, f.gid, group, cacheStore)
+}
+
+func restore(layersDir string, uid, gid int, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
+	restorer := &lifecycle.Restorer{
+		LayersDir:  layersDir,
+		Buildpacks: group.Group,
+		Logger:     cmd.Logger,
+		UID:        uid,
+		GID:        gid,
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

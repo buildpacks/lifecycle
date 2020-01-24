@@ -52,7 +52,7 @@ func parseAnalyzeFlags() (analyzeFlags, error) {
 	return f, nil
 }
 
-func analyze(f analyzeFlags) error {
+func analyzer(f analyzeFlags) error {
 	if f.useHelpers {
 		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), f.imageName); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
@@ -64,33 +64,41 @@ func analyze(f analyzeFlags) error {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	analyzer := &lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  f.layersDir,
-		Logger:     cmd.Logger,
-		UID:        f.uid,
-		GID:        f.gid,
-		SkipLayers: f.skipLayers,
-	}
-
-	img, err := initImage(f.imageName, f.useDaemon)
-	if err != nil {
-		return cmd.FailErr(err, "access previous image")
-	}
-
 	cacheStore, err := initCache(f.cacheImageTag, f.cacheDir)
 	if err != nil {
 		return err
 	}
 
-	md, err := analyzer.Analyze(img, cacheStore)
+	analyzedMd, err := analyze(group, f.imageName, f.layersDir, f.uid, f.gid, cacheStore, f.skipLayers, f.useDaemon)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailed, "analyze")
+		return err
 	}
 
-	if err := lifecycle.WriteTOML(f.analyzedPath, md); err != nil {
+	if err := lifecycle.WriteTOML(f.analyzedPath, analyzedMd); err != nil {
 		return errors.Wrap(err, "write analyzed.toml")
 	}
 
 	return nil
+}
+
+func analyze(group lifecycle.BuildpackGroup, imageName, layersDir string, uid, gid int, cacheStore lifecycle.Cache, skipLayers, useDaemon bool) (lifecycle.AnalyzedMetadata, error) {
+	analyzer := &lifecycle.Analyzer{
+		Buildpacks: group.Group,
+		LayersDir:  layersDir,
+		Logger:     cmd.Logger,
+		UID:        uid,
+		GID:        gid,
+		SkipLayers: skipLayers,
+	}
+
+	img, err := initImage(imageName, useDaemon)
+	if err != nil {
+		return lifecycle.AnalyzedMetadata{}, cmd.FailErr(err, "access previous image")
+	}
+
+	analyzedMd, err := analyzer.Analyze(img, cacheStore)
+	if err != nil {
+		return lifecycle.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
+	}
+	return *analyzedMd, nil
 }

@@ -36,6 +36,7 @@ const (
 	EnvUseDaemon         = "CNB_USE_DAEMON"       // defaults to false
 	EnvUseHelpers        = "CNB_USE_CRED_HELPERS" // defaults to false
 	EnvRunImage          = "CNB_RUN_IMAGE"
+	EnvPreviousImage     = "CNB_PREVIOUS_IMAGE"
 	EnvCacheImage        = "CNB_CACHE_IMAGE"
 	EnvCacheDir          = "CNB_CACHE_DIR"
 	EnvLaunchCacheDir    = "CNB_LAUNCH_CACHE_DIR"
@@ -43,10 +44,22 @@ const (
 	EnvGID               = "CNB_GROUP_ID"
 	EnvRegistryAuth      = "CNB_REGISTRY_AUTH"
 	EnvSkipLayers        = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
+	EnvSkipRestore       = "CNB_SKIP_RESTORE"        // defaults to false
 	EnvProcessType       = "CNB_PROCESS_TYPE"
 	EnvProcessTypeLegacy = "PACK_PROCESS_TYPE" // deprecated
 	EnvLogLevel          = "CNB_LOG_LEVEL"
 )
+
+type StringSlice []string
+
+func (s *StringSlice) String() string {
+	return fmt.Sprintf("%+v", *s)
+}
+
+func (s *StringSlice) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
 
 func FlagAnalyzedPath(dir *string) {
 	flag.StringVar(dir, "analyzed", envOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")
@@ -101,7 +114,15 @@ func FlagPlatformDir(dir *string) {
 }
 
 func FlagRunImage(image *string) {
-	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
+	flag.StringVar(image, "run-image", os.Getenv(EnvRunImage), "reference to run image")
+}
+
+func FlagPreviousImage(image *string) {
+	flag.StringVar(image, "previous-image", os.Getenv(EnvPreviousImage), "reference to previous image")
+}
+
+func FlagTags(tags *StringSlice) {
+	flag.Var(tags, "tag", "additional tags")
 }
 
 func FlagStackPath(path *string) {
@@ -122,6 +143,10 @@ func FlagUseDaemon(use *bool) {
 
 func FlagSkipLayers(skip *bool) {
 	flag.BoolVar(skip, "skip-layers", boolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
+}
+
+func FlagSkipRestore(skip *bool) {
+	flag.BoolVar(skip, "skip-restore", boolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
 }
 
 func FlagVersion(version *bool) {

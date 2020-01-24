@@ -36,6 +36,7 @@ build-darwin:
 	ln -sf detector $(BUILD_DIR)/lifecycle/builder
 	ln -sf detector $(BUILD_DIR)/lifecycle/exporter
 	ln -sf detector $(BUILD_DIR)/lifecycle/rebaser
+	ln -sf detector $(BUILD_DIR)/lifecycle/make
 
 build-linux:
 	@echo "> Building for linux..."
@@ -47,6 +48,7 @@ build-linux:
 	ln -sf detector $(BUILD_DIR)/lifecycle/builder
 	ln -sf detector $(BUILD_DIR)/lifecycle/exporter
 	ln -sf detector $(BUILD_DIR)/lifecycle/rebaser
+	ln -sf detector $(BUILD_DIR)/lifecycle/make
 
 build-windows:
 	@echo "> Building for windows..."
@@ -58,6 +60,7 @@ build-windows:
 	ln -sf detector.exe $(BUILD_DIR)/lifecycle/builder.exe
 	ln -sf detector.exe $(BUILD_DIR)/lifecycle/exporter.exe
 	ln -sf detector.exe $(BUILD_DIR)/lifecycle/rebaser.exe
+	ln -sf detector.exe $(BUILD_DIR)/lifecycle/make.exe
 
 descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 descriptor:
