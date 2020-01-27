@@ -1,8 +1,6 @@
 package cache
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"math/rand"
@@ -89,7 +87,7 @@ func (c *VolumeCache) RetrieveMetadata() (lifecycle.CacheMetadata, error) {
 	return metadata, nil
 }
 
-func (c *VolumeCache) AddLayerFile(sha string, tarPath string) error {
+func (c *VolumeCache) AddLayerFile(tarPath string, sha string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -103,7 +101,7 @@ func (c *VolumeCache) AddLayerFile(sha string, tarPath string) error {
 	return nil
 }
 
-func (c *VolumeCache) AddLayer(rc io.ReadCloser) error {
+func (c *VolumeCache) AddLayer(rc io.ReadCloser, diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -114,18 +112,15 @@ func (c *VolumeCache) AddLayer(rc io.ReadCloser) error {
 		return errors.Wrapf(err, "create layer file in cache")
 	}
 
-	hasher := sha256.New()
-	mw := io.MultiWriter(hasher, fh)
-	if _, err := io.Copy(mw, rc); err != nil {
+	if _, err := io.Copy(fh, rc); err != nil {
 		fh.Close()
 		return errors.Wrap(err, "copying layer to tar file")
 	}
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 	if err := fh.Close(); err != nil {
-		return errors.Wrapf(err, "closing layer file (layer sha: %s)", sha)
+		return errors.Wrapf(err, "closing layer file (layer sha: %s)", diffID)
 	}
-	if err := os.Rename(tarFile, filepath.Join(c.stagingDir, "sha256:"+sha+".tar")); err != nil {
-		return errors.Wrapf(err, "renaming layer file (layer sha: %s)", sha)
+	if err := os.Rename(tarFile, filepath.Join(c.stagingDir, diffID+".tar")); err != nil {
+		return errors.Wrapf(err, "renaming layer file (layer sha: %s)", diffID)
 	}
 	return nil
 }

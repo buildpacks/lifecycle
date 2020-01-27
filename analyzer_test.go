@@ -27,9 +27,6 @@ func TestAnalyzer(t *testing.T) {
 	spec.Run(t, "Analyzer", testAnalyzer, spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -mock_names Image=GGCRImage -package testmock -destination testmock/image.go github.com/google/go-containerregistry/pkg/v1 Image
-//go:generate mockgen -package testmock -destination testmock/ref.go github.com/google/go-containerregistry/pkg/name Reference
-
 func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	var (
 		analyzer  *lifecycle.Analyzer

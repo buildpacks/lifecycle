@@ -127,7 +127,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 	when("#GetLayer", func() {
 		when("the layer exists in the cache", func() {
 			it.Before(func() {
-				h.AssertNil(t, volumeCache.AddLayerFile(layerSHA, layerPath))
+				h.AssertNil(t, volumeCache.AddLayerFile(layerPath, layerSHA))
 				h.AssertNil(t, volumeCache.Commit())
 			})
 

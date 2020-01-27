@@ -34,13 +34,16 @@ func (c *cachingImage) AddLayer(path string) error {
 	if _, err := io.Copy(hasher, f); err != nil {
 		return errors.Wrap(err, "hashing layer")
 	}
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	diffID := "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	return c.AddLayerWithDiffID(path, diffID)
+}
 
-	if err := c.cache.AddLayerFile("sha256:"+sha, path); err != nil {
+func (c *cachingImage) AddLayerWithDiffID(path string, diffID string) error {
+	if err := c.cache.AddLayerFile(path, diffID); err != nil {
 		return err
 	}
 
-	return c.Image.AddLayer(path)
+	return c.Image.AddLayerWithDiffID(path, diffID)
 }
 
 func (c *cachingImage) ReuseLayer(sha string) error {
@@ -57,7 +60,7 @@ func (c *cachingImage) ReuseLayer(sha string) error {
 		if err != nil {
 			return err
 		}
-		return c.Image.AddLayer(path)
+		return c.Image.AddLayerWithDiffID(path, sha)
 	}
 
 	if err := c.Image.ReuseLayer(sha); err != nil {
@@ -67,7 +70,7 @@ func (c *cachingImage) ReuseLayer(sha string) error {
 	if err != nil {
 		return err
 	}
-	return c.cache.AddLayer(rc)
+	return c.cache.AddLayer(rc, sha)
 }
 
 func (c *cachingImage) GetLayer(sha string) (io.ReadCloser, error) {

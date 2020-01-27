@@ -7,7 +7,7 @@ github.com/Microsoft/go-winio/pkg/guid
 github.com/apex/log
 github.com/apex/log/handlers/discard
 github.com/apex/log/handlers/memory
-# github.com/buildpacks/imgutil v0.0.0-20200115144305-2289fbc194a6
+# github.com/buildpacks/imgutil v0.0.0-20200203165119-4b0611f06e49
 github.com/buildpacks/imgutil
 github.com/buildpacks/imgutil/fakes
 github.com/buildpacks/imgutil/local

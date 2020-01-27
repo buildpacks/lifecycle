@@ -72,11 +72,11 @@ func (c *ImageCache) RetrieveMetadata() (lifecycle.CacheMetadata, error) {
 	return meta, nil
 }
 
-func (c *ImageCache) AddLayerFile(sha string, tarPath string) error {
+func (c *ImageCache) AddLayerFile(tarPath string, sha string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	return c.newImage.AddLayer(tarPath)
+	return c.newImage.AddLayerWithDiffID(tarPath, sha)
 }
 
 func (c *ImageCache) ReuseLayer(sha string) error {

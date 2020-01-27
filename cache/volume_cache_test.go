@@ -317,7 +317,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("add then commit", func() {
 					it("retrieve returns newly added layer", func() {
-						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
@@ -336,13 +336,13 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						h.AssertError(t, subject.AddLayerFile("some_sha", tarPath), "cache cannot be modified after commit")
+						h.AssertError(t, subject.AddLayerFile(tarPath, "some_sha"), "cache cannot be modified after commit")
 					})
 				})
 
 				when("add without commit", func() {
 					it("retrieve returns not found error", func() {
-						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
 
 						_, err := subject.RetrieveLayer("some_sha")
 						h.AssertError(t, err, "layer with SHA 'some_sha' not found")
@@ -354,11 +354,11 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						existingLayerTar, err := ioutil.TempFile("", "*.tar")
 						h.AssertNil(t, err)
 						h.AssertNil(t, ioutil.WriteFile(existingLayerTar.Name(), []byte("existing data"), 0666))
-						h.AssertNil(t, subject.AddLayerFile("some_sha", existingLayerTar.Name()))
+						h.AssertNil(t, subject.AddLayerFile(existingLayerTar.Name(), "some_sha"))
 					})
 
 					it("does nothing", func() {
-						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
@@ -392,7 +392,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("add then commit", func() {
 					it("retrieve returns newly added layer", func() {
-						h.AssertNil(t, subject.AddLayer(layerReader))
+						h.AssertNil(t, subject.AddLayer(layerReader, layerSha))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
@@ -411,13 +411,13 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						err := subject.Commit()
 						h.AssertNil(t, err)
 
-						h.AssertError(t, subject.AddLayer(layerReader), "cache cannot be modified after commit")
+						h.AssertError(t, subject.AddLayer(layerReader, layerSha), "cache cannot be modified after commit")
 					})
 				})
 
 				when("add without commit", func() {
 					it("retrieve returns not found error", func() {
-						h.AssertNil(t, subject.AddLayer(layerReader))
+						h.AssertNil(t, subject.AddLayer(layerReader, layerSha))
 
 						_, err := subject.RetrieveLayer(layerSha)
 						h.AssertError(t, err, fmt.Sprintf("layer with SHA '%s' not found", layerSha))
@@ -429,11 +429,11 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						existingLayerTar, err := ioutil.TempFile("", "*.tar")
 						h.AssertNil(t, err)
 						h.AssertNil(t, ioutil.WriteFile(existingLayerTar.Name(), layerData, 0666))
-						h.AssertNil(t, subject.AddLayerFile(layerSha, existingLayerTar.Name()))
+						h.AssertNil(t, subject.AddLayerFile(existingLayerTar.Name(), layerSha))
 					})
 
 					it("succeeds", func() {
-						h.AssertNil(t, subject.AddLayer(layerReader))
+						h.AssertNil(t, subject.AddLayer(layerReader, layerSha))
 
 						err := subject.Commit()
 						h.AssertNil(t, err)
@@ -495,7 +495,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						tarPath := filepath.Join(tmpDir, "some-layer.tar")
 						h.AssertNil(t, ioutil.WriteFile(tarPath, []byte("existing data"), 0666))
-						h.AssertNil(t, subject.AddLayerFile("some_sha", tarPath))
+						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
 					})
 
 					it("does nothing", func() {
