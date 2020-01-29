@@ -35,34 +35,36 @@ build-darwin:
 	@echo "> Building for macos..."
 	mkdir -p $(BUILD_DIR)/lifecycle
 	GOOS=darwin $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
-	GOOS=darwin $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/detector -a ./cmd/build
-	ln -sf detector $(BUILD_DIR)/lifecycle/analyzer
-	ln -sf detector $(BUILD_DIR)/lifecycle/restorer
-	ln -sf detector $(BUILD_DIR)/lifecycle/builder
-	ln -sf detector $(BUILD_DIR)/lifecycle/exporter
-	ln -sf detector $(BUILD_DIR)/lifecycle/rebaser
+	GOOS=darwin $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/lifecycle -a ./cmd/lifecycle
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/detector
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/analyzer
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/restorer
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/builder
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/exporter
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/rebaser
 
 build-linux:
 	@echo "> Building for linux..."
 	mkdir -p $(BUILD_DIR)/lifecycle
 	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
-	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/detector -a ./cmd/build
-	ln -sf detector $(BUILD_DIR)/lifecycle/analyzer
-	ln -sf detector $(BUILD_DIR)/lifecycle/restorer
-	ln -sf detector $(BUILD_DIR)/lifecycle/builder
-	ln -sf detector $(BUILD_DIR)/lifecycle/exporter
-	ln -sf detector $(BUILD_DIR)/lifecycle/rebaser
+	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/lifecycle -a ./cmd/lifecycle
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/detector
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/analyzer
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/restorer
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/builder
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/exporter
+	ln -sf lifecycle $(BUILD_DIR)/lifecycle/rebaser
 
 build-windows:
 	@echo "> Building for windows..."
 	mkdir -p $(BUILD_DIR)/lifecycle
 	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
-	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/detector.exe -a ./cmd/build
-	ln -sf detector.exe $(BUILD_DIR)/lifecycle/analyzer.exe
-	ln -sf detector.exe $(BUILD_DIR)/lifecycle/restorer.exe
-	ln -sf detector.exe $(BUILD_DIR)/lifecycle/builder.exe
-	ln -sf detector.exe $(BUILD_DIR)/lifecycle/exporter.exe
-	ln -sf detector.exe $(BUILD_DIR)/lifecycle/rebaser.exe
+	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/lifecycle.exe -a ./cmd/build
+	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/analyzer.exe
+	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/restorer.exe
+	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/builder.exe
+	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/exporter.exe
+	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/rebaser.exe
 
 descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 descriptor:

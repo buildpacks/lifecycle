@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -11,12 +14,48 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
-func commonFlags() {
-	if printVersion {
-		cmd.ExitWithVersion()
+func main() {
+	switch filepath.Base(os.Args[0]) {
+	case "detector":
+		cmd.Run(&detectCmd{})
+	case "analyzer":
+		cmd.Run(&analyzeCmd{})
+	case "restorer":
+		cmd.Run(&restoreCmd{})
+	case "builder":
+		cmd.Run(&buildCmd{})
+	case "exporter":
+		cmd.Run(&exportCmd{})
+	case "rebaser":
+		cmd.Run(&rebaseCmd{})
+	default:
+		if len(os.Args) < 2 {
+			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+		}
+		if os.Args[1] == "-version" {
+			cmd.ExitWithVersion()
+		}
+		subcommand()
 	}
-	if err := cmd.SetLogLevel(logLevel); err != nil {
-		cmd.Exit(err)
+}
+
+func subcommand() {
+	phase := filepath.Base(os.Args[1])
+	switch phase {
+	case "detect":
+		cmd.Run(&detectCmd{})
+	case "analyze":
+		cmd.Run(&analyzeCmd{})
+	case "restore":
+		cmd.Run(&restoreCmd{})
+	case "build":
+		cmd.Run(&buildCmd{})
+	case "export":
+		cmd.Run(&exportCmd{})
+	case "rebase":
+		cmd.Run(&rebaseCmd{})
+	default:
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}
 }
 

@@ -21,7 +21,7 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 )
 
-type exportFlags struct {
+type exportCmd struct {
 	imageNames     []string
 	runImageRef    string
 	layersDir      string
@@ -39,44 +39,46 @@ type exportFlags struct {
 	cacheDir       string
 }
 
-func parseExportFlags() (exportFlags, error) {
-	f := exportFlags{}
-	cmd.FlagRunImage(&f.runImageRef)
-	cmd.FlagLayersDir(&f.layersDir)
-	cmd.FlagAppDir(&f.appDir)
-	cmd.FlagGroupPath(&f.groupPath)
-	cmd.FlagAnalyzedPath(&f.analyzedPath)
-	cmd.FlagStackPath(&f.stackPath)
-	cmd.FlagLaunchCacheDir(&f.launchCacheDir)
-	cmd.FlagUseDaemon(&f.useDaemon)
-	cmd.FlagUseCredHelpers(&f.useHelpers)
-	cmd.FlagUID(&f.uid)
-	cmd.FlagGID(&f.gid)
-	cmd.FlagLauncherPath(&f.launcherPath)
-	cmd.FlagCacheImage(&f.cacheImageTag)
-	cmd.FlagCacheDir(&f.cacheDir)
+func (e *exportCmd) Flags() {
+	cmd.FlagRunImage(&e.runImageRef)
+	cmd.FlagLayersDir(&e.layersDir)
+	cmd.FlagAppDir(&e.appDir)
+	cmd.FlagGroupPath(&e.groupPath)
+	cmd.FlagAnalyzedPath(&e.analyzedPath)
+	cmd.FlagStackPath(&e.stackPath)
+	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
+	cmd.FlagUseDaemon(&e.useDaemon)
+	cmd.FlagUseCredHelpers(&e.useHelpers)
+	cmd.FlagUID(&e.uid)
+	cmd.FlagGID(&e.gid)
+	cmd.FlagLauncherPath(&e.launcherPath)
+	cmd.FlagCacheImage(&e.cacheImageTag)
+	cmd.FlagCacheDir(&e.cacheDir)
 
 	flag.Parse()
-	commonFlags()
-	f.imageNames = flag.Args()
 
-	if len(f.imageNames) == 0 {
-		return exportFlags{}, cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+	if e.launchCacheDir != "" && !e.useDaemon {
+		cmd.Logger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
+		e.launchCacheDir = ""
 	}
 
-	if f.launchCacheDir != "" && !f.useDaemon {
-		return exportFlags{}, cmd.FailErrCode(errors.New("launch cache can only be used when exporting to a Docker daemon"), cmd.CodeInvalidArgs, "parse arguments")
-	}
-
-	if f.cacheImageTag == "" && f.cacheDir == "" {
+	if e.cacheImageTag == "" && e.cacheDir == "" {
 		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
-
-	return f, nil
 }
 
-func export(f exportFlags) error {
-	group, err := lifecycle.ReadGroup(f.groupPath)
+func (e *exportCmd) Args() error {
+	e.imageNames = flag.Args()
+
+	if len(e.imageNames) == 0 {
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+
+	return nil
+}
+
+func (e *exportCmd) Exec() error {
+	group, err := lifecycle.ReadGroup(e.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
@@ -90,40 +92,40 @@ func export(f exportFlags) error {
 	exporter := &lifecycle.Exporter{
 		Buildpacks:   group.Group,
 		Logger:       cmd.Logger,
-		UID:          f.uid,
-		GID:          f.gid,
+		UID:          e.uid,
+		GID:          e.gid,
 		ArtifactsDir: artifactsDir,
 	}
 
-	analyzedMD, err := parseOptionalAnalyzedMD(cmd.Logger, f.analyzedPath)
+	analyzedMD, err := parseOptionalAnalyzedMD(cmd.Logger, e.analyzedPath)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
 
 	var registry string
-	if registry, err = image.EnsureSingleRegistry(f.imageNames...); err != nil {
+	if registry, err = image.EnsureSingleRegistry(e.imageNames...); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	var stackMD lifecycle.StackMetadata
-	_, err = toml.DecodeFile(f.stackPath, &stackMD)
+	_, err = toml.DecodeFile(e.stackPath, &stackMD)
 	if err != nil {
-		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", f.stackPath)
+		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	if f.runImageRef == "" {
+	if e.runImageRef == "" {
 		if stackMD.RunImage.Image == "" {
 			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
 		}
 
-		f.runImageRef, err = stackMD.BestRunImageMirror(registry)
+		e.runImageRef, err = stackMD.BestRunImageMirror(registry)
 		if err != nil {
 			return err
 		}
 	}
 
-	if f.useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), f.imageNames[0], f.runImageRef); err != nil {
+	if e.useHelpers {
+		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), e.imageNames[0], e.runImageRef); err != nil {
 			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
@@ -131,7 +133,7 @@ func export(f exportFlags) error {
 	var appImage imgutil.Image
 	var runImageID imgutil.Identifier
 
-	if f.useDaemon {
+	if e.useDaemon {
 		dockerClient, err := cmd.DockerClient()
 		if err != nil {
 			return err
@@ -142,9 +144,9 @@ func export(f exportFlags) error {
 		}
 
 		appImage, err = local.NewImage(
-			f.imageNames[0],
+			e.imageNames[0],
 			dockerClient,
-			local.FromBaseImage(f.runImageRef),
+			local.FromBaseImage(e.runImageRef),
 			local.WithPreviousImage(analyzedMD.Image.Reference),
 		)
 		if err != nil {
@@ -156,8 +158,8 @@ func export(f exportFlags) error {
 			return cmd.FailErr(err, "get run image ID")
 		}
 
-		if f.launchCacheDir != "" {
-			volumeCache, err := cache.NewVolumeCache(f.launchCacheDir)
+		if e.launchCacheDir != "" {
+			volumeCache, err := cache.NewVolumeCache(e.launchCacheDir)
 			if err != nil {
 				return cmd.FailErr(err, "create launch cache")
 			}
@@ -165,7 +167,7 @@ func export(f exportFlags) error {
 		}
 	} else {
 		var opts = []remote.ImageOption{
-			remote.FromBaseImage(f.runImageRef),
+			remote.FromBaseImage(e.runImageRef),
 		}
 
 		if analyzedMD.Image != nil {
@@ -182,7 +184,7 @@ func export(f exportFlags) error {
 		}
 
 		appImage, err = remote.NewImage(
-			f.imageNames[0],
+			e.imageNames[0],
 			auth.EnvKeychain(cmd.EnvRegistryAuth),
 			opts...,
 		)
@@ -190,7 +192,7 @@ func export(f exportFlags) error {
 			return cmd.FailErr(err, "new app image")
 		}
 
-		runImage, err := remote.NewImage(f.runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(f.runImageRef))
+		runImage, err := remote.NewImage(e.runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(e.runImageRef))
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}
@@ -201,7 +203,7 @@ func export(f exportFlags) error {
 	}
 
 	launcherConfig := lifecycle.LauncherConfig{
-		Path: f.launcherPath,
+		Path: e.launcherPath,
 		Metadata: lifecycle.LauncherMetadata{
 			Version: cmd.Version,
 			Source: lifecycle.SourceMetadata{
@@ -213,19 +215,19 @@ func export(f exportFlags) error {
 		},
 	}
 
-	if err := exporter.Export(f.layersDir, f.appDir, appImage, runImageID.String(), analyzedMD.Metadata, f.imageNames[1:], launcherConfig, stackMD); err != nil {
+	if err := exporter.Export(e.layersDir, e.appDir, appImage, runImageID.String(), analyzedMD.Metadata, e.imageNames[1:], launcherConfig, stackMD); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}
 		return cmd.FailErr(err, "export")
 	}
 
-	cacheStore, err := initCache(f.cacheImageTag, f.cacheDir)
+	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir)
 	if err != nil {
 		return err
 	}
 	// Failing to export cache should not be an error if the app image export was successful.
-	if cacheErr := exporter.Cache(f.layersDir, cacheStore); cacheErr != nil {
+	if cacheErr := exporter.Cache(e.layersDir, cacheStore); cacheErr != nil {
 		cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
 	}
 	return nil

@@ -130,6 +130,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					command:     "rebaser",
 					args:        []string{"-daemon", "-version"},
 				},
+				{
+					description: "lifecycle -version",
+					command:     "lifecycle",
+					args:        []string{"-version"},
+				},
 			} {
 				tc := tc
 				when(tc.description, func() {

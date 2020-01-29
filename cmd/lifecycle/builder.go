@@ -11,7 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
-type buildFlags struct {
+type buildCmd struct {
 	buildpacksDir string
 	groupPath     string
 	planPath      string
@@ -20,33 +20,32 @@ type buildFlags struct {
 	platformDir   string
 }
 
-func parseBuildFlags() (buildFlags, error) {
-	f := buildFlags{}
-	cmd.FlagBuildpacksDir(&f.buildpacksDir)
-	cmd.FlagGroupPath(&f.groupPath)
-	cmd.FlagPlanPath(&f.planPath)
-	cmd.FlagLayersDir(&f.layersDir)
-	cmd.FlagAppDir(&f.appDir)
-	cmd.FlagPlatformDir(&f.platformDir)
+func (b *buildCmd) Flags() {
+	cmd.FlagBuildpacksDir(&b.buildpacksDir)
+	cmd.FlagGroupPath(&b.groupPath)
+	cmd.FlagPlanPath(&b.planPath)
+	cmd.FlagLayersDir(&b.layersDir)
+	cmd.FlagAppDir(&b.appDir)
+	cmd.FlagPlatformDir(&b.platformDir)
 
 	flag.Parse()
-	commonFlags()
-
-	if flag.NArg() != 0 {
-		return buildFlags{}, cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments")
-	}
-
-	return f, nil
 }
 
-func build(f buildFlags) error {
-	group, err := lifecycle.ReadGroup(f.groupPath)
+func (b *buildCmd) Args() error {
+	if flag.NArg() != 0 {
+		return cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments")
+	}
+	return nil
+}
+
+func (b *buildCmd) Exec() error {
+	group, err := lifecycle.ReadGroup(b.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
 	var plan lifecycle.BuildPlan
-	if _, err := toml.DecodeFile(f.planPath, &plan); err != nil {
+	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
 		return cmd.FailErr(err, "parse detect plan")
 	}
 
@@ -60,10 +59,10 @@ func build(f buildFlags) error {
 	}
 
 	builder := &lifecycle.Builder{
-		AppDir:        f.appDir,
-		LayersDir:     f.layersDir,
-		PlatformDir:   f.platformDir,
-		BuildpacksDir: f.buildpacksDir,
+		AppDir:        b.appDir,
+		LayersDir:     b.layersDir,
+		PlatformDir:   b.platformDir,
+		BuildpacksDir: b.buildpacksDir,
 		Env:           env,
 		Group:         group,
 		Plan:          plan,
@@ -76,7 +75,7 @@ func build(f buildFlags) error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(f.layersDir), md); err != nil {
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(b.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil
