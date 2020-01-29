@@ -45,6 +45,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				"exporter",
 				"restorer",
 				"rebaser",
+				"lifecycle",
 			} {
 				binary := binary
 				it(binary+"/should fail with error message and exit code 11", func() {

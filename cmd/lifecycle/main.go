@@ -15,6 +15,10 @@ import (
 )
 
 func main() {
+	if err := cmd.VerifyCompatibility(); err != nil {
+		cmd.Exit(err)
+	}
+
 	switch filepath.Base(os.Args[0]) {
 	case "detector":
 		cmd.Run(&detectCmd{})
