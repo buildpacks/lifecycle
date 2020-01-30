@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"errors"
 	"log"
 	"os"
 
@@ -27,13 +27,11 @@ func (b *buildCmd) Flags() {
 	cmd.FlagLayersDir(&b.layersDir)
 	cmd.FlagAppDir(&b.appDir)
 	cmd.FlagPlatformDir(&b.platformDir)
-
-	flag.Parse()
 }
 
-func (b *buildCmd) Args() error {
-	if flag.NArg() != 0 {
-		return cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments")
+func (b *buildCmd) Args(nargs int, args []string) error {
+	if nargs != 0 {
+		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	return nil
 }

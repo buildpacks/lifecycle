@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -54,9 +53,14 @@ func (e *exportCmd) Flags() {
 	cmd.FlagLauncherPath(&e.launcherPath)
 	cmd.FlagCacheImage(&e.cacheImageTag)
 	cmd.FlagCacheDir(&e.cacheDir)
+}
 
-	flag.Parse()
+func (e *exportCmd) Args(nargs int, args []string) error {
+	if nargs == 0 {
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+	}
 
+	e.imageNames = args
 	if e.launchCacheDir != "" && !e.useDaemon {
 		cmd.Logger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
 		e.launchCacheDir = ""
@@ -64,14 +68,6 @@ func (e *exportCmd) Flags() {
 
 	if e.cacheImageTag == "" && e.cacheDir == "" {
 		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
-	}
-}
-
-func (e *exportCmd) Args() error {
-	e.imageNames = flag.Args()
-
-	if len(e.imageNames) == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	return nil

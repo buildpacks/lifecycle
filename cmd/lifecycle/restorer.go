@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -24,16 +23,14 @@ func (r *restoreCmd) Flags() {
 	cmd.FlagLayersDir(&r.layersDir)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
-	flag.Parse()
-
-	if r.cacheImageTag == "" && r.cacheDir == "" {
-		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
-	}
 }
 
-func (r *restoreCmd) Args() error {
-	if flag.NArg() > 0 {
+func (r *restoreCmd) Args(nargs int, args []string) error {
+	if nargs > 0 {
 		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+	if r.cacheImageTag == "" && r.cacheDir == "" {
+		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 	return nil
 }

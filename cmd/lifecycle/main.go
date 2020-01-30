@@ -21,17 +21,17 @@ func main() {
 
 	switch filepath.Base(os.Args[0]) {
 	case "detector":
-		cmd.Run(&detectCmd{})
+		cmd.Run(&detectCmd{}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{})
+		cmd.Run(&analyzeCmd{}, false)
 	case "restorer":
-		cmd.Run(&restoreCmd{})
+		cmd.Run(&restoreCmd{}, false)
 	case "builder":
-		cmd.Run(&buildCmd{})
+		cmd.Run(&buildCmd{}, false)
 	case "exporter":
-		cmd.Run(&exportCmd{})
+		cmd.Run(&exportCmd{}, false)
 	case "rebaser":
-		cmd.Run(&rebaseCmd{})
+		cmd.Run(&rebaseCmd{}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
@@ -47,17 +47,17 @@ func subcommand() {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cmd.Run(&detectCmd{})
+		cmd.Run(&detectCmd{}, true)
 	case "analyze":
-		cmd.Run(&analyzeCmd{})
+		cmd.Run(&analyzeCmd{}, true)
 	case "restore":
-		cmd.Run(&restoreCmd{})
+		cmd.Run(&restoreCmd{}, true)
 	case "build":
-		cmd.Run(&buildCmd{})
+		cmd.Run(&buildCmd{}, true)
 	case "export":
-		cmd.Run(&exportCmd{})
+		cmd.Run(&exportCmd{}, true)
 	case "rebase":
-		cmd.Run(&rebaseCmd{})
+		cmd.Run(&rebaseCmd{}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}

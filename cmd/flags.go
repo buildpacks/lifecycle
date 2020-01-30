@@ -47,88 +47,94 @@ const (
 	EnvLogLevel          = "CNB_LOG_LEVEL"
 )
 
+var flagSet *flag.FlagSet
+
+func init() {
+	flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
+}
+
 func FlagAnalyzedPath(dir *string) {
-	flag.StringVar(dir, "analyzed", envOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")
+	flagSet.StringVar(dir, "analyzed", envOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")
 }
 
 func FlagAppDir(dir *string) {
-	flag.StringVar(dir, "app", envOrDefault(EnvAppDir, DefaultAppDir), "path to app directory")
+	flagSet.StringVar(dir, "app", envOrDefault(EnvAppDir, DefaultAppDir), "path to app directory")
 }
 
 func FlagBuildpacksDir(dir *string) {
-	flag.StringVar(dir, "buildpacks", envOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
+	flagSet.StringVar(dir, "buildpacks", envOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
 func FlagCacheDir(dir *string) {
-	flag.StringVar(dir, "cache-dir", os.Getenv(EnvCacheDir), "path to cache directory")
+	flagSet.StringVar(dir, "cache-dir", os.Getenv(EnvCacheDir), "path to cache directory")
 }
 
 func FlagCacheImage(image *string) {
-	flag.StringVar(image, "cache-image", os.Getenv(EnvCacheImage), "cache image tag name")
+	flagSet.StringVar(image, "cache-image", os.Getenv(EnvCacheImage), "cache image tag name")
 }
 
 func FlagGID(gid *int) {
-	flag.IntVar(gid, "gid", intEnv(EnvGID), "GID of user's group in the stack's build and run images")
+	flagSet.IntVar(gid, "gid", intEnv(EnvGID), "GID of user's group in the stack's build and run images")
 }
 
 func FlagGroupPath(path *string) {
-	flag.StringVar(path, "group", envOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
+	flagSet.StringVar(path, "group", envOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
 }
 
 func FlagLaunchCacheDir(dir *string) {
-	flag.StringVar(dir, "launch-cache", os.Getenv(EnvLaunchCacheDir), "path to launch cache directory")
+	flagSet.StringVar(dir, "launch-cache", os.Getenv(EnvLaunchCacheDir), "path to launch cache directory")
 }
 
 func FlagLauncherPath(path *string) {
-	flag.StringVar(path, "launcher", DefaultLauncherPath, "path to launcher binary")
+	flagSet.StringVar(path, "launcher", DefaultLauncherPath, "path to launcher binary")
 }
 
 func FlagLayersDir(dir *string) {
-	flag.StringVar(dir, "layers", envOrDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
+	flagSet.StringVar(dir, "layers", envOrDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
 }
 
 func FlagOrderPath(path *string) {
-	flag.StringVar(path, "order", envOrDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
+	flagSet.StringVar(path, "order", envOrDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
 }
 
 func FlagPlanPath(path *string) {
-	flag.StringVar(path, "plan", envOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
+	flagSet.StringVar(path, "plan", envOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
 }
 
 func FlagPlatformDir(dir *string) {
-	flag.StringVar(dir, "platform", envOrDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
+	flagSet.StringVar(dir, "platform", envOrDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
 }
 
 func FlagRunImage(image *string) {
-	flag.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
+	flagSet.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
 }
 
 func FlagStackPath(path *string) {
-	flag.StringVar(path, "stack", envOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
+	flagSet.StringVar(path, "stack", envOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
 }
 
 func FlagUID(uid *int) {
-	flag.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
+	flagSet.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
 }
 
 func FlagUseCredHelpers(use *bool) {
-	flag.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
+	flagSet.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
 }
 
 func FlagUseDaemon(use *bool) {
-	flag.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
+	flagSet.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
 }
 
 func FlagSkipLayers(skip *bool) {
-	flag.BoolVar(skip, "skip-layers", boolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
+	flagSet.BoolVar(skip, "skip-layers", boolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
 }
 
 func FlagVersion(version *bool) {
-	flag.BoolVar(version, "version", false, "show version")
+	flagSet.BoolVar(version, "version", false, "show version")
 }
 
 func FlagLogLevel(level *string) {
-	flag.StringVar(level, "log-level", envOrDefault(EnvLogLevel, DefaultLogLevel), "logging level")
+	flagSet.StringVar(level, "log-level", envOrDefault(EnvLogLevel, DefaultLogLevel), "logging level")
 }
 
 func intEnv(k string) int {

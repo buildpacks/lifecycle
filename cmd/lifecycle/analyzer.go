@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -37,17 +36,16 @@ func (a *analyzeCmd) Flags() {
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
-	flag.Parse()
 }
 
-func (a *analyzeCmd) Args() error {
-	if flag.NArg() > 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d Args expected 1", flag.NArg()), cmd.CodeInvalidArgs, "parse arguments")
+func (a *analyzeCmd) Args(nargs int, args []string) error {
+	if nargs != 1 {
+		return cmd.FailErrCode(fmt.Errorf("received %d Args expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 	}
-	if flag.Arg(0) == "" {
+	if args[0] == "" {
 		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
-	a.imageName = flag.Arg(0)
+	a.imageName = args[0]
 
 	return nil
 }

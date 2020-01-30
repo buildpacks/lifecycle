@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"errors"
 	"os"
 
 	"github.com/buildpacks/lifecycle"
@@ -24,10 +24,12 @@ func (d *detectCmd) Flags() {
 	cmd.FlagOrderPath(&d.orderPath)
 	cmd.FlagGroupPath(&d.groupPath)
 	cmd.FlagPlanPath(&d.planPath)
-	flag.Parse()
 }
 
-func (d *detectCmd) Args() error {
+func (d *detectCmd) Args(nargs int, args []string) error {
+	if nargs != 0 {
+		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
+	}
 	return nil
 }
 

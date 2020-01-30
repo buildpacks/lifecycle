@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"os"
 	"path/filepath"
 
@@ -24,15 +23,13 @@ func (r *rebaseCmd) Flags() {
 	cmd.FlagRunImage(&r.runImageRef)
 	cmd.FlagUseDaemon(&r.useDaemon)
 	cmd.FlagUseCredHelpers(&r.useHelpers)
-
-	flag.Parse()
 }
 
-func (r *rebaseCmd) Args() error {
-	r.imageNames = flag.Args()
-	if len(r.imageNames) == 0 {
+func (r *rebaseCmd) Args(nargs int, args []string) error {
+	if nargs == 0 {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
+	r.imageNames = args
 	return nil
 }
 
