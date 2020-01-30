@@ -1,8 +1,7 @@
 package main
 
 import (
-	"flag"
-	"io/ioutil"
+	"errors"
 	"log"
 	"os"
 
@@ -12,54 +11,39 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
-var (
+type buildCmd struct {
 	buildpacksDir string
 	groupPath     string
 	planPath      string
 	layersDir     string
 	appDir        string
 	platformDir   string
-	printVersion  bool
-)
-
-func init() {
-	if err := cmd.VerifyCompatibility(); err != nil {
-		cmd.Exit(err)
-	}
-
-	cmd.FlagBuildpacksDir(&buildpacksDir)
-	cmd.FlagGroupPath(&groupPath)
-	cmd.FlagPlanPath(&planPath)
-	cmd.FlagLayersDir(&layersDir)
-	cmd.FlagAppDir(&appDir)
-	cmd.FlagPlatformDir(&platformDir)
-	cmd.FlagVersion(&printVersion)
 }
 
-func main() {
-	// suppress output from libraries, lifecycle will not use standard logger
-	log.SetOutput(ioutil.Discard)
-
-	flag.Parse()
-
-	if printVersion {
-		cmd.ExitWithVersion()
-	}
-
-	if flag.NArg() != 0 {
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
-	}
-	cmd.Exit(build())
+func (b *buildCmd) Init() {
+	cmd.FlagBuildpacksDir(&b.buildpacksDir)
+	cmd.FlagGroupPath(&b.groupPath)
+	cmd.FlagPlanPath(&b.planPath)
+	cmd.FlagLayersDir(&b.layersDir)
+	cmd.FlagAppDir(&b.appDir)
+	cmd.FlagPlatformDir(&b.platformDir)
 }
 
-func build() error {
-	group, err := lifecycle.ReadGroup(groupPath)
+func (b *buildCmd) Args(nargs int, args []string) error {
+	if nargs != 0 {
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+	return nil
+}
+
+func (b *buildCmd) Exec() error {
+	group, err := lifecycle.ReadGroup(b.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
 	var plan lifecycle.BuildPlan
-	if _, err := toml.DecodeFile(planPath, &plan); err != nil {
+	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
 		return cmd.FailErr(err, "parse detect plan")
 	}
 
@@ -73,10 +57,10 @@ func build() error {
 	}
 
 	builder := &lifecycle.Builder{
-		AppDir:        appDir,
-		LayersDir:     layersDir,
-		PlatformDir:   platformDir,
-		BuildpacksDir: buildpacksDir,
+		AppDir:        b.appDir,
+		LayersDir:     b.layersDir,
+		PlatformDir:   b.platformDir,
+		BuildpacksDir: b.buildpacksDir,
 		Env:           env,
 		Group:         group,
 		Plan:          plan,
@@ -89,7 +73,7 @@ func build() error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(layersDir), md); err != nil {
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(b.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil

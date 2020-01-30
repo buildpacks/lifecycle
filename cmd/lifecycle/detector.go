@@ -1,60 +1,40 @@
 package main
 
 import (
-	"flag"
-	"io/ioutil"
-	"log"
+	"errors"
 	"os"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
-var (
+type detectCmd struct {
 	buildpacksDir string
 	appDir        string
 	platformDir   string
 	orderPath     string
 	groupPath     string
 	planPath      string
-	printVersion  bool
-	logLevel      string
-)
-
-func init() {
-	if err := cmd.VerifyCompatibility(); err != nil {
-		cmd.Exit(err)
-	}
-
-	cmd.FlagBuildpacksDir(&buildpacksDir)
-	cmd.FlagAppDir(&appDir)
-	cmd.FlagPlatformDir(&platformDir)
-	cmd.FlagOrderPath(&orderPath)
-	cmd.FlagGroupPath(&groupPath)
-	cmd.FlagPlanPath(&planPath)
-	cmd.FlagVersion(&printVersion)
-	cmd.FlagLogLevel(&logLevel)
 }
 
-func main() {
-	// suppress output from libraries, lifecycle will not use standard logger
-	log.SetOutput(ioutil.Discard)
-
-	flag.Parse()
-
-	if printVersion {
-		cmd.ExitWithVersion()
-	}
-
-	if err := cmd.SetLogLevel(logLevel); err != nil {
-		cmd.Exit(err)
-	}
-
-	cmd.Exit(detect())
+func (d *detectCmd) Init() {
+	cmd.FlagBuildpacksDir(&d.buildpacksDir)
+	cmd.FlagAppDir(&d.appDir)
+	cmd.FlagPlatformDir(&d.platformDir)
+	cmd.FlagOrderPath(&d.orderPath)
+	cmd.FlagGroupPath(&d.groupPath)
+	cmd.FlagPlanPath(&d.planPath)
 }
 
-func detect() error {
-	order, err := lifecycle.ReadOrder(orderPath)
+func (d *detectCmd) Args(nargs int, args []string) error {
+	if nargs != 0 {
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+	return nil
+}
+
+func (d *detectCmd) Exec() error {
+	order, err := lifecycle.ReadOrder(d.orderPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack order file")
 	}
@@ -67,16 +47,16 @@ func detect() error {
 		Environ:   os.Environ,
 		Map:       lifecycle.POSIXBuildEnv,
 	}
-	fullEnv, err := env.WithPlatform(platformDir)
+	fullEnv, err := env.WithPlatform(d.platformDir)
 	if err != nil {
 		return cmd.FailErr(err, "read full env")
 	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
 		FullEnv:       fullEnv,
 		ClearEnv:      env.List(),
-		AppDir:        appDir,
-		PlatformDir:   platformDir,
-		BuildpacksDir: buildpacksDir,
+		AppDir:        d.appDir,
+		PlatformDir:   d.platformDir,
+		BuildpacksDir: d.buildpacksDir,
 		Logger:        cmd.Logger,
 	})
 	if err != nil {
@@ -87,13 +67,12 @@ func detect() error {
 		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
 	}
 
-	if err := lifecycle.WriteTOML(groupPath, group); err != nil {
+	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
 
-	if err := lifecycle.WriteTOML(planPath, plan); err != nil {
+	if err := lifecycle.WriteTOML(d.planPath, plan); err != nil {
 		return cmd.FailErr(err, "write detect plan")
 	}
-
 	return nil
 }
