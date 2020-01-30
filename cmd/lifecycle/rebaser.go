@@ -19,7 +19,7 @@ type rebaseCmd struct {
 	useHelpers  bool
 }
 
-func (r *rebaseCmd) Flags() {
+func (r *rebaseCmd) Init() {
 	cmd.FlagRunImage(&r.runImageRef)
 	cmd.FlagUseDaemon(&r.useDaemon)
 	cmd.FlagUseCredHelpers(&r.useHelpers)

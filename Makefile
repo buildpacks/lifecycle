@@ -125,6 +125,6 @@ clean:
 
 package: descriptor
 	@echo "> Packaging lifecycle..."
-	tar czf ./out/$(ARCHIVE_NAME).tgz -C out lifecycle.toml lifecycle
+	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(BUILD_DIR) lifecycle.toml lifecycle
 
 .PHONY: verify-jq

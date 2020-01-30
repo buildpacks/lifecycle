@@ -17,7 +17,7 @@ type detectCmd struct {
 	planPath      string
 }
 
-func (d *detectCmd) Flags() {
+func (d *detectCmd) Init() {
 	cmd.FlagBuildpacksDir(&d.buildpacksDir)
 	cmd.FlagAppDir(&d.appDir)
 	cmd.FlagPlatformDir(&d.platformDir)
@@ -28,7 +28,7 @@ func (d *detectCmd) Flags() {
 
 func (d *detectCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	return nil
 }

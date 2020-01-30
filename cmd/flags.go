@@ -47,11 +47,7 @@ const (
 	EnvLogLevel          = "CNB_LOG_LEVEL"
 )
 
-var flagSet *flag.FlagSet
-
-func init() {
-	flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
-}
+var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
 
 func FlagAnalyzedPath(dir *string) {
 	flagSet.StringVar(dir, "analyzed", envOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")

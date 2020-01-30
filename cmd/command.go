@@ -7,7 +7,7 @@ import (
 )
 
 type Command interface {
-	Flags()
+	Init()
 	Args(nargs int, args []string) error
 	Exec() error
 }
@@ -21,7 +21,7 @@ func Run(c Command, asSubcommand bool) {
 	log.SetOutput(ioutil.Discard)
 	FlagVersion(&printVersion)
 	FlagLogLevel(&logLevel)
-	c.Flags()
+	c.Init()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
 			//flagSet exists on error, we shouldn't get here

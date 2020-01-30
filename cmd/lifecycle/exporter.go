@@ -38,7 +38,7 @@ type exportCmd struct {
 	cacheDir       string
 }
 
-func (e *exportCmd) Flags() {
+func (e *exportCmd) Init() {
 	cmd.FlagRunImage(&e.runImageRef)
 	cmd.FlagLayersDir(&e.layersDir)
 	cmd.FlagAppDir(&e.appDir)

@@ -25,7 +25,7 @@ type analyzeCmd struct {
 	gid           int
 }
 
-func (a *analyzeCmd) Flags() {
+func (a *analyzeCmd) Init() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheDir(&a.cacheDir)
 	cmd.FlagCacheImage(&a.cacheImageTag)
@@ -40,7 +40,7 @@ func (a *analyzeCmd) Flags() {
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d Args expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	if args[0] == "" {
 		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")

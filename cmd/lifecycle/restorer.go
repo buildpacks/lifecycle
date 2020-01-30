@@ -16,7 +16,7 @@ type restoreCmd struct {
 	gid           int
 }
 
-func (r *restoreCmd) Flags() {
+func (r *restoreCmd) Init() {
 	cmd.FlagCacheDir(&r.cacheDir)
 	cmd.FlagCacheImage(&r.cacheImageTag)
 	cmd.FlagGroupPath(&r.groupPath)

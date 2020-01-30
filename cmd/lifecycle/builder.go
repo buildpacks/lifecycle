@@ -20,7 +20,7 @@ type buildCmd struct {
 	platformDir   string
 }
 
-func (b *buildCmd) Flags() {
+func (b *buildCmd) Init() {
 	cmd.FlagBuildpacksDir(&b.buildpacksDir)
 	cmd.FlagGroupPath(&b.groupPath)
 	cmd.FlagPlanPath(&b.planPath)
@@ -31,7 +31,7 @@ func (b *buildCmd) Flags() {
 
 func (b *buildCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	return nil
 }
