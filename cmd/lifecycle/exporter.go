@@ -135,15 +135,19 @@ func (e *exportCmd) Exec() error {
 			return err
 		}
 
+		var opts = []local.ImageOption{
+			local.FromBaseImage(e.runImageRef),
+		}
+
 		if analyzedMD.Image != nil {
-			cmd.Logger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+			cmd.Logger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 		}
 
 		appImage, err = local.NewImage(
 			e.imageNames[0],
 			dockerClient,
-			local.FromBaseImage(e.runImageRef),
-			local.WithPreviousImage(analyzedMD.Image.Reference),
+			opts...,
 		)
 		if err != nil {
 			return cmd.FailErr(err, " image")
