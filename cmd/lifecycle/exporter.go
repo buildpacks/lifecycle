@@ -227,8 +227,10 @@ func (e *exportCmd) Exec() error {
 		return err
 	}
 	// Failing to export cache should not be an error if the app image export was successful.
-	if cacheErr := exporter.Cache(e.layersDir, cacheStore); cacheErr != nil {
-		cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
+	if cacheStore != nil {
+		if cacheErr := exporter.Cache(e.layersDir, cacheStore); cacheErr != nil {
+			cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
+		}
 	}
 	return nil
 }
