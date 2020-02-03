@@ -47,25 +47,27 @@ func (b *buildCmd) Exec() error {
 		return cmd.FailErr(err, "parse detect plan")
 	}
 
-	env := &lifecycle.Env{
-		LookupEnv: os.LookupEnv,
-		Getenv:    os.Getenv,
-		Setenv:    os.Setenv,
-		Unsetenv:  os.Unsetenv,
-		Environ:   os.Environ,
-		Map:       lifecycle.POSIXBuildEnv,
-	}
+	return build(b.appDir, b.layersDir, b.platformDir, b.buildpacksDir, group, plan)
+}
 
+func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	builder := &lifecycle.Builder{
-		AppDir:        b.appDir,
-		LayersDir:     b.layersDir,
-		PlatformDir:   b.platformDir,
-		BuildpacksDir: b.buildpacksDir,
-		Env:           env,
-		Group:         group,
-		Plan:          plan,
-		Out:           log.New(os.Stdout, "", 0),
-		Err:           log.New(os.Stderr, "", 0),
+		AppDir:        appDir,
+		LayersDir:     layersDir,
+		PlatformDir:   platformDir,
+		BuildpacksDir: buildpacksDir,
+		Env: &lifecycle.Env{
+			LookupEnv: os.LookupEnv,
+			Getenv:    os.Getenv,
+			Setenv:    os.Setenv,
+			Unsetenv:  os.Unsetenv,
+			Environ:   os.Environ,
+			Map:       lifecycle.POSIXBuildEnv,
+		},
+		Group: group,
+		Plan:  plan,
+		Out:   log.New(os.Stdout, "", 0),
+		Err:   log.New(os.Stderr, "", 0),
 	}
 
 	md, err := builder.Build()
@@ -73,7 +75,7 @@ func (b *buildCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(b.layersDir), md); err != nil {
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(layersDir), md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil

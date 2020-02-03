@@ -34,9 +34,26 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 }
 
 func (d *detectCmd) Exec() error {
-	order, err := lifecycle.ReadOrder(d.orderPath)
+	group, plan, err := detect(d.orderPath, d.platformDir, d.appDir, d.buildpacksDir)
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack order file")
+		return err
+	}
+
+	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
+		return cmd.FailErr(err, "write buildpack group")
+	}
+
+	if err := lifecycle.WriteTOML(d.planPath, plan); err != nil {
+		return cmd.FailErr(err, "write detect plan")
+	}
+
+	return nil
+}
+
+func detect(orderPath, platformDir, appDir, buildpacksDir string) (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
+	order, err := lifecycle.ReadOrder(orderPath)
+	if err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
 	env := &lifecycle.Env{
@@ -47,16 +64,16 @@ func (d *detectCmd) Exec() error {
 		Environ:   os.Environ,
 		Map:       lifecycle.POSIXBuildEnv,
 	}
-	fullEnv, err := env.WithPlatform(d.platformDir)
+	fullEnv, err := env.WithPlatform(platformDir)
 	if err != nil {
-		return cmd.FailErr(err, "read full env")
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read full env")
 	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
 		FullEnv:       fullEnv,
 		ClearEnv:      env.List(),
-		AppDir:        d.appDir,
-		PlatformDir:   d.platformDir,
-		BuildpacksDir: d.buildpacksDir,
+		AppDir:        appDir,
+		PlatformDir:   platformDir,
+		BuildpacksDir: buildpacksDir,
 		Logger:        cmd.Logger,
 	})
 	if err != nil {
@@ -64,15 +81,8 @@ func (d *detectCmd) Exec() error {
 			cmd.Logger.Error("No buildpack groups passed detection.")
 			cmd.Logger.Error("Please check that you are running against the correct path.")
 		}
-		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
 	}
 
-	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
-		return cmd.FailErr(err, "write buildpack group")
-	}
-
-	if err := lifecycle.WriteTOML(d.planPath, plan); err != nil {
-		return cmd.FailErr(err, "write detect plan")
-	}
-	return nil
+	return group, plan, nil
 }

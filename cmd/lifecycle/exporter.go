@@ -39,7 +39,7 @@ type exportCmd struct {
 }
 
 func (e *exportCmd) Init() {
-	cmd.FlagRunImage(&e.runImageRef)
+	cmd.DeprecatedFlagRunImage(&e.runImageRef)
 	cmd.FlagLayersDir(&e.layersDir)
 	cmd.FlagAppDir(&e.appDir)
 	cmd.FlagGroupPath(&e.groupPath)
@@ -80,20 +80,6 @@ func (e *exportCmd) Exec() error {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
-	if err != nil {
-		return cmd.FailErr(err, "create temp directory")
-	}
-	defer os.RemoveAll(artifactsDir)
-
-	exporter := &lifecycle.Exporter{
-		Buildpacks:   group.Group,
-		Logger:       cmd.Logger,
-		UID:          e.uid,
-		GID:          e.gid,
-		ArtifactsDir: artifactsDir,
-	}
-
 	analyzedMD, err := parseOptionalAnalyzedMD(cmd.Logger, e.analyzedPath)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
@@ -104,54 +90,64 @@ func (e *exportCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	var stackMD lifecycle.StackMetadata
-	_, err = toml.DecodeFile(e.stackPath, &stackMD)
+	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir)
 	if err != nil {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
+	stackMD, runImageRef, err := resolveStack(e.stackPath, e.runImageRef, registry)
+	if err != nil {
+		return err
+	}
+
+	return export(group, stackMD, e.imageNames[0], e.launchCacheDir, e.appDir, e.layersDir, e.launcherPath, e.projectMetadataPath, registry, analyzedMD, cacheStore, e.useDaemon, e.uid, e.gid, runImageRef, e.processType)
+}
+
+func export(group lifecycle.BuildpackGroup, stackMD lifecycle.StackMetadata, imageName, launchCacheDir, appDir, layersDir, launcherPath, projectMetadataPath, registry string, analyzedMD lifecycle.AnalyzedMetadata, cacheStore lifecycle.Cache, useDaemon bool, uid, gid int, runImageRef, processType string) error {
+	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
+	if err != nil {
+		return cmd.FailErr(err, "create temp directory")
+	}
+	defer os.RemoveAll(artifactsDir)
+
 	var projectMD lifecycle.ProjectMetadata
-	_, err = toml.DecodeFile(e.projectMetadataPath, &projectMD)
+	_, err = toml.DecodeFile(projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
-		cmd.Logger.Infof("no project metadata found at path '%s', project metadata will not be exported\n", e.projectMetadataPath)
+		cmd.Logger.Infof("no project metadata found at path '%s', project metadata will not be exported\n", projectMetadataPath)
 	}
 
-	if e.runImageRef == "" {
-		if stackMD.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
-		}
-
-		e.runImageRef, err = stackMD.BestRunImageMirror(registry)
-		if err != nil {
-			return err
-		}
+	exporter := &lifecycle.Exporter{
+		Buildpacks:   group.Group,
+		Logger:       cmd.Logger,
+		UID:          uid,
+		GID:          gid,
+		ArtifactsDir: artifactsDir,
 	}
 
 	var appImage imgutil.Image
 	var runImageID imgutil.Identifier
-
-	if e.useDaemon {
+	if useDaemon {
 		dockerClient, err := cmd.DockerClient()
 		if err != nil {
 			return err
 		}
 
 		var opts = []local.ImageOption{
-			local.FromBaseImage(e.runImageRef),
+			local.FromBaseImage(runImageRef),
 		}
 
 		if analyzedMD.Image != nil {
-			cmd.Logger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+			cmd.Logger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
 			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 		}
 
 		appImage, err = local.NewImage(
-			e.imageNames[0],
+			imageName,
 			dockerClient,
-			opts...,
+			local.FromBaseImage(runImageRef),
 		)
 		if err != nil {
 			return cmd.FailErr(err, " image")
@@ -162,8 +158,8 @@ func (e *exportCmd) Exec() error {
 			return cmd.FailErr(err, "get run image ID")
 		}
 
-		if e.launchCacheDir != "" {
-			volumeCache, err := cache.NewVolumeCache(e.launchCacheDir)
+		if launchCacheDir != "" {
+			volumeCache, err := cache.NewVolumeCache(launchCacheDir)
 			if err != nil {
 				return cmd.FailErr(err, "create launch cache")
 			}
@@ -171,7 +167,7 @@ func (e *exportCmd) Exec() error {
 		}
 	} else {
 		var opts = []remote.ImageOption{
-			remote.FromBaseImage(e.runImageRef),
+			remote.FromBaseImage(runImageRef),
 		}
 
 		if analyzedMD.Image != nil {
@@ -188,7 +184,7 @@ func (e *exportCmd) Exec() error {
 		}
 
 		appImage, err = remote.NewImage(
-			e.imageNames[0],
+			imageName,
 			auth.EnvKeychain(cmd.EnvRegistryAuth),
 			opts...,
 		)
@@ -196,7 +192,7 @@ func (e *exportCmd) Exec() error {
 			return cmd.FailErr(err, "new app image")
 		}
 
-		runImage, err := remote.NewImage(e.runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(e.runImageRef))
+		runImage, err := remote.NewImage(runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
 		if err != nil {
 			return cmd.FailErr(err, "access run image")
 		}
@@ -206,8 +202,34 @@ func (e *exportCmd) Exec() error {
 		}
 	}
 
-	launcherConfig := lifecycle.LauncherConfig{
-		Path: e.launcherPath,
+	if err := exporter.Export(lifecycle.ExportOptions{
+		LayersDir:          layersDir,
+		AppDir:             appDir,
+		WorkingImage:       appImage,
+		RunImageRef:        runImageID.String(),
+		OrigMetadata:       analyzedMD.Metadata,
+		LauncherConfig:     launcherConfig(launcherPath),
+		Stack:              stackMD,
+		Project:            projectMD,
+		DefaultProcessType: processType,
+	}); err != nil {
+		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
+			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
+		}
+		return cmd.FailErr(err, "export")
+	}
+
+	if cacheStore != nil {
+		if cacheErr := exporter.Cache(layersDir, cacheStore); cacheErr != nil {
+			cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
+		}
+	}
+	return nil
+}
+
+func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
+	return lifecycle.LauncherConfig{
+		Path: launcherPath,
 		Metadata: lifecycle.LauncherMetadata{
 			Version: cmd.Version,
 			Source: lifecycle.SourceMetadata{
@@ -218,36 +240,6 @@ func (e *exportCmd) Exec() error {
 			},
 		},
 	}
-
-	if err := exporter.Export(lifecycle.ExportOptions{
-		LayersDir:          e.layersDir,
-		AppDir:             e.appDir,
-		WorkingImage:       appImage,
-		RunImageRef:        runImageID.String(),
-		OrigMetadata:       analyzedMD.Metadata,
-		AdditionalNames:    e.imageNames,
-		LauncherConfig:     launcherConfig,
-		Stack:              stackMD,
-		Project:            projectMD,
-		DefaultProcessType: e.processType,
-	}); err != nil {
-		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
-			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
-		}
-		return cmd.FailErr(err, "export")
-	}
-
-	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir)
-	if err != nil {
-		return err
-	}
-	// Failing to export cache should not be an error if the app image export was successful.
-	if cacheStore != nil {
-		if cacheErr := exporter.Cache(e.layersDir, cacheStore); cacheErr != nil {
-			cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
-		}
-	}
-	return nil
 }
 
 func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (lifecycle.AnalyzedMetadata, error) {
@@ -264,4 +256,23 @@ func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (lifecycle.An
 	}
 
 	return analyzedMD, nil
+}
+
+func resolveStack(stackPath, runImageRef, registry string) (lifecycle.StackMetadata, string, error) {
+	var stackMD lifecycle.StackMetadata
+	_, err := toml.DecodeFile(stackPath, &stackMD)
+	if err != nil {
+		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
+	}
+	if runImageRef == "" {
+		if stackMD.RunImage.Image == "" {
+			return lifecycle.StackMetadata{}, "", cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
+		}
+
+		runImageRef, err = stackMD.BestRunImageMirror(registry)
+		if err != nil {
+			return lifecycle.StackMetadata{}, "", err
+		}
+	}
+	return stackMD, runImageRef, nil
 }

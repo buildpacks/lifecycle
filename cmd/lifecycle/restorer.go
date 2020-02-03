@@ -41,17 +41,21 @@ func (r *restoreCmd) Exec() error {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 
-	restorer := &lifecycle.Restorer{
-		LayersDir:  r.layersDir,
-		Buildpacks: group.Group,
-		Logger:     cmd.Logger,
-		UID:        r.uid,
-		GID:        r.gid,
-	}
-
 	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir)
 	if err != nil {
 		return err
+	}
+
+	return restore(r.layersDir, r.uid, r.gid, group, cacheStore)
+}
+
+func restore(layersDir string, uid, gid int, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
+	restorer := &lifecycle.Restorer{
+		LayersDir:  layersDir,
+		Buildpacks: group.Group,
+		Logger:     cmd.Logger,
+		UID:        uid,
+		GID:        gid,
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

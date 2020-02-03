@@ -16,7 +16,7 @@ type rebaseCmd struct {
 }
 
 func (r *rebaseCmd) Init() {
-	cmd.FlagRunImage(&r.runImageRef)
+	cmd.DeprecatedFlagRunImage(&r.runImageRef)
 	cmd.FlagUseDaemon(&r.useDaemon)
 }
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -35,6 +36,7 @@ const (
 	EnvPlanPath            = "CNB_PLAN_PATH"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 	EnvRunImage            = "CNB_RUN_IMAGE"
+	EnvPreviousImage       = "CNB_PREVIOUS_IMAGE"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvCacheDir            = "CNB_CACHE_DIR"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
@@ -42,6 +44,7 @@ const (
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvRegistryAuth        = "CNB_REGISTRY_AUTH"
 	EnvSkipLayers          = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
+	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
 	EnvProcessType         = "CNB_PROCESS_TYPE"
 	EnvProcessTypeLegacy   = "PACK_PROCESS_TYPE" // deprecated
 	EnvLogLevel            = "CNB_LOG_LEVEL"
@@ -102,8 +105,20 @@ func FlagPlatformDir(dir *string) {
 	flagSet.StringVar(dir, "platform", envOrDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
 }
 
-func FlagRunImage(image *string) {
+func DeprecatedFlagRunImage(image *string) {
 	flagSet.StringVar(image, "image", os.Getenv(EnvRunImage), "reference to run image")
+}
+
+func FlagRunImage(image *string) {
+	flagSet.StringVar(image, "run-image", os.Getenv(EnvRunImage), "reference to run image")
+}
+
+func FlagPreviousImage(image *string) {
+	flagSet.StringVar(image, "previous-image", os.Getenv(EnvPreviousImage), "reference to previous image")
+}
+
+func FlagTags(tags *StringSlice) {
+	flagSet.Var(tags, "tag", "additional tags")
 }
 
 func FlagStackPath(path *string) {
@@ -122,6 +137,10 @@ func FlagSkipLayers(skip *bool) {
 	flagSet.BoolVar(skip, "skip-layers", boolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
 }
 
+func FlagSkipRestore(skip *bool) {
+	flag.BoolVar(skip, "skip-restore", boolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
+}
+
 func FlagVersion(version *bool) {
 	flagSet.BoolVar(version, "version", false, "show version")
 }
@@ -136,6 +155,17 @@ func FlagProjectMetadataPath(projectMetadataPath *string) {
 
 func FlagProcessType(processType *string) {
 	flagSet.StringVar(processType, "process-type", os.Getenv(EnvProcessType), "default process type")
+}
+
+type StringSlice []string
+
+func (s *StringSlice) String() string {
+	return fmt.Sprintf("%+v", *s)
+}
+
+func (s *StringSlice) Set(value string) error {
+	*s = append(*s, value)
+	return nil
 }
 
 func intEnv(k string) int {
