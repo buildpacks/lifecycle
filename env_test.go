@@ -185,6 +185,26 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#List", func() {
+		it("scrubs blacklisted keys", func() {
+			result = map[string]string{
+				"VAR_A": "val-1",
+				"VAR_B": "val-b",
+				"VAR_C": "val-c",
+				"VAR_D": "val-d",
+			}
+			env.Blacklist = []string{"VAR_B", "VAR_D"}
+			out := env.List()
+			sort.Strings(out)
+			if s := cmp.Diff(out, []string{
+				"VAR_A=val-1",
+				"VAR_C=val-c",
+			}); s != "" {
+				t.Fatalf("Unexpected env:\n%s\n", s)
+			}
+		})
+	})
+
 	when("#WithPlatform", func() {
 		it("should apply platform env vars as filename=file-contents", func() {
 			mkdir(t, filepath.Join(tmpDir, "env", "some-dir"))
@@ -220,6 +240,27 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				"VAR_OVERRIDE":    "value-override-orig",
 				"PATH":            "value-path-orig",
 				"LD_LIBRARY_PATH": "value-ld-library-path-orig1:value-ld-library-path-orig2",
+			}); s != "" {
+				t.Fatalf("Unexpected env:\n%s\n", s)
+			}
+		})
+
+		it("scrubs blacklisted keys", func() {
+			result = map[string]string{
+				"VAR_A": "val-1",
+				"VAR_B": "val-b",
+				"VAR_C": "val-c",
+				"VAR_D": "val-d",
+			}
+			env.Blacklist = []string{"VAR_B", "VAR_D"}
+			out, err := env.WithPlatform(tmpDir)
+			if err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			sort.Strings(out)
+			if s := cmp.Diff(out, []string{
+				"VAR_A=val-1",
+				"VAR_C=val-c",
 			}); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}

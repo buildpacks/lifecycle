@@ -57,6 +57,7 @@ func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
 		Env: &lifecycle.Env{
+			Blacklist: []string{cmd.EnvRegistryAuth},
 			LookupEnv: os.LookupEnv,
 			Getenv:    os.Getenv,
 			Setenv:    os.Setenv,

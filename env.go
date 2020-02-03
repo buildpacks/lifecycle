@@ -14,6 +14,7 @@ type Env struct {
 	Unsetenv  func(key string) error
 	Environ   func() []string
 	Map       map[string][]string
+	Blacklist []string
 }
 
 func (p *Env) AddRootDir(baseDir string) error {
@@ -97,7 +98,24 @@ func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
 }
 
 func (p *Env) List() []string {
-	return p.Environ()
+	var list []string
+	for _, e := range p.Environ() {
+		parts := strings.Split(e, "=")
+		if p.isBlacklisted(parts[0]){
+			continue
+		}
+		list = append(list, e)
+	}
+	return list
+}
+
+func (p *Env) isBlacklisted(key string) bool {
+	for _, k := range p.Blacklist {
+		if key == k {
+			return true
+		}
+	}
+	return false
 }
 
 func prefix(s string, prefix ...byte) string {

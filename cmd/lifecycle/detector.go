@@ -57,6 +57,7 @@ func detect(orderPath, platformDir, appDir, buildpacksDir string) (lifecycle.Bui
 	}
 
 	env := &lifecycle.Env{
+		Blacklist: []string{cmd.EnvRegistryAuth},
 		LookupEnv: os.LookupEnv,
 		Getenv:    os.Getenv,
 		Setenv:    os.Setenv,
