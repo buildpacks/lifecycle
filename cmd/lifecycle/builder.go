@@ -47,28 +47,31 @@ func (b *buildCmd) Exec() error {
 		return cmd.FailErr(err, "parse detect plan")
 	}
 
-	return build(b.appDir, b.layersDir, b.platformDir, b.buildpacksDir, group, plan)
+	return build(
+		b.appDir,
+		b.layersDir,
+		b.platformDir,
+		b.buildpacksDir,
+		group,
+		plan,
+		os.Getuid(),
+		os.Getgid(),
+	)
 }
 
-func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, uid, gid int) error {
 	builder := &lifecycle.Builder{
 		AppDir:        appDir,
 		LayersDir:     layersDir,
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
-		Env: &lifecycle.Env{
-			Blacklist: []string{cmd.EnvRegistryAuth},
-			LookupEnv: os.LookupEnv,
-			Getenv:    os.Getenv,
-			Setenv:    os.Setenv,
-			Unsetenv:  os.Unsetenv,
-			Environ:   os.Environ,
-			Map:       lifecycle.POSIXBuildEnv,
-		},
-		Group: group,
-		Plan:  plan,
-		Out:   log.New(os.Stdout, "", 0),
-		Err:   log.New(os.Stderr, "", 0),
+		Env:           env(),
+		Group:         group,
+		Plan:          plan,
+		Out:           log.New(os.Stdout, "", 0),
+		Err:           log.New(os.Stderr, "", 0),
+		UID:           uid,
+		GID:           gid,
 	}
 
 	md, err := builder.Build()

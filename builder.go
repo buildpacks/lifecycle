@@ -7,8 +7,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"syscall"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 )
 
 type Builder struct {
@@ -20,6 +22,7 @@ type Builder struct {
 	Group         BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
+	UID, GID      int
 }
 
 type BuildEnv interface {
@@ -89,6 +92,9 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
 			return nil, err
 		}
+		if err := os.Chown(bpLayersDir, b.UID, b.GID); err != nil {
+			return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", b.UID, b.GID)
+		}
 
 		if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
 			return nil, err
@@ -97,10 +103,19 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
 			return nil, err
 		}
+		if err := recursiveChown(planDir, b.UID, b.GID); err != nil {
+			return nil, errors.Wrapf(err, "chowning plan dir to '%d/%d'", b.UID, b.GID)
+		}
 		cmd := exec.Command(filepath.Join(bpInfo.Path, "bin", "build"), bpLayersDir, platformDir, bpPlanPath)
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out.Writer()
 		cmd.Stderr = b.Err.Writer()
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Credential: &syscall.Credential{
+				Uid:         uint32(b.UID),
+				Gid:         uint32(b.GID),
+			},
+		}
 		if bpInfo.Buildpack.ClearEnv {
 			cmd.Env = b.Env.List()
 		} else {

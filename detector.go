@@ -76,6 +76,8 @@ type DetectConfig struct {
 	BuildpacksDir string
 	Logger        Logger
 	runs          *sync.Map
+	UID           int
+	GID           int
 }
 
 func (bp Buildpack) lookup(buildpacksDir string) (*buildpackTOML, error) {
@@ -235,8 +237,14 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 		return detectRun{Code: -1, Err: err}
 	}
 	defer os.RemoveAll(planDir)
+	if err := os.Chown(planDir, c.UID, c.GID); err != nil {
+		return detectRun{Code: -1, Err: err}
+	}
 	planPath := filepath.Join(planDir, "plan.toml")
 	if err := ioutil.WriteFile(planPath, nil, 0777); err != nil {
+		return detectRun{Code: -1, Err: err}
+	}
+	if err := os.Chown(planPath, c.UID, c.GID); err != nil {
 		return detectRun{Code: -1, Err: err}
 	}
 	out := &bytes.Buffer{}
@@ -245,6 +253,12 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Env = c.FullEnv
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Credential: &syscall.Credential{
+			Uid:         uint32(c.UID),
+			Gid:         uint32(c.GID),
+		},
+	}
 	if bp.Buildpack.ClearEnv {
 		cmd.Env = c.ClearEnv
 	}

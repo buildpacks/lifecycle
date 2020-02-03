@@ -9,24 +9,23 @@ import (
 )
 
 type createCmd struct {
-	appDir             string
-	buildpacksDir      string
-	cacheDir           string
-	cacheImageTag      string
-	gid                int
-	imageName          string
-	launchCacheDir     string
-	launcherPath       string
-	layersDir          string
-	orderPath          string
-	platformDir        string
-	previousImage      string
-	runImageRef        string
-	skipRestore        bool
-	stackPath          string
-	tags               cmd.StringSlice
-	uid                int
-	useDaemon          bool
+	appDir         string
+	buildpacksDir  string
+	cacheDir       string
+	cacheImageTag  string
+	imageName      string
+	launchCacheDir string
+	launcherPath   string
+	layersDir      string
+	orderPath      string
+	platformDir    string
+	previousImage  string
+	runImageRef    string
+	skipRestore    bool
+	stackPath      string
+	tags           cmd.StringSlice
+	uid, gid       int
+	useDaemon      bool
 	projectMetdataPath string
 	processType        string
 }
@@ -73,7 +72,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 }
 
 func (c *createCmd) Exec() error {
-	group, plan, err := detect(c.orderPath, c.platformDir, c.appDir, c.buildpacksDir)
+	group, plan, err := detect(c.orderPath, c.platformDir, c.appDir, c.buildpacksDir, c.uid, c.gid)
 	if err != nil {
 		return err
 	}
@@ -94,7 +93,7 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
-	if err := build(c.appDir, c.layersDir, c.platformDir, c.buildpacksDir, group, plan); err != nil {
+	if err := build(c.appDir, c.layersDir, c.platformDir, c.buildpacksDir, group, plan, c.uid, c.gid); err != nil {
 		return err
 	}
 

@@ -34,7 +34,14 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 }
 
 func (d *detectCmd) Exec() error {
-	group, plan, err := detect(d.orderPath, d.platformDir, d.appDir, d.buildpacksDir)
+	group, plan, err := detect(
+		d.orderPath,
+		d.platformDir,
+		d.appDir,
+		d.buildpacksDir,
+		os.Getuid(),
+		os.Getgid(),
+	)
 	if err != nil {
 		return err
 	}
@@ -50,21 +57,13 @@ func (d *detectCmd) Exec() error {
 	return nil
 }
 
-func detect(orderPath, platformDir, appDir, buildpacksDir string) (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
+func detect(orderPath, platformDir, appDir, buildpacksDir string, uid, gid int) (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
 	order, err := lifecycle.ReadOrder(orderPath)
 	if err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
-	env := &lifecycle.Env{
-		Blacklist: []string{cmd.EnvRegistryAuth},
-		LookupEnv: os.LookupEnv,
-		Getenv:    os.Getenv,
-		Setenv:    os.Setenv,
-		Unsetenv:  os.Unsetenv,
-		Environ:   os.Environ,
-		Map:       lifecycle.POSIXBuildEnv,
-	}
+	env := env()
 	fullEnv, err := env.WithPlatform(platformDir)
 	if err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read full env")
@@ -76,6 +75,8 @@ func detect(orderPath, platformDir, appDir, buildpacksDir string) (lifecycle.Bui
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
 		Logger:        cmd.Logger,
+		UID:           uid,
+		GID:           gid,
 	})
 	if err != nil {
 		if err == lifecycle.ErrFail {
@@ -86,4 +87,16 @@ func detect(orderPath, platformDir, appDir, buildpacksDir string) (lifecycle.Bui
 	}
 
 	return group, plan, nil
+}
+
+func env() *lifecycle.Env {
+	return &lifecycle.Env{
+		Blacklist: []string{cmd.EnvRegistryAuth},
+		LookupEnv: os.LookupEnv,
+		Getenv:    os.Getenv,
+		Setenv:    os.Setenv,
+		Unsetenv:  os.Unsetenv,
+		Environ:   os.Environ,
+		Map:       lifecycle.POSIXBuildEnv,
+	}
 }
