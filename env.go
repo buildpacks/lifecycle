@@ -101,7 +101,7 @@ func (p *Env) List() []string {
 	var list []string
 	for _, e := range p.Environ() {
 		parts := strings.Split(e, "=")
-		if p.isBlacklisted(parts[0]){
+		if p.isBlacklisted(parts[0]) {
 			continue
 		}
 		list = append(list, e)

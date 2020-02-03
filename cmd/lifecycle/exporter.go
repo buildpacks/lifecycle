@@ -85,25 +85,40 @@ func (e *exportCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
 
-	var registry string
-	if registry, err = image.EnsureSingleRegistry(e.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
-	}
-
 	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir)
 	if err != nil {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	stackMD, runImageRef, err := resolveStack(e.stackPath, e.runImageRef, registry)
+	return export(group, e.stackPath, e.imageNames, e.launchCacheDir, e.appDir, e.layersDir, e.launcherPath, e.projectMetadataPath, e.runImageRef, analyzedMD, cacheStore, e.useDaemon, e.uid, e.gid, e.processType)
+}
+
+func export(
+	group lifecycle.BuildpackGroup,
+	stackPath string,
+	imageNames []string,
+	launchCacheDir string,
+	appDir string,
+	layersDir string,
+	launcherPath string,
+	projectMetadataPath string,
+	runImageRef string,
+	analyzedMD lifecycle.AnalyzedMetadata,
+	cacheStore lifecycle.Cache,
+	useDaemon bool,
+	uid, gid int,
+	processType string,
+) error {
+	registry, err := image.EnsureSingleRegistry(imageNames...)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
+	}
+
+	stackMD, runImageRef, err := resolveStack(stackPath, runImageRef, registry)
 	if err != nil {
 		return err
 	}
 
-	return export(group, stackMD, e.imageNames[0], e.launchCacheDir, e.appDir, e.layersDir, e.launcherPath, e.projectMetadataPath, registry, analyzedMD, cacheStore, e.useDaemon, e.uid, e.gid, runImageRef, e.processType)
-}
-
-func export(group lifecycle.BuildpackGroup, stackMD lifecycle.StackMetadata, imageName, launchCacheDir, appDir, layersDir, launcherPath, projectMetadataPath, registry string, analyzedMD lifecycle.AnalyzedMetadata, cacheStore lifecycle.Cache, useDaemon bool, uid, gid int, runImageRef, processType string) error {
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
@@ -145,9 +160,9 @@ func export(group lifecycle.BuildpackGroup, stackMD lifecycle.StackMetadata, ima
 		}
 
 		appImage, err = local.NewImage(
-			imageName,
+			imageNames[0],
 			dockerClient,
-			local.FromBaseImage(runImageRef),
+			opts...,
 		)
 		if err != nil {
 			return cmd.FailErr(err, " image")
@@ -184,7 +199,7 @@ func export(group lifecycle.BuildpackGroup, stackMD lifecycle.StackMetadata, ima
 		}
 
 		appImage, err = remote.NewImage(
-			imageName,
+			imageNames[0],
 			auth.EnvKeychain(cmd.EnvRegistryAuth),
 			opts...,
 		)
@@ -208,6 +223,7 @@ func export(group lifecycle.BuildpackGroup, stackMD lifecycle.StackMetadata, ima
 		WorkingImage:       appImage,
 		RunImageRef:        runImageID.String(),
 		OrigMetadata:       analyzedMD.Metadata,
+		AdditionalNames:    imageNames[1:],
 		LauncherConfig:     launcherConfig(launcherPath),
 		Stack:              stackMD,
 		Project:            projectMD,

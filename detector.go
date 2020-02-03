@@ -237,15 +237,23 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 		return detectRun{Code: -1, Err: err}
 	}
 	defer os.RemoveAll(planDir)
-	if err := os.Chown(planDir, c.UID, c.GID); err != nil {
-		return detectRun{Code: -1, Err: err}
+	currentUser := os.Getuid()
+	if currentUser == -1 {
+		return detectRun{Code: -1, Err: errors.New("cannot determine UID")}
+	}
+	if currentUser == 0 {
+		if err := os.Chown(planDir, c.UID, c.GID); err != nil {
+			return detectRun{Code: -1, Err: err}
+		}
 	}
 	planPath := filepath.Join(planDir, "plan.toml")
 	if err := ioutil.WriteFile(planPath, nil, 0777); err != nil {
 		return detectRun{Code: -1, Err: err}
 	}
-	if err := os.Chown(planPath, c.UID, c.GID); err != nil {
-		return detectRun{Code: -1, Err: err}
+	if currentUser == 0 {
+		if err := os.Chown(planPath, c.UID, c.GID); err != nil {
+			return detectRun{Code: -1, Err: err}
+		}
 	}
 	out := &bytes.Buffer{}
 	cmd := exec.Command(filepath.Join(bp.Path, "bin", "detect"), platformDir, planPath)
@@ -253,11 +261,13 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Env = c.FullEnv
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid:         uint32(c.UID),
-			Gid:         uint32(c.GID),
-		},
+	if currentUser == 0 {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Credential: &syscall.Credential{
+				Uid: uint32(c.UID),
+				Gid: uint32(c.GID),
+			},
+		}
 	}
 	if bp.Buildpack.ClearEnv {
 		cmd.Env = c.ClearEnv

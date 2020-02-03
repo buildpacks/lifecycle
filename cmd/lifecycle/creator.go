@@ -3,29 +3,27 @@ package main
 import (
 	"fmt"
 
-	"github.com/google/go-containerregistry/pkg/name"
-
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
 type createCmd struct {
-	appDir         string
-	buildpacksDir  string
-	cacheDir       string
-	cacheImageTag  string
-	imageName      string
-	launchCacheDir string
-	launcherPath   string
-	layersDir      string
-	orderPath      string
-	platformDir    string
-	previousImage  string
-	runImageRef    string
-	skipRestore    bool
-	stackPath      string
-	tags           cmd.StringSlice
-	uid, gid       int
-	useDaemon      bool
+	appDir             string
+	buildpacksDir      string
+	cacheDir           string
+	cacheImageTag      string
+	imageName          string
+	launchCacheDir     string
+	launcherPath       string
+	layersDir          string
+	orderPath          string
+	platformDir        string
+	previousImage      string
+	runImageRef        string
+	stackPath          string
+	uid, gid           int
+	additionalTags     cmd.StringSlice
+	skipRestore        bool
+	useDaemon          bool
 	projectMetdataPath string
 	processType        string
 }
@@ -47,7 +45,7 @@ func (c *createCmd) Init() {
 	cmd.FlagStackPath(&c.stackPath)
 	cmd.FlagUID(&c.uid)
 	cmd.FlagUseDaemon(&c.useDaemon)
-	cmd.FlagTags(&c.tags)
+	cmd.FlagTags(&c.additionalTags)
 	cmd.FlagProjectMetadataPath(&c.projectMetdataPath)
 	cmd.FlagProcessType(&c.projectMetdataPath)
 }
@@ -67,7 +65,10 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 
-	//TODO deal with tags
+	if c.previousImage == "" {
+		c.previousImage = c.imageName
+	}
+
 	return nil
 }
 
@@ -97,16 +98,21 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	ref, err := name.ParseReference(c.imageName, name.WeakValidation)
-	if err != nil {
-		return err
-	}
-	registry := ref.Context().RegistryStr()
-
-	stackMD, runImageRef, err := resolveStack(c.stackPath, c.runImageRef, registry)
-	if err != nil {
-		return err
-	}
-
-	return export(group, stackMD, c.imageName, c.launchCacheDir, c.appDir, c.layersDir, c.launcherPath, c.projectMetdataPath, registry, analyzedMD, cacheStore, c.useDaemon, c.uid, c.gid, runImageRef, c.processType)
+	return export(
+		group,
+		c.stackPath,
+		append([]string{c.imageName}, c.additionalTags...),
+		c.launchCacheDir,
+		c.appDir,
+		c.layersDir,
+		c.launcherPath,
+		c.projectMetdataPath,
+		c.runImageRef,
+		analyzedMD,
+		cacheStore,
+		c.useDaemon,
+		c.uid,
+		c.gid,
+		c.processType,
+	)
 }
