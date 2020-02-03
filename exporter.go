@@ -17,12 +17,11 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
-//go:generate mockgen -package testmock -destination testmock/cache.go github.com/buildpacks/lifecycle Cache
 type Cache interface {
 	Name() string
 	SetMetadata(metadata CacheMetadata) error
 	RetrieveMetadata() (CacheMetadata, error)
-	AddLayerFile(sha string, tarPath string) error
+	AddLayerFile(tarPath string, sha string) error
 	ReuseLayer(sha string) error
 	RetrieveLayer(sha string) (io.ReadCloser, error)
 	Commit() error
@@ -274,7 +273,7 @@ func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer identifiableLayer,
 	}
 	e.Logger.Infof("Adding layer '%s'\n", layer.Identifier())
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
-	return sha, image.AddLayer(tarPath)
+	return sha, image.AddLayerWithDiffID(tarPath, sha)
 }
 
 func (e *Exporter) addOrReuseCacheLayer(cache Cache, layer identifiableLayer, previousSHA string) (string, error) {
@@ -289,7 +288,7 @@ func (e *Exporter) addOrReuseCacheLayer(cache Cache, layer identifiableLayer, pr
 	}
 	e.Logger.Infof("Adding cache layer '%s'\n", layer.Identifier())
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
-	return sha, cache.AddLayerFile(sha, tarPath)
+	return sha, cache.AddLayerFile(tarPath, sha)
 }
 
 func (e *Exporter) createAppSliceLayers(appDir string, slices []Slice) ([]SliceLayer, error) {
@@ -401,7 +400,7 @@ func (e *Exporter) addSliceLayers(image imgutil.Image, sliceLayers []SliceLayer,
 			err = image.ReuseLayer(slice.SHA)
 			numberOfReusedLayers++
 		} else {
-			err = image.AddLayer(slice.TarPath)
+			err = image.AddLayerWithDiffID(slice.TarPath, slice.SHA)
 		}
 		if err != nil {
 			return nil, err

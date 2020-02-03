@@ -198,7 +198,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		when("with #AddLayerFile", func() {
 			when("add then commit", func() {
 				it("retrieve returns newly added layer", func() {
-					h.AssertNil(t, subject.AddLayerFile(testLayerSHA, testLayerTarPath))
+					h.AssertNil(t, subject.AddLayerFile(testLayerTarPath, testLayerSHA))
 
 					err := subject.Commit()
 					h.AssertNil(t, err)
@@ -217,13 +217,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					err := subject.Commit()
 					h.AssertNil(t, err)
 
-					h.AssertError(t, subject.AddLayerFile(testLayerSHA, testLayerTarPath), "cache cannot be modified after commit")
+					h.AssertError(t, subject.AddLayerFile(testLayerTarPath, testLayerSHA), "cache cannot be modified after commit")
 				})
 			})
 
 			when("add without commit", func() {
 				it("retrieve returns not found error", func() {
-					h.AssertNil(t, subject.AddLayerFile(testLayerSHA, testLayerTarPath))
+					h.AssertNil(t, subject.AddLayerFile(testLayerTarPath, testLayerSHA))
 
 					_, err := subject.RetrieveLayer(testLayerSHA)
 					h.AssertError(t, err, fmt.Sprintf("failed to get layer with sha '%s'", testLayerSHA))

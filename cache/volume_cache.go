@@ -1,11 +1,8 @@
 package cache
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 
@@ -89,86 +86,76 @@ func (c *VolumeCache) RetrieveMetadata() (lifecycle.CacheMetadata, error) {
 	return metadata, nil
 }
 
-func (c *VolumeCache) AddLayerFile(sha string, tarPath string) error {
+func (c *VolumeCache) AddLayerFile(tarPath string, diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	if _, err := os.Stat(filepath.Join(c.stagingDir, sha+".tar")); err == nil {
+	if _, err := os.Stat(filepath.Join(c.stagingDir, diffID+".tar")); err == nil {
 		// don't waste time rewriting an identical layer
 		return nil
 	}
-	if err := copyFile(tarPath, filepath.Join(c.stagingDir, sha+".tar")); err != nil {
-		return errors.Wrapf(err, "caching layer (%s)", sha)
+	if err := copyFile(tarPath, filepath.Join(c.stagingDir, diffID+".tar")); err != nil {
+		return errors.Wrapf(err, "caching layer (%s)", diffID)
 	}
 	return nil
 }
 
-func (c *VolumeCache) AddLayer(rc io.ReadCloser) error {
+func (c *VolumeCache) AddLayer(rc io.ReadCloser, diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
 
-	tarFile := filepath.Join(c.stagingDir, randString(10)+".tar")
-	fh, err := os.Create(tarFile)
+	fh, err := os.Create(filepath.Join(c.stagingDir, diffID+".tar"))
 	if err != nil {
 		return errors.Wrapf(err, "create layer file in cache")
 	}
+	defer fh.Close()
 
-	hasher := sha256.New()
-	mw := io.MultiWriter(hasher, fh)
-	if _, err := io.Copy(mw, rc); err != nil {
-		fh.Close()
+	if _, err := io.Copy(fh, rc); err != nil {
 		return errors.Wrap(err, "copying layer to tar file")
-	}
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-	if err := fh.Close(); err != nil {
-		return errors.Wrapf(err, "closing layer file (layer sha: %s)", sha)
-	}
-	if err := os.Rename(tarFile, filepath.Join(c.stagingDir, "sha256:"+sha+".tar")); err != nil {
-		return errors.Wrapf(err, "renaming layer file (layer sha: %s)", sha)
 	}
 	return nil
 }
 
-func (c *VolumeCache) ReuseLayer(sha string) error {
+func (c *VolumeCache) ReuseLayer(diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
-	if err := os.Link(filepath.Join(c.committedDir, sha+".tar"), filepath.Join(c.stagingDir, sha+".tar")); err != nil && !os.IsExist(err) {
-		return errors.Wrapf(err, "reusing layer (%s)", sha)
+	if err := os.Link(filepath.Join(c.committedDir, diffID+".tar"), filepath.Join(c.stagingDir, diffID+".tar")); err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "reusing layer (%s)", diffID)
 	}
 	return nil
 }
 
-func (c *VolumeCache) RetrieveLayer(sha string) (io.ReadCloser, error) {
-	path, err := c.RetrieveLayerFile(sha)
+func (c *VolumeCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
+	path, err := c.RetrieveLayerFile(diffID)
 	if err != nil {
 		return nil, err
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "opening layer with SHA '%s'", sha)
+		return nil, errors.Wrapf(err, "opening layer with SHA '%s'", diffID)
 	}
 	return file, nil
 }
 
-func (c *VolumeCache) HasLayer(sha string) (bool, error) {
-	if _, err := os.Stat(filepath.Join(c.committedDir, sha+".tar")); err != nil {
+func (c *VolumeCache) HasLayer(diffID string) (bool, error) {
+	if _, err := os.Stat(filepath.Join(c.committedDir, diffID+".tar")); err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
-		return false, errors.Wrapf(err, "retrieving layer with SHA '%s'", sha)
+		return false, errors.Wrapf(err, "retrieving layer with SHA '%s'", diffID)
 	}
 	return true, nil
 }
 
-func (c *VolumeCache) RetrieveLayerFile(sha string) (string, error) {
-	path := filepath.Join(c.committedDir, sha+".tar")
+func (c *VolumeCache) RetrieveLayerFile(diffID string) (string, error) {
+	path := filepath.Join(c.committedDir, diffID+".tar")
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return "", errors.Wrapf(err, "layer with SHA '%s' not found", sha)
+			return "", errors.Wrapf(err, "layer with SHA '%s' not found", diffID)
 		}
-		return "", errors.Wrapf(err, "retrieving layer with SHA '%s'", sha)
+		return "", errors.Wrapf(err, "retrieving layer with SHA '%s'", diffID)
 	}
 	return path, nil
 }
@@ -216,12 +203,4 @@ func copyFile(from, to string) error {
 	_, err = io.Copy(out, in)
 
 	return err
-}
-
-func randString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26))
-	}
-	return string(b)
 }
