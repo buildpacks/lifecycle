@@ -46,40 +46,40 @@ func (c *cachingImage) AddLayerWithDiffID(path string, diffID string) error {
 	return c.Image.AddLayerWithDiffID(path, diffID)
 }
 
-func (c *cachingImage) ReuseLayer(sha string) error {
-	found, err := c.cache.HasLayer(sha)
+func (c *cachingImage) ReuseLayer(diffID string) error {
+	found, err := c.cache.HasLayer(diffID)
 	if err != nil {
 		return err
 	}
 
 	if found {
-		if err := c.cache.ReuseLayer(sha); err != nil {
+		if err := c.cache.ReuseLayer(diffID); err != nil {
 			return err
 		}
-		path, err := c.cache.RetrieveLayerFile(sha)
+		path, err := c.cache.RetrieveLayerFile(diffID)
 		if err != nil {
 			return err
 		}
-		return c.Image.AddLayerWithDiffID(path, sha)
+		return c.Image.AddLayerWithDiffID(path, diffID)
 	}
 
-	if err := c.Image.ReuseLayer(sha); err != nil {
+	if err := c.Image.ReuseLayer(diffID); err != nil {
 		return err
 	}
-	rc, err := c.Image.GetLayer(sha)
+	rc, err := c.Image.GetLayer(diffID)
 	if err != nil {
 		return err
 	}
-	return c.cache.AddLayer(rc, sha)
+	return c.cache.AddLayer(rc, diffID)
 }
 
-func (c *cachingImage) GetLayer(sha string) (io.ReadCloser, error) {
-	if found, err := c.cache.HasLayer(sha); err != nil {
-		return nil, fmt.Errorf("cache no layer with sha '%s'", sha)
+func (c *cachingImage) GetLayer(diffID string) (io.ReadCloser, error) {
+	if found, err := c.cache.HasLayer(diffID); err != nil {
+		return nil, fmt.Errorf("layer with SHA '%s' not found", diffID)
 	} else if found {
-		return c.cache.RetrieveLayer(sha)
+		return c.cache.RetrieveLayer(diffID)
 	}
-	return c.Image.GetLayer(sha)
+	return c.Image.GetLayer(diffID)
 }
 
 func (c *cachingImage) Save(additionalNames ...string) error {
