@@ -223,8 +223,8 @@ type PathMode struct {
 
 func Untar(r io.Reader, dest string) error {
 	// Avoid umask from changing the file permissions in the tar file.
-	old := unix.Umask(0)
-	defer unix.Umask(old)
+	umask := unix.Umask(0)
+	defer unix.Umask(umask)
 
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)
@@ -262,7 +262,7 @@ func Untar(r io.Reader, dest string) error {
 			dirPath := filepath.Dir(path)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, umask)); err != nil {
 						return err
 					}
 					dirsFound[dirPath] = true
@@ -280,6 +280,10 @@ func Untar(r io.Reader, dest string) error {
 			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
 		}
 	}
+}
+
+func applyUmask(mode os.FileMode, umask int) os.FileMode {
+	return os.FileMode(int(mode) &^ umask)
 }
 
 func writeFile(in io.Reader, path string, mode os.FileMode, buf []byte) error {
