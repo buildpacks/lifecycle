@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[string]struct{}, error) {
@@ -220,6 +222,13 @@ type PathMode struct {
 }
 
 func Untar(r io.Reader, dest string) error {
+	// Avoid umask from changing the file permissions in the tar file.
+	umask := unix.Umask(0)
+	defer unix.Umask(umask)
+
+	buf := make([]byte, 32*32*1024)
+	dirsFound := make(map[string]bool)
+
 	tr := tar.NewReader(r)
 	var pathModes []PathMode
 	for {
@@ -247,18 +256,20 @@ func Untar(r io.Reader, dest string) error {
 			if err := os.MkdirAll(path, os.ModePerm); err != nil {
 				return err
 			}
+			dirsFound[path] = true
+
 		case tar.TypeReg, tar.TypeRegA:
-			_, err := os.Stat(filepath.Dir(path))
-			if os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-					return err
+			dirPath := filepath.Dir(path)
+			if !dirsFound[dirPath] {
+				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, umask)); err != nil {
+						return err
+					}
+					dirsFound[dirPath] = true
 				}
 			}
-			if err := writeFile(tr, path, hdr.FileInfo().Mode()); err != nil {
-				return err
-			}
-			// Update permissions in case umask was applied.
-			if err := os.Chmod(path, hdr.FileInfo().Mode()); err != nil {
+
+			if err := writeFile(tr, path, hdr.FileInfo().Mode(), buf); err != nil {
 				return err
 			}
 		case tar.TypeSymlink:
@@ -271,12 +282,16 @@ func Untar(r io.Reader, dest string) error {
 	}
 }
 
-func writeFile(in io.Reader, path string, mode os.FileMode) error {
+func applyUmask(mode os.FileMode, umask int) os.FileMode {
+	return os.FileMode(int(mode) &^ umask)
+}
+
+func writeFile(in io.Reader, path string, mode os.FileMode, buf []byte) error {
 	fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {
 		return err
 	}
 	defer fh.Close()
-	_, err = io.Copy(fh, in)
+	_, err = io.CopyBuffer(fh, in, buf)
 	return err
 }
