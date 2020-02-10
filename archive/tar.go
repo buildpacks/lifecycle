@@ -2,19 +2,21 @@ package archive
 
 import (
 	"archive/tar"
+	"bufio"
 	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
 )
 
 func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[string]struct{}, error) {
-	hasher := sha256.New()
+	hasher := NewConcurrentHasher(sha256.New())
 	f, err := os.Create(dest)
 	if err != nil {
 		return "", nil, err
@@ -32,8 +34,7 @@ func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[st
 	}
 	_ = tw.Close()
 
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-	return "sha256:" + sha, fileSet, nil
+	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), fileSet, nil
 }
 
 func AddFileToArchive(tw *tar.Writer, srcDir string, uid, gid int, fileSet map[string]struct{}) error {
@@ -91,19 +92,62 @@ func AddFileToArchive(tw *tar.Writer, srcDir string, uid, gid int, fileSet map[s
 }
 
 func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
-	hasher := sha256.New()
 	f, err := os.Create(dest)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
-	w := io.MultiWriter(hasher, f)
+
+	hasher := NewConcurrentHasher(sha256.New())
+	w := bufio.NewWriterSize(io.MultiWriter(hasher, f), 1024*1024)
 
 	if err := WriteTarArchive(w, sourceDir, uid, gid); err != nil {
 		return "", err
 	}
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-	return "sha256:" + sha, nil
+
+	if err := w.Flush(); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), nil
+}
+
+type ConcurrentHasher struct {
+	hash    hash.Hash
+	wg      sync.WaitGroup
+	buffers chan []byte
+}
+
+func NewConcurrentHasher(h hash.Hash) *ConcurrentHasher {
+	ch := &ConcurrentHasher{
+		hash:    h,
+		buffers: make(chan []byte, 10),
+	}
+
+	go func() {
+		for b := range ch.buffers {
+			_, _ = ch.hash.Write(b)
+			ch.wg.Done()
+		}
+	}()
+
+	return ch
+}
+
+func (ch *ConcurrentHasher) Write(p []byte) (int, error) {
+	cp := make([]byte, len(p))
+	copy(cp, p)
+
+	ch.wg.Add(1)
+	ch.buffers <- cp
+
+	return len(p), nil
+}
+
+func (ch *ConcurrentHasher) Sum(b []byte) []byte {
+	ch.wg.Wait()
+	close(ch.buffers)
+	return ch.hash.Sum(b)
 }
 
 func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
