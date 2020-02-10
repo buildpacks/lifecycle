@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -49,6 +50,9 @@ func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir,
 			bpDir.layers = append(bpDir.layers, *bpDir.newBPLayer(name))
 		}
 	}
+	sort.Slice(bpDir.layers, func(i, j int) bool {
+		return bpDir.layers[i].identifier < bpDir.layers[j].identifier
+	})
 	return bpDir, nil
 }
 
