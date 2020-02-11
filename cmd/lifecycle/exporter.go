@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -22,21 +21,22 @@ import (
 )
 
 type exportCmd struct {
-	imageNames     []string
-	runImageRef    string
-	layersDir      string
-	appDir         string
-	groupPath      string
-	analyzedPath   string
-	stackPath      string
-	launchCacheDir string
-	launcherPath   string
-	useDaemon      bool
-	useHelpers     bool
-	uid            int
-	gid            int
-	cacheImageTag  string
-	cacheDir       string
+	imageNames          []string
+	runImageRef         string
+	layersDir           string
+	appDir              string
+	groupPath           string
+	analyzedPath        string
+	stackPath           string
+	launchCacheDir      string
+	launcherPath        string
+	useDaemon           bool
+	useHelpers          bool
+	uid                 int
+	gid                 int
+	cacheImageTag       string
+	cacheDir            string
+	projectMetadataPath string
 }
 
 func (e *exportCmd) Init() {
@@ -54,6 +54,7 @@ func (e *exportCmd) Init() {
 	cmd.FlagLauncherPath(&e.launcherPath)
 	cmd.FlagCacheImage(&e.cacheImageTag)
 	cmd.FlagCacheDir(&e.cacheDir)
+	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
 }
 
 func (e *exportCmd) Args(nargs int, args []string) error {
@@ -110,11 +111,13 @@ func (e *exportCmd) Exec() error {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	projectMetadataPath := path.Join(".", lifecycle.ProjectMetadataFileName)
 	var projectMD lifecycle.ProjectMetadata
-	_, err = toml.DecodeFile(projectMetadataPath, &projectMD)
+	_, err = toml.DecodeFile(e.projectMetadataPath, &projectMD)
 	if err != nil {
-		cmd.Logger.Infof("no project metadata found at path '%s', project metadata will not be exported\n", projectMetadataPath)
+		if !os.IsNotExist(err) {
+			return err
+		}
+		cmd.Logger.Infof("no project metadata found at path '%s', project metadata will not be exported\n", e.projectMetadataPath)
 	}
 
 	if e.runImageRef == "" {
