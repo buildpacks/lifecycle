@@ -111,7 +111,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata,
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*ImageIdentifier, error) {
 	if !image.Found() {
-		a.Logger.Warnf("Image %q not found", image.Name())
+		a.Logger.Infof("Previous image with name %q not found", image.Name())
 		return nil, nil
 	}
 	identifier, err := image.Identifier()
