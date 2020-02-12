@@ -21,19 +21,22 @@ assignees: ''
 2.
 3.
 
+##### Current behavior
+<!--- What happened? Logs, etc. could go here. -->
+
 ##### Expected
-<!--- What did you expect to happen -->
+<!--- What did you expect to happen? -->
 
 
 ---
 
-### Environment
+### Context
 
-##### pack report
-<!--- Run `pack report` and copy output here. -->
+##### lifecycle version
+<!--- If you can find this, it helps us pin down the issue. For example, run `pack inspect-builder BUILDER` which should report the lifecycle version in question. -->
 
-##### docker info
-<!--- Run `docker info` and copy output here. -->
+##### platform version(s)
+<!--- For example run `pack report` and `docker info` and copy output here. -->
 
-#### builder info
-<!--- Run `pack inspect-builder BUILDER` for the builder in question and copy output here. -->
+##### anything else?
+<!--- Tekton task version, kpack version, etc. -->
