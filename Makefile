@@ -124,6 +124,7 @@ clean:
 
 package: package-linux package-windows
 
+package-linux: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 package-linux: GOOS:=linux
 package-linux: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
 package-linux: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
@@ -135,6 +136,7 @@ package-linux:
 	@echo "> Packaging lifecycle for $(GOOS)..."
 	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(GOOS_DIR) lifecycle.toml lifecycle
 
+package-windows: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 package-windows: GOOS:=windows
 package-windows: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
 package-windows: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
@@ -146,6 +148,7 @@ package-windows:
 	@echo "> Packaging lifecycle for $(GOOS)..."
 	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(GOOS_DIR) lifecycle.toml lifecycle
 
+package-darwin: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 package-darwin: GOOS:=darwin
 package-darwin: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
 package-darwin: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
