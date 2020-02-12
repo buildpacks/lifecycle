@@ -9,8 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"golang.org/x/sys/unix"
 )
 
 func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[string]struct{}, error) {
@@ -223,8 +221,8 @@ type PathMode struct {
 
 func Untar(r io.Reader, dest string) error {
 	// Avoid umask from changing the file permissions in the tar file.
-	umask := unix.Umask(0)
-	defer unix.Umask(umask)
+	umask := setUmask(0)
+	defer setUmask(umask)
 
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)

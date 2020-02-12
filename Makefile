@@ -13,7 +13,6 @@ PLATFORM_API?=0.2
 BUILDPACK_API?=0.2
 SCM_REPO?=
 SCM_COMMIT?=$$(git rev-parse --short HEAD)
-ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64
 BUILD_DIR?=out
 
 export GOFLAGS:=$(GOFLAGS)
@@ -29,48 +28,48 @@ endef
 
 all: test build package
 
-build: build-linux
+build: build-linux build-windows
 
-build-darwin:
-	@echo "> Building for macos..."
-	mkdir -p $(BUILD_DIR)/lifecycle
-	GOOS=darwin $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
-	GOOS=darwin $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/lifecycle -a ./cmd/lifecycle
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/detector
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/analyzer
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/restorer
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/builder
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/exporter
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/rebaser
-
+build-linux: export GOOS:=linux
+build-linux: export OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-linux:
 	@echo "> Building for linux..."
-	mkdir -p $(BUILD_DIR)/lifecycle
-	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
-	GOOS=linux $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/lifecycle -a ./cmd/lifecycle
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/detector
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/analyzer
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/restorer
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/builder
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/exporter
-	ln -sf lifecycle $(BUILD_DIR)/lifecycle/rebaser
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR) -a ./cmd/launcher
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+	ln -sf lifecycle $(OUT_DIR)/detector
+	ln -sf lifecycle $(OUT_DIR)/analyzer
+	ln -sf lifecycle $(OUT_DIR)/restorer
+	ln -sf lifecycle $(OUT_DIR)/builder
+	ln -sf lifecycle $(OUT_DIR)/exporter
+	ln -sf lifecycle $(OUT_DIR)/rebaser
 
+build-windows: export GOOS:=windows
+build-windows: export OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-windows:
 	@echo "> Building for windows..."
-	mkdir -p $(BUILD_DIR)/lifecycle
-	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle -a ./cmd/launcher
-	GOOS=windows $(GOENV) $(GOBUILD) -o $(BUILD_DIR)/lifecycle/lifecycle.exe -a ./cmd/build
-	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/analyzer.exe
-	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/restorer.exe
-	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/builder.exe
-	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/exporter.exe
-	ln -sf lifecycle.exe $(BUILD_DIR)/lifecycle/rebaser.exe
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR) -a ./cmd/launcher
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle.exe -a ./cmd/lifecycle
+	ln -sf lifecycle.exe $(OUT_DIR)/analyzer.exe
+	ln -sf lifecycle.exe $(OUT_DIR)/restorer.exe
+	ln -sf lifecycle.exe $(OUT_DIR)/builder.exe
+	ln -sf lifecycle.exe $(OUT_DIR)/exporter.exe
+	ln -sf lifecycle.exe $(OUT_DIR)/rebaser.exe
 
-descriptor: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
-descriptor:
-	@echo "> Writing descriptor file..."
-	mkdir -p $(BUILD_DIR)
-	echo "$${LIFECYCLE_DESCRIPTOR}" > $(BUILD_DIR)/lifecycle.toml
+build-darwin: export GOOS:=darwin
+build-darwin: export OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-darwin:
+	@echo "> Building for macos..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR) -a ./cmd/launcher
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+	ln -sf lifecycle $(OUT_DIR)/detector
+	ln -sf lifecycle $(OUT_DIR)/analyzer
+	ln -sf lifecycle $(OUT_DIR)/restorer
+	ln -sf lifecycle $(OUT_DIR)/builder
+	ln -sf lifecycle $(OUT_DIR)/exporter
+	ln -sf lifecycle $(OUT_DIR)/rebaser
 
 install-goimports:
 	@echo "> Installing goimports..."
@@ -123,8 +122,39 @@ clean:
 	@echo "> Cleaning workspace..."
 	rm -rf $(BUILD_DIR)
 
-package: descriptor
-	@echo "> Packaging lifecycle..."
-	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(BUILD_DIR) lifecycle.toml lifecycle
+package: package-linux package-windows
+
+package-linux: GOOS:=linux
+package-linux: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
+package-linux: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
+package-linux:
+	@echo "> Writing descriptor file for $(GOOS)..."
+	mkdir -p $(GOOS_DIR)
+	echo "$${LIFECYCLE_DESCRIPTOR}" > $(GOOS_DIR)/lifecycle.toml
+
+	@echo "> Packaging lifecycle for $(GOOS)..."
+	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(GOOS_DIR) lifecycle.toml lifecycle
+
+package-windows: GOOS:=windows
+package-windows: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
+package-windows: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
+package-windows:
+	@echo "> Writing descriptor file for $(GOOS)..."
+	mkdir -p $(GOOS_DIR)
+	echo "$${LIFECYCLE_DESCRIPTOR}" > $(GOOS_DIR)/lifecycle.toml
+
+	@echo "> Packaging lifecycle for $(GOOS)..."
+	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(GOOS_DIR) lifecycle.toml lifecycle
+
+package-darwin: GOOS:=darwin
+package-darwin: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
+package-darwin: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
+package-darwin:
+	@echo "> Writing descriptor file for $(GOOS)..."
+	mkdir -p $(GOOS_DIR)
+	echo "$${LIFECYCLE_DESCRIPTOR}" > $(GOOS_DIR)/lifecycle.toml
+
+	@echo "> Packaging lifecycle for $(GOOS)..."
+	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(GOOS_DIR) lifecycle.toml lifecycle
 
 .PHONY: verify-jq
