@@ -54,7 +54,7 @@ $ make test
 
 ### Build
 
-Builds binaries to `out/lifecycle/`.
+Builds binaries to `out/linux/lifecycle/`.
 
 ```bash
 $ make build
@@ -65,7 +65,7 @@ $ make build
 ### Package
 
 Creates an archive at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz`, using the contents of the
-`out/lifecycle/` directory, for the given (or default) `LIFECYCLE_VERSION`.
+`out/linux/lifecycle/` directory, for the given (or default) `LIFECYCLE_VERSION`.
 
 ```bash
 $ make package
