@@ -1,32 +1,39 @@
 ---
-name: Bug report
-about: Help us fix bugs!
+name: Bug
+about: Bug report
 title: ''
 labels: status/triage, type/bug
 assignees: ''
 
 ---
+### Summary
+<!--- Please provide a general summary of the issue. -->
 
-**Describe the bug**
-A clear and concise summary of what the bug is.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. eg. `pack build my-app`
-2. Read logs
-3. Something wrong?
-4. See error X
+---
 
-**Expected behavior**
-What did you expected to happen?
+### Reproduction
 
-**Logs, etc.**
-If applicable, add screenshots or logs to help explain your problem.
+##### Steps
+<!--- What steps should be taken to reproduce the issue? -->
 
-**Context:**
- - `pack report`
- - `docker info`
-- `pack inspect-builder MY_BUILDER`
+1.
+2.
+3.
 
-**Additional context**
-Add any other context about the problem here.
+##### Expected
+<!--- What did you expect to happen -->
+
+
+---
+
+### Environment
+
+##### pack report
+<!--- Run `pack report` and copy output here. -->
+
+##### docker info
+<!--- Run `docker info` and copy output here. -->
+
+#### builder info
+<!--- Run `pack inspect-builder BUILDER` for the builder in question and copy output here. -->
