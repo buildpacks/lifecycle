@@ -5,18 +5,16 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
 )
 
 func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[string]struct{}, error) {
-	hasher := NewConcurrentHasher(sha256.New())
+	hasher := newConcurrentHasher(sha256.New())
 	f, err := os.Create(dest)
 	if err != nil {
 		return "", nil, err
@@ -98,7 +96,7 @@ func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
 	}
 	defer f.Close()
 
-	hasher := NewConcurrentHasher(sha256.New())
+	hasher := newConcurrentHasher(sha256.New())
 	w := bufio.NewWriterSize(io.MultiWriter(hasher, f), 1024*1024)
 
 	if err := WriteTarArchive(w, sourceDir, uid, gid); err != nil {
@@ -110,44 +108,6 @@ func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
 	}
 
 	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), nil
-}
-
-type ConcurrentHasher struct {
-	hash    hash.Hash
-	wg      sync.WaitGroup
-	buffers chan []byte
-}
-
-func NewConcurrentHasher(h hash.Hash) *ConcurrentHasher {
-	ch := &ConcurrentHasher{
-		hash:    h,
-		buffers: make(chan []byte, 10),
-	}
-
-	go func() {
-		for b := range ch.buffers {
-			_, _ = ch.hash.Write(b)
-			ch.wg.Done()
-		}
-	}()
-
-	return ch
-}
-
-func (ch *ConcurrentHasher) Write(p []byte) (int, error) {
-	cp := make([]byte, len(p))
-	copy(cp, p)
-
-	ch.wg.Add(1)
-	ch.buffers <- cp
-
-	return len(p), nil
-}
-
-func (ch *ConcurrentHasher) Sum(b []byte) []byte {
-	ch.wg.Wait()
-	close(ch.buffers)
-	return ch.hash.Sum(b)
 }
 
 func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
