@@ -154,7 +154,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 }
 
 func lifecycleCmd(binary string, args ...string) *exec.Cmd {
-	return exec.Command(filepath.Join(buildDir, "lifecycle", binary), args...)
+	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", binary), args...)
 }
 
 func buildBinaries(t *testing.T, dir string) {
