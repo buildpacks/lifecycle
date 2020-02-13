@@ -2,8 +2,8 @@ package archive
 
 import (
 	"archive/tar"
+	"bufio"
 	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +14,7 @@ import (
 )
 
 func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[string]struct{}, error) {
-	hasher := sha256.New()
+	hasher := newConcurrentHasher(sha256.New())
 	f, err := os.Create(dest)
 	if err != nil {
 		return "", nil, err
@@ -32,8 +32,7 @@ func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[st
 	}
 	_ = tw.Close()
 
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-	return "sha256:" + sha, fileSet, nil
+	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), fileSet, nil
 }
 
 func AddFileToArchive(tw *tar.Writer, srcDir string, uid, gid int, fileSet map[string]struct{}) error {
@@ -91,19 +90,24 @@ func AddFileToArchive(tw *tar.Writer, srcDir string, uid, gid int, fileSet map[s
 }
 
 func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
-	hasher := sha256.New()
 	f, err := os.Create(dest)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
-	w := io.MultiWriter(hasher, f)
+
+	hasher := newConcurrentHasher(sha256.New())
+	w := bufio.NewWriterSize(io.MultiWriter(hasher, f), 1024*1024)
 
 	if err := WriteTarArchive(w, sourceDir, uid, gid); err != nil {
 		return "", err
 	}
-	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-	return "sha256:" + sha, nil
+
+	if err := w.Flush(); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), nil
 }
 
 func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
