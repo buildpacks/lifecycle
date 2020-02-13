@@ -31,7 +31,7 @@ all: test build package
 build: build-linux build-windows
 
 build-linux: export GOOS:=linux
-build-linux: export OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-linux: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-linux:
 	@echo "> Building for linux..."
 	mkdir -p $(OUT_DIR)
@@ -45,7 +45,7 @@ build-linux:
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 
 build-windows: export GOOS:=windows
-build-windows: export OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-windows: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-windows:
 	@echo "> Building for windows..."
 	mkdir -p $(OUT_DIR)
@@ -58,7 +58,7 @@ build-windows:
 	ln -sf lifecycle.exe $(OUT_DIR)/rebaser.exe
 
 build-darwin: export GOOS:=darwin
-build-darwin: export OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-darwin: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-darwin:
 	@echo "> Building for macos..."
 	mkdir -p $(OUT_DIR)
@@ -141,18 +141,6 @@ package-windows: GOOS:=windows
 package-windows: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
 package-windows: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
 package-windows:
-	@echo "> Writing descriptor file for $(GOOS)..."
-	mkdir -p $(GOOS_DIR)
-	echo "$${LIFECYCLE_DESCRIPTOR}" > $(GOOS_DIR)/lifecycle.toml
-
-	@echo "> Packaging lifecycle for $(GOOS)..."
-	tar czf $(BUILD_DIR)/$(ARCHIVE_NAME).tgz -C $(GOOS_DIR) lifecycle.toml lifecycle
-
-package-darwin: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
-package-darwin: GOOS:=darwin
-package-darwin: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
-package-darwin: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
-package-darwin:
 	@echo "> Writing descriptor file for $(GOOS)..."
 	mkdir -p $(GOOS_DIR)
 	echo "$${LIFECYCLE_DESCRIPTOR}" > $(GOOS_DIR)/lifecycle.toml
