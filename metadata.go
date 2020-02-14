@@ -92,7 +92,7 @@ type BuildpackLayersMetadata struct {
 	ID      string                            `json:"key" toml:"key"`
 	Version string                            `json:"version" toml:"version"`
 	Layers  map[string]BuildpackLayerMetadata `json:"layers" toml:"layers"`
-	Store   *BuildpackStore                   `json:"store" toml:"store"`
+	Store   *BuildpackStore                   `json:"store,omitempty" toml:"store"`
 }
 
 type BuildpackLayerMetadata struct {
