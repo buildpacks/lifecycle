@@ -9,7 +9,7 @@ LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.PlatformAPI=$(PLATFORM_API)'
 GOBUILD=$(GOCMD) build -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test
 LIFECYCLE_VERSION?=0.0.0
-PLATFORM_API?=0.2
+PLATFORM_API?=0.3
 BUILDPACK_API?=0.2
 SCM_REPO?=
 SCM_COMMIT?=$$(git rev-parse --short HEAD)
