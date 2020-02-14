@@ -977,7 +977,7 @@ type = "Apache-2.0"
 			when("there are store.toml files", func() {
 				it.Before(func() {
 					path := filepath.Join(layersDir, "buildpack.id", "store.toml")
-					h.AssertNil(t, ioutil.WriteFile(path,[]byte("[metadata]\n  key = \"val\""), 0777))
+					h.AssertNil(t, ioutil.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0777))
 				})
 
 				it("saves store metadata", func() {
@@ -991,7 +991,7 @@ type = "Apache-2.0"
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
 
-					h.AssertEq(t, meta.Buildpacks[0].Store, &lifecycle.BuildpackStore{Data:map[string]interface{}{
+					h.AssertEq(t, meta.Buildpacks[0].Store, &lifecycle.BuildpackStore{Data: map[string]interface{}{
 						"key": "val",
 					}})
 				})
