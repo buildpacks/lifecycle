@@ -1,59 +1,73 @@
 {
-    "buildpacks": [
-        {
-            "key": "metadata.buildpack",
-            "layers": {
-                "launch": {
-                    "data": {
-                        "launch-key": "launch-value"
-                    },
-                    "launch": true,
-                    "sha": "launch-sha"
-                },
-                "launch-build": {
-                    "build": true,
-                    "data": {
-                        "launch-build-key": "launch-build-value"
-                    },
-                    "launch": true,
-                    "sha": "launch-build-sha"
-                },
-                "launch-build-cache": {
-                    "build": true,
-                    "cache": true,
-                    "data": {
-                        "launch-build-cache-key": "launch-build-cache-value"
-                    },
-                    "launch": true,
-                    "sha": "launch-build-cache-sha"
-                },
-                "launch-cache": {
-                    "cache": true,
-                    "data": {
-                        "launch-cache-key": "launch-cache-value"
-                    },
-                    "launch": true,
-                    "sha": "launch-cache-sha"
-                },
-                "launch-false": {
-                    "data": {
-                        "launch-false-key": "launch-false-value"
-                    },
-                    "sha": "launch-false-sha"
-                }
-            }
+  "buildpacks": [
+    {
+      "key": "metadata.buildpack",
+      "layers": {
+        "launch": {
+          "data": {
+            "launch-key": "launch-value"
+          },
+          "launch": true,
+          "sha": "launch-sha"
         },
-        {
-            "key": "no.cache.buildpack",
-            "layers": {
-                "some-layer": {
-                    "data": {
-                        "some-layer-key": "some-layer-value"
-                    },
-                    "launch": true,
-                    "sha": "some-layer-sha"
-                }
-            }
+        "launch-build": {
+          "build": true,
+          "data": {
+            "launch-build-key": "launch-build-value"
+          },
+          "launch": true,
+          "sha": "launch-build-sha"
+        },
+        "launch-build-cache": {
+          "build": true,
+          "cache": true,
+          "data": {
+            "launch-build-cache-key": "launch-build-cache-value"
+          },
+          "launch": true,
+          "sha": "launch-build-cache-sha"
+        },
+        "launch-cache": {
+          "cache": true,
+          "data": {
+            "launch-cache-key": "launch-cache-value"
+          },
+          "launch": true,
+          "sha": "launch-cache-sha"
+        },
+        "launch-false": {
+          "data": {
+            "launch-false-key": "launch-false-value"
+          },
+          "sha": "launch-false-sha"
         }
-    ]
+      },
+      "store": {
+        "metadata": {
+          "metadata-buildpack-store-data": {
+            "store-key": "store-val"
+          }
+        }
+      }
+    },
+    {
+      "key": "no.cache.buildpack",
+      "layers": {
+        "some-layer": {
+          "data": {
+            "some-layer-key": "some-layer-value"
+          },
+          "launch": true,
+          "sha": "some-layer-sha"
+        }
+      },
+      "store": {
+        "metadata": {
+          "no-cache-buildpack-store-data": {
+            "store-key": "store-val"
+          }
+        }
+      }
+    }
+  ]
 }
