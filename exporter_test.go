@@ -618,7 +618,7 @@ type = "Apache-2.0"
 						}}
 					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, fakeImageMetadata, additionalNames, launcherConfig, stack, fakeProjectMetadata))
 
-					projectJSON, err := fakeAppImage.Label("io.buildpacks.project")
+					projectJSON, err := fakeAppImage.Label("io.buildpacks.project.metadata")
 					h.AssertNil(t, err)
 
 					var projectMD lifecycle.ProjectMetadata
@@ -985,7 +985,7 @@ type = "Apache-2.0"
 						}}
 					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, lifecycle.LayersMetadata{}, additionalNames, launcherConfig, stack, fakeProjectMetadata))
 
-					projectJSON, err := fakeAppImage.Label("io.buildpacks.project")
+					projectJSON, err := fakeAppImage.Label("io.buildpacks.project.metadata")
 					h.AssertNil(t, err)
 
 					var projectMD lifecycle.ProjectMetadata

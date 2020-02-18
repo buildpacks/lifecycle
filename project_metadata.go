@@ -1,7 +1,7 @@
 package lifecycle
 
 const (
-	ProjectMetadataLabel = "io.buildpacks.project"
+	ProjectMetadataLabel = "io.buildpacks.project.metadata"
 )
 
 type ProjectMetadata struct {
