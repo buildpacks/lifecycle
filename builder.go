@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"syscall"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -81,11 +80,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	var bom []BOMEntry
 	var slices []Slice
 
-	currentUser := os.Getuid()
-	if currentUser == -1 {
-		return nil, errors.New("cannot determine UID")
-	}
-
 	for _, bp := range b.Group.Group {
 		bpInfo, err := bp.lookup(b.BuildpacksDir)
 		if err != nil {
@@ -97,10 +91,8 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
 			return nil, err
 		}
-		if currentUser == 0 {
-			if err := os.Chown(bpLayersDir, b.UID, b.GID); err != nil {
-				return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", b.UID, b.GID)
-			}
+		if err := ensureOwner(bpLayersDir, b.UID, b.GID); err != nil {
+			return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", b.UID, b.GID)
 		}
 
 		if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
@@ -110,23 +102,16 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
 			return nil, err
 		}
-		if currentUser == 0 {
-			if err := recursiveChown(planDir, b.UID, b.GID); err != nil {
-				return nil, errors.Wrapf(err, "chowning plan dir to '%d/%d'", b.UID, b.GID)
-			}
+		if err := recursiveEnsureOwner(planDir, b.UID, b.GID); err != nil {
+			return nil, errors.Wrapf(err, "chowning plan dir to '%d/%d'", b.UID, b.GID)
 		}
+
 		cmd := exec.Command(filepath.Join(bpInfo.Path, "bin", "build"), bpLayersDir, platformDir, bpPlanPath)
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out.Writer()
 		cmd.Stderr = b.Err.Writer()
-		if currentUser == 0 {
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				Credential: &syscall.Credential{
-					Uid: uint32(b.UID),
-					Gid: uint32(b.GID),
-				},
-			}
-		}
+		cmd = asUser(cmd, b.UID, b.GID)
+
 		if bpInfo.Buildpack.ClearEnv {
 			cmd.Env = b.Env.List()
 		} else {

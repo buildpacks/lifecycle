@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/env"
 )
 
 type detectCmd struct {
@@ -63,14 +64,14 @@ func detect(orderPath, platformDir, appDir, buildpacksDir string, uid, gid int) 
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
-	env := env()
-	fullEnv, err := env.WithPlatform(platformDir)
+	envv := env.NewBuildEnv(os.Environ())
+	fullEnv, err := envv.WithPlatform(platformDir)
 	if err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read full env")
 	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
 		FullEnv:       fullEnv,
-		ClearEnv:      env.List(),
+		ClearEnv:      envv.List(),
 		AppDir:        appDir,
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
@@ -87,16 +88,4 @@ func detect(orderPath, platformDir, appDir, buildpacksDir string, uid, gid int) 
 	}
 
 	return group, plan, nil
-}
-
-func env() *lifecycle.Env {
-	return &lifecycle.Env{
-		Blacklist: []string{cmd.EnvRegistryAuth},
-		LookupEnv: os.LookupEnv,
-		Getenv:    os.Getenv,
-		Setenv:    os.Setenv,
-		Unsetenv:  os.Unsetenv,
-		Environ:   os.Environ,
-		Map:       lifecycle.POSIXBuildEnv,
-	}
 }

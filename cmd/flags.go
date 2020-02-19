@@ -46,7 +46,6 @@ const (
 	EnvSkipLayers          = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
 	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
 	EnvProcessType         = "CNB_PROCESS_TYPE"
-	EnvProcessTypeLegacy   = "PACK_PROCESS_TYPE" // deprecated
 	EnvLogLevel            = "CNB_LOG_LEVEL"
 	EnvProjectMetadataPath = "CNB_PROJECT_METADATA_PATH"
 )

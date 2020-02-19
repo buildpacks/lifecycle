@@ -45,7 +45,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata,
 	}
 
 	// if analyzer is running as root it needs to fix the ownership of the layers dir
-	if err := recursiveChownIfRoot(a.LayersDir, a.UID, a.GID); err != nil {
+	if err := recursiveEnsureOwner(a.LayersDir, a.UID, a.GID); err != nil {
 		return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", a.UID, a.GID)
 	}
 

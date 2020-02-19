@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/env"
 )
 
 type buildCmd struct {
@@ -65,7 +66,7 @@ func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle
 		LayersDir:     layersDir,
 		PlatformDir:   platformDir,
 		BuildpacksDir: buildpacksDir,
-		Env:           env(),
+		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
 		Plan:          plan,
 		Out:           log.New(os.Stdout, "", 0),
