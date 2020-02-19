@@ -226,7 +226,17 @@ func (e *exportCmd) Exec() error {
 		},
 	}
 
-	if err := exporter.Export(e.layersDir, e.appDir, appImage, runImageID.String(), analyzedMD.Metadata, e.imageNames[1:], launcherConfig, stackMD, projectMD); err != nil {
+	if err := exporter.Export(lifecycle.ExportOptions{
+		LayersDir:       e.layersDir,
+		AppDir:          e.appDir,
+		WorkingImage:    appImage,
+		RunImageRef:     runImageID.String(),
+		OrigMetadata:    analyzedMD.Metadata,
+		AdditionalNames: e.imageNames,
+		LauncherConfig:  launcherConfig,
+		Stack:           stackMD,
+		Project:         projectMD,
+	}); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}
