@@ -46,58 +46,60 @@ type SliceLayer struct {
 	SHA     string
 }
 
-func (e *Exporter) Export(
-	layersDir,
-	appDir string,
-	workingImage imgutil.Image,
-	runImageRef string,
-	origMetadata LayersMetadata,
-	additionalNames []string,
-	launcherConfig LauncherConfig,
-	stack StackMetadata,
-	project ProjectMetadata,
-) error {
+type ExportOptions struct {
+	LayersDir       string
+	AppDir          string
+	WorkingImage    imgutil.Image
+	RunImageRef     string
+	OrigMetadata    LayersMetadata
+	AdditionalNames []string
+	LauncherConfig  LauncherConfig
+	Stack           StackMetadata
+	Project         ProjectMetadata
+}
+
+func (e *Exporter) Export(opts ExportOptions) error {
 	var err error
 
-	layersDir, err = filepath.Abs(layersDir)
+	opts.LayersDir, err = filepath.Abs(opts.LayersDir)
 	if err != nil {
 		return errors.Wrapf(err, "layers dir absolute path")
 	}
 
-	appDir, err = filepath.Abs(appDir)
+	opts.AppDir, err = filepath.Abs(opts.AppDir)
 	if err != nil {
 		return errors.Wrapf(err, "app dir absolute path")
 	}
 
 	meta := LayersMetadata{}
-	meta.RunImage.TopLayer, err = workingImage.TopLayer()
+	meta.RunImage.TopLayer, err = opts.WorkingImage.TopLayer()
 	if err != nil {
 		return errors.Wrap(err, "get run image top layer SHA")
 	}
 
-	meta.RunImage.Reference = runImageRef
-	meta.Stack = stack
+	meta.RunImage.Reference = opts.RunImageRef
+	meta.Stack = opts.Stack
 
 	buildMD := &BuildMetadata{}
-	if _, err := toml.DecodeFile(MetadataFilePath(layersDir), buildMD); err != nil {
+	if _, err := toml.DecodeFile(MetadataFilePath(opts.LayersDir), buildMD); err != nil {
 		return errors.Wrap(err, "read build metadata")
 	}
 
 	// creating app layers (slices + app dir)
-	appSlices, err := e.createAppSliceLayers(appDir, buildMD.Slices)
+	appSlices, err := e.createAppSliceLayers(opts.AppDir, buildMD.Slices)
 	if err != nil {
 		return errors.Wrap(err, "creating app layers")
 	}
 
 	// launcher
-	meta.Launcher.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: launcherConfig.Path, identifier: "launcher"}, origMetadata.Launcher.SHA)
+	meta.Launcher.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer{path: opts.LauncherConfig.Path, identifier: "launcher"}, opts.OrigMetadata.Launcher.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting launcher layer")
 	}
 
 	// layers
 	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, bp)
+		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
@@ -114,8 +116,8 @@ func (e *Exporter) Export(
 			}
 
 			if layer.hasLocalContents() {
-				origLayerMetadata := origMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
-				lmd.SHA, err = e.addOrReuseLayer(workingImage, &layer, origLayerMetadata.SHA)
+				origLayerMetadata := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
+				lmd.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer, origLayerMetadata.SHA)
 				if err != nil {
 					return err
 				}
@@ -123,14 +125,14 @@ func (e *Exporter) Export(
 				if lmd.Cache {
 					return fmt.Errorf("layer '%s' is cache=true but has no contents", layer.Identifier())
 				}
-				origLayerMetadata, ok := origMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
+				origLayerMetadata, ok := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
 				if !ok {
 					return fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())
 				}
 
 				e.Logger.Infof("Reusing layer '%s'\n", layer.Identifier())
 				e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), origLayerMetadata.SHA)
-				if err := workingImage.ReuseLayer(origLayerMetadata.SHA); err != nil {
+				if err := opts.WorkingImage.ReuseLayer(origLayerMetadata.SHA); err != nil {
 					return errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
 				}
 				lmd.SHA = origLayerMetadata.SHA
@@ -149,13 +151,13 @@ func (e *Exporter) Export(
 	}
 
 	// app
-	meta.App, err = e.addSliceLayers(workingImage, appSlices, origMetadata.App)
+	meta.App, err = e.addSliceLayers(opts.WorkingImage, appSlices, opts.OrigMetadata.App)
 	if err != nil {
 		return errors.Wrap(err, "exporting slice layers")
 	}
 
 	// config
-	meta.Config.SHA, err = e.addOrReuseLayer(workingImage, &layer{path: filepath.Join(layersDir, "config"), identifier: "config"}, origMetadata.Config.SHA)
+	meta.Config.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer{path: filepath.Join(opts.LayersDir, "config"), identifier: "config"}, opts.OrigMetadata.Config.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting config layer")
 	}
@@ -165,44 +167,44 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	if err = workingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
+	if err = opts.WorkingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
-	buildMD.Launcher = launcherConfig.Metadata
+	buildMD.Launcher = opts.LauncherConfig.Metadata
 	buildJSON, err := json.Marshal(buildMD)
 	if err != nil {
 		return errors.Wrap(err, "parse build metadata")
 	}
-	if err := workingImage.SetLabel(BuildMetadataLabel, string(buildJSON)); err != nil {
+	if err := opts.WorkingImage.SetLabel(BuildMetadataLabel, string(buildJSON)); err != nil {
 		return errors.Wrap(err, "set build image metadata label")
 	}
 
-	projectJSON, err := json.Marshal(project)
+	projectJSON, err := json.Marshal(opts.Project)
 	if err != nil {
 		return errors.Wrap(err, "parse project metadata")
 	}
-	if err := workingImage.SetLabel(ProjectMetadataLabel, string(projectJSON)); err != nil {
+	if err := opts.WorkingImage.SetLabel(ProjectMetadataLabel, string(projectJSON)); err != nil {
 		return errors.Wrap(err, "set project metadata label")
 	}
 
-	if err = workingImage.SetEnv(cmd.EnvLayersDir, layersDir); err != nil {
+	if err = opts.WorkingImage.SetEnv(cmd.EnvLayersDir, opts.LayersDir); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvLayersDir)
 	}
 
-	if err = workingImage.SetEnv(cmd.EnvAppDir, appDir); err != nil {
+	if err = opts.WorkingImage.SetEnv(cmd.EnvAppDir, opts.AppDir); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
-	if err = workingImage.SetEntrypoint(launcherConfig.Path); err != nil {
+	if err = opts.WorkingImage.SetEntrypoint(opts.LauncherConfig.Path); err != nil {
 		return errors.Wrap(err, "setting entrypoint")
 	}
 
-	if err = workingImage.SetCmd(); err != nil { // Note: Command intentionally empty
+	if err = opts.WorkingImage.SetCmd(); err != nil { // Note: Command intentionally empty
 		return errors.Wrap(err, "setting cmd")
 	}
 
-	return saveImage(workingImage, additionalNames, e.Logger)
+	return saveImage(opts.WorkingImage, opts.AdditionalNames, e.Logger)
 }
 
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
