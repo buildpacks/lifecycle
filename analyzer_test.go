@@ -174,6 +174,19 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, md.Metadata, appImageMetadata)
 			})
 
+			it("restores each store metadata", func() {
+				_, err := analyzer.Analyze(image, testCache)
+				h.AssertNil(t, err)
+				for _, data := range []struct{ name, want string }{
+					// store.toml files.
+					{"metadata.buildpack/store.toml", "[metadata]\n  [metadata.metadata-buildpack-store-data]\n    store-key = \"store-val\""},
+					{"no.cache.buildpack/store.toml", "[metadata]\n  [metadata.no-cache-buildpack-store-data]\n    store-key = \"store-val\""},
+				} {
+					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+					h.AssertStringContains(t, string(got), data.want)
+				}
+			})
+
 			when("cache exists", func() {
 				it.Before(func() {
 					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
@@ -322,8 +335,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 					h.AssertUIDGID(t, layerDir, 1234, 4321)
+					h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack"), 1234, 4321)
+					h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack", "store.toml"), 1234, 4321)
 					h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack", "launch.toml"), 1234, 4321)
 					h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
+					h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack", "store.toml"), 1234, 4321)
 					h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack", "some-layer.toml"), 1234, 4321)
 				})
 			})
@@ -347,7 +363,48 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					files, err := ioutil.ReadDir(layerDir)
 					h.AssertNil(t, err)
-					h.AssertEq(t, len(files), 0)
+					h.AssertEq(t, len(files), 2)
+
+					files, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack"))
+					h.AssertNil(t, err)
+					//expect 1 file b/c of store.toml
+					h.AssertEq(t, len(files), 1)
+
+					files, err = ioutil.ReadDir(filepath.Join(layerDir, "no.cache.buildpack"))
+					h.AssertNil(t, err)
+					//expect 1 file b/c of store.toml
+					h.AssertEq(t, len(files), 1)
+				})
+
+				it("restores each store metadata", func() {
+					_, err := analyzer.Analyze(image, testCache)
+					h.AssertNil(t, err)
+					for _, data := range []struct{ name, want string }{
+						// store.toml files.
+						{"metadata.buildpack/store.toml", "[metadata]\n  [metadata.metadata-buildpack-store-data]\n    store-key = \"store-val\""},
+						{"no.cache.buildpack/store.toml", "[metadata]\n  [metadata.no-cache-buildpack-store-data]\n    store-key = \"store-val\""},
+					} {
+						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+						h.AssertStringContains(t, string(got), data.want)
+					}
+				})
+
+				when("analyzer is running as root", func() {
+					it.Before(func() {
+						if os.Getuid() != 0 {
+							t.Skip("Skipped when not running as root")
+						}
+					})
+
+					it("chowns new files to CNB_USER_ID:CNB_GROUP_ID", func() {
+						_, err := analyzer.Analyze(image, testCache)
+						h.AssertNil(t, err)
+						h.AssertUIDGID(t, layerDir, 1234, 4321)
+						h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack"), 1234, 4321)
+						h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack", "store.toml"), 1234, 4321)
+						h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
+						h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack", "store.toml"), 1234, 4321)
+					})
 				})
 			})
 		})

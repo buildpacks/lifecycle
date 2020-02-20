@@ -6,7 +6,7 @@
 A reference implementation of the [Cloud Native Buildpacks specification](https://github.com/buildpacks/spec).
 
 This lifecycle implements the following versioned APIs
-* Buildpack API 0.2 - excluding [/bin/develop](https://github.com/buildpacks/spec/blob/master/buildpack.md#development) and [store.toml](https://github.com/buildpacks/spec/blob/master/buildpack.md#storetoml-toml)
+* Buildpack API 0.2
 * Platform API 0.2
 
 ## Commands

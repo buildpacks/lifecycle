@@ -92,6 +92,7 @@ type BuildpackLayersMetadata struct {
 	ID      string                            `json:"key" toml:"key"`
 	Version string                            `json:"version" toml:"version"`
 	Layers  map[string]BuildpackLayerMetadata `json:"layers" toml:"layers"`
+	Store   *BuildpackStore                   `json:"store,omitempty" toml:"store"`
 }
 
 type BuildpackLayerMetadata struct {
@@ -104,6 +105,10 @@ type BuildpackLayerMetadataFile struct {
 	Build  bool        `json:"build" toml:"build"`
 	Launch bool        `json:"launch" toml:"launch"`
 	Cache  bool        `json:"cache" toml:"cache"`
+}
+
+type BuildpackStore struct {
+	Data map[string]interface{} `json:"metadata" toml:"metadata"`
 }
 
 type RunImageMetadata struct {

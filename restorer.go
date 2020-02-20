@@ -76,7 +76,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	if current := os.Getuid(); current == -1 {
 		return errors.New("cannot determine UID")
 	} else if current == 0 {
-		if err := recursiveChown(r.LayersDir, r.UID, r.GID); err != nil {
+		if err := recursiveChownIfRoot(r.LayersDir, r.UID, r.GID); err != nil {
 			return errors.Wrapf(err, "chowning layers dir to '%d/%d'", r.UID, r.GID)
 		}
 	}

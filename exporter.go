@@ -105,6 +105,7 @@ func (e *Exporter) Export(
 			ID:      bp.ID,
 			Version: bp.Version,
 			Layers:  map[string]BuildpackLayerMetadata{},
+			Store:   bpDir.store,
 		}
 		for _, layer := range bpDir.findLayers(launch) {
 			layer := layer

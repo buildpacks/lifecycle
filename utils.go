@@ -74,3 +74,29 @@ func isEmptyDir(name string) (bool, error) {
 	}
 	return len(entries) == 0, nil
 }
+
+func recursiveChownIfRoot(path string, uid, gid int) error {
+	if current := os.Getuid(); current != 0 {
+		return nil
+	}
+	fis, err := ioutil.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	if err := os.Chown(path, uid, gid); err != nil {
+		return err
+	}
+	for _, fi := range fis {
+		filePath := filepath.Join(path, fi.Name())
+		if fi.IsDir() {
+			if err := recursiveChownIfRoot(filePath, uid, gid); err != nil {
+				return err
+			}
+		} else {
+			if err := os.Lchown(filePath, uid, gid); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

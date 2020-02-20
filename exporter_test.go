@@ -961,12 +961,39 @@ type = "Apache-2.0"
 				h.AssertEq(t, meta.App[0].SHA, "sha256:"+appLayerSHA)
 				h.AssertEq(t, meta.Config.SHA, "sha256:"+configLayerSHA)
 				h.AssertEq(t, meta.Launcher.SHA, "sha256:"+launcherLayerSHA)
+				h.AssertEq(t, meta.Buildpacks[0].ID, "buildpack.id")
 				h.AssertEq(t, meta.Buildpacks[0].Layers["layer1"].SHA, "sha256:"+buildpackLayer1SHA)
 				h.AssertEq(t, meta.Buildpacks[0].Layers["layer2"].SHA, "sha256:"+buildpackLayer2SHA)
 
 				t.Log("adds buildpack layer metadata to label")
 				h.AssertEq(t, meta.Buildpacks[0].Layers["layer1"].Data, map[string]interface{}{
 					"mykey": "new val",
+				})
+
+				t.Log("defaults to nil store")
+				h.AssertNil(t, meta.Buildpacks[0].Store)
+			})
+
+			when("there are store.toml files", func() {
+				it.Before(func() {
+					path := filepath.Join(layersDir, "buildpack.id", "store.toml")
+					h.AssertNil(t, ioutil.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0777))
+				})
+
+				it("saves store metadata", func() {
+					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, lifecycle.LayersMetadata{}, additionalNames, launcherConfig, stack, project))
+
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+					h.AssertNil(t, err)
+
+					var meta lifecycle.LayersMetadata
+					if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
+						t.Fatalf("badly formatted metadata: %s", err)
+					}
+
+					h.AssertEq(t, meta.Buildpacks[0].Store, &lifecycle.BuildpackStore{Data: map[string]interface{}{
+						"key": "val",
+					}})
 				})
 			})
 

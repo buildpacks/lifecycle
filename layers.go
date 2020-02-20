@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 )
 
 type bpLayersDir struct {
@@ -16,6 +17,7 @@ type bpLayersDir struct {
 	layers    []bpLayer
 	name      string
 	buildpack Buildpack
+	store     *BuildpackStore
 }
 
 func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir, error) {
@@ -44,8 +46,17 @@ func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir,
 	if err != nil {
 		return bpLayersDir{}, err
 	}
-	for _, toml := range tomls {
-		name := strings.TrimSuffix(filepath.Base(toml), ".toml")
+	for _, tf := range tomls {
+		name := strings.TrimSuffix(filepath.Base(tf), ".toml")
+		if name == "store" {
+			var bpStore BuildpackStore
+			_, err := toml.DecodeFile(tf, &bpStore)
+			if err != nil {
+				return bpLayersDir{}, errors.Wrapf(err, "failed decoding store.toml for buildpack %q", buildpack.ID)
+			}
+			bpDir.store = &bpStore
+			continue
+		}
 		if _, ok := names[name]; !ok {
 			bpDir.layers = append(bpDir.layers, *bpDir.newBPLayer(name))
 		}
@@ -177,27 +188,4 @@ func (l *layer) Path() string {
 type identifiableLayer interface {
 	Identifier() string
 	Path() string
-}
-
-func recursiveChown(path string, uid, gid int) error {
-	fis, err := ioutil.ReadDir(path)
-	if err != nil {
-		return err
-	}
-	if err := os.Chown(path, uid, gid); err != nil {
-		return err
-	}
-	for _, fi := range fis {
-		filePath := filepath.Join(path, fi.Name())
-		if fi.IsDir() {
-			if err := recursiveChown(filePath, uid, gid); err != nil {
-				return err
-			}
-		} else {
-			if err := os.Lchown(filePath, uid, gid); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
