@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -31,7 +30,6 @@ type exportCmd struct {
 	launchCacheDir      string
 	launcherPath        string
 	useDaemon           bool
-	useHelpers          bool
 	uid                 int
 	gid                 int
 	cacheImageTag       string
@@ -48,7 +46,6 @@ func (e *exportCmd) Init() {
 	cmd.FlagStackPath(&e.stackPath)
 	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
 	cmd.FlagUseDaemon(&e.useDaemon)
-	cmd.FlagUseCredHelpers(&e.useHelpers)
 	cmd.FlagUID(&e.uid)
 	cmd.FlagGID(&e.gid)
 	cmd.FlagLauncherPath(&e.launcherPath)
@@ -128,12 +125,6 @@ func (e *exportCmd) Exec() error {
 		e.runImageRef, err = stackMD.BestRunImageMirror(registry)
 		if err != nil {
 			return err
-		}
-	}
-
-	if e.useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), e.imageNames[0], e.runImageRef); err != nil {
-			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
 

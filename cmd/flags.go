@@ -33,8 +33,7 @@ const (
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvStackPath           = "CNB_STACK_PATH"
 	EnvPlanPath            = "CNB_PLAN_PATH"
-	EnvUseDaemon           = "CNB_USE_DAEMON"       // defaults to false
-	EnvUseHelpers          = "CNB_USE_CRED_HELPERS" // defaults to false
+	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 	EnvRunImage            = "CNB_RUN_IMAGE"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvCacheDir            = "CNB_CACHE_DIR"
@@ -113,10 +112,6 @@ func FlagStackPath(path *string) {
 
 func FlagUID(uid *int) {
 	flagSet.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
-}
-
-func FlagUseCredHelpers(use *bool) {
-	flagSet.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
 }
 
 func FlagUseDaemon(use *bool) {
