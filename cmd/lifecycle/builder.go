@@ -48,31 +48,18 @@ func (b *buildCmd) Exec() error {
 		return cmd.FailErr(err, "parse detect plan")
 	}
 
-	return build(
-		b.appDir,
-		b.layersDir,
-		b.platformDir,
-		b.buildpacksDir,
-		group,
-		plan,
-		os.Getuid(),
-		os.Getgid(),
-	)
-}
-
-func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, uid, gid int) error {
 	builder := &lifecycle.Builder{
-		AppDir:        appDir,
-		LayersDir:     layersDir,
-		PlatformDir:   platformDir,
-		BuildpacksDir: buildpacksDir,
+		AppDir:        b.appDir,
+		LayersDir:     b.layersDir,
+		PlatformDir:   b.platformDir,
+		BuildpacksDir: b.buildpacksDir,
 		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
 		Plan:          plan,
 		Out:           log.New(os.Stdout, "", 0),
 		Err:           log.New(os.Stderr, "", 0),
-		UID:           uid,
-		GID:           gid,
+		UID:           os.Getuid(),
+		GID:           os.Getgid(),
 	}
 
 	md, err := builder.Build()
@@ -80,7 +67,7 @@ func build(appDir, layersDir, platformDir, buildpacksDir string, group lifecycle
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(layersDir), md); err != nil {
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(b.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write metadata")
 	}
 	return nil

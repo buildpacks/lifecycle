@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/env"
 )
 
 type createCmd struct {
@@ -73,6 +77,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 }
 
 func (c *createCmd) Exec() error {
+	fmt.Println("---> DETECTING")
 	group, plan, err := detect(c.orderPath, c.platformDir, c.appDir, c.buildpacksDir, c.uid, c.gid)
 	if err != nil {
 		return err
@@ -83,19 +88,55 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	analyzedMD, err := analyze(group, c.previousImage, c.layersDir, c.uid, c.gid, cacheStore, c.skipRestore, c.useDaemon)
+	previousImage, err := initImage(c.imageName, c.useDaemon)
 	if err != nil {
 		return err
 	}
 
+	analyzer := &lifecycle.Analyzer{
+		Buildpacks: group.Group,
+		LayersDir:  c.layersDir,
+		Logger:     cmd.Logger,
+		UID:        c.uid,
+		GID:        c.gid,
+		SkipLayers: c.skipRestore,
+	}
+
+	fmt.Println("---> ANALYZING")
+	analyzedMD, err := analyzer.Analyze(previousImage, cacheStore)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
+	}
+
 	if !c.skipRestore {
+		fmt.Println("---> RESTORING")
 		if err := restore(c.layersDir, c.uid, c.gid, group, cacheStore); err != nil {
 			return err
 		}
 	}
 
-	if err := build(c.appDir, c.layersDir, c.platformDir, c.buildpacksDir, group, plan, c.uid, c.gid); err != nil {
-		return err
+	fmt.Println("---> BUILDING")
+	builder := &lifecycle.Builder{
+		AppDir:        c.appDir,
+		LayersDir:     c.layersDir,
+		PlatformDir:   c.platformDir,
+		BuildpacksDir: c.buildpacksDir,
+		Env:           env.NewBuildEnv(os.Environ()),
+		Group:         group,
+		Plan:          plan,
+		Out:           log.New(os.Stdout, "", 0),
+		Err:           log.New(os.Stderr, "", 0),
+		UID:           c.uid,
+		GID:           c.gid,
+	}
+
+	md, err := builder.Build()
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
+	}
+
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(c.layersDir), md); err != nil {
+		return cmd.FailErr(err, "write metadata")
 	}
 
 	return export(
@@ -113,6 +154,5 @@ func (c *createCmd) Exec() error {
 		c.useDaemon,
 		c.uid,
 		c.gid,
-		c.processType,
 	)
 }

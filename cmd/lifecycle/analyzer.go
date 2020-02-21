@@ -57,9 +57,23 @@ func (a *analyzeCmd) Exec() error {
 		return err
 	}
 
-	analyzedMd, err := analyze(group, a.imageName, a.layersDir, a.uid, a.gid, cacheStore, a.skipLayers, a.useDaemon)
+	analyzer := &lifecycle.Analyzer{
+		Buildpacks: group.Group,
+		LayersDir:  a.layersDir,
+		Logger:     cmd.Logger,
+		UID:        a.uid,
+		GID:        a.gid,
+		SkipLayers: a.skipLayers,
+	}
+
+	img, err := initImage(a.imageName, a.useDaemon)
 	if err != nil {
-		return err
+		return cmd.FailErr(err, "get previous image")
+	}
+
+	analyzedMd, err := analyzer.Analyze(img, cacheStore)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
 	}
 
 	if err := lifecycle.WriteTOML(a.analyzedPath, analyzedMd); err != nil {
@@ -67,26 +81,4 @@ func (a *analyzeCmd) Exec() error {
 	}
 
 	return nil
-}
-
-func analyze(group lifecycle.BuildpackGroup, imageName, layersDir string, uid, gid int, cacheStore lifecycle.Cache, skipLayers, useDaemon bool) (lifecycle.AnalyzedMetadata, error) {
-	analyzer := &lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  layersDir,
-		Logger:     cmd.Logger,
-		UID:        uid,
-		GID:        gid,
-		SkipLayers: skipLayers,
-	}
-
-	img, err := initImage(imageName, useDaemon)
-	if err != nil {
-		return lifecycle.AnalyzedMetadata{}, cmd.FailErr(err, "access previous image")
-	}
-
-	analyzedMd, err := analyzer.Analyze(img, cacheStore)
-	if err != nil {
-		return lifecycle.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
-	}
-	return *analyzedMd, nil
 }

@@ -90,31 +90,49 @@ func (e *exportCmd) Exec() error {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	return export(group, e.stackPath, e.imageNames, e.launchCacheDir, e.appDir, e.layersDir, e.launcherPath, e.projectMetadataPath, e.runImageRef, analyzedMD, cacheStore, e.useDaemon, e.uid, e.gid, e.processType)
+	return export(exportArgs{
+		group:               group,
+		stackPath:           e.stackPath,
+		imageNames:          e.imageNames,
+		launchCacheDir:      e.launchCacheDir,
+		appDir:              e.appDir,
+		layersDir:           e.layersDir,
+		launcherPath:        e.launcherPath,
+		projectMetadataPath: e.projectMetadataPath,
+		runImageRef:         e.runImageRef,
+		analyzedMD:          analyzedMD,
+		cacheStore:          cacheStore,
+		useDaemon:           e.useDaemon,
+		uid:                 e.uid,
+		gid:                 e.gid,
+		processType:         e.processType,
+	})
 }
 
-func export(
-	group lifecycle.BuildpackGroup,
-	stackPath string,
-	imageNames []string,
-	launchCacheDir string,
-	appDir string,
-	layersDir string,
-	launcherPath string,
-	projectMetadataPath string,
-	runImageRef string,
-	analyzedMD lifecycle.AnalyzedMetadata,
-	cacheStore lifecycle.Cache,
-	useDaemon bool,
-	uid, gid int,
-	processType string,
-) error {
-	registry, err := image.EnsureSingleRegistry(imageNames...)
+type exportArgs struct {
+	group               lifecycle.BuildpackGroup
+	stackPath           string
+	imageNames          []string
+	launchCacheDir      string
+	appDir              string
+	layersDir           string
+	launcherPath        string
+	projectMetadataPath string
+	runImageRef         string
+	analyzedMD          lifecycle.AnalyzedMetadata
+	cacheStore          lifecycle.Cache
+	useDaemon           bool
+	uid, gid            int
+	processType         string
+}
+
+func export(args exportArgs) error {
+	registry, err := image.EnsureSingleRegistry(args.imageNames...)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	stackMD, runImageRef, err := resolveStack(stackPath, runImageRef, registry)
+	stackMD, runImageRef, err := resolveStack(args.stackPath, args.runImageRef, registry)
 	if err != nil {
 		return err
 	}
@@ -126,108 +144,54 @@ func export(
 	defer os.RemoveAll(artifactsDir)
 
 	var projectMD lifecycle.ProjectMetadata
-	_, err = toml.DecodeFile(projectMetadataPath, &projectMD)
+	_, err = toml.DecodeFile(args.projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
-		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", projectMetadataPath)
+		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", args.projectMetadataPath)
 	}
 
 	exporter := &lifecycle.Exporter{
-		Buildpacks:   group.Group,
+		Buildpacks:   args.group.Group,
 		Logger:       cmd.Logger,
-		UID:          uid,
-		GID:          gid,
+		UID:          args.uid,
+		GID:          args.gid,
 		ArtifactsDir: artifactsDir,
 	}
 
 	var appImage imgutil.Image
-	var runImageID imgutil.Identifier
-	if useDaemon {
-		dockerClient, err := cmd.DockerClient()
-		if err != nil {
-			return err
-		}
-
-		var opts = []local.ImageOption{
-			local.FromBaseImage(runImageRef),
-		}
-
-		if analyzedMD.Image != nil {
-			cmd.Logger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
-			opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
-		}
-
-		appImage, err = local.NewImage(
-			imageNames[0],
-			dockerClient,
-			opts...,
+	var runImageID string
+	if args.useDaemon {
+		appImage, runImageID, err = initDaemonImage(
+			args.imageNames[0],
+			runImageRef,
+			args.analyzedMD,
+			args.launchCacheDir,
 		)
-		if err != nil {
-			return cmd.FailErr(err, " image")
-		}
-
-		runImageID, err = appImage.Identifier()
-		if err != nil {
-			return cmd.FailErr(err, "get run image ID")
-		}
-
-		if launchCacheDir != "" {
-			volumeCache, err := cache.NewVolumeCache(launchCacheDir)
-			if err != nil {
-				return cmd.FailErr(err, "create launch cache")
-			}
-			appImage = cache.NewCachingImage(appImage, volumeCache)
-		}
 	} else {
-		var opts = []remote.ImageOption{
-			remote.FromBaseImage(runImageRef),
-		}
-
-		if analyzedMD.Image != nil {
-			cmd.Logger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
-			ref, err := name.ParseReference(analyzedMD.Image.Reference, name.WeakValidation)
-			if err != nil {
-				return cmd.FailErr(err, "parse analyzed registry")
-			}
-			analyzedRegistry := ref.Context().RegistryStr()
-			if analyzedRegistry != registry {
-				return fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, registry)
-			}
-			opts = append(opts, remote.WithPreviousImage(analyzedMD.Image.Reference))
-		}
-
-		appImage, err = remote.NewImage(
-			imageNames[0],
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			opts...,
+		appImage, runImageID, err = initRemoteImage(
+			args.imageNames[0],
+			runImageRef,
+			args.analyzedMD,
+			registry,
 		)
-		if err != nil {
-			return cmd.FailErr(err, "new app image")
-		}
-
-		runImage, err := remote.NewImage(runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
-		if err != nil {
-			return cmd.FailErr(err, "access run image")
-		}
-		runImageID, err = runImage.Identifier()
-		if err != nil {
-			return cmd.FailErr(err, "get run image reference")
-		}
+	}
+	if err != nil {
+		return err
 	}
 
 	if err := exporter.Export(lifecycle.ExportOptions{
-		LayersDir:          layersDir,
-		AppDir:             appDir,
+		LayersDir:          args.layersDir,
+		AppDir:             args.appDir,
 		WorkingImage:       appImage,
-		RunImageRef:        runImageID.String(),
-		OrigMetadata:       analyzedMD.Metadata,
-		AdditionalNames:    imageNames[1:],
-		LauncherConfig:     launcherConfig(launcherPath),
+		RunImageRef:        runImageID,
+		OrigMetadata:       args.analyzedMD.Metadata,
+		AdditionalNames:    args.imageNames[1:],
+		LauncherConfig:     launcherConfig(args.launcherPath),
 		Stack:              stackMD,
 		Project:            projectMD,
-		DefaultProcessType: processType,
+		DefaultProcessType: args.processType,
 	}); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
@@ -235,12 +199,89 @@ func export(
 		return cmd.FailErr(err, "export")
 	}
 
-	if cacheStore != nil {
-		if cacheErr := exporter.Cache(layersDir, cacheStore); cacheErr != nil {
+	if args.cacheStore != nil {
+		if cacheErr := exporter.Cache(args.layersDir, args.cacheStore); cacheErr != nil {
 			cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
 		}
 	}
 	return nil
+}
+
+func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, launchCacheDir string) (imgutil.Image, string, error) {
+	dockerClient, err := cmd.DockerClient()
+	if err != nil {
+		return nil, "", err
+	}
+
+	var opts = []local.ImageOption{
+		local.FromBaseImage(runImageRef),
+	}
+
+	if analyzedMD.Image != nil {
+		cmd.Logger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+		opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
+	}
+
+	appImage, err := local.NewImage(
+		imagName,
+		dockerClient,
+		opts...,
+	)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, " image")
+	}
+
+	runImageID, err := appImage.Identifier()
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "get run image ID")
+	}
+
+	if launchCacheDir != "" {
+		volumeCache, err := cache.NewVolumeCache(launchCacheDir)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "create launch cache")
+		}
+		appImage = cache.NewCachingImage(appImage, volumeCache)
+	}
+	return appImage, runImageID.String(), nil
+}
+
+func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, registry string) (imgutil.Image, string, error) {
+	var opts = []remote.ImageOption{
+		remote.FromBaseImage(runImageRef),
+	}
+
+	if analyzedMD.Image != nil {
+		cmd.Logger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+		ref, err := name.ParseReference(analyzedMD.Image.Reference, name.WeakValidation)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "parse analyzed registry")
+		}
+		analyzedRegistry := ref.Context().RegistryStr()
+		if analyzedRegistry != registry {
+			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, registry)
+		}
+		opts = append(opts, remote.WithPreviousImage(analyzedMD.Image.Reference))
+	}
+
+	appImage, err := remote.NewImage(
+		imageName,
+		auth.EnvKeychain(cmd.EnvRegistryAuth),
+		opts...,
+	)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "new app image")
+	}
+
+	runImage, err := remote.NewImage(runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "access run image")
+	}
+	runImageID, err := runImage.Identifier()
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "get run image reference")
+	}
+	return appImage, runImageID.String(), nil
 }
 
 func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
