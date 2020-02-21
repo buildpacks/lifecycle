@@ -212,21 +212,28 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	if err := ioutil.WriteFile(planPath, nil, 0777); err != nil {
 		return detectRun{Code: -1, Err: err}
 	}
-	if err := ensureOwner(planDir, c.UID, c.GID); err != nil {
+	if err := ensureOwner(planPath, c.UID, c.GID); err != nil {
 		return detectRun{Code: -1, Err: err}
 	}
 
 	out := &bytes.Buffer{}
-	cmd := exec.Command(filepath.Join(bp.Path, "bin", "detect"), platformDir, planPath)
+	cmd := exec.Command(
+		filepath.Join(bp.Path, "bin", "detect"),
+		platformDir,
+		planPath,
+	)
 	cmd.Dir = appDir
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Env = c.FullEnv
-	cmd = asUser(cmd, c.UID, c.GID)
 	if bp.Buildpack.ClearEnv {
 		cmd.Env = c.ClearEnv
 	}
 
+	cmd, err = asUser(cmd, c.UID, c.GID)
+	if err != nil {
+		return detectRun{Code: -1, Err: err}
+	}
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			if status, ok := err.Sys().(syscall.WaitStatus); ok {

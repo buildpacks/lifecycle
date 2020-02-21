@@ -28,6 +28,17 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		it("allows keys with '='", func() {
+			env := NewLaunchEnv([]string{
+				"CNB_FOO=some=key",
+			})
+			if s := cmp.Diff(env.List(), []string{
+				"CNB_FOO=some=key",
+			}); s != "" {
+				t.Fatalf("Unexpected env\n%s\n", s)
+			}
+		})
+
 		it("assign the Launch time root dir map", func() {
 			env := NewLaunchEnv([]string{})
 			if s := cmp.Diff(env.RootDirMap, POSIXLaunchEnv); s != "" {

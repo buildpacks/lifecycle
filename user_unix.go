@@ -6,23 +6,32 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"syscall"
 )
 
 var currentUser = os.Getuid()
 
-func asUser(cmd *exec.Cmd, uid, gid int) *exec.Cmd {
+// asUser sets HOME and non-root user credentials on command
+func asUser(cmd *exec.Cmd, uid, gid int) (*exec.Cmd, error) {
 	if currentUser != 0 {
-		return cmd
+		cmd.Env = append(cmd.Env, "HOME="+os.Getenv("HOME"))
+		return cmd, nil
 	}
+	user, err := user.LookupId(strconv.Itoa(uid))
+	if err != nil {
+		return nil, err
+	}
+	cmd.Env = append(cmd.Env, "HOME="+user.HomeDir)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Credential: &syscall.Credential{
 			Uid: uint32(uid),
 			Gid: uint32(gid),
 		},
 	}
-	return cmd
+	return cmd, nil
 }
 
 func ensureOwner(path string, uid, gid int) error {

@@ -1,7 +1,5 @@
 package env
 
-import "strings"
-
 var LaunchEnvBlacklist = []string{
 	"CNB_LAYERS_DIR",
 	"CNB_APP_DIR",
@@ -9,20 +7,9 @@ var LaunchEnvBlacklist = []string{
 }
 
 func NewLaunchEnv(environ []string) *Env {
-	vars := make(map[string]string)
-	for _, kv := range environ {
-		parts := strings.Split(kv, "=")
-		if len(parts) != 2 {
-			continue
-		}
-		if isBlacklisted(parts[0]) {
-			continue
-		}
-		vars[parts[0]] = parts[1]
-	}
 	return &Env{
 		RootDirMap: POSIXLaunchEnv,
-		vars:       vars,
+		vars:       varsFromEnviron(environ, isBlacklisted),
 	}
 }
 

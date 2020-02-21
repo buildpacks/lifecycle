@@ -106,11 +106,15 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, errors.Wrapf(err, "chowning plan dir to '%d/%d'", b.UID, b.GID)
 		}
 
-		cmd := exec.Command(filepath.Join(bpInfo.Path, "bin", "build"), bpLayersDir, platformDir, bpPlanPath)
+		cmd := exec.Command(
+			filepath.Join(bpInfo.Path, "bin", "build"),
+			bpLayersDir,
+			platformDir,
+			bpPlanPath,
+		)
 		cmd.Dir = appDir
 		cmd.Stdout = b.Out.Writer()
 		cmd.Stderr = b.Err.Writer()
-		cmd = asUser(cmd, b.UID, b.GID)
 
 		if bpInfo.Buildpack.ClearEnv {
 			cmd.Env = b.Env.List()
@@ -119,6 +123,11 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			if err != nil {
 				return nil, err
 			}
+		}
+
+		cmd, err = asUser(cmd, b.UID, b.GID)
+		if err != nil {
+			return nil, err
 		}
 		if err := cmd.Run(); err != nil {
 			return nil, err

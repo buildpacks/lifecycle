@@ -1,34 +1,30 @@
 package env
 
-import "strings"
-
-var BuildEnvWhitelist = []string{"CNB_STACK_ID"}
+var BuildEnvWhitelist = []string{
+	"CNB_STACK_ID",
+}
 
 func NewBuildEnv(environ []string) *Env {
-	vars := make(map[string]string)
-	for _, kv := range environ {
-		parts := strings.Split(kv, "=")
-		if len(parts) != 2 {
-			continue
-		}
-		if !isWhitelisted(parts[0]) {
-			continue
-		}
-		vars[parts[0]] = parts[1]
-	}
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		vars:       vars,
+		vars:       varsFromEnviron(environ, isNotWhitelisted),
 	}
 }
 
-func isWhitelisted(k string) bool {
+func isNotWhitelisted(k string) bool {
 	for _, wk := range BuildEnvWhitelist {
 		if wk == k {
-			return true
+			return false
 		}
 	}
-	return false
+	for _, wks := range POSIXBuildEnv {
+		for _, wk := range wks {
+			if wk == k {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 var POSIXBuildEnv = map[string][]string{

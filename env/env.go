@@ -12,6 +12,21 @@ type Env struct {
 	vars       map[string]string
 }
 
+func varsFromEnviron(environ []string, removeKey func(string) bool) map[string]string {
+	vars := make(map[string]string)
+	for _, kv := range environ {
+		parts := strings.Split(kv, "=")
+		if len(parts) < 2 {
+			continue
+		}
+		if removeKey(parts[0]) {
+			continue
+		}
+		vars[parts[0]] = strings.Join(parts[1:], "=")
+	}
+	return vars
+}
+
 func (p *Env) AddRootDir(baseDir string) error {
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {

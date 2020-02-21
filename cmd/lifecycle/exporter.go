@@ -131,7 +131,7 @@ func export(
 		if !os.IsNotExist(err) {
 			return err
 		}
-		cmd.Logger.Infof("no project metadata found at path '%s', project metadata will not be exported\n", projectMetadataPath)
+		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", projectMetadataPath)
 	}
 
 	exporter := &lifecycle.Exporter{
