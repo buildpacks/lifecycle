@@ -2,6 +2,7 @@ package env
 
 var BuildEnvWhitelist = []string{
 	"CNB_STACK_ID",
+	"HOSTNAME",
 }
 
 func NewBuildEnv(environ []string) *Env {
