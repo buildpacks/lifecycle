@@ -74,40 +74,31 @@ func (p *Env) AddEnvDir(envDir string) error {
 }
 
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
-	restore := map[string]*string{}
-	defer func() {
-		for k, v := range restore {
-			var rErr error
-			if v == nil {
-				delete(p.vars, k)
-			} else {
-				p.vars[k] = *v
-			}
-			if err == nil {
-				err = rErr
-			}
-		}
-	}()
+	vars := make(map[string]string)
+	for key, value := range p.vars {
+		vars[key] = value
+	}
+
 	if err := eachEnvFile(filepath.Join(platformDir, "env"), func(k, v string) error {
-		restore[k] = nil
-		if old, ok := p.vars[k]; ok {
-			restore[k] = &old
-		}
 		if p.isRootEnv(k) {
-			p.vars[k] = v + prefix(p.vars[k], os.PathListSeparator)
+			vars[k] = v + prefix(vars[k], os.PathListSeparator)
 			return nil
 		}
-		p.vars[k] = v
+		vars[k] = v
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-	return p.List(), nil
+	return list(vars), nil
 }
 
 func (p *Env) List() []string {
+	return list(p.vars)
+}
+
+func list(vars map[string]string) []string {
 	var environ []string
-	for k, v := range p.vars {
+	for k, v := range vars {
 		environ = append(environ, k+"="+v)
 	}
 	return environ
