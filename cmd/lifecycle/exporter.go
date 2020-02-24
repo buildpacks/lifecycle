@@ -37,6 +37,7 @@ type exportCmd struct {
 	cacheImageTag       string
 	cacheDir            string
 	projectMetadataPath string
+	processType         string
 }
 
 func (e *exportCmd) Init() {
@@ -55,6 +56,7 @@ func (e *exportCmd) Init() {
 	cmd.FlagCacheImage(&e.cacheImageTag)
 	cmd.FlagCacheDir(&e.cacheDir)
 	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
+	cmd.FlagProcessType(&e.processType)
 }
 
 func (e *exportCmd) Args(nargs int, args []string) error {
@@ -227,15 +229,16 @@ func (e *exportCmd) Exec() error {
 	}
 
 	if err := exporter.Export(lifecycle.ExportOptions{
-		LayersDir:       e.layersDir,
-		AppDir:          e.appDir,
-		WorkingImage:    appImage,
-		RunImageRef:     runImageID.String(),
-		OrigMetadata:    analyzedMD.Metadata,
-		AdditionalNames: e.imageNames,
-		LauncherConfig:  launcherConfig,
-		Stack:           stackMD,
-		Project:         projectMD,
+		LayersDir:          e.layersDir,
+		AppDir:             e.appDir,
+		WorkingImage:       appImage,
+		RunImageRef:        runImageID.String(),
+		OrigMetadata:       analyzedMD.Metadata,
+		AdditionalNames:    e.imageNames,
+		LauncherConfig:     launcherConfig,
+		Stack:              stackMD,
+		Project:            projectMD,
+		DefaultProcessType: e.processType,
 	}); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")

@@ -47,15 +47,16 @@ type SliceLayer struct {
 }
 
 type ExportOptions struct {
-	LayersDir       string
-	AppDir          string
-	WorkingImage    imgutil.Image
-	RunImageRef     string
-	OrigMetadata    LayersMetadata
-	AdditionalNames []string
-	LauncherConfig  LauncherConfig
-	Stack           StackMetadata
-	Project         ProjectMetadata
+	LayersDir          string
+	AppDir             string
+	WorkingImage       imgutil.Image
+	RunImageRef        string
+	OrigMetadata       LayersMetadata
+	AdditionalNames    []string
+	LauncherConfig     LauncherConfig
+	Stack              StackMetadata
+	Project            ProjectMetadata
+	DefaultProcessType string
 }
 
 func (e *Exporter) Export(opts ExportOptions) error {
@@ -197,6 +198,16 @@ func (e *Exporter) Export(opts ExportOptions) error {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
+	if opts.DefaultProcessType != "" {
+		if !buildMD.hasProcess(opts.DefaultProcessType) {
+			return processTypeError(buildMD, opts.DefaultProcessType)
+		}
+
+		if err = opts.WorkingImage.SetEnv(cmd.EnvProcessType, opts.DefaultProcessType); err != nil {
+			return errors.Wrapf(err, "set app image env %s", cmd.EnvProcessType)
+		}
+	}
+
 	if err = opts.WorkingImage.SetEntrypoint(opts.LauncherConfig.Path); err != nil {
 		return errors.Wrap(err, "setting entrypoint")
 	}
@@ -206,6 +217,14 @@ func (e *Exporter) Export(opts ExportOptions) error {
 	}
 
 	return saveImage(opts.WorkingImage, opts.AdditionalNames, e.Logger)
+}
+
+func processTypeError(buildMD *BuildMetadata, defaultProcessType string) error {
+	var typeList []string
+	for _, p := range buildMD.Processes {
+		typeList = append(typeList, p.Type)
+	}
+	return fmt.Errorf("default process type '%s' not present in list %+v", defaultProcessType, typeList)
 }
 
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {

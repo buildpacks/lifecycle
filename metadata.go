@@ -39,6 +39,15 @@ func MetadataFilePath(layersDir string) string {
 	return path.Join(layersDir, "config", "metadata.toml")
 }
 
+func (md BuildMetadata) hasProcess(processType string) bool {
+	for _, p := range md.Processes {
+		if p.Type == processType {
+			return true
+		}
+	}
+	return false
+}
+
 type CacheMetadata struct {
 	Buildpacks []BuildpackLayersMetadata `json:"buildpacks"`
 }

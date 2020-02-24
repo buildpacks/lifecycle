@@ -272,7 +272,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				assertTarFileContents(t,
 					configLayerPath,
 					filepath.Join(opts.LayersDir, "config", "metadata.toml"),
-					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
+					"[[processes]]\n  type = \"some-process-type\"\n  command = \"/some/command\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(opts.LayersDir, "config"), uid, gid)
 				assertAddLayerLog(t, logHandler, "config", configLayerPath)
@@ -849,7 +849,7 @@ type = "Apache-2.0"
 				assertTarFileContents(t,
 					configLayerPath,
 					filepath.Join(opts.LayersDir, "config/metadata.toml"),
-					"[[processes]]\n  type = \"web\"\n  command = \"npm start\"\n",
+					"[[processes]]\n  type = \"some-process-type\"\n  command = \"/some/command\"\n",
 				)
 				assertTarFileOwner(t, configLayerPath, filepath.Join(opts.LayersDir, "config"), uid, gid)
 				assertAddLayerLog(t, logHandler, "config", configLayerPath)
@@ -951,12 +951,12 @@ type = "Apache-2.0"
 
 			when("there are store.toml files", func() {
 				it.Before(func() {
-					path := filepath.Join(layersDir, "buildpack.id", "store.toml")
+					path := filepath.Join(opts.LayersDir, "buildpack.id", "store.toml")
 					h.AssertNil(t, ioutil.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0777))
 				})
 
 				it("saves store metadata", func() {
-					h.AssertNil(t, exporter.Export(layersDir, appDir, fakeAppImage, runImageRef, lifecycle.LayersMetadata{}, additionalNames, launcherConfig, stack, project))
+					h.AssertNil(t, exporter.Export(opts))
 
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 					h.AssertNil(t, err)
@@ -1014,6 +1014,35 @@ type = "Apache-2.0"
 				val, err := fakeAppImage.Env("CNB_APP_DIR")
 				h.AssertNil(t, err)
 				h.AssertEq(t, val, opts.AppDir)
+			})
+
+			when("default process type is set", func() {
+				it("sets CNB_PROCESS_TYPE", func() {
+					opts.DefaultProcessType = "some-process-type"
+					h.AssertNil(t, exporter.Export(opts))
+
+					val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+					h.AssertNil(t, err)
+					h.AssertEq(t, val, "some-process-type")
+				})
+
+				when("default process type is not in metadata.toml", func() {
+					it("returns an error", func() {
+						opts.DefaultProcessType = "some-missing-process"
+						err := exporter.Export(opts)
+						h.AssertError(t, err, "default process type 'some-missing-process' not present in list [some-process-type]")
+					})
+				})
+			})
+
+			when("default process type is empty", func() {
+				it("does not set CNB_PROCESS_TYPE", func() {
+					h.AssertNil(t, exporter.Export(opts))
+
+					val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+					h.AssertNil(t, err)
+					h.AssertEq(t, val, "")
+				})
 			})
 
 			it("sets ENTRYPOINT to launcher", func() {
