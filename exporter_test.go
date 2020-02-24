@@ -121,18 +121,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				localReusableLayerSha := h.ComputeSHA256ForPath(t, localReusableLayerPath, uid, gid)
 				launcherSHA := h.ComputeSHA256ForPath(t, opts.LauncherConfig.Path, uid, gid)
 				sliceSHA = h.ComputeSHA256ForFiles(t, filepath.Join(opts.LayersDir, "slice-test.tar"), uid, gid, sliceConfigFilePath, sliceSvgFilePath)
-
-				fakeOriginalImage := fakes.NewImage("app/original-image", "original-top-layer-sha",
-					local.IDIdentifier{ImageID: "some-original-run-image-digest"},
-				)
-				defer fakeOriginalImage.Cleanup()
 				fakeAppImage.AddPreviousLayer("sha256:"+localReusableLayerSha, "")
 				fakeAppImage.AddPreviousLayer("sha256:"+launcherSHA, "")
 				fakeAppImage.AddPreviousLayer("sha256:orig-launch-layer-no-local-dir-sha", "")
 				fakeAppImage.AddPreviousLayer("sha256:"+sliceSHA, "")
-
-				h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata",
-					fmt.Sprintf(`
+				h.AssertNil(t, json.Unmarshal([]byte(fmt.Sprintf(`
 {
    "app": [
       {
@@ -169,9 +162,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
    "launcher": {
       "sha": "sha256:%s"
    }
-}`, sliceSHA, localReusableLayerSha, launcherSHA)))
-
-				h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, lifecycle.LayerMetadataLabel, &opts.OrigMetadata))
+}`, sliceSHA, localReusableLayerSha, launcherSHA)), &opts.OrigMetadata))
 			})
 
 			it("reuses slice layer if the sha matches the sha in the archive metadata", func() {
@@ -205,17 +196,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				localReusableLayerPath := filepath.Join(opts.LayersDir, "other.buildpack.id/local-reusable-layer")
 				localReusableLayerSha := h.ComputeSHA256ForPath(t, localReusableLayerPath, uid, gid)
 				launcherSHA := h.ComputeSHA256ForPath(t, opts.LauncherConfig.Path, uid, gid)
-
-				fakeOriginalImage := fakes.NewImage("app/original-image", "original-top-layer-sha",
-					local.IDIdentifier{ImageID: "some-original-run-image-digest"},
-				)
-				defer fakeOriginalImage.Cleanup()
 				fakeAppImage.AddPreviousLayer("sha256:"+localReusableLayerSha, "")
 				fakeAppImage.AddPreviousLayer("sha256:"+launcherSHA, "")
 				fakeAppImage.AddPreviousLayer("sha256:orig-launch-layer-no-local-dir-sha", "")
 
-				h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata",
-					fmt.Sprintf(`
+				h.AssertNil(t, json.Unmarshal([]byte(fmt.Sprintf(`
 {
    "buildpacks": [
       {
@@ -247,9 +232,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
    "launcher": {
       "sha": "sha256:%s"
    }
-}`, localReusableLayerSha, launcherSHA)))
-
-				h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, lifecycle.LayerMetadataLabel, &opts.OrigMetadata))
+}`, localReusableLayerSha, launcherSHA)), &opts.OrigMetadata))
 			})
 
 			it("creates app layer on Run image", func() {
@@ -1068,11 +1051,6 @@ type = "Apache-2.0"
 		})
 
 		when("buildpack requires an escaped id", func() {
-			var (
-				fakeOriginalImage *fakes.Image
-				fakeImageMetadata lifecycle.LayersMetadata
-			)
-
 			it.Before(func() {
 				exporter.Buildpacks = []lifecycle.Buildpack{{ID: "some/escaped/bp/id"}}
 
@@ -1081,18 +1059,6 @@ type = "Apache-2.0"
 				var err error
 				opts.AppDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "escaped-bpid", "layers", "app"))
 				h.AssertNil(t, err)
-
-				fakeOriginalImage = fakes.NewImage("app/original", "original-top-sha", local.IDIdentifier{ImageID: "run-digest"})
-				h.AssertNil(t, fakeOriginalImage.SetLabel(
-					"io.buildpacks.lifecycle.metadata",
-					`{"buildpacks":[{"key": "some/escaped/bp/id", "layers": {"layer": {"sha": "original-layer-sha"}}}]}`,
-				))
-
-				h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, lifecycle.LayerMetadataLabel, &fakeImageMetadata))
-			})
-
-			it.After(func() {
-				h.AssertNil(t, fakeOriginalImage.Cleanup())
 			})
 
 			it("exports layers from the escaped id path", func() {
@@ -1156,41 +1122,11 @@ type = "Apache-2.0"
 		})
 
 		when("there is a launch=true cache=true layer without contents", func() {
-			var (
-				fakeOriginalImage *fakes.Image
-				fakeImageMetadata lifecycle.LayersMetadata
-			)
-
 			it.Before(func() {
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "cache-layer-no-contents", "layers"), opts.LayersDir)
 				var err error
 				opts.AppDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "cache-layer-no-contents", "layers", "app"))
 				h.AssertNil(t, err)
-
-				fakeOriginalImage = fakes.NewImage(
-					"app/original-image",
-					"original-top-layer-sha",
-					local.IDIdentifier{ImageID: "some-original-image-id"},
-				)
-				_ = fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.metadata", `{
-  "buildpacks": [
-    {
-      "key": "buildpack.id",
-      "layers": {
-        "cache-layer-no-contents": {
-          "sha": "some-sha",
-          "cache": true
-        }
-      }
-    }
-  ]
-}`)
-
-				h.AssertNil(t, lifecycle.DecodeLabel(fakeOriginalImage, lifecycle.LayerMetadataLabel, &fakeImageMetadata))
-			})
-
-			it.After(func() {
-				h.AssertNil(t, fakeOriginalImage.Cleanup())
 			})
 
 			it("returns an error", func() {
