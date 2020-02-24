@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/pkg/errors"
 
@@ -20,7 +18,6 @@ type analyzeCmd struct {
 	layersDir     string
 	skipLayers    bool
 	useDaemon     bool
-	useHelpers    bool
 	uid           int
 	gid           int
 }
@@ -32,7 +29,6 @@ func (a *analyzeCmd) Init() {
 	cmd.FlagGroupPath(&a.groupPath)
 	cmd.FlagLayersDir(&a.layersDir)
 	cmd.FlagSkipLayers(&a.skipLayers)
-	cmd.FlagUseCredHelpers(&a.useHelpers)
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
@@ -51,12 +47,6 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	if a.useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), a.imageName); err != nil {
-			return cmd.FailErr(err, "setup credential helpers")
-		}
-	}
-
 	group, err := lifecycle.ReadGroup(a.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")

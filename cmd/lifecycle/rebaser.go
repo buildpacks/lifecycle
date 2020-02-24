@@ -1,9 +1,6 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
@@ -16,13 +13,11 @@ type rebaseCmd struct {
 	imageNames  []string
 	runImageRef string
 	useDaemon   bool
-	useHelpers  bool
 }
 
 func (r *rebaseCmd) Init() {
 	cmd.FlagRunImage(&r.runImageRef)
 	cmd.FlagUseDaemon(&r.useDaemon)
-	cmd.FlagUseCredHelpers(&r.useHelpers)
 }
 
 func (r *rebaseCmd) Args(nargs int, args []string) error {
@@ -34,12 +29,6 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 }
 
 func (r *rebaseCmd) Exec() error {
-	if r.useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), r.imageNames...); err != nil {
-			return cmd.FailErr(err, "setup credential helpers")
-		}
-	}
-
 	rebaser := &lifecycle.Rebaser{
 		Logger: cmd.Logger,
 	}
@@ -66,12 +55,6 @@ func (r *rebaseCmd) Exec() error {
 		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {
 			return err
-		}
-	}
-
-	if r.useHelpers {
-		if err := lifecycle.SetupCredHelpers(filepath.Join(os.Getenv("HOME"), ".docker"), r.imageNames[0], r.runImageRef); err != nil {
-			return cmd.FailErr(err, "setup credential helpers")
 		}
 	}
 
