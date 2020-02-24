@@ -134,6 +134,10 @@ func FlagProjectMetadataPath(projectMetadataPath *string) {
 	flagSet.StringVar(projectMetadataPath, "project-metadata", envOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataPath), "path to project-metadata.toml")
 }
 
+func FlagProcessType(processType *string) {
+	flagSet.StringVar(processType, "process-type", os.Getenv(EnvProcessType), "default process type")
+}
+
 func intEnv(k string) int {
 	v := os.Getenv(k)
 	d, err := strconv.Atoi(v)
