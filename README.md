@@ -1,5 +1,6 @@
 # Lifecycle
 
+![Build Status](https://github.com/buildpacks/lifecycle/workflows/build/badge.svg)
 [![Build Status](https://travis-ci.org/buildpacks/lifecycle.svg?branch=master)](https://travis-ci.org/buildpack/lifecycle)
 [![GoDoc](https://godoc.org/github.com/buildpacks/lifecycle?status.svg)](https://godoc.org/github.com/buildpacks/lifecycle)
 
