@@ -139,20 +139,21 @@ func (c *createCmd) Exec() error {
 		return cmd.FailErr(err, "write metadata")
 	}
 
-	return export(
-		group,
-		c.stackPath,
-		append([]string{c.imageName}, c.additionalTags...),
-		c.launchCacheDir,
-		c.appDir,
-		c.layersDir,
-		c.launcherPath,
-		c.projectMetdataPath,
-		c.runImageRef,
-		analyzedMD,
-		cacheStore,
-		c.useDaemon,
-		c.uid,
-		c.gid,
-	)
+	return export(exportArgs{
+		group:               group,
+		stackPath:           c.stackPath,
+		imageNames:          append([]string{c.imageName}, c.additionalTags...),
+		launchCacheDir:      c.launchCacheDir,
+		appDir:              c.appDir,
+		layersDir:           c.layersDir,
+		launcherPath:        c.launcherPath,
+		projectMetadataPath: c.projectMetdataPath,
+		runImageRef:         c.runImageRef,
+		analyzedMD:          *analyzedMD,
+		cacheStore:          cacheStore,
+		useDaemon:           c.useDaemon,
+		uid:                 c.uid,
+		gid:                 c.gid,
+		processType:         c.processType,
+	})
 }
