@@ -11,6 +11,8 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    env:
+      LIFECYCLE_VERSION: 0.7.0
     steps:
       - uses: actions/checkout@v2
       - name: Set up go
@@ -36,5 +38,5 @@ jobs:
           make package-linux
       - uses: actions/upload-artifact@v1
         with:
-          name: lifecycle
-          path: out/lifecycle-v0.0.0+linux.x86-64.tgz
+          name: lifecycle-linux-x86-64
+          path: out/lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz
