@@ -34,8 +34,8 @@ jobs:
         run: make test
       - name: Build
         run: |
-          make build-linux
-          make package-linux
+          make build
+          make package
       - uses: actions/upload-artifact@v1
         with:
           name: lifecycle-linux-x86-64
