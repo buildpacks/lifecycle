@@ -1,4 +1,4 @@
-package env
+package env_test
 
 import (
 	"sort"
@@ -7,6 +7,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle/env"
 )
 
 func TestBuildEnv(t *testing.T) {
@@ -16,7 +18,7 @@ func TestBuildEnv(t *testing.T) {
 func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#NewBuildEnv", func() {
 		it("whitelists vars", func() {
-			env := NewBuildEnv([]string{
+			benv := env.NewBuildEnv([]string{
 				"CNB_STACK_ID=some-stack-id",
 				"NOT_WHITELIST=not-whitelisted",
 				"PATH=some-path",
@@ -25,7 +27,7 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				"CPATH=some-cpath",
 				"PKG_CONFIG_PATH=some-pkg-config-path",
 			})
-			out := env.List()
+			out := benv.List()
 			sort.Strings(out)
 			if s := cmp.Diff(out, []string{
 				"CNB_STACK_ID=some-stack-id",
@@ -40,10 +42,10 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("allows keys with '='", func() {
-			env := NewBuildEnv([]string{
+			benv := env.NewBuildEnv([]string{
 				"CNB_STACK_ID=whitelist=true",
 			})
-			if s := cmp.Diff(env.List(), []string{
+			if s := cmp.Diff(benv.List(), []string{
 				"CNB_STACK_ID=whitelist=true",
 			}); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
@@ -51,8 +53,8 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("assign the build time root dir map", func() {
-			env := NewBuildEnv([]string{})
-			if s := cmp.Diff(env.RootDirMap, POSIXBuildEnv); s != "" {
+			benv := env.NewBuildEnv([]string{})
+			if s := cmp.Diff(benv.RootDirMap, env.POSIXBuildEnv); s != "" {
 				t.Fatalf("Unexpected root dir map\n%s\n", s)
 			}
 		})

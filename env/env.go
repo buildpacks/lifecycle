@@ -9,20 +9,20 @@ import (
 
 type Env struct {
 	RootDirMap map[string][]string
-	vars       map[string]string
+	Vars       map[string]string
 }
 
 func varsFromEnviron(environ []string, removeKey func(string) bool) map[string]string {
 	vars := make(map[string]string)
 	for _, kv := range environ {
-		parts := strings.Split(kv, "=")
-		if len(parts) < 2 {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) != 2 {
 			continue
 		}
 		if removeKey(parts[0]) {
 			continue
 		}
-		vars[parts[0]] = strings.Join(parts[1:], "=")
+		vars[parts[0]] = parts[1]
 	}
 	return vars
 }
@@ -40,7 +40,7 @@ func (p *Env) AddRootDir(baseDir string) error {
 			return err
 		}
 		for _, key := range vars {
-			p.vars[key] = newDir + prefix(p.vars[key], os.PathListSeparator)
+			p.Vars[key] = newDir + prefix(p.Vars[key], os.PathListSeparator)
 		}
 	}
 	return nil
@@ -56,18 +56,18 @@ func (p *Env) AddEnvDir(envDir string) error {
 		}
 		switch action {
 		case "prepend":
-			p.vars[name] = v + prefix(p.vars[name], delim(envDir, name)...)
+			p.Vars[name] = v + prefix(p.Vars[name], delim(envDir, name)...)
 		case "append":
-			p.vars[name] = suffix(p.vars[name], delim(envDir, name)...) + v
+			p.Vars[name] = suffix(p.Vars[name], delim(envDir, name)...) + v
 		case "override":
-			p.vars[name] = v
+			p.Vars[name] = v
 		case "default":
-			if p.vars[name] != "" {
+			if p.Vars[name] != "" {
 				return nil
 			}
-			p.vars[name] = v
+			p.Vars[name] = v
 		case "":
-			p.vars[name] = v + prefix(p.vars[name], delim(envDir, name, os.PathListSeparator)...)
+			p.Vars[name] = v + prefix(p.Vars[name], delim(envDir, name, os.PathListSeparator)...)
 		}
 		return nil
 	})
@@ -75,7 +75,7 @@ func (p *Env) AddEnvDir(envDir string) error {
 
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
 	vars := make(map[string]string)
-	for key, value := range p.vars {
+	for key, value := range p.Vars {
 		vars[key] = value
 	}
 
@@ -93,7 +93,7 @@ func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
 }
 
 func (p *Env) List() []string {
-	return list(p.vars)
+	return list(p.Vars)
 }
 
 func list(vars map[string]string) []string {

@@ -100,7 +100,7 @@ func (a *analyzeCmd) Exec() error {
 		return cmd.FailErr(err, "get previous image")
 	}
 
-	analyzedMd, err := (&lifecycle.Analyzer{
+	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks: group.Group,
 		LayersDir:  a.layersDir,
 		Logger:     cmd.Logger,
@@ -110,7 +110,7 @@ func (a *analyzeCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
 	}
 
-	if err := lifecycle.WriteTOML(a.analyzedPath, analyzedMd); err != nil {
+	if err := lifecycle.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
 		return errors.Wrap(err, "write analyzed.toml")
 	}
 

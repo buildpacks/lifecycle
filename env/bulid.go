@@ -9,7 +9,7 @@ var BuildEnvWhitelist = []string{
 func NewBuildEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		vars:       varsFromEnviron(environ, isNotWhitelisted),
+		Vars:       varsFromEnviron(environ, isNotWhitelisted),
 	}
 }
 

@@ -9,7 +9,7 @@ var LaunchEnvBlacklist = []string{
 func NewLaunchEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXLaunchEnv,
-		vars:       varsFromEnviron(environ, isBlacklisted),
+		Vars:       varsFromEnviron(environ, isBlacklisted),
 	}
 }
 

@@ -1,4 +1,4 @@
-package env
+package env_test
 
 import (
 	"fmt"
@@ -11,6 +11,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle/env"
 )
 
 func TestEnv(t *testing.T) {
@@ -19,7 +21,7 @@ func TestEnv(t *testing.T) {
 
 func testEnv(t *testing.T, when spec.G, it spec.S) {
 	var (
-		env    *Env
+		envv   *env.Env
 		tmpDir string
 	)
 
@@ -29,7 +31,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
-		env = &Env{
+		envv = &env.Env{
 			RootDirMap: map[string][]string{
 				"bin": {
 					"PATH",
@@ -39,7 +41,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 					"LIBRARY_PATH",
 				},
 			},
-			vars: map[string]string{},
+			Vars: map[string]string{},
 		}
 	})
 
@@ -53,15 +55,15 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "bin"),
 				filepath.Join(tmpDir, "lib"),
 			)
-			env.vars = map[string]string{
+			envv.Vars = map[string]string{
 				"PATH":            "some",
 				"LD_LIBRARY_PATH": "some-ld",
 				"LIBRARY_PATH":    "some-library",
 			}
-			if err := env.AddRootDir(tmpDir); err != nil {
+			if err := envv.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			out := env.List()
+			out := envv.List()
 			sort.Strings(out)
 			if s := cmp.Diff(out, []string{
 				fmt.Sprintf("LD_LIBRARY_PATH=%s/lib:some-ld", tmpDir),
@@ -77,10 +79,10 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "bin"),
 				filepath.Join(tmpDir, "lib"),
 			)
-			if err := env.AddRootDir(tmpDir); err != nil {
+			if err := envv.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			out := env.List()
+			out := envv.List()
 			sort.Strings(out)
 			if s := cmp.Diff(out, []string{
 				fmt.Sprintf("LD_LIBRARY_PATH=%s/lib", tmpDir),
@@ -111,7 +113,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "value-override", filepath.Join(tmpDir, "VAR_OVERRIDE.override"), filepath.Join(tmpDir, "VAR_OVERRIDE_NEW.override"))
 			mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
 
-			env.vars = map[string]string{
+			envv.Vars = map[string]string{
 				"VAR_NORMAL":        "value-normal-orig",
 				"VAR_NORMAL_DELIM":  "value-normal-delim-orig",
 				"VAR_APPEND":        "value-append-orig",
@@ -121,10 +123,10 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				"VAR_DEFAULT":       "value-default-orig",
 				"VAR_OVERRIDE":      "value-override-orig",
 			}
-			if err := env.AddEnvDir(tmpDir); err != nil {
+			if err := envv.AddEnvDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			out := env.List()
+			out := envv.List()
 			sort.Strings(out)
 			if s := cmp.Diff(out, []string{
 				"VAR_APPEND=value-append-origvalue-append",
@@ -158,13 +160,13 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
 			mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
 
-			env.vars = map[string]string{
+			envv.Vars = map[string]string{
 				"VAR_EMPTY":       "",
 				"VAR_OVERRIDE":    "value-override-orig",
 				"PATH":            "value-path-orig",
 				"LD_LIBRARY_PATH": "value-ld-library-path-orig1:value-ld-library-path-orig2",
 			}
-			out, err := env.WithPlatform(tmpDir)
+			out, err := envv.WithPlatform(tmpDir)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
