@@ -1,6 +1,6 @@
 # Lifecycle
 
-[![Build Status](https://travis-ci.org/buildpacks/lifecycle.svg?branch=master)](https://travis-ci.org/buildpack/lifecycle)
+![Build Status](https://github.com/buildpacks/lifecycle/workflows/build/badge.svg)
 [![GoDoc](https://godoc.org/github.com/buildpacks/lifecycle?status.svg)](https://godoc.org/github.com/buildpacks/lifecycle)
 
 A reference implementation of the [Cloud Native Buildpacks specification](https://github.com/buildpacks/spec).
