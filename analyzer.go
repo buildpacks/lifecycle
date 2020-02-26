@@ -10,7 +10,6 @@ import (
 
 type Analyzer struct {
 	Buildpacks []Buildpack
-	GID, UID   int
 	LayersDir  string
 	Logger     Logger
 	SkipLayers bool
@@ -42,11 +41,6 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata,
 		a.Logger.Infof("Skipping buildpack layer analysis")
 	} else if err := a.analyzeLayers(appMeta, cache); err != nil {
 		return nil, err
-	}
-
-	// if analyzer is running as root it needs to fix the ownership of the layers dir
-	if err := recursiveEnsureOwner(a.LayersDir, a.UID, a.GID); err != nil {
-		return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", a.UID, a.GID)
 	}
 
 	return &AnalyzedMetadata{

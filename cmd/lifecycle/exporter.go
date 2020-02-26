@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -20,6 +21,7 @@ import (
 )
 
 type exportCmd struct {
+	//flags
 	imageNames          []string
 	runImageRef         string
 	layersDir           string
@@ -36,6 +38,9 @@ type exportCmd struct {
 	cacheDir            string
 	projectMetadataPath string
 	processType         string
+
+	//set if necessary before dropping privileges
+	docker client.CommonAPIClient
 }
 
 func (e *exportCmd) Init() {
@@ -74,6 +79,23 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
+func (e *exportCmd) DropPrivileges() error {
+	if e.useDaemon {
+		var err error
+		e.docker, err = dockerClient()
+		if err != nil {
+			return cmd.FailErr(err, "initialize docker client")
+		}
+	}
+	if err := cmd.EnsureOwner(e.uid, e.gid, e.cacheDir, e.launchCacheDir); err != nil {
+		return cmd.FailErr(err, "chown volumes")
+	}
+	if err := cmd.RunAs(e.uid, e.gid); err != nil {
+		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.uid, e.gid))
+	}
+	return nil
+}
+
 func (e *exportCmd) Exec() error {
 	group, err := lifecycle.ReadGroup(e.groupPath)
 	if err != nil {
@@ -106,6 +128,7 @@ func (e *exportCmd) Exec() error {
 		uid:                 e.uid,
 		gid:                 e.gid,
 		processType:         e.processType,
+		docker:              e.docker,
 	})
 }
 
@@ -124,6 +147,7 @@ type exportArgs struct {
 	useDaemon           bool
 	uid, gid            int
 	processType         string
+	docker              client.CommonAPIClient
 }
 
 func export(args exportArgs) error {
@@ -168,6 +192,7 @@ func export(args exportArgs) error {
 			runImageRef,
 			args.analyzedMD,
 			args.launchCacheDir,
+			args.docker,
 		)
 	} else {
 		appImage, runImageID, err = initRemoteImage(
@@ -207,12 +232,7 @@ func export(args exportArgs) error {
 	return nil
 }
 
-func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, launchCacheDir string) (imgutil.Image, string, error) {
-	dockerClient, err := cmd.DockerClient()
-	if err != nil {
-		return nil, "", err
-	}
-
+func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, launchCacheDir string, docker client.CommonAPIClient) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
 		local.FromBaseImage(runImageRef),
 	}
@@ -224,7 +244,7 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 
 	appImage, err := local.NewImage(
 		imagName,
-		dockerClient,
+		docker,
 		opts...,
 	)
 	if err != nil {

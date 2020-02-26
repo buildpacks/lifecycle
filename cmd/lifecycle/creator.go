@@ -5,12 +5,19 @@ import (
 	"log"
 	"os"
 
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/client"
+
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 )
 
 type createCmd struct {
+	//flags
 	appDir             string
 	buildpacksDir      string
 	cacheDir           string
@@ -30,6 +37,9 @@ type createCmd struct {
 	useDaemon          bool
 	projectMetdataPath string
 	processType        string
+
+	//set if necessary before dropping privileges
+	docker client.CommonAPIClient
 }
 
 func (c *createCmd) Init() {
@@ -76,8 +86,25 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
+func (c *createCmd) DropPrivileges() error {
+	if c.useDaemon {
+		var err error
+		c.docker, err = dockerClient()
+		if err != nil {
+			return cmd.FailErr(err, "initialize docker client")
+		}
+	}
+	if err := cmd.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
+		return cmd.FailErr(err, "chown volumes")
+	}
+	if err := cmd.RunAs(c.uid, c.gid); err != nil {
+		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
+	}
+	return nil
+}
+
 func (c *createCmd) Exec() error {
-	fmt.Println("---> DETECTING")
+	cmd.Logger.Info("---> DETECTING")
 	group, plan, err := detect(c.orderPath, c.platformDir, c.appDir, c.buildpacksDir, c.uid, c.gid)
 	if err != nil {
 		return err
@@ -88,34 +115,43 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	previousImage, err := initImage(c.imageName, c.useDaemon)
+	var img imgutil.Image
+	if c.useDaemon {
+		img, err = local.NewImage(
+			c.previousImage,
+			c.docker,
+			local.FromBaseImage(c.previousImage),
+		)
+	} else {
+		img, err = remote.NewImage(
+			c.previousImage,
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			remote.FromBaseImage(c.previousImage),
+		)
+	}
 	if err != nil {
-		return err
+		return cmd.FailErr(err, "get previous image")
 	}
 
-	analyzer := &lifecycle.Analyzer{
+	cmd.Logger.Info("---> ANALYZING")
+	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks: group.Group,
 		LayersDir:  c.layersDir,
 		Logger:     cmd.Logger,
-		UID:        c.uid,
-		GID:        c.gid,
 		SkipLayers: c.skipRestore,
-	}
-
-	fmt.Println("---> ANALYZING")
-	analyzedMD, err := analyzer.Analyze(previousImage, cacheStore)
+	}).Analyze(img, cacheStore)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
 	}
 
 	if !c.skipRestore {
-		fmt.Println("---> RESTORING")
-		if err := restore(c.layersDir, c.uid, c.gid, group, cacheStore); err != nil {
+		cmd.Logger.Info("---> RESTORING")
+		if err := restore(c.layersDir, group, cacheStore); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println("---> BUILDING")
+	cmd.Logger.Info("---> BUILDING")
 	builder := &lifecycle.Builder{
 		AppDir:        c.appDir,
 		LayersDir:     c.layersDir,
@@ -126,8 +162,6 @@ func (c *createCmd) Exec() error {
 		Plan:          plan,
 		Out:           log.New(os.Stdout, "", 0),
 		Err:           log.New(os.Stderr, "", 0),
-		UID:           c.uid,
-		GID:           c.gid,
 	}
 
 	md, err := builder.Build()
@@ -139,6 +173,7 @@ func (c *createCmd) Exec() error {
 		return cmd.FailErr(err, "write metadata")
 	}
 
+	cmd.Logger.Info("---> EXPORTING")
 	return export(exportArgs{
 		group:               group,
 		stackPath:           c.stackPath,
@@ -155,5 +190,6 @@ func (c *createCmd) Exec() error {
 		uid:                 c.uid,
 		gid:                 c.gid,
 		processType:         c.processType,
+		docker:              c.docker,
 	})
 }

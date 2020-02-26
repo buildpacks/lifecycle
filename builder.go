@@ -9,7 +9,6 @@ import (
 	"sort"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pkg/errors"
 )
 
 type Builder struct {
@@ -21,7 +20,6 @@ type Builder struct {
 	Group         BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
-	UID, GID      int
 }
 
 type BuildEnv interface {
@@ -91,9 +89,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
 			return nil, err
 		}
-		if err := ensureOwner(bpLayersDir, b.UID, b.GID); err != nil {
-			return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", b.UID, b.GID)
-		}
 
 		if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
 			return nil, err
@@ -101,9 +96,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
 		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
 			return nil, err
-		}
-		if err := recursiveEnsureOwner(planDir, b.UID, b.GID); err != nil {
-			return nil, errors.Wrapf(err, "chowning plan dir to '%d/%d'", b.UID, b.GID)
 		}
 
 		cmd := exec.Command(
@@ -125,10 +117,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			}
 		}
 
-		cmd, err = asUser(cmd, b.UID, b.GID)
-		if err != nil {
-			return nil, err
-		}
 		if err := cmd.Run(); err != nil {
 			return nil, err
 		}

@@ -204,15 +204,9 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 		return detectRun{Code: -1, Err: err}
 	}
 	defer os.RemoveAll(planDir)
-	if err := ensureOwner(planDir, c.UID, c.GID); err != nil {
-		return detectRun{Code: -1, Err: err}
-	}
 
 	planPath := filepath.Join(planDir, "plan.toml")
 	if err := ioutil.WriteFile(planPath, nil, 0777); err != nil {
-		return detectRun{Code: -1, Err: err}
-	}
-	if err := ensureOwner(planPath, c.UID, c.GID); err != nil {
 		return detectRun{Code: -1, Err: err}
 	}
 
@@ -230,10 +224,6 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 		cmd.Env = c.ClearEnv
 	}
 
-	cmd, err = asUser(cmd, c.UID, c.GID)
-	if err != nil {
-		return detectRun{Code: -1, Err: err}
-	}
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			if status, ok := err.Sys().(syscall.WaitStatus); ok {

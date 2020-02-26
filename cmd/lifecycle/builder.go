@@ -37,6 +37,11 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
+func (b *buildCmd) DropPrivileges() error {
+	// builder should never be run with privileges
+	return nil
+}
+
 func (b *buildCmd) Exec() error {
 	group, err := lifecycle.ReadGroup(b.groupPath)
 	if err != nil {
@@ -58,8 +63,6 @@ func (b *buildCmd) Exec() error {
 		Plan:          plan,
 		Out:           log.New(os.Stdout, "", 0),
 		Err:           log.New(os.Stderr, "", 0),
-		UID:           os.Getuid(),
-		GID:           os.Getgid(),
 	}
 
 	md, err := builder.Build()

@@ -34,6 +34,11 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
+func (d *detectCmd) DropPrivileges() error {
+	// detector should never be run with privileges
+	return nil
+}
+
 func (d *detectCmd) Exec() error {
 	group, plan, err := detect(
 		d.orderPath,

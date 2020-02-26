@@ -3,13 +3,19 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 )
 
 type analyzeCmd struct {
+	//flags
 	analyzedPath  string
 	cacheDir      string
 	cacheImageTag string
@@ -20,6 +26,9 @@ type analyzeCmd struct {
 	useDaemon     bool
 	uid           int
 	gid           int
+
+	//set if necessary before dropping privileges
+	docker client.CommonAPIClient
 }
 
 func (a *analyzeCmd) Init() {
@@ -42,7 +51,23 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	a.imageName = args[0]
+	return nil
+}
 
+func (a *analyzeCmd) DropPrivileges() error {
+	if a.useDaemon {
+		var err error
+		a.docker, err = dockerClient()
+		if err != nil {
+			return cmd.FailErr(err, "initialize docker client")
+		}
+	}
+	if err := cmd.EnsureOwner(a.uid, a.gid, a.layersDir, a.cacheDir); err != nil {
+		return cmd.FailErr(err, "chown volumes")
+	}
+	if err := cmd.RunAs(a.uid, a.gid); err != nil {
+		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", a.uid, a.gid))
+	}
 	return nil
 }
 
@@ -57,21 +82,30 @@ func (a *analyzeCmd) Exec() error {
 		return err
 	}
 
-	analyzer := &lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  a.layersDir,
-		Logger:     cmd.Logger,
-		UID:        a.uid,
-		GID:        a.gid,
-		SkipLayers: a.skipLayers,
+	var img imgutil.Image
+	if a.useDaemon {
+		img, err = local.NewImage(
+			a.imageName,
+			a.docker,
+			local.FromBaseImage(a.imageName),
+		)
+	} else {
+		img, err = remote.NewImage(
+			a.imageName,
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			remote.FromBaseImage(a.imageName),
+		)
 	}
-
-	img, err := initImage(a.imageName, a.useDaemon)
 	if err != nil {
 		return cmd.FailErr(err, "get previous image")
 	}
 
-	analyzedMd, err := analyzer.Analyze(img, cacheStore)
+	analyzedMd, err := (&lifecycle.Analyzer{
+		Buildpacks: group.Group,
+		LayersDir:  a.layersDir,
+		Logger:     cmd.Logger,
+		SkipLayers: a.skipLayers,
+	}).Analyze(img, cacheStore)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
 	}

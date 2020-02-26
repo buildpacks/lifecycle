@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
+	"net"
 	"os"
 	"path/filepath"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/client"
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
@@ -67,6 +68,27 @@ func subcommand() {
 	}
 }
 
+func dockerClient() (*client.Client, error) {
+	var connOpt client.Opt
+	if os.Getenv("DOCKER_HOST") != "" {
+		connOpt = client.FromEnv
+	} else {
+		socketConn, err := net.Dial("unix", "/var/run/docker.sock")
+		if err != nil {
+			return nil, err
+		}
+		connOpt = client.WithDialContext(
+			func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
+				return socketConn, nil
+			})
+	}
+	docker, err := client.NewClientWithOpts(connOpt, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, errors.Wrap(err, "new docker client")
+	}
+	return docker, nil
+}
+
 func initCache(cacheImageTag, cacheDir string) (lifecycle.Cache, error) {
 	var (
 		cacheStore lifecycle.Cache
@@ -84,23 +106,4 @@ func initCache(cacheImageTag, cacheDir string) (lifecycle.Cache, error) {
 		}
 	}
 	return cacheStore, nil
-}
-
-func initImage(imageName string, daemon bool) (imgutil.Image, error) {
-	if daemon {
-		dockerClient, err := cmd.DockerClient()
-		if err != nil {
-			return nil, cmd.FailErr(err, "create docker client")
-		}
-		return local.NewImage(
-			imageName,
-			dockerClient,
-			local.FromBaseImage(imageName),
-		)
-	}
-	return remote.NewImage(
-		imageName,
-		auth.EnvKeychain(cmd.EnvRegistryAuth),
-		remote.FromBaseImage(imageName),
-	)
 }

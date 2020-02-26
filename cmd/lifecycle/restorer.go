@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -35,27 +36,33 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
+func (r *restoreCmd) DropPrivileges() error {
+	if err := cmd.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
+		cmd.FailErr(err, "chown volumes")
+	}
+	if err := cmd.RunAs(r.uid, r.gid); err != nil {
+		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
+	}
+	return nil
+}
+
 func (r *restoreCmd) Exec() error {
 	group, err := lifecycle.ReadGroup(r.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
-
 	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir)
 	if err != nil {
 		return err
 	}
-
-	return restore(r.layersDir, r.uid, r.gid, group, cacheStore)
+	return restore(r.layersDir, group, cacheStore)
 }
 
-func restore(layersDir string, uid, gid int, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
+func restore(layersDir string, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
 		Buildpacks: group.Group,
 		Logger:     cmd.Logger,
-		UID:        uid,
-		GID:        gid,
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
