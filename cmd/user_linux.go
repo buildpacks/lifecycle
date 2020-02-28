@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -23,10 +24,34 @@ func EnsureOwner(uid, gid int, paths ...string) error {
 			return err
 		}
 		if stat, ok := fi.Sys().(*syscall.Stat_t); ok && stat.Uid == uint32(uid) && stat.Gid == uint32(gid) {
+			// if a dir has correct ownership, assume it's children do, for performance
 			continue
 		}
-		if err := os.Chown(p, uid, gid); err != nil {
+		if err := recursiveEnsureOwner(p, uid, gid); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func recursiveEnsureOwner(path string, uid, gid int) error {
+	if err := os.Chown(path, uid, gid); err != nil {
+		return err
+	}
+	fis, err := ioutil.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	for _, fi := range fis {
+		filePath := filepath.Join(path, fi.Name())
+		if fi.IsDir() {
+			if err := recursiveEnsureOwner(filePath, uid, gid); err != nil {
+				return err
+			}
+		} else {
+			if err := os.Lchown(filePath, uid, gid); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

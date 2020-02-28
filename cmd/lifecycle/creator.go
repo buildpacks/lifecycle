@@ -18,25 +18,25 @@ import (
 
 type createCmd struct {
 	//flags
-	appDir             string
-	buildpacksDir      string
-	cacheDir           string
-	cacheImageTag      string
-	imageName          string
-	launchCacheDir     string
-	launcherPath       string
-	layersDir          string
-	orderPath          string
-	platformDir        string
-	previousImage      string
-	runImageRef        string
-	stackPath          string
-	uid, gid           int
-	additionalTags     cmd.StringSlice
-	skipRestore        bool
-	useDaemon          bool
-	projectMetdataPath string
-	processType        string
+	appDir              string
+	buildpacksDir       string
+	cacheDir            string
+	cacheImageTag       string
+	imageName           string
+	launchCacheDir      string
+	launcherPath        string
+	layersDir           string
+	orderPath           string
+	platformDir         string
+	previousImage       string
+	runImageRef         string
+	stackPath           string
+	uid, gid            int
+	additionalTags      cmd.StringSlice
+	skipRestore         bool
+	useDaemon           bool
+	projectMetadataPath string
+	processType         string
 
 	//set if necessary before dropping privileges
 	docker client.CommonAPIClient
@@ -60,8 +60,8 @@ func (c *createCmd) Init() {
 	cmd.FlagUID(&c.uid)
 	cmd.FlagUseDaemon(&c.useDaemon)
 	cmd.FlagTags(&c.additionalTags)
-	cmd.FlagProjectMetadataPath(&c.projectMetdataPath)
-	cmd.FlagProcessType(&c.projectMetdataPath)
+	cmd.FlagProjectMetadataPath(&c.projectMetadataPath)
+	cmd.FlagProcessType(&c.processType)
 }
 
 func (c *createCmd) Args(nargs int, args []string) error {
@@ -182,7 +182,7 @@ func (c *createCmd) Exec() error {
 		appDir:              c.appDir,
 		layersDir:           c.layersDir,
 		launcherPath:        c.launcherPath,
-		projectMetadataPath: c.projectMetdataPath,
+		projectMetadataPath: c.projectMetadataPath,
 		runImageRef:         c.runImageRef,
 		analyzedMD:          *analyzedMD,
 		cacheStore:          cacheStore,
