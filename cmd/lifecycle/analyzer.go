@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/docker"
 )
 
 type analyzeCmd struct {
@@ -54,10 +55,10 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func (a *analyzeCmd) DropPrivileges() error {
+func (a *analyzeCmd) Privileges() error {
 	if a.useDaemon {
 		var err error
-		a.docker, err = dockerClient()
+		a.docker, err = docker.Client()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}

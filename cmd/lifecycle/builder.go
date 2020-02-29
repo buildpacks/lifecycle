@@ -37,8 +37,11 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func (b *buildCmd) DropPrivileges() error {
+func (b *buildCmd) Privileges() error {
 	// builder should never be run with privileges
+	if cmd.IsPrivileged() {
+		return cmd.FailErr(errors.New("refusing to run as root"), "build")
+	}
 	return nil
 }
 

@@ -34,6 +34,10 @@ func EnsureOwner(uid, gid int, paths ...string) error {
 	return nil
 }
 
+func IsPrivileged() bool {
+	return os.Getuid() == 0
+}
+
 func recursiveEnsureOwner(path string, uid, gid int) error {
 	if err := os.Chown(path, uid, gid); err != nil {
 		return err

@@ -36,7 +36,7 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func (r *restoreCmd) DropPrivileges() error {
+func (r *restoreCmd) Privileges() error {
 	if err := cmd.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
 		cmd.FailErr(err, "chown volumes")
 	}

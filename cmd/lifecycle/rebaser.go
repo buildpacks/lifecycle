@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/docker"
 	"github.com/buildpacks/lifecycle/image"
 )
 
@@ -41,10 +42,10 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func (r *rebaseCmd) DropPrivileges() error {
+func (r *rebaseCmd) Privileges() error {
 	if r.useDaemon {
 		var err error
-		r.docker, err = dockerClient()
+		r.docker, err = docker.Client()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}

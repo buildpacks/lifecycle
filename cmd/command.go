@@ -9,7 +9,7 @@ import (
 type Command interface {
 	Init()
 	Args(nargs int, args []string) error
-	DropPrivileges() error
+	Privileges() error
 	Exec() error
 }
 
@@ -44,7 +44,7 @@ func Run(c Command, asSubcommand bool) {
 	if err := c.Args(flagSet.NArg(), flagSet.Args()); err != nil {
 		Exit(err)
 	}
-	if err := c.DropPrivileges(); err != nil {
+	if err := c.Privileges(); err != nil {
 		Exit(err)
 	}
 	Exit(c.Exec())

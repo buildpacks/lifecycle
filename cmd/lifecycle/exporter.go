@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/docker"
 	"github.com/buildpacks/lifecycle/image"
 )
 
@@ -79,10 +80,10 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func (e *exportCmd) DropPrivileges() error {
+func (e *exportCmd) Privileges() error {
 	if e.useDaemon {
 		var err error
-		e.docker, err = dockerClient()
+		e.docker, err = docker.Client()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}

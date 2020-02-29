@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/docker"
 	"github.com/buildpacks/lifecycle/env"
 )
 
@@ -86,10 +87,10 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func (c *createCmd) DropPrivileges() error {
+func (c *createCmd) Privileges() error {
 	if c.useDaemon {
 		var err error
-		c.docker, err = dockerClient()
+		c.docker, err = docker.Client()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}

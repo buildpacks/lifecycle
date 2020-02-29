@@ -34,8 +34,11 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func (d *detectCmd) DropPrivileges() error {
+func (d *detectCmd) Privileges() error {
 	// detector should never be run with privileges
+	if cmd.IsPrivileged() {
+		return cmd.FailErr(errors.New("refusing to run as root"), "build")
+	}
 	return nil
 }
 
