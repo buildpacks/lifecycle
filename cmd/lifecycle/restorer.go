@@ -9,12 +9,12 @@ import (
 )
 
 type restoreCmd struct {
+	// flags: inputs
 	cacheDir      string
 	cacheImageTag string
 	groupPath     string
 	layersDir     string
-	uid           int
-	gid           int
+	uid, gid      int
 }
 
 func (r *restoreCmd) Init() {

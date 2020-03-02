@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -17,18 +18,20 @@ import (
 )
 
 type rebaseCmd struct {
-	//flags
-	imageNames  []string
-	runImageRef string
-	useDaemon   bool
-	uid, gid    int
+	//flags: inputs
+	imageNames            []string
+	runImageRef           string
+	deprecatedRunImageRef string
+	useDaemon             bool
+	uid, gid              int
 
 	//set if necessary before dropping privileges
 	docker client.CommonAPIClient
 }
 
 func (r *rebaseCmd) Init() {
-	cmd.DeprecatedFlagRunImage(&r.runImageRef)
+	cmd.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
+	cmd.FlagRunImage(&r.runImageRef)
 	cmd.FlagUseDaemon(&r.useDaemon)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
@@ -39,6 +42,16 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	r.imageNames = args
+	if err := image.EnsureSingleRegistry(r.imageNames...); err != nil {
+		return cmd.FailErrCode(image.EnsureSingleRegistry(r.imageNames...), cmd.CodeInvalidArgs, "images tags must all have the same registry")
+	}
+
+	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {
+		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+	if r.deprecatedRunImageRef != "" {
+		r.runImageRef = r.deprecatedRunImageRef
+	}
 	return nil
 }
 
@@ -57,14 +70,11 @@ func (r *rebaseCmd) Privileges() error {
 }
 
 func (r *rebaseCmd) Exec() error {
-	rebaser := &lifecycle.Rebaser{
-		Logger: cmd.Logger,
-	}
-
-	registry, err := image.EnsureSingleRegistry(r.imageNames...)
+	ref, err := name.ParseReference(r.imageNames[0], name.WeakValidation)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
+		return err
 	}
+	registry := ref.Context().RegistryStr()
 
 	var appImage imgutil.Image
 	if r.useDaemon {
@@ -117,6 +127,9 @@ func (r *rebaseCmd) Exec() error {
 		return cmd.FailErr(err, "access run image")
 	}
 
+	rebaser := &lifecycle.Rebaser{
+		Logger: cmd.Logger,
+	}
 	if err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:]); err != nil {
 		if _, ok := err.(*imgutil.SaveError); ok {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "rebase")

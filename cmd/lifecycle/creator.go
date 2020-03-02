@@ -2,23 +2,16 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
 
-	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/docker"
-	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/image"
 )
 
 type createCmd struct {
-	//flags
+	//flags: inputs
 	appDir              string
 	buildpacksDir       string
 	cacheDir            string
@@ -84,6 +77,10 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		c.previousImage = c.imageName
 	}
 
+	if err := image.EnsureSingleRegistry(append(c.additionalTags, c.imageName)...); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "all tags must have the same registry as the exported image")
+	}
+
 	return nil
 }
 
@@ -105,44 +102,32 @@ func (c *createCmd) Privileges() error {
 }
 
 func (c *createCmd) Exec() error {
-	cmd.Logger.Info("---> DETECTING")
-	group, plan, err := detect(c.orderPath, c.platformDir, c.appDir, c.buildpacksDir, c.uid, c.gid)
-	if err != nil {
-		return err
-	}
-
 	cacheStore, err := initCache(c.cacheImageTag, c.cacheDir)
 	if err != nil {
 		return err
 	}
 
-	var img imgutil.Image
-	if c.useDaemon {
-		img, err = local.NewImage(
-			c.previousImage,
-			c.docker,
-			local.FromBaseImage(c.previousImage),
-		)
-	} else {
-		img, err = remote.NewImage(
-			c.previousImage,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(c.previousImage),
-		)
-	}
+	cmd.Logger.Info("---> DETECTING")
+	group, plan, err := detectArgs{
+		buildpacksDir: c.buildpacksDir,
+		appDir:        c.appDir,
+		platformDir:   c.platformDir,
+		orderPath:     c.orderPath,
+	}.detect()
 	if err != nil {
-		return cmd.FailErr(err, "get previous image")
+		return cmd.FailErrCode(err, cmd.CodeFailed, "detect")
 	}
 
 	cmd.Logger.Info("---> ANALYZING")
-	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  c.layersDir,
-		Logger:     cmd.Logger,
-		SkipLayers: c.skipRestore,
-	}).Analyze(img, cacheStore)
+	analyzedMD, err := analyzeArgs{
+		imageName:  c.previousImage,
+		layersDir:  c.layersDir,
+		skipLayers: c.skipRestore,
+		useDaemon:  c.useDaemon,
+		docker:     c.docker,
+	}.analyze(group, cacheStore)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
+		return err
 	}
 
 	if !c.skipRestore {
@@ -153,30 +138,18 @@ func (c *createCmd) Exec() error {
 	}
 
 	cmd.Logger.Info("---> BUILDING")
-	builder := &lifecycle.Builder{
-		AppDir:        c.appDir,
-		LayersDir:     c.layersDir,
-		PlatformDir:   c.platformDir,
-		BuildpacksDir: c.buildpacksDir,
-		Env:           env.NewBuildEnv(os.Environ()),
-		Group:         group,
-		Plan:          plan,
-		Out:           log.New(os.Stdout, "", 0),
-		Err:           log.New(os.Stderr, "", 0),
-	}
-
-	md, err := builder.Build()
+	err = buildArgs{
+		buildpacksDir: c.buildpacksDir,
+		layersDir:     c.layersDir,
+		appDir:        c.appDir,
+		platformDir:   c.platformDir,
+	}.build(group, plan)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
-	}
-
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(c.layersDir), md); err != nil {
-		return cmd.FailErr(err, "write metadata")
+		return err
 	}
 
 	cmd.Logger.Info("---> EXPORTING")
-	return export(exportArgs{
-		group:               group,
+	return exportArgs{
 		stackPath:           c.stackPath,
 		imageNames:          append([]string{c.imageName}, c.additionalTags...),
 		launchCacheDir:      c.launchCacheDir,
@@ -185,12 +158,10 @@ func (c *createCmd) Exec() error {
 		launcherPath:        c.launcherPath,
 		projectMetadataPath: c.projectMetadataPath,
 		runImageRef:         c.runImageRef,
-		analyzedMD:          *analyzedMD,
-		cacheStore:          cacheStore,
 		useDaemon:           c.useDaemon,
 		uid:                 c.uid,
 		gid:                 c.gid,
 		processType:         c.processType,
 		docker:              c.docker,
-	})
+	}.export(group, cacheStore, analyzedMD)
 }

@@ -16,19 +16,25 @@ import (
 )
 
 type analyzeCmd struct {
-	//flags
-	analyzedPath  string
+	//flags: inputs
 	cacheDir      string
 	cacheImageTag string
 	groupPath     string
-	imageName     string
-	layersDir     string
-	skipLayers    bool
-	useDaemon     bool
-	uid           int
-	gid           int
+	uid, gid      int
+	analyzeArgs
 
-	//set if necessary before dropping privileges
+	//flags: paths to write data
+	analyzedPath string
+}
+
+type analyzeArgs struct {
+	//inputs needed when run by creator
+	imageName  string
+	layersDir  string
+	skipLayers bool
+	useDaemon  bool
+
+	//construct if necessary before dropping privileges
 	docker client.CommonAPIClient
 }
 
@@ -80,35 +86,12 @@ func (a *analyzeCmd) Exec() error {
 
 	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir)
 	if err != nil {
+		return cmd.FailErr(err, "initialize cache")
+	}
+
+	analyzedMD, err := a.analyze(group, cacheStore)
+	if err != nil {
 		return err
-	}
-
-	var img imgutil.Image
-	if a.useDaemon {
-		img, err = local.NewImage(
-			a.imageName,
-			a.docker,
-			local.FromBaseImage(a.imageName),
-		)
-	} else {
-		img, err = remote.NewImage(
-			a.imageName,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(a.imageName),
-		)
-	}
-	if err != nil {
-		return cmd.FailErr(err, "get previous image")
-	}
-
-	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  a.layersDir,
-		Logger:     cmd.Logger,
-		SkipLayers: a.skipLayers,
-	}).Analyze(img, cacheStore)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
 	}
 
 	if err := lifecycle.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
@@ -116,4 +99,38 @@ func (a *analyzeCmd) Exec() error {
 	}
 
 	return nil
+}
+
+func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
+	var (
+		img imgutil.Image
+		err error
+	)
+	if aa.useDaemon {
+		img, err = local.NewImage(
+			aa.imageName,
+			aa.docker,
+			local.FromBaseImage(aa.imageName),
+		)
+	} else {
+		img, err = remote.NewImage(
+			aa.imageName,
+			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			remote.FromBaseImage(aa.imageName),
+		)
+	}
+	if err != nil {
+		return lifecycle.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+	}
+
+	analyzedMD, err := (&lifecycle.Analyzer{
+		Buildpacks: group.Group,
+		LayersDir:  aa.layersDir,
+		Logger:     cmd.Logger,
+		SkipLayers: aa.skipLayers,
+	}).Analyze(img, cacheStore)
+	if err != nil {
+		return lifecycle.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeFailed, "analyzer")
+	}
+	return analyzedMD, nil
 }

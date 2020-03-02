@@ -49,8 +49,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
 			Logger:        &log.Logger{Handler: logHandler},
-			UID:           os.Getuid(),
-			GID:           os.Getgid(),
 		}
 	})
 

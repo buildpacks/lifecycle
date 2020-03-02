@@ -22,30 +22,38 @@ import (
 )
 
 type exportCmd struct {
-	//flags
-	imageNames          []string
-	runImageRef         string
-	layersDir           string
-	appDir              string
-	groupPath           string
-	analyzedPath        string
+	//flags: inputs
+	groupPath             string
+	cacheImageTag         string
+	cacheDir              string
+	deprecatedRunImageRef string
+	exportArgs
+
+	//flags: paths to write outputs
+	analyzedPath string
+}
+
+type exportArgs struct {
+	// inputs needed when run by creator
 	stackPath           string
+	imageNames          []string
 	launchCacheDir      string
+	appDir              string
+	layersDir           string
 	launcherPath        string
-	useDaemon           bool
-	uid                 int
-	gid                 int
-	cacheImageTag       string
-	cacheDir            string
 	projectMetadataPath string
+	runImageRef         string
+	useDaemon           bool
+	uid, gid            int
 	processType         string
 
-	//set if necessary before dropping privileges
+	//construct if necessary before dropping privileges
 	docker client.CommonAPIClient
 }
 
 func (e *exportCmd) Init() {
-	cmd.DeprecatedFlagRunImage(&e.runImageRef)
+	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
+	cmd.FlagRunImage(&e.runImageRef)
 	cmd.FlagLayersDir(&e.layersDir)
 	cmd.FlagAppDir(&e.appDir)
 	cmd.FlagGroupPath(&e.groupPath)
@@ -75,6 +83,18 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 
 	if e.cacheImageTag == "" && e.cacheDir == "" {
 		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
+	}
+
+	if err := image.EnsureSingleRegistry(e.imageNames...); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "cannot export to multiple registries")
+	}
+
+	if e.deprecatedRunImageRef != "" && e.runImageRef != "" {
+		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+
+	if e.deprecatedRunImageRef != "" {
+		e.runImageRef = e.deprecatedRunImageRef
 	}
 
 	return nil
@@ -113,51 +133,17 @@ func (e *exportCmd) Exec() error {
 		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	return export(exportArgs{
-		group:               group,
-		stackPath:           e.stackPath,
-		imageNames:          e.imageNames,
-		launchCacheDir:      e.launchCacheDir,
-		appDir:              e.appDir,
-		layersDir:           e.layersDir,
-		launcherPath:        e.launcherPath,
-		projectMetadataPath: e.projectMetadataPath,
-		runImageRef:         e.runImageRef,
-		analyzedMD:          analyzedMD,
-		cacheStore:          cacheStore,
-		useDaemon:           e.useDaemon,
-		uid:                 e.uid,
-		gid:                 e.gid,
-		processType:         e.processType,
-		docker:              e.docker,
-	})
+	return e.export(group, cacheStore, analyzedMD)
 }
 
-type exportArgs struct {
-	group               lifecycle.BuildpackGroup
-	stackPath           string
-	imageNames          []string
-	launchCacheDir      string
-	appDir              string
-	layersDir           string
-	launcherPath        string
-	projectMetadataPath string
-	runImageRef         string
-	analyzedMD          lifecycle.AnalyzedMetadata
-	cacheStore          lifecycle.Cache
-	useDaemon           bool
-	uid, gid            int
-	processType         string
-	docker              client.CommonAPIClient
-}
-
-func export(args exportArgs) error {
-	registry, err := image.EnsureSingleRegistry(args.imageNames...)
+func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
+	ref, err := name.ParseReference(ea.imageNames[0], name.WeakValidation)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErr(err, "failed to parse registry")
 	}
+	registry := ref.Context().RegistryStr()
 
-	stackMD, runImageRef, err := resolveStack(args.stackPath, args.runImageRef, registry)
+	stackMD, runImageRef, err := resolveStack(ea.stackPath, ea.runImageRef, registry)
 	if err != nil {
 		return err
 	}
@@ -169,37 +155,37 @@ func export(args exportArgs) error {
 	defer os.RemoveAll(artifactsDir)
 
 	var projectMD lifecycle.ProjectMetadata
-	_, err = toml.DecodeFile(args.projectMetadataPath, &projectMD)
+	_, err = toml.DecodeFile(ea.projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
-		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", args.projectMetadataPath)
+		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", ea.projectMetadataPath)
 	}
 
 	exporter := &lifecycle.Exporter{
-		Buildpacks:   args.group.Group,
+		Buildpacks:   group.Group,
 		Logger:       cmd.Logger,
-		UID:          args.uid,
-		GID:          args.gid,
+		UID:          ea.uid,
+		GID:          ea.gid,
 		ArtifactsDir: artifactsDir,
 	}
 
 	var appImage imgutil.Image
 	var runImageID string
-	if args.useDaemon {
+	if ea.useDaemon {
 		appImage, runImageID, err = initDaemonImage(
-			args.imageNames[0],
+			ea.imageNames[0],
 			runImageRef,
-			args.analyzedMD,
-			args.launchCacheDir,
-			args.docker,
+			analyzedMD,
+			ea.launchCacheDir,
+			ea.docker,
 		)
 	} else {
 		appImage, runImageID, err = initRemoteImage(
-			args.imageNames[0],
+			ea.imageNames[0],
 			runImageRef,
-			args.analyzedMD,
+			analyzedMD,
 			registry,
 		)
 	}
@@ -208,16 +194,16 @@ func export(args exportArgs) error {
 	}
 
 	if err := exporter.Export(lifecycle.ExportOptions{
-		LayersDir:          args.layersDir,
-		AppDir:             args.appDir,
+		LayersDir:          ea.layersDir,
+		AppDir:             ea.appDir,
 		WorkingImage:       appImage,
 		RunImageRef:        runImageID,
-		OrigMetadata:       args.analyzedMD.Metadata,
-		AdditionalNames:    args.imageNames[1:],
-		LauncherConfig:     launcherConfig(args.launcherPath),
+		OrigMetadata:       analyzedMD.Metadata,
+		AdditionalNames:    ea.imageNames[1:],
+		LauncherConfig:     launcherConfig(ea.launcherPath),
 		Stack:              stackMD,
 		Project:            projectMD,
-		DefaultProcessType: args.processType,
+		DefaultProcessType: ea.processType,
 	}); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
@@ -225,8 +211,8 @@ func export(args exportArgs) error {
 		return cmd.FailErr(err, "export")
 	}
 
-	if args.cacheStore != nil {
-		if cacheErr := exporter.Cache(args.layersDir, args.cacheStore); cacheErr != nil {
+	if cacheStore != nil {
+		if cacheErr := exporter.Cache(ea.layersDir, cacheStore); cacheErr != nil {
 			cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
 		}
 	}

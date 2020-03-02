@@ -10,12 +10,20 @@ import (
 )
 
 type detectCmd struct {
+	// flags: inputs
+	detectArgs
+
+	// flags: paths to write outputs
+	groupPath string
+	planPath  string
+}
+
+type detectArgs struct {
+	// inputs needed when run by creator
 	buildpacksDir string
 	appDir        string
 	platformDir   string
 	orderPath     string
-	groupPath     string
-	planPath      string
 }
 
 func (d *detectCmd) Init() {
@@ -43,49 +51,31 @@ func (d *detectCmd) Privileges() error {
 }
 
 func (d *detectCmd) Exec() error {
-	group, plan, err := detect(
-		d.orderPath,
-		d.platformDir,
-		d.appDir,
-		d.buildpacksDir,
-		os.Getuid(),
-		os.Getgid(),
-	)
+	group, plan, err := d.detect()
 	if err != nil {
 		return err
 	}
-
-	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
-		return cmd.FailErr(err, "write buildpack group")
-	}
-
-	if err := lifecycle.WriteTOML(d.planPath, plan); err != nil {
-		return cmd.FailErr(err, "write detect plan")
-	}
-
-	return nil
+	return d.writeData(group, plan)
 }
 
-func detect(orderPath, platformDir, appDir, buildpacksDir string, uid, gid int) (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
-	order, err := lifecycle.ReadOrder(orderPath)
+func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
+	order, err := lifecycle.ReadOrder(da.orderPath)
 	if err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
 	envv := env.NewBuildEnv(os.Environ())
-	fullEnv, err := envv.WithPlatform(platformDir)
+	fullEnv, err := envv.WithPlatform(da.platformDir)
 	if err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read full env")
 	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
 		FullEnv:       fullEnv,
 		ClearEnv:      envv.List(),
-		AppDir:        appDir,
-		PlatformDir:   platformDir,
-		BuildpacksDir: buildpacksDir,
+		AppDir:        da.appDir,
+		PlatformDir:   da.platformDir,
+		BuildpacksDir: da.buildpacksDir,
 		Logger:        cmd.Logger,
-		UID:           uid,
-		GID:           gid,
 	})
 	if err != nil {
 		if err == lifecycle.ErrFail {
@@ -96,4 +86,15 @@ func detect(orderPath, platformDir, appDir, buildpacksDir string, uid, gid int) 
 	}
 
 	return group, plan, nil
+}
+
+func (d *detectCmd) writeData(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
+		return cmd.FailErr(err, "write buildpack group")
+	}
+
+	if err := lifecycle.WriteTOML(d.planPath, plan); err != nil {
+		return cmd.FailErr(err, "write detect plan")
+	}
+	return nil
 }

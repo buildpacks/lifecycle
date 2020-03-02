@@ -57,8 +57,6 @@ type DetectConfig struct {
 	BuildpacksDir string
 	Logger        Logger
 	runs          *sync.Map
-	UID           int
-	GID           int
 }
 
 func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry, error) {
