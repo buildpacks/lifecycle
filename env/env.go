@@ -1,4 +1,4 @@
-package lifecycle
+package env
 
 import (
 	"io/ioutil"
@@ -8,12 +8,23 @@ import (
 )
 
 type Env struct {
-	LookupEnv func(key string) (string, bool)
-	Getenv    func(key string) string
-	Setenv    func(key, value string) error
-	Unsetenv  func(key string) error
-	Environ   func() []string
-	Map       map[string][]string
+	RootDirMap map[string][]string
+	Vars       map[string]string
+}
+
+func varsFromEnviron(environ []string, removeKey func(string) bool) map[string]string {
+	vars := make(map[string]string)
+	for _, kv := range environ {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		if removeKey(parts[0]) {
+			continue
+		}
+		vars[parts[0]] = parts[1]
+	}
+	return vars
 }
 
 func (p *Env) AddRootDir(baseDir string) error {
@@ -21,7 +32,7 @@ func (p *Env) AddRootDir(baseDir string) error {
 	if err != nil {
 		return err
 	}
-	for dir, vars := range p.Map {
+	for dir, vars := range p.RootDirMap {
 		newDir := filepath.Join(absBaseDir, dir)
 		if _, err := os.Stat(newDir); os.IsNotExist(err) {
 			continue
@@ -29,10 +40,7 @@ func (p *Env) AddRootDir(baseDir string) error {
 			return err
 		}
 		for _, key := range vars {
-			value := newDir + prefix(p.Getenv(key), os.PathListSeparator)
-			if err := p.Setenv(key, value); err != nil {
-				return err
-			}
+			p.Vars[key] = newDir + prefix(p.Vars[key], os.PathListSeparator)
 		}
 	}
 	return nil
@@ -48,56 +56,52 @@ func (p *Env) AddEnvDir(envDir string) error {
 		}
 		switch action {
 		case "prepend":
-			return p.Setenv(name, v+prefix(p.Getenv(name), delim(envDir, name)...))
+			p.Vars[name] = v + prefix(p.Vars[name], delim(envDir, name)...)
 		case "append":
-			return p.Setenv(name, suffix(p.Getenv(name), delim(envDir, name)...)+v)
+			p.Vars[name] = suffix(p.Vars[name], delim(envDir, name)...) + v
 		case "override":
-			return p.Setenv(name, v)
+			p.Vars[name] = v
 		case "default":
-			if p.Getenv(name) != "" {
+			if p.Vars[name] != "" {
 				return nil
 			}
-			return p.Setenv(name, v)
+			p.Vars[name] = v
 		case "":
-			return p.Setenv(name, v+prefix(p.Getenv(name), delim(envDir, name, os.PathListSeparator)...))
-		default:
-			return nil
+			p.Vars[name] = v + prefix(p.Vars[name], delim(envDir, name, os.PathListSeparator)...)
 		}
+		return nil
 	})
 }
 
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
-	restore := map[string]*string{}
-	defer func() {
-		for k, v := range restore {
-			var rErr error
-			if v == nil {
-				rErr = p.Unsetenv(k)
-			} else {
-				rErr = p.Setenv(k, *v)
-			}
-			if err == nil {
-				err = rErr
-			}
-		}
-	}()
+	vars := make(map[string]string)
+	for key, value := range p.Vars {
+		vars[key] = value
+	}
+
 	if err := eachEnvFile(filepath.Join(platformDir, "env"), func(k, v string) error {
-		restore[k] = nil
-		if old, ok := p.LookupEnv(k); ok {
-			restore[k] = &old
-		}
 		if p.isRootEnv(k) {
-			return p.Setenv(k, v+prefix(p.Getenv(k), os.PathListSeparator))
+			vars[k] = v + prefix(vars[k], os.PathListSeparator)
+			return nil
 		}
-		return p.Setenv(k, v)
+		vars[k] = v
+		return nil
 	}); err != nil {
 		return nil, err
 	}
-	return p.List(), nil
+	return list(vars), nil
 }
 
 func (p *Env) List() []string {
-	return p.Environ()
+	return list(p.Vars)
+}
+
+func list(vars map[string]string) []string {
+	var environ []string
+	for k, v := range vars {
+		environ = append(environ, k+"="+v)
+	}
+	return environ
 }
 
 func prefix(s string, prefix ...byte) string {
@@ -145,7 +149,7 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 }
 
 func (p *Env) isRootEnv(name string) bool {
-	for _, m := range p.Map {
+	for _, m := range p.RootDirMap {
 		for _, k := range m {
 			if k == name {
 				return true

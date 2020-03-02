@@ -4,10 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
-
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
@@ -32,6 +28,8 @@ func main() {
 		cmd.Run(&exportCmd{}, false)
 	case "rebaser":
 		cmd.Run(&rebaseCmd{}, false)
+	case "creator":
+		cmd.Run(&createCmd{}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
@@ -58,6 +56,8 @@ func subcommand() {
 		cmd.Run(&exportCmd{}, true)
 	case "rebase":
 		cmd.Run(&rebaseCmd{}, true)
+	case "create":
+		cmd.Run(&createCmd{}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}
@@ -80,23 +80,4 @@ func initCache(cacheImageTag, cacheDir string) (lifecycle.Cache, error) {
 		}
 	}
 	return cacheStore, nil
-}
-
-func initImage(imageName string, daemon bool) (imgutil.Image, error) {
-	if daemon {
-		dockerClient, err := cmd.DockerClient()
-		if err != nil {
-			return nil, cmd.FailErr(err, "create docker client")
-		}
-		return local.NewImage(
-			imageName,
-			dockerClient,
-			local.FromBaseImage(imageName),
-		)
-	}
-	return remote.NewImage(
-		imageName,
-		auth.EnvKeychain(cmd.EnvRegistryAuth),
-		remote.FromBaseImage(imageName),
-	)
 }

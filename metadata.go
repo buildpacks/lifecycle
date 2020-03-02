@@ -53,9 +53,9 @@ type CacheMetadata struct {
 }
 
 func (cm *CacheMetadata) MetadataForBuildpack(id string) BuildpackLayersMetadata {
-	for _, bpMd := range cm.Buildpacks {
-		if bpMd.ID == id {
-			return bpMd
+	for _, bpMD := range cm.Buildpacks {
+		if bpMD.ID == id {
+			return bpMD
 		}
 	}
 	return BuildpackLayersMetadata{}
@@ -148,9 +148,9 @@ func (sm *StackMetadata) BestRunImageMirror(registry string) (string, error) {
 }
 
 func (m *LayersMetadata) MetadataForBuildpack(id string) BuildpackLayersMetadata {
-	for _, bpMd := range m.Buildpacks {
-		if bpMd.ID == id {
-			return bpMd
+	for _, bpMD := range m.Buildpacks {
+		if bpMD.ID == id {
+			return bpMD
 		}
 	}
 	return BuildpackLayersMetadata{}

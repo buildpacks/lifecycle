@@ -11,13 +11,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+type LaunchEnv interface {
+	AddRootDir(baseDir string) error
+	AddEnvDir(envDir string) error
+	List() []string
+}
+
 type Launcher struct {
 	DefaultProcessType string
 	LayersDir          string
 	AppDir             string
 	Processes          []Process
 	Buildpacks         []Buildpack
-	Env                BuildEnv
+	Env                LaunchEnv
 	Exec               func(argv0 string, argv []string, envv []string) error
 }
 

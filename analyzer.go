@@ -10,7 +10,6 @@ import (
 
 type Analyzer struct {
 	Buildpacks []Buildpack
-	GID, UID   int
 	LayersDir  string
 	Logger     Logger
 	SkipLayers bool
@@ -18,10 +17,10 @@ type Analyzer struct {
 
 // Analyze restores metadata for launch and cache layers into the layers directory.
 // If a usable cache is not provided, Analyze will not restore any cache=true layer metadata.
-func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata, error) {
+func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (AnalyzedMetadata, error) {
 	imageID, err := a.getImageIdentifier(image)
 	if err != nil {
-		return nil, errors.Wrap(err, "retrieving image identifier")
+		return AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
 	}
 
 	var appMeta LayersMetadata
@@ -33,7 +32,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata,
 	for _, bp := range a.Buildpacks {
 		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
 			if err := WriteTOML(filepath.Join(a.LayersDir, bp.dir(), "store.toml"), store); err != nil {
-				return nil, err
+				return AnalyzedMetadata{}, err
 			}
 		}
 	}
@@ -41,15 +40,10 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata,
 	if a.SkipLayers {
 		a.Logger.Infof("Skipping buildpack layer analysis")
 	} else if err := a.analyzeLayers(appMeta, cache); err != nil {
-		return nil, err
+		return AnalyzedMetadata{}, err
 	}
 
-	// if analyzer is running as root it needs to fix the ownership of the layers dir
-	if err := recursiveChownIfRoot(a.LayersDir, a.UID, a.GID); err != nil {
-		return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", a.UID, a.GID)
-	}
-
-	return &AnalyzedMetadata{
+	return AnalyzedMetadata{
 		Image:    imageID,
 		Metadata: appMeta,
 	}, nil

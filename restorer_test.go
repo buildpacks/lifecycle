@@ -52,8 +52,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					{ID: "escaped/buildpack/id"},
 				},
 				Logger: &log.Logger{Handler: &discard.Handler{}},
-				UID:    1234,
-				GID:    4321,
 			}
 			if testing.Verbose() {
 				restorer.Logger = cmd.Logger
@@ -416,24 +414,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer", "file-from-escaped-bp"))
 					want = "echo text from escaped bp layer\n"
 					h.AssertEq(t, string(got), want)
-				})
-			})
-
-			when("restorer is running as root", func() {
-				it.Before(func() {
-					if os.Getuid() != 0 {
-						t.Skip("Skipped when not running as root")
-					}
-					meta := "cache=true\nlaunch=false"
-					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, cacheLaunchLayerSHA))
-				})
-
-				it("recursively chowns the layers dir to CNB_USER_ID:CNB_GROUP_ID", func() {
-					h.AssertNil(t, restorer.Restore(testCache))
-					h.AssertUIDGID(t, layersDir, 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layersDir, "buildpack.id"), 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"), 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layersDir, "buildpack.id", "cache-launch", "file-from-cache-launch-layer"), 1234, 4321)
 				})
 			})
 		})

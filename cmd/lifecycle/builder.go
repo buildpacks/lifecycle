@@ -9,12 +9,19 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/env"
 )
 
 type buildCmd struct {
+	// flags: inputs
+	groupPath string
+	planPath  string
+	buildArgs
+}
+
+type buildArgs struct {
+	// inputs needed when run by creator
 	buildpacksDir string
-	groupPath     string
-	planPath      string
 	layersDir     string
 	appDir        string
 	platformDir   string
@@ -36,45 +43,54 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
+func (b *buildCmd) Privileges() error {
+	// builder should never be run with privileges
+	if cmd.IsPrivileged() {
+		return cmd.FailErr(errors.New("refusing to run as root"), "build")
+	}
+	return nil
+}
+
 func (b *buildCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(b.groupPath)
+	group, plan, err := b.readData()
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
+		return err
 	}
+	return b.build(group, plan)
+}
 
-	var plan lifecycle.BuildPlan
-	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
-		return cmd.FailErr(err, "parse detect plan")
-	}
-
-	env := &lifecycle.Env{
-		LookupEnv: os.LookupEnv,
-		Getenv:    os.Getenv,
-		Setenv:    os.Setenv,
-		Unsetenv:  os.Unsetenv,
-		Environ:   os.Environ,
-		Map:       lifecycle.POSIXBuildEnv,
-	}
-
+func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	builder := &lifecycle.Builder{
-		AppDir:        b.appDir,
-		LayersDir:     b.layersDir,
-		PlatformDir:   b.platformDir,
-		BuildpacksDir: b.buildpacksDir,
-		Env:           env,
+		AppDir:        ba.appDir,
+		LayersDir:     ba.layersDir,
+		PlatformDir:   ba.platformDir,
+		BuildpacksDir: ba.buildpacksDir,
+		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
 		Plan:          plan,
 		Out:           log.New(os.Stdout, "", 0),
 		Err:           log.New(os.Stderr, "", 0),
 	}
-
 	md, err := builder.Build()
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(b.layersDir), md); err != nil {
-		return cmd.FailErr(err, "write metadata")
+	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(ba.layersDir), md); err != nil {
+		return cmd.FailErr(err, "write build metadata")
 	}
 	return nil
+}
+
+func (b *buildCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
+	group, err := lifecycle.ReadGroup(b.groupPath)
+	if err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
+	}
+
+	var plan lifecycle.BuildPlan
+	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
+	}
+	return group, plan, nil
 }

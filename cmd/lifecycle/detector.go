@@ -6,15 +6,24 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/env"
 )
 
 type detectCmd struct {
+	// flags: inputs
+	detectArgs
+
+	// flags: paths to write outputs
+	groupPath string
+	planPath  string
+}
+
+type detectArgs struct {
+	// inputs needed when run by creator
 	buildpacksDir string
 	appDir        string
 	platformDir   string
 	orderPath     string
-	groupPath     string
-	planPath      string
 }
 
 func (d *detectCmd) Init() {
@@ -33,30 +42,39 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
+func (d *detectCmd) Privileges() error {
+	// detector should never be run with privileges
+	if cmd.IsPrivileged() {
+		return cmd.FailErr(errors.New("refusing to run as root"), "build")
+	}
+	return nil
+}
+
 func (d *detectCmd) Exec() error {
-	order, err := lifecycle.ReadOrder(d.orderPath)
+	group, plan, err := d.detect()
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack order file")
+		return err
+	}
+	return d.writeData(group, plan)
+}
+
+func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
+	order, err := lifecycle.ReadOrder(da.orderPath)
+	if err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
-	env := &lifecycle.Env{
-		LookupEnv: os.LookupEnv,
-		Getenv:    os.Getenv,
-		Setenv:    os.Setenv,
-		Unsetenv:  os.Unsetenv,
-		Environ:   os.Environ,
-		Map:       lifecycle.POSIXBuildEnv,
-	}
-	fullEnv, err := env.WithPlatform(d.platformDir)
+	envv := env.NewBuildEnv(os.Environ())
+	fullEnv, err := envv.WithPlatform(da.platformDir)
 	if err != nil {
-		return cmd.FailErr(err, "read full env")
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read full env")
 	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
 		FullEnv:       fullEnv,
-		ClearEnv:      env.List(),
-		AppDir:        d.appDir,
-		PlatformDir:   d.platformDir,
-		BuildpacksDir: d.buildpacksDir,
+		ClearEnv:      envv.List(),
+		AppDir:        da.appDir,
+		PlatformDir:   da.platformDir,
+		BuildpacksDir: da.buildpacksDir,
 		Logger:        cmd.Logger,
 	})
 	if err != nil {
@@ -64,9 +82,13 @@ func (d *detectCmd) Exec() error {
 			cmd.Logger.Error("No buildpack groups passed detection.")
 			cmd.Logger.Error("Please check that you are running against the correct path.")
 		}
-		return cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
 	}
 
+	return group, plan, nil
+}
+
+func (d *detectCmd) writeData(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}

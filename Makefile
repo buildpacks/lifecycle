@@ -43,6 +43,7 @@ build-linux:
 	ln -sf lifecycle $(OUT_DIR)/builder
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
+	ln -sf lifecycle $(OUT_DIR)/creator
 
 build-windows: export GOOS:=windows
 build-windows: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -56,6 +57,7 @@ build-windows:
 	ln -sf lifecycle.exe $(OUT_DIR)/builder.exe
 	ln -sf lifecycle.exe $(OUT_DIR)/exporter.exe
 	ln -sf lifecycle.exe $(OUT_DIR)/rebaser.exe
+	ln -sf lifecycle.exe $(OUT_DIR)/creator.exe
 
 build-darwin: export GOOS:=darwin
 build-darwin: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle

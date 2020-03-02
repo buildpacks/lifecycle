@@ -56,8 +56,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			Buildpacks: []lifecycle.Buildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
 			LayersDir:  layerDir,
 			Logger:     &log.Logger{Handler: &discard.Handler{}},
-			UID:        1234,
-			GID:        4321,
 		}
 		if testing.Verbose() {
 			analyzer.Logger = cmd.Logger
@@ -324,26 +322,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("analyzer is running as root", func() {
-				it.Before(func() {
-					if os.Getuid() != 0 {
-						t.Skip("Skipped when not running as root")
-					}
-				})
-
-				it("chowns new files to CNB_USER_ID:CNB_GROUP_ID", func() {
-					_, err := analyzer.Analyze(image, testCache)
-					h.AssertNil(t, err)
-					h.AssertUIDGID(t, layerDir, 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack"), 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack", "store.toml"), 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack", "launch.toml"), 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack", "store.toml"), 1234, 4321)
-					h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack", "some-layer.toml"), 1234, 4321)
-				})
-			})
-
 			when("skip-layers is true", func() {
 				it.Before(func() {
 					analyzer.SkipLayers = true
@@ -387,24 +365,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 						h.AssertStringContains(t, string(got), data.want)
 					}
-				})
-
-				when("analyzer is running as root", func() {
-					it.Before(func() {
-						if os.Getuid() != 0 {
-							t.Skip("Skipped when not running as root")
-						}
-					})
-
-					it("chowns new files to CNB_USER_ID:CNB_GROUP_ID", func() {
-						_, err := analyzer.Analyze(image, testCache)
-						h.AssertNil(t, err)
-						h.AssertUIDGID(t, layerDir, 1234, 4321)
-						h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack"), 1234, 4321)
-						h.AssertUIDGID(t, filepath.Join(layerDir, "metadata.buildpack", "store.toml"), 1234, 4321)
-						h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack"), 1234, 4321)
-						h.AssertUIDGID(t, filepath.Join(layerDir, "no.cache.buildpack", "store.toml"), 1234, 4321)
-					})
 				})
 			})
 		})
