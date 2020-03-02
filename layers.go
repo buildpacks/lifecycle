@@ -10,6 +10,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/launch"
 )
 
 type bpLayersDir struct {
@@ -21,7 +23,7 @@ type bpLayersDir struct {
 }
 
 func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir, error) {
-	path := filepath.Join(layersDir, buildpack.dir())
+	path := filepath.Join(layersDir, launch.EscapeID(buildpack.ID))
 	bpDir := bpLayersDir{
 		name:      buildpack.ID,
 		path:      path,
@@ -67,17 +69,17 @@ func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir,
 	return bpDir, nil
 }
 
-func launch(l bpLayer) bool {
+func forLaunch(l bpLayer) bool {
 	md, err := l.read()
 	return err == nil && md.Launch
 }
 
-func malformed(l bpLayer) bool {
+func forMalformed(l bpLayer) bool {
 	_, err := l.read()
 	return err != nil
 }
 
-func cached(l bpLayer) bool {
+func forCached(l bpLayer) bool {
 	md, err := l.read()
 	return err == nil && md.Cache
 }

@@ -35,7 +35,8 @@ build-linux: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-linux:
 	@echo "> Building for linux..."
 	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR) -a ./cmd/launcher
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
@@ -50,7 +51,8 @@ build-windows: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-windows:
 	@echo "> Building for windows..."
 	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR) -a ./cmd/launcher
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle.exe -a ./cmd/lifecycle
 	ln -sf lifecycle.exe $(OUT_DIR)/analyzer.exe
 	ln -sf lifecycle.exe $(OUT_DIR)/restorer.exe
@@ -64,7 +66,8 @@ build-darwin: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-darwin:
 	@echo "> Building for macos..."
 	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR) -a ./cmd/launcher
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer

@@ -4,16 +4,14 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/buildpacks/lifecycle/launch"
 )
 
 type Buildpack struct {
 	ID       string `toml:"id" json:"id"`
 	Version  string `toml:"version" json:"version"`
 	Optional bool   `toml:"optional,omitempty" json:"optional,omitempty"`
-}
-
-func (bp Buildpack) dir() string {
-	return escapeID(bp.ID)
 }
 
 func (bp Buildpack) String() string {
@@ -27,7 +25,7 @@ func (bp Buildpack) noOpt() Buildpack {
 
 func (bp Buildpack) lookup(buildpacksDir string) (*buildpackTOML, error) {
 	bpTOML := buildpackTOML{}
-	bpPath, err := filepath.Abs(filepath.Join(buildpacksDir, bp.dir(), bp.Version))
+	bpPath, err := filepath.Abs(filepath.Join(buildpacksDir, launch.EscapeID(bp.ID), bp.Version))
 	if err != nil {
 		return nil, err
 	}

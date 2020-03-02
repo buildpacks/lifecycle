@@ -20,6 +20,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
@@ -154,7 +155,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes: []lifecycle.Process{
+					Processes: []launch.Process{
 						{Type: "A-type", Command: "A-cmd"},
 						{Type: "B-type", Command: "B-cmd"},
 						{Type: "override-type", Command: "B-cmd"},
@@ -174,7 +175,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes: []lifecycle.Process{},
+					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
 						{ID: "A", Version: "v1"},
 						{ID: "B", Version: "v2"},
@@ -308,7 +309,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes: []lifecycle.Process{},
+					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
 						{ID: "A", Version: "v1"},
 						{ID: "B", Version: "v2"},

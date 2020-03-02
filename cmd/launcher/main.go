@@ -6,16 +6,16 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/launch"
 )
 
 func main() {
-	cmd.Exit(launch())
+	cmd.Exit(runLaunch())
 }
 
-func launch() error {
+func runLaunch() error {
 	defaultProcessType := cmd.DefaultProcessType
 	if v := os.Getenv(cmd.EnvProcessType); v != "" {
 		defaultProcessType = v
@@ -29,12 +29,12 @@ func launch() error {
 		appDir = v
 	}
 
-	var md lifecycle.BuildMetadata
-	if _, err := toml.DecodeFile(lifecycle.MetadataFilePath(layersDir), &md); err != nil {
+	var md launch.Metadata
+	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(layersDir), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 
-	launcher := &lifecycle.Launcher{
+	launcher := &launch.Launcher{
 		DefaultProcessType: defaultProcessType,
 		LayersDir:          layersDir,
 		AppDir:             appDir,
