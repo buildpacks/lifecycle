@@ -1,10 +1,10 @@
 package lifecycle
 
 import (
-	"path"
-
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/launch"
 )
 
 const (
@@ -14,7 +14,7 @@ const (
 )
 
 type BuildMetadata struct {
-	Processes  []Process        `toml:"processes" json:"processes"`
+	Processes  []launch.Process `toml:"processes" json:"processes"`
 	Buildpacks []Buildpack      `toml:"buildpacks" json:"buildpacks"`
 	BOM        []BOMEntry       `toml:"bom" json:"bom"`
 	Launcher   LauncherMetadata `toml:"-" json:"launcher"`
@@ -33,10 +33,6 @@ type SourceMetadata struct {
 type GitMetadata struct {
 	Repository string `json:"repository"`
 	Commit     string `json:"commit"`
-}
-
-func MetadataFilePath(layersDir string) string {
-	return path.Join(layersDir, "config", "metadata.toml")
 }
 
 func (md BuildMetadata) hasProcess(processType string) bool {

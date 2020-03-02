@@ -6,6 +6,8 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/launch"
 )
 
 type Analyzer struct {
@@ -31,7 +33,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (AnalyzedMetadata, 
 
 	for _, bp := range a.Buildpacks {
 		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
-			if err := WriteTOML(filepath.Join(a.LayersDir, bp.dir(), "store.toml"), store); err != nil {
+			if err := WriteTOML(filepath.Join(a.LayersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
 				return AnalyzedMetadata{}, err
 			}
 		}

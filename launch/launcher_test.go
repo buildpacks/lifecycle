@@ -1,4 +1,4 @@
-package lifecycle_test
+package launch_test
 
 import (
 	"io/ioutil"
@@ -12,7 +12,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
@@ -28,7 +28,7 @@ type syscallExecArgs struct {
 
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	var (
-		launcher            *lifecycle.Launcher
+		launcher            *launch.Launcher
 		mockCtrl            *gomock.Controller
 		env                 *testmock.MockBuildEnv
 		tmpDir              string
@@ -49,11 +49,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "app"), 0755); err != nil {
 			t.Fatal(err)
 		}
-		launcher = &lifecycle.Launcher{
+		launcher = &launch.Launcher{
 			DefaultProcessType: "web",
 			LayersDir:          filepath.Join(tmpDir, "launch"),
 			AppDir:             filepath.Join(tmpDir, "launch", "app"),
-			Processes: []lifecycle.Process{
+			Processes: []launch.Process{
 				{Type: "other", Command: "some-other-process"},
 				{Type: "web", Command: "some-web-process", Args: []string{"arg1", "arg2"}},
 				{Type: "worker", Command: "some-worker-process"},
@@ -216,10 +216,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(tmpDir, "launch", "app", "start"),
 				)
 
-				launcher.Processes = []lifecycle.Process{
+				launcher.Processes = []launch.Process{
 					{Type: "start", Command: "./start"},
 				}
-				launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
+				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
 				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
@@ -262,7 +262,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		when("metadata includes buildpacks that have not contributed layers", func() {
 			it.Before(func() {
-				launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.3"}}
+				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.3"}}
 			})
 
 			it("ignores those buildpacks when setting the env", func() {
@@ -281,10 +281,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(tmpDir, "launch", "app", "start"),
 				)
 
-				launcher.Processes = []lifecycle.Process{
+				launcher.Processes = []launch.Process{
 					{Type: "start", Command: "./start"},
 				}
-				launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
+				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
 				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
@@ -315,7 +315,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 			when("changing the buildpack order", func() {
 				it.Before(func() {
-					launcher.Buildpacks = []lifecycle.Buildpack{{ID: "bp.2"}, {ID: "bp.1"}}
+					launcher.Buildpacks = []launch.Buildpack{{ID: "bp.2"}, {ID: "bp.1"}}
 				})
 
 				it("should run them in buildpack order", func() {
@@ -389,5 +389,32 @@ func syscallExecWithStdout(t *testing.T, tmpDir string) func(argv0 string, argv 
 		}
 		_, err = syscall.Wait4(pid, nil, 0, nil)
 		return err
+	}
+}
+
+func mkfile(t *testing.T, data string, paths ...string) {
+	t.Helper()
+	for _, p := range paths {
+		if err := ioutil.WriteFile(p, []byte(data), 0777); err != nil {
+			t.Fatalf("Error: %s\n", err)
+		}
+	}
+}
+
+func rdfile(t *testing.T, path string) string {
+	t.Helper()
+	out, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Error: %s\n", err)
+	}
+	return string(out)
+}
+
+func mkdir(t *testing.T, dirs ...string) {
+	t.Helper()
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0777); err != nil {
+			t.Fatalf("Error: %s\n", err)
+		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/launch"
 )
 
 type buildCmd struct {
@@ -76,7 +77,7 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
 	}
 
-	if err := lifecycle.WriteTOML(lifecycle.MetadataFilePath(ba.layersDir), md); err != nil {
+	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write build metadata")
 	}
 	return nil

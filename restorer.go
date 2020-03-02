@@ -36,7 +36,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		}
 
 		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
-		for _, bpLayer := range buildpackDir.findLayers(cached) {
+		for _, bpLayer := range buildpackDir.findLayers(forCached) {
 			name := bpLayer.name()
 			cachedLayer, exists := cachedLayers[name]
 			if !exists {

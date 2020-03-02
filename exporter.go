@@ -15,6 +15,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/launch"
 )
 
 type Cache interface {
@@ -82,7 +83,7 @@ func (e *Exporter) Export(opts ExportOptions) error {
 	meta.Stack = opts.Stack
 
 	buildMD := &BuildMetadata{}
-	if _, err := toml.DecodeFile(MetadataFilePath(opts.LayersDir), buildMD); err != nil {
+	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(opts.LayersDir), buildMD); err != nil {
 		return errors.Wrap(err, "read build metadata")
 	}
 
@@ -110,7 +111,7 @@ func (e *Exporter) Export(opts ExportOptions) error {
 			Layers:  map[string]BuildpackLayerMetadata{},
 			Store:   bpDir.store,
 		}
-		for _, layer := range bpDir.findLayers(launch) {
+		for _, layer := range bpDir.findLayers(forLaunch) {
 			layer := layer
 			lmd, err := layer.read()
 			if err != nil {
@@ -143,7 +144,7 @@ func (e *Exporter) Export(opts ExportOptions) error {
 		}
 		meta.Buildpacks = append(meta.Buildpacks, bpMD)
 
-		if malformedLayers := bpDir.findLayers(malformed); len(malformedLayers) > 0 {
+		if malformedLayers := bpDir.findLayers(forMalformed); len(malformedLayers) > 0 {
 			ids := make([]string, 0, len(malformedLayers))
 			for _, ml := range malformedLayers {
 				ids = append(ids, ml.Identifier())
@@ -246,7 +247,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			Version: bp.Version,
 			Layers:  map[string]BuildpackLayerMetadata{},
 		}
-		for _, layer := range bpDir.findLayers(cached) {
+		for _, layer := range bpDir.findLayers(forCached) {
 			layer := layer
 			if !layer.hasLocalContents() {
 				return fmt.Errorf("failed to cache layer '%s' because it has no contents", layer.Identifier())
@@ -275,7 +276,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 }
 
 func (e *Exporter) tarLayer(layer identifiableLayer) (string, string, error) {
-	tarPath := filepath.Join(e.ArtifactsDir, escapeID(layer.Identifier())+".tar")
+	tarPath := filepath.Join(e.ArtifactsDir, launch.EscapeID(layer.Identifier())+".tar")
 	if e.tarHashes == nil {
 		e.tarHashes = make(map[string]string)
 	}
@@ -366,7 +367,7 @@ func (e *Exporter) createAppSliceLayers(appDir string, slices []Slice) ([]SliceL
 }
 
 func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (SliceLayer, error) {
-	tarPath := filepath.Join(e.ArtifactsDir, escapeID(layerID)+".tar")
+	tarPath := filepath.Join(e.ArtifactsDir, launch.EscapeID(layerID)+".tar")
 	sha, fileSet, err := archive.WriteFilesToTar(tarPath, e.UID, e.GID, files...)
 	if err != nil {
 		return SliceLayer{}, errors.Wrapf(err, "exporting slice layer '%s'", layerID)
