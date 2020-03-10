@@ -7,7 +7,7 @@ A reference implementation of the [Cloud Native Buildpacks specification](https:
 
 This lifecycle implements the following versioned APIs
 * Buildpack API 0.2
-* Platform API 0.2
+* Platform API 0.3
 
 ## Commands
 
