@@ -13,8 +13,8 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/docker"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/priv"
 )
 
 type rebaseCmd struct {
@@ -58,12 +58,12 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 func (r *rebaseCmd) Privileges() error {
 	if r.useDaemon {
 		var err error
-		r.docker, err = docker.Client()
+		r.docker, err = priv.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := cmd.RunAs(r.uid, r.gid); err != nil {
+	if err := priv.RunAs(r.uid, r.gid); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
 	}
 	return nil

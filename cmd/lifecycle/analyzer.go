@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/docker"
+	"github.com/buildpacks/lifecycle/priv"
 )
 
 type analyzeCmd struct {
@@ -64,15 +64,15 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 func (a *analyzeCmd) Privileges() error {
 	if a.useDaemon {
 		var err error
-		a.docker, err = docker.Client()
+		a.docker, err = priv.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := cmd.EnsureOwner(a.uid, a.gid, a.layersDir, a.cacheDir); err != nil {
+	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := cmd.RunAs(a.uid, a.gid); err != nil {
+	if err := priv.RunAs(a.uid, a.gid); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", a.uid, a.gid))
 	}
 	return nil

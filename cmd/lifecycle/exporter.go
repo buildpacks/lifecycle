@@ -17,8 +17,8 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/docker"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/priv"
 )
 
 type exportCmd struct {
@@ -103,15 +103,15 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 func (e *exportCmd) Privileges() error {
 	if e.useDaemon {
 		var err error
-		e.docker, err = docker.Client()
+		e.docker, err = priv.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := cmd.EnsureOwner(e.uid, e.gid, e.cacheDir, e.launchCacheDir); err != nil {
+	if err := priv.EnsureOwner(e.uid, e.gid, e.cacheDir, e.launchCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := cmd.RunAs(e.uid, e.gid); err != nil {
+	if err := priv.RunAs(e.uid, e.gid); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.uid, e.gid))
 	}
 	return nil

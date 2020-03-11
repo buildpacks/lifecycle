@@ -1,7 +1,8 @@
-package docker
+package priv
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -10,14 +11,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Client constructs a client that can continue to talk to a root owned docker socket
+// DockerClient constructs a client that can continue to talk to a root owned docker socket
 // * even after the process drops privileges
-func Client() (*client.Client, error) {
+func DockerClient() (*client.Client, error) {
 	host := client.DefaultDockerHost
 	if envHost := os.Getenv("DOCKER_HOST"); envHost != "" {
 		host = envHost
 	}
-	hostURL, err := client.ParseHostURL(host)
+	hostURL, err := url.Parse(host)
 	if err != nil {
 		return nil, err
 	}
@@ -26,6 +27,7 @@ func Client() (*client.Client, error) {
 		client.WithAPIVersionNegotiation(),
 	}
 	if shouldConnectSock(hostURL) {
+		fmt.Println("should connect")
 		opt, err := connectSockOpt(hostURL)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to connect to docker socket")

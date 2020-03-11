@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/priv"
 )
 
 type buildCmd struct {
@@ -46,7 +47,7 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 
 func (b *buildCmd) Privileges() error {
 	// builder should never be run with privileges
-	if cmd.IsPrivileged() {
+	if priv.IsPrivileged() {
 		return cmd.FailErr(errors.New("refusing to run as root"), "build")
 	}
 	return nil

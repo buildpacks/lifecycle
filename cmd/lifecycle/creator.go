@@ -6,8 +6,8 @@ import (
 	"github.com/docker/docker/client"
 
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/docker"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/priv"
 )
 
 type createCmd struct {
@@ -87,15 +87,15 @@ func (c *createCmd) Args(nargs int, args []string) error {
 func (c *createCmd) Privileges() error {
 	if c.useDaemon {
 		var err error
-		c.docker, err = docker.Client()
+		c.docker, err = priv.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := cmd.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
+	if err := priv.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := cmd.RunAs(c.uid, c.gid); err != nil {
+	if err := priv.RunAs(c.uid, c.gid); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
 	}
 	return nil
