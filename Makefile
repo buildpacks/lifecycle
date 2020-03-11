@@ -1,6 +1,7 @@
 GOCMD?=go
 GOFLAGS?=-mod=vendor
-GOENV=GOARCH=amd64 CGO_ENABLED=1
+GOARCH?=amd64
+GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LDFLAGS=-s -w
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
@@ -32,7 +33,8 @@ build: build-linux build-windows
 
 build-linux-lifecycle: export GOOS:=linux
 build-linux-lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-build-linux-lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle -it $(COMPILATION_IMAGE)
+build-linux-lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
+build-linux-lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle $(COMPILATION_IMAGE)
 build-linux-lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
