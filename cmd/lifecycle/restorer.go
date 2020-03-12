@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/priv"
 )
 
 type restoreCmd struct {
@@ -37,10 +38,10 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 }
 
 func (r *restoreCmd) Privileges() error {
-	if err := cmd.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
+	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
 		cmd.FailErr(err, "chown volumes")
 	}
-	if err := cmd.RunAs(r.uid, r.gid); err != nil {
+	if err := priv.RunAs(r.uid, r.gid); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
 	}
 	return nil

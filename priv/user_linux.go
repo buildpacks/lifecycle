@@ -1,6 +1,6 @@
 // +build linux
 
-package cmd
+package priv
 
 import (
 	"io/ioutil"
@@ -10,9 +10,28 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
-
-	"golang.org/x/sys/unix"
 )
+
+/*
+#cgo LDFLAGS: --static
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <errno.h>
+
+static int
+csetresuid(uid_t ruid, uid_t euid, uid_t suid) {
+  int ec = setresuid(ruid, euid, suid);
+  return (ec < 0) ? errno : 0;
+}
+
+static int
+csetresgid(gid_t rgid, gid_t egid, gid_t sgid) {
+  int ec = setresgid(rgid, egid, sgid);
+  return (ec < 0) ? errno : 0;
+}
+
+*/
+import "C"
 
 func EnsureOwner(uid, gid int, paths ...string) error {
 	for _, p := range paths {
@@ -73,10 +92,10 @@ func RunAs(uid, gid int) error {
 	// temporarily reduce to one thread b/c setres{gid,uid} works per thread on linux
 	mxp := runtime.GOMAXPROCS(1)
 	runtime.LockOSThread()
-	if err := unix.Setresgid(gid, gid, gid); err != nil {
+	if err := setresgid(gid, gid, gid); err != nil {
 		return err
 	}
-	if err := unix.Setresuid(uid, uid, uid); err != nil {
+	if err := setresuid(uid, uid, uid); err != nil {
 		return err
 	}
 	_ = runtime.GOMAXPROCS(mxp)
@@ -93,6 +112,22 @@ func RunAs(uid, gid int) error {
 	// ggcr sets default docker config during init, fix for user
 	if err := os.Setenv("DOCKER_CONFIG", filepath.Join(user.HomeDir, ".docker")); err != nil {
 		return err
+	}
+	return nil
+}
+
+func setresgid(rgid, egid, sgid int) error {
+	eno := C.csetresgid(C.gid_t(rgid), C.gid_t(egid), C.gid_t(sgid))
+	if eno != 0 {
+		return syscall.Errno(eno)
+	}
+	return nil
+}
+
+func setresuid(ruid, euid, suid int) error {
+	eno := C.csetresuid(C.uid_t(ruid), C.uid_t(euid), C.uid_t(suid))
+	if eno != 0 {
+		return syscall.Errno(eno)
 	}
 	return nil
 }

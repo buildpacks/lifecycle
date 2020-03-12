@@ -159,9 +159,12 @@ func lifecycleCmd(binary string, args ...string) *exec.Cmd {
 
 func buildBinaries(t *testing.T, dir string) {
 	cmd := exec.Command("make", "build-"+runtime.GOOS)
-	cmd.Dir = ".."
+	wd, err := os.Getwd()
+	h.AssertNil(t, err)
+	cmd.Dir = filepath.Join(wd, "..")
 	cmd.Env = append(
 		os.Environ(),
+		"PWD="+cmd.Dir,
 		"BUILD_DIR="+dir,
 		"PLATFORM_API=0.9",
 		"LIFECYCLE_VERSION=some-version",

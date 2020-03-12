@@ -1,21 +1,22 @@
 GOCMD?=go
 GOFLAGS?=-mod=vendor
-GOENV=GOARCH=amd64 CGO_ENABLED=0
+GOARCH?=amd64
+GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LDFLAGS=-s -w
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.PlatformAPI=$(PLATFORM_API)'
-GOBUILD=$(GOCMD) build -ldflags "$(LDFLAGS)"
-GOTEST=$(GOCMD) test
+GOBUILD=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
+GOTEST=$(GOCMD) test $(GOFLAGS)
 LIFECYCLE_VERSION?=0.0.0
 PLATFORM_API?=0.3
 BUILDPACK_API?=0.2
-SCM_REPO?=
-SCM_COMMIT?=$$(git rev-parse --short HEAD)
-BUILD_DIR?=out
-
-export GOFLAGS:=$(GOFLAGS)
+SCM_REPO?=github.com/buildpacks/lifecycle
+PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
+SCM_COMMIT?=$(PARSED_COMMIT)
+BUILD_DIR?=$(PWD)/out
+COMPILATION_IMAGE?=golang:1.13-alpine
 
 define LIFECYCLE_DESCRIPTOR
 [api]
@@ -30,14 +31,28 @@ all: test build package
 
 build: build-linux build-windows
 
-build-linux: export GOOS:=linux
-build-linux: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-build-linux:
-	@echo "> Building for linux..."
+build-linux-lifecycle: export GOOS:=linux
+build-linux-lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-linux-lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
+build-linux-lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle $(COMPILATION_IMAGE)
+build-linux-lifecycle:
+	@echo "> Building lifecycle/lifecycle for linux..."
+	mkdir -p $(OUT_DIR)
+	$(DOCKER_RUN) sh -c 'apk add build-base && $(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
+
+
+build-linux-launcher: export GOOS:=linux
+build-linux-launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-linux-launcher:
+	@echo "> Building lifecycle/launcher for linux..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+
+build-linux-symlinks: export GOOS:=linux
+build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-linux-symlinks:
+	@echo "> Creating phase symlinks for linux..."
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
 	ln -sf lifecycle $(OUT_DIR)/restorer
@@ -45,6 +60,8 @@ build-linux:
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
+
+build-linux: build-linux-lifecycle build-linux-symlinks build-linux-launcher
 
 build-windows: export GOOS:=windows
 build-windows: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle

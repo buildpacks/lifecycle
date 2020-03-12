@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/priv"
 )
 
 type detectCmd struct {
@@ -44,7 +45,7 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 
 func (d *detectCmd) Privileges() error {
 	// detector should never be run with privileges
-	if cmd.IsPrivileged() {
+	if priv.IsPrivileged() {
 		return cmd.FailErr(errors.New("refusing to run as root"), "build")
 	}
 	return nil

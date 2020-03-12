@@ -1,6 +1,6 @@
 // +build linux darwin
 
-package docker
+package priv
 
 import (
 	"net/url"

@@ -1,13 +1,11 @@
-package cmd
-
-import "os"
+package priv
 
 func EnsureOwner(uid, gid int, paths ...string) error {
 	return nil
 }
 
 func IsPrivileged() bool {
-	return os.Getuid() == 0
+	return false
 }
 
 func RunAs(uid, gid int) error {

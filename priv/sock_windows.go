@@ -1,4 +1,4 @@
-package docker
+package priv
 
 import "net/url"
 
