@@ -2,7 +2,6 @@ package priv
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -27,7 +26,6 @@ func DockerClient() (*client.Client, error) {
 		client.WithAPIVersionNegotiation(),
 	}
 	if shouldConnectSock(hostURL) {
-		fmt.Println("should connect")
 		opt, err := connectSockOpt(hostURL)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to connect to docker socket")
