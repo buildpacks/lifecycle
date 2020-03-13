@@ -96,6 +96,11 @@ func (p *Env) List() []string {
 	return list(p.Vars)
 }
 
+// Get returns the value for the given key
+func (p *Env) Get(k string) string {
+	return p.Vars[k]
+}
+
 func list(vars map[string]string) []string {
 	var environ []string
 	for k, v := range vars {

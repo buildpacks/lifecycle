@@ -116,6 +116,7 @@ lint: install-golangci-lint
 generate: install-mockgen
 	@echo "> Generating..."
 	$(GOCMD) generate
+	$(GOCMD) generate ./launch
 
 format: install-goimports
 	@echo "> Formating code..."

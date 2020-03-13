@@ -42,6 +42,7 @@ func runLaunch() error {
 		Buildpacks:         md.Buildpacks,
 		Env:                env.NewLaunchEnv(os.Environ()),
 		Exec:               syscall.Exec,
+		Setenv:             os.Setenv,
 	}
 
 	if err := launcher.Launch(os.Args[0], os.Args[1:]); err != nil {

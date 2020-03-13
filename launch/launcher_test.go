@@ -13,8 +13,10 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/testmock"
+	"github.com/buildpacks/lifecycle/launch/testmock"
 )
+
+//go:generate mockgen -package testmock -destination testmock/launch_env.go github.com/buildpacks/lifecycle/launch Env
 
 func TestLauncher(t *testing.T) {
 	spec.Run(t, "Launcher", testLauncher, spec.Report(report.Terminal{}))
@@ -30,16 +32,17 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	var (
 		launcher            *launch.Launcher
 		mockCtrl            *gomock.Controller
-		env                 *testmock.MockBuildEnv
+		env                 *testmock.MockEnv
 		tmpDir              string
 		syscallExecArgsColl []syscallExecArgs
 		wd                  string
+		envList             = []string{"TEST_ENV_ONE=1", "TEST_ENV_TWO=2"}
 	)
 
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
-		env = testmock.NewMockBuildEnv(mockCtrl)
-		env.EXPECT().List().Return([]string{"TEST_ENV_ONE=1", "TEST_ENV_TWO=2"}).AnyTimes()
+		env = testmock.NewMockEnv(mockCtrl)
+		env.EXPECT().List().Return(envList).AnyTimes()
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle.launcher.")
@@ -109,6 +112,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[6], "arg2"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
+				if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
+					t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
+				}
 			})
 
 			when("default start process type is not in the process types", func() {
@@ -140,6 +146,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-worker-process"); diff != "" {
 						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
+					if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
+						t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
+					}
 				})
 			})
 
@@ -156,11 +165,26 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-different-process"); diff != "" {
 						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
+					if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
+						t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
+					}
 				})
 			})
 		})
 
 		when("a start command is marked as direct", func() {
+			var setPath string
+
+			it.Before(func() {
+				env.EXPECT().Get("PATH").Return("some-path")
+				launcher.Setenv = func(k string, v string) error {
+					if k == "PATH" {
+						setPath = v
+					}
+					return nil
+				}
+			})
+
 			it("should invoke a process type's start command directly", func() {
 				if err := launcher.Launch("/path/to/launcher", []string{"direct"}); err != nil {
 					t.Fatal(err)
@@ -170,6 +194,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 				}
 
+				if diff := cmp.Diff(setPath, "some-path"); diff != "" {
+					t.Fatalf("launcher did not set PATH: (-got +want)\n%s\n", diff)
+				}
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "/bin/sh"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
@@ -183,6 +210,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], "arg2"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 				}
+				if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
+					t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
+				}
 			})
 
 			it("should invoke a provided start command directly", func() {
@@ -190,6 +220,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal(err)
 				}
 
+				if diff := cmp.Diff(setPath, "some-path"); diff != "" {
+					t.Fatalf("launcher did not set PATH: (-got +want)\n%s\n", diff)
+				}
 				if len(syscallExecArgsColl) != 1 {
 					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 				}
@@ -206,6 +239,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 				if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], "arg2"); diff != "" {
 					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
+				}
+				if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
+					t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
 				}
 			})
 		})
