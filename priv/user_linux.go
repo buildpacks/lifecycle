@@ -33,6 +33,7 @@ csetresgid(gid_t rgid, gid_t egid, gid_t sgid) {
 */
 import "C"
 
+// EnsureOwner recursively chowns a dir if it isn't owned by the given group
 func EnsureOwner(uid, gid int, paths ...string) error {
 	for _, p := range paths {
 		fi, err := os.Stat(p)
@@ -42,7 +43,7 @@ func EnsureOwner(uid, gid int, paths ...string) error {
 		if err != nil {
 			return err
 		}
-		if stat, ok := fi.Sys().(*syscall.Stat_t); ok && stat.Uid == uint32(uid) && stat.Gid == uint32(gid) {
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok && stat.Gid == uint32(gid) {
 			// if a dir has correct ownership, assume it's children do, for performance
 			continue
 		}
