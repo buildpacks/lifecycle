@@ -54,7 +54,7 @@ func EnsureOwner(uid, gid int, paths ...string) error {
 	return nil
 }
 
-var (
+const (
 	worldWrite uint32 = 0002
 	groupWrite uint32 = 0020
 )
