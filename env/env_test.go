@@ -183,6 +183,23 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 	})
+
+	when("#Get", func() {
+		it("should get a value", func() {
+			mkdir(t,
+				filepath.Join(tmpDir, "bin"),
+			)
+			envv.Vars = map[string]string{
+				"PATH": "path-orig",
+			}
+			if err := envv.AddRootDir(tmpDir); err != nil {
+				t.Fatalf("Error: %s\n", err)
+			}
+			if s := cmp.Diff(envv.Get("PATH"), fmt.Sprintf("%s/bin:path-orig", tmpDir)); s != "" {
+				t.Fatalf("Unexpected val:\n%s\n", s)
+			}
+		})
+	})
 }
 
 func mkdir(t *testing.T, dirs ...string) {

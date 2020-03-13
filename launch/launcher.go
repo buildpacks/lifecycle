@@ -19,6 +19,7 @@ type Launcher struct {
 	Buildpacks         []Buildpack
 	Env                Env
 	Exec               func(argv0 string, argv []string, envv []string) error
+	Setenv             func(string, string) error
 }
 
 func (l *Launcher) Launch(self string, cmd []string) error {
@@ -33,6 +34,9 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 		return errors.Wrap(err, "change to app directory")
 	}
 	if process.Direct {
+		if err := l.Setenv("PATH", l.Env.Get("PATH")); err != nil {
+			return errors.Wrap(err, "set path")
+		}
 		binary, err := exec.LookPath(process.Command)
 		if err != nil {
 			return errors.Wrap(err, "path lookup")
