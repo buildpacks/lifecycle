@@ -33,7 +33,7 @@ csetresgid(gid_t rgid, gid_t egid, gid_t sgid) {
 */
 import "C"
 
-// EnsureOwner recursively chowns a dir if it isn't owned by the given group
+// EnsureOwner recursively chowns a dir if it isn't writable
 func EnsureOwner(uid, gid int, paths ...string) error {
 	for _, p := range paths {
 		fi, err := os.Stat(p)
@@ -43,7 +43,7 @@ func EnsureOwner(uid, gid int, paths ...string) error {
 		if err != nil {
 			return err
 		}
-		if stat, ok := fi.Sys().(*syscall.Stat_t); ok && stat.Gid == uint32(gid) {
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok && canWrite(uid, gid, stat) {
 			// if a dir has correct ownership, assume it's children do, for performance
 			continue
 		}
@@ -52,6 +52,25 @@ func EnsureOwner(uid, gid int, paths ...string) error {
 		}
 	}
 	return nil
+}
+
+var (
+	worldWrite uint32 = 0002
+	groupWrite uint32 = 0020
+)
+
+func canWrite(uid, gid int, stat *syscall.Stat_t) bool {
+	if stat.Uid == uint32(uid) {
+		// assume owner has write permission
+		return true
+	}
+	if stat.Gid == uint32(gid) && stat.Mode&groupWrite != 0 {
+		return true
+	}
+	if stat.Mode&worldWrite != 0 {
+		return true
+	}
+	return false
 }
 
 func IsPrivileged() bool {
