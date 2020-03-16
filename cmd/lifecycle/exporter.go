@@ -89,7 +89,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "cannot export to multiple registries")
 	}
 
-	if e.deprecatedRunImageRef != "" && e.runImageRef != "" {
+	if e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage) {
 		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
