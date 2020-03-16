@@ -82,7 +82,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if e.cacheImageTag == "" && e.cacheDir == "" {
-		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
+		cmd.Logger.Warn("Will not cache data, no cache flag specified.")
 	}
 
 	if err := image.EnsureSingleRegistry(e.imageNames...); err != nil {
@@ -330,9 +330,8 @@ func resolveStack(stackPath, runImageRef, registry string) (lifecycle.StackMetad
 	}
 	if runImageRef == "" {
 		if stackMD.RunImage.Image == "" {
-			return lifecycle.StackMetadata{}, "", cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
+			return lifecycle.StackMetadata{}, "", cmd.FailErrCode(errors.New("-run-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
 		}
-
 		runImageRef, err = stackMD.BestRunImageMirror(registry)
 		if err != nil {
 			return lifecycle.StackMetadata{}, "", err
