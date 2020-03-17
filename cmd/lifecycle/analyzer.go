@@ -57,6 +57,9 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if args[0] == "" {
 		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
+	if a.cacheImageTag == "" && a.cacheDir == "" {
+		cmd.Logger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+	}
 	a.imageName = args[0]
 	return nil
 }

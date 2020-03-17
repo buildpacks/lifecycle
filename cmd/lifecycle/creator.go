@@ -70,7 +70,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if c.cacheImageTag == "" && c.cacheDir == "" {
-		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
+		cmd.Logger.Warn("Not restoring or caching layer data, no cache flag specified.")
 	}
 
 	if c.previousImage == "" {
