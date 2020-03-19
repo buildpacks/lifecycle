@@ -66,7 +66,7 @@ impl<E: Env> Launcher<E> {
                     .collect::<Vec<&CStr>>()[..],
                 &self
                     .env
-                    .list()
+                    .list()?
                     .iter()
                     .map(|arg| arg.as_c_str())
                     .collect::<Vec<&CStr>>()[..],
@@ -99,7 +99,7 @@ impl<E: Env> Launcher<E> {
                     .collect::<Vec<&CStr>>()[..],
                 &self
                     .env
-                    .list()
+                    .list()?
                     .iter()
                     .map(|arg| arg.as_c_str())
                     .collect::<Vec<&CStr>>()[..],

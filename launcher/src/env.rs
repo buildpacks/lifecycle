@@ -1,4 +1,4 @@
-use failure::Error;
+use failure::{format_err, Error};
 use std::{
     ffi::{CString, OsStr, OsString},
     path::Path,
@@ -36,9 +36,17 @@ pub trait Env {
 
         Ok(())
     }
-    fn list(&self) -> Vec<CString> {
+    fn list(&self) -> Result<Vec<CString>, Error> {
         self.vars_os()
-            .map(|(key, value)| CString::new(format!("{:?}={:?}", key, value)).unwrap())
+            .map(|(key, value)| {
+                let key_string = key
+                    .to_str()
+                    .ok_or_else(|| format_err!("env var key '{:?}' is not valid unicode", key))?;
+                let value_string = value
+                    .to_str()
+                    .ok_or_else(|| format_err!("env var '{:?}' is not valid unicode", value))?;
+                Ok(CString::new(format!("{}={}", key_string, value_string))?)
+            })
             .collect()
     }
 }
@@ -153,9 +161,11 @@ mod tests {
         env.set_var("BAR", Path::new("/tmp/bar"));
 
         let envs = env.list();
-
-        assert_eq!(envs.len(), 2);
-        assert!(envs.contains(&CString::new("\"BAR\"=\"/tmp/bar\"").unwrap()));
-        assert!(envs.contains(&CString::new("\"FOO\"=\"/tmp/foo\"").unwrap()));
+        assert!(envs.is_ok());
+        if let Ok(envs) = envs {
+            assert_eq!(envs.len(), 2);
+            assert!(envs.contains(&CString::new("BAR=/tmp/bar").unwrap()));
+            assert!(envs.contains(&CString::new("FOO=/tmp/foo").unwrap()));
+        }
     }
 }
