@@ -574,7 +574,7 @@ type = "Apache-2.0"
 			when("there is project metadata", func() {
 				it("saves metadata with project info", func() {
 					opts.Project = lifecycle.ProjectMetadata{
-						Source: lifecycle.ProjectSource{
+						Source: &lifecycle.ProjectSource{
 							Type: "git",
 							Version: map[string]interface{}{
 								"commit": "abcd1234",
@@ -958,7 +958,7 @@ type = "Apache-2.0"
 			when("there is project metadata", func() {
 				it("saves metadata with project info", func() {
 					opts.Project = lifecycle.ProjectMetadata{
-						Source: lifecycle.ProjectSource{
+						Source: &lifecycle.ProjectSource{
 							Type: "git",
 							Version: map[string]interface{}{
 								"commit": "abcd1234",
