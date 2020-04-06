@@ -1,5 +1,4 @@
 GOCMD?=go
-GOFLAGS?=-mod=vendor
 GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LDFLAGS=-s -w
@@ -120,7 +119,7 @@ generate: install-mockgen
 
 format: install-goimports
 	@echo "> Formating code..."
-	test -z $$(goimports -l -w -local github.com/buildpacks/lifecycle $$(find . -type f -name '*.go' -not -path "*/vendor/*"))
+	test -z $$(goimports -l -w -local github.com/buildpacks/lifecycle .)
 
 verify-jq:
 ifeq (, $(shell which jq))
