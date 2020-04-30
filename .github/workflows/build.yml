@@ -12,7 +12,7 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
     env:
-      LIFECYCLE_VERSION: 0.7.2
+      LIFECYCLE_VERSION: 0.7.4
     steps:
       - uses: actions/checkout@v2
       - name: Set up go
