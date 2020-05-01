@@ -158,12 +158,5 @@ func setEnvironmentForUser(user *user.User) error {
 	if err := os.Setenv("USER", user.Name); err != nil {
 		return err
 	}
-	if _, ok := os.LookupEnv("DOCKER_CONFIG"); ok {
-		return nil
-	}
-	// ggcr sets default docker config during init, fix for user
-	if err := os.Setenv("DOCKER_CONFIG", filepath.Join(user.HomeDir, ".docker")); err != nil {
-		return err
-	}
 	return nil
 }
