@@ -107,17 +107,6 @@ func RunAs(uid, gid int, withUserLookup bool) error {
 		return nil
 	}
 
-	var (
-		foundUser *user.User
-		err       error
-	)
-	if withUserLookup {
-		foundUser, err = user.LookupId(strconv.Itoa(uid))
-	}
-	if err != nil {
-		return err
-	}
-
 	// temporarily reduce to one thread b/c setres{gid,uid} works per thread on linux
 	mxp := runtime.GOMAXPROCS(1)
 	runtime.LockOSThread()
@@ -132,6 +121,12 @@ func RunAs(uid, gid int, withUserLookup bool) error {
 	if !withUserLookup {
 		return nil
 	}
+
+	foundUser, err := user.LookupId(strconv.Itoa(uid))
+	if err != nil {
+		return err
+	}
+
 	return setEnvironmentForUser(foundUser)
 }
 
