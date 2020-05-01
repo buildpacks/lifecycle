@@ -134,7 +134,7 @@ func FlagSkipLayers(skip *bool) {
 }
 
 func FlagSkipRestore(skip *bool) {
-	flag.BoolVar(skip, "skip-restore", boolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
+	flagSet.BoolVar(skip, "skip-restore", boolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
 }
 
 func FlagVersion(version *bool) {
