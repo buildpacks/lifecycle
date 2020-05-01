@@ -100,11 +100,20 @@ func recursiveEnsureOwner(path string, uid, gid int) error {
 	return nil
 }
 
-func RunAs(uid, gid int) error {
+// RunAs sets the user ID and group ID of the calling process.
+// If withUserLookup is true, the user ID must be valid in the image where the process is running.
+func RunAs(uid, gid int, withUserLookup bool) error {
 	if uid == os.Getuid() && gid == os.Getgid() {
 		return nil
 	}
-	user, err := user.LookupId(strconv.Itoa(uid))
+
+	var (
+		foundUser *user.User
+		err       error
+	)
+	if withUserLookup {
+		foundUser, err = user.LookupId(strconv.Itoa(uid))
+	}
 	if err != nil {
 		return err
 	}
@@ -120,20 +129,10 @@ func RunAs(uid, gid int) error {
 	}
 	_ = runtime.GOMAXPROCS(mxp)
 
-	if err := os.Setenv("HOME", user.HomeDir); err != nil {
-		return err
-	}
-	if err = os.Setenv("USER", user.Name); err != nil {
-		return err
-	}
-	if _, ok := os.LookupEnv("DOCKER_CONFIG"); ok {
+	if !withUserLookup {
 		return nil
 	}
-	// ggcr sets default docker config during init, fix for user
-	if err := os.Setenv("DOCKER_CONFIG", filepath.Join(user.HomeDir, ".docker")); err != nil {
-		return err
-	}
-	return nil
+	return setEnvironmentForUser(foundUser)
 }
 
 func setresgid(rgid, egid, sgid int) error {
@@ -148,6 +147,23 @@ func setresuid(ruid, euid, suid int) error {
 	eno := C.csetresuid(C.uid_t(ruid), C.uid_t(euid), C.uid_t(suid))
 	if eno != 0 {
 		return syscall.Errno(eno)
+	}
+	return nil
+}
+
+func setEnvironmentForUser(user *user.User) error {
+	if err := os.Setenv("HOME", user.HomeDir); err != nil {
+		return err
+	}
+	if err := os.Setenv("USER", user.Name); err != nil {
+		return err
+	}
+	if _, ok := os.LookupEnv("DOCKER_CONFIG"); ok {
+		return nil
+	}
+	// ggcr sets default docker config during init, fix for user
+	if err := os.Setenv("DOCKER_CONFIG", filepath.Join(user.HomeDir, ".docker")); err != nil {
+		return err
 	}
 	return nil
 }

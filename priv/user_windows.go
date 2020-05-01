@@ -8,6 +8,6 @@ func IsPrivileged() bool {
 	return false
 }
 
-func RunAs(uid, gid int) error {
+func RunAs(uid, gid int, withUserLookup bool) error {
 	return nil
 }

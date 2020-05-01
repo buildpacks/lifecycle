@@ -75,7 +75,7 @@ func (a *analyzeCmd) Privileges() error {
 	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(a.uid, a.gid); err != nil {
+	if err := priv.RunAs(a.uid, a.gid, false); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", a.uid, a.gid))
 	}
 	return nil

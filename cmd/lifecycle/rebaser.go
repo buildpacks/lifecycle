@@ -63,7 +63,7 @@ func (r *rebaseCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := priv.RunAs(r.uid, r.gid); err != nil {
+	if err := priv.RunAs(r.uid, r.gid, true); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
 	}
 	return nil

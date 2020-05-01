@@ -95,7 +95,7 @@ func (c *createCmd) Privileges() error {
 	if err := priv.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(c.uid, c.gid); err != nil {
+	if err := priv.RunAs(c.uid, c.gid, true); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
 	}
 	return nil

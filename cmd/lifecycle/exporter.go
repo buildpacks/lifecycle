@@ -111,7 +111,7 @@ func (e *exportCmd) Privileges() error {
 	if err := priv.EnsureOwner(e.uid, e.gid, e.cacheDir, e.launchCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(e.uid, e.gid); err != nil {
+	if err := priv.RunAs(e.uid, e.gid, false); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.uid, e.gid))
 	}
 	return nil
