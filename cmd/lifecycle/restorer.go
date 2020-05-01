@@ -41,7 +41,7 @@ func (r *restoreCmd) Privileges() error {
 	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
 		cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(r.uid, r.gid, false); err != nil {
+	if err := priv.RunAs(r.uid, r.gid); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
 	}
 	return nil

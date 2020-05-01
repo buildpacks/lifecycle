@@ -101,8 +101,7 @@ func recursiveEnsureOwner(path string, uid, gid int) error {
 }
 
 // RunAs sets the user ID and group ID of the calling process.
-// If withUserLookup is true, the user ID must be valid in the image where the process is running.
-func RunAs(uid, gid int, withUserLookup bool) error {
+func RunAs(uid, gid int) error {
 	if uid == os.Getuid() && gid == os.Getgid() {
 		return nil
 	}
@@ -118,16 +117,7 @@ func RunAs(uid, gid int, withUserLookup bool) error {
 	}
 	_ = runtime.GOMAXPROCS(mxp)
 
-	if !withUserLookup {
-		return nil
-	}
-
-	foundUser, err := user.LookupId(strconv.Itoa(uid))
-	if err != nil {
-		return err
-	}
-
-	return setEnvironmentForUser(foundUser)
+	return nil
 }
 
 func setresgid(rgid, egid, sgid int) error {
@@ -146,7 +136,11 @@ func setresuid(ruid, euid, suid int) error {
 	return nil
 }
 
-func setEnvironmentForUser(user *user.User) error {
+func SetEnvironmentForUser(uid int) error {
+	user, err := user.LookupId(strconv.Itoa(uid))
+	if err != nil {
+		return err
+	}
 	if err := os.Setenv("HOME", user.HomeDir); err != nil {
 		return err
 	}

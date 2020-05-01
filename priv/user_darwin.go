@@ -10,6 +10,10 @@ func IsPrivileged() bool {
 	return os.Getuid() == 0
 }
 
-func RunAs(uid, gid int, withUserLookup bool) error {
+func RunAs(uid, gid int) error {
+	return nil
+}
+
+func SetEnvironmentForUser(uid int) error {
 	return nil
 }

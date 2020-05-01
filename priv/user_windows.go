@@ -8,6 +8,10 @@ func IsPrivileged() bool {
 	return false
 }
 
-func RunAs(uid, gid int, withUserLookup bool) error {
+func RunAs(uid, gid int) error {
+	return nil
+}
+
+func SetEnvironmentForUser(uid int) error {
 	return nil
 }
