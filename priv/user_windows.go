@@ -11,3 +11,7 @@ func IsPrivileged() bool {
 func RunAs(uid, gid int) error {
 	return nil
 }
+
+func SetEnvironmentForUser(uid int) error {
+	return nil
+}

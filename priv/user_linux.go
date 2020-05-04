@@ -100,13 +100,10 @@ func recursiveEnsureOwner(path string, uid, gid int) error {
 	return nil
 }
 
+// RunAs sets the user ID and group ID of the calling process.
 func RunAs(uid, gid int) error {
 	if uid == os.Getuid() && gid == os.Getgid() {
 		return nil
-	}
-	user, err := user.LookupId(strconv.Itoa(uid))
-	if err != nil {
-		return err
 	}
 
 	// temporarily reduce to one thread b/c setres{gid,uid} works per thread on linux
@@ -120,19 +117,6 @@ func RunAs(uid, gid int) error {
 	}
 	_ = runtime.GOMAXPROCS(mxp)
 
-	if err := os.Setenv("HOME", user.HomeDir); err != nil {
-		return err
-	}
-	if err = os.Setenv("USER", user.Name); err != nil {
-		return err
-	}
-	if _, ok := os.LookupEnv("DOCKER_CONFIG"); ok {
-		return nil
-	}
-	// ggcr sets default docker config during init, fix for user
-	if err := os.Setenv("DOCKER_CONFIG", filepath.Join(user.HomeDir, ".docker")); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -148,6 +132,20 @@ func setresuid(ruid, euid, suid int) error {
 	eno := C.csetresuid(C.uid_t(ruid), C.uid_t(euid), C.uid_t(suid))
 	if eno != 0 {
 		return syscall.Errno(eno)
+	}
+	return nil
+}
+
+func SetEnvironmentForUser(uid int) error {
+	user, err := user.LookupId(strconv.Itoa(uid))
+	if err != nil {
+		return err
+	}
+	if err := os.Setenv("HOME", user.HomeDir); err != nil {
+		return err
+	}
+	if err := os.Setenv("USER", user.Name); err != nil {
+		return err
 	}
 	return nil
 }
