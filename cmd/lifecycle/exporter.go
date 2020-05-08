@@ -273,14 +273,14 @@ func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.
 
 	appImage, err := remote.NewImage(
 		imageName,
-		auth.EnvKeychain(cmd.EnvRegistryAuth),
+		auth.NewKeychain(cmd.EnvRegistryAuth),
 		opts...,
 	)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "new app image")
 	}
 
-	runImage, err := remote.NewImage(runImageRef, auth.EnvKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
+	runImage, err := remote.NewImage(runImageRef, auth.NewKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}

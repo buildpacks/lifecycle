@@ -118,7 +118,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 	} else {
 		img, err = remote.NewImage(
 			aa.imageName,
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			auth.NewKeychain(cmd.EnvRegistryAuth),
 			remote.FromBaseImage(aa.imageName),
 		)
 	}

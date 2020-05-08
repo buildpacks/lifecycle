@@ -86,7 +86,7 @@ func (r *rebaseCmd) Exec() error {
 	} else {
 		appImage, err = remote.NewImage(
 			r.imageNames[0],
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			auth.NewKeychain(cmd.EnvRegistryAuth),
 			remote.FromBaseImage(r.imageNames[0]),
 		)
 	}
@@ -119,7 +119,7 @@ func (r *rebaseCmd) Exec() error {
 	} else {
 		newBaseImage, err = remote.NewImage(
 			r.imageNames[0],
-			auth.EnvKeychain(cmd.EnvRegistryAuth),
+			auth.NewKeychain(cmd.EnvRegistryAuth),
 			remote.FromBaseImage(r.runImageRef),
 		)
 	}
