@@ -69,7 +69,7 @@ func initCache(cacheImageTag, cacheDir string) (lifecycle.Cache, error) {
 		err        error
 	)
 	if cacheImageTag != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.EnvKeychain(cmd.EnvRegistryAuth))
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.NewKeychain(cmd.EnvRegistryAuth))
 		if err != nil {
 			return nil, cmd.FailErr(err, "create image cache")
 		}
