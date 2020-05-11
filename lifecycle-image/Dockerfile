@@ -22,6 +22,6 @@ FROM gcr.io/distroless/static
 
 WORKDIR /cnb/lifecycle
 
-COPY --from=download-and-extract-lifecycle /tmp/lifecycle/* ./
+COPY --from=download-and-extract-lifecycle /tmp/lifecycle .
 
 WORKDIR /layers
