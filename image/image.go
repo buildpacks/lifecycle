@@ -5,7 +5,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func EnsureSingleRegistry(repoNames ...string) error {
+// ValidateDestinationTags ensures all tags are valid
+// daemon - when false (exporting to a registry), ensures all tags are on the same registry
+func ValidateDestinationTags(daemon bool, repoNames ...string) error {
 	var (
 		reg        string
 		registries = map[string]struct{}{}
@@ -20,8 +22,8 @@ func EnsureSingleRegistry(repoNames ...string) error {
 		registries[reg] = struct{}{}
 	}
 
-	if len(registries) != 1 {
-		return errors.New("exporting to multiple registries is unsupported")
+	if !daemon && len(registries) != 1 {
+		return errors.New("writing to multiple registries is unsupported")
 	}
 
 	return nil

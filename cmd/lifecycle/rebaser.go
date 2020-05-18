@@ -42,8 +42,8 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	r.imageNames = args
-	if err := image.EnsureSingleRegistry(r.imageNames...); err != nil {
-		return cmd.FailErrCode(image.EnsureSingleRegistry(r.imageNames...), cmd.CodeInvalidArgs, "images tags must all have the same registry")
+	if err := image.ValidateDestinationTags(r.useDaemon, r.imageNames...); err != nil {
+		return cmd.FailErrCode(image.ValidateDestinationTags(false, r.imageNames...), cmd.CodeInvalidArgs, "failed to validate image tag(s)")
 	}
 
 	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {

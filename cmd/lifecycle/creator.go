@@ -77,8 +77,8 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		c.previousImage = c.imageName
 	}
 
-	if err := image.EnsureSingleRegistry(append(c.additionalTags, c.imageName)...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "all tags must have the same registry as the exported image")
+	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.imageName)...); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "failed to validate image tag(s)")
 	}
 
 	return nil
