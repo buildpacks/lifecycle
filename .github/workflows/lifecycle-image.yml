@@ -6,13 +6,16 @@ on:
       - published
 
 jobs:
-  build:
+  build-lifecycle-image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - name: Get release version
-        id: get_release_version
-        run: echo ::set-output name=VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`
+      - name: Get metadata
+        id: get_metadata
+        run: |
+          echo ::set-output name=LIFECYCLE_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`
+          echo ::set-output name=BUILDPACK_API::`cat Makefile | grep BUILDPACK_API?= | cut -d "=" -f2`
+          echo ::set-output name=PLATFORM_API::`cat Makefile | grep PLATFORM_API?= | cut -d "=" -f2`
       - name: Publish to Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
@@ -20,5 +23,5 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: .github/workflows/lifecycle-image/Dockerfile
-          buildargs: LIFECYCLE_URI=https://github.com/buildpacks/lifecycle/releases/download/v${{ steps.get_release_version.outputs.VERSION }}/lifecycle-v${{ steps.get_release_version.outputs.VERSION }}+linux.x86-64.tgz
-          tags: "latest,${{ steps.get_release_version.outputs.VERSION }}"
+          buildargs: LIFECYCLE_URI=https://github.com/buildpacks/lifecycle/releases/download/v${{ steps.get_metadata.outputs.LIFECYCLE_VERSION }}/lifecycle-v${{ steps.get_metadata.outputs.LIFECYCLE_VERSION }}+linux.x86-64.tgz,LIFECYCLE_VERSION=${{ steps.get_metadata.outputs.LIFECYCLE_VERSION }},BUILDPACK_API=${{ steps.get_metadata.outputs.BUILDPACK_API }},PLATFORM_API=${{ steps.get_metadata.outputs.PLATFORM_API }}
+          tags: "latest,${{ steps.get_metadata.outputs.LIFECYCLE_VERSION }}"
