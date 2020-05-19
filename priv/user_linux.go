@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"syscall"
 )
@@ -106,16 +105,12 @@ func RunAs(uid, gid int) error {
 		return nil
 	}
 
-	// temporarily reduce to one thread b/c setres{gid,uid} works per thread on linux
-	mxp := runtime.GOMAXPROCS(1)
-	runtime.LockOSThread()
 	if err := setresgid(gid, gid, gid); err != nil {
 		return err
 	}
 	if err := setresuid(uid, uid, uid); err != nil {
 		return err
 	}
-	_ = runtime.GOMAXPROCS(mxp)
 
 	return nil
 }
