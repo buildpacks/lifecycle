@@ -78,7 +78,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.imageName)...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "failed to validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	return nil

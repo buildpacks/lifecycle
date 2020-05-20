@@ -86,7 +86,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(e.useDaemon, e.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "failed to validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage) {

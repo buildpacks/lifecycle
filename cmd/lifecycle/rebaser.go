@@ -43,7 +43,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 	r.imageNames = args
 	if err := image.ValidateDestinationTags(r.useDaemon, r.imageNames...); err != nil {
-		return cmd.FailErrCode(image.ValidateDestinationTags(false, r.imageNames...), cmd.CodeInvalidArgs, "failed to validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {

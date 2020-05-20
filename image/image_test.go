@@ -38,7 +38,7 @@ func testImage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("the tag reference is invalid", func() {
-			it("error", func() {
+			it("errors", func() {
 				err := image.ValidateDestinationTags(false, "some/Repo")
 				h.AssertError(t, err, "could not parse reference: some/Repo")
 			})
