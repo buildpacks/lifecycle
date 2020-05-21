@@ -85,8 +85,8 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		cmd.Logger.Warn("Will not cache data, no cache flag specified.")
 	}
 
-	if err := image.EnsureSingleRegistry(e.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "cannot export to multiple registries")
+	if err := image.ValidateDestinationTags(e.useDaemon, e.imageNames...); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage) {
