@@ -110,7 +110,7 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	cmd.Logger.Info("---> DETECTING")
+	cmd.Logger.Phase("DETECTING")
 	group, plan, err := detectArgs{
 		buildpacksDir: c.buildpacksDir,
 		appDir:        c.appDir,
@@ -121,7 +121,7 @@ func (c *createCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "detect")
 	}
 
-	cmd.Logger.Info("---> ANALYZING")
+	cmd.Logger.Phase("ANALYZING")
 	analyzedMD, err := analyzeArgs{
 		imageName:  c.previousImage,
 		layersDir:  c.layersDir,
@@ -134,13 +134,13 @@ func (c *createCmd) Exec() error {
 	}
 
 	if !c.skipRestore {
-		cmd.Logger.Info("---> RESTORING")
+		cmd.Logger.Phase("RESTORING")
 		if err := restore(c.layersDir, group, cacheStore); err != nil {
 			return err
 		}
 	}
 
-	cmd.Logger.Info("---> BUILDING")
+	cmd.Logger.Phase("BUILDING")
 	err = buildArgs{
 		buildpacksDir: c.buildpacksDir,
 		layersDir:     c.layersDir,
@@ -151,7 +151,7 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	cmd.Logger.Info("---> EXPORTING")
+	cmd.Logger.Phase("EXPORTING")
 	return exportArgs{
 		stackPath:           c.stackPath,
 		imageNames:          append([]string{c.imageName}, c.additionalTags...),
