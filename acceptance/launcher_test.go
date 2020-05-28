@@ -27,36 +27,38 @@ func TestLauncher(t *testing.T) {
 }
 
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
-	when("no args and no default", func() {
-		it("launches web", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
-			}
-			expected := "Executing web process-type"
-			if !strings.Contains(string(output), expected) {
-				t.Fatalf("failed to execute web:\n\t got: %s\n\t want: %s", output, expected)
-			}
+	when("there is no CMD provided", func() {
+		when("CNB_PROCESS_TYPE is NOT set", func() {
+			it("web is the default process-type", func() {
+				cmd := exec.Command("docker", "run", "--rm", launchImage)
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
+				}
+				expected := "Executing web process-type"
+				if !strings.Contains(string(output), expected) {
+					t.Fatalf("failed to execute web:\n\t got: %s\n\t want: %s", output, expected)
+				}
+			})
+		})
+
+		when("CNB_PROCESS_TYPE is set", func() {
+			it("the value of CNB_PROCESS_TYPE is the default process-type", func() {
+				cmd := exec.Command("docker", "run", "--rm", "--env", "CNB_PROCESS_TYPE=other-process", launchImage)
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
+				}
+				expected := "Executing other-process process-type"
+				if !strings.Contains(string(output), expected) {
+					t.Fatalf("failed to execute other-process:\n\t got: %s\n\t want: %s", output, expected)
+				}
+			})
 		})
 	})
 
-	when("no args and CNB_PROCESS_TYPE", func() {
-		it("launches given default process", func() {
-			cmd := exec.Command("docker", "run", "--rm", "--env", "CNB_PROCESS_TYPE=other-process", launchImage)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
-			}
-			expected := "Executing other-process process-type"
-			if !strings.Contains(string(output), expected) {
-				t.Fatalf("failed to execute other-process:\n\t got: %s\n\t want: %s", output, expected)
-			}
-		})
-	})
-
-	when("process provided in CMD", func() {
-		it("launches process", func() {
+	when("process-type provided in CMD", func() {
+		it("launches that process-type", func() {
 			cmd := exec.Command("docker", "run", "--rm", launchImage, "other-process")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -69,14 +71,29 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("CMD provided", func() {
-		it("sources profiles and launches command with shell", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo my-cmd")
+	it("respects CNB_APP_DIR and CNB_LAYERS_DIR environment variables", func() {
+		cmd := exec.Command("docker", "run", "--rm",
+			"--env", "CNB_APP_DIR=/other-app",
+			"--env", "CNB_LAYERS_DIR=/other-layers",
+			launchImage)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
+		}
+		expected := "sourced other app profile\nExecuting other-layers web process-type"
+		if !strings.Contains(string(output), expected) {
+			t.Fatalf("failed to execute web:\n\t got: %s\n\t want: %s", output, expected)
+		}
+	})
+
+	when("provided CMD is not a process-type", func() {
+		it("sources profiles and executes the command in a shell", func() {
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo something")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
 			}
-			expected := "sourced bp profile\nsourced app profile\nmy-cmd"
+			expected := "sourced bp profile\nsourced app profile\nsomething"
 			if !strings.Contains(string(output), expected) {
 				t.Fatalf("failed to execute provided CMD:\n\t got: %s\n\t want: %s", output, expected)
 			}
@@ -96,9 +113,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		it("passes through env vars from user, excluding blacklist", func() {
 			cmd := exec.Command("docker", "run", "--rm",
-				"-eCNB_APP_DIR=/workspace",
-				"-eSOME_USER_VAR=some-user-val",
-				"-eOTHER_VAR=other-user-val",
+				"--env", "CNB_APP_DIR=/workspace",
+				"--env", "SOME_USER_VAR=some-user-val",
+				"--env", "OTHER_VAR=other-user-val",
 				launchImage,
 				"echo $SOME_USER_VAR $CNB_APP_DIR $OTHER_VAR")
 			output, err := cmd.CombinedOutput()
@@ -125,14 +142,14 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("CMD provided with --", func() {
+	when("CMD provided starts with --", func() {
 		it("launches command directly", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "--", "echo", "my-cmd")
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "--", "echo", "something")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
 			}
-			expected := "my-cmd"
+			expected := "something"
 			if !strings.Contains(string(output), expected) {
 				t.Fatalf("failed to execute provided CMD:\n\t got: %s\n\t want: %s", output, expected)
 			}
@@ -151,7 +168,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("passes through env vars from user, excluding blacklist", func() {
-			cmd := exec.Command("docker", "run", "--rm", "-eCNB_APP_DIR=/workspace", "-eSOME_USER_VAR=some-user-val", launchImage, "--", "env")
+			cmd := exec.Command("docker", "run", "--rm",
+				"--env", "CNB_APP_DIR=/workspace",
+				"--env", "SOME_USER_VAR=some-user-val",
+				launchImage, "--", "env")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)

@@ -9,5 +9,6 @@
 
 [[processes]]
   type = "other-process"
-  command = "echo \"Executing other-process process-type\""
-  direct = false
+  command = "echo"
+  args = ["Executing other-process process-type"]
+  direct = true
