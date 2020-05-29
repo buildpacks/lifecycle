@@ -8,7 +8,7 @@ LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.PlatformAPI=$(PLATFORM_API)'
 GOBUILD=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test $(GOFLAGS)
-LIFECYCLE_VERSION?=0.0.0
+LIFECYCLE_VERSION?=$(shell cat VERSION)
 PLATFORM_API?=0.3
 BUILDPACK_API?=0.2
 SCM_REPO?=github.com/buildpacks/lifecycle
