@@ -41,7 +41,7 @@ build-linux-lifecycle:
 
 
 build-linux-launcher: export GOOS:=linux
-build-linux-launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-linux-launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-linux-launcher:
 	@echo "> Building lifecycle/launcher for linux..."
 	mkdir -p $(OUT_DIR)
