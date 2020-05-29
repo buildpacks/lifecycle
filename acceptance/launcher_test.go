@@ -161,9 +161,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
 			}
-			expected := "SOME_VAR=some-bp-val\nOTHER_VAR=other-bp-val"
-			if !strings.Contains(string(output), expected) {
-				t.Fatalf("failed to execute provided CMD:\n\t got: %s\n\t want: %s", output, expected)
+			if !strings.Contains(string(output), "SOME_VAR=some-bp-val") {
+				t.Fatalf("failed to execute provided CMD:\n\t got: %s\n\t want: %s", output, "SOME_VAR=some-bp-val")
+			}
+			if !strings.Contains(string(output), "OTHER_VAR=other-bp-val") {
+				t.Fatalf("failed to execute provided CMD:\n\t got: %s\n\t want: %s", output, "OTHER_VAR=other-bp-val")
 			}
 		})
 
