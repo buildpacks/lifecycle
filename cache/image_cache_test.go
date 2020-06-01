@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -283,6 +284,34 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 				err = subject.Commit()
 				h.AssertError(t, err, "cache cannot be modified after commit")
+			})
+		})
+
+		when("with #DeleteOrigImage", func() {
+			when("original and new image are different", func() {
+				it.Before(func() {
+					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+				})
+				it("should delete original image", func() {
+					err := subject.DeleteOrigImage()
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeOriginalImage.Found(), false)
+				})
+			})
+
+			when("original and new image are the same", func() {
+				it.Before(func() {
+					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+				})
+				it("should not delete original image", func() {
+					err := subject.DeleteOrigImage()
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeOriginalImage.Found(), true)
+				})
 			})
 		})
 	})
