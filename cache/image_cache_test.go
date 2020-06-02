@@ -40,8 +40,8 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		tmpDir, err = ioutil.TempDir("", "")
 		h.AssertNil(t, err)
 
-		fakeOriginalImage = fakes.NewImage("fake-image", "", nil)
-		fakeNewImage = fakes.NewImage("fake-image", "", nil)
+		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
+		fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
 
 		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 

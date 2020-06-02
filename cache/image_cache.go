@@ -119,7 +119,7 @@ func (c *ImageCache) DeleteOrigImage() error {
 	if err != nil {
 		return errors.Wrap(err, "getting identifier for new image")
 	}
-	if origIdentifier == newIdentifier {
+	if origIdentifier.String() == newIdentifier.String() {
 		return nil
 	}
 	return c.origImage.Delete()
