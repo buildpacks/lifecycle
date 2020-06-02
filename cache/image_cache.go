@@ -102,10 +102,25 @@ func (c *ImageCache) Commit() error {
 
 	if c.origImage.Found() {
 		// Deleting the original image is for cleanup only and should not fail the commit.
-		if err := c.origImage.Delete(); err != nil {
+		if err := c.DeleteOrigImage(); err != nil {
 			fmt.Printf("Unable to delete previous cache image: %v", err)
 		}
 	}
 	c.origImage = c.newImage
 	return nil
+}
+
+func (c *ImageCache) DeleteOrigImage() error {
+	origIdentifier, err := c.origImage.Identifier()
+	if err != nil {
+		return errors.Wrap(err, "getting identifier for original image")
+	}
+	newIdentifier, err := c.newImage.Identifier()
+	if err != nil {
+		return errors.Wrap(err, "getting identifier for new image")
+	}
+	if origIdentifier.String() == newIdentifier.String() {
+		return nil
+	}
+	return c.origImage.Delete()
 }
