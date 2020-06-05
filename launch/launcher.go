@@ -50,13 +50,13 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 		}
 		return nil
 	}
-	launcher, err := l.profileD()
+	launchScript, err := l.profileD(process)
 	if err != nil {
 		return errors.Wrap(err, "determine profile")
 	}
 	if err := l.Exec("/bin/bash", append([]string{
 		"bash", "-c",
-		launcher, self, process.Command,
+		launchScript, self, process.Command,
 	}, process.Args...), l.Env.List()); err != nil {
 		return errors.Wrap(err, "bash exec")
 	}
@@ -96,9 +96,10 @@ func (l *Launcher) env() error {
 	})
 }
 
-func (l *Launcher) profileD() (string, error) {
+func (l *Launcher) profileD(process Process) (string, error) {
 	var out []string
 
+	out = append(out, fmt.Sprintf("set -x"))
 	appendIfFile := func(path string) error {
 		fi, err := os.Stat(path)
 		if os.IsNotExist(err) {
@@ -132,25 +133,38 @@ func (l *Launcher) profileD() (string, error) {
 		return "", err
 	}
 
-	out = append(out, `exec bash -c "$@"`)
+	script := l.executionScript(process)
+	fmt.Println(script)
+	out = append(out, script)
 	return strings.Join(out, "\n"), nil
+}
+func (l *Launcher) executionScript(process Process) string {
+	if len(process.Args) == 0 {
+		return `exec bash -c "$@"`
+	}
+	commandScript := `$(eval echo \"$0\")`
+	for i := range process.Args {
+		commandScript += fmt.Sprintf(` $(eval echo \"$%d\")`, 1+i)
+	}
+	return fmt.Sprintf(`exec bash -c '%s' "${@:1}"`, commandScript)
 }
 
 func (l *Launcher) processFor(cmd []string) (Process, error) {
+	if l.DefaultProcessType == "override" {
+		return userProvidedProcess(cmd)
+	}
+	process, err := l.findProcessType(l.DefaultProcessType)
+	if err != nil {
+		return Process{}, err
+	}
+	process.Args = append(process.Args, cmd...)
+	return process, nil
+}
+
+func userProvidedProcess(cmd []string) (Process, error) {
 	if len(cmd) == 0 {
-		if process, ok := l.findProcessType(l.DefaultProcessType); ok {
-			return process, nil
-		}
-
-		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
+		return Process{}, errors.New("process type was 'override' but no command was provided")
 	}
-
-	if len(cmd) == 1 {
-		if process, ok := l.findProcessType(cmd[0]); ok {
-			return process, nil
-		}
-	}
-
 	if len(cmd) > 1 && cmd[0] == "--" {
 		return Process{Command: cmd[1], Args: cmd[2:], Direct: true}, nil
 	}
@@ -158,14 +172,13 @@ func (l *Launcher) processFor(cmd []string) (Process, error) {
 	return Process{Command: cmd[0], Args: cmd[1:]}, nil
 }
 
-func (l *Launcher) findProcessType(kind string) (Process, bool) {
+func (l *Launcher) findProcessType(processType string) (Process, error) {
 	for _, p := range l.Processes {
-		if p.Type == kind {
-			return p, true
+		if p.Type == processType {
+			return p, nil
 		}
 	}
-
-	return Process{}, false
+	return Process{}, fmt.Errorf("process type %s was not found", processType)
 }
 
 func eachDir(dir string, fn func(path string) error) error {
