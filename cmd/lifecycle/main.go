@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
@@ -15,7 +16,7 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	switch filepath.Base(os.Args[0]) {
+	switch strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") {
 	case "detector":
 		cmd.Run(&detectCmd{}, false)
 	case "analyzer":

@@ -13,7 +13,7 @@ bp_version=$(cat "$bp_dir/buildpack.toml"|yj -t|jq -r .buildpack.version)
 echo "build out: ${bp_id}@${bp_version}"
 >&2 echo "build err: ${bp_id}@${bp_version}"
 
-echo "TEST_ENV: ${TEST_ENV}" >> "build-info-${bp_id}-${bp_version}"
+echo "TEST_ENV: ${TEST_ENV}" > "build-info-${bp_id}-${bp_version}"
 
 cp -a "$platform_dir/env" "build-env-${bp_id}-${bp_version}"
 

@@ -423,7 +423,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 func addLayerFromPath(t *testing.T, tarTempDir, layerPath string, c lifecycle.Cache) string {
 	t.Helper()
 	tarPath := filepath.Join(tarTempDir, h.RandString(10)+".tar")
-	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0)
+	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0, archive.DefaultTarWriterFactory())
 	h.AssertNil(t, err)
 	h.AssertNil(t, c.AddLayerFile(tarPath, sha))
 	return sha

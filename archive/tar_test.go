@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -35,7 +36,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
-	when("#ReadTarArchive", func() {
+	when("#Untar", func() {
 		var pathModes = []archive.PathMode{
 			{"root", os.ModeDir + 0755},
 			{"root/readonly", os.ModeDir + 0500},
@@ -45,14 +46,24 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			{"root/readonly/readonlysub", os.ModeDir + 0500},
 		}
 
+		// Golang for Windows only implements owner permissions
+		if runtime.GOOS == "windows" {
+			pathModes = []archive.PathMode{
+				{"root", os.ModeDir + 0777},
+				{"root/readonly", os.ModeDir + 0555},
+				{"root/standarddir", os.ModeDir + 0777},
+				{"root/standarddir/somefile", 0666},
+				{"root/readonly/readonlysub/somefile", 0444},
+				{"root/readonly/readonlysub", os.ModeDir + 0555},
+			}
+		}
+
 		it.After(func() {
 			// Make all files os.ModePerm so they can all be cleaned up.
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
 				if _, err := os.Stat(extractedFile); err == nil {
-					if err := os.Chmod(extractedFile, os.ModePerm); err != nil {
-						h.AssertNil(t, err)
-					}
+					h.AssertNil(t, os.Chmod(extractedFile, os.ModePerm))
 				}
 			}
 
@@ -76,14 +87,19 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("fails if file exists where directory needs to be created", func() {
-			_, err := os.Create(filepath.Join(tmpDir, "root"))
-			h.AssertNil(t, err)
-
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err := os.Create(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 			defer file.Close()
 
-			h.AssertError(t, archive.Untar(file, tmpDir), "root: not a directory")
+			file, err = os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
+
+			if runtime.GOOS != "windows" {
+				h.AssertError(t, archive.Untar(file, tmpDir), "root: not a directory")
+			} else {
+				h.AssertError(t, archive.Untar(file, tmpDir), "root: The system cannot find the path specified.")
+			}
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
@@ -98,7 +114,34 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, archive.Untar(file, tmpDir))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
-			h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
+
+			if runtime.GOOS != "windows" {
+				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
+			} else {
+				// Golang for Windows only implements owner permissions
+				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0777)
+			}
+		})
+
+		it("preserves symlinks", func() {
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
+
+			h.AssertNil(t, archive.Untar(file, tmpDir))
+
+			contents, err := ioutil.ReadFile(filepath.Join(tmpDir, "root", "symlinkdir", "symlink"))
+			h.AssertNil(t, err)
+			h.AssertEq(t, string(contents), "some-content\n")
+
+			link, err := os.Readlink(filepath.Join(tmpDir, "root", "symlinkdir", "symlink"))
+			h.AssertNil(t, err)
+
+			if runtime.GOOS != "windows" {
+				h.AssertEq(t, link, "./subdir/somefile")
+			} else {
+				h.AssertEq(t, link, `.\subdir\somefile`)
+			}
 		})
 	})
 
@@ -117,7 +160,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer file.Close()
 
-				h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
+				h.AssertNil(t, archive.WriteTarArchive(file, archive.DefaultTarWriterFactory(), src, uid, gid))
 				h.AssertNil(t, file.Close())
 
 				file, err = os.Open(file.Name())
@@ -171,9 +214,12 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			})
 		}
 
-		when("a absolute path is given", func() {
+		when("an absolute path is given", func() {
 			it("has working test helpers", func() {
-				h.AssertEq(t, allParentDirectories("/some/absolute/directory"), []string{"/some", "/some/absolute"})
+				h.AssertEq(t,
+					allParentDirectories(filepath.FromSlash("/some/absolute/directory")),
+					[]string{filepath.FromSlash("/some"), filepath.FromSlash("/some/absolute")},
+				)
 			})
 
 			it("writes headers for all parent directories if an absolute path is given", func() {
@@ -184,7 +230,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer file.Close()
 
-				h.AssertNil(t, archive.WriteTarArchive(file, absoluteFilePath, 1234, 5678))
+				h.AssertNil(t, archive.WriteTarArchive(file, archive.DefaultTarWriterFactory(), absoluteFilePath, 1234, 5678))
 				h.AssertNil(t, file.Close())
 
 				file, err = os.Open(file.Name())
@@ -197,7 +243,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, header.Name, expectedDir)
+					h.AssertEq(t, header.Name, archive.TarPath(expectedDir))
 
 					assertDirectory(t, header)
 					assertModTimeNormalized(t, header)
@@ -207,7 +253,10 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 
 		when("a relative path is given", func() {
 			it("has working test helpers", func() {
-				h.AssertEq(t, allParentDirectories("some/relative/path"), []string{"some", "some/relative"})
+				h.AssertEq(t,
+					allParentDirectories(filepath.Join("some", "relative", "path")),
+					[]string{"some", filepath.Join("some", "relative")},
+				)
 			})
 
 			it("writes headers for all parent directories", func() {
@@ -217,7 +266,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer file.Close()
 
-				h.AssertNil(t, archive.WriteTarArchive(file, relativePath, 1234, 5678))
+				h.AssertNil(t, archive.WriteTarArchive(file, archive.DefaultTarWriterFactory(), relativePath, 1234, 5678))
 				h.AssertNil(t, file.Close())
 
 				file, err = os.Open(file.Name())
@@ -229,7 +278,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, header.Name, expectedDir)
+					h.AssertEq(t, header.Name, archive.TarPath(expectedDir))
 
 					assertDirectory(t, header)
 					assertModTimeNormalized(t, header)
@@ -250,7 +299,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer file.Close()
 
-			h.AssertNil(t, archive.WriteTarArchive(file, src, 1234, 5678))
+			h.AssertNil(t, archive.WriteTarArchive(file, archive.DefaultTarWriterFactory(), src, 1234, 5678))
 			h.AssertNil(t, file.Close())
 
 			file, err = os.Open(file.Name())
@@ -262,7 +311,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			for _, expectedDir := range allParentDirectories(src) {
 				header, err := tr.Next()
 				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, expectedDir)
+				h.AssertEq(t, header.Name, archive.TarPath(expectedDir))
 
 				assertDirectory(t, header)
 
@@ -303,7 +352,7 @@ func assertModTimeNormalized(t *testing.T, header *tar.Header) {
 
 func allParentDirectories(directory string) []string {
 	parent := filepath.Dir(directory)
-	if parent == "." || parent == "/" {
+	if parent == "." || parent == filepath.VolumeName(directory)+string(filepath.Separator) {
 		return []string{}
 	}
 	return append(allParentDirectories(parent), parent)

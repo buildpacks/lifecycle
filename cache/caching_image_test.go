@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,7 +70,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				from, err := os.Open(layerPath)
 				h.AssertNil(t, err)
 				defer from.Close()
-				to, err := os.Create(filepath.Join(tmpDir, "committed", layerSHA+".tar"))
+				to, err := os.Create(filepath.Join(tmpDir, "committed", strings.TrimPrefix(layerSHA, "sha256:")+".tar"))
 				h.AssertNil(t, err)
 				defer to.Close()
 				_, err = io.Copy(to, from)

@@ -1,0 +1,25 @@
+ARG image_tag
+FROM ${image_tag} as builder
+
+SHELL ["cmd.exe", "/c"]
+
+RUN mklink C:\git\usr\bin\bash.exe sh.exe && \
+    \
+    curl.exe -o make-installer.exe -L "https://sourceforge.net/projects/gnuwin32/files/make/3.81/make-3.81.exe" && \
+    make-installer.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=C:\make && \
+    del make-installer.exe && \
+    \
+    mkdir c:\jq\bin && \
+    curl -o c:\jq\bin\jq.exe -L "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-win64.exe" && \
+    \
+    setx /M PATH "%PATH%;c:\make\bin;c:\jq\bin"
+
+# For reusing dependencies `-v gopathcache:c:/gopath`
+ENV GOPATH=c:\\gopath
+ENV GOBIN=c:\\gopath\\bin
+VOLUME ["c:/gopath"]
+
+WORKDIR /lifecycle
+
+# Copy source for consistent filesystem duplication of source (docker cp, volumes are inconsistent with symlinks/hardlinks on Windows)
+COPY . /lifecycle/

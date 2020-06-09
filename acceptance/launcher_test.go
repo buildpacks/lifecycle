@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -20,6 +21,10 @@ var (
 )
 
 func TestLauncher(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping launcher tests for Windows")
+	}
+
 	buildLauncher(t)
 	buildLaunchImage(t)
 	defer removeLaunchImage(t)

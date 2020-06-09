@@ -1,6 +1,8 @@
 package lifecycle
 
 import (
+	"runtime"
+
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -82,5 +84,9 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	}
 	defer rc.Close()
 
-	return archive.Untar(rc, "/")
+	root := "/"
+	if runtime.GOOS == "windows" {
+		root = `c:\`
+	}
+	return archive.Untar(rc, root)
 }

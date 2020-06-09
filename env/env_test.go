@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -65,11 +67,21 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			}
 			out := envv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
+
+			expected := []string{
 				fmt.Sprintf("LD_LIBRARY_PATH=%s/lib:some-ld", tmpDir),
 				fmt.Sprintf("LIBRARY_PATH=%s/lib:some-library", tmpDir),
 				fmt.Sprintf("PATH=%s/bin:some", tmpDir),
-			}); s != "" {
+			}
+			if runtime.GOOS == "windows" {
+				expected = []string{
+					fmt.Sprintf(`LD_LIBRARY_PATH=%s\lib;some-ld`, tmpDir),
+					fmt.Sprintf(`LIBRARY_PATH=%s\lib;some-library`, tmpDir),
+					fmt.Sprintf(`PATH=%s\bin;some`, tmpDir),
+				}
+			}
+
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
@@ -84,11 +96,21 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			}
 			out := envv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
+
+			expected := []string{
 				fmt.Sprintf("LD_LIBRARY_PATH=%s/lib", tmpDir),
 				fmt.Sprintf("LIBRARY_PATH=%s/lib", tmpDir),
 				fmt.Sprintf("PATH=%s/bin", tmpDir),
-			}); s != "" {
+			}
+			if runtime.GOOS == "windows" {
+				expected = []string{
+					fmt.Sprintf(`LD_LIBRARY_PATH=%s\lib`, tmpDir),
+					fmt.Sprintf(`LIBRARY_PATH=%s\lib`, tmpDir),
+					fmt.Sprintf(`PATH=%s\bin`, tmpDir),
+				}
+			}
+
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
 		})
@@ -128,7 +150,8 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			}
 			out := envv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
+
+			expected := []string{
 				"VAR_APPEND=value-append-origvalue-append",
 				"VAR_APPEND_DELIM=value-append-delim-orig[]value-append-delim",
 				"VAR_APPEND_DELIM_NEW=value-append-delim",
@@ -145,7 +168,29 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				"VAR_PREPEND_DELIM=value-prepend-delim[]value-prepend-delim-orig",
 				"VAR_PREPEND_DELIM_NEW=value-prepend-delim",
 				"VAR_PREPEND_NEW=value-prepend",
-			}); s != "" {
+			}
+			if runtime.GOOS == "windows" {
+				expected = []string{
+					"VAR_APPEND=value-append-origvalue-append",
+					"VAR_APPEND_DELIM=value-append-delim-orig[]value-append-delim",
+					"VAR_APPEND_DELIM_NEW=value-append-delim",
+					"VAR_APPEND_NEW=value-append",
+					"VAR_DEFAULT=value-default-orig",
+					"VAR_DEFAULT_NEW=value-default",
+					"VAR_NORMAL=value-normal;value-normal-orig",
+					"VAR_NORMAL_DELIM=value-normal-delim[]value-normal-delim-orig",
+					"VAR_NORMAL_DELIM_NEW=value-normal-delim",
+					"VAR_NORMAL_NEW=value-normal",
+					"VAR_OVERRIDE=value-override",
+					"VAR_OVERRIDE_NEW=value-override",
+					"VAR_PREPEND=value-prependvalue-prepend-orig",
+					"VAR_PREPEND_DELIM=value-prepend-delim[]value-prepend-delim-orig",
+					"VAR_PREPEND_DELIM_NEW=value-prepend-delim",
+					"VAR_PREPEND_NEW=value-prepend",
+				}
+			}
+
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
@@ -164,21 +209,34 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				"VAR_EMPTY":       "",
 				"VAR_OVERRIDE":    "value-override-orig",
 				"PATH":            "value-path-orig",
-				"LD_LIBRARY_PATH": "value-ld-library-path-orig1:value-ld-library-path-orig2",
+				"LD_LIBRARY_PATH": strings.Join([]string{"value-ld-library-path-orig1", "value-ld-library-path-orig2"}, string(filepath.ListSeparator)),
 			}
 			out, err := envv.WithPlatform(tmpDir)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
+
+			expected := []string{
 				"LD_LIBRARY_PATH=value-ld-library-path:value-ld-library-path-orig1:value-ld-library-path-orig2",
 				"LIBRARY_PATH=value-library-path",
 				"PATH=value-path:value-path-orig",
 				"VAR_EMPTY=",
 				"VAR_NORMAL=value-normal",
 				"VAR_OVERRIDE=value-override",
-			}); s != "" {
+			}
+			if runtime.GOOS == "windows" {
+				expected = []string{
+					"LD_LIBRARY_PATH=value-ld-library-path;value-ld-library-path-orig1;value-ld-library-path-orig2",
+					"LIBRARY_PATH=value-library-path",
+					"PATH=value-path;value-path-orig",
+					"VAR_EMPTY=",
+					"VAR_NORMAL=value-normal",
+					"VAR_OVERRIDE=value-override",
+				}
+			}
+
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
@@ -195,7 +253,13 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			if err := envv.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if s := cmp.Diff(envv.Get("PATH"), fmt.Sprintf("%s/bin:path-orig", tmpDir)); s != "" {
+
+			expected := fmt.Sprintf("%s/bin:path-orig", tmpDir)
+			if runtime.GOOS == "windows" {
+				expected = fmt.Sprintf(`%s\bin;path-orig`, tmpDir)
+			}
+
+			if s := cmp.Diff(envv.Get("PATH"), expected); s != "" {
 				t.Fatalf("Unexpected val:\n%s\n", s)
 			}
 		})

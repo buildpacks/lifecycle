@@ -19,7 +19,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -138,14 +137,6 @@ func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
-func AssertUIDGID(t *testing.T, path string, uid, gid int) {
-	fi, err := os.Stat(path)
-	AssertNil(t, err)
-	stat := fi.Sys().(*syscall.Stat_t)
-	AssertEq(t, stat.Uid, uint32(uid))
-	AssertEq(t, stat.Gid, uint32(gid))
-}
-
 var dockerCliVal *dockercli.Client
 var dockerCliOnce sync.Once
 
@@ -257,14 +248,14 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 
 func ComputeSHA256ForPath(t *testing.T, path string, uid int, guid int) string {
 	hasher := sha256.New()
-	err := archive.WriteTarArchive(hasher, path, uid, guid)
+	err := archive.WriteTarArchive(hasher, archive.DefaultTarWriterFactory(), path, uid, guid)
 	AssertNil(t, err)
 	layer5sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 	return layer5sha
 }
 
 func ComputeSHA256ForFiles(t *testing.T, path string, uid int, guid int, files ...string) string {
-	sha, _, err := archive.WriteFilesToTar(path, uid, guid, files...)
+	sha, _, err := archive.WriteFilesToTar(path, uid, guid, archive.DefaultTarWriterFactory(), files...)
 	AssertNil(t, err)
 	return sha[len("sha256:"):]
 }
@@ -282,6 +273,8 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 			_, err = io.Copy(dstFile, srcFile)
 			AssertNil(t, err)
 			modifiedtime := time.Time{}
+			AssertNil(t, srcFile.Close())
+			AssertNil(t, dstFile.Close())
 			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
 			AssertNil(t, err)
 			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)

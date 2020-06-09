@@ -98,7 +98,7 @@ func (bd *bpLayersDir) newBPLayer(name string) *bpLayer {
 	return &bpLayer{
 		layer{
 			path:       filepath.Join(bd.path, name),
-			identifier: fmt.Sprintf("%s:%s", bd.buildpack.ID, name),
+			identifier: fmt.Sprintf("%s+%s", bd.buildpack.ID, name),
 		},
 	}
 }

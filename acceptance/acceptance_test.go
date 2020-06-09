@@ -48,6 +48,10 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"lifecycle",
 			} {
 				binary := binary
+				if runtime.GOOS == "windows" {
+					binary = binary + ".exe"
+				}
+
 				it(binary+"/should fail with error message and exit code 11", func() {
 					cmd := lifecycleCmd(binary)
 					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")

@@ -29,11 +29,12 @@ type Cache interface {
 }
 
 type Exporter struct {
-	Buildpacks   []Buildpack
-	ArtifactsDir string
-	Logger       Logger
-	UID, GID     int
-	tarHashes    map[string]string // Stores hashes of layer tarballs for reuse between the export and cache steps.
+	Buildpacks         []Buildpack
+	ArtifactsDir       string
+	Logger             Logger
+	UID, GID           int
+	LayerWriterFactory archive.WriterFactory
+	tarHashes          map[string]string // Stores hashes of layer tarballs for reuse between the export and cache steps.
 }
 
 type LauncherConfig struct {
@@ -285,7 +286,7 @@ func (e *Exporter) tarLayer(layer identifiableLayer) (string, string, error) {
 		return tarPath, sha, nil
 	}
 	e.Logger.Debugf("Writing tarball for layer %q\n", layer.Identifier())
-	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID)
+	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID, e.LayerWriterFactory)
 	if err != nil {
 		return "", "", err
 	}
@@ -354,7 +355,7 @@ func (e *Exporter) createAppSliceLayers(appDir string, slices []Slice) ([]SliceL
 	// |  app dir  |
 	// -------------
 	tarPath := filepath.Join(e.ArtifactsDir, "app.tar")
-	sha, err := archive.WriteTarFile(appDir, tarPath, e.UID, e.GID)
+	sha, err := archive.WriteTarFile(appDir, tarPath, e.UID, e.GID, e.LayerWriterFactory)
 	if err != nil {
 		return nil, errors.Wrapf(err, "exporting layer 'app'")
 	}
@@ -368,7 +369,7 @@ func (e *Exporter) createAppSliceLayers(appDir string, slices []Slice) ([]SliceL
 
 func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (SliceLayer, error) {
 	tarPath := filepath.Join(e.ArtifactsDir, launch.EscapeID(layerID)+".tar")
-	sha, fileSet, err := archive.WriteFilesToTar(tarPath, e.UID, e.GID, files...)
+	sha, fileSet, err := archive.WriteFilesToTar(tarPath, e.UID, e.GID, e.LayerWriterFactory, files...)
 	if err != nil {
 		return SliceLayer{}, errors.Wrapf(err, "exporting slice layer '%s'", layerID)
 	}
@@ -377,11 +378,14 @@ func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (Sli
 	// the directories and delete if empty as a result of previous removal
 	var dirs []string
 	for file := range fileSet {
-		stat, _ := os.Stat(file)
+		stat, err := os.Stat(file)
+		if err != nil {
+			return SliceLayer{}, errors.Wrap(err, "failed to stat file")
+		}
 		if !stat.IsDir() {
 			err = os.Remove(file)
 			if err != nil {
-				e.Logger.Errorf("failed to delete file %v", err)
+				return SliceLayer{}, errors.Wrap(err, "failed to delete file")
 			}
 		} else {
 			if file == appDir {
@@ -398,11 +402,11 @@ func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (Sli
 	for _, dir := range dirs {
 		if ok, err := isEmptyDir(dir); ok {
 			if err != nil {
-				e.Logger.Errorf("failed to check if directory is empty %v", err)
+				return SliceLayer{}, errors.Wrap(err, "failed to check if directory is empty")
 			}
 			err = os.Remove(dir)
 			if err != nil {
-				e.Logger.Errorf("failed to delete directory %v", err)
+				return SliceLayer{}, errors.Wrap(err, "failed to delete directory")
 			}
 		}
 	}

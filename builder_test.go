@@ -61,6 +61,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
 
 		buildpacksDir := filepath.Join("testdata", "by-id")
+
 		builder = &lifecycle.Builder{
 			AppDir:        appDir,
 			LayersDir:     layersDir,
