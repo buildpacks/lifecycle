@@ -6,10 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
 )
+
+type ExecFunc func(argv0 string, argv []string, envv []string) error
 
 type Launcher struct {
 	DefaultProcessType string
@@ -18,7 +21,7 @@ type Launcher struct {
 	Processes          []Process
 	Buildpacks         []Buildpack
 	Env                Env
-	Exec               func(argv0 string, argv []string, envv []string) error
+	Exec               ExecFunc
 	Setenv             func(string, string) error
 }
 
@@ -54,6 +57,17 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	if err != nil {
 		return errors.Wrap(err, "determine profile")
 	}
+
+	if runtime.GOOS == "windows" {
+		// NOTE: profile.d support is not yet implemented
+		if err := l.Exec("cmd", append([]string{
+			"cmd", "/c", process.Command,
+		}, process.Args...), l.Env.List()); err != nil {
+			return errors.Wrap(err, "cmd execute")
+		}
+		return nil
+	}
+
 	if err := l.Exec("/bin/bash", append([]string{
 		"bash", "-c",
 		launcher, self, process.Command,
