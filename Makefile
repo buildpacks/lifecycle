@@ -1,14 +1,18 @@
 ifeq ($(OS),Windows_NT)
 SHELL:=cmd.exe
+PWD?=$(subst /,\,${CURDIR})
+LDFLAGS=-s -w
+BLANK:=
+/:=\$(BLANK)
 LIFECYCLE_VERSION?=$(shell type VERSION)
 else
+/:=/
 LIFECYCLE_VERSION?=$(shell cat VERSION)
 endif
 
 GOCMD?=go
 GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
-LDFLAGS=-s -w
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
@@ -20,8 +24,7 @@ BUILDPACK_API?=0.2
 SCM_REPO?=github.com/buildpacks/lifecycle
 PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
 SCM_COMMIT?=$(PARSED_COMMIT)
-PWD?=${CURDIR}
-BUILD_DIR?=$(PWD)/out
+BUILD_DIR?=$(PWD)$/out
 LINUX_COMPILATION_IMAGE?=golang:1.13-alpine
 WINDOWS_COMPILATION_IMAGE?=golang:1.14-windowsservercore-1809
 SOURCE_COMPILATION_IMAGE?=lifecyle-img
@@ -70,7 +73,7 @@ build-linux-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/creator
 
 build-windows-on-windows: export GOOS:=windows
-build-windows-on-windows: OUT_DIR:=$(subst /,\,$(BUILD_DIR))\$(GOOS)\lifecycle
+build-windows-on-windows: OUT_DIR:=$(BUILD_DIR)\$(GOOS)\lifecycle
 build-windows-on-windows:
 	@echo "> Building for windows..."
 	rmdir /Q /S $(OUT_DIR) 2>NUL || (exit 0)
@@ -173,11 +176,11 @@ package-linux:
 
 package-windows: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 package-windows: GOOS:=windows
-package-windows: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
+package-windows: GOOS_DIR:=$(BUILD_DIR)\$(GOOS)
 package-windows: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
 package-windows:
 	@echo "> Writing descriptor file for $(GOOS)..."
-	$(GOCMD) run tools/packager/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)/lifecycle/launcher.exe -lifecycleExePath $(GOOS_DIR)/lifecycle/lifecycle.exe -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)/$(ARCHIVE_NAME).tgz
+	$(GOCMD) run tools/packager/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)\lifecycle\launcher.exe -lifecycleExePath $(GOOS_DIR)\lifecycle\lifecycle.exe -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)\$(ARCHIVE_NAME).tgz
 
 docker-build-source-image-windows:
 	docker build -f tools/Dockerfile.windows --tag $(SOURCE_COMPILATION_IMAGE) --build-arg image_tag=$(WINDOWS_COMPILATION_IMAGE) --cache-from=$(SOURCE_COMPILATION_IMAGE) --isolation=process --quiet .
