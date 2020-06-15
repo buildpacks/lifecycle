@@ -1,6 +1,6 @@
 // +build linux darwin
 
-package testsyscall
+package launch_test
 
 import (
 	"os"

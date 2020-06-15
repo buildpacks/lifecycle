@@ -14,7 +14,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/launch/testmock"
-	"github.com/buildpacks/lifecycle/launch/testsyscall"
 )
 
 //go:generate mockgen -package testmock -destination testmock/launch_env.go github.com/buildpacks/lifecycle/launch Env
@@ -261,7 +260,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					{Type: "start", Command: "./start"},
 				}
 				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
-				launcher.Exec = testsyscall.SyscallExecWithStdout(t, tmpDir)
+				launcher.Exec = SyscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
 					filepath.Join(tmpDir, "launch", "bp.1", "layer1"),
@@ -326,7 +325,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					{Type: "start", Command: "./start"},
 				}
 				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
-				launcher.Exec = testsyscall.SyscallExecWithStdout(t, tmpDir)
+				launcher.Exec = SyscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
 					filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"),

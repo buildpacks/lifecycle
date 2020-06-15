@@ -27,7 +27,7 @@ SCM_COMMIT?=$(PARSED_COMMIT)
 BUILD_DIR?=$(PWD)$/out
 LINUX_COMPILATION_IMAGE?=golang:1.13-alpine
 WINDOWS_COMPILATION_IMAGE?=golang:1.14-windowsservercore-1809
-SOURCE_COMPILATION_IMAGE?=lifecyle-img
+SOURCE_COMPILATION_IMAGE?=lifecycle-img
 BUILD_CTR?=lifecycle-ctr
 DOCKER_CMD?=make test
 
