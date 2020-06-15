@@ -260,7 +260,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					{Type: "start", Command: "./start"},
 				}
 				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
-				launcher.Exec = SyscallExecWithStdout(t, tmpDir)
+				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
 					filepath.Join(tmpDir, "launch", "bp.1", "layer1"),
@@ -325,7 +325,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					{Type: "start", Command: "./start"},
 				}
 				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
-				launcher.Exec = SyscallExecWithStdout(t, tmpDir)
+				launcher.Exec = syscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
 					filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"),

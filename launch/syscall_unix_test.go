@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func SyscallExecWithStdout(t *testing.T, tmpDir string) func(argv0 string, argv []string, envv []string) error {
+func syscallExecWithStdout(t *testing.T, tmpDir string) func(argv0 string, argv []string, envv []string) error {
 	t.Helper()
 	fstdin, err := os.Create(filepath.Join(tmpDir, "stdin"))
 	if err != nil {
