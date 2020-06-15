@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -64,15 +65,20 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#ReuseLayer", func() {
+	when.Focus("#ReuseLayer", func() {
 		when("the layer exists in the cache", func() {
 			it.Before(func() {
 				from, err := os.Open(layerPath)
 				h.AssertNil(t, err)
 				defer from.Close()
-				to, err := os.Create(filepath.Join(tmpDir, "committed", strings.TrimPrefix(layerSHA, "sha256:")+".tar"))
+
+				if runtime.GOOS == "windows" {
+					layerSHA = strings.TrimPrefix(layerSHA, "sha256:")
+				}
+				to, err := os.Create(filepath.Join(tmpDir, "committed", layerSHA+".tar"))
 				h.AssertNil(t, err)
 				defer to.Close()
+
 				_, err = io.Copy(to, from)
 				h.AssertNil(t, err)
 			})

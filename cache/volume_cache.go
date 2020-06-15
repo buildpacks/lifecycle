@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -184,7 +185,11 @@ func (c *VolumeCache) Commit() error {
 }
 
 func diffIDPath(basePath, diffID string) string {
-	return filepath.Join(basePath, strings.TrimPrefix(diffID, "sha256:")+".tar")
+	if runtime.GOOS == "windows" {
+		// Avoid colons in Windows file paths
+		diffID = strings.TrimPrefix(diffID, "sha256:")
+	}
+	return filepath.Join(basePath, diffID+".tar")
 }
 
 func (c *VolumeCache) setupStagingDir() error {
