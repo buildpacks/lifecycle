@@ -1,6 +1,6 @@
 package env
 
-var BuildEnvWhitelist = []string{
+var BuildEnvAllowlist = []string{
 	"CNB_STACK_ID",
 	"HOSTNAME",
 	"HOME",
@@ -9,12 +9,12 @@ var BuildEnvWhitelist = []string{
 func NewBuildEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		Vars:       varsFromEnviron(environ, isNotWhitelisted),
+		Vars:       varsFromEnviron(environ, isNotAllowlisted),
 	}
 }
 
-func isNotWhitelisted(k string) bool {
-	for _, wk := range BuildEnvWhitelist {
+func isNotAllowlisted(k string) bool {
+	for _, wk := range BuildEnvAllowlist {
 		if wk == k {
 			return false
 		}

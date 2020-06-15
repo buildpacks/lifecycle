@@ -17,10 +17,10 @@ func TestBuildEnv(t *testing.T) {
 
 func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#NewBuildEnv", func() {
-		it("whitelists vars", func() {
+		it("allowlists vars", func() {
 			benv := env.NewBuildEnv([]string{
 				"CNB_STACK_ID=some-stack-id",
-				"NOT_WHITELIST=not-whitelisted",
+				"NOT_ALLOWLISTED=not-allowlisted",
 				"PATH=some-path",
 				"LD_LIBRARY_PATH=some-ld-library-path",
 				"LIBRARY_PATH=some-library-path",
@@ -43,10 +43,10 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 
 		it("allows keys with '='", func() {
 			benv := env.NewBuildEnv([]string{
-				"CNB_STACK_ID=whitelist=true",
+				"CNB_STACK_ID=allowlist=true",
 			})
 			if s := cmp.Diff(benv.List(), []string{
-				"CNB_STACK_ID=whitelist=true",
+				"CNB_STACK_ID=allowlist=true",
 			}); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
