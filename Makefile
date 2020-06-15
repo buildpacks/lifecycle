@@ -58,7 +58,7 @@ build-linux-launcher:
 	@echo "> Building lifecycle/launcher for linux..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 
 build-linux-symlinks: export GOOS:=linux
 build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
