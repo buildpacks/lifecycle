@@ -95,7 +95,6 @@ func (bd *bpLayersDir) findLayers(f func(layer bpLayer) bool) []bpLayer {
 }
 
 func (bd *bpLayersDir) newBPLayer(name string) *bpLayer {
-
 	return &bpLayer{
 		layer{
 			path:       filepath.Join(bd.path, name),
