@@ -378,10 +378,7 @@ func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (Sli
 	// the directories and delete if empty as a result of previous removal
 	var dirs []string
 	for file := range fileSet {
-		stat, err := os.Stat(file)
-		if err != nil {
-			return SliceLayer{}, errors.Wrap(err, "failed to stat file")
-		}
+		stat, _ := os.Stat(file)
 		if !stat.IsDir() {
 			err = os.Remove(file)
 			if err != nil {
@@ -402,11 +399,11 @@ func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (Sli
 	for _, dir := range dirs {
 		if ok, err := isEmptyDir(dir); ok {
 			if err != nil {
-				return SliceLayer{}, errors.Wrap(err, "failed to check if directory is empty")
+				e.Logger.Errorf("failed to check if directory is empty %v", err)
 			}
 			err = os.Remove(dir)
 			if err != nil {
-				return SliceLayer{}, errors.Wrap(err, "failed to delete directory")
+				e.Logger.Errorf("failed to delete directory %v", err)
 			}
 		}
 	}
