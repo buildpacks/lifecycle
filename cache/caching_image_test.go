@@ -65,7 +65,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when.Focus("#ReuseLayer", func() {
+	when("#ReuseLayer", func() {
 		when("the layer exists in the cache", func() {
 			it.Before(func() {
 				from, err := os.Open(layerPath)
