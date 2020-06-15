@@ -385,7 +385,7 @@ func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (Sli
 		if !stat.IsDir() {
 			err = os.Remove(file)
 			if err != nil {
-				return SliceLayer{}, errors.Wrap(err, "failed to delete file")
+				e.Logger.Errorf("failed to delete file %v", err)
 			}
 		} else {
 			if file == appDir {
