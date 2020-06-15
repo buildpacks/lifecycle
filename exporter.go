@@ -277,7 +277,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 }
 
 func (e *Exporter) tarLayer(layer identifiableLayer) (string, string, error) {
-	layerFilename := strings.ReplaceAll(layer.Identifier(), ":", "__")  // Replace colons, as they can be problematic for file names
+	layerFilename := strings.ReplaceAll(layer.Identifier(), ":", "__") // Replace colons, as they can be problematic for file names
 	tarPath := filepath.Join(e.ArtifactsDir, launch.EscapeID(layerFilename)+".tar")
 
 	if e.tarHashes == nil {
