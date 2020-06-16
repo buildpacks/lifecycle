@@ -16,15 +16,15 @@ func TestLaunchEnv(t *testing.T) {
 
 func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#NewLaunchEnv", func() {
-		it("blacklists vars", func() {
+		it("excludes vars", func() {
 			lenv := env.NewLaunchEnv([]string{
-				"CNB_APP_DIR=blacklisted",
-				"CNB_LAYERS_DIR=blacklisted",
-				"CNB_PROCESS_TYPE=blacklisted",
-				"CNB_FOO=not-blacklisted",
+				"CNB_APP_DIR=excluded",
+				"CNB_LAYERS_DIR=excluded",
+				"CNB_PROCESS_TYPE=excluded",
+				"CNB_FOO=not-excluded",
 			})
 			if s := cmp.Diff(lenv.List(), []string{
-				"CNB_FOO=not-blacklisted",
+				"CNB_FOO=not-excluded",
 			}); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
