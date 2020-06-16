@@ -36,7 +36,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
-	when("#Untar", func() {
+	when("#UntarLayer", func() {
 		var pathModes = []archive.PathMode{
 			{"root", os.ModeDir + 0755},
 			{"root/readonly", os.ModeDir + 0500},
@@ -44,6 +44,13 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			{"root/standarddir/somefile", 0644},
 			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/readonly/readonlysub", os.ModeDir + 0500},
+			{"Files", os.ModeDir + 0755},
+			{"Files/standarddir", os.ModeDir + 0755},
+			{"Files/standarddir/somefile", 0644},
+			{"Hives", os.ModeDir + 0755},
+			{"Hives/readonly", os.ModeDir + 0500},
+			{"Hives/readonly/readonlysub/somefile", 0444},
+			{"Hives/readonly/readonlysub", os.ModeDir + 0500},
 		}
 
 		// Golang for Windows only implements owner permissions
@@ -55,6 +62,11 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				{"root/standarddir/somefile", 0666},
 				{"root/readonly/readonlysub/somefile", 0444},
 				{"root/readonly/readonlysub", os.ModeDir + 0555},
+				{"standarddir", os.ModeDir + 0777},
+				{"standarddir/somefile", 0666},
+				{"readonly", os.ModeDir + 0555},
+				{"readonly/readonlysub/somefile", 0444},
+				{"readonly/readonlysub", os.ModeDir + 0555},
 			}
 		}
 
@@ -76,7 +88,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer file.Close()
 
-			h.AssertNil(t, archive.Untar(file, tmpDir))
+			h.AssertNil(t, archive.UntarLayer(file, tmpDir))
 
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
@@ -96,9 +108,9 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			defer file.Close()
 
 			if runtime.GOOS != "windows" {
-				h.AssertError(t, archive.Untar(file, tmpDir), "root: not a directory")
+				h.AssertError(t, archive.UntarLayer(file, tmpDir), "root: not a directory")
 			} else {
-				h.AssertError(t, archive.Untar(file, tmpDir), "root: The system cannot find the path specified.")
+				h.AssertError(t, archive.UntarLayer(file, tmpDir), "root: The system cannot find the path specified.")
 			}
 		})
 
@@ -111,7 +123,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer file.Close()
 
-			h.AssertNil(t, archive.Untar(file, tmpDir))
+			h.AssertNil(t, archive.UntarLayer(file, tmpDir))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
@@ -128,7 +140,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer file.Close()
 
-			h.AssertNil(t, archive.Untar(file, tmpDir))
+			h.AssertNil(t, archive.UntarLayer(file, tmpDir))
 
 			contents, err := ioutil.ReadFile(filepath.Join(tmpDir, "root", "symlinkdir", "symlink"))
 			h.AssertNil(t, err)

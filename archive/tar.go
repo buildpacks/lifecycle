@@ -248,7 +248,7 @@ type PathMode struct {
 	Mode os.FileMode
 }
 
-func Untar(r io.Reader, dest string) error {
+func UntarLayer(r io.Reader, dest string) error {
 	// Avoid umask from changing the file permissions in the tar file.
 	umask := setUmask(0)
 	defer setUmask(umask)
@@ -273,6 +273,7 @@ func Untar(r io.Reader, dest string) error {
 		}
 
 		path := filepath.Join(dest, filepath.FromSlash(hdr.Name))
+		path = cleanImageLayerPath(path)
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:

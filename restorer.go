@@ -83,5 +83,5 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	}
 	defer rc.Close()
 
-	return archive.Untar(rc, sys.Root)
+	return archive.UntarLayer(rc, sys.Root)
 }
