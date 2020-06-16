@@ -130,7 +130,7 @@ test: unit acceptance
 
 unit: verify-jq format lint install-yj
 	@echo "> Running unit tests..."
-	$(GOTEST) -v -count=1 ./...
+	$(GOTEST) -v -count=1 $$($(GOCMD) list ./... | grep -v acceptance)
 
 acceptance: format lint
 	@echo "> Running acceptance tests..."
