@@ -93,7 +93,7 @@ build-windows-on-posix:
 	@echo "> Building for windows..."
 	mkdir -p $(OUT_DIR)
 	$(GOBUILD) -o $(OUT_DIR)/launcher.exe -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher.exe|cut -f 1) -le 3
+	test $$(du -m $(OUT_DIR)/launcher.exe|cut -f 1) -le 4
 	$(GOBUILD) -o $(OUT_DIR)/lifecycle.exe -a ./cmd/lifecycle
 	ln -sf lifecycle.exe $(OUT_DIR)/detector.exe
 	ln -sf lifecycle.exe $(OUT_DIR)/analyzer.exe
@@ -108,7 +108,7 @@ build-darwin:
 	@echo "> Building for macos..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
@@ -148,9 +148,10 @@ format: install-goimports
 
 test: unit acceptance
 
+unit: UNIT_PACKAGES=$(shell $(GOCMD) list ./... | grep -v acceptance)
 unit: format lint install-yj
 	@echo "> Running unit tests..."
-	$(GOTEST) -v -count=1 $$($(GOCMD) list ./... | grep -v acceptance)
+	$(GOTEST) -v -count=1 $(UNIT_PACKAGES)
 
 acceptance: format lint
 	@echo "> Running acceptance tests..."
