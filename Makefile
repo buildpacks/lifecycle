@@ -192,14 +192,3 @@ docker-run-windows:
 	docker run -v lifecycle-out:c:/lifecycle/out --rm $(SOURCE_COMPILATION_IMAGE) tar -cf- out | tar -xf-
 	@docker volume rm -f lifecycle-out
 
-docker-build-source-image-linux:
-	docker build --tag $(SOURCE_COMPILATION_IMAGE) -f tools/Dockerfile.linux --build-arg image_tag=$(LINUX_COMPILATION_IMAGE) --cache-from=$(SOURCE_COMPILATION_IMAGE) --quiet .
-
-docker-run-linux: docker-build-source-image-linux
-docker-run-linux:
-	@echo "> Running '$(DOCKER_CMD)' in docker linux..."
-	@docker volume rm -f lifecycle-out
-	docker run -v lifecycle-out:/lifecycle -e LIFECYCLE_VERSION -v gopathcache:/go -v /var/run/docker.sock:/var/run/docker.sock --rm $(SOURCE_COMPILATION_IMAGE) $(DOCKER_CMD)
-	docker run -v lifecycle-out:/lifecycle --rm $(SOURCE_COMPILATION_IMAGE) tar -cf- out | tar -xf-
-	@docker volume rm -f lifecycle-out
-
