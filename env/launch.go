@@ -1,6 +1,6 @@
 package env
 
-var LaunchEnvBlocklist = []string{
+var LaunchEnvExcludelist = []string{
 	"CNB_LAYERS_DIR",
 	"CNB_APP_DIR",
 	"CNB_PROCESS_TYPE",
@@ -9,12 +9,12 @@ var LaunchEnvBlocklist = []string{
 func NewLaunchEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXLaunchEnv,
-		Vars:       varsFromEnviron(environ, isBlocklisted),
+		Vars:       varsFromEnviron(environ, isExcluded),
 	}
 }
 
-func isBlocklisted(k string) bool {
-	for _, wk := range LaunchEnvBlocklist {
+func isExcluded(k string) bool {
+	for _, wk := range LaunchEnvExcludelist {
 		if wk == k {
 			return true
 		}

@@ -111,7 +111,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("passes through env vars from user, excluding blocklist", func() {
+		it("passes through env vars from user, excluding excluded vars", func() {
 			cmd := exec.Command("docker", "run", "--rm",
 				"--env", "CNB_APP_DIR=/workspace",
 				"--env", "SOME_USER_VAR=some-user-val",
@@ -169,7 +169,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("passes through env vars from user, excluding blocklist", func() {
+		it("passes through env vars from user, excluding excluded vars", func() {
 			cmd := exec.Command("docker", "run", "--rm",
 				"--env", "CNB_APP_DIR=/workspace",
 				"--env", "SOME_USER_VAR=some-user-val",
