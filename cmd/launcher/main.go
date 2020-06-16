@@ -18,15 +18,15 @@ func main() {
 }
 
 func runLaunch() error {
-	defaultProcessType := cmd.DefaultProcessType
+	defaultProcessType := cmd.DefaultProcessType()
 	if v := os.Getenv(cmd.EnvProcessType); v != "" {
 		defaultProcessType = v
 	}
-	layersDir := cmd.DefaultLayersDir
+	layersDir := cmd.DefaultLayersDir()
 	if v := os.Getenv(cmd.EnvLayersDir); v != "" {
 		layersDir = v
 	}
-	appDir := cmd.DefaultAppDir
+	appDir := cmd.DefaultAppDir()
 	if v := os.Getenv(cmd.EnvAppDir); v != "" {
 		appDir = v
 	}

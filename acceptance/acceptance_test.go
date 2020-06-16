@@ -10,10 +10,11 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/sys"
+	h "github.com/buildpacks/lifecycle/testhelpers"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 var buildDir string
@@ -47,10 +48,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"rebaser",
 				"lifecycle",
 			} {
-				binary := binary
-				if runtime.GOOS == "windows" {
-					binary = binary + ".exe"
-				}
+				binary := binary + sys.ExecExt
 
 				it(binary+"/should fail with error message and exit code 11", func() {
 					cmd := lifecycleCmd(binary)

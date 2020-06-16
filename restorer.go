@@ -1,12 +1,11 @@
 package lifecycle
 
 import (
-	"runtime"
-
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/sys"
 )
 
 type Restorer struct {
@@ -84,9 +83,5 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	}
 	defer rc.Close()
 
-	root := "/"
-	if runtime.GOOS == "windows" {
-		root = `c:\`
-	}
-	return archive.Untar(rc, root)
+	return archive.Untar(rc, sys.Root)
 }
