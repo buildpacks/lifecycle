@@ -42,7 +42,7 @@ func runLaunch() error {
 			c := exec.Command(argv0, argv...)
 			c.Stdout = os.Stdout
 			c.Stderr = os.Stderr
-			c.Env = append(os.Environ(), envv...)
+			c.Env = envv
 			return c.Run()
 		}
 	} else {
