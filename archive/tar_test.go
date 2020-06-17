@@ -45,12 +45,9 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/readonly/readonlysub", os.ModeDir + 0500},
 			{"Files", os.ModeDir + 0755},
-			{"Files/standarddir", os.ModeDir + 0755},
-			{"Files/standarddir/somefile", 0644},
+			{"Files/standardfile_Files", 0644},
 			{"Hives", os.ModeDir + 0755},
-			{"Hives/readonly", os.ModeDir + 0500},
-			{"Hives/readonly/readonlysub/somefile", 0444},
-			{"Hives/readonly/readonlysub", os.ModeDir + 0500},
+			{"Hives/standardfile_Hives", 0644},
 		}
 
 		// Golang for Windows only implements owner permissions
@@ -62,11 +59,8 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				{"root/standarddir/somefile", 0666},
 				{"root/readonly/readonlysub/somefile", 0444},
 				{"root/readonly/readonlysub", os.ModeDir + 0555},
-				{"standarddir", os.ModeDir + 0777},
-				{"standarddir/somefile", 0666},
-				{"readonly", os.ModeDir + 0555},
-				{"readonly/readonlysub/somefile", 0444},
-				{"readonly/readonlysub", os.ModeDir + 0555},
+				{"standardfile_Files", 0666},
+				{"standardfile_Hives", 0666},
 			}
 		}
 

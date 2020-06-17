@@ -20,21 +20,7 @@ func cleanImageLayerPath(path string) string {
 		return path
 	}
 
-	volumeName := filepath.VolumeName(path)
-
-	for _, dirName := range []string{`\Files`, `\Hives`} {
-		prefix := volumeName + dirName
-
-		if strings.HasPrefix(path, prefix) {
-			path = strings.TrimPrefix(path, prefix)
-
-			if path == "" {
-				path = `\`
-			}
-
-			path = filepath.Join(volumeName, path)
-		}
-	}
-
+	path = strings.TrimPrefix(path, "Files")
+	path = strings.TrimPrefix(path, "Hives")
 	return path
 }

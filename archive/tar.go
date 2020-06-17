@@ -272,8 +272,8 @@ func UntarLayer(r io.Reader, dest string) error {
 			return err
 		}
 
-		path := filepath.Join(dest, filepath.FromSlash(hdr.Name))
-		path = cleanImageLayerPath(path)
+		path := cleanImageLayerPath(hdr.Name)
+		path = filepath.Join(dest, filepath.FromSlash(path))
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
