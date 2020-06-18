@@ -36,12 +36,7 @@ all: test build package
 build: build-linux build-windows
 
 build-linux: build-linux-lifecycle build-linux-symlinks build-linux-launcher
-
-ifeq ($(OS),Windows_NT)
-build-windows: build-windows-on-windows
-else
-build-windows: build-windows-on-posix
-endif
+build-windows: build-windows-lifecycle build-windows-symlinks build-windows-launcher
 
 build-linux-lifecycle: export GOOS:=linux
 build-linux-lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -72,35 +67,37 @@ build-linux-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
 
-build-windows-on-windows: export GOOS:=windows
-build-windows-on-windows: OUT_DIR:=$(BUILD_DIR)\$(GOOS)\lifecycle
-build-windows-on-windows:
-	@echo "> Building for windows..."
-	rmdir /Q /S $(OUT_DIR) 2>NUL || (exit 0)
-	mkdir $(OUT_DIR)
-	$(GOBUILD) -o $(OUT_DIR)\launcher.exe -a ./cmd/launcher
-	$(GOBUILD) -o $(OUT_DIR)\lifecycle.exe -a ./cmd/lifecycle
-	call mklink $(OUT_DIR)\detector.exe lifecycle.exe
-	call mklink $(OUT_DIR)\analyzer.exe lifecycle.exe
-	call mklink $(OUT_DIR)\restorer.exe lifecycle.exe
-	call mklink $(OUT_DIR)\builder.exe  lifecycle.exe
-	call mklink $(OUT_DIR)\exporter.exe lifecycle.exe
-	call mklink $(OUT_DIR)\rebaser.exe  lifecycle.exe
+build-windows-lifecycle: export GOOS:=windows
+build-windows-lifecycle: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+build-windows-lifecycle:
+	@echo "> Building lifecycle/lifecycle for Windows..."
+	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a ./cmd/lifecycle
 
-build-windows-on-posix: export GOOS:=windows
-build-windows-on-posix: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-build-windows-on-posix:
-	@echo "> Building for windows..."
-	mkdir -p $(OUT_DIR)
-	$(GOBUILD) -o $(OUT_DIR)/launcher.exe -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher.exe|cut -f 1) -le 4
-	$(GOBUILD) -o $(OUT_DIR)/lifecycle.exe -a ./cmd/lifecycle
-	ln -sf lifecycle.exe $(OUT_DIR)/detector.exe
-	ln -sf lifecycle.exe $(OUT_DIR)/analyzer.exe
-	ln -sf lifecycle.exe $(OUT_DIR)/restorer.exe
-	ln -sf lifecycle.exe $(OUT_DIR)/builder.exe
-	ln -sf lifecycle.exe $(OUT_DIR)/exporter.exe
-	ln -sf lifecycle.exe $(OUT_DIR)/rebaser.exe
+build-windows-launcher: export GOOS:=windows
+build-windows-launcher: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+build-windows-launcher:
+	@echo "> Building lifecycle/launcher for Windows..."
+	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a ./cmd/launcher
+
+build-windows-symlinks: export GOOS:=windows
+build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+build-windows-symlinks:
+	@echo "> Creating phase symlinks for Windows..."
+ifeq ($(OS),Windows_NT)
+	call mklink $(OUT_DIR)$/detector.exe lifecycle.exe
+	call mklink $(OUT_DIR)$/analyzer.exe lifecycle.exe
+	call mklink $(OUT_DIR)$/restorer.exe lifecycle.exe
+	call mklink $(OUT_DIR)$/builder.exe  lifecycle.exe
+	call mklink $(OUT_DIR)$/exporter.exe lifecycle.exe
+	call mklink $(OUT_DIR)$/rebaser.exe  lifecycle.exe
+else
+	ln -sf lifecycle.exe $(OUT_DIR)$/detector.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/analyzer.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/restorer.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/builder.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/exporter.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/rebaser.exe
+endif
 
 build-darwin: export GOOS:=darwin
 build-darwin: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -179,7 +176,7 @@ package-windows: GOOS:=windows
 package-windows: GOOS_DIR:=$(BUILD_DIR)$/$(GOOS)
 package-windows: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
 package-windows:
-	@echo "> Writing descriptor file for $(GOOS)..."
+	@echo "> Packaging lifecycle for $(GOOS)..."
 	$(GOCMD) run tools$/packager$/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)$/lifecycle$/launcher.exe -lifecycleExePath $(GOOS_DIR)$/lifecycle$/lifecycle.exe -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)$/$(ARCHIVE_NAME).tgz
 
 docker-build-source-image-windows:
