@@ -581,7 +581,7 @@ type = "Apache-2.0"
 							},
 							Metadata: map[string]interface{}{
 								"repository": "github.com/buildpack/lifecycle",
-								"branch":     "master",
+								"branch":     "main",
 							},
 						}}
 					h.AssertNil(t, exporter.Export(opts))
@@ -965,7 +965,7 @@ type = "Apache-2.0"
 							},
 							Metadata: map[string]interface{}{
 								"repository": "github.com/buildpack/lifecycle",
-								"branch":     "master",
+								"branch":     "main",
 							},
 						}}
 					h.AssertNil(t, exporter.Export(opts))
