@@ -7,7 +7,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
 	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.3.1
-	github.com/google/go-cmp v0.4.1
+	github.com/google/go-cmp v0.5.0
 	github.com/google/go-containerregistry v0.0.0-20200311163244-4b1985e5ea21
 	github.com/heroku/color v0.0.6
 	github.com/mattn/go-colorable v0.1.4 // indirect
