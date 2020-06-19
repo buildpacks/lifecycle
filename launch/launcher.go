@@ -64,7 +64,7 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 			launcher = strings.Join(profileCmds, " && ") + " && "
 		}
 		if err := l.Exec("cmd",
-			append(append([]string{"cmd", "/q", "/c"}, launcher, process.Command), process.Args...), l.Env.List(),
+			append(append([]string{"cmd", "/q", "/s", "/c"}, launcher, process.Command), process.Args...), l.Env.List(),
 		); err != nil {
 			return errors.Wrap(err, "cmd execute")
 		}

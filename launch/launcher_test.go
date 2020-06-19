@@ -14,8 +14,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/launch"
-	h "github.com/buildpacks/lifecycle/launch/testhelpers"
+	hl "github.com/buildpacks/lifecycle/launch/testhelpers"
 	"github.com/buildpacks/lifecycle/launch/testmock"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 //go:generate mockgen -package testmock -destination testmock/launch_env.go github.com/buildpacks/lifecycle/launch Env
@@ -102,59 +103,17 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if runtime.GOOS == "windows" {
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "cmd"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "cmd"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "/q"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], "/c"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[3], ""); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
+					h.AssertEq(t, syscallExecArgsColl[0].argv0, "cmd")
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
+						"cmd", "/q", "/s", "/c", "", "some-web-process", "arg1", "arg2",
+					})
 				} else {
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "/bin/bash"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "bash"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "-c"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], `exec bash -c "$@"`); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[3], "/path/to/launcher"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
+					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/bash")
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
+						"bash", "-c", `exec bash -c "$@"`, "/path/to/launcher", "some-web-process", "arg1", "arg2",
+					})
 				}
-
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-web-process"); diff != "" {
-					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[5], "arg1"); diff != "" {
-					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[6], "arg2"); diff != "" {
-					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
-					t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
-				}
+				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
 			})
 
 			when("default start process type is not in the process types", func() {
@@ -183,7 +142,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 					}
 
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-worker-process"); diff != "" {
+					processIdx := 4
+					if runtime.GOOS == "windows" {
+						processIdx = 5
+					}
+					if diff := cmp.Diff(syscallExecArgsColl[0].argv[processIdx], "some-worker-process"); diff != "" {
 						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
 					if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
@@ -202,7 +165,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 					}
 
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[4], "some-different-process"); diff != "" {
+					processIdx := 4
+					if runtime.GOOS == "windows" {
+						processIdx = 5
+					}
+					if diff := cmp.Diff(syscallExecArgsColl[0].argv[processIdx], "some-different-process"); diff != "" {
 						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
 					if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
@@ -239,30 +206,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if runtime.GOOS == "windows" {
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv0, `C:\Windows\system32\notepad.exe`); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "notepad"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
+					h.AssertEq(t, syscallExecArgsColl[0].argv0, `C:\Windows\system32\notepad.exe`)
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg2"})
 				} else {
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "/bin/sh"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "sh"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
+					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/sh")
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg2"})
 				}
-
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "arg1"); diff != "" {
-					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], "arg2"); diff != "" {
-					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
-					t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
-				}
+				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
 			})
 
 			it("should invoke a provided start command directly", func() {
@@ -282,30 +232,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if runtime.GOOS == "windows" {
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv0, `C:\Windows\system32\notepad.exe`); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "notepad"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
+					h.AssertEq(t, syscallExecArgsColl[0].argv0, `C:\Windows\system32\notepad.exe`)
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg2"})
 				} else {
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv0, "/bin/sh"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[0], "sh"); diff != "" {
-						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-					}
+					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/sh")
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg2"})
 				}
-
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[1], "arg1"); diff != "" {
-					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].argv[2], "arg2"); diff != "" {
-					t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
-				}
-				if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
-					t.Fatalf("syscall.Exec envv did not match: (-got +want)\n%s\n", diff)
-				}
+				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
 			})
 		})
 
@@ -328,7 +261,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
-				launcher.Exec = h.SyscallExecWithStdout(t, tmpDir)
+				launcher.Exec = hl.SyscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
 					filepath.Join(tmpDir, "launch", "bp.1", "layer1"),
@@ -407,7 +340,7 @@ echo $OUT
 				}
 
 				launcher.Buildpacks = []launch.Buildpack{{ID: "bp.1"}, {ID: "bp.2"}}
-				launcher.Exec = h.SyscallExecWithStdout(t, tmpDir)
+				launcher.Exec = hl.SyscallExecWithStdout(t, tmpDir)
 
 				mkdir(t,
 					filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"),
