@@ -10,11 +10,11 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/sys"
-	h "github.com/buildpacks/lifecycle/testhelpers"
-
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle/sys"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 var buildDir string

@@ -10,9 +10,12 @@ RUN mklink C:\git\usr\bin\bash.exe sh.exe && \
     del make-installer.exe && \
     \
     mkdir c:\jq\bin && \
-    curl -o c:\jq\bin\jq.exe -L "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-win64.exe" && \
+    curl.exe -o c:\jq\bin\jq.exe -L "https://github.com/stedolan/jq/releases/download/jq-1.6/jq-win64.exe" && \
     \
-    setx /M PATH "%PATH%;c:\make\bin;c:\jq\bin"
+    mkdir c:\docker-cli\bin && \
+    curl.exe -o c:\docker-cli\bin\docker.exe -L "https://github.com/StefanScherer/docker-cli-builder/releases/download/19.03.3/docker.exe" && \
+    \
+    setx /M PATH "%PATH%;c:\make\bin;c:\jq\bin;c:\docker-cli\bin"
 
 # For reusing dependencies `-v gopathcache:c:/gopath`
 ENV GOPATH=c:\\gopath

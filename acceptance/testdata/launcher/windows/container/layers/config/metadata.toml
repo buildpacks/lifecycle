@@ -1,0 +1,14 @@
+[[buildpacks]]
+  id = "some/buildpack"
+  version = "0.0.1"
+
+[[processes]]
+  type = "web"
+  command = "echo Executing web process-type"
+  direct = false
+
+[[processes]]
+  type = "other-process"
+  command = "ping"
+  args = ["/?"]
+  direct = true

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -42,7 +43,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 					"LIBRARY_PATH",
 				},
 			},
-			Vars: map[string]string{},
+			Vars: env.NewVars(map[string]string{}, runtime.GOOS == "windows"),
 		}
 	})
 
@@ -56,11 +57,11 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "bin"),
 				filepath.Join(tmpDir, "lib"),
 			)
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"PATH":            "some",
 				"LD_LIBRARY_PATH": "some-ld",
 				"LIBRARY_PATH":    "some-library",
-			}
+			}, false)
 			if err := envv.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -119,7 +120,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "value-override", filepath.Join(tmpDir, "VAR_OVERRIDE.override"), filepath.Join(tmpDir, "VAR_OVERRIDE_NEW.override"))
 			mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
 
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"VAR_NORMAL":        "value-normal-orig",
 				"VAR_NORMAL_DELIM":  "value-normal-delim-orig",
 				"VAR_APPEND":        "value-append-orig",
@@ -128,7 +129,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				"VAR_PREPEND_DELIM": "value-prepend-delim-orig",
 				"VAR_DEFAULT":       "value-default-orig",
 				"VAR_OVERRIDE":      "value-override-orig",
-			}
+			}, false)
 			if err := envv.AddEnvDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
@@ -168,12 +169,12 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
 			mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
 
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"VAR_EMPTY":       "",
 				"VAR_OVERRIDE":    "value-override-orig",
 				"PATH":            "value-path-orig",
 				"LD_LIBRARY_PATH": strings.Join([]string{"value-ld-library-path-orig1", "value-ld-library-path-orig2"}, string(os.PathListSeparator)),
-			}
+			}, false)
 			out, err := envv.WithPlatform(tmpDir)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
@@ -199,9 +200,9 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkdir(t,
 				filepath.Join(tmpDir, "bin"),
 			)
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"PATH": "path-orig",
-			}
+			}, false)
 			if err := envv.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}

@@ -1,15 +1,17 @@
 // +build linux darwin
 
-package launch_test
+package testhelpers
 
 import (
 	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	"github.com/buildpacks/lifecycle/launch"
 )
 
-func syscallExecWithStdout(t *testing.T, tmpDir string) func(argv0 string, argv []string, envv []string) error {
+func SyscallExecWithStdout(t *testing.T, tmpDir string) launch.ExecFunc {
 	t.Helper()
 	fstdin, err := os.Create(filepath.Join(tmpDir, "stdin"))
 	if err != nil {

@@ -4,16 +4,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 type Env struct {
 	RootDirMap map[string][]string
-	Vars       map[string]string
+	Vars       *Vars
 }
 
-func varsFromEnviron(environ []string, removeKey func(string) bool) map[string]string {
-	vars := make(map[string]string)
+func varsFromEnviron(environ []string, removeKey func(string) bool) *Vars {
+	vars := NewVars(nil, runtime.GOOS == "windows")
 	for _, kv := range environ {
 		parts := strings.SplitN(kv, "=", 2)
 		if len(parts) != 2 {
@@ -22,7 +23,7 @@ func varsFromEnviron(environ []string, removeKey func(string) bool) map[string]s
 		if removeKey(parts[0]) {
 			continue
 		}
-		vars[parts[0]] = parts[1]
+		vars.Set(parts[0], parts[1])
 	}
 	return vars
 }
@@ -40,7 +41,7 @@ func (p *Env) AddRootDir(baseDir string) error {
 			return err
 		}
 		for _, key := range vars {
-			p.Vars[key] = newDir + prefix(p.Vars[key], os.PathListSeparator)
+			p.Vars.Set(key, newDir+prefix(p.Vars.Get(key), os.PathListSeparator))
 		}
 	}
 	return nil
@@ -56,57 +57,46 @@ func (p *Env) AddEnvDir(envDir string) error {
 		}
 		switch action {
 		case "prepend":
-			p.Vars[name] = v + prefix(p.Vars[name], delim(envDir, name)...)
+			p.Vars.Set(name, v+prefix(p.Vars.Get(name), delim(envDir, name)...))
 		case "append":
-			p.Vars[name] = suffix(p.Vars[name], delim(envDir, name)...) + v
+			p.Vars.Set(name, suffix(p.Vars.Get(name), delim(envDir, name)...)+v)
 		case "override":
-			p.Vars[name] = v
+			p.Vars.Set(name, v)
 		case "default":
-			if p.Vars[name] != "" {
+			if p.Vars.Get(name) != "" {
 				return nil
 			}
-			p.Vars[name] = v
+			p.Vars.Set(name, v)
 		case "":
-			p.Vars[name] = v + prefix(p.Vars[name], delim(envDir, name, os.PathListSeparator)...)
+			p.Vars.Set(name, v+prefix(p.Vars.Get(name), delim(envDir, name, os.PathListSeparator)...))
 		}
 		return nil
 	})
 }
 
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
-	vars := make(map[string]string)
-	for key, value := range p.Vars {
-		vars[key] = value
-	}
+	vars := NewVars(p.Vars.vals, runtime.GOOS == "windows")
 
 	if err := eachEnvFile(filepath.Join(platformDir, "env"), func(k, v string) error {
 		if p.isRootEnv(k) {
-			vars[k] = v + prefix(vars[k], os.PathListSeparator)
+			vars.Set(k, v+prefix(vars.Get(k), os.PathListSeparator))
 			return nil
 		}
-		vars[k] = v
+		vars.Set(k, v)
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-	return list(vars), nil
+	return vars.List(), nil
 }
 
 func (p *Env) List() []string {
-	return list(p.Vars)
+	return p.Vars.List()
 }
 
 // Get returns the value for the given key
 func (p *Env) Get(k string) string {
-	return p.Vars[k]
-}
-
-func list(vars map[string]string) []string {
-	var environ []string
-	for k, v := range vars {
-		environ = append(environ, k+"="+v)
-	}
-	return environ
+	return p.Vars.Get(k)
 }
 
 func prefix(s string, prefix ...byte) string {

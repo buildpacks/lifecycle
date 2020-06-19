@@ -2,9 +2,6 @@ package main
 
 import (
 	"os"
-	"os/exec"
-	"runtime"
-	"syscall"
 
 	"github.com/BurntSushi/toml"
 
@@ -36,19 +33,6 @@ func runLaunch() error {
 		return cmd.FailErr(err, "read metadata")
 	}
 
-	var ex launch.ExecFunc
-	if runtime.GOOS == "windows" {
-		ex = func(argv0 string, argv []string, envv []string) error {
-			c := exec.Command(argv0, argv...)
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			c.Env = envv
-			return c.Run()
-		}
-	} else {
-		ex = syscall.Exec
-	}
-
 	launcher := &launch.Launcher{
 		DefaultProcessType: defaultProcessType,
 		LayersDir:          layersDir,
@@ -56,7 +40,7 @@ func runLaunch() error {
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
 		Env:                env.NewLaunchEnv(os.Environ()),
-		Exec:               ex,
+		Exec:               launch.OSExecFunc,
 		Setenv:             os.Setenv,
 	}
 
