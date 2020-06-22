@@ -1,5 +1,7 @@
 package env
 
+import "runtime"
+
 var LaunchEnvExcludelist = []string{
 	"CNB_LAYERS_DIR",
 	"CNB_APP_DIR",
@@ -9,7 +11,7 @@ var LaunchEnvExcludelist = []string{
 func NewLaunchEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXLaunchEnv,
-		Vars:       varsFromEnviron(environ, isExcluded),
+		Vars:       varsFromEnviron(environ, runtime.GOOS == "windows", isExcluded),
 	}
 }
 

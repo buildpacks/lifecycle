@@ -1,5 +1,7 @@
 package env
 
+import "runtime"
+
 var BuildEnvIncludelist = []string{
 	"CNB_STACK_ID",
 	"HOSTNAME",
@@ -9,7 +11,7 @@ var BuildEnvIncludelist = []string{
 func NewBuildEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		Vars:       varsFromEnviron(environ, isNotIncluded),
+		Vars:       varsFromEnviron(environ, runtime.GOOS == "windows", isNotIncluded),
 	}
 }
 

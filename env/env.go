@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -13,8 +12,8 @@ type Env struct {
 	Vars       *Vars
 }
 
-func varsFromEnviron(environ []string, removeKey func(string) bool) *Vars {
-	vars := NewVars(nil, runtime.GOOS == "windows")
+func varsFromEnviron(environ []string, ignoreCase bool, removeKey func(string) bool) *Vars {
+	vars := NewVars(nil, ignoreCase)
 	for _, kv := range environ {
 		parts := strings.SplitN(kv, "=", 2)
 		if len(parts) != 2 {
@@ -75,7 +74,7 @@ func (p *Env) AddEnvDir(envDir string) error {
 }
 
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
-	vars := NewVars(p.Vars.vals, runtime.GOOS == "windows")
+	vars := NewVars(p.Vars.vals, p.Vars.ignoreCase)
 
 	if err := eachEnvFile(filepath.Join(platformDir, "env"), func(k, v string) error {
 		if p.isRootEnv(k) {
