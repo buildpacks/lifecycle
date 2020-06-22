@@ -39,14 +39,14 @@ impl<E: Env> Launcher<E> {
     }
 
     #[allow(dead_code)]
-    pub fn launch(&mut self, mut processes: Vec<Process>) -> Result<(), Error> {
+    pub fn launch(&mut self, args: &[String], mut processes: Vec<Process>) -> Result<(), Error> {
         let profile_d = walk_layers_dir(
             &mut self.env,
             &self.app_dir,
             &self.layers_dir,
             &self.buildpacks,
         )?;
-        let process = detect_process(&[], &self.default_process_type, &mut processes)
+        let process = detect_process(args, &self.default_process_type, &mut processes)
             .ok_or("Can not find start command")
             .unwrap();
         std::env::set_current_dir(&self.app_dir)?;
@@ -76,12 +76,13 @@ impl<E: Env> Launcher<E> {
             let mut args_owned: Vec<CString> = Vec::new();
             args_owned.push(CString::new("bash")?);
             args_owned.push(CString::new("-c")?);
-            args_owned.append(
-                &mut profile_d
-                    .into_iter()
-                    .map(|p| CString::new(p.into_os_string().into_string().unwrap()).unwrap())
-                    .collect::<Vec<CString>>(),
-            );
+            let mut profile_d_vec = profile_d
+                .into_iter()
+                .map(|p| format!("source \"{}\"", p.into_os_string().into_string().unwrap()))
+                .collect::<Vec<String>>();
+            profile_d_vec.push("exec bash -c \"$@\"".to_string());
+            args_owned.push(CString::new(profile_d_vec.join("\n")).unwrap());
+            args_owned.push(CString::new(args[0].to_owned()).unwrap());
             args_owned.append(
                 &mut process
                     .args
@@ -89,7 +90,6 @@ impl<E: Env> Launcher<E> {
                     .map(|arg| CString::new(arg).unwrap())
                     .collect::<Vec<CString>>(),
             );
-            args_owned.push(CString::new("launcher")?);
             args_owned.push(CString::new(process.command)?);
             nix::unistd::execve(
                 &path,
@@ -262,26 +262,27 @@ fn detect_process(
     default_process_type: &str,
     processes: &mut Vec<Process>,
 ) -> Option<Process> {
-    if argv.is_empty() {
+    if argv.len() <= 1 {
         return find_process_by_type(processes, default_process_type);
-    } else if argv.len() == 1 {
-        let process = find_process_by_type(processes, &argv[0]);
+    } else if argv.len() == 2 {
+        let process = find_process_by_type(processes, &argv[1]);
         if process.is_some() {
             return process;
         }
-    } else if argv[0] == "--" {
+    // direct
+    } else if argv[1] == "--" {
         return Some(Process {
             r#type: "".to_string(),
-            command: argv[1].clone(),
-            args: argv[2..argv.len()].to_vec(),
+            command: argv[2].clone(),
+            args: argv[3..argv.len()].to_vec(),
             direct: true,
         });
     }
 
     Some(Process {
         r#type: "".to_string(),
-        command: argv[0].clone(),
-        args: argv[1..argv.len()].to_vec(),
+        command: argv[1].clone(),
+        args: argv[2..argv.len()].to_vec(),
         direct: false,
     })
 }
@@ -297,6 +298,8 @@ mod tests {
     use crate::env::test_helpers::TestEnv;
     use std::{collections::HashMap, fs};
     use tempdir::TempDir;
+
+    const ARG0: &str = "/cnb/lifecycle/launcher";
 
     #[test]
     fn it_adds_dirs_to_env() -> Result<(), Error> {
@@ -508,7 +511,14 @@ mod tests {
         processes.push(worker.clone());
 
         assert_eq!(
-            detect_process(&["worker".to_string()], "web", &mut processes),
+            detect_process(
+                &[ARG0, "worker"]
+                    .iter()
+                    .map(|&s| s.to_string())
+                    .collect::<Vec<String>>(),
+                "web",
+                &mut processes
+            ),
             Some(worker)
         );
     }
@@ -518,7 +528,14 @@ mod tests {
         let mut processes = Vec::new();
 
         assert_eq!(
-            detect_process(&["bash".to_string()], "web", &mut processes),
+            detect_process(
+                &[ARG0, "bash"]
+                    .iter()
+                    .map(|&s| s.to_string())
+                    .collect::<Vec<String>>(),
+                "web",
+                &mut processes
+            ),
             Some(Process {
                 r#type: "".to_string(),
                 command: "bash".to_string(),
@@ -534,7 +551,7 @@ mod tests {
 
         assert_eq!(
             detect_process(
-                &["--", "bin/rails", "start"]
+                &[ARG0, "--", "bin/rails", "start"]
                     .iter()
                     .map(|&s| s.to_string())
                     .collect::<Vec<String>>(),
@@ -556,7 +573,7 @@ mod tests {
 
         assert_eq!(
             detect_process(
-                &["bin/rails", "start"]
+                &[ARG0, "bin/rails", "start"]
                     .iter()
                     .map(|&s| s.to_string())
                     .collect::<Vec<String>>(),

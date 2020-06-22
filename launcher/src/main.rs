@@ -35,6 +35,7 @@ fn launch() -> Result<(), Error> {
     let build_metadata: BuildMetadata = toml::from_str(&std::fs::read_to_string(
         layers_dir.join("config").join("metadata.toml"),
     )?)?;
+    let args = std::env::args().collect::<Vec<String>>();
 
     let mut launcher = Launcher::new(
         app_dir,
@@ -43,7 +44,7 @@ fn launch() -> Result<(), Error> {
         build_metadata.buildpacks,
         env::OsEnv,
     );
-    launcher.launch(build_metadata.processes)?;
+    launcher.launch(&args, build_metadata.processes)?;
 
     Ok(())
 }
