@@ -18,6 +18,7 @@ pub trait Env {
         k: K,
         position: Position,
         v: P,
+        delimiter: Option<&str>,
     ) -> Result<(), Error> {
         let value = v.as_ref();
         let env_value = &self.var_os(&k);
@@ -29,7 +30,18 @@ pub trait Env {
                 Position::Prefix => paths.insert(0, value.to_path_buf()),
                 Position::Suffix => paths.push(value.to_path_buf()),
             }
-            self.set_var(&k, std::env::join_paths(paths)?);
+            if let Some(delimiter) = delimiter {
+                self.set_var(
+                    &k,
+                    paths
+                        .iter()
+                        .map(|path| path.as_os_str().to_str().unwrap().to_string())
+                        .collect::<Vec<String>>()
+                        .join(delimiter),
+                );
+            } else {
+                self.set_var(&k, std::env::join_paths(paths)?);
+            }
         } else {
             self.set_var(&k, value);
         }
@@ -118,7 +130,7 @@ mod tests {
         let value = Path::new("/tmp/foo");
         let key = "TEST";
 
-        assert!(env.modify_var(key, Position::Prefix, &value).is_ok());
+        assert!(env.modify_var(key, Position::Prefix, &value, None).is_ok());
         assert_eq!(env.var_os(key).unwrap(), value);
     }
 
@@ -128,7 +140,7 @@ mod tests {
         let value = Path::new("/tmp/foo");
         let key = "TEST";
 
-        assert!(env.modify_var(key, Position::Suffix, &value).is_ok());
+        assert!(env.modify_var(key, Position::Suffix, &value, None).is_ok());
         assert_eq!(env.var_os(key).unwrap(), value);
     }
 
@@ -139,7 +151,7 @@ mod tests {
         let key = "TEST";
         env.set_var(key, "/tmp/bar");
 
-        assert!(env.modify_var(key, Position::Prefix, &value).is_ok());
+        assert!(env.modify_var(key, Position::Prefix, &value, None).is_ok());
         assert_eq!(env.var_os(key).unwrap(), "/tmp/foo:/tmp/bar");
     }
 
@@ -150,8 +162,21 @@ mod tests {
         let key = "TEST";
         env.set_var(key, "/tmp/bar");
 
-        assert!(env.modify_var(key, Position::Suffix, &value).is_ok());
+        assert!(env.modify_var(key, Position::Suffix, &value, None).is_ok());
         assert_eq!(env.var_os(key).unwrap(), "/tmp/bar:/tmp/foo");
+    }
+
+    #[test]
+    fn it_modifies_var_path_delimiter() {
+        let mut env = TestEnv::new();
+        let value = Path::new("/tmp/foo");
+        let key = "TEST";
+        env.set_var(key, "/tmp/bar");
+
+        assert!(env
+            .modify_var(key, Position::Suffix, &value, Some("**"))
+            .is_ok());
+        assert_eq!(env.var_os(key).unwrap(), "/tmp/bar**/tmp/foo");
     }
 
     #[test]

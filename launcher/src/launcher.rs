@@ -186,7 +186,7 @@ fn add_root_layer_dirs<P: AsRef<Path>>(
     for (dir_name, var_name) in posix_env {
         let dir_path = path.join(dir_name);
         if dir_path.is_dir() {
-            env.modify_var(&var_name, Position::Prefix, &dir_path)?;
+            env.modify_var(&var_name, Position::Prefix, &dir_path, None)?;
         }
     }
 
@@ -207,7 +207,16 @@ fn add_env_layer_dirs<P: AsRef<Path>>(
                 if let Ok(env_file_entry) = env_file_entry {
                     let env_file_path = env_file_entry.path();
 
-                    add_env_file(env, &env_file_path)?;
+                    if let Some(ext) = env_file_path.extension() {
+                        if ext != "delim" {
+                            let delim_file = env_file_path.with_extension("delim");
+                            let delimiter = fs::read_to_string(delim_file)?;
+                            add_env_file(env, &env_file_path, Some(&delimiter))?;
+                            continue;
+                        }
+                    }
+
+                    add_env_file(env, &env_file_path, None)?;
                 }
             }
         }
@@ -216,7 +225,11 @@ fn add_env_layer_dirs<P: AsRef<Path>>(
     Ok(())
 }
 
-fn add_env_file<P: AsRef<Path>>(env: &mut impl Env, p: P) -> Result<(), Error> {
+fn add_env_file<P: AsRef<Path>>(
+    env: &mut impl Env,
+    p: P,
+    delimiter: Option<&str>,
+) -> Result<(), Error> {
     let path = p.as_ref();
 
     if !path.is_file() {
@@ -229,15 +242,15 @@ fn add_env_file<P: AsRef<Path>>(env: &mut impl Env, p: P) -> Result<(), Error> {
         match path.extension() {
             Some(ext) => {
                 if ext == "prepend" {
-                    env.modify_var(var_name, Position::Prefix, &value)?;
+                    env.modify_var(var_name, Position::Prefix, &value, delimiter)?;
                 } else if ext == "append" {
-                    env.modify_var(var_name, Position::Suffix, &value)?;
+                    env.modify_var(var_name, Position::Suffix, &value, delimiter)?;
                 } else if ext == "override" || (ext == "default" && env.var_os(var_name).is_none())
                 {
                     env.set_var(var_name, &value);
                 }
             }
-            None => env.modify_var(var_name, Position::Suffix, &value)?,
+            None => env.modify_var(var_name, Position::Suffix, &value, delimiter)?,
         }
     }
 
@@ -306,13 +319,42 @@ mod tests {
     }
 
     #[test]
+    fn it_adds_env_layer_dirs() -> Result<(), Error> {
+        let mut env = TestEnv::new();
+        let tmpdir = TempDir::new("launcher")?;
+        let dirs = ["env", "env.launch"];
+        let env_path = tmpdir.path().join("env");
+        let env_launch_path = tmpdir.path().join("env.launch");
+
+        for dir in [&env_path, &env_launch_path].iter() {
+            fs::create_dir(dir)?;
+        }
+
+        fs::write(env_path.join("FOO"), "FOO")?;
+        fs::write(env_path.join("BAR"), "BAR")?;
+        env.set_var("BAZ", "BAZ");
+        fs::write(env_path.join("BAZ.append"), "BAZZY")?;
+        fs::write(env_path.join("BAZ.delim"), "||")?;
+        fs::write(env_path.join("BOO.delim"), "BOO")?;
+
+        assert!(add_env_layer_dirs(&mut env, &tmpdir.path(), &dirs).is_ok());
+        assert_eq!(env.var_os("FOO").unwrap(), "FOO");
+        assert_eq!(env.var_os("BAR").unwrap(), "BAR");
+        assert_eq!(env.var_os("BAZ").unwrap(), "BAZ||BAZZY");
+        assert_eq!(env.var_os("BOO"), None);
+
+        Ok(())
+    }
+
+    #[test]
     fn it_adds_env_file_not_file() -> Result<(), Error> {
         let mut env = TestEnv::new();
         let tmpdir = TempDir::new("launcher")?;
         let env_path = tmpdir.path().join("env");
         fs::create_dir(&env_path)?;
 
-        assert!(add_env_file(&mut env, &env_path).is_ok());
+        assert!(add_env_file(&mut env, &env_path, None).is_ok());
+        assert_eq!(env.list()?.len(), 0);
 
         Ok(())
     }
@@ -326,7 +368,7 @@ mod tests {
         env.set_var(var, "bar");
         fs::write(&env_path, "foo")?;
 
-        assert!(add_env_file(&mut env, &env_path).is_ok());
+        assert!(add_env_file(&mut env, &env_path, None).is_ok());
         assert_eq!(env.var_os(var).unwrap(), "foo:bar");
 
         Ok(())
@@ -341,7 +383,7 @@ mod tests {
         env.set_var(var, "bar");
         fs::write(&env_path, "foo")?;
 
-        assert!(add_env_file(&mut env, &env_path).is_ok());
+        assert!(add_env_file(&mut env, &env_path, None).is_ok());
         assert_eq!(env.var_os(var).unwrap(), "bar:foo");
 
         Ok(())
@@ -356,7 +398,7 @@ mod tests {
         env.set_var(var, "bar");
         fs::write(&env_path, "foo")?;
 
-        assert!(add_env_file(&mut env, &env_path).is_ok());
+        assert!(add_env_file(&mut env, &env_path, None).is_ok());
         assert_eq!(env.var_os(var).unwrap(), "foo");
 
         Ok(())
@@ -371,7 +413,7 @@ mod tests {
         env.set_var(var, "bar");
         fs::write(&env_path, "foo")?;
 
-        assert!(add_env_file(&mut env, &env_path).is_ok());
+        assert!(add_env_file(&mut env, &env_path, None).is_ok());
         assert_eq!(env.var_os(var).unwrap(), "bar");
 
         Ok(())
@@ -385,7 +427,7 @@ mod tests {
         let env_path = tmpdir.path().join(format!("{}.default", var));
         fs::write(&env_path, "foo")?;
 
-        assert!(add_env_file(&mut env, &env_path).is_ok());
+        assert!(add_env_file(&mut env, &env_path, None).is_ok());
         assert_eq!(env.var_os(var).unwrap(), "foo");
 
         Ok(())
