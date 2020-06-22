@@ -91,6 +91,7 @@ impl<E: Env> Launcher<E> {
                     .collect::<Vec<CString>>(),
             );
             args_owned.push(CString::new(process.command)?);
+            println!("{:?}", args_owned);
             nix::unistd::execve(
                 &path,
                 &args_owned
@@ -171,6 +172,11 @@ fn walk_layers_dir<A: AsRef<Path>, L: AsRef<Path>>(
             // build profile.d script
             profile_d.append(&mut collect_layer_profile_d(&layer_path)?);
         }
+    }
+
+    let workspace_profile = app_dir.join(".profile");
+    if workspace_profile.exists() {
+        profile_d.push(workspace_profile);
     }
 
     Ok(profile_d)
@@ -594,6 +600,7 @@ mod tests {
         let mut env = TestEnv::new();
         let tmpdir = TempDir::new("launcher")?;
         let app_dir = tmpdir.path().join("workspace");
+        let app_dir_profile_path = app_dir.join(".profile");
         let layers_dir = tmpdir.path().join("layers");
         let ruby_buildpack = Buildpack::new("heroku/ruby", "1.0.0");
         let ruby_path = layers_dir.join(&ruby_buildpack.path_id());
@@ -623,6 +630,7 @@ mod tests {
         fs::create_dir_all(&gems_profile_d_path)?;
         fs::create_dir_all(&tools_profile_d_path)?;
 
+        fs::write(&app_dir_profile_path, "export WORKSPACE=1")?;
         fs::write(&ruby_layer_path.join("env.launch").join("FOO"), "foo")?;
         fs::write(&ruby_layer_path.join("env").join("PATH"), "vendor/ruby/bin")?;
         fs::write(&foo_profile_d_path, "export FOO=foo")?;
@@ -639,7 +647,8 @@ mod tests {
                     baz_profile_d_path,
                     bar_profile_d_path,
                     foo_profile_d_path,
-                    far_profile_d_path
+                    far_profile_d_path,
+                    app_dir_profile_path,
                 ]
                 .to_vec()
             );
