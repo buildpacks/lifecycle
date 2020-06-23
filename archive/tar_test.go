@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,30 +38,36 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#UntarLayer", func() {
-		var pathModes = []archive.PathMode{
+		layerTar := "some-linux-layer.tar"
+		pathModes := []archive.PathMode{
 			{"root", os.ModeDir + 0755},
 			{"root/readonly", os.ModeDir + 0500},
+			{"root/readonly/readonlysub", os.ModeDir + 0500},
+			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/standarddir", os.ModeDir + 0755},
 			{"root/standarddir/somefile", 0644},
-			{"root/readonly/readonlysub/somefile", 0444},
-			{"root/readonly/readonlysub", os.ModeDir + 0500},
-			{"Files", os.ModeDir + 0755},
-			{"Files/standardfile_Files", 0644},
-			{"Hives", os.ModeDir + 0755},
-			{"Hives/standardfile_Hives", 0644},
+			{"root/symlinkdir", os.ModeDir + 0755},
+			{"root/symlinkdir/subdir", os.ModeDir + 0755},
+			{"root/symlinkdir/subdir/somefile", 0644},
+			{"root/symlinkdir/symlink", 0644},
 		}
 
 		// Golang for Windows only implements owner permissions
 		if runtime.GOOS == "windows" {
+			layerTar = "some-windows-layer.tar"
 			pathModes = []archive.PathMode{
-				{"root", os.ModeDir + 0777},
-				{"root/readonly", os.ModeDir + 0555},
-				{"root/standarddir", os.ModeDir + 0777},
-				{"root/standarddir/somefile", 0666},
-				{"root/readonly/readonlysub/somefile", 0444},
-				{"root/readonly/readonlysub", os.ModeDir + 0555},
-				{"standardfile_Files", 0666},
-				{"standardfile_Hives", 0666},
+				{`root`, os.ModeDir + 0777},
+				{`root\readonly`, os.ModeDir + 0555},
+				{`root\readonly\readonlysub`, os.ModeDir + 0555},
+				{`root\readonly\readonlysub\somefile`, 0444},
+				{`root\standarddir`, os.ModeDir + 0777},
+				{`root\standarddir\somefile`, 0666},
+				{`root\symlinkdir`, os.ModeDir + 0777},
+				{`root\symlinkdir\subdir`, os.ModeDir + 0777},
+				{`root\symlinkdir\subdir\somefile`, 0666},
+				{`root\symlinkdir\symlink`, 0666},
+				{`standardfile_Files`, 0666},
+				// `standardfile_Hives` intentionally left out
 			}
 		}
 
@@ -78,16 +85,29 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("extracts a tar file", func() {
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", layerTar))
 			h.AssertNil(t, err)
 			defer file.Close()
 
 			h.AssertNil(t, archive.UntarLayer(file, tmpDir))
 
+			files := tree(t, tmpDir)
+			if len(files) != len(pathModes) {
+				var expected []string
+				for _, p := range pathModes {
+					expected = append(expected, p.Path)
+				}
+				t.Fatalf("Extracted wrong number of files:\nExpected:\n- %s\n\nGot:\n- %s", strings.Join(expected, "\n- "), strings.Join(files, "\n- "))
+			}
+
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
 				fileInfo, err := os.Stat(extractedFile)
 				h.AssertNil(t, err)
+
+				if fileInfo.Mode() != pathMode.Mode {
+					t.Fatalf("Unexpected mode for '%s': expected %o but got %o\n", extractedFile, pathMode.Mode, fileInfo.Mode())
+				}
 				h.AssertEq(t, fileInfo.Mode(), pathMode.Mode)
 			}
 		})
@@ -97,7 +117,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer file.Close()
 
-			file, err = os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err = os.Open(filepath.Join("testdata", "tar-to-dir", layerTar))
 			h.AssertNil(t, err)
 			defer file.Close()
 
@@ -113,7 +133,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
 
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", layerTar))
 			h.AssertNil(t, err)
 			defer file.Close()
 
@@ -130,7 +150,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("preserves symlinks", func() {
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", layerTar))
 			h.AssertNil(t, err)
 			defer file.Close()
 
@@ -175,7 +195,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				defer file.Close()
 				tr := tar.NewReader(file)
 
-				tarContains(t, "directories", func() {
+				tarContains(t, func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata")
@@ -187,7 +207,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, "regular files", func() {
+				tarContains(t, func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/some-file.txt")
@@ -200,14 +220,14 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, "sub directories", func() {
+				tarContains(t, func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, "symlinks", func() {
+				tarContains(t, func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 
@@ -330,7 +350,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func tarContains(t *testing.T, m string, r func()) {
+func tarContains(t *testing.T, r func()) {
 	t.Helper()
 	r()
 }
@@ -362,4 +382,20 @@ func allParentDirectories(directory string) []string {
 		return []string{}
 	}
 	return append(allParentDirectories(parent), parent)
+}
+
+func tree(t *testing.T, directory string) []string {
+	t.Helper()
+	var files []string
+	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if path != directory {
+			files = append(files, strings.TrimPrefix(path, directory+string(filepath.Separator)))
+		}
+		return nil
+	})
+	h.AssertNil(t, err)
+	return files
 }

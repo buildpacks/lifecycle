@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 )
 
@@ -273,6 +275,9 @@ func UntarLayer(r io.Reader, dest string) error {
 		}
 
 		path := cleanImageLayerPath(hdr.Name)
+		if path == "" {
+			continue
+		}
 		path = filepath.Join(dest, filepath.FromSlash(path))
 
 		switch hdr.Typeflag {
@@ -308,6 +313,26 @@ func UntarLayer(r io.Reader, dest string) error {
 			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
 		}
 	}
+}
+
+// The windows container image filesystem contains special directories
+// that are omitted when working with an already running container
+func cleanImageLayerPath(path string) string {
+	if runtime.GOOS != "windows" {
+		return path
+	}
+
+	path = strings.TrimPrefix(path, "/")
+	parts := strings.Split(path, "/")
+	if len(parts) > 0 {
+		if parts[0] == "Files" {
+			return strings.Join(parts[1:], "/")
+		}
+		if parts[0] == "Hives" {
+			return ""
+		}
+	}
+	return path
 }
 
 func applyUmask(mode os.FileMode, umask int) os.FileMode {
