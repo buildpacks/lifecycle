@@ -1,4 +1,4 @@
-package sys
+package env
 
 const (
 	Root    = `c:\`

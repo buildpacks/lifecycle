@@ -13,7 +13,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/sys"
+	"github.com/buildpacks/lifecycle/env"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -48,7 +48,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"rebaser",
 				"lifecycle",
 			} {
-				binary := binary + sys.ExecExt
+				binary := binary + env.ExecExt
 
 				it(binary+"/should fail with error message and exit code 11", func() {
 					cmd := lifecycleCmd(binary)
