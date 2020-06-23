@@ -250,6 +250,12 @@ type PathMode struct {
 	Mode os.FileMode
 }
 
+func LayerOS() string {
+	// For now, assumes that we're always using a linux environment to build linux images,
+	// windows environment to build windows images, etc.
+	return runtime.GOOS
+}
+
 func UntarLayer(r io.Reader, dest string) error {
 	// Avoid umask from changing the file permissions in the tar file.
 	umask := setUmask(0)
@@ -274,9 +280,12 @@ func UntarLayer(r io.Reader, dest string) error {
 			return err
 		}
 
-		path := cleanImageLayerPath(hdr.Name)
-		if path == "" {
-			continue
+		path := hdr.Name
+		if LayerOS() == "windows" {
+			path = cleanWindowsLayerPath(path)
+			if path == "" {
+				continue
+			}
 		}
 		path = filepath.Join(dest, filepath.FromSlash(path))
 
@@ -317,12 +326,7 @@ func UntarLayer(r io.Reader, dest string) error {
 
 // The windows container image filesystem contains special directories
 // that are omitted when working with an already running container
-func cleanImageLayerPath(path string) string {
-	if runtime.GOOS != "windows" {
-		return path
-	}
-
-	path = strings.TrimPrefix(path, "/")
+func cleanWindowsLayerPath(path string) string {
 	parts := strings.Split(path, "/")
 	if len(parts) > 0 {
 		if parts[0] == "Files" {
