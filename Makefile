@@ -13,6 +13,7 @@ endif
 GOCMD?=go
 GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
+LDFLAGS=-s -w
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
@@ -25,7 +26,7 @@ SCM_REPO?=github.com/buildpacks/lifecycle
 PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
 SCM_COMMIT?=$(PARSED_COMMIT)
 BUILD_DIR?=$(PWD)$/out
-LINUX_COMPILATION_IMAGE?=golang:1.13-alpine
+LINUX_COMPILATION_IMAGE?=golang:1.14-alpine
 WINDOWS_COMPILATION_IMAGE?=golang:1.14-windowsservercore-1809
 SOURCE_COMPILATION_IMAGE?=lifecycle-img
 BUILD_CTR?=lifecycle-ctr
@@ -53,7 +54,7 @@ build-linux-launcher:
 	@echo "> Building lifecycle/launcher for linux..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 
 build-linux-symlinks: export GOOS:=linux
 build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
