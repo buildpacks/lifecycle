@@ -328,15 +328,10 @@ func UntarLayer(r io.Reader, dest string) error {
 // that are omitted when working with an already running container
 func cleanWindowsLayerPath(path string) string {
 	parts := strings.Split(path, "/")
-	if len(parts) > 0 {
-		if parts[0] == "Files" {
-			return strings.Join(parts[1:], "/")
-		}
-		if parts[0] == "Hives" {
-			return ""
-		}
+	if len(parts) > 0 && parts[0] == "Files" {
+		return strings.Join(parts[1:], "/")
 	}
-	return path
+	return ""
 }
 
 func applyUmask(mode os.FileMode, umask int) os.FileMode {

@@ -66,8 +66,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				{`root\symlinkdir\subdir`, os.ModeDir + 0777},
 				{`root\symlinkdir\subdir\somefile`, 0666},
 				{`root\symlinkdir\symlink`, 0666},
-				{`standardfile_Files`, 0666},
-				// `standardfile_Hives` intentionally left out
+				// other-dir/other-file intentionally left out, as it should not be extracted
 			}
 		}
 
