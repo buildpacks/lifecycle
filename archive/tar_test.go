@@ -195,7 +195,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				defer file.Close()
 				tr := tar.NewReader(file)
 
-				tarContains(t, func() {
+				tarContains(t, "directories", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata")
@@ -207,7 +207,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, func() {
+				tarContains(t, "regular files", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/some-file.txt")
@@ -220,14 +220,14 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, func() {
+				tarContains(t, "sub directories", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, func() {
+				tarContains(t, "symlinks", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 
@@ -350,7 +350,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func tarContains(t *testing.T, r func()) {
+func tarContains(t *testing.T, m string, r func()) {
 	t.Helper()
 	r()
 }
