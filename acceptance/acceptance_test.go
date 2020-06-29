@@ -13,7 +13,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/env"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -39,7 +38,7 @@ type testCase struct {
 func testVersion(t *testing.T, when spec.G, it spec.S) {
 	when("All", func() {
 		when("CNB_PLATFORM_API is set and incompatible", func() {
-			for _, binary := range []string{
+			for _, phase := range []string{
 				"analyzer",
 				"builder",
 				"detector",
@@ -48,10 +47,8 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"rebaser",
 				"lifecycle",
 			} {
-				binary := binary + env.ExecExt
-
-				it(binary+"/should fail with error message and exit code 11", func() {
-					cmd := lifecycleCmd(binary)
+				it(phase+"/should fail with error message and exit code 11", func() {
+					cmd := lifecycleCmd(phase)
 					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")
 
 					_, exitCode, err := h.RunE(cmd)
@@ -155,8 +152,8 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func lifecycleCmd(binary string, args ...string) *exec.Cmd {
-	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", binary), args...)
+func lifecycleCmd(phase string, args ...string) *exec.Cmd {
+	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", phase), args...)
 }
 
 func buildBinaries(t *testing.T, dir string, goos string) {

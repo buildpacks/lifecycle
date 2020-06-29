@@ -257,6 +257,13 @@ func LayerOS() string {
 }
 
 func UntarLayer(r io.Reader, dest string) error {
+	if dest == "" {
+		if LayerOS() == "windows" {
+			dest = `c:\`
+		} else {
+			dest = `/`
+		}
+	}
 	// Avoid umask from changing the file permissions in the tar file.
 	umask := setUmask(0)
 	defer setUmask(umask)

@@ -9,7 +9,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/env"
 )
 
 func main() {
@@ -17,7 +16,7 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	switch strings.TrimSuffix(filepath.Base(os.Args[0]), env.ExecExt) {
+	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
 		cmd.Run(&detectCmd{}, false)
 	case "analyzer":

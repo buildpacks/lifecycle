@@ -6,21 +6,19 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-
-	"github.com/buildpacks/lifecycle/env"
 )
 
 var (
-	DefaultLayersDir           = filepath.Join(env.Root, "layers")
-	DefaultAppDir              = filepath.Join(env.Root, "workspace")
-	DefaultBuildpacksDir       = filepath.Join(env.Root, "cnb", "buildpacks")
-	DefaultPlatformDir         = filepath.Join(env.Root, "platform")
-	DefaultOrderPath           = filepath.Join(env.Root, "cnb", "order.toml")
+	DefaultLayersDir           = filepath.Join(rootDir, "layers")
+	DefaultAppDir              = filepath.Join(rootDir, "workspace")
+	DefaultBuildpacksDir       = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultPlatformDir         = filepath.Join(rootDir, "platform")
+	DefaultOrderPath           = filepath.Join(rootDir, "cnb", "order.toml")
 	DefaultGroupPath           = filepath.Join(".", "group.toml")
-	DefaultStackPath           = filepath.Join(env.Root, "cnb", "stack.toml")
+	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
 	DefaultAnalyzedPath        = filepath.Join(".", "analyzed.toml")
 	DefaultPlanPath            = filepath.Join(".", "plan.toml")
-	DefaultLauncherPath        = filepath.Join(env.Root, "cnb", "lifecycle", "launcher"+env.ExecExt)
+	DefaultLauncherPath        = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
 	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
 	DefaultProcessType         = "web"
 	DefaultLogLevel            = "info"
