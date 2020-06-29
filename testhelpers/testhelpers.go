@@ -309,6 +309,8 @@ func CreateSingleFileTar(path, txt string) (io.Reader, error) {
 }
 
 func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents []byte) {
+	t.Helper()
+
 	r, err := CreateSingleFileTar("/some-file", RandString(10))
 	AssertNil(t, err)
 
@@ -330,6 +332,7 @@ func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents
 }
 
 func MustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error reading %q: %v", path, err)
