@@ -12,10 +12,6 @@ import (
 type LayerWriterFactory struct {
 }
 
-func NewLayerWriterFactory() (*LayerWriterFactory, error) {
-	return &LayerWriterFactory{}, nil
-}
-
 func (f *LayerWriterFactory) NewWriter(fileWriter io.Writer) archive.TarWriter {
 	if archive.LayerOS() == "windows" {
 		return layer.NewWindowsWriter(fileWriter)
