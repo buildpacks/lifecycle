@@ -219,11 +219,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
-				if stdout.String() != "build out: A@v1\nbuild out: B@v2\n" {
-					t.Fatalf("Unexpected stdout:\n%s\n", stdout)
+				if s := cmp.Diff(cleanEndings(stdout.String()), "build out: A@v1\nbuild out: B@v2\n"); s != "" {
+					t.Fatalf("Unexpected stdout:\n%s\n", s)
 				}
-				if stderr.String() != "build err: A@v1\nbuild err: B@v2\n" {
-					t.Fatalf("Unexpected stderr:\n%s\n", stderr)
+				if s := cmp.Diff(cleanEndings(stderr.String()), "build err: A@v1\nbuild err: B@v2\n"); s != "" {
+					t.Fatalf("Unexpected stderr:\n%s\n", s)
 				}
 			})
 
@@ -513,13 +513,17 @@ func tofile(t *testing.T, data string, paths ...string) {
 	}
 }
 
+func cleanEndings(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
+}
+
 func rdfile(t *testing.T, path string) string {
 	t.Helper()
 	out, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err)
 	}
-	return string(out)
+	return cleanEndings(string(out))
 }
 
 func testExists(t *testing.T, paths ...string) {

@@ -460,7 +460,7 @@ func allLogs(logHandler *memory.Handler) string {
 	for _, le := range logHandler.Entries {
 		out = out + le.Message + "\n"
 	}
-	return out
+	return cleanEndings(out)
 }
 
 const outputFailureEv1 = `
