@@ -215,6 +215,26 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should set CNB_BUILDPACK_DIR", func() {
+				if _, err := builder.Build(); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				bpsDir, err := filepath.Abs(builder.BuildpacksDir)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1")),
+					filepath.Join(bpsDir, "A/v1"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-B-v2")),
+					filepath.Join(bpsDir, "B/v2"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
+				}
+			})
+
 			it("should connect stdout and stdin to the terminal", func() {
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
@@ -363,12 +383,45 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("building succeeds with a clear env", func() {
-			it("should not apply user-provided env vars", func() {
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1.clear"))
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv1"), nil)
+			it.Before(func() {
+				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=with-platform"), nil)
 				builder.Group.Group[0].Version = "v1.clear"
+			})
+
+			it("should not apply user-provided env vars", func() {
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Error: %s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-A-v1.clear")),
+					"TEST_ENV: cleared\n",
+				); s != "" {
+					t.Fatalf("Unexpected info:\n%s\n", s)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-B-v2")),
+					"TEST_ENV: with-platform\n",
+				); s != "" {
+					t.Fatalf("Unexpected info:\n%s\n", s)
+				}
+			})
+
+			it("should set CNB_BUILDPACK_DIR", func() {
+				if _, err := builder.Build(); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				bpsDir, err := filepath.Abs(builder.BuildpacksDir)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1.clear")),
+					filepath.Join(bpsDir, "A/v1.clear"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-B-v2")),
+					filepath.Join(bpsDir, "B/v2"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
 				}
 			})
 		})
