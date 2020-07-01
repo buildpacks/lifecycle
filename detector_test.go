@@ -185,6 +185,34 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		it("should set CNB_BUILDPACK_DIR in the environment", func() {
+			mkappfile("0", "detect-status-A-v1.clear", "detect-status-B-v1")
+
+			_, _, err := lifecycle.BuildpackOrder{{
+				Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1.clear"},
+					{ID: "B", Version: "v2"},
+				},
+			}}.Detect(config)
+			if err != nil {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+
+			bpsDir, err := filepath.Abs(config.BuildpacksDir)
+			if err != nil {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+			expectedBpDir := filepath.Join(bpsDir, "A/v1.clear")
+			if bpDir := rdappfile("detect-env-cnb-buildpack-dir-A-v1.clear"); bpDir != expectedBpDir {
+				t.Fatalf("Unexpected buildpack dir:\n\twanted: %s\n\tgot: %s\n", expectedBpDir, bpDir)
+			}
+
+			expectedBpDir = filepath.Join(bpsDir, "B/v2")
+			if bpDir := rdappfile("detect-env-cnb-buildpack-dir-B-v2"); bpDir != expectedBpDir {
+				t.Fatalf("Unexpected buildpack dir:\n\twanted: %s\n\tgot: %s\n", expectedBpDir, bpDir)
+			}
+		})
+
 		when("a build plan is employed", func() {
 			it("should return a build plan with matched dependencies", func() {
 				mkappfile("100", "detect-status-C-v1")

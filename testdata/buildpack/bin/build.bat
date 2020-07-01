@@ -18,6 +18,7 @@ echo build out: %bp_id%@%bp_version%
 echo build err: %bp_id%@%bp_version%>&2
 
 echo TEST_ENV: %TEST_ENV%> build-info-%bp_id%-%bp_version%
+call :echon %CNB_BUILDPACK_DIR%> build-env-cnb-buildpack-dir-%bp_id%-%bp_version%
 
 mkdir build-env-%bp_id%-%bp_version%
 xcopy /e /q %platform_dir%\env build-env-%bp_id%-%bp_version% >nul

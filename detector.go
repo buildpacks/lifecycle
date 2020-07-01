@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	CodeDetectPass = 0
-	CodeDetectFail = 100
+	CodeDetectPass  = 0
+	CodeDetectFail  = 100
+	EnvBuildpackDir = "CNB_BUILDPACK_DIR"
 )
 
 var ErrFail = errors.New("no buildpacks participating")
@@ -221,6 +222,7 @@ func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
 	if bp.Buildpack.ClearEnv {
 		cmd.Env = c.ClearEnv
 	}
+	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+bp.Path)
 
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
