@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"syscall"
 
 	"github.com/BurntSushi/toml"
 
@@ -41,7 +40,7 @@ func runLaunch() error {
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
 		Env:                env.NewLaunchEnv(os.Environ()),
-		Exec:               syscall.Exec,
+		Exec:               launch.OSExecFunc,
 		Setenv:             os.Setenv,
 	}
 

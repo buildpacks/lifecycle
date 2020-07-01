@@ -163,12 +163,15 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", ea.projectMetadataPath)
 	}
 
+	writerFactory := &image.LayerWriterFactory{}
+
 	exporter := &lifecycle.Exporter{
-		Buildpacks:   group.Group,
-		Logger:       cmd.Logger,
-		UID:          ea.uid,
-		GID:          ea.gid,
-		ArtifactsDir: artifactsDir,
+		Buildpacks:         group.Group,
+		Logger:             cmd.Logger,
+		UID:                ea.uid,
+		GID:                ea.gid,
+		ArtifactsDir:       artifactsDir,
+		LayerWriterFactory: writerFactory,
 	}
 
 	var appImage imgutil.Image

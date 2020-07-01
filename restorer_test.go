@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/image"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -423,7 +424,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 func addLayerFromPath(t *testing.T, tarTempDir, layerPath string, c lifecycle.Cache) string {
 	t.Helper()
 	tarPath := filepath.Join(tarTempDir, h.RandString(10)+".tar")
-	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0)
+	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0, &image.LayerWriterFactory{})
 	h.AssertNil(t, err)
 	h.AssertNil(t, c.AddLayerFile(tarPath, sha))
 	return sha

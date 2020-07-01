@@ -1,0 +1,6 @@
+[[buildpacks]]
+
+[[processes]]
+  type = "web"
+  command = "echo Executing other-layers web process-type"
+  direct = false

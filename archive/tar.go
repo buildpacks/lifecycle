@@ -8,10 +8,32 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 )
 
-func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[string]struct{}, error) {
+type TarWriter interface {
+	WriteHeader(hdr *tar.Header) error
+	Write(b []byte) (int, error)
+	Close() error
+}
+
+type WriterFactory interface {
+	NewWriter(io.Writer) TarWriter
+}
+
+type defaultTarWriterFactory struct{}
+
+func (defaultTarWriterFactory) NewWriter(w io.Writer) TarWriter {
+	return tar.NewWriter(w)
+}
+
+func DefaultTarWriterFactory() WriterFactory {
+	return defaultTarWriterFactory{}
+}
+
+func WriteFilesToTar(dest string, uid, gid int, wf WriterFactory, files ...string) (string, map[string]struct{}, error) {
 	hasher := newConcurrentHasher(sha256.New())
 	f, err := os.Create(dest)
 	if err != nil {
@@ -20,7 +42,7 @@ func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[st
 	defer f.Close()
 
 	w := io.MultiWriter(hasher, f)
-	tw := tar.NewWriter(w)
+	tw := wf.NewWriter(w)
 
 	fileSet := map[string]struct{}{}
 	for _, file := range files {
@@ -33,7 +55,7 @@ func WriteFilesToTar(dest string, uid, gid int, files ...string) (string, map[st
 	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), fileSet, nil
 }
 
-func AddFileToArchive(tw *tar.Writer, srcDir string, uid, gid int, fileSet map[string]struct{}) error {
+func AddFileToArchive(tw TarWriter, srcDir string, uid, gid int, fileSet map[string]struct{}) error {
 	err := addParentDirsUnique(srcDir, tw, uid, gid, fileSet)
 	if err != nil {
 		return err
@@ -61,7 +83,7 @@ func AddFileToArchive(tw *tar.Writer, srcDir string, uid, gid int, fileSet map[s
 		if err != nil {
 			return err
 		}
-		header.Name = file
+		header.Name = TarPath(file)
 		header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 		header.Uid = uid
 		header.Gid = gid
@@ -87,7 +109,7 @@ func AddFileToArchive(tw *tar.Writer, srcDir string, uid, gid int, fileSet map[s
 	})
 }
 
-func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
+func WriteTarFile(sourceDir, dest string, uid, gid int, wf WriterFactory) (string, error) {
 	f, err := os.Create(dest)
 	if err != nil {
 		return "", err
@@ -97,7 +119,7 @@ func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
 	hasher := newConcurrentHasher(sha256.New())
 	w := bufio.NewWriterSize(io.MultiWriter(hasher, f), 1024*1024)
 
-	if err := WriteTarArchive(w, sourceDir, uid, gid); err != nil {
+	if err := WriteTarArchive(w, wf, sourceDir, uid, gid); err != nil {
 		return "", err
 	}
 
@@ -108,10 +130,10 @@ func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
 	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), nil
 }
 
-func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
+func WriteTarArchive(w io.Writer, wf WriterFactory, srcDir string, uid, gid int) error {
 	srcDir = filepath.Clean(srcDir)
 
-	tw := tar.NewWriter(w)
+	tw := wf.NewWriter(w)
 	defer tw.Close()
 
 	err := addParentDirs(srcDir, tw, uid, gid)
@@ -134,11 +156,11 @@ func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 				return err
 			}
 		}
-		header, err = tar.FileInfoHeader(fi, target)
+		header, err = tar.FileInfoHeader(fi, TarPath(target))
 		if err != nil {
 			return err
 		}
-		header.Name = file
+		header.Name = TarPath(file)
 		header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 		header.Uid = uid
 		header.Gid = gid
@@ -162,9 +184,9 @@ func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 	})
 }
 
-func addParentDirsUnique(tarDir string, tw *tar.Writer, uid, gid int, parentDirs map[string]struct{}) error {
+func addParentDirsUnique(tarDir string, tw TarWriter, uid, gid int, parentDirs map[string]struct{}) error {
 	parent := filepath.Dir(tarDir)
-	if parent == "." || parent == "/" {
+	if parent == "." || parent == pathRoot(tarDir) {
 		return nil
 	}
 
@@ -185,7 +207,7 @@ func addParentDirsUnique(tarDir string, tw *tar.Writer, uid, gid int, parentDirs
 	if err != nil {
 		return err
 	}
-	header.Name = parent
+	header.Name = TarPath(parent)
 	header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 
 	parentDirs[parent] = struct{}{}
@@ -193,9 +215,13 @@ func addParentDirsUnique(tarDir string, tw *tar.Writer, uid, gid int, parentDirs
 	return tw.WriteHeader(header)
 }
 
-func addParentDirs(tarDir string, tw *tar.Writer, uid, gid int) error {
+func pathRoot(path string) string {
+	return filepath.VolumeName(path) + string(filepath.Separator)
+}
+
+func addParentDirs(tarDir string, tw TarWriter, uid, gid int) error {
 	parent := filepath.Dir(tarDir)
-	if parent == "." || parent == "/" {
+	if parent == "." || parent == pathRoot(tarDir) {
 		return nil
 	}
 
@@ -212,7 +238,8 @@ func addParentDirs(tarDir string, tw *tar.Writer, uid, gid int) error {
 	if err != nil {
 		return err
 	}
-	header.Name = parent
+
+	header.Name = TarPath(parent)
 	header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 
 	return tw.WriteHeader(header)
@@ -223,7 +250,20 @@ type PathMode struct {
 	Mode os.FileMode
 }
 
-func Untar(r io.Reader, dest string) error {
+func LayerOS() string {
+	// For now, assumes that we're always using a linux environment to build linux images,
+	// windows environment to build windows images, etc.
+	return runtime.GOOS
+}
+
+func UntarLayer(r io.Reader, dest string) error {
+	if dest == "" {
+		if LayerOS() == "windows" {
+			dest = `c:\`
+		} else {
+			dest = `/`
+		}
+	}
 	// Avoid umask from changing the file permissions in the tar file.
 	umask := setUmask(0)
 	defer setUmask(umask)
@@ -247,7 +287,14 @@ func Untar(r io.Reader, dest string) error {
 			return err
 		}
 
-		path := filepath.Join(dest, hdr.Name)
+		path := hdr.Name
+		if LayerOS() == "windows" {
+			path = cleanWindowsLayerPath(path)
+			if path == "" {
+				continue
+			}
+		}
+		path = filepath.Join(dest, filepath.FromSlash(path))
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
@@ -282,6 +329,16 @@ func Untar(r io.Reader, dest string) error {
 			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
 		}
 	}
+}
+
+// The windows container image filesystem contains special directories
+// that are omitted when working with an already running container
+func cleanWindowsLayerPath(path string) string {
+	parts := strings.Split(path, "/")
+	if len(parts) > 0 && parts[0] == "Files" {
+		return strings.Join(parts[1:], "/")
+	}
+	return ""
 }
 
 func applyUmask(mode os.FileMode, umask int) os.FileMode {

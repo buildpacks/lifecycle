@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -41,7 +43,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 					"LIBRARY_PATH",
 				},
 			},
-			Vars: map[string]string{},
+			Vars: env.NewVars(map[string]string{}, runtime.GOOS == "windows"),
 		}
 	})
 
@@ -55,21 +57,24 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "bin"),
 				filepath.Join(tmpDir, "lib"),
 			)
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"PATH":            "some",
 				"LD_LIBRARY_PATH": "some-ld",
 				"LIBRARY_PATH":    "some-library",
-			}
+			}, false)
 			if err := envv.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			out := envv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
-				fmt.Sprintf("LD_LIBRARY_PATH=%s/lib:some-ld", tmpDir),
-				fmt.Sprintf("LIBRARY_PATH=%s/lib:some-library", tmpDir),
-				fmt.Sprintf("PATH=%s/bin:some", tmpDir),
-			}); s != "" {
+
+			expected := []string{
+				formEnv("LD_LIBRARY_PATH", filepath.Join(tmpDir, "lib"), "some-ld"),
+				formEnv("LIBRARY_PATH", filepath.Join(tmpDir, "lib"), "some-library"),
+				formEnv("PATH", filepath.Join(tmpDir, "bin"), "some"),
+			}
+
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
@@ -84,11 +89,13 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			}
 			out := envv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
-				fmt.Sprintf("LD_LIBRARY_PATH=%s/lib", tmpDir),
-				fmt.Sprintf("LIBRARY_PATH=%s/lib", tmpDir),
-				fmt.Sprintf("PATH=%s/bin", tmpDir),
-			}); s != "" {
+
+			expected := []string{
+				formEnv("LD_LIBRARY_PATH", filepath.Join(tmpDir, "lib")),
+				formEnv("LIBRARY_PATH", filepath.Join(tmpDir, "lib")),
+				formEnv("PATH", filepath.Join(tmpDir, "bin")),
+			}
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
 		})
@@ -113,7 +120,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "value-override", filepath.Join(tmpDir, "VAR_OVERRIDE.override"), filepath.Join(tmpDir, "VAR_OVERRIDE_NEW.override"))
 			mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
 
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"VAR_NORMAL":        "value-normal-orig",
 				"VAR_NORMAL_DELIM":  "value-normal-delim-orig",
 				"VAR_APPEND":        "value-append-orig",
@@ -122,30 +129,32 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				"VAR_PREPEND_DELIM": "value-prepend-delim-orig",
 				"VAR_DEFAULT":       "value-default-orig",
 				"VAR_OVERRIDE":      "value-override-orig",
-			}
+			}, false)
 			if err := envv.AddEnvDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			out := envv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
-				"VAR_APPEND=value-append-origvalue-append",
-				"VAR_APPEND_DELIM=value-append-delim-orig[]value-append-delim",
-				"VAR_APPEND_DELIM_NEW=value-append-delim",
-				"VAR_APPEND_NEW=value-append",
-				"VAR_DEFAULT=value-default-orig",
-				"VAR_DEFAULT_NEW=value-default",
-				"VAR_NORMAL=value-normal:value-normal-orig",
-				"VAR_NORMAL_DELIM=value-normal-delim[]value-normal-delim-orig",
-				"VAR_NORMAL_DELIM_NEW=value-normal-delim",
-				"VAR_NORMAL_NEW=value-normal",
-				"VAR_OVERRIDE=value-override",
-				"VAR_OVERRIDE_NEW=value-override",
-				"VAR_PREPEND=value-prependvalue-prepend-orig",
-				"VAR_PREPEND_DELIM=value-prepend-delim[]value-prepend-delim-orig",
-				"VAR_PREPEND_DELIM_NEW=value-prepend-delim",
-				"VAR_PREPEND_NEW=value-prepend",
-			}); s != "" {
+
+			expected := []string{
+				formEnv("VAR_APPEND", "value-append-origvalue-append"),
+				formEnv("VAR_APPEND_DELIM", "value-append-delim-orig[]value-append-delim"),
+				formEnv("VAR_APPEND_DELIM_NEW", "value-append-delim"),
+				formEnv("VAR_APPEND_NEW", "value-append"),
+				formEnv("VAR_DEFAULT", "value-default-orig"),
+				formEnv("VAR_DEFAULT_NEW", "value-default"),
+				formEnv("VAR_NORMAL", "value-normal", "value-normal-orig"),
+				formEnv("VAR_NORMAL_DELIM", "value-normal-delim[]value-normal-delim-orig"),
+				formEnv("VAR_NORMAL_DELIM_NEW", "value-normal-delim"),
+				formEnv("VAR_NORMAL_NEW", "value-normal"),
+				formEnv("VAR_OVERRIDE", "value-override"),
+				formEnv("VAR_OVERRIDE_NEW", "value-override"),
+				formEnv("VAR_PREPEND", "value-prependvalue-prepend-orig"),
+				formEnv("VAR_PREPEND_DELIM", "value-prepend-delim[]value-prepend-delim-orig"),
+				formEnv("VAR_PREPEND_DELIM_NEW", "value-prepend-delim"),
+				formEnv("VAR_PREPEND_NEW", "value-prepend"),
+			}
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
@@ -160,25 +169,27 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
 			mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
 
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"VAR_EMPTY":       "",
 				"VAR_OVERRIDE":    "value-override-orig",
 				"PATH":            "value-path-orig",
-				"LD_LIBRARY_PATH": "value-ld-library-path-orig1:value-ld-library-path-orig2",
-			}
+				"LD_LIBRARY_PATH": strings.Join([]string{"value-ld-library-path-orig1", "value-ld-library-path-orig2"}, string(os.PathListSeparator)),
+			}, false)
 			out, err := envv.WithPlatform(tmpDir)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
-				"LD_LIBRARY_PATH=value-ld-library-path:value-ld-library-path-orig1:value-ld-library-path-orig2",
-				"LIBRARY_PATH=value-library-path",
-				"PATH=value-path:value-path-orig",
-				"VAR_EMPTY=",
-				"VAR_NORMAL=value-normal",
-				"VAR_OVERRIDE=value-override",
-			}); s != "" {
+
+			expected := []string{
+				formEnv("LD_LIBRARY_PATH", "value-ld-library-path", "value-ld-library-path-orig1", "value-ld-library-path-orig2"),
+				formEnv("LIBRARY_PATH", "value-library-path"),
+				formEnv("PATH", "value-path", "value-path-orig"),
+				formEnv("VAR_EMPTY", ""),
+				formEnv("VAR_NORMAL", "value-normal"),
+				formEnv("VAR_OVERRIDE", "value-override"),
+			}
+			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
 			}
 		})
@@ -189,17 +200,23 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkdir(t,
 				filepath.Join(tmpDir, "bin"),
 			)
-			envv.Vars = map[string]string{
+			envv.Vars = env.NewVars(map[string]string{
 				"PATH": "path-orig",
-			}
+			}, false)
 			if err := envv.AddRootDir(tmpDir); err != nil {
 				t.Fatalf("Error: %s\n", err)
 			}
-			if s := cmp.Diff(envv.Get("PATH"), fmt.Sprintf("%s/bin:path-orig", tmpDir)); s != "" {
+
+			expected := strings.Join([]string{filepath.Join(tmpDir, "bin"), "path-orig"}, string(os.PathListSeparator))
+			if s := cmp.Diff(envv.Get("PATH"), expected); s != "" {
 				t.Fatalf("Unexpected val:\n%s\n", s)
 			}
 		})
 	})
+}
+
+func formEnv(name string, values ...string) string {
+	return fmt.Sprintf("%s=%s", name, strings.Join(values, string(os.PathListSeparator)))
 }
 
 func mkdir(t *testing.T, dirs ...string) {

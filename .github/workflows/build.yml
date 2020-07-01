@@ -32,9 +32,30 @@ jobs:
         run: make test
       - name: Build
         run: |
-          make build
-          make package
+          make build-linux
+          make package-linux
       - uses: actions/upload-artifact@v2
         with:
           name: lifecycle-linux-x86-64
           path: out/lifecycle-v*+linux.x86-64.tgz
+  test-and-build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Set git to use LF and symlinks
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global core.symlinks true
+      - uses: actions/checkout@v2
+      - name: Test
+        run: |
+          make docker-run-windows DOCKER_CMD="make test"
+        shell: cmd
+      - name: Build
+        run: |
+          make docker-run-windows DOCKER_CMD="make build-windows package-windows"
+        shell: cmd
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-windows-x86-64
+          path: out/lifecycle-v*+windows.x86-64.tgz

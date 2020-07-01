@@ -5,4 +5,4 @@
 *~
 /out
 
-acceptance/testdata/*/container/cnb/lifecycle/*
+acceptance/testdata/launcher/*/container/cnb/lifecycle/launcher*
