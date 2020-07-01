@@ -17,6 +17,7 @@ call :echon detect err: %bp_id%@%bp_version%>&2
 
 dir /b %platform_dir%\env > detect-env-%bp_id%-%bp_version%
 call :echon %ENV_TYPE%> detect-env-type-%bp_id%-%bp_version%
+call :echon %CNB_BUILDPACK_DIR%> detect-env-cnb-buildpack-dir-%bp_id%-%bp_version%
 
 if exist detect-plan-%bp_id%-%bp_version%.toml (
   type detect-plan-%bp_id%-%bp_version%.toml > %plan_path%
