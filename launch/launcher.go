@@ -53,7 +53,7 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 		}
 		return nil
 	}
-	profileCmds, err := l.profileD()
+	profileCmds, err := l.profileD(process)
 	if err != nil {
 		return errors.Wrap(err, "determine profile")
 	}
@@ -120,7 +120,7 @@ func (l *Launcher) env(process Process) error {
 	})
 }
 
-func (l *Launcher) profileD() ([]string, error) {
+func (l *Launcher) profileD(process Process) ([]string, error) {
 	var out []string
 
 	appendIfFile := func(path string) error {
@@ -149,9 +149,17 @@ func (l *Launcher) profileD() ([]string, error) {
 		if runtime.GOOS == "windows" {
 			fileGlob += ".bat"
 		}
-		scripts, err := filepath.Glob(filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", fileGlob))
-		if err != nil {
-			return nil, err
+		globPaths := []string{filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", fileGlob)}
+		if process.Type != "" {
+			globPaths = append(globPaths, filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", process.Type, fileGlob))
+		}
+		var scripts []string
+		for _, globPath := range globPaths {
+			matches, err := filepath.Glob(globPath)
+			if err != nil {
+				return nil, err
+			}
+			scripts = append(scripts, matches...)
 		}
 		for _, script := range scripts {
 			if err := appendIfFile(script); err != nil {

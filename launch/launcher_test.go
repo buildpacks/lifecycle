@@ -348,15 +348,21 @@ echo $OUT
 
 				mkdir(t,
 					filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d"),
+					filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "start"),
 					filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d"),
+					filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "start"),
 				)
 
 				if runtime.GOOS == "windows" {
 					mkfile(t, "set OUT=%OUT%prof1,", filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "prof1.bat"))
+					mkfile(t, "set OUT=%OUT%prof1start,", filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "start", "prof1.bat"))
 					mkfile(t, "set OUT=%OUT%prof2,", filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "prof2.bat"))
+					mkfile(t, "set OUT=%OUT%prof2start,", filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "start", "prof2.bat"))
 				} else {
 					mkfile(t, "export OUT=${OUT}prof1,", filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "prof1"))
+					mkfile(t, "export OUT=${OUT}prof1start,", filepath.Join(tmpDir, "launch", "bp.1", "layer", "profile.d", "start", "prof1"))
 					mkfile(t, "export OUT=${OUT}prof2,", filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "prof2"))
+					mkfile(t, "export OUT=${OUT}prof2start,", filepath.Join(tmpDir, "launch", "bp.2", "layer", "profile.d", "start", "prof2"))
 				}
 
 				env.EXPECT().AddRootDir(gomock.Any()).AnyTimes()
@@ -373,7 +379,7 @@ echo $OUT
 					stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
 					t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 				}
-				if diff := cmp.Diff(strings.ReplaceAll(stdout, "\r\n", "\n"), "hi from app\nprof1,prof2,\n"); diff != "" {
+				if diff := cmp.Diff(strings.ReplaceAll(stdout, "\r\n", "\n"), "hi from app\nprof1,prof1start,prof2,prof2start,\n"); diff != "" {
 					t.Fatalf("syscall.Exec stdout did not match: (-got +want)\n%s\n", diff)
 				}
 			})
@@ -393,7 +399,7 @@ echo $OUT
 						stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
 						t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 					}
-					if diff := cmp.Diff(strings.ReplaceAll(stdout, "\r\n", "\n"), "hi from app\nprof2,prof1,\n"); diff != "" {
+					if diff := cmp.Diff(strings.ReplaceAll(stdout, "\r\n", "\n"), "hi from app\nprof2,prof2start,prof1,prof1start,\n"); diff != "" {
 						t.Fatalf("syscall.Exec stdout did not match: (-got +want)\n%s\n", diff)
 					}
 				})
@@ -418,7 +424,7 @@ echo $OUT
 						stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
 						t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 					}
-					if diff := cmp.Diff(strings.ReplaceAll(stdout, "\r\n", "\n"), "hi from app\nprof1,prof2,profile\n"); diff != "" {
+					if diff := cmp.Diff(strings.ReplaceAll(stdout, "\r\n", "\n"), "hi from app\nprof1,prof1start,prof2,prof2start,profile\n"); diff != "" {
 						t.Fatalf("syscall.Exec stdout did not match: (-got +want)\n%s\n", diff)
 					}
 				})

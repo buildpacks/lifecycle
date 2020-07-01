@@ -72,6 +72,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			expected := "worker-process-val"
 			assertOutput(t, cmd, expected)
 		})
+
+		it("sources scripts from process specific directories", func() {
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "worker")
+			expected := "sourced bp profile\nsourced bp worker profile\nsourced app profile"
+			assertOutput(t, cmd, expected)
+		})
 	})
 
 	it("respects CNB_APP_DIR and CNB_LAYERS_DIR environment variables", func() {
