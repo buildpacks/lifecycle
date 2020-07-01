@@ -26,12 +26,12 @@ type Launcher struct {
 }
 
 func (l *Launcher) Launch(self string, cmd []string) error {
-	if err := l.env(); err != nil {
-		return errors.Wrap(err, "modify env")
-	}
 	process, err := l.processFor(cmd)
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
+	}
+	if err := l.env(process); err != nil {
+		return errors.Wrap(err, "modify env")
 	}
 	if err := os.Chdir(l.AppDir); err != nil {
 		return errors.Wrap(err, "change to app directory")
@@ -81,7 +81,7 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	return nil
 }
 
-func (l *Launcher) env() error {
+func (l *Launcher) env(process Process) error {
 	appInfo, err := os.Stat(l.AppDir)
 	if err != nil {
 		return errors.Wrap(err, "find app directory")
@@ -106,7 +106,13 @@ func (l *Launcher) env() error {
 			if err := l.Env.AddEnvDir(filepath.Join(path, "env")); err != nil {
 				return err
 			}
-			return l.Env.AddEnvDir(filepath.Join(path, "env.launch"))
+			if err := l.Env.AddEnvDir(filepath.Join(path, "env.launch")); err != nil {
+				return err
+			}
+			if process.Type == "" {
+				return nil
+			}
+			return l.Env.AddEnvDir(filepath.Join(path, "env.launch", process.Type))
 		}); err != nil {
 			return errors.Wrap(err, "add layer env")
 		}
