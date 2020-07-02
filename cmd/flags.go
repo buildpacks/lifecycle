@@ -48,6 +48,7 @@ const (
 	EnvProcessType         = "CNB_PROCESS_TYPE"
 	EnvLogLevel            = "CNB_LOG_LEVEL"
 	EnvProjectMetadataPath = "CNB_PROJECT_METADATA_PATH"
+	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -154,6 +155,10 @@ func FlagProjectMetadataPath(projectMetadataPath *string) {
 
 func FlagProcessType(processType *string) {
 	flagSet.StringVar(processType, "process-type", os.Getenv(EnvProcessType), "default process type")
+}
+
+func FlagNoColor(skip *bool) {
+	flagSet.BoolVar(skip, "no-color", boolEnv(EnvNoColor), "disable color output")
 }
 
 type StringSlice []string
