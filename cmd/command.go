@@ -4,6 +4,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/heroku/color"
 )
 
 type Command interface {
@@ -17,11 +19,13 @@ func Run(c Command, asSubcommand bool) {
 	var (
 		printVersion bool
 		logLevel     string
+		noColor      bool
 	)
 
 	log.SetOutput(ioutil.Discard)
 	FlagVersion(&printVersion)
 	FlagLogLevel(&logLevel)
+	FlagNoColor(&noColor)
 	c.Init()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
@@ -34,6 +38,7 @@ func Run(c Command, asSubcommand bool) {
 			Exit(err)
 		}
 	}
+	color.Disable(noColor)
 
 	if printVersion {
 		ExitWithVersion()
