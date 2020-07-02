@@ -12,3 +12,8 @@
   command = "echo"
   args = ["Executing other-process process-type"]
   direct = true
+
+[[processes]]
+  type = "worker"
+  command = "echo $WORKER_VAR"
+  direct = false

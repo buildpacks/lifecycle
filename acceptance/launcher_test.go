@@ -66,6 +66,18 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			}
 			assertOutput(t, cmd, expected)
 		})
+
+		it("sets env vars from process specific directories", func() {
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "worker")
+			expected := "worker-process-val"
+			assertOutput(t, cmd, expected)
+		})
+
+		it("sources scripts from process specific directories", func() {
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "worker")
+			expected := "sourced bp profile\nsourced bp worker profile\nsourced app profile"
+			assertOutput(t, cmd, expected)
+		})
 	})
 
 	it("respects CNB_APP_DIR and CNB_LAYERS_DIR environment variables", func() {
@@ -83,11 +95,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("sets env vars from layers", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo $SOME_VAR $OTHER_VAR")
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo $SOME_VAR $OTHER_VAR $WORKER_VAR")
 			if runtime.GOOS == "windows" {
-				cmd = exec.Command("docker", "run", "--rm", launchImage, "echo %SOME_VAR% %OTHER_VAR%")
+				cmd = exec.Command("docker", "run", "--rm", launchImage, "echo %SOME_VAR% %OTHER_VAR% %WORKER_VAR%")
 			}
-			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-bp-val other-bp-val")
+			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-bp-val other-bp-val worker-no-process-val")
 		})
 
 		it("passes through env vars from user, excluding excluded vars", func() {
