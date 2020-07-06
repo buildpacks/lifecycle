@@ -1,7 +1,5 @@
 package env
 
-import "runtime"
-
 var LaunchEnvExcludelist = []string{
 	"CNB_LAYERS_DIR",
 	"CNB_APP_DIR",
@@ -11,13 +9,13 @@ var LaunchEnvExcludelist = []string{
 func NewLaunchEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXLaunchEnv,
-		Vars:       varsFromEnviron(environ, runtime.GOOS == "windows", isExcluded),
+		Vars:       varsFromEnviron(environ, ignoreEnvVarCase, isExcluded),
 	}
 }
 
 func isExcluded(k string) bool {
 	for _, wk := range LaunchEnvExcludelist {
-		if wk == k {
+		if matches(wk, k) {
 			return true
 		}
 	}
