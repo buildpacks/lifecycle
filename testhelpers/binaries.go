@@ -8,8 +8,12 @@ import (
 	"testing"
 )
 
-func BuildLinuxLauncher(t *testing.T, buildDir string) {
+func BuildLauncher(t *testing.T, buildDir string, goos string) {
 	cmd := exec.Command("make", "build-linux-launcher")
+	if goos == "windows" {
+		cmd = exec.Command("make", "build-windows-launcher")
+	}
+
 	wd, err := os.Getwd()
 	AssertNil(t, err)
 	cmd.Dir = filepath.Join(wd, "..")

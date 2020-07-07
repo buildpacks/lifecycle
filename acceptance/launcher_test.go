@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -32,11 +33,15 @@ func TestLauncher(t *testing.T) {
 	outDir, err := filepath.Abs(filepath.Join("..", "out"))
 	h.AssertNil(t, err)
 
-	h.BuildLinuxLauncher(t, outDir) // TODO: build windows launcher
-	h.CopyLauncher(t, filepath.Join(outDir, "linux", "lifecycle"), launcherBinaryDir)
+	info, err := h.DockerCli(t).Info(context.TODO())
+	h.AssertNil(t, err)
+	daemonOs = info.OSType
 
-	buildTestImage(t, launchImage, launchDockerContext)
-	defer removeTestImage(t, launchImage)
+	h.BuildLauncher(t, outDir, daemonOs)
+	h.CopyLauncher(t, filepath.Join(outDir, daemonOs, "lifecycle"), launcherBinaryDir)
+
+	h.DockerBuild(t, launchImage, launchDockerContext)
+	defer h.DockerImageRemove(t, launchImage)
 
 	spec.Run(t, "acceptance", testLauncher, spec.Parallel(), spec.Report(report.Terminal{}))
 }

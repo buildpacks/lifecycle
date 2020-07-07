@@ -1,7 +1,6 @@
 package acceptance
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,11 +17,9 @@ var buildDir string
 
 func TestVersion(t *testing.T) {
 	var err error
-	buildDir, err = ioutil.TempDir("", "lifecycle-acceptance")
+	buildDir, err = filepath.Abs(filepath.Join("..", "out"))
 	h.AssertNil(t, err)
-	defer func() {
-		h.AssertNil(t, os.RemoveAll(buildDir))
-	}()
+
 	h.BuildLifecycle(t, buildDir, runtime.GOOS)
 	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -153,15 +150,4 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 
 func lifecycleCmd(phase string, args ...string) *exec.Cmd {
 	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", phase), args...)
-}
-
-func buildTestImage(t *testing.T, name, context string) {
-	cmd := exec.Command("docker", "build", "-t", name, context)
-	h.Run(t, cmd)
-}
-
-func removeTestImage(t *testing.T, name string) { // TODO: move to helpers
-	t.Helper()
-	cmd := exec.Command("docker", "rmi", name)
-	h.Run(t, cmd)
 }

@@ -33,6 +33,7 @@ var (
 
 var (
 	registry *ih.DockerRegistry
+	daemonOs string
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -53,13 +54,13 @@ func TestAnalyzer(t *testing.T) {
 
 	info, err := h.DockerCli(t).Info(context.TODO())
 	h.AssertNil(t, err)
-	osType := info.OSType
+	daemonOs = info.OSType
 
-	h.BuildLifecycle(t, outDir, osType)
-	h.CopyLifecycle(t, filepath.Join(outDir, osType, "lifecycle"), analyzerBinaryDir)
+	h.BuildLifecycle(t, outDir, daemonOs)
+	h.CopyLifecycle(t, filepath.Join(outDir, daemonOs, "lifecycle"), analyzerBinaryDir)
 
-	buildTestImage(t, analyzeImage, analyzeDockerContext)
-	defer removeTestImage(t, analyzeImage)
+	h.DockerBuild(t, analyzeImage, analyzeDockerContext)
+	defer h.DockerImageRemove(t, analyzeImage)
 	spec.Run(t, "acceptance-analyzer", testAnalyzer, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -108,7 +109,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 	when("group path is provided", func() {
 		it("uses the provided group path", func() {
-			cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, "busybox")
+			cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, daemonOs)
 			defer h.DockerVolumeRemove(t, cacheVolume)
 
 			_, tempDir := h.DockerRunAndCopy(t,
@@ -169,7 +170,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				appImage = "some-app-image-" + h.RandString(10)
-				metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "app_metadata.json"), lifecycle.LayersMetadata{})
+				metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
 
 				cmd := exec.Command(
 					"docker",
@@ -182,7 +183,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				removeTestImage(t, appImage)
+				h.DockerImageRemove(t, appImage)
 			})
 
 			it("restores layer metadata", func() {
@@ -245,7 +246,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				var cacheImage string
 
 				it.Before(func() {
-					metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"), lifecycle.CacheMetadata{})
+					metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
 					cacheImage = "some-cache-image-" + h.RandString(10)
 
 					cmd := exec.Command(
@@ -259,7 +260,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					removeTestImage(t, cacheImage)
+					h.DockerImageRemove(t, cacheImage)
 				})
 
 				it("ignores the cache", func() {
@@ -286,7 +287,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("cache directory case", func() {
 				it("uses the provided cache", func() {
-					cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, "busybox") // TODO: make this OS-agnostic
+					cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, daemonOs)
 					defer h.DockerVolumeRemove(t, cacheVolume)
 
 					_, tempDir := h.DockerRunAndCopy(t,
@@ -311,7 +312,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("the provided cache directory isn't writeable by the CNB user's group", func() {
 					it("recursively chowns the directory", func() {
-						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, "busybox")
+						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, daemonOs)
 						defer h.DockerVolumeRemove(t, cacheVolume)
 
 						output := h.DockerRun(t,
@@ -333,7 +334,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("the provided cache directory is writeable by the CNB user's group", func() {
 					it("doesn't chown the directory", func() {
-						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, "busybox")
+						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, daemonOs)
 						defer h.DockerVolumeRemove(t, cacheVolume)
 
 						output := h.DockerRun(t,
@@ -349,7 +350,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertMatch(t, output, "9999 3333 .+ \\.")
 						h.AssertMatch(t, output, "9999 3333 .+ committed")
-						h.AssertMatch(t, output, "2222 3333 .+ staging") // TODO: investigate
+						h.AssertMatch(t, output, "2222 3333 .+ staging")
 					})
 				})
 			})
@@ -360,7 +361,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		var appImage, appAuthConfig string
 
 		it.Before(func() {
-			metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "app_metadata.json"), lifecycle.LayersMetadata{})
+			metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
 			appImage, appAuthConfig = buildRegistryImage(
 				t,
 				"some-app-image-"+h.RandString(10),
@@ -370,13 +371,13 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			removeTestImage(t, appImage)
+			h.DockerImageRemove(t, appImage)
 		})
 
 		it("writes analyzed.toml", func() {
 			_, tempDir := h.DockerRunAndCopy(t,
 				analyzeImage,
-				"/layers/analyzed.toml", // TODO: make OS-agnostic
+				"/layers/analyzed.toml",
 				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithArgs(analyzerPath, "some-image"),
 			)
@@ -473,7 +474,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					)
 					defer os.RemoveAll(tempDir)
 
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id")) // TODO: see about using different buildpack IDs for app, cache dir, and cache image fixtures
+					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id"))
 				})
 			})
 		})
@@ -483,7 +484,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				var cacheImage, cacheAuthConfig string
 
 				it.Before(func() {
-					metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"), lifecycle.CacheMetadata{})
+					metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
 					cacheImage, cacheAuthConfig = buildRegistryImage(
 						t,
 						"some-cache-image-"+h.RandString(10),
@@ -493,7 +494,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					removeTestImage(t, cacheImage)
+					h.DockerImageRemove(t, cacheImage)
 				})
 
 				it("uses the provided cache", func() {
@@ -519,7 +520,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("cache directory case", func() {
 				it("uses the provided cache", func() {
-					cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, "busybox")
+					cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir, daemonOs)
 					defer h.DockerVolumeRemove(t, cacheVolume)
 
 					_, tempDir := h.DockerRunAndCopy(t,

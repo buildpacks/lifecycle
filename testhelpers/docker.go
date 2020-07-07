@@ -38,6 +38,18 @@ func DockerCli(t *testing.T) *dockercli.Client {
 	return dockerCliVal
 }
 
+func DockerBuild(t *testing.T, name, context string) {
+	t.Helper()
+	cmd := exec.Command("docker", "build", "-t", name, context)
+	Run(t, cmd)
+}
+
+func DockerImageRemove(t *testing.T, name string) {
+	t.Helper()
+	cmd := exec.Command("docker", "rmi", name)
+	Run(t, cmd)
+}
+
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	args := formatArgs(image, ops...)
 	args = append([]string{"run", "--rm"}, args...) // prepend run --rm
@@ -145,7 +157,12 @@ func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) err
 	return nil
 }
 
-func SeedDockerVolume(t *testing.T, srcPath, helperImage string) string { // TODO: make this a helper function that inspects the daemon info OS
+func SeedDockerVolume(t *testing.T, srcPath, osType string) string {
+	helperImage := "busybox"
+	if osType == "windows" {
+		helperImage = "windows/nanoserver"
+	}
+
 	volumeName := "test-volume-" + RandString(10)
 	containerName := "test-volume-helper-" + RandString(10)
 
@@ -158,7 +175,7 @@ func SeedDockerVolume(t *testing.T, srcPath, helperImage string) string { // TOD
 		"--volume", volumeName+":/target", // create a new empty docker volume
 		"--name", containerName,
 		helperImage,
-		"true", // TODO: make this OS-agnostic
+		"true",
 	))
 	defer Run(t, exec.Command("docker", "rm", containerName))
 

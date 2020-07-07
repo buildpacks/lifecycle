@@ -17,7 +17,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -146,14 +145,6 @@ func AssertPathDoesNotExist(t *testing.T, path string) {
 
 func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
-}
-
-func AssertUIDGID(t *testing.T, path string, uid, gid int) {
-	fi, err := os.Stat(path)
-	AssertNil(t, err)
-	stat := fi.Sys().(*syscall.Stat_t)
-	AssertEq(t, stat.Uid, uint32(uid))
-	AssertEq(t, stat.Gid, uint32(gid))
 }
 
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
