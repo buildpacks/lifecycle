@@ -2,7 +2,6 @@ package acceptance
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -24,15 +23,21 @@ var (
 func TestLauncher(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		launchDockerContext = filepath.Join("testdata", "launcher", "windows")
-		launcherBinaryDir = filepath.Join("acceptance", "testdata", "launcher", "windows", "container", "cnb", "lifecycle")
+		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
 	} else {
 		launchDockerContext = filepath.Join("testdata", "launcher", "posix")
-		launcherBinaryDir = filepath.Join("acceptance", "testdata", "launcher", "posix", "container", "cnb", "lifecycle")
+		launcherBinaryDir = filepath.Join("testdata", "launcher", "posix", "container", "cnb", "lifecycle")
 	}
 
-	buildLauncher(t)
-	buildLaunchImage(t)
-	defer removeLaunchImage(t)
+	outDir, err := filepath.Abs(filepath.Join("..", "out"))
+	h.AssertNil(t, err)
+
+	h.BuildLinuxLauncher(t, outDir) // TODO: build windows launcher
+	h.CopyLauncher(t, filepath.Join(outDir, "linux", "lifecycle"), launcherBinaryDir)
+
+	buildTestImage(t, launchImage, launchDockerContext)
+	defer removeTestImage(t, launchImage)
+
 	spec.Run(t, "acceptance", testLauncher, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -190,44 +195,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			assertOutput(t, cmd, "bp executable")
 		})
 	})
-}
-
-func buildLaunchImage(t *testing.T) {
-	cmd := exec.Command("docker", "build", "-t", launchImage, launchDockerContext)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, string(output), err)
-	}
-}
-
-func removeLaunchImage(t *testing.T) {
-	cmd := exec.Command("docker", "rmi", launchImage)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, string(output), err)
-	}
-}
-
-func buildLauncher(t *testing.T) {
-	cmd := exec.Command("make", "clean", "build-linux-launcher")
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("make", "build-windows-launcher")
-	}
-
-	wd, err := os.Getwd()
-	h.AssertNil(t, err)
-	cmd.Dir = filepath.Join(wd, "..")
-	cmd.Env = append(
-		os.Environ(),
-		"PWD="+cmd.Dir,
-		"OUT_DIR="+launcherBinaryDir,
-		"LIFECYCLE_VERSION=some-version",
-		"SCM_COMMIT=asdf123",
-	)
-
-	t.Log("Building binaries: ", cmd.Args)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
-	}
 }
 
 func assertOutput(t *testing.T, cmd *exec.Cmd, expected ...string) {

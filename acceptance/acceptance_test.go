@@ -1,5 +1,3 @@
-// +build acceptance
-
 package acceptance
 
 import (
@@ -25,7 +23,7 @@ func TestVersion(t *testing.T) {
 	defer func() {
 		h.AssertNil(t, os.RemoveAll(buildDir))
 	}()
-	buildBinaries(t, buildDir, runtime.GOOS)
+	h.BuildLifecycle(t, buildDir, runtime.GOOS)
 	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -47,6 +45,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"rebaser",
 				"lifecycle",
 			} {
+				phase := phase
 				it(phase+"/should fail with error message and exit code 11", func() {
 					cmd := lifecycleCmd(phase)
 					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")
@@ -156,23 +155,13 @@ func lifecycleCmd(phase string, args ...string) *exec.Cmd {
 	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", phase), args...)
 }
 
-func buildBinaries(t *testing.T, dir string, goos string) {
-	cmd := exec.Command("make", "build-"+runtime.GOOS)
-	wd, err := os.Getwd()
-	h.AssertNil(t, err)
-	cmd.Dir = filepath.Join(wd, "..")
-	cmd.Env = append(
-		os.Environ(),
-		"GOOS="+goos,
-		"PWD="+cmd.Dir,
-		"BUILD_DIR="+dir,
-		"PLATFORM_API=0.9",
-		"LIFECYCLE_VERSION=some-version",
-		"SCM_COMMIT=asdf123",
-	)
+func buildTestImage(t *testing.T, name, context string) {
+	cmd := exec.Command("docker", "build", "-t", name, context)
+	h.Run(t, cmd)
+}
 
-	t.Log("Building binaries: ", cmd.Args)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
-	}
+func removeTestImage(t *testing.T, name string) { // TODO: move to helpers
+	t.Helper()
+	cmd := exec.Command("docker", "rmi", name)
+	h.Run(t, cmd)
 }

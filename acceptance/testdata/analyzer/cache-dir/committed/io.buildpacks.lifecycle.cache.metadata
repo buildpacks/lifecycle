@@ -1,0 +1,28 @@
+{
+  "buildpacks": [
+    {
+      "key": "some-buildpack-id",
+      "layers": {
+        "some-layer": {
+          "cache": true,
+          "data": {
+            "some-layer-key": "some-layer-value"
+          },
+          "sha": "some-layer-sha"
+        }
+      }
+    },
+    {
+      "key": "some-other-buildpack-id",
+      "layers": {
+        "some-layer": {
+          "cache": true,
+          "data": {
+            "some-layer-key": "some-layer-value"
+          },
+          "sha": "some-layer-sha"
+        }
+      }
+    }
+  ]
+}

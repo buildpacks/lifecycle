@@ -1,0 +1,3 @@
+[[group]]
+id = "some-other-buildpack-id"
+version = "some-other-buildpack-version"
