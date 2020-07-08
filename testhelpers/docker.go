@@ -157,12 +157,8 @@ func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) err
 	return nil
 }
 
-func SeedDockerVolume(t *testing.T, srcPath, osType string) string {
-	helperImage := "busybox"
-	if osType == "windows" {
-		helperImage = "windows/nanoserver"
-	}
-
+func SeedDockerVolume(t *testing.T, srcPath string) string {
+	helperImage := "busybox" // When Windows is supported, we can use "windows/nanoserver"
 	volumeName := "test-volume-" + RandString(10)
 	containerName := "test-volume-helper-" + RandString(10)
 

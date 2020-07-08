@@ -33,6 +33,13 @@ func RandString(n int) string {
 	return string(b)
 }
 
+func SkipIf(t *testing.T, expression bool, reason string) {
+	t.Helper()
+	if expression {
+		t.Skip(reason)
+	}
+}
+
 func AssertMatch(t *testing.T, actual string, expected string) {
 	t.Helper()
 	if !regexp.MustCompile(expected).MatchString(actual) {
@@ -260,8 +267,10 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 func CopyFile(t *testing.T, srcFileName, destFileName string) {
 	srcFile, err := os.Open(srcFileName)
 	AssertNil(t, err)
+	defer srcFile.Close()
 	dstFile, err := os.Create(destFileName)
 	AssertNil(t, err)
+	defer dstFile.Close()
 	_, err = io.Copy(dstFile, srcFile)
 	AssertNil(t, err)
 	modifiedtime := time.Time{}

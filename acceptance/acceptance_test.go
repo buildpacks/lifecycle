@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,10 +18,16 @@ var buildDir string
 
 func TestVersion(t *testing.T) {
 	var err error
-	buildDir, err = filepath.Abs(filepath.Join("..", "out"))
+	buildDir, err = ioutil.TempDir("", "lifecycle-acceptance")
 	h.AssertNil(t, err)
+	defer func() {
+		h.AssertNil(t, os.RemoveAll(buildDir))
+	}()
 
-	h.BuildLifecycle(t, buildDir, runtime.GOOS)
+	outDir := filepath.Join(buildDir, runtime.GOOS, "lifecycle")
+	h.AssertNil(t, os.MkdirAll(outDir, 0755))
+
+	h.MakeAndCopyLifecycle(t, runtime.GOOS, outDir)
 	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

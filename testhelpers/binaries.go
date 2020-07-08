@@ -1,22 +1,31 @@
 package testhelpers
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
-func BuildLauncher(t *testing.T, buildDir string, goos string) {
-	cmd := exec.Command("make", "build-linux-launcher")
-	if goos == "windows" {
-		cmd = exec.Command("make", "build-windows-launcher")
+func MakeAndCopyLauncher(t *testing.T, destDir string) {
+	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
+	AssertNil(t, err)
+	AssertNil(t, os.MkdirAll(buildDir, 0755))
+
+	goos := "linux"
+	if runtime.GOOS == "windows" {
+		goos = "windows"
 	}
+
+	cmd := exec.Command("make", fmt.Sprintf("build-%s-launcher", goos))
 
 	wd, err := os.Getwd()
 	AssertNil(t, err)
 	cmd.Dir = filepath.Join(wd, "..")
+
 	cmd.Env = append(
 		os.Environ(),
 		"PWD="+cmd.Dir,
@@ -27,13 +36,21 @@ func BuildLauncher(t *testing.T, buildDir string, goos string) {
 
 	t.Log("Building binaries: ", cmd.Args)
 	Run(t, cmd)
+
+	copyLauncher(t, filepath.Join(buildDir, goos, "lifecycle"), destDir)
 }
 
-func BuildLifecycle(t *testing.T, buildDir string, goos string) {
+func MakeAndCopyLifecycle(t *testing.T, goos, destDir string) {
+	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
+	AssertNil(t, err)
+	AssertNil(t, os.MkdirAll(buildDir, 0755))
+
 	cmd := exec.Command("make", "build-"+goos)
+
 	wd, err := os.Getwd()
 	AssertNil(t, err)
 	cmd.Dir = filepath.Join(wd, "..")
+
 	cmd.Env = append(
 		os.Environ(),
 		"GOOS="+goos,
@@ -46,20 +63,27 @@ func BuildLifecycle(t *testing.T, buildDir string, goos string) {
 
 	t.Log("Building binaries: ", cmd.Args)
 	Run(t, cmd)
+
+	copyLifecycle(t, filepath.Join(buildDir, goos, "lifecycle"), destDir)
 }
 
-func CopyLauncher(t *testing.T, src, dst string) {
+func copyLauncher(t *testing.T, src, dst string) {
 	AssertNil(t, os.RemoveAll(dst)) // Clear any existing binaries
 	AssertNil(t, os.MkdirAll(dst, 0755))
 
+	binaryName := "launcher"
+	if runtime.GOOS == "windows" {
+		binaryName += ".exe"
+	}
+
 	// Copy launcher
-	CopyFile(t, filepath.Join(src, "launcher"), filepath.Join(dst, "launcher"))
+	CopyFile(t, filepath.Join(src, binaryName), filepath.Join(dst, binaryName))
 
 	// Ensure correct permissions
-	AssertNil(t, os.Chmod(filepath.Join(dst, "launcher"), 0755))
+	AssertNil(t, os.Chmod(filepath.Join(dst, binaryName), 0755))
 }
 
-func CopyLifecycle(t *testing.T, src, dst string) {
+func copyLifecycle(t *testing.T, src, dst string) {
 	AssertNil(t, os.RemoveAll(dst)) // Clear any existing binaries
 	AssertNil(t, os.MkdirAll(dst, 0755))
 
