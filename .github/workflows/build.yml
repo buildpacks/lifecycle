@@ -3,10 +3,10 @@ name: build
 on:
   push:
     branches:
-      - master
+      - release/0.8.1
   pull_request:
     branches:
-      - master
+      - release/0.8.1
 
 jobs:
   test-and-build:
