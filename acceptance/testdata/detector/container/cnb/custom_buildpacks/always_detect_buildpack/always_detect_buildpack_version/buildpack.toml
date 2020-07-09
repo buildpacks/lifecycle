@@ -1,0 +1,4 @@
+[buildpack]
+    id = "always/detect/buildpack"
+    version = "always_detect_buildpack_version"
+    name = "Always Detect Buildpack"

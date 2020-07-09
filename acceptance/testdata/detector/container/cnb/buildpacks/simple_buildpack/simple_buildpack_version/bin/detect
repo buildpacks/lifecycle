@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+plan_path=$2
+
+cat >> "${plan_path}" <<EOL
+[[provides]]
+name = "some-world"
+version = "0.1"     # Optional
+
+[[requires]]
+name = "some-world"
+version = "0.1"     # Optional
+[requires.metadata]
+world = "Earth-616" # Optional
+EOL
