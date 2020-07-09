@@ -47,13 +47,6 @@ func AssertMatch(t *testing.T, actual string, expected string) {
 	}
 }
 
-func AssertNotMatch(t *testing.T, actual string, expected string) {
-	t.Helper()
-	if regexp.MustCompile(expected).MatchString(actual) {
-		t.Fatalf("Expected: '%s' not to match regex '%s'", actual, expected)
-	}
-}
-
 // Assert the simplistic pointer (or literal value) equality
 func AssertSameInstance(t *testing.T, actual, expected interface{}) {
 	t.Helper()

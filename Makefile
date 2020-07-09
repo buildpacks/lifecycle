@@ -32,6 +32,8 @@ SOURCE_COMPILATION_IMAGE?=lifecycle-img
 BUILD_CTR?=lifecycle-ctr
 DOCKER_CMD?=make test
 
+GOFILES := $(shell go list -f '{{$$dir:=.Dir}}{{range $$file:=.GoFiles}}{{$$fp:=(printf "%s/%s\n" $$dir $$file)}}{{$$fp}}{{end}}' ./... | tr "\n" " ")
+
 all: test build package
 
 build: build-linux build-windows
@@ -49,6 +51,7 @@ $(BUILD_DIR)/linux/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
 	$(DOCKER_RUN) sh -c 'apk add build-base && $(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
+$(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 
 build-linux-launcher: $(BUILD_DIR)/linux/lifecycle/launcher
 
@@ -59,6 +62,7 @@ $(BUILD_DIR)/linux/lifecycle/launcher:
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+$(BUILD_DIR)/linux/lifecycle/launcher: $(GOFILES)
 
 build-linux-symlinks: export GOOS:=linux
 build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -72,21 +76,23 @@ build-linux-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
 
-build-windows-lifecycle: $(BUILD_DIR)/windows/lifecycle/lifecycle
+build-windows-lifecycle: $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
 
-$(BUILD_DIR)/windows/lifecycle/lifecycle: export GOOS:=windows
-$(BUILD_DIR)/windows/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
-$(BUILD_DIR)/windows/lifecycle/lifecycle:
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: export GOOS:=windows
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe:
 	@echo "> Building lifecycle/lifecycle for Windows..."
 	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a ./cmd/lifecycle
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
 
-build-windows-launcher: $(BUILD_DIR)/windows/lifecycle/launcher
+build-windows-launcher: $(BUILD_DIR)/windows/lifecycle/launcher.exe
 
-$(BUILD_DIR)/windows/lifecycle/launcher: export GOOS:=windows
-$(BUILD_DIR)/windows/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
-$(BUILD_DIR)/windows/lifecycle/launcher:
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: export GOOS:=windows
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/launcher.exe:
 	@echo "> Building lifecycle/launcher for Windows..."
 	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a ./cmd/launcher
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
 
 build-windows-symlinks: export GOOS:=windows
 build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
@@ -124,6 +130,7 @@ $(BUILD_DIR)/darwin/lifecycle:
 	ln -sf lifecycle $(OUT_DIR)/builder
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
+$(BUILD_DIR)/darwin/lifecycle: $(GOFILES)
 
 install-goimports:
 	@echo "> Installing goimports..."
