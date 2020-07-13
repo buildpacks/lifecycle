@@ -187,7 +187,7 @@ func (l *layer) Path() string {
 	return l.path
 }
 
-type identifiableLayer interface {
+type layerDir interface {
 	Identifier() string
 	Path() string
 }

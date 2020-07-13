@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,12 +60,4 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 		return errors.Wrapf(err, "failed to unmarshal context of label '%s'", label)
 	}
 	return nil
-}
-
-func isEmptyDir(name string) (bool, error) {
-	entries, err := ioutil.ReadDir(name)
-	if err != nil {
-		return false, err
-	}
-	return len(entries) == 0, nil
 }

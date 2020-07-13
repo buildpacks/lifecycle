@@ -3,8 +3,6 @@
   command = "npm start"
 
 [[slices]]
-
-[[slices]]
   Paths = ["static/**/*.txt", "static/**/*.svg"]
 
 [[slices]]

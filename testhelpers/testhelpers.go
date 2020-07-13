@@ -255,18 +255,19 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
 
-func ComputeSHA256ForPath(t *testing.T, path string, uid int, guid int) string {
+func ComputeSHA256ForPath(t *testing.T, path string) string {
 	hasher := sha256.New()
-	err := archive.WriteTarArchive(hasher, path, uid, guid)
+	err := archive.AddDirToArchive(tar.NewWriter(hasher), path)
 	AssertNil(t, err)
 	layer5sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 	return layer5sha
 }
 
 func ComputeSHA256ForFiles(t *testing.T, path string, uid int, guid int, files ...string) string {
-	sha, _, err := archive.WriteFilesToTar(path, uid, guid, files...)
-	AssertNil(t, err)
-	return sha[len("sha256:"):]
+	//err := archive.WriteFilesToArchive(path, uid, guid, files...)
+	//AssertNil(t, err)
+	//return sha[len("sha256:"):]
+	return ""
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {
@@ -291,6 +292,14 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
 			AssertNil(t, err)
 			RecursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+		}
+		if fi.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(filepath.Join(src, fi.Name()))
+			AssertNil(t, err)
+			if filepath.IsAbs(target) {
+				t.Fatalf("symlinks cannot be absolute")
+			}
+			AssertNil(t, os.Symlink(target, filepath.Join(dst, fi.Name())))
 		}
 	}
 	modifiedtime := time.Time{}

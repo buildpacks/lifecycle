@@ -3,6 +3,7 @@ package archive_test
 import (
 	"archive/tar"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -35,7 +36,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
-	when("#ReadTarArchive", func() {
+	when("#Untar", func() {
 		var pathModes = []archive.PathMode{
 			{"root", os.ModeDir + 0755},
 			{"root/readonly", os.ModeDir + 0500},
@@ -102,7 +103,27 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#WriteTarArchive", func() {
+	when("#AddDirToArchive", func() {
+		var (
+			uid  = 1234
+			gid  = 4567
+			tw   *archive.NormalizedTarWriter
+			file *os.File
+		)
+
+		it.Before(func() {
+			var err error
+			file, err = os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
+			h.AssertNil(t, err)
+			tw = &archive.NormalizedTarWriter{TarWriter: tar.NewWriter(file)}
+			tw.WithUID(uid)
+			tw.WithGID(gid)
+		})
+
+		it.After(func() {
+			file.Close()
+		})
+
 		for _, src := range []string{
 			filepath.Join("testdata", "dir-to-tar"),
 			filepath.Join("testdata", "dir-to-tar") + string(filepath.Separator),
@@ -110,17 +131,10 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		} {
 			src := src
 			it(fmt.Sprintf("writes a tar with the src filesystem contents (%s)", src), func() {
-				uid := 1234
-				gid := 4567
-
-				file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
-				h.AssertNil(t, err)
-				defer file.Close()
-
-				h.AssertNil(t, archive.WriteTarArchive(file, src, uid, gid))
+				h.AssertNil(t, archive.AddDirToArchive(tw, src))
 				h.AssertNil(t, file.Close())
 
-				file, err = os.Open(file.Name())
+				file, err := os.Open(file.Name())
 				h.AssertNil(t, err)
 
 				defer file.Close()
@@ -129,12 +143,8 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				tarContains(t, "directories", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
-					h.AssertEq(t, header.Name, "testdata")
-					assertModTimeNormalized(t, header)
-
-					header, err = tr.Next()
-					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar")
+					assertDirectory(t, header)
 					assertModTimeNormalized(t, header)
 				})
 
@@ -144,7 +154,8 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/some-file.txt")
 
 					fileContents := make([]byte, header.Size)
-					tr.Read(fileContents)
+					_, err = tr.Read(fileContents)
+					h.AssertSameInstance(t, err, io.EOF)
 					h.AssertEq(t, string(fileContents), "some-content")
 					h.AssertEq(t, header.Uid, uid)
 					h.AssertEq(t, header.Gid, gid)
@@ -155,6 +166,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
+					assertDirectory(t, header)
 					assertModTimeNormalized(t, header)
 				})
 
@@ -170,108 +182,6 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		}
-
-		when("a absolute path is given", func() {
-			it("has working test helpers", func() {
-				h.AssertEq(t, allParentDirectories("/some/absolute/directory"), []string{"/some", "/some/absolute"})
-			})
-
-			it("writes headers for all parent directories if an absolute path is given", func() {
-				absoluteFilePath, err := filepath.Abs(filepath.Join("testdata", "dir-to-tar"))
-				h.AssertNil(t, err)
-
-				file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
-				h.AssertNil(t, err)
-				defer file.Close()
-
-				h.AssertNil(t, archive.WriteTarArchive(file, absoluteFilePath, 1234, 5678))
-				h.AssertNil(t, file.Close())
-
-				file, err = os.Open(file.Name())
-				h.AssertNil(t, err)
-
-				defer file.Close()
-				tr := tar.NewReader(file)
-
-				for _, expectedDir := range allParentDirectories(absoluteFilePath) {
-					header, err := tr.Next()
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, header.Name, expectedDir)
-
-					assertDirectory(t, header)
-					assertModTimeNormalized(t, header)
-				}
-			})
-		})
-
-		when("a relative path is given", func() {
-			it("has working test helpers", func() {
-				h.AssertEq(t, allParentDirectories("some/relative/path"), []string{"some", "some/relative"})
-			})
-
-			it("writes headers for all parent directories", func() {
-				relativePath := filepath.Join("testdata", "dir-to-tar", "sub-dir")
-
-				file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
-				h.AssertNil(t, err)
-				defer file.Close()
-
-				h.AssertNil(t, archive.WriteTarArchive(file, relativePath, 1234, 5678))
-				h.AssertNil(t, file.Close())
-
-				file, err = os.Open(file.Name())
-				h.AssertNil(t, err)
-				defer file.Close()
-
-				tr := tar.NewReader(file)
-				for _, expectedDir := range allParentDirectories(relativePath) {
-					header, err := tr.Next()
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, header.Name, expectedDir)
-
-					assertDirectory(t, header)
-					assertModTimeNormalized(t, header)
-				}
-			})
-		})
-
-		it("writes parent directories with the existing filesystem permissions", func() {
-			tmpDir, err := ioutil.TempDir("", "tar-permissions-test")
-			h.AssertNil(t, err)
-			defer os.RemoveAll(tmpDir)
-
-			src := filepath.Join(tmpDir, "parent-directory", "tar-directory")
-			err = os.MkdirAll(src, 0764)
-			h.AssertNil(t, err)
-
-			file, err := os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
-			h.AssertNil(t, err)
-			defer file.Close()
-
-			h.AssertNil(t, archive.WriteTarArchive(file, src, 1234, 5678))
-			h.AssertNil(t, file.Close())
-
-			file, err = os.Open(file.Name())
-			h.AssertNil(t, err)
-
-			defer file.Close()
-			tr := tar.NewReader(file)
-
-			for _, expectedDir := range allParentDirectories(src) {
-				header, err := tr.Next()
-				h.AssertNil(t, err)
-				h.AssertEq(t, header.Name, expectedDir)
-
-				assertDirectory(t, header)
-
-				localDir, err := os.Stat(expectedDir)
-				h.AssertNil(t, err)
-
-				assertPermissions(t, header, localDir.Mode().Perm())
-			}
-		})
 	})
 }
 
@@ -280,31 +190,15 @@ func tarContains(t *testing.T, m string, r func()) {
 	r()
 }
 
-func assertPermissions(t *testing.T, header *tar.Header, expectedMode os.FileMode) {
-	t.Helper()
-	if header.FileInfo().Mode().Perm() != expectedMode {
-		t.Fatalf(`expectedMode %s to have permissions %o instead %o`, header.Name, expectedMode, header.Mode)
-	}
-}
-
 func assertDirectory(t *testing.T, header *tar.Header) {
 	t.Helper()
 	if header.Typeflag != tar.TypeDir {
 		t.Fatalf(`expected %s to be a directory`, header.Name)
 	}
 }
-
 func assertModTimeNormalized(t *testing.T, header *tar.Header) {
 	t.Helper()
 	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
 		t.Fatalf(`expected %s time to be normalized, instead got: %s`, header.Name, header.ModTime.String())
 	}
-}
-
-func allParentDirectories(directory string) []string {
-	parent := filepath.Dir(directory)
-	if parent == "." || parent == "/" {
-		return []string{}
-	}
-	return append(allParentDirectories(parent), parent)
 }
