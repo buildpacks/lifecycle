@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/layers"
 )
 
 type Builder struct {
@@ -31,13 +32,9 @@ type BuildEnv interface {
 	List() []string
 }
 
-type Slice struct {
-	Paths []string `tom:"paths"`
-}
-
 type LaunchTOML struct {
 	Processes []launch.Process `toml:"processes"`
-	Slices    []Slice          `toml:"slices"`
+	Slices    []layers.Slice   `toml:"slices"`
 }
 
 type BOMEntry struct {
@@ -71,7 +68,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	procMap := processMap{}
 	plan := b.Plan
 	var bom []BOMEntry
-	var slices []Slice
+	var slices []layers.Slice
 
 	for _, bp := range b.Group.Group {
 		bpInfo, err := bp.lookup(b.BuildpacksDir)

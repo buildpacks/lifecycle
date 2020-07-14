@@ -19,15 +19,12 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-cmp/cmp"
-
-	"github.com/buildpacks/lifecycle/archive"
 )
 
 func RandString(n int) string {
@@ -138,14 +135,6 @@ func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
-func AssertUIDGID(t *testing.T, path string, uid, gid int) {
-	fi, err := os.Stat(path)
-	AssertNil(t, err)
-	stat := fi.Sys().(*syscall.Stat_t)
-	AssertEq(t, stat.Uid, uint32(uid))
-	AssertEq(t, stat.Gid, uint32(gid))
-}
-
 var dockerCliVal *dockercli.Client
 var dockerCliOnce sync.Once
 
@@ -209,13 +198,6 @@ func HTTPGetE(url string) (string, error) {
 	return string(b), nil
 }
 
-func ImageID(t *testing.T, repoName string) string {
-	t.Helper()
-	inspect, _, err := DockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
-	AssertNil(t, err)
-	return inspect.ID
-}
-
 func Run(t *testing.T, cmd *exec.Cmd) string {
 	t.Helper()
 	txt, _, err := RunE(cmd)
@@ -255,20 +237,6 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
 
-func ComputeSHA256ForPath(t *testing.T, path string, uid int, guid int) string {
-	hasher := sha256.New()
-	err := archive.WriteTarArchive(hasher, path, uid, guid)
-	AssertNil(t, err)
-	layer5sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
-	return layer5sha
-}
-
-func ComputeSHA256ForFiles(t *testing.T, path string, uid int, guid int, files ...string) string {
-	sha, _, err := archive.WriteFilesToTar(path, uid, guid, files...)
-	AssertNil(t, err)
-	return sha[len("sha256:"):]
-}
-
 func RecursiveCopy(t *testing.T, src, dst string) {
 	t.Helper()
 	fis, err := ioutil.ReadDir(src)
@@ -291,6 +259,14 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
 			AssertNil(t, err)
 			RecursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+		}
+		if fi.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(filepath.Join(src, fi.Name()))
+			AssertNil(t, err)
+			if filepath.IsAbs(target) {
+				t.Fatalf("symlinks cannot be absolute")
+			}
+			AssertNil(t, os.Symlink(target, filepath.Join(dst, fi.Name())))
 		}
 	}
 	modifiedtime := time.Time{}

@@ -4,18 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/layers"
 )
 
 type Cache interface {
@@ -30,21 +27,19 @@ type Cache interface {
 
 type Exporter struct {
 	Buildpacks   []Buildpack
-	ArtifactsDir string
+	LayerFactory LayerFactory
 	Logger       Logger
-	UID, GID     int
-	tarHashes    map[string]string // Stores hashes of layer tarballs for reuse between the export and cache steps.
+}
+
+//go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle LayerFactory
+type LayerFactory interface {
+	DirLayer(id string, dir string) (layers.Layer, error)
+	SliceLayers(dir string, slices []layers.Slice) ([]layers.Layer, error)
 }
 
 type LauncherConfig struct {
 	Path     string
 	Metadata LauncherMetadata
-}
-
-type SliceLayer struct {
-	ID      string
-	TarPath string
-	SHA     string
 }
 
 type ExportOptions struct {
@@ -88,7 +83,7 @@ func (e *Exporter) Export(opts ExportOptions) error {
 	}
 
 	// creating app layers (slices + app dir)
-	appSlices, err := e.createAppSliceLayers(opts.AppDir, buildMD.Slices)
+	appSlices, err := e.LayerFactory.SliceLayers(opts.AppDir, buildMD.Slices)
 	if err != nil {
 		return errors.Wrap(err, "creating app layers")
 	}
@@ -156,7 +151,7 @@ func (e *Exporter) Export(opts ExportOptions) error {
 	// app
 	meta.App, err = e.addSliceLayers(opts.WorkingImage, appSlices, opts.OrigMetadata.App)
 	if err != nil {
-		return errors.Wrap(err, "exporting slice layers")
+		return errors.Wrap(err, "exporting app slice layers")
 	}
 
 	// config
@@ -274,147 +269,37 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 
 	return nil
 }
-
-func (e *Exporter) tarLayer(layer identifiableLayer) (string, string, error) {
-	tarPath := filepath.Join(e.ArtifactsDir, launch.EscapeID(layer.Identifier())+".tar")
-	if e.tarHashes == nil {
-		e.tarHashes = make(map[string]string)
-	}
-	if sha, ok := e.tarHashes[tarPath]; ok {
-		e.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", layer.Identifier(), sha)
-		return tarPath, sha, nil
-	}
-	e.Logger.Debugf("Writing tarball for layer %q\n", layer.Identifier())
-	sha, err := archive.WriteTarFile(layer.Path(), tarPath, e.UID, e.GID)
+func (e *Exporter) addOrReuseLayer(image imgutil.Image, layerDir layerDir, previousSHA string) (string, error) {
+	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
 	if err != nil {
-		return "", "", err
+		return "", errors.Wrapf(err, "tarring layer '%s'", layer.ID)
 	}
-	e.tarHashes[tarPath] = sha
-	return tarPath, sha, nil
+	if layer.Digest == previousSHA {
+		e.Logger.Infof("Reusing layer '%s'\n", layer.ID)
+		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
+		return layer.Digest, image.ReuseLayer(previousSHA)
+	}
+	e.Logger.Infof("Adding layer '%s'\n", layer.ID)
+	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
+	return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
 }
 
-func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer identifiableLayer, previousSHA string) (string, error) {
-	tarPath, sha, err := e.tarLayer(layer)
+func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir layerDir, previousSHA string) (string, error) {
+	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
 	if err != nil {
-		return "", errors.Wrapf(err, "tarring layer '%s'", layer.Identifier())
+		return "", errors.Wrapf(err, "tarring layerDir %q", layer.ID)
 	}
-	if sha == previousSHA {
-		e.Logger.Infof("Reusing layer '%s'\n", layer.Identifier())
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
-		return sha, image.ReuseLayer(previousSHA)
+	if layer.Digest == previousSHA {
+		e.Logger.Infof("Reusing cache layerDir '%s'\n", layer.ID)
+		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
+		return layer.Digest, cache.ReuseLayer(previousSHA)
 	}
-	e.Logger.Infof("Adding layer '%s'\n", layer.Identifier())
-	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
-	return sha, image.AddLayerWithDiffID(tarPath, sha)
+	e.Logger.Infof("Adding cache layerDir '%s'\n", layer.ID)
+	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
+	return layer.Digest, cache.AddLayerFile(layer.TarPath, layer.Digest)
 }
 
-func (e *Exporter) addOrReuseCacheLayer(cache Cache, layer identifiableLayer, previousSHA string) (string, error) {
-	tarPath, sha, err := e.tarLayer(layer)
-	if err != nil {
-		return "", errors.Wrapf(err, "tarring layer %q", layer.Identifier())
-	}
-	if sha == previousSHA {
-		e.Logger.Infof("Reusing cache layer '%s'\n", layer.Identifier())
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
-		return sha, cache.ReuseLayer(previousSHA)
-	}
-	e.Logger.Infof("Adding cache layer '%s'\n", layer.Identifier())
-	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), sha)
-	return sha, cache.AddLayerFile(tarPath, sha)
-}
-
-func (e *Exporter) createAppSliceLayers(appDir string, slices []Slice) ([]SliceLayer, error) {
-	var appSlices []SliceLayer
-
-	for index, slice := range slices {
-		var allGlobMatches []string
-		for _, path := range slice.Paths {
-			globMatches, err := filepath.Glob(e.toAbs(appDir, path))
-			if err != nil {
-				return nil, errors.Wrap(err, "bad pattern for glob path")
-			}
-			allGlobMatches = append(allGlobMatches, globMatches...)
-		}
-		sliceLayerID := fmt.Sprintf("slice-%d", index+1)
-		sliceLayer, err := e.createSliceLayer(appDir, sliceLayerID, allGlobMatches)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating slice layer")
-		}
-		appSlices = append(appSlices, sliceLayer)
-	}
-
-	// finish-up by creating the actual app dir layer and place it at the end of the app slices
-	// -------------
-	// |  slice 1  |
-	// -------------
-	// |  slice 2  |
-	// -------------
-	// |  slice N  |
-	// -------------
-	// |  app dir  |
-	// -------------
-	tarPath := filepath.Join(e.ArtifactsDir, "app.tar")
-	sha, err := archive.WriteTarFile(appDir, tarPath, e.UID, e.GID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "exporting layer 'app'")
-	}
-
-	return append(appSlices, SliceLayer{
-		ID:      "app",
-		SHA:     sha,
-		TarPath: tarPath,
-	}), nil
-}
-
-func (e *Exporter) createSliceLayer(appDir, layerID string, files []string) (SliceLayer, error) {
-	tarPath := filepath.Join(e.ArtifactsDir, launch.EscapeID(layerID)+".tar")
-	sha, fileSet, err := archive.WriteFilesToTar(tarPath, e.UID, e.GID, files...)
-	if err != nil {
-		return SliceLayer{}, errors.Wrapf(err, "exporting slice layer '%s'", layerID)
-	}
-
-	// for this first iteration, just delete the actual files then revisit
-	// the directories and delete if empty as a result of previous removal
-	var dirs []string
-	for file := range fileSet {
-		stat, _ := os.Stat(file)
-		if !stat.IsDir() {
-			err = os.Remove(file)
-			if err != nil {
-				e.Logger.Errorf("failed to delete file %v", err)
-			}
-		} else {
-			if file == appDir {
-				continue
-			}
-			dirs = append(dirs, file)
-		}
-	}
-	// sort the dirs by their path depth (deepest -> most shallow) to avoid NOT being able to delete a high level dir
-	// that nested empty dirs.
-	sort.SliceStable(dirs, func(i, j int) bool {
-		return len(strings.Split(dirs[i], string(os.PathSeparator))) > len(strings.Split(dirs[j], string(os.PathSeparator)))
-	})
-	for _, dir := range dirs {
-		if ok, err := isEmptyDir(dir); ok {
-			if err != nil {
-				e.Logger.Errorf("failed to check if directory is empty %v", err)
-			}
-			err = os.Remove(dir)
-			if err != nil {
-				e.Logger.Errorf("failed to delete directory %v", err)
-			}
-		}
-	}
-
-	return SliceLayer{
-		ID:      layerID,
-		SHA:     sha,
-		TarPath: tarPath,
-	}, nil
-}
-
-func (e *Exporter) addSliceLayers(image imgutil.Image, sliceLayers []SliceLayer, previousAppMD []LayerMetadata) ([]LayerMetadata, error) {
+func (e *Exporter) addSliceLayers(image imgutil.Image, sliceLayers []layers.Layer, previousAppMD []LayerMetadata) ([]LayerMetadata, error) {
 	var numberOfReusedLayers int
 	var appMD []LayerMetadata
 
@@ -423,22 +308,22 @@ func (e *Exporter) addSliceLayers(image imgutil.Image, sliceLayers []SliceLayer,
 
 		found := false
 		for _, previous := range previousAppMD {
-			if slice.SHA == previous.SHA {
+			if slice.Digest == previous.SHA {
 				found = true
 				break
 			}
 		}
 		if found {
-			err = image.ReuseLayer(slice.SHA)
+			err = image.ReuseLayer(slice.Digest)
 			numberOfReusedLayers++
 		} else {
-			err = image.AddLayerWithDiffID(slice.TarPath, slice.SHA)
+			err = image.AddLayerWithDiffID(slice.TarPath, slice.Digest)
 		}
 		if err != nil {
 			return nil, err
 		}
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", slice.ID, slice.SHA)
-		appMD = append(appMD, LayerMetadata{SHA: slice.SHA})
+		e.Logger.Debugf("Layer '%s' SHA: %s\n", slice.ID, slice.Digest)
+		appMD = append(appMD, LayerMetadata{SHA: slice.Digest})
 	}
 
 	delta := len(sliceLayers) - numberOfReusedLayers
@@ -450,20 +335,4 @@ func (e *Exporter) addSliceLayers(image imgutil.Image, sliceLayers []SliceLayer,
 	}
 
 	return appMD, nil
-}
-
-func (e *Exporter) toAbs(baseDir, path string) string {
-	path = filepath.Clean(path)
-
-	// force relative path to be absolute from the base dir
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(baseDir, path)
-	}
-	// force an absolute path to be absolute from base dir
-	if len(path) > len(baseDir) && path[:len(baseDir)] != baseDir {
-		path = filepath.Join(baseDir, path)
-		e.Logger.Warnf("found absolute path %s outside of %s", path, baseDir)
-	}
-
-	return path
 }
