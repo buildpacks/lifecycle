@@ -2,6 +2,7 @@ package layers_test
 
 import (
 	"archive/tar"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -24,7 +27,8 @@ func TestDirLayers(t *testing.T) {
 func testDirs(t *testing.T, when spec.G, it spec.S) {
 	var (
 		factory    *layers.Factory
-		dirToSlice string
+		dir        string
+		logHandler = memory.New()
 	)
 	it.Before(func() {
 		var err error
@@ -32,85 +36,109 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		factory = &layers.Factory{
 			ArtifactsDir: artifactDir,
+			Logger:       &log.Logger{Handler: logHandler},
 			UID:          1234,
 			GID:          4321,
 		}
-		dirToSlice, err = filepath.Abs(filepath.Join("testdata", "slices", "target-dir"))
+		dir, err = filepath.Abs(filepath.Join("testdata", "slices", "target-dir"))
 		h.AssertNil(t, err)
 	})
 
 	it.After(func() {
-		os.RemoveAll(factory.ArtifactsDir)
+		h.AssertNil(t, os.RemoveAll(factory.ArtifactsDir))
 	})
 
 	when("#DirLayer", func() {
-		it("creates a layer from the directory", func() {
-			dirLayer, err := factory.DirLayer("some-layer-id", dirToSlice)
+		var dirLayer layers.Layer
+		it.Before(func() {
+			var err error
+			dirLayer, err = factory.DirLayer("some-layer-id", dir)
 			h.AssertNil(t, err)
+		})
+
+		it("creates a layer from the directory", func() {
 			// parent layers should have uid/gid matching the filesystem
 			// the dir and it's children should have normalized uid/gid
-			assertTarEntries(t, dirLayer.TarPath, append(parents(t, dirToSlice), []entry{
+			assertTarEntries(t, dirLayer.TarPath, append(parents(t, dir), []entry{
 				{
-					name:     dirToSlice,
+					name:     dir,
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeDir,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "dir-link"),
+					name:     filepath.Join(dir, "dir-link"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeSymlink,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "file-link.txt"),
+					name:     filepath.Join(dir, "file-link.txt"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeSymlink,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "file.txt"),
+					name:     filepath.Join(dir, "file.txt"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "other-dir"),
+					name:     filepath.Join(dir, "other-dir"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeDir,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "other-dir", "other-file.md"),
+					name:     filepath.Join(dir, "other-dir", "other-file.md"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "other-dir", "other-file.txt"),
+					name:     filepath.Join(dir, "other-dir", "other-file.txt"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "some-dir"),
+					name:     filepath.Join(dir, "some-dir"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeDir,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "some-dir", "file.md"),
+					name:     filepath.Join(dir, "some-dir", "file.md"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dirToSlice, "some-dir", "some-file.txt"),
+					name:     filepath.Join(dir, "some-dir", "some-file.txt"),
 					uid:      factory.UID,
 					gid:      factory.GID,
 					typeFlag: tar.TypeReg,
 				},
 			}...))
+		})
+
+		it("reuses tars when possible", func() {
+			layerTar, err := os.Stat(dirLayer.TarPath)
+			h.AssertNil(t, err)
+			modTime := layerTar.ModTime()
+			reusedDirLayer, err := factory.DirLayer("some-layer-id", dir)
+			h.AssertNil(t, err)
+			h.AssertEq(t, reusedDirLayer, dirLayer)
+			layerTar, err = os.Stat(reusedDirLayer.TarPath)
+			h.AssertNil(t, err)
+			h.AssertEq(t, modTime, layerTar.ModTime()) // assert file has not been modified
+
+			h.AssertEq(t, len(logHandler.Entries), 1)
+			h.AssertEq(t,
+				logHandler.Entries[0].Message,
+				fmt.Sprintf("Reusing tarball for layer \"some-layer-id\" with SHA: %s\n", dirLayer.Digest),
+			)
 		})
 	})
 }

@@ -55,9 +55,11 @@ func (f *Factory) DirLayer(id string, dir string) (layer Layer, err error) {
 	if err := tw.Close(); err != nil {
 		return Layer{}, err
 	}
+	digest := lw.Digest()
+	f.tarHashes[tarPath] = digest
 	return Layer{
 		ID:      id,
-		Digest:  lw.Digest(),
+		Digest:  digest,
 		TarPath: tarPath,
 	}, err
 }
