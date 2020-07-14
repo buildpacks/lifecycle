@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -144,6 +145,15 @@ func assertTarEntries(t *testing.T, tarPath string, expectedEntries []entry) {
 		}
 		if header.Gid != expected.gid {
 			t.Fatalf("expected entry '%s' to have GID %d, got %d", header.Name, expected.gid, header.Gid)
+		}
+		if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
+			t.Fatalf("expected entry '%s' to normalized mod time, got '%s", header.Name, header.ModTime)
+		}
+		if header.Uname != "" {
+			t.Fatalf("expected entry '%s' to empty Uname, got '%s", header.Name, header.Uname)
+		}
+		if header.Gname != "" {
+			t.Fatalf("expected entry '%s' to empty Gname, got '%s", header.Name, header.Gname)
 		}
 		h.AssertEq(t, header.Typeflag, expected.typeFlag)
 	}
