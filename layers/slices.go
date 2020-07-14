@@ -100,7 +100,7 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 		ID:      layerID,
 		Digest:  lw.Digest(),
 		TarPath: tarPath,
-	}, err
+	}, nil
 }
 
 type sliceableDir struct {
