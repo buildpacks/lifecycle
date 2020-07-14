@@ -2,7 +2,6 @@ package layers_test
 
 import (
 	"archive/tar"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,65 +14,169 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestSlices(t *testing.T) {
+func TestSliceLayers(t *testing.T) {
 	spec.Run(t, "Factory", testSlices, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testSlices(t *testing.T, when spec.G, it spec.S) {
 	var (
-		slicer     *layers.Factory
+		factory    *layers.Factory
 		dirToSlice string
 	)
 	it.Before(func() {
 		var err error
 		artifactDir, err := ioutil.TempDir("", "layers.slices.layer")
 		h.AssertNil(t, err)
-		slicer = &layers.Factory{
+		factory = &layers.Factory{
 			ArtifactsDir: artifactDir,
 			UID:          1234,
 			GID:          4321,
 		}
-		dirToSlice, err = filepath.Abs(filepath.Join("testdata", "slices", "dir-to-slice"))
+		dirToSlice, err = filepath.Abs(filepath.Join("testdata", "slices", "target-dir"))
 		h.AssertNil(t, err)
 	})
 
 	it.After(func() {
-		os.RemoveAll(slicer.ArtifactsDir)
+		os.RemoveAll(factory.ArtifactsDir)
 	})
 
 	when("#SliceLayers", func() {
 		when("there are no slices", func() {
 			it("creates a single app layer", func() {
-				sliceLayers, err := slicer.SliceLayers(dirToSlice, []layers.Slice{})
+				sliceLayers, err := factory.SliceLayers(dirToSlice, []layers.Slice{})
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(sliceLayers), 1)
-				assertTarEntries(t, sliceLayers[0].TarPath, append(dirAndParents(dirToSlice), []entry{
-					{name: filepath.Join(dirToSlice, "dir-link"), typeFlag: tar.TypeSymlink},
-					{name: filepath.Join(dirToSlice, "file-link.txt"), typeFlag: tar.TypeSymlink},
-					{name: filepath.Join(dirToSlice, "file.txt"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "other-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "other-dir", "other-file.md"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "other-dir", "other-file.txt"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "some-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "some-dir", "file.md"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "some-dir", "some-file.txt"), typeFlag: tar.TypeReg},
+				// parent layers should have uid/gid matching the filesystem
+				// the sliced dir and it's children should have normalized uid/gid
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []entry{
+					{
+						name:     dirToSlice,
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "dir-link"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeSymlink,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "file-link.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeSymlink,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir", "other-file.md"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir", "other-file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir", "file.md"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir", "some-file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
 				}...))
 			})
 
 			it("resolves relative paths", func() {
-				sliceLayers, err := slicer.SliceLayers(filepath.Join("testdata", "slices", "dir-to-slice"), []layers.Slice{})
+				sliceLayers, err := factory.SliceLayers(filepath.Join("testdata", "slices", "target-dir"), []layers.Slice{})
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(sliceLayers), 1)
-				assertTarEntries(t, sliceLayers[0].TarPath, append(dirAndParents(dirToSlice), []entry{
-					{name: filepath.Join(dirToSlice, "dir-link"), typeFlag: tar.TypeSymlink},
-					{name: filepath.Join(dirToSlice, "file-link.txt"), typeFlag: tar.TypeSymlink},
-					{name: filepath.Join(dirToSlice, "file.txt"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "other-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "other-dir", "other-file.md"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "other-dir", "other-file.txt"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "some-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "some-dir", "file.md"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "some-dir", "some-file.txt"), typeFlag: tar.TypeReg},
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []entry{
+					{
+						name:     dirToSlice,
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "dir-link"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeSymlink,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "file-link.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeSymlink,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir", "other-file.md"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir", "other-file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir", "file.md"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir", "some-file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
 				}...))
 			})
 		})
@@ -83,7 +186,7 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				sliceLayers, err = slicer.SliceLayers(dirToSlice, []layers.Slice{
+				sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
 					{Paths: []string{"*.txt", "**/*.txt"}},
 					{Paths: []string{"other-dir"}},
 					{Paths: []string{"dir-link/*"}},
@@ -97,20 +200,71 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates slice from pattern", func() {
-				assertTarEntries(t, sliceLayers[0].TarPath, append(dirAndParents(dirToSlice), []entry{
-					{name: filepath.Join(dirToSlice, "file-link.txt"), typeFlag: tar.TypeSymlink},
-					{name: filepath.Join(dirToSlice, "file.txt"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "other-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "other-dir", "other-file.txt"), typeFlag: tar.TypeReg},
-					{name: filepath.Join(dirToSlice, "some-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "some-dir", "some-file.txt"), typeFlag: tar.TypeReg},
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []entry{
+					{
+						name:     dirToSlice,
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "file-link.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeSymlink,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir", "other-file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir", "some-file.txt"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
 				}...))
 			})
 
 			it("accepts dirs", func() {
-				assertTarEntries(t, sliceLayers[1].TarPath, append(dirAndParents(dirToSlice), []entry{
-					{name: filepath.Join(dirToSlice, "other-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "other-dir", "other-file.md"), typeFlag: tar.TypeReg},
+				assertTarEntries(t, sliceLayers[1].TarPath, append(parents(t, dirToSlice), []entry{
+					{
+						name:     dirToSlice,
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "other-dir", "other-file.md"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
 				}...))
 			})
 
@@ -123,53 +277,33 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates a layer with the remaining files", func() {
-				assertTarEntries(t, sliceLayers[4].TarPath, append(dirAndParents(dirToSlice), []entry{
-					{name: filepath.Join(dirToSlice, "dir-link"), typeFlag: tar.TypeSymlink},
-					{name: filepath.Join(dirToSlice, "some-dir"), typeFlag: tar.TypeDir},
-					{name: filepath.Join(dirToSlice, "some-dir", "file.md"), typeFlag: tar.TypeReg},
+				assertTarEntries(t, sliceLayers[4].TarPath, append(parents(t, dirToSlice), []entry{
+					{
+						name:     dirToSlice,
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "dir-link"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeSymlink,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeDir,
+					},
+					{
+						name:     filepath.Join(dirToSlice, "some-dir", "file.md"),
+						uid:      factory.UID,
+						gid:      factory.GID,
+						typeFlag: tar.TypeReg,
+					},
 				}...))
 			})
 		})
 	})
-}
-
-type entry struct {
-	name     string
-	typeFlag byte
-}
-
-func assertTarEntries(t *testing.T, tarPath string, expectedEntries []entry) {
-	t.Helper()
-	lf, err := os.Open(tarPath)
-	h.AssertNil(t, err)
-	defer lf.Close()
-	tr := tar.NewReader(lf)
-
-	for i, expected := range expectedEntries {
-		header, err := tr.Next()
-		if err == io.EOF {
-			t.Fatalf("missing expected archive entry '%s'", expected.name)
-		}
-		h.AssertNil(t, err)
-		if header.Name != expected.name {
-			t.Fatalf("expected entry '%d' to have name %q, got %q", i, expected.name, header.Name)
-		}
-		if header.Typeflag != expected.typeFlag {
-			t.Fatalf("expected entry '%s' to have type %q, got %q", header.Name, expected.typeFlag, header.Typeflag)
-		}
-		h.AssertEq(t, header.Typeflag, expected.typeFlag)
-	}
-	header, err := tr.Next()
-	if err != io.EOF {
-		t.Fatalf("unexpected archive entry '%s'", header.Name)
-	}
-}
-
-func dirAndParents(file string) []entry {
-	parent := filepath.Dir(file)
-	fileEntry := entry{name: file, typeFlag: tar.TypeDir}
-	if parent == "/" {
-		return []entry{fileEntry}
-	}
-	return append(dirAndParents(parent), fileEntry)
 }

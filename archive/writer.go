@@ -32,7 +32,7 @@ func (tw *NormalizedTarWriter) WithGID(gid int) {
 	})
 }
 
-func NewNormalizedTarWriter(tw TarWriter) *NormalizedTarWriter {
+func NewNormalizingTarWriter(tw TarWriter) *NormalizedTarWriter {
 	return &NormalizedTarWriter{tw, []HeaderOpt{}}
 }
 

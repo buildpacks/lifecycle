@@ -79,7 +79,7 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 	defer func() {
 		err = lw.Close()
 	}()
-	tw := archive.NewNormalizedTarWriter(tar.NewWriter(lw))
+	tw := archive.NewNormalizingTarWriter(tar.NewWriter(lw))
 	if len(files) != 0 {
 		if err := archive.WriteFilesToArchive(tw, sdir.parentDirs); err != nil {
 			return Layer{}, err
@@ -148,7 +148,7 @@ func (sd *sliceableDir) sliceFiles(paths []string) []archive.PathInfo {
 	for _, match := range paths {
 		sd.addMatchedFiles(slicedFiles, match)
 	}
-	return sd.addMissingParents(slicedFiles)
+	return sd.fillInMissingParents(slicedFiles)
 }
 
 func (sd *sliceableDir) addMatchedFiles(matchedFiles map[string]os.FileInfo, match string) {
@@ -166,7 +166,7 @@ func (sd *sliceableDir) addMatchedFiles(matchedFiles map[string]os.FileInfo, mat
 	sd.slicedFiles[match] = true
 }
 
-func (sd *sliceableDir) addMissingParents(matchedFiles map[string]os.FileInfo) []archive.PathInfo {
+func (sd *sliceableDir) fillInMissingParents(matchedFiles map[string]os.FileInfo) []archive.PathInfo {
 	// add parent dirs for matched files if they are missing
 	var parentToCheck []string
 	var files []archive.PathInfo
@@ -215,7 +215,6 @@ func (sd *sliceableDir) addMissingParents(matchedFiles map[string]os.FileInfo) [
 func (sd *sliceableDir) remainingFiles() []archive.PathInfo {
 	var files []archive.PathInfo
 	for path, info := range sd.pathInfos {
-		path := path
 		if added, ok := sd.slicedFiles[path]; !ok || added {
 			continue
 		}
