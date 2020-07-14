@@ -206,6 +206,7 @@ func (sd *sliceableDir) fillInMissingParents(matchedFiles map[string]os.FileInfo
 			for _, child := range children {
 				if added, ok := sd.slicedFiles[child]; ok && !added {
 					allChildrenAdded = false
+					break
 				}
 			}
 		}
