@@ -65,7 +65,7 @@ func (f *Factory) createLayerFromSlice(slice Slice, sdir *sliceableDir, layerID 
 	return f.createLayerFromFiles(layerID, sdir, sdir.sliceFiles(matches))
 }
 
-func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files []archive.PathInfo) (sl Layer, err error) {
+func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files []archive.PathInfo) (layer Layer, err error) {
 	sort.SliceStable(files, func(i, j int) bool {
 		return files[i].Path < files[j].Path
 	})
@@ -77,7 +77,9 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 		return Layer{}, err
 	}
 	defer func() {
-		err = lw.Close()
+		if closeErr := lw.Close(); err == nil {
+			err = closeErr
+		}
 	}()
 	tw := archive.NewNormalizingTarWriter(tar.NewWriter(lw))
 	if len(files) != 0 {
