@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -19,6 +20,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/acceptance/variables"
 	"github.com/buildpacks/lifecycle/auth"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -29,16 +31,17 @@ var (
 	analyzeImage         = "lifecycle/acceptance/analyzer"
 	analyzerPath         = "/cnb/lifecycle/analyzer"
 	cacheFixtureDir      = filepath.Join("testdata", "analyzer", "cache-dir")
-)
-
-var (
-	registry *ih.DockerRegistry
+	daemonOS             string
+	registry             *ih.DockerRegistry
 )
 
 func TestAnalyzer(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "Analyzer is not yet supported on Windows")
-
+	h.SkipIf(t, runtime.GOOS == "windows", "These tests need to be adapted to work on Windows")
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	info, err := h.DockerCli(t).Info(context.TODO())
+	h.AssertNil(t, err)
+	daemonOS = info.OSType
 
 	// Setup registry
 
@@ -54,8 +57,12 @@ func TestAnalyzer(t *testing.T) {
 
 	// Setup test container
 
-	h.MakeAndCopyLifecycle(t, "linux", analyzerBinaryDir)
-	h.DockerBuild(t, analyzeImage, analyzeDockerContext)
+	h.MakeAndCopyLifecycle(t, daemonOS, analyzerBinaryDir)
+	h.DockerBuild(t,
+		analyzeImage,
+		analyzeDockerContext,
+		h.WithFlags("-f", filepath.Join(analyzeDockerContext, variables.DockerfileName)),
+	)
 	defer h.DockerImageRemove(t, analyzeImage)
 
 	spec.Run(t, "acceptance-analyzer", testAnalyzer, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -93,6 +100,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 	when("the provided layers directory isn't writeable", func() {
 		it("recursively chowns the directory", func() {
+			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
 			output := h.DockerRun(t,
 				analyzeImage,
 				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
@@ -114,7 +123,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				"/layers",
 				h.WithFlags(
 					"--env", "CNB_REGISTRY_AUTH={}",
-					"--volume", fmt.Sprintf("%s:/cache", cacheVolume), // use a cache so that we can observe the effect of other-group.toml on /layers
+					"--volume", cacheVolume+":"+"/cache", // use a cache so that we can observe the effect of other-group.toml on /layers
 				),
 				h.WithArgs(
 					analyzerPath,
@@ -154,7 +163,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			_, tempDir := h.DockerRunAndCopy(t,
 				analyzeImage,
 				"/layers/analyzed.toml",
-				h.WithFlags("--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"),
+				h.WithFlags(variables.DockerSocketMount...),
 				h.WithArgs(analyzerPath, "-daemon", "some-image"),
 			)
 			defer os.RemoveAll(tempDir)
@@ -173,7 +182,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"docker",
 					"build",
 					"-t", appImage,
-					"--build-arg", fmt.Sprintf("metadata=%s", metadata),
+					"--build-arg", "fromImage="+variables.ContainerBaseImage,
+					"--build-arg", "metadata="+metadata,
 					filepath.Join("testdata", "analyzer", "app-image"),
 				)
 				h.Run(t, cmd)
@@ -187,7 +197,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				_, tempDir := h.DockerRunAndCopy(t,
 					analyzeImage,
 					"/layers",
-					h.WithFlags("--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"),
+					h.WithFlags(variables.DockerSocketMount...),
 					h.WithArgs(analyzerPath, "-daemon", appImage),
 				)
 				defer os.RemoveAll(tempDir)
@@ -211,7 +221,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
 						"/layers",
-						h.WithFlags("--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"),
+						h.WithFlags(variables.DockerSocketMount...),
 						h.WithArgs(
 							analyzerPath,
 							"-daemon",
@@ -250,7 +260,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"docker",
 						"build",
 						"-t", cacheImage,
-						"--build-arg", fmt.Sprintf("metadata=%s", metadata),
+						"--build-arg", "fromImage="+variables.ContainerBaseImage,
+						"--build-arg", "metadata="+metadata,
 						filepath.Join("testdata", "analyzer", "cache-image"),
 					)
 					h.Run(t, cmd)
@@ -264,10 +275,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
 						"/layers",
-						h.WithFlags(
-							"--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock",
-							"--env", "CNB_REGISTRY_AUTH={}", // In practice, we never set this variable in the daemon case. Setting to avoid failure to stat docker config directory when initializing cache.
-						),
+						h.WithFlags(append(
+							variables.DockerSocketMount,
+							"--env", "CNB_REGISTRY_AUTH={}", // In practice, we never set this variable in the daemon case. Setting to avoid failure to stat docker config directory when initializing cache
+						)...),
 						h.WithArgs(
 							analyzerPath,
 							"-daemon",
@@ -290,10 +301,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
 						"/layers",
-						h.WithFlags(
-							"--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock",
-							"--volume", fmt.Sprintf("%s:/cache", cacheVolume),
-						),
+						h.WithFlags(append(
+							variables.DockerSocketMount,
+							"--volume", cacheVolume+":"+"/cache",
+						)...),
 						h.WithArgs(
 							analyzerPath,
 							"-daemon",
@@ -309,15 +320,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("the provided cache directory isn't writeable by the CNB user's group", func() {
 					it("recursively chowns the directory", func() {
+						h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
 						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
 						defer h.DockerVolumeRemove(t, cacheVolume)
 
 						output := h.DockerRun(t,
 							analyzeImage,
-							h.WithFlags(
-								"--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock",
-								"--volume", fmt.Sprintf("%s:/cache", cacheVolume),
-							),
+							h.WithFlags(append(
+								variables.DockerSocketMount,
+								"--volume", cacheVolume+":/cache",
+							)...),
 							h.WithBash(
 								fmt.Sprintf("chown -R 9999:9999 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
 							),
@@ -331,15 +344,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("the provided cache directory is writeable by the CNB user's group", func() {
 					it("doesn't chown the directory", func() {
+						h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
 						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
 						defer h.DockerVolumeRemove(t, cacheVolume)
 
 						output := h.DockerRun(t,
 							analyzeImage,
-							h.WithFlags(
-								"--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock",
-								"--volume", fmt.Sprintf("%s:/cache", cacheVolume),
-							),
+							h.WithFlags(append(
+								variables.DockerSocketMount,
+								"--volume", cacheVolume+":/cache",
+							)...),
 							h.WithBash(
 								fmt.Sprintf("chown -R 9999:3333 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
 							),
@@ -363,7 +378,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				t,
 				"some-app-image-"+h.RandString(10),
 				filepath.Join("testdata", "analyzer", "app-image"),
-				"--build-arg", fmt.Sprintf("metadata=%s", metadata),
+				"--build-arg", "fromImage="+variables.ContainerBaseImage,
+				"--build-arg", "metadata="+metadata,
 			)
 		})
 
@@ -390,7 +406,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"/layers",
 					h.WithFlags(
 						"--network", "host",
-						"--env", fmt.Sprintf("CNB_REGISTRY_AUTH=%s", appAuthConfig),
+						"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
 					),
 					h.WithArgs(analyzerPath, appImage),
 				)
@@ -417,7 +433,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"/layers",
 						h.WithFlags(
 							"--network", "host",
-							"--env", fmt.Sprintf("CNB_REGISTRY_AUTH=%s", appAuthConfig),
+							"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
 						),
 						h.WithArgs(
 							analyzerPath,
@@ -447,6 +463,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("CNB_REGISTRY_AUTH is not provided", func() {
 			when("DOCKER_CONFIG is set", func() {
 				it("succeeds", func() {
+					h.SkipIf(t, runtime.GOOS == "windows", "Can't run bash on Windows")
+
 					// Copy docker config directory to a temp directory to avoid tampering with permissions for other tests.
 					dockerConfig, err := ioutil.TempDir("", "test-docker-config-")
 					defer os.RemoveAll(dockerConfig)
@@ -462,11 +480,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"/layers",
 						h.WithFlags(
 							"--mount", fmt.Sprintf("type=bind,source=%s,target=/mounted-docker-config", dockerConfig),
-							"--env", fmt.Sprintf("DOCKER_CONFIG=%s", "/mounted-docker-config"),
+							"--env", "DOCKER_CONFIG=/mounted-docker-config",
 							"--network", "host",
 						),
 						h.WithBash(
-							fmt.Sprintf("chown -R 2222:3333 /mounted-docker-config;%s %s; ls -alR /layers", analyzerPath, appImage), // provide a real app image, so that we can test that the registry is accessible
+							fmt.Sprintf("chown -R 2222:3333 /mounted-docker-config; %s %s; ls -alR /layers", analyzerPath, appImage), // provide a real app image, so that we can test that the registry is accessible
 						),
 					)
 					defer os.RemoveAll(tempDir)
@@ -486,7 +504,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t,
 						"some-cache-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "cache-image"),
-						"--build-arg", fmt.Sprintf("metadata=%s", metadata),
+						"--build-arg", "fromImage="+variables.ContainerBaseImage,
+						"--build-arg", "metadata="+metadata,
 					)
 				})
 
@@ -500,7 +519,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"/layers",
 						h.WithFlags(
 							"--network", "host",
-							"--env", fmt.Sprintf("CNB_REGISTRY_AUTH=%s", cacheAuthConfig),
+							"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
 						),
 						h.WithArgs(
 							analyzerPath,
@@ -525,7 +544,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"/layers",
 						h.WithFlags(
 							"--env", "CNB_REGISTRY_AUTH={}",
-							"--volume", fmt.Sprintf("%s:/cache", cacheVolume),
+							"--volume", cacheVolume+":"+"/cache",
 						),
 						h.WithArgs(
 							analyzerPath,
@@ -556,18 +575,9 @@ func flattenMetadata(t *testing.T, path string, metadataStruct interface{}) stri
 }
 
 func buildRegistryImage(t *testing.T, repoName, context string, buildArgs ...string) (string, string) {
-	regRepoName := registry.RepoName(repoName)
-
-	// Setup cmd
-	cmdArgs := []string{
-		"build",
-		"-t", regRepoName,
-	}
-	cmdArgs = append(cmdArgs, buildArgs...)
-	cmdArgs = append(cmdArgs, context)
-
 	// Build image
-	h.Run(t, exec.Command("docker", cmdArgs...))
+	regRepoName := registry.RepoName(repoName)
+	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
 
 	// Push image
 	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, registry.EncodedLabeledAuth()))

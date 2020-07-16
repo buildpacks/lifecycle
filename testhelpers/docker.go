@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -17,19 +16,14 @@ import (
 	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/acceptance/variables"
 )
 
-var dockerCliVal *dockercli.Client
+var dockerCliVal dockercli.CommonAPIClient
 var dockerCliOnce sync.Once
 
-type DockerCmd struct {
-	flags []string
-	args  []string
-}
-
-type DockerCmdOp func(*DockerCmd)
-
-func DockerCli(t *testing.T) *dockercli.Client {
+func DockerCli(t *testing.T) dockercli.CommonAPIClient {
 	dockerCliOnce.Do(func() {
 		var dockerCliErr error
 		dockerCliVal, dockerCliErr = dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
@@ -38,86 +32,40 @@ func DockerCli(t *testing.T) *dockercli.Client {
 	return dockerCliVal
 }
 
-func DockerBuild(t *testing.T, name, context string) {
+func DockerBuild(t *testing.T, name, context string, ops ...DockerCmdOp) {
 	t.Helper()
-	cmd := exec.Command("docker", "build", "-t", name, context)
-	Run(t, cmd)
+	args := formatArgs([]string{"-t", name, context}, ops...)
+	Run(t, exec.Command("docker", append([]string{"build"}, args...)...))
 }
 
 func DockerImageRemove(t *testing.T, name string) {
 	t.Helper()
-	cmd := exec.Command("docker", "rmi", name)
-	Run(t, cmd)
+	Run(t, exec.Command("docker", "rmi", name))
 }
 
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
-	args := formatArgs(image, ops...)
-	args = append([]string{"run", "--rm"}, args...) // prepend run --rm
-
-	return Run(t, exec.Command("docker", args...))
-}
-
-func formatArgs(image string, ops ...DockerCmdOp) []string {
-	cmd := DockerCmd{}
-
-	for _, op := range ops {
-		op(&cmd)
-	}
-
-	args := []string{image}
-	args = append(cmd.flags, args...) // prepend flags
-	args = append(args, cmd.args...)  // append args
-
-	return args
-}
-
-func WithFlags(flags ...string) DockerCmdOp {
-	return func(cmd *DockerCmd) {
-		cmd.flags = append(cmd.flags, flags...)
-	}
-}
-
-func WithArgs(args ...string) DockerCmdOp {
-	return func(cmd *DockerCmd) {
-		cmd.args = append(cmd.args, args...)
-	}
-}
-
-func WithBash(args ...string) DockerCmdOp {
-	return func(cmd *DockerCmd) {
-		cmd.args = append([]string{"/bin/bash", "-c"}, args...)
-	}
+	t.Helper()
+	args := formatArgs([]string{image}, ops...)
+	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...))
 }
 
 func DockerRunAndCopy(t *testing.T, image, path string, ops ...DockerCmdOp) (string, string) {
 	containerName := "test-container-" + RandString(10)
 	ops = append(ops, WithFlags("--name", containerName))
-	args := formatArgs(image, ops...)
-	args = append([]string{"run"}, args...) // prepend run
+	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", args...))
-	defer DockerContainerRemove(t, containerName)
+	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
+	defer Run(t, exec.Command("docker", "rm", containerName))
 
 	tempDir, err := ioutil.TempDir("", "test-docker-copy-")
 	AssertNil(t, err)
-
-	Run(t,
-		exec.Command("docker", "cp", fmt.Sprintf("%s:%s", containerName, path), tempDir),
-	)
+	Run(t, exec.Command("docker", "cp", containerName+":"+path, tempDir))
 
 	return output, tempDir
 }
 
-func DockerContainerRemove(t *testing.T, name string) {
-	Run(t, exec.Command(
-		"docker", "rm", name,
-	))
-}
-
 func DockerVolumeRemove(t *testing.T, volume string) {
-	Run(t, exec.Command(
-		"docker", "volume", "rm", volume,
-	))
+	Run(t, exec.Command("docker", "volume", "rm", volume))
 }
 
 func ImageID(t *testing.T, repoName string) string {
@@ -158,21 +106,16 @@ func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) err
 }
 
 func SeedDockerVolume(t *testing.T, srcPath string) string {
-	helperImage := "busybox" // When Windows is supported, we can use "windows/nanoserver"
 	volumeName := "test-volume-" + RandString(10)
 	containerName := "test-volume-helper-" + RandString(10)
 
-	Run(t, exec.Command(
-		"docker", "pull", helperImage,
-	))
-
-	Run(t, exec.Command(
-		"docker", "run",
-		"--volume", volumeName+":/target", // create a new empty docker volume
+	Run(t, exec.Command("docker", "pull", variables.VolumeHelperImage))
+	Run(t, exec.Command("docker", append([]string{
+		"run",
+		"--volume", volumeName + ":" + "/target", // create a new empty volume
 		"--name", containerName,
-		helperImage,
-		"true",
-	))
+		variables.VolumeHelperImage},
+		variables.DummyCommand...)...))
 	defer Run(t, exec.Command("docker", "rm", containerName))
 
 	fis, err := ioutil.ReadDir(srcPath)
@@ -181,7 +124,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 		Run(t, exec.Command(
 			"docker", "cp",
 			filepath.Join(srcPath, fi.Name()),
-			containerName+":/target",
+			containerName+":"+"/target",
 		))
 	}
 

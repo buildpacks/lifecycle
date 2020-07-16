@@ -32,7 +32,7 @@ SOURCE_COMPILATION_IMAGE?=lifecycle-img
 BUILD_CTR?=lifecycle-ctr
 DOCKER_CMD?=make test
 
-GOFILES := $(shell go list -f '{{$$dir:=.Dir}}{{range $$file:=.GoFiles}}{{$$fp:=(printf "%s/%s\n" $$dir $$file)}}{{$$fp}}{{end}}' ./... | tr "\n" " ")
+GOFILES := $(shell $(GOCMD) run tools$/lister$/main.go)
 
 all: test build package
 
@@ -99,6 +99,12 @@ build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
 build-windows-symlinks:
 	@echo "> Creating phase symlinks for Windows..."
 ifeq ($(OS),Windows_NT)
+	call del $(OUT_DIR)$/detector.exe
+	call del $(OUT_DIR)$/analyzer.exe
+	call del $(OUT_DIR)$/restorer.exe
+	call del $(OUT_DIR)$/builder.exe
+	call del $(OUT_DIR)$/exporter.exe
+	call del $(OUT_DIR)$/rebaser.exe
 	call mklink $(OUT_DIR)$/detector.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/analyzer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/restorer.exe lifecycle.exe
