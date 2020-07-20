@@ -51,6 +51,7 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 			tw = &archive.NormalizingTarWriter{TarWriter: tar.NewWriter(file)}
 			tw.WithUID(uid)
 			tw.WithGID(gid)
+			tw.ToPosix()
 		})
 
 		it.After(func() {
@@ -110,7 +111,7 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir/link-file")
 					h.AssertEq(t, header.Uid, uid)
 					h.AssertEq(t, header.Gid, gid)
-					h.AssertEq(t, header.Linkname, "../some-file.txt")
+					h.AssertEq(t, header.Linkname, filepath.FromSlash("../some-file.txt"))
 					assertModTimeNormalized(t, header)
 				})
 			})

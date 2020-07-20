@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -22,15 +23,30 @@ func TestArchiveExtract(t *testing.T) {
 }
 
 func testExtract(t *testing.T, when spec.G, it spec.S) {
-	var tmpDir string
+	var (
+		tmpDir string
+		tr     *archive.NormalizingTarReader
+		file   *os.File
+	)
 
 	it.Before(func() {
 		var err error
 		tmpDir, err = ioutil.TempDir("", "archive-extract-test")
 		h.AssertNil(t, err)
+
+		archivePath := filepath.Join("testdata", "tar-to-dir", "some-linux-layer.tar")
+		if runtime.GOOS == "windows" {
+			archivePath = filepath.Join("testdata", "tar-to-dir", "some-windows-layer.tar")
+		}
+		file, err = os.Open(archivePath)
+		h.AssertNil(t, err)
+		tr = archive.NewNormalizingTarReader(tar.NewReader(file))
+		tr.PrependDir(tmpDir)
+		tr.FromSlash()
 	})
 
 	it.After(func() {
+		h.AssertNil(t, file.Close())
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
@@ -42,6 +58,23 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			{"root/standarddir/somefile", 0644},
 			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/readonly/readonlysub", os.ModeDir + 0500},
+		}
+
+		// Golang for Windows only implements owner permissions
+		if runtime.GOOS == "windows" {
+			pathModes = []archive.PathMode{
+				{`root`, os.ModeDir + 0777},
+				{`root\readonly`, os.ModeDir + 0555},
+				{`root\readonly\readonlysub`, os.ModeDir + 0555},
+				{`root\readonly\readonlysub\somefile`, 0444},
+				{`root\standarddir`, os.ModeDir + 0777},
+				{`root\standarddir\somefile`, 0666},
+				{`root\symlinkdir`, os.ModeDir + 0777},
+				{`root\symlinkdir\subdir`, os.ModeDir + 0777},
+				{`root\symlinkdir\subdir\somefile`, 0666},
+				{`root\symlinkdir\symlink`, 0666},
+				// other-dir/other-file intentionally left out, as it should not be extracted
+			}
 		}
 
 		it.After(func() {
@@ -57,17 +90,12 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("extracts a tar file", func() {
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-archive.tar"))
-			h.AssertNil(t, err)
-			defer file.Close()
-
-			tr := archive.NewNormalizingTarReader(tar.NewReader(file))
-			tr.PrependDir(tmpDir)
 			h.AssertNil(t, archive.Extract(tr))
 
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
 				fileInfo, err := os.Stat(extractedFile)
+
 				h.AssertNil(t, err)
 				h.AssertEq(t, fileInfo.Mode(), pathMode.Mode)
 			}
@@ -77,12 +105,6 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			_, err := os.Create(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-archive.tar"))
-			h.AssertNil(t, err)
-			defer file.Close()
-			tr := archive.NewNormalizingTarReader(tar.NewReader(file))
-			tr.PrependDir(tmpDir)
-
 			h.AssertError(t, archive.Extract(tr), "root: not a directory")
 		})
 
@@ -90,12 +112,6 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "root"), 0744))
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
-
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-archive.tar"))
-			h.AssertNil(t, err)
-			defer file.Close()
-			tr := archive.NewNormalizingTarReader(tar.NewReader(file))
-			tr.PrependDir(tmpDir)
 
 			h.AssertNil(t, archive.Extract(tr))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
