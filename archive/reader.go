@@ -28,7 +28,7 @@ func (tr *NormalizingTarReader) ExcludePaths(paths []string) {
 	tr.excludedPaths = paths
 }
 
-func (tr *NormalizingTarReader) ToWindows() {
+func (tr *NormalizingTarReader) FromSlash() {
 	tr.headerOpts = append(tr.headerOpts, func(hdr *tar.Header) *tar.Header {
 		hdr.Name = filepath.FromSlash(hdr.Name)
 		return hdr

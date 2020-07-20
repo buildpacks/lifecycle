@@ -180,10 +180,10 @@ package-windows:
 	@echo "> Packaging lifecycle for $(GOOS)..."
 	$(GOCMD) run tools$/packager$/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)$/lifecycle$/launcher.exe -lifecycleExePath $(GOOS_DIR)$/lifecycle$/lifecycle.exe -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)$/$(ARCHIVE_NAME).tgz
 
-#docker-build-source-image-windows:
-	#docker build -f tools/Dockerfile.windows --tag $(SOURCE_COMPILATION_IMAGE) --build-arg image_tag=$(WINDOWS_COMPILATION_IMAGE) --cache-from=$(SOURCE_COMPILATION_IMAGE) --isolation=process --quiet .
+docker-build-source-image-windows:
+	docker build -f tools/Dockerfile.windows --tag $(SOURCE_COMPILATION_IMAGE) --build-arg image_tag=$(WINDOWS_COMPILATION_IMAGE) --cache-from=$(SOURCE_COMPILATION_IMAGE) --isolation=process --quiet .
 
-#docker-run-windows: docker-build-source-image-windows
+docker-run-windows: docker-build-source-image-windows
 docker-run-windows:
 	@echo "> Running '$(DOCKER_CMD)' in docker windows..."
 	@docker volume rm -f lifecycle-out

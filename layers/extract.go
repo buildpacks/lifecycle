@@ -10,7 +10,7 @@ import (
 
 func Extract(r io.Reader, dest string) error {
 	tr := tarReader(r, dest)
-	return archive.Untar(tr)
+	return archive.Extract(tr)
 }
 
 func tarReader(r io.Reader, dest string) archive.TarReader {
@@ -20,7 +20,7 @@ func tarReader(r io.Reader, dest string) archive.TarReader {
 	if runtime.GOOS == "windows" {
 		tr.ExcludePaths([]string{"Hives"})
 		tr.Strip(`Files`)
-		tr.ToWindows()
+		tr.FromSlash()
 		if dest == "" {
 			dest = "c:"
 		}
