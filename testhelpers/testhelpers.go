@@ -3,7 +3,6 @@ package testhelpers
 import (
 	"archive/tar"
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -18,12 +17,9 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
-	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/buildpacks/lifecycle/archive"
@@ -35,6 +31,13 @@ func RandString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
+}
+
+func SkipIf(t *testing.T, expression bool, reason string) {
+	t.Helper()
+	if expression {
+		t.Skip(reason)
+	}
 }
 
 func AssertMatch(t *testing.T, actual string, expected string) {
@@ -99,6 +102,13 @@ func AssertNil(t *testing.T, actual interface{}) {
 	}
 }
 
+func AssertNotNil(t *testing.T, actual interface{}) {
+	t.Helper()
+	if isNil(actual) {
+		t.Fatal("Expected not nil")
+	}
+}
+
 func AssertJSONEq(t *testing.T, expected, actual string) {
 	t.Helper()
 
@@ -137,18 +147,6 @@ func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
-var dockerCliVal *dockercli.Client
-var dockerCliOnce sync.Once
-
-func DockerCli(t *testing.T) *dockercli.Client {
-	dockerCliOnce.Do(func() {
-		var dockerCliErr error
-		dockerCliVal, dockerCliErr = dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
-		AssertNil(t, dockerCliErr)
-	})
-	return dockerCliVal
-}
-
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
 	t.Helper()
 
@@ -169,21 +167,6 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-func PullImage(dockerCli *dockercli.Client, ref string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
-	if err != nil {
-		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
-		if err != nil {
-			return err
-		}
-	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
-	}
-	return rc.Close()
-}
-
 func HTTPGetE(url string) (string, error) {
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
@@ -198,13 +181,6 @@ func HTTPGetE(url string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
-}
-
-func ImageID(t *testing.T, repoName string) string {
-	t.Helper()
-	inspect, _, err := DockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
-	AssertNil(t, err)
-	return inspect.ID
 }
 
 func Run(t *testing.T, cmd *exec.Cmd) string {
@@ -266,19 +242,7 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 	AssertNil(t, err)
 	for _, fi := range fis {
 		if fi.Mode().IsRegular() {
-			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
-			AssertNil(t, err)
-			dstFile, err := os.Create(filepath.Join(dst, fi.Name()))
-			AssertNil(t, err)
-			_, err = io.Copy(dstFile, srcFile)
-			AssertNil(t, err)
-			modifiedtime := time.Time{}
-			AssertNil(t, srcFile.Close())
-			AssertNil(t, dstFile.Close())
-			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
-			AssertNil(t, err)
-			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)
-			AssertNil(t, err)
+			CopyFile(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
 		}
 		if fi.IsDir() {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
@@ -290,6 +254,22 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 	err = os.Chtimes(dst, modifiedtime, modifiedtime)
 	AssertNil(t, err)
 	err = os.Chmod(dst, 0775)
+	AssertNil(t, err)
+}
+
+func CopyFile(t *testing.T, srcFileName, destFileName string) {
+	srcFile, err := os.Open(srcFileName)
+	AssertNil(t, err)
+	defer srcFile.Close()
+	dstFile, err := os.Create(destFileName)
+	AssertNil(t, err)
+	defer dstFile.Close()
+	_, err = io.Copy(dstFile, srcFile)
+	AssertNil(t, err)
+	modifiedtime := time.Time{}
+	err = os.Chtimes(destFileName, modifiedtime, modifiedtime)
+	AssertNil(t, err)
+	err = os.Chmod(destFileName, 0664)
 	AssertNil(t, err)
 }
 

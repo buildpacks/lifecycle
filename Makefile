@@ -32,6 +32,8 @@ SOURCE_COMPILATION_IMAGE?=lifecycle-img
 BUILD_CTR?=lifecycle-ctr
 DOCKER_CMD?=make test
 
+GOFILES := $(shell $(GOCMD) run tools$/lister$/main.go)
+
 all: test build package
 
 build: build-linux build-windows
@@ -39,22 +41,28 @@ build: build-linux build-windows
 build-linux: build-linux-lifecycle build-linux-symlinks build-linux-launcher
 build-windows: build-windows-lifecycle build-windows-symlinks build-windows-launcher
 
-build-linux-lifecycle: export GOOS:=linux
-build-linux-lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-build-linux-lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
-build-linux-lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle $(LINUX_COMPILATION_IMAGE)
-build-linux-lifecycle:
+build-linux-lifecycle: $(BUILD_DIR)/linux/lifecycle/lifecycle
+
+$(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux
+$(BUILD_DIR)/linux/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/linux/lifecycle/lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
+$(BUILD_DIR)/linux/lifecycle/lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle $(LINUX_COMPILATION_IMAGE)
+$(BUILD_DIR)/linux/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
 	$(DOCKER_RUN) sh -c 'apk add build-base && $(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
+$(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 
-build-linux-launcher: export GOOS:=linux
-build-linux-launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)/lifecycle
-build-linux-launcher:
+build-linux-launcher: $(BUILD_DIR)/linux/lifecycle/launcher
+
+$(BUILD_DIR)/linux/lifecycle/launcher: export GOOS:=linux
+$(BUILD_DIR)/linux/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/linux/lifecycle/launcher:
 	@echo "> Building lifecycle/launcher for linux..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+$(BUILD_DIR)/linux/lifecycle/launcher: $(GOFILES)
 
 build-linux-symlinks: export GOOS:=linux
 build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -68,23 +76,35 @@ build-linux-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
 
-build-windows-lifecycle: export GOOS:=windows
-build-windows-lifecycle: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
-build-windows-lifecycle:
+build-windows-lifecycle: $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
+
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: export GOOS:=windows
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe:
 	@echo "> Building lifecycle/lifecycle for Windows..."
 	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a ./cmd/lifecycle
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
 
-build-windows-launcher: export GOOS:=windows
-build-windows-launcher: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
-build-windows-launcher:
+build-windows-launcher: $(BUILD_DIR)/windows/lifecycle/launcher.exe
+
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: export GOOS:=windows
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/launcher.exe:
 	@echo "> Building lifecycle/launcher for Windows..."
 	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a ./cmd/launcher
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
 
 build-windows-symlinks: export GOOS:=windows
 build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
 build-windows-symlinks:
 	@echo "> Creating phase symlinks for Windows..."
 ifeq ($(OS),Windows_NT)
+	call del $(OUT_DIR)$/detector.exe
+	call del $(OUT_DIR)$/analyzer.exe
+	call del $(OUT_DIR)$/restorer.exe
+	call del $(OUT_DIR)$/builder.exe
+	call del $(OUT_DIR)$/exporter.exe
+	call del $(OUT_DIR)$/rebaser.exe
 	call mklink $(OUT_DIR)$/detector.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/analyzer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/restorer.exe lifecycle.exe
@@ -100,9 +120,11 @@ else
 	ln -sf lifecycle.exe $(OUT_DIR)$/rebaser.exe
 endif
 
-build-darwin: export GOOS:=darwin
-build-darwin: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-build-darwin:
+build-darwin: $(BUILD_DIR)/darwin/lifecycle
+
+$(BUILD_DIR)/darwin/lifecycle: export GOOS:=darwin
+$(BUILD_DIR)/darwin/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/darwin/lifecycle:
 	@echo "> Building for macos..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
@@ -114,6 +136,7 @@ build-darwin:
 	ln -sf lifecycle $(OUT_DIR)/builder
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
+$(BUILD_DIR)/darwin/lifecycle: $(GOFILES)
 
 install-goimports:
 	@echo "> Installing goimports..."
@@ -152,10 +175,6 @@ unit: format lint install-yj
 	$(GOTEST) -v -count=1 $(UNIT_PACKAGES)
 
 acceptance: format lint
-	@echo "> Running acceptance tests..."
-	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
-
-acceptance-darwin: format lint
 	@echo "> Running acceptance tests..."
 	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 
