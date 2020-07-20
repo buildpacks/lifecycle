@@ -2,6 +2,8 @@ package archive
 
 import (
 	"archive/tar"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -11,32 +13,40 @@ type TarWriter interface {
 	Close() error
 }
 
-type NormalizedTarWriter struct {
+type NormalizingTarWriter struct {
 	TarWriter
 	headerOpts []HeaderOpt
 }
 
 type HeaderOpt func(header *tar.Header) *tar.Header
 
-func (tw *NormalizedTarWriter) WithUID(uid int) {
-	tw.headerOpts = append(tw.headerOpts, func(header *tar.Header) *tar.Header {
-		header.Uid = uid
-		return header
+func (tw *NormalizingTarWriter) ToPosix() {
+	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
+		hdr.Name = strings.TrimPrefix(hdr.Name, filepath.VolumeName(hdr.Name))
+		hdr.Name = filepath.ToSlash(hdr.Name)
+		return hdr
 	})
 }
 
-func (tw *NormalizedTarWriter) WithGID(gid int) {
-	tw.headerOpts = append(tw.headerOpts, func(header *tar.Header) *tar.Header {
-		header.Gid = gid
-		return header
+func (tw *NormalizingTarWriter) WithUID(uid int) {
+	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
+		hdr.Uid = uid
+		return hdr
 	})
 }
 
-func NewNormalizingTarWriter(tw TarWriter) *NormalizedTarWriter {
-	return &NormalizedTarWriter{tw, []HeaderOpt{}}
+func (tw *NormalizingTarWriter) WithGID(gid int) {
+	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
+		hdr.Gid = gid
+		return hdr
+	})
 }
 
-func (tw *NormalizedTarWriter) WriteHeader(hdr *tar.Header) error {
+func NewNormalizingTarWriter(tw TarWriter) *NormalizingTarWriter {
+	return &NormalizingTarWriter{tw, []HeaderOpt{}}
+}
+
+func (tw *NormalizingTarWriter) WriteHeader(hdr *tar.Header) error {
 	for _, opt := range tw.headerOpts {
 		hdr = opt(hdr)
 	}

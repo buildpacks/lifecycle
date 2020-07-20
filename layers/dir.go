@@ -1,7 +1,6 @@
 package layers
 
 import (
-	"archive/tar"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -37,7 +36,7 @@ func (f *Factory) DirLayer(id string, dir string) (layer Layer, err error) {
 			err = closeErr
 		}
 	}()
-	tw := archive.NewNormalizingTarWriter(tar.NewWriter(lw))
+	tw := tarWriter(lw)
 	parents, err := parents(dir)
 	if err != nil {
 		return Layer{}, err

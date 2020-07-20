@@ -61,6 +61,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
 
 		buildpacksDir := filepath.Join("testdata", "by-id")
+
 		builder = &lifecycle.Builder{
 			AppDir:        appDir,
 			LayersDir:     layersDir,
@@ -214,15 +215,35 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should set CNB_BUILDPACK_DIR", func() {
+				if _, err := builder.Build(); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				bpsDir, err := filepath.Abs(builder.BuildpacksDir)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1")),
+					filepath.Join(bpsDir, "A/v1"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-B-v2")),
+					filepath.Join(bpsDir, "B/v2"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
+				}
+			})
+
 			it("should connect stdout and stdin to the terminal", func() {
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
-				if stdout.String() != "build out: A@v1\nbuild out: B@v2\n" {
-					t.Fatalf("Unexpected stdout:\n%s\n", stdout)
+				if s := cmp.Diff(cleanEndings(stdout.String()), "build out: A@v1\nbuild out: B@v2\n"); s != "" {
+					t.Fatalf("Unexpected stdout:\n%s\n", s)
 				}
-				if stderr.String() != "build err: A@v1\nbuild err: B@v2\n" {
-					t.Fatalf("Unexpected stderr:\n%s\n", stderr)
+				if s := cmp.Diff(cleanEndings(stderr.String()), "build err: A@v1\nbuild err: B@v2\n"); s != "" {
+					t.Fatalf("Unexpected stderr:\n%s\n", s)
 				}
 			})
 
@@ -362,12 +383,45 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("building succeeds with a clear env", func() {
-			it("should not apply user-provided env vars", func() {
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=Av1.clear"))
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv1"), nil)
+			it.Before(func() {
+				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=with-platform"), nil)
 				builder.Group.Group[0].Version = "v1.clear"
+			})
+
+			it("should not apply user-provided env vars", func() {
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Error: %s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-A-v1.clear")),
+					"TEST_ENV: cleared\n",
+				); s != "" {
+					t.Fatalf("Unexpected info:\n%s\n", s)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-B-v2")),
+					"TEST_ENV: with-platform\n",
+				); s != "" {
+					t.Fatalf("Unexpected info:\n%s\n", s)
+				}
+			})
+
+			it("should set CNB_BUILDPACK_DIR", func() {
+				if _, err := builder.Build(); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				bpsDir, err := filepath.Abs(builder.BuildpacksDir)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1.clear")),
+					filepath.Join(bpsDir, "A/v1.clear"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
+				}
+				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-B-v2")),
+					filepath.Join(bpsDir, "B/v2"),
+				); s != "" {
+					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
 				}
 			})
 		})
@@ -512,13 +566,17 @@ func tofile(t *testing.T, data string, paths ...string) {
 	}
 }
 
+func cleanEndings(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
+}
+
 func rdfile(t *testing.T, path string) string {
 	t.Helper()
 	out, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err)
 	}
-	return string(out)
+	return cleanEndings(string(out))
 }
 
 func testExists(t *testing.T, paths ...string) {

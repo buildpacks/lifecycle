@@ -1,7 +1,6 @@
 package layers
 
 import (
-	"archive/tar"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -81,7 +80,7 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 			err = closeErr
 		}
 	}()
-	tw := archive.NewNormalizingTarWriter(tar.NewWriter(lw))
+	tw := tarWriter(lw)
 	if len(files) != 0 {
 		if err := archive.WriteFilesToArchive(tw, sdir.parentDirs); err != nil {
 			return Layer{}, err

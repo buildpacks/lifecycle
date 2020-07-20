@@ -250,6 +250,8 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 			_, err = io.Copy(dstFile, srcFile)
 			AssertNil(t, err)
 			modifiedtime := time.Time{}
+			AssertNil(t, srcFile.Close())
+			AssertNil(t, dstFile.Close())
 			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
 			AssertNil(t, err)
 			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)
@@ -292,6 +294,8 @@ func CreateSingleFileTar(path, txt string) (io.Reader, error) {
 }
 
 func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents []byte) {
+	t.Helper()
+
 	r, err := CreateSingleFileTar("/some-file", RandString(10))
 	AssertNil(t, err)
 
@@ -313,6 +317,7 @@ func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents
 }
 
 func MustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error reading %q: %v", path, err)

@@ -3,11 +3,11 @@ module github.com/buildpacks/lifecycle
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/apex/log v1.1.2-0.20190827100214-baa5455d1012
-	github.com/buildpacks/imgutil v0.0.0-20200528211046-5c4cfa56bb24
+	github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
 	github.com/docker/go-connections v0.4.0
-	github.com/golang/mock v1.3.1
-	github.com/google/go-cmp v0.4.1
+	github.com/golang/mock v1.4.3
+	github.com/google/go-cmp v0.5.0
 	github.com/google/go-containerregistry v0.0.0-20200311163244-4b1985e5ea21
 	github.com/heroku/color v0.0.6
 	github.com/mattn/go-colorable v0.1.4 // indirect

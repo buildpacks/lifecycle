@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -50,6 +49,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 
 	when("#DirLayer", func() {
 		var dirLayer layers.Layer
+
 		it.Before(func() {
 			var err error
 			dirLayer, err = factory.DirLayer("some-layer-id", dir)
@@ -59,66 +59,66 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 		it("creates a layer from the directory", func() {
 			// parent layers should have uid/gid matching the filesystem
 			// the dir and it's children should have normalized uid/gid
-			assertTarEntries(t, dirLayer.TarPath, append(parents(t, dir), []entry{
+			assertTarEntries(t, dirLayer.TarPath, append(parents(t, dir), []*tar.Header{
 				{
-					name:     dir,
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeDir,
+					Name:     tarPath(dir),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeDir,
 				},
 				{
-					name:     filepath.Join(dir, "dir-link"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeSymlink,
+					Name:     tarPath(filepath.Join(dir, "dir-link")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeSymlink,
 				},
 				{
-					name:     filepath.Join(dir, "file-link.txt"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeSymlink,
+					Name:     tarPath(filepath.Join(dir, "file-link.txt")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeSymlink,
 				},
 				{
-					name:     filepath.Join(dir, "file.txt"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeReg,
+					Name:     tarPath(filepath.Join(dir, "file.txt")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dir, "other-dir"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeDir,
+					Name:     tarPath(filepath.Join(dir, "other-dir")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeDir,
 				},
 				{
-					name:     filepath.Join(dir, "other-dir", "other-file.md"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeReg,
+					Name:     tarPath(filepath.Join(dir, "other-dir", "other-file.md")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dir, "other-dir", "other-file.txt"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeReg,
+					Name:     tarPath(filepath.Join(dir, "other-dir", "other-file.txt")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dir, "some-dir"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeDir,
+					Name:     tarPath(filepath.Join(dir, "some-dir")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeDir,
 				},
 				{
-					name:     filepath.Join(dir, "some-dir", "file.md"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeReg,
+					Name:     tarPath(filepath.Join(dir, "some-dir", "file.md")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeReg,
 				},
 				{
-					name:     filepath.Join(dir, "some-dir", "some-file.txt"),
-					uid:      factory.UID,
-					gid:      factory.GID,
-					typeFlag: tar.TypeReg,
+					Name:     tarPath(filepath.Join(dir, "some-dir", "some-file.txt")),
+					Uid:      factory.UID,
+					Gid:      factory.GID,
+					Typeflag: tar.TypeReg,
 				},
 			}...))
 		})
@@ -143,47 +143,36 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-type entry struct {
-	name     string
-	uid, gid int
-	typeFlag byte
-}
-
-func assertTarEntries(t *testing.T, tarPath string, expectedEntries []entry) {
+func assertTarEntries(t *testing.T, tarPath string, expectedEntries []*tar.Header) {
 	t.Helper()
 	lf, err := os.Open(tarPath)
 	h.AssertNil(t, err)
 	defer lf.Close()
 	tr := tar.NewReader(lf)
-
+	assertOSSpecificEntries(t, tr)
 	for i, expected := range expectedEntries {
 		header, err := tr.Next()
 		if err == io.EOF {
-			t.Fatalf("missing expected archive entry '%s'", expected.name)
+			t.Fatalf("missing expected archive entry '%s'", expected.Name)
 		}
 		h.AssertNil(t, err)
-		if header.Name != expected.name {
-			t.Fatalf("expected entry '%d' to have name %q, got %q", i, expected.name, header.Name)
+		if header.Name != expected.Name {
+			t.Fatalf("expected entry '%d' to have name %q, got %q", i, expected.Name, header.Name)
 		}
-		if header.Typeflag != expected.typeFlag {
-			t.Fatalf("expected entry '%s' to have type %q, got %q", header.Name, expected.typeFlag, header.Typeflag)
+		if header.Typeflag != expected.Typeflag {
+			t.Fatalf("expected entry '%s' to have type %q, got %q", expected.Name, expected.Typeflag, header.Typeflag)
 		}
-		if header.Uid != expected.uid {
-			t.Fatalf("expected entry '%s' to have UID %d, got %d", header.Name, expected.uid, header.Uid)
-		}
-		if header.Gid != expected.gid {
-			t.Fatalf("expected entry '%s' to have GID %d, got %d", header.Name, expected.gid, header.Gid)
-		}
+		assertOSSpecificFields(t, expected, header)
 		if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
-			t.Fatalf("expected entry '%s' to normalized mod time, got '%s", header.Name, header.ModTime)
+			t.Fatalf("expected entry '%s' to normalized mod time, got '%s", expected.Name, header.ModTime)
 		}
 		if header.Uname != "" {
-			t.Fatalf("expected entry '%s' to empty Uname, got '%s", header.Name, header.Uname)
+			t.Fatalf("expected entry '%s' to empty Uname, got '%s", expected.Name, header.Uname)
 		}
 		if header.Gname != "" {
-			t.Fatalf("expected entry '%s' to empty Gname, got '%s", header.Name, header.Gname)
+			t.Fatalf("expected entry '%s' to empty Gname, got '%s", expected.Name, header.Gname)
 		}
-		h.AssertEq(t, header.Typeflag, expected.typeFlag)
+		h.AssertEq(t, header.Typeflag, expected.Typeflag)
 	}
 	header, err := tr.Next()
 	if err != io.EOF {
@@ -191,20 +180,13 @@ func assertTarEntries(t *testing.T, tarPath string, expectedEntries []entry) {
 	}
 }
 
-func parents(t *testing.T, file string) []entry {
+func parents(t *testing.T, file string) []*tar.Header {
 	t.Helper()
 	parent := filepath.Dir(file)
-	stat, err := os.Stat(parent)
-	sys := stat.Sys().(*syscall.Stat_t)
+	if parent == `/` || parent == filepath.VolumeName(file)+`\` {
+		return []*tar.Header{}
+	}
+	fi, err := os.Stat(parent)
 	h.AssertNil(t, err)
-	fileEntry := entry{
-		name:     parent,
-		uid:      int(sys.Uid),
-		gid:      int(sys.Gid),
-		typeFlag: tar.TypeDir,
-	}
-	if parent == "/" {
-		return []entry{}
-	}
-	return append(parents(t, parent), fileEntry)
+	return append(parents(t, parent), parentHeader(parent, fi))
 }

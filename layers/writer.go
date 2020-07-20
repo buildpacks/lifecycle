@@ -1,10 +1,16 @@
 package layers
 
 import (
+	"archive/tar"
 	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
+	"runtime"
+
+	"github.com/buildpacks/imgutil/layer"
+
+	"github.com/buildpacks/lifecycle/archive"
 )
 
 type layerWriter struct {
@@ -26,4 +32,13 @@ func newFileLayerWriter(dest string) (*layerWriter, error) {
 
 func (lw *layerWriter) Digest() string {
 	return fmt.Sprintf("sha256:%x", lw.hasher.Sum(nil))
+}
+
+func tarWriter(lw *layerWriter) *archive.NormalizingTarWriter {
+	if runtime.GOOS == "windows" {
+		tw := archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lw))
+		tw.ToPosix()
+		return tw
+	}
+	return archive.NewNormalizingTarWriter(tar.NewWriter(lw))
 }

@@ -12,6 +12,7 @@ type Factory struct {
 	ArtifactsDir string
 	UID, GID     int
 	Logger       Logger
+	OS           string
 
 	tarHashes map[string]string // Stores hashes of layer tarballs for reuse between the export and cache steps.
 }
@@ -42,7 +43,7 @@ func escape(id string) string {
 
 func parents(file string) ([]archive.PathInfo, error) {
 	parent := filepath.Dir(file)
-	if parent == "." || parent == "/" {
+	if parent == filepath.VolumeName(file)+`\` || parent == "/" {
 		return []archive.PathInfo{}, nil
 	}
 	fi, err := os.Stat(parent)

@@ -949,7 +949,6 @@ type = "Apache-2.0"
 
 	when("#Cache", func() {
 		var (
-			tmpDir    string
 			cacheDir  string
 			testCache lifecycle.Cache
 			layersDir string
@@ -959,10 +958,7 @@ type = "Apache-2.0"
 		it.Before(func() {
 			var err error
 
-			tmpDir, err = ioutil.TempDir("", "lifecycle.cacher.layer")
-			h.AssertNil(t, err)
-
-			cacheDir, err = ioutil.TempDir("", "")
+			cacheDir, err = ioutil.TempDir("", "lifecycle.cacher.layer")
 			h.AssertNil(t, err)
 
 			testCache, err = cache.NewVolumeCache(cacheDir)
@@ -980,7 +976,6 @@ type = "Apache-2.0"
 
 		it.After(func() {
 			h.AssertNil(t, os.RemoveAll(cacheDir))
-			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 
 		when("the layers are valid", func() {
@@ -1197,6 +1192,7 @@ func assertHasLayer(t *testing.T, fakeAppImage *fakes.Image, id string) {
 
 	rc, err := fakeAppImage.GetLayer(testLayerDigest(id))
 	h.AssertNil(t, err)
+	defer rc.Close()
 	contents, err := ioutil.ReadAll(rc)
 	h.AssertNil(t, err)
 	h.AssertEq(t, string(contents), testLayerContents(id))
@@ -1207,6 +1203,7 @@ func assertCacheHasLayer(t *testing.T, cache lifecycle.Cache, id string) {
 
 	rc, err := cache.RetrieveLayer(testLayerDigest(id))
 	h.AssertNil(t, err)
+	defer rc.Close()
 	contents, err := ioutil.ReadAll(rc)
 	h.AssertNil(t, err)
 	h.AssertEq(t, string(contents), testLayerContents(id))

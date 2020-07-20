@@ -56,17 +56,16 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 					}
 				}
 			}
-
-			err := os.RemoveAll(tmpDir)
-			h.AssertNil(t, err)
 		})
 
 		it("extracts a tar file", func() {
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-archive.tar"))
 			h.AssertNil(t, err)
 			defer file.Close()
 
-			h.AssertNil(t, archive.Untar(file, tmpDir))
+			tr := archive.NewNormalizingTarReader(tar.NewReader(file))
+			tr.PrependDir(tmpDir)
+			h.AssertNil(t, archive.Untar(tr))
 
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
@@ -80,11 +79,13 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			_, err := os.Create(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-archive.tar"))
 			h.AssertNil(t, err)
 			defer file.Close()
+			tr := archive.NewNormalizingTarReader(tar.NewReader(file))
+			tr.PrependDir(tmpDir)
 
-			h.AssertError(t, archive.Untar(file, tmpDir), "root: not a directory")
+			h.AssertError(t, archive.Untar(tr), "root: not a directory")
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
@@ -92,11 +93,13 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
 
-			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-layer.tar"))
+			file, err := os.Open(filepath.Join("testdata", "tar-to-dir", "some-archive.tar"))
 			h.AssertNil(t, err)
 			defer file.Close()
+			tr := archive.NewNormalizingTarReader(tar.NewReader(file))
+			tr.PrependDir(tmpDir)
 
-			h.AssertNil(t, archive.Untar(file, tmpDir))
+			h.AssertNil(t, archive.Untar(tr))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 			h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
@@ -107,7 +110,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 		var (
 			uid  = 1234
 			gid  = 4567
-			tw   *archive.NormalizedTarWriter
+			tw   *archive.NormalizingTarWriter
 			file *os.File
 		)
 
@@ -115,7 +118,7 @@ func testTar(t *testing.T, when spec.G, it spec.S) {
 			var err error
 			file, err = os.Create(filepath.Join(tmpDir, "tar_test-go.tar"))
 			h.AssertNil(t, err)
-			tw = &archive.NormalizedTarWriter{TarWriter: tar.NewWriter(file)}
+			tw = &archive.NormalizingTarWriter{TarWriter: tar.NewWriter(file)}
 			tw.WithUID(uid)
 			tw.WithGID(gid)
 		})

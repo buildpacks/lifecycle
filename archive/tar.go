@@ -72,7 +72,7 @@ type PathMode struct {
 	Mode os.FileMode
 }
 
-func Untar(r io.Reader, dest string) error {
+func Untar(tr TarReader) error {
 	// Avoid umask from changing the file permissions in the tar file.
 	umask := setUmask(0)
 	defer setUmask(umask)
@@ -80,7 +80,6 @@ func Untar(r io.Reader, dest string) error {
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)
 
-	tr := tar.NewReader(r)
 	var pathModes []PathMode
 	for {
 		hdr, err := tr.Next()
@@ -96,21 +95,19 @@ func Untar(r io.Reader, dest string) error {
 			return err
 		}
 
-		path := filepath.Join(dest, hdr.Name)
-
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if _, err := os.Stat(path); os.IsNotExist(err) {
-				pathMode := PathMode{path, hdr.FileInfo().Mode()}
+			if _, err := os.Stat(hdr.Name); os.IsNotExist(err) {
+				pathMode := PathMode{hdr.Name, hdr.FileInfo().Mode()}
 				pathModes = append(pathModes, pathMode)
 			}
-			if err := os.MkdirAll(path, os.ModePerm); err != nil {
+			if err := os.MkdirAll(hdr.Name, os.ModePerm); err != nil {
 				return err
 			}
-			dirsFound[path] = true
+			dirsFound[hdr.Name] = true
 
 		case tar.TypeReg, tar.TypeRegA:
-			dirPath := filepath.Dir(path)
+			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, umask)); err != nil {
@@ -120,11 +117,11 @@ func Untar(r io.Reader, dest string) error {
 				}
 			}
 
-			if err := writeFile(tr, path, hdr.FileInfo().Mode(), buf); err != nil {
+			if err := writeFile(tr, hdr.Name, hdr.FileInfo().Mode(), buf); err != nil {
 				return err
 			}
 		case tar.TypeSymlink:
-			if err := os.Symlink(hdr.Linkname, path); err != nil {
+			if err := os.Symlink(hdr.Linkname, hdr.Name); err != nil {
 				return err
 			}
 		default:

@@ -1,1 +1,1 @@
-../dir-to-exlude/layer-file.txt
+../dir-to-exclude/some-file.txt

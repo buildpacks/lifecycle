@@ -108,6 +108,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 				return nil, err
 			}
 		}
+		cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+bpInfo.Path)
 
 		if err := cmd.Run(); err != nil {
 			return nil, err

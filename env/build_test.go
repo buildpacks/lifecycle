@@ -1,6 +1,7 @@
 package env_test
 
 import (
+	"runtime"
 	"sort"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/env"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestBuildEnv(t *testing.T) {
@@ -17,10 +19,10 @@ func TestBuildEnv(t *testing.T) {
 
 func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#NewBuildEnv", func() {
-		it("whitelists vars", func() {
+		it("includes expected vars", func() {
 			benv := env.NewBuildEnv([]string{
 				"CNB_STACK_ID=some-stack-id",
-				"NOT_WHITELIST=not-whitelisted",
+				"NOT_INCLUDED=not-included",
 				"PATH=some-path",
 				"LD_LIBRARY_PATH=some-ld-library-path",
 				"LIBRARY_PATH=some-library-path",
@@ -41,12 +43,29 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		when("building in Windows", func() {
+			it.Before(func() {
+				if runtime.GOOS != "windows" {
+					t.Skip("This test only applies to Windows builds")
+				}
+			})
+
+			it("ignores case when initializing", func() {
+				benv := env.NewBuildEnv([]string{
+					"Path=some-path",
+				})
+				out := benv.List()
+				h.AssertEq(t, len(out), 1)
+				h.AssertEq(t, out[0], "PATH=some-path")
+			})
+		})
+
 		it("allows keys with '='", func() {
 			benv := env.NewBuildEnv([]string{
-				"CNB_STACK_ID=whitelist=true",
+				"CNB_STACK_ID=included=true",
 			})
 			if s := cmp.Diff(benv.List(), []string{
-				"CNB_STACK_ID=whitelist=true",
+				"CNB_STACK_ID=included=true",
 			}); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}

@@ -4,24 +4,27 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 )
 
-const (
-	DefaultLayersDir           = "/layers"
-	DefaultAppDir              = "/workspace"
-	DefaultBuildpacksDir       = "/cnb/buildpacks"
-	DefaultPlatformDir         = "/platform"
-	DefaultOrderPath           = "/cnb/order.toml"
-	DefaultGroupPath           = "./group.toml"
-	DefaultStackPath           = "/cnb/stack.toml"
-	DefaultAnalyzedPath        = "./analyzed.toml"
-	DefaultPlanPath            = "./plan.toml"
+var (
+	DefaultLayersDir           = filepath.Join(rootDir, "layers")
+	DefaultAppDir              = filepath.Join(rootDir, "workspace")
+	DefaultBuildpacksDir       = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultPlatformDir         = filepath.Join(rootDir, "platform")
+	DefaultOrderPath           = filepath.Join(rootDir, "cnb", "order.toml")
+	DefaultGroupPath           = filepath.Join(".", "group.toml")
+	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
+	DefaultAnalyzedPath        = filepath.Join(".", "analyzed.toml")
+	DefaultPlanPath            = filepath.Join(".", "plan.toml")
+	DefaultLauncherPath        = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
+	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
 	DefaultProcessType         = "web"
-	DefaultLauncherPath        = "/cnb/lifecycle/launcher"
 	DefaultLogLevel            = "info"
-	DefaultProjectMetadataPath = "./project-metadata.toml"
+)
 
+const (
 	EnvLayersDir           = "CNB_LAYERS_DIR"
 	EnvAppDir              = "CNB_APP_DIR"
 	EnvBuildpacksDir       = "CNB_BUILDPACKS_DIR"
@@ -45,6 +48,7 @@ const (
 	EnvProcessType         = "CNB_PROCESS_TYPE"
 	EnvLogLevel            = "CNB_LOG_LEVEL"
 	EnvProjectMetadataPath = "CNB_PROJECT_METADATA_PATH"
+	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -151,6 +155,10 @@ func FlagProjectMetadataPath(projectMetadataPath *string) {
 
 func FlagProcessType(processType *string) {
 	flagSet.StringVar(processType, "process-type", os.Getenv(EnvProcessType), "default process type")
+}
+
+func FlagNoColor(skip *bool) {
+	flagSet.BoolVar(skip, "no-color", boolEnv(EnvNoColor), "disable color output")
 }
 
 type StringSlice []string

@@ -1,6 +1,7 @@
 package env_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -8,6 +9,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/env"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestLaunchEnv(t *testing.T) {
@@ -16,18 +18,35 @@ func TestLaunchEnv(t *testing.T) {
 
 func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#NewLaunchEnv", func() {
-		it("blacklists vars", func() {
+		it("excludes vars", func() {
 			lenv := env.NewLaunchEnv([]string{
-				"CNB_APP_DIR=blacklisted",
-				"CNB_LAYERS_DIR=blacklisted",
-				"CNB_PROCESS_TYPE=blacklisted",
-				"CNB_FOO=not-blacklisted",
+				"CNB_APP_DIR=excluded",
+				"CNB_LAYERS_DIR=excluded",
+				"CNB_PROCESS_TYPE=excluded",
+				"CNB_FOO=not-excluded",
 			})
 			if s := cmp.Diff(lenv.List(), []string{
-				"CNB_FOO=not-blacklisted",
+				"CNB_FOO=not-excluded",
 			}); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
+		})
+
+		when("launching in Windows", func() {
+			it.Before(func() {
+				if runtime.GOOS != "windows" {
+					t.Skip("This test only applies to Windows launches")
+				}
+			})
+
+			it("ignores case when initializing", func() {
+				benv := env.NewBuildEnv([]string{
+					"Path=some-path",
+				})
+				out := benv.List()
+				h.AssertEq(t, len(out), 1)
+				h.AssertEq(t, out[0], "PATH=some-path")
+			})
 		})
 
 		it("allows keys with '='", func() {

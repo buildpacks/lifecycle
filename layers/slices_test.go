@@ -48,66 +48,66 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(sliceLayers), 1)
 				// parent layers should have uid/gid matching the filesystem
 				// the sliced dir and it's children should have normalized uid/gid
-				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []entry{
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []*tar.Header{
 					{
-						name:     dirToSlice,
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(dirToSlice),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "dir-link"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeSymlink,
+						Name:     tarPath(filepath.Join(dirToSlice, "dir-link")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeSymlink,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "file-link.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeSymlink,
+						Name:     tarPath(filepath.Join(dirToSlice, "file-link.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeSymlink,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir", "other-file.md"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir", "other-file.md")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir", "other-file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir", "other-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir", "file.md"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "file.md")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir", "some-file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "some-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 				}...))
 			})
@@ -116,66 +116,66 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 				sliceLayers, err := factory.SliceLayers(filepath.Join("testdata", "slices", "target-dir"), []layers.Slice{})
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(sliceLayers), 1)
-				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []entry{
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []*tar.Header{
 					{
-						name:     dirToSlice,
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(dirToSlice),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "dir-link"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeSymlink,
+						Name:     tarPath(filepath.Join(dirToSlice, "dir-link")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeSymlink,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "file-link.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeSymlink,
+						Name:     tarPath(filepath.Join(dirToSlice, "file-link.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeSymlink,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir", "other-file.md"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir", "other-file.md")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir", "other-file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir", "other-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir", "file.md"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "file.md")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir", "some-file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "some-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 				}...))
 			})
@@ -200,107 +200,107 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates slice from pattern", func() {
-				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []entry{
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []*tar.Header{
 					{
-						name:     dirToSlice,
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(dirToSlice),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "file-link.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeSymlink,
+						Name:     tarPath(filepath.Join(dirToSlice, "file-link.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeSymlink,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir", "other-file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir", "other-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir},
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir", "some-file.txt"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "some-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 				}...))
 			})
 
 			it("accepts dirs", func() {
-				assertTarEntries(t, sliceLayers[1].TarPath, append(parents(t, dirToSlice), []entry{
+				assertTarEntries(t, sliceLayers[1].TarPath, append(parents(t, dirToSlice), []*tar.Header{
 					{
-						name:     dirToSlice,
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(dirToSlice),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "other-dir", "other-file.md"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "other-dir", "other-file.md")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 				}...))
 			})
 
 			it("doesn't glob through symlinks", func() {
-				assertTarEntries(t, sliceLayers[2].TarPath, []entry{})
+				assertTarEntries(t, sliceLayers[2].TarPath, []*tar.Header{})
 			})
 
 			it("doesn't glob files outside of dir", func() {
-				assertTarEntries(t, sliceLayers[3].TarPath, []entry{})
+				assertTarEntries(t, sliceLayers[3].TarPath, []*tar.Header{})
 			})
 
 			it("creates a layer with the remaining files", func() {
-				assertTarEntries(t, sliceLayers[4].TarPath, append(parents(t, dirToSlice), []entry{
+				assertTarEntries(t, sliceLayers[4].TarPath, append(parents(t, dirToSlice), []*tar.Header{
 					{
-						name:     dirToSlice,
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(dirToSlice),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "dir-link"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeSymlink,
+						Name:     tarPath(filepath.Join(dirToSlice, "dir-link")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeSymlink,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeDir,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
 					},
 					{
-						name:     filepath.Join(dirToSlice, "some-dir", "file.md"),
-						uid:      factory.UID,
-						gid:      factory.GID,
-						typeFlag: tar.TypeReg,
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "file.md")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
 					},
 				}...))
 			})

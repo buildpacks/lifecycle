@@ -6,10 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
 )
+
+type ExecFunc func(argv0 string, argv []string, envv []string) error
 
 type Launcher struct {
 	DefaultProcessType string
@@ -18,17 +21,17 @@ type Launcher struct {
 	Processes          []Process
 	Buildpacks         []Buildpack
 	Env                Env
-	Exec               func(argv0 string, argv []string, envv []string) error
+	Exec               ExecFunc
 	Setenv             func(string, string) error
 }
 
 func (l *Launcher) Launch(self string, cmd []string) error {
-	if err := l.env(); err != nil {
-		return errors.Wrap(err, "modify env")
-	}
 	process, err := l.processFor(cmd)
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
+	}
+	if err := l.env(process); err != nil {
+		return errors.Wrap(err, "modify env")
 	}
 	if err := os.Chdir(l.AppDir); err != nil {
 		return errors.Wrap(err, "change to app directory")
@@ -50,10 +53,25 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 		}
 		return nil
 	}
-	launcher, err := l.profileD()
+	profileCmds, err := l.profileD(process)
 	if err != nil {
 		return errors.Wrap(err, "determine profile")
 	}
+
+	if runtime.GOOS == "windows" {
+		var launcher string
+		if len(profileCmds) > 0 {
+			launcher = strings.Join(profileCmds, " && ") + " && "
+		}
+		if err := l.Exec("cmd",
+			append(append([]string{"cmd", "/q", "/s", "/c"}, launcher, process.Command), process.Args...), l.Env.List(),
+		); err != nil {
+			return errors.Wrap(err, "cmd execute")
+		}
+		return nil
+	}
+
+	launcher := strings.Join(append(profileCmds, `exec bash -c "$@"`), "\n")
 	if err := l.Exec("/bin/bash", append([]string{
 		"bash", "-c",
 		launcher, self, process.Command,
@@ -63,7 +81,7 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	return nil
 }
 
-func (l *Launcher) env() error {
+func (l *Launcher) env(process Process) error {
 	appInfo, err := os.Stat(l.AppDir)
 	if err != nil {
 		return errors.Wrap(err, "find app directory")
@@ -88,7 +106,13 @@ func (l *Launcher) env() error {
 			if err := l.Env.AddEnvDir(filepath.Join(path, "env")); err != nil {
 				return err
 			}
-			return l.Env.AddEnvDir(filepath.Join(path, "env.launch"))
+			if err := l.Env.AddEnvDir(filepath.Join(path, "env.launch")); err != nil {
+				return err
+			}
+			if process.Type == "" {
+				return nil
+			}
+			return l.Env.AddEnvDir(filepath.Join(path, "env.launch", process.Type))
 		}); err != nil {
 			return errors.Wrap(err, "add layer env")
 		}
@@ -96,7 +120,7 @@ func (l *Launcher) env() error {
 	})
 }
 
-func (l *Launcher) profileD() (string, error) {
+func (l *Launcher) profileD(process Process) ([]string, error) {
 	var out []string
 
 	appendIfFile := func(path string) error {
@@ -108,32 +132,51 @@ func (l *Launcher) profileD() (string, error) {
 			return err
 		}
 		if !fi.IsDir() {
-			out = append(out, fmt.Sprintf(`source "%s"`, path))
+			if runtime.GOOS == "windows" {
+				out = append(out, fmt.Sprintf(`call %s`, path))
+			} else {
+				out = append(out, fmt.Sprintf(`source "%s"`, path))
+			}
 		}
 		return nil
 	}
 	layersDir, err := filepath.Abs(l.LayersDir)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	for _, bp := range l.Buildpacks {
-		scripts, err := filepath.Glob(filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", "*"))
-		if err != nil {
-			return "", err
+		fileGlob := "*"
+		if runtime.GOOS == "windows" {
+			fileGlob += ".bat"
+		}
+		globPaths := []string{filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", fileGlob)}
+		if process.Type != "" {
+			globPaths = append(globPaths, filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", process.Type, fileGlob))
+		}
+		var scripts []string
+		for _, globPath := range globPaths {
+			matches, err := filepath.Glob(globPath)
+			if err != nil {
+				return nil, err
+			}
+			scripts = append(scripts, matches...)
 		}
 		for _, script := range scripts {
 			if err := appendIfFile(script); err != nil {
-				return "", err
+				return nil, err
 			}
 		}
 	}
 
-	if err := appendIfFile(filepath.Join(l.AppDir, ".profile")); err != nil {
-		return "", err
+	profile := ".profile"
+	if runtime.GOOS == "windows" {
+		profile += ".bat"
+	}
+	if err := appendIfFile(filepath.Join(l.AppDir, profile)); err != nil {
+		return nil, err
 	}
 
-	out = append(out, `exec bash -c "$@"`)
-	return strings.Join(out, "\n"), nil
+	return out, nil
 }
 
 func (l *Launcher) processFor(cmd []string) (Process, error) {

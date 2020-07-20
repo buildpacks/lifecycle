@@ -1,0 +1,19 @@
+[[buildpacks]]
+  id = "some/buildpack"
+  version = "0.0.1"
+
+[[processes]]
+  type = "web"
+  command = "echo \"Executing web process-type\""
+  direct = false
+
+[[processes]]
+  type = "other-process"
+  command = "echo"
+  args = ["Executing other-process process-type"]
+  direct = true
+
+[[processes]]
+  type = "worker"
+  command = "echo $WORKER_VAR"
+  direct = false
