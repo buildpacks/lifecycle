@@ -68,28 +68,7 @@ func DockerVolumeRemove(t *testing.T, volume string) {
 	Run(t, exec.Command("docker", "volume", "rm", volume))
 }
 
-func ImageID(t *testing.T, repoName string) string {
-	t.Helper()
-	inspect, _, err := DockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
-	AssertNil(t, err)
-	return inspect.ID
-}
-
-func PullImage(dockerCli *dockercli.Client, ref string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
-	if err != nil {
-		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
-		if err != nil {
-			return err
-		}
-	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
-	}
-	return rc.Close()
-}
-
+// TODO: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
 func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: auth})
 	if err != nil {

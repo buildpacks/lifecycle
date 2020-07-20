@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +22,11 @@ var (
 )
 
 func TestLauncher(t *testing.T) {
-	if runtime.GOOS == "windows" {
+	info, err := h.DockerCli(t).Info(context.TODO())
+	h.AssertNil(t, err)
+	daemonOS = info.OSType
+
+	if daemonOS == "windows" {
 		launchDockerContext = filepath.Join("testdata", "launcher", "windows")
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
 	} else {
@@ -29,7 +34,7 @@ func TestLauncher(t *testing.T) {
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "posix", "container", "cnb", "lifecycle")
 	}
 
-	h.MakeAndCopyLauncher(t, launcherBinaryDir)
+	h.MakeAndCopyLauncher(t, daemonOS, launcherBinaryDir)
 
 	h.DockerBuild(t, launchImage, launchDockerContext)
 	defer h.DockerImageRemove(t, launchImage)

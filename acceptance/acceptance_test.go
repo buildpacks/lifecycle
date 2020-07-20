@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -12,6 +13,12 @@ import (
 	"github.com/sclevine/spec/report"
 
 	h "github.com/buildpacks/lifecycle/testhelpers"
+)
+
+const (
+	expectedPlatformAPI = "0.9"
+	expectedVersion     = "some-version"
+	expectedCommit      = "asdf123"
 )
 
 var buildDir string
@@ -27,7 +34,13 @@ func TestVersion(t *testing.T) {
 	outDir := filepath.Join(buildDir, runtime.GOOS, "lifecycle")
 	h.AssertNil(t, os.MkdirAll(outDir, 0755))
 
-	h.MakeAndCopyLifecycle(t, runtime.GOOS, outDir)
+	h.MakeAndCopyLifecycle(t,
+		runtime.GOOS,
+		outDir,
+		"PLATFORM_API="+expectedPlatformAPI,
+		"LIFECYCLE_VERSION="+expectedVersion,
+		"SCM_COMMIT="+expectedCommit,
+	)
 	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -55,7 +68,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")
 
 					_, exitCode, err := h.RunE(cmd)
-					h.AssertError(t, err, "the Lifecycle's Platform API version is 0.9 which is incompatible with Platform API version 0.8")
+					h.AssertError(t, err, fmt.Sprintf("the Lifecycle's Platform API version is %s which is incompatible with Platform API version 0.8", expectedPlatformAPI))
 					h.AssertEq(t, exitCode, 11)
 				})
 			}
@@ -147,7 +160,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 						if err != nil {
 							t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
 						}
-						h.AssertStringContains(t, string(output), "some-version+asdf123")
+						h.AssertStringContains(t, string(output), expectedVersion+"+"+expectedCommit)
 					})
 				})
 			}

@@ -10,15 +10,9 @@ import (
 	"testing"
 )
 
-func MakeAndCopyLauncher(t *testing.T, destDir string) {
+func MakeAndCopyLauncher(t *testing.T, goos, destDir string) {
 	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
-	AssertNil(t, os.MkdirAll(buildDir, 0755))
-
-	goos := "linux"
-	if runtime.GOOS == "windows" {
-		goos = "windows"
-	}
 
 	cmd := exec.Command("make", fmt.Sprintf("build-%s-launcher", goos))
 
@@ -30,8 +24,6 @@ func MakeAndCopyLauncher(t *testing.T, destDir string) {
 		os.Environ(),
 		"PWD="+cmd.Dir,
 		"BUILD_DIR="+buildDir,
-		"LIFECYCLE_VERSION=some-version",
-		"SCM_COMMIT=asdf123",
 	)
 
 	t.Log("Building binaries: ", cmd.Args)
@@ -40,10 +32,9 @@ func MakeAndCopyLauncher(t *testing.T, destDir string) {
 	copyLauncher(t, filepath.Join(buildDir, goos, "lifecycle"), destDir)
 }
 
-func MakeAndCopyLifecycle(t *testing.T, goos, destDir string) {
+func MakeAndCopyLifecycle(t *testing.T, goos, destDir string, envs ...string) {
 	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
-	AssertNil(t, os.MkdirAll(buildDir, 0755))
 
 	cmd := exec.Command("make", "build-"+goos)
 
@@ -51,15 +42,13 @@ func MakeAndCopyLifecycle(t *testing.T, goos, destDir string) {
 	AssertNil(t, err)
 	cmd.Dir = filepath.Join(wd, "..")
 
-	cmd.Env = append(
-		os.Environ(),
+	envs = append(
+		envs,
 		"GOOS="+goos,
 		"PWD="+cmd.Dir,
 		"BUILD_DIR="+buildDir,
-		"PLATFORM_API=0.9",
-		"LIFECYCLE_VERSION=some-version",
-		"SCM_COMMIT=asdf123",
 	)
+	cmd.Env = append(os.Environ(), envs...)
 
 	t.Log("Building binaries: ", cmd.Args)
 	Run(t, cmd)

@@ -176,7 +176,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				appImage = "some-app-image-" + h.RandString(10)
-				metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
+				metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
 
 				cmd := exec.Command(
 					"docker",
@@ -250,46 +250,89 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("cache is provided", func() {
 			when("cache image case", func() {
-				var cacheImage string
+				when("cache image is in a daemon", func() {
+					var cacheImage string
 
-				it.Before(func() {
-					metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
-					cacheImage = "some-cache-image-" + h.RandString(10)
+					it.Before(func() {
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+						cacheImage = "some-cache-image-" + h.RandString(10)
 
-					cmd := exec.Command(
-						"docker",
-						"build",
-						"-t", cacheImage,
-						"--build-arg", "fromImage="+variables.ContainerBaseImage,
-						"--build-arg", "metadata="+metadata,
-						filepath.Join("testdata", "analyzer", "cache-image"),
-					)
-					h.Run(t, cmd)
+						cmd := exec.Command(
+							"docker",
+							"build",
+							"-t", cacheImage,
+							"--build-arg", "fromImage="+variables.ContainerBaseImage,
+							"--build-arg", "metadata="+metadata,
+							filepath.Join("testdata", "analyzer", "cache-image"),
+						)
+						h.Run(t, cmd)
+					})
+
+					it.After(func() {
+						h.DockerImageRemove(t, cacheImage)
+					})
+
+					it("ignores the cache", func() {
+						_, tempDir := h.DockerRunAndCopy(t,
+							analyzeImage,
+							"/layers",
+							h.WithFlags(append(
+								variables.DockerSocketMount,
+								"--env", "CNB_REGISTRY_AUTH={}", // In practice, we never set this variable in the daemon case. Setting to avoid failure to stat docker config directory when initializing cache
+							)...),
+							h.WithArgs(
+								analyzerPath,
+								"-daemon",
+								"-cache-image", cacheImage,
+								"some-image",
+							),
+						)
+						defer os.RemoveAll(tempDir)
+
+						h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
+						h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					})
 				})
 
-				it.After(func() {
-					h.DockerImageRemove(t, cacheImage)
-				})
+				when("cache image is in a registry", func() {
+					var cacheImage, cacheAuthConfig string
 
-				it("ignores the cache", func() {
-					_, tempDir := h.DockerRunAndCopy(t,
-						analyzeImage,
-						"/layers",
-						h.WithFlags(append(
-							variables.DockerSocketMount,
-							"--env", "CNB_REGISTRY_AUTH={}", // In practice, we never set this variable in the daemon case. Setting to avoid failure to stat docker config directory when initializing cache
-						)...),
-						h.WithArgs(
-							analyzerPath,
-							"-daemon",
-							"-cache-image", cacheImage,
-							"some-image",
-						),
-					)
-					defer os.RemoveAll(tempDir)
+					it.Before(func() {
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+						cacheImage, cacheAuthConfig = buildRegistryImage(
+							t,
+							"some-cache-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "cache-image"),
+							"--build-arg", "fromImage="+variables.ContainerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
+					})
 
-					h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
-					h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					it.After(func() {
+						h.DockerImageRemove(t, cacheImage)
+					})
+
+					it("uses the provided cache", func() {
+						_, tempDir := h.DockerRunAndCopy(t,
+							analyzeImage,
+							"/layers",
+							h.WithFlags(append(
+								variables.DockerSocketMount,
+								"--network", "host",
+								"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
+							)...),
+							h.WithArgs(
+								analyzerPath,
+								"-daemon",
+								"-cache-image", cacheImage,
+								"some-image",
+							),
+						)
+						defer os.RemoveAll(tempDir)
+
+						h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
+						h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					})
 				})
 			})
 
@@ -373,7 +416,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		var appImage, appAuthConfig string
 
 		it.Before(func() {
-			metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
+			metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
 			appImage, appAuthConfig = buildRegistryImage(
 				t,
 				"some-app-image-"+h.RandString(10),
@@ -499,7 +542,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				var cacheImage, cacheAuthConfig string
 
 				it.Before(func() {
-					metadata := flattenMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
 					cacheImage, cacheAuthConfig = buildRegistryImage(
 						t,
 						"some-cache-image-"+h.RandString(10),
@@ -562,7 +605,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func flattenMetadata(t *testing.T, path string, metadataStruct interface{}) string {
+func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) string {
 	metadata, err := ioutil.ReadFile(path)
 	h.AssertNil(t, err)
 
