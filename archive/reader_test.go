@@ -21,7 +21,7 @@ func TestReader(t *testing.T) {
 }
 
 func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
-	when("NormalizingTarWriter", func() {
+	when("NormalizingTarReader", func() {
 		var (
 			ftr *fakeTarReader
 			ntr *archive.NormalizingTarReader
@@ -30,27 +30,28 @@ func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			ftr = &fakeTarReader{}
 			ntr = archive.NewNormalizingTarReader(ftr)
-			ftr.pushHeader(&tar.Header{Name: "some/path"})
+			ftr.pushHeader(&tar.Header{Name: "/some/path"})
+		})
+
+		it("converts path separators", func() {
+			hdr, err := ntr.Next()
+			h.AssertNil(t, err)
+			if runtime.GOOS == "windows" {
+				h.AssertEq(t, hdr.Name, `\some\path`)
+			} else {
+				h.AssertEq(t, hdr.Name, `/some/path`)
+			}
 		})
 
 		when("#Strip", func() {
 			it("removes leading dirs", func() {
-				ntr.Strip("some")
-				hdr, err := ntr.Next()
-				h.AssertNil(t, err)
-				h.AssertEq(t, hdr.Name, "/path")
-			})
-		})
-
-		when("#FromSlash", func() {
-			it("converts path separators", func() {
-				ntr.FromSlash()
+				ntr.Strip("/some")
 				hdr, err := ntr.Next()
 				h.AssertNil(t, err)
 				if runtime.GOOS == "windows" {
-					h.AssertEq(t, hdr.Name, `some\path`)
+					h.AssertEq(t, hdr.Name, `\path`)
 				} else {
-					h.AssertEq(t, hdr.Name, `some/path`)
+					h.AssertEq(t, hdr.Name, `/path`)
 				}
 			})
 		})
@@ -60,7 +61,11 @@ func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
 				ntr.PrependDir("/super-dir")
 				hdr, err := ntr.Next()
 				h.AssertNil(t, err)
-				h.AssertEq(t, hdr.Name, `/super-dir/some/path`)
+				if runtime.GOOS == "windows" {
+					h.AssertEq(t, hdr.Name, `\super-dir\some\path`)
+				} else {
+					h.AssertEq(t, hdr.Name, `/super-dir/some/path`)
+				}
 			})
 		})
 
@@ -71,7 +76,11 @@ func testNormalizingTarReader(t *testing.T, when spec.G, it spec.S) {
 				ntr.ExcludePaths([]string{"excluded-dir"})
 				hdr, err := ntr.Next()
 				h.AssertNil(t, err)
-				h.AssertEq(t, hdr.Name, `some/path`)
+				if runtime.GOOS == "windows" {
+					h.AssertEq(t, hdr.Name, `\some\path`)
+				} else {
+					h.AssertEq(t, hdr.Name, `/some/path`)
+				}
 			})
 		})
 	})
@@ -91,7 +100,7 @@ func (r *fakeTarReader) Next() (*tar.Header, error) {
 }
 
 func (r *fakeTarReader) Read(b []byte) (int, error) {
-	return len(b), nil
+	return 0, io.EOF
 }
 
 func (r *fakeTarReader) pushHeader(hdr *tar.Header) {

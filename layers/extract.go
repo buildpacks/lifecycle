@@ -20,7 +20,6 @@ func tarReader(r io.Reader, dest string) archive.TarReader {
 	if runtime.GOOS == "windows" {
 		tr.ExcludePaths([]string{"Hives"})
 		tr.Strip(`Files`)
-		tr.FromSlash()
 		if dest == "" {
 			dest = "c:"
 		}

@@ -25,19 +25,21 @@ func AddFileToArchive(tw TarWriter, path string, fi os.FileInfo) error {
 	if fi.Mode()&os.ModeSocket != 0 {
 		return nil
 	}
-	var target string
-	if fi.Mode()&os.ModeSymlink != 0 {
-		var err error
-		target, err = os.Readlink(path)
-		if err != nil {
-			return err
-		}
-	}
-	header, err := tar.FileInfoHeader(fi, target)
+	header, err := tar.FileInfoHeader(fi, "")
 	if err != nil {
 		return err
 	}
 	header.Name = path
+
+	if fi.Mode()&os.ModeSymlink != 0 {
+		var err error
+		target, err := os.Readlink(path)
+		if err != nil {
+			return err
+		}
+		header.Linkname = target
+		addSysAttributes(header, fi)
+	}
 
 	if err := tw.WriteHeader(header); err != nil {
 		return err

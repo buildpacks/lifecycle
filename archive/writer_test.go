@@ -40,6 +40,21 @@ func testNormalizingTarWriter(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		when("windows", func() {
+			it.Before(func() {
+				if runtime.GOOS != "windows" {
+					t.Skip("windows specific test")
+				}
+			})
+
+			it("converts path separators", func() {
+				h.AssertNil(t, ntw.WriteHeader(&tar.Header{
+					Name: `c:\some\file\path`,
+				}))
+				h.AssertEq(t, ftw.getLastHeader().Name, "/some/file/path")
+			})
+		})
+
 		when("#UID", func() {
 			it("sets the uid", func() {
 				ntw.WithUID(999)
@@ -57,36 +72,6 @@ func testNormalizingTarWriter(t *testing.T, when spec.G, it spec.S) {
 					Gid: 888,
 				}))
 				h.AssertEq(t, ftw.getLastHeader().Gid, 999)
-			})
-		})
-
-		when("#ToPosix", func() {
-			it.Before(func() {
-				ntw.ToPosix()
-			})
-
-			when("path is posix", func() {
-				it("does nothing", func() {
-					h.AssertNil(t, ntw.WriteHeader(&tar.Header{
-						Name: "/some/file/path",
-					}))
-					h.AssertEq(t, ftw.getLastHeader().Name, "/some/file/path")
-				})
-			})
-
-			when("path is windows", func() {
-				it.Before(func() {
-					if runtime.GOOS != "window" {
-						t.Skip("windows specific test")
-					}
-				})
-
-				it("converts to posix", func() {
-					h.AssertNil(t, ntw.WriteHeader(&tar.Header{
-						Name: `c:\some\file\path`,
-					}))
-					h.AssertEq(t, ftw.getLastHeader().Name, "/some/file/path")
-				})
 			})
 		})
 	})

@@ -20,14 +20,6 @@ type NormalizingTarWriter struct {
 
 type HeaderOpt func(header *tar.Header) *tar.Header
 
-func (tw *NormalizingTarWriter) ToPosix() {
-	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
-		hdr.Name = strings.TrimPrefix(hdr.Name, filepath.VolumeName(hdr.Name))
-		hdr.Name = filepath.ToSlash(hdr.Name)
-		return hdr
-	})
-}
-
 func (tw *NormalizingTarWriter) WithUID(uid int) {
 	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
 		hdr.Uid = uid
@@ -50,6 +42,7 @@ func (tw *NormalizingTarWriter) WriteHeader(hdr *tar.Header) error {
 	for _, opt := range tw.headerOpts {
 		hdr = opt(hdr)
 	}
+	hdr.Name = filepath.ToSlash(strings.TrimPrefix(hdr.Name, filepath.VolumeName(hdr.Name)))
 	hdr.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 	hdr.Uname = ""
 	hdr.Gname = ""

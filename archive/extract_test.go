@@ -26,27 +26,19 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 	var (
 		tmpDir string
 		tr     *archive.NormalizingTarReader
-		file   *os.File
+		ftr    *fakeTarReader
 	)
 
 	it.Before(func() {
 		var err error
 		tmpDir, err = ioutil.TempDir("", "archive-extract-test")
 		h.AssertNil(t, err)
-
-		archivePath := filepath.Join("testdata", "tar-to-dir", "some-linux-layer.tar")
-		if runtime.GOOS == "windows" {
-			archivePath = filepath.Join("testdata", "tar-to-dir", "some-windows-layer.tar")
-		}
-		file, err = os.Open(archivePath)
-		h.AssertNil(t, err)
-		tr = archive.NewNormalizingTarReader(tar.NewReader(file))
+		ftr = &fakeTarReader{}
+		tr = archive.NewNormalizingTarReader(ftr)
 		tr.PrependDir(tmpDir)
-		tr.FromSlash()
 	})
 
 	it.After(func() {
-		h.AssertNil(t, file.Close())
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
@@ -54,10 +46,12 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		var pathModes = []archive.PathMode{
 			{"root", os.ModeDir + 0755},
 			{"root/readonly", os.ModeDir + 0500},
+			{"root/readonly/readonlysub", os.ModeDir + 0500},
+			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/standarddir", os.ModeDir + 0755},
 			{"root/standarddir/somefile", 0644},
-			{"root/readonly/readonlysub/somefile", 0444},
-			{"root/readonly/readonlysub", os.ModeDir + 0500},
+			{"root/symlinkdir", os.ModeSymlink + 0777},  //symlink permissions are not preserved from archive
+			{"root/symlinkfile", os.ModeSymlink + 0777}, //symlink permissions are not preserved from archive
 		}
 
 		// Golang for Windows only implements owner permissions
@@ -69,19 +63,64 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				{`root\readonly\readonlysub\somefile`, 0444},
 				{`root\standarddir`, os.ModeDir + 0777},
 				{`root\standarddir\somefile`, 0666},
-				{`root\symlinkdir`, os.ModeDir + 0777},
-				{`root\symlinkdir\subdir`, os.ModeDir + 0777},
-				{`root\symlinkdir\subdir\somefile`, 0666},
-				{`root\symlinkdir\symlink`, 0666},
-				// other-dir/other-file intentionally left out, as it should not be extracted
+				{`root\symlinkdir`, os.ModeSymlink + 0666},
+				{`root\symlinkfile`, os.ModeSymlink + 0666},
 			}
 		}
+
+		it.Before(func() {
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/symlinkdir",
+				Typeflag: tar.TypeSymlink,
+				Linkname: filepath.Join("..", "not-in-archive-dir"),
+				Mode:     int64(os.ModeSymlink | 0755),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/symlinkfile",
+				Typeflag: tar.TypeSymlink,
+				Linkname: filepath.FromSlash("../not-in-archive-file"),
+				Mode:     int64(os.ModeSymlink | 0755),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/standarddir/somefile",
+				Typeflag: tar.TypeReg,
+				Mode:     int64(0644),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/standarddir",
+				Typeflag: tar.TypeDir,
+				Mode:     int64(os.ModeDir | 0755),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/readonly/readonlysub/somefile",
+				Typeflag: tar.TypeReg,
+				Mode:     int64(0444),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/readonly/readonlysub",
+				Typeflag: tar.TypeDir,
+				Mode:     int64(os.ModeDir | 0500),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/readonly",
+				Typeflag: tar.TypeDir,
+				Mode:     int64(os.ModeDir | 0500),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root",
+				Typeflag: tar.TypeDir,
+				Mode:     int64(os.ModeDir | 0755),
+			})
+		})
 
 		it.After(func() {
 			// Make all files os.ModePerm so they can all be cleaned up.
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
-				if _, err := os.Stat(extractedFile); err == nil {
+				if fi, err := os.Lstat(extractedFile); err == nil {
+					if fi.Mode()&os.ModeSymlink != 0 {
+						continue
+					}
 					if err := os.Chmod(extractedFile, os.ModePerm); err != nil {
 						h.AssertNil(t, err)
 					}
@@ -94,18 +133,20 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
-				fileInfo, err := os.Stat(extractedFile)
 
+				fileInfo, err := os.Lstat(extractedFile)
 				h.AssertNil(t, err)
+
 				h.AssertEq(t, fileInfo.Mode(), pathMode.Mode)
 			}
 		})
 
 		it("fails if file exists where directory needs to be created", func() {
-			_, err := os.Create(filepath.Join(tmpDir, "root"))
+			file, err := os.Create(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
+			h.AssertNil(t, file.Close())
 
-			h.AssertError(t, archive.Extract(tr), "root: not a directory")
+			h.AssertError(t, archive.Extract(tr), "failed to create directory")
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
@@ -116,7 +157,13 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, archive.Extract(tr))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
-			h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
+
+			if runtime.GOOS != "windows" {
+				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0744)
+			} else {
+				// Golang for Windows only implements owner permissions
+				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0777)
+			}
 		})
 	})
 }

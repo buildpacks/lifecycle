@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 )
 
 type PathMode struct {
@@ -33,7 +35,7 @@ func Extract(tr TarReader) error {
 			return nil
 		}
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error extracting from archive")
 		}
 
 		switch hdr.Typeflag {
@@ -43,7 +45,7 @@ func Extract(tr TarReader) error {
 				pathModes = append(pathModes, pathMode)
 			}
 			if err := os.MkdirAll(hdr.Name, os.ModePerm); err != nil {
-				return err
+				return errors.Wrapf(err, "failed to create directory %q", hdr.Name)
 			}
 			dirsFound[hdr.Name] = true
 
@@ -52,18 +54,18 @@ func Extract(tr TarReader) error {
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, umask)); err != nil {
-						return err
+						return errors.Wrapf(err, "failed to create parent dir %q for file %q", dirPath, hdr.Name)
 					}
 					dirsFound[dirPath] = true
 				}
 			}
 
 			if err := writeFile(tr, hdr.Name, hdr.FileInfo().Mode(), buf); err != nil {
-				return err
+				return errors.Wrapf(err, "failed to write file %q", hdr.Name)
 			}
 		case tar.TypeSymlink:
-			if err := os.Symlink(hdr.Linkname, hdr.Name); err != nil {
-				return err
+			if err := createSymlink(hdr); err != nil {
+				return errors.Wrapf(err, "failed to create symlink %q with target %q", hdr.Name, hdr.Linkname)
 			}
 		default:
 			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
@@ -75,12 +77,16 @@ func applyUmask(mode os.FileMode, umask int) os.FileMode {
 	return os.FileMode(int(mode) &^ umask)
 }
 
-func writeFile(in io.Reader, path string, mode os.FileMode, buf []byte) error {
+func writeFile(in io.Reader, path string, mode os.FileMode, buf []byte) (err error) {
 	fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer func() {
+		if closeErr := fh.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	_, err = io.CopyBuffer(fh, in, buf)
 	return err
 }

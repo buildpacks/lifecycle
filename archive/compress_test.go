@@ -51,7 +51,6 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 			tw = &archive.NormalizingTarWriter{TarWriter: tar.NewWriter(file)}
 			tw.WithUID(uid)
 			tw.WithGID(gid)
-			tw.ToPosix()
 		})
 
 		it.After(func() {
@@ -82,6 +81,30 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 					assertModTimeNormalized(t, header)
 				})
 
+				tarContains(t, "directory symlinks", func() {
+					header, err := tr.Next()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, header.Name, "testdata/dir-to-tar/dir-link")
+					h.AssertEq(t, header.Uid, uid)
+					h.AssertEq(t, header.Gid, gid)
+					assertSymlink(t, header)
+					h.AssertEq(t, header.Linkname, filepath.FromSlash("../excluded-dir"))
+					assertModTimeNormalized(t, header)
+				})
+
+				tarContains(t, "file symlinks", func() {
+					header, err := tr.Next()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, header.Name, "testdata/dir-to-tar/file-link")
+					h.AssertEq(t, header.Uid, uid)
+					h.AssertEq(t, header.Gid, gid)
+					assertSymlink(t, header)
+					h.AssertEq(t, header.Linkname, filepath.FromSlash("../excluded-dir/excluded-file"))
+					assertModTimeNormalized(t, header)
+				})
+
 				tarContains(t, "regular files", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
@@ -96,7 +119,7 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, "sub directories", func() {
+				tarContains(t, "subdir", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
 					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir")
@@ -104,14 +127,10 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 					assertModTimeNormalized(t, header)
 				})
 
-				tarContains(t, "symlinks", func() {
+				tarContains(t, "children of subdir", func() {
 					header, err := tr.Next()
 					h.AssertNil(t, err)
-
-					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir/link-file")
-					h.AssertEq(t, header.Uid, uid)
-					h.AssertEq(t, header.Gid, gid)
-					h.AssertEq(t, header.Linkname, filepath.FromSlash("../some-file.txt"))
+					h.AssertEq(t, header.Name, "testdata/dir-to-tar/sub-dir/sub-file")
 					assertModTimeNormalized(t, header)
 				})
 			})
@@ -130,6 +149,14 @@ func assertDirectory(t *testing.T, header *tar.Header) {
 		t.Fatalf(`expected %s to be a directory`, header.Name)
 	}
 }
+
+func assertSymlink(t *testing.T, header *tar.Header) {
+	t.Helper()
+	if header.Typeflag != tar.TypeSymlink {
+		t.Fatalf(`expected %s to be a symlink`, header.Name)
+	}
+}
+
 func assertModTimeNormalized(t *testing.T, header *tar.Header) {
 	t.Helper()
 	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {

@@ -28,13 +28,6 @@ func (tr *NormalizingTarReader) ExcludePaths(paths []string) {
 	tr.excludedPaths = paths
 }
 
-func (tr *NormalizingTarReader) FromSlash() {
-	tr.headerOpts = append(tr.headerOpts, func(hdr *tar.Header) *tar.Header {
-		hdr.Name = filepath.FromSlash(hdr.Name)
-		return hdr
-	})
-}
-
 func (tr *NormalizingTarReader) PrependDir(dir string) {
 	tr.headerOpts = append(tr.headerOpts, func(hdr *tar.Header) *tar.Header {
 		hdr.Name = filepath.Join(dir, hdr.Name)
@@ -62,5 +55,6 @@ func (tr *NormalizingTarReader) Next() (*tar.Header, error) {
 	if hdr.Name == "" {
 		return tr.Next() // If entire path is stripped move on to the next entry
 	}
+	hdr.Name = filepath.FromSlash(hdr.Name)
 	return hdr, nil
 }
