@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"syscall"
 	"testing"
@@ -46,10 +45,6 @@ func testTarWindows(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Extract", func() {
 		it.Before(func() {
-			modeDirSymlink := os.ModeSymlink
-			if runtime.GOOS == "windows" {
-				modeDirSymlink |= os.ModeDir
-			}
 			ftr.pushHeader(&tar.Header{
 				Name:     "root/symlinkdir",
 				Typeflag: tar.TypeSymlink,
