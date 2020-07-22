@@ -47,13 +47,21 @@ jobs:
           git config --global core.eol lf
           git config --global core.symlinks true
       - uses: actions/checkout@v2
+      - name: Set up go
+        uses: actions/setup-go@v2-beta
+        with:
+          go-version: '1.14'
+      - name: Install jq
+        run: |
+          choco install jq
       - name: Test
         run: |
-          make docker-run-windows DOCKER_CMD="make test"
+          make test
         shell: cmd
       - name: Build
         run: |
-          make docker-run-windows DOCKER_CMD="make build-windows package-windows"
+          make build-windows
+          make package-windows
         shell: cmd
       - uses: actions/upload-artifact@v2
         with:
