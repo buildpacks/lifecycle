@@ -1,8 +1,7 @@
-// +build acceptance
-
 package acceptance
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,6 +15,12 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
+const (
+	expectedPlatformAPI = "0.9"
+	expectedVersion     = "some-version"
+	expectedCommit      = "asdf123"
+)
+
 var buildDir string
 
 func TestVersion(t *testing.T) {
@@ -25,7 +30,17 @@ func TestVersion(t *testing.T) {
 	defer func() {
 		h.AssertNil(t, os.RemoveAll(buildDir))
 	}()
-	buildBinaries(t, buildDir, runtime.GOOS)
+
+	outDir := filepath.Join(buildDir, runtime.GOOS, "lifecycle")
+	h.AssertNil(t, os.MkdirAll(outDir, 0755))
+
+	h.MakeAndCopyLifecycle(t,
+		runtime.GOOS,
+		outDir,
+		"PLATFORM_API="+expectedPlatformAPI,
+		"LIFECYCLE_VERSION="+expectedVersion,
+		"SCM_COMMIT="+expectedCommit,
+	)
 	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -47,12 +62,13 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"rebaser",
 				"lifecycle",
 			} {
+				phase := phase
 				it(phase+"/should fail with error message and exit code 11", func() {
 					cmd := lifecycleCmd(phase)
 					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")
 
 					_, exitCode, err := h.RunE(cmd)
-					h.AssertError(t, err, "the Lifecycle's Platform API version is 0.9 which is incompatible with Platform API version 0.8")
+					h.AssertError(t, err, fmt.Sprintf("the Lifecycle's Platform API version is %s which is incompatible with Platform API version 0.8", expectedPlatformAPI))
 					h.AssertEq(t, exitCode, 11)
 				})
 			}
@@ -144,7 +160,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 						if err != nil {
 							t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
 						}
-						h.AssertStringContains(t, string(output), "some-version+asdf123")
+						h.AssertStringContains(t, string(output), expectedVersion+"+"+expectedCommit)
 					})
 				})
 			}
@@ -154,25 +170,4 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 
 func lifecycleCmd(phase string, args ...string) *exec.Cmd {
 	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", phase), args...)
-}
-
-func buildBinaries(t *testing.T, dir string, goos string) {
-	cmd := exec.Command("make", "build-"+runtime.GOOS)
-	wd, err := os.Getwd()
-	h.AssertNil(t, err)
-	cmd.Dir = filepath.Join(wd, "..")
-	cmd.Env = append(
-		os.Environ(),
-		"GOOS="+goos,
-		"PWD="+cmd.Dir,
-		"BUILD_DIR="+dir,
-		"PLATFORM_API=0.9",
-		"LIFECYCLE_VERSION=some-version",
-		"SCM_COMMIT=asdf123",
-	)
-
-	t.Log("Building binaries: ", cmd.Args)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
-	}
 }

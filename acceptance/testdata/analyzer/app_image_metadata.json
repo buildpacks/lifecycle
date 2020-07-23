@@ -1,0 +1,54 @@
+{
+  "buildpacks": [
+    {
+      "key": "some-buildpack-id",
+      "layers": {
+        "launch-layer": {
+          "data": {
+            "launch-key": "launch-value"
+          },
+          "launch": true,
+          "sha": "launch-sha"
+        },
+        "launch-build-layer": {
+          "build": true,
+          "data": {
+            "launch-build-key": "launch-build-value"
+          },
+          "launch": true,
+          "sha": "launch-build-sha"
+        },
+        "launch-build-cache-layer": {
+          "build": true,
+          "cache": true,
+          "data": {
+            "launch-build-cache-key": "launch-build-cache-value"
+          },
+          "launch": true,
+          "sha": "launch-build-cache-sha"
+        },
+        "launch-cache-layer": {
+          "cache": true,
+          "data": {
+            "launch-cache-key": "launch-cache-value"
+          },
+          "launch": true,
+          "sha": "launch-cache-sha"
+        },
+        "launch-false-layer": {
+          "data": {
+            "launch-false-key": "launch-false-value"
+          },
+          "sha": "launch-false-sha"
+        }
+      },
+      "store": {
+        "metadata": {
+          "metadata-buildpack-store-data": {
+            "store-key": "store-val"
+          }
+        }
+      }
+    }
+  ]
+}
