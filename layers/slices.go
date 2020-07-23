@@ -82,12 +82,12 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 	}()
 	tw := tarWriter(lw)
 	if len(files) != 0 {
-		if err := archive.WriteFilesToArchive(tw, sdir.parentDirs); err != nil {
+		if err := archive.AddFilesToArchive(tw, sdir.parentDirs); err != nil {
 			return Layer{}, err
 		}
 		tw.WithUID(f.UID)
 		tw.WithGID(f.GID)
-		err = archive.WriteFilesToArchive(tw, files)
+		err = archive.AddFilesToArchive(tw, files)
 		if err != nil {
 			return Layer{}, errors.Wrapf(err, "exporting slice layer '%s'", layerID)
 		}

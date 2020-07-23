@@ -13,6 +13,9 @@ type TarWriter interface {
 	Close() error
 }
 
+// NormalizingTarWriter normalizes any written *tar.Header before passing it through to the wrapped TarWriter
+// NormalizingTarWriter always normalizes ModTime, Uname, and Gname
+// Other modifications can be enabled by invoking options on the NormalizingTarWriter
 type NormalizingTarWriter struct {
 	TarWriter
 	headerOpts []HeaderOpt
@@ -20,6 +23,7 @@ type NormalizingTarWriter struct {
 
 type HeaderOpt func(header *tar.Header) *tar.Header
 
+// WithUID sets Uid of any subsequently written *tar.Header to uid
 func (tw *NormalizingTarWriter) WithUID(uid int) {
 	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
 		hdr.Uid = uid
@@ -27,6 +31,7 @@ func (tw *NormalizingTarWriter) WithUID(uid int) {
 	})
 }
 
+// WithGID sets Gid of any subsequently written *tar.Header to gid
 func (tw *NormalizingTarWriter) WithGID(gid int) {
 	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
 		hdr.Gid = gid
@@ -34,10 +39,14 @@ func (tw *NormalizingTarWriter) WithGID(gid int) {
 	})
 }
 
+// NewNormalizingTarWriter creates a NormalizingTarWriter that wraps the provided TarWriter
 func NewNormalizingTarWriter(tw TarWriter) *NormalizingTarWriter {
 	return &NormalizingTarWriter{tw, []HeaderOpt{}}
 }
 
+// WriteHeader writes the header to the wrapped TarWriter after applying standard and configured modifications
+// Modification options will be apply in the order the options were invoked.
+// Standard modification (ModTime, Uname, and Gname) are applied last.
 func (tw *NormalizingTarWriter) WriteHeader(hdr *tar.Header) error {
 	for _, opt := range tw.headerOpts {
 		hdr = opt(hdr)

@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 )
 
+// PathInfo associates a path with an os.FileInfo
 type PathInfo struct {
 	Path string
 	Info os.FileInfo
 }
 
-func WriteFilesToArchive(tw TarWriter, files []PathInfo) error {
+// AddFilesToArchive writes entries describing all files to the provided TarWriter
+func AddFilesToArchive(tw TarWriter, files []PathInfo) error {
 	for _, file := range files {
 		if err := AddFileToArchive(tw, file.Path, file.Info); err != nil {
 			return err
@@ -21,6 +23,7 @@ func WriteFilesToArchive(tw TarWriter, files []PathInfo) error {
 	return nil
 }
 
+// AddFileToArchive writes an entry describing the file at path with the given os.FileInfo to the provided TarWriter
 func AddFileToArchive(tw TarWriter, path string, fi os.FileInfo) error {
 	if fi.Mode()&os.ModeSocket != 0 {
 		return nil
@@ -38,9 +41,8 @@ func AddFileToArchive(tw TarWriter, path string, fi os.FileInfo) error {
 			return err
 		}
 		header.Linkname = target
-		addSysAttributes(header, fi)
 	}
-
+	addSysAttributes(header, fi)
 	if err := tw.WriteHeader(header); err != nil {
 		return err
 	}
@@ -57,10 +59,11 @@ func AddFileToArchive(tw TarWriter, path string, fi os.FileInfo) error {
 	return nil
 }
 
-func AddDirToArchive(tw TarWriter, srcDir string) error {
-	srcDir = filepath.Clean(srcDir)
+// AddDirToArchive walks dir writes entries describing dir and all of its children files to the provided TarWriter
+func AddDirToArchive(tw TarWriter, dir string) error {
+	dir = filepath.Clean(dir)
 
-	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
+	return filepath.Walk(dir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}

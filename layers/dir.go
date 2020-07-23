@@ -8,7 +8,9 @@ import (
 	"github.com/buildpacks/lifecycle/archive"
 )
 
-// DirLayer creates a layer form the given directory
+// DirLayer creates a layer from the given directory
+// DirLayer will set the UID and GID of entries describing dir and its children (but not its parents)
+//    to Factory.UID and Factory.GID
 func (f *Factory) DirLayer(id string, dir string) (layer Layer, err error) {
 	dir, err = filepath.Abs(dir)
 	if err != nil {
@@ -41,7 +43,7 @@ func (f *Factory) DirLayer(id string, dir string) (layer Layer, err error) {
 	if err != nil {
 		return Layer{}, err
 	}
-	if err := archive.WriteFilesToArchive(tw, parents); err != nil {
+	if err := archive.AddFilesToArchive(tw, parents); err != nil {
 		return Layer{}, err
 	}
 	tw.WithUID(f.UID)

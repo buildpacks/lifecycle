@@ -22,6 +22,9 @@ func setUmask(newMask int) (oldMask int) {
 	return 0
 }
 
+// createSymlink uses the file attributes in the PAX records to decide whether to make a directory or file type symlink.
+// We must use the syscall because we often create symlinks when the target does not exist and os.Symlink uses the mode
+//   of the target to create the appropriate type of symlink on windows https://github.com/golang/go/issues/39183
 func createSymlink(hdr *tar.Header) error {
 	var flags uint32 = symbolicLinkFlagAllowUnprivilegedCreate
 	if attrStr, ok := hdr.PAXRecords[hdrFileAttributes]; ok {
@@ -45,6 +48,7 @@ func createSymlink(hdr *tar.Header) error {
 	return syscall.CreateSymbolicLink(name, target, flags)
 }
 
+// addSysAttributes adds PAXRecords containing file attributes
 func addSysAttributes(hdr *tar.Header, fi os.FileInfo) {
 	attrs := fi.Sys().(*syscall.Win32FileAttributeData).FileAttributes
 	hdr.PAXRecords = map[string]string{}

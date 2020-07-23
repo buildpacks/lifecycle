@@ -9,12 +9,11 @@ import (
 )
 
 type Factory struct {
-	ArtifactsDir string
-	UID, GID     int
+	ArtifactsDir string // ArtifactsDir is the directory where layer files are written
+	UID, GID     int    // UID and GID are used to normalize layer entries
 	Logger       Logger
-	OS           string
 
-	tarHashes map[string]string // Stores hashes of layer tarballs for reuse between the export and cache steps.
+	tarHashes map[string]string // tarHases Stores hashes of layer tarballs for reuse between the export and cache steps.
 }
 
 type Layer struct {
