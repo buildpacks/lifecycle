@@ -38,6 +38,7 @@ func assertOSSpecificEntries(t *testing.T, tr *tar.Reader) {
 		if err == io.EOF {
 			t.Fatalf("missing expected archive entry '%s'", windowsEntry)
 		}
+		h.AssertEq(t, header.Name, windowsEntry)
 		if header.Typeflag != tar.TypeDir {
 			t.Fatalf("expected entry '%s' to have type %q, got %q", windowsEntry, header.Typeflag, tar.TypeDir)
 		}
