@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -23,6 +24,7 @@ type Builder struct {
 	Group         BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
+	Snapshotter   LayerSnapshotter
 }
 
 type BuildEnv interface {
@@ -37,6 +39,10 @@ type LaunchTOML struct {
 	Slices    []layers.Slice   `toml:"slices"`
 }
 
+type LayerSnapshotter interface {
+	TakeSnapshot(string) error
+}
+
 type BOMEntry struct {
 	Require
 	Buildpack Buildpack `toml:"buildpack" json:"buildpack"`
@@ -44,6 +50,13 @@ type BOMEntry struct {
 
 type buildpackPlan struct {
 	Entries []Require `toml:"entries"`
+}
+
+type NoopSnapshotter struct {
+}
+
+func (_ *NoopSnapshotter) TakeSnapshot(string) error {
+	return nil
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
@@ -123,6 +136,10 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		var bpBOM []BOMEntry
 		plan, bpBOM = plan.filter(bp, bpPlanOut)
 		bom = append(bom, bpBOM...)
+
+		if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
+			return nil, err
+		}
 
 		var launch LaunchTOML
 		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
