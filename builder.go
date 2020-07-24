@@ -22,6 +22,7 @@ type Builder struct {
 	Group         BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
+	Privileged    bool
 }
 
 type BuildEnv interface {
