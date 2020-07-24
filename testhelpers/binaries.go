@@ -86,21 +86,4 @@ func copyLifecycle(t *testing.T, src, dst string) {
 	for _, fi := range fis {
 		AssertNil(t, os.Chmod(filepath.Join(dst, fi.Name()), 0755))
 	}
-
-	// Copy lifecycle symlinks
-	fis, err = ioutil.ReadDir(src)
-	AssertNil(t, err)
-
-	for _, fi := range fis {
-		if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
-			currentTarget, err := os.Readlink(filepath.Join(src, fi.Name()))
-			AssertNil(t, err)
-
-			newTarget := filepath.Base(currentTarget) // assume the target file is in the destination directory
-			newSource := filepath.Join(dst, fi.Name())
-			os.RemoveAll(newSource)
-
-			AssertNil(t, os.Symlink(newTarget, newSource))
-		}
-	}
 }

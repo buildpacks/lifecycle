@@ -14,10 +14,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/layers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -148,40 +147,34 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				tarTempDir, err = ioutil.TempDir("", "restorer-test-temp-layer")
 				h.AssertNil(t, err)
 
-				cacheOnlyLayerSHA = addLayerFromPath(
-					t,
-					tarTempDir,
-					filepath.Join(layersDir, "buildpack.id", "cache-only"),
-					testCache,
-				)
+				lf := layers.Factory{
+					ArtifactsDir: tarTempDir,
+					Logger:       nil,
+				}
+				layer, err := lf.DirLayer("buildpack.id:cache-only", filepath.Join(layersDir, "buildpack.id", "cache-only"))
+				h.AssertNil(t, err)
+				cacheOnlyLayerSHA = layer.Digest
+				h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-				cacheFalseLayerSHA = addLayerFromPath(
-					t,
-					tarTempDir,
-					filepath.Join(layersDir, "buildpack.id", "cache-false"),
-					testCache,
-				)
+				layer, err = lf.DirLayer("buildpack.id:cache-false", filepath.Join(layersDir, "buildpack.id", "cache-false"))
+				h.AssertNil(t, err)
+				cacheFalseLayerSHA = layer.Digest
+				h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-				cacheLaunchLayerSHA = addLayerFromPath(
-					t,
-					tarTempDir,
-					filepath.Join(layersDir, "buildpack.id", "cache-launch"),
-					testCache,
-				)
+				layer, err = lf.DirLayer("buildpack.id:cache-launch", filepath.Join(layersDir, "buildpack.id", "cache-launch"))
+				h.AssertNil(t, err)
+				cacheLaunchLayerSHA = layer.Digest
+				h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-				noGroupLayerSHA = addLayerFromPath(
-					t,
-					tarTempDir,
-					filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"),
-					testCache,
-				)
+				layer, err = lf.DirLayer("nogroup.buildpack.id:some-layer", filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"))
+				h.AssertNil(t, err)
+				noGroupLayerSHA = layer.Digest
+				h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-				escapedLayerSHA = addLayerFromPath(
-					t,
-					tarTempDir,
-					filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer"),
-					testCache,
-				)
+				layer, err = lf.DirLayer("escaped/buildpack/id.id:escaped-bp-layer", filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer"))
+				h.AssertNil(t, err)
+				escapedLayerSHA = layer.Digest
+				h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
 				h.AssertNil(t, testCache.Commit())
 				h.AssertNil(t, os.RemoveAll(layersDir))
@@ -419,15 +412,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func addLayerFromPath(t *testing.T, tarTempDir, layerPath string, c lifecycle.Cache) string {
-	t.Helper()
-	tarPath := filepath.Join(tarTempDir, h.RandString(10)+".tar")
-	sha, err := archive.WriteTarFile(layerPath, tarPath, 0, 0, &image.LayerWriterFactory{})
-	h.AssertNil(t, err)
-	h.AssertNil(t, c.AddLayerFile(tarPath, sha))
-	return sha
 }
 
 func writeLayer(layersDir, buildpack, name, metadata, sha string) error {

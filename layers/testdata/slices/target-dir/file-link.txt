@@ -1,0 +1,1 @@
+../dir-to-exclude/some-file.txt

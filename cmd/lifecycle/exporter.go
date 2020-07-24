@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -163,15 +164,15 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", ea.projectMetadataPath)
 	}
 
-	writerFactory := &image.LayerWriterFactory{}
-
 	exporter := &lifecycle.Exporter{
-		Buildpacks:         group.Group,
-		Logger:             cmd.Logger,
-		UID:                ea.uid,
-		GID:                ea.gid,
-		ArtifactsDir:       artifactsDir,
-		LayerWriterFactory: writerFactory,
+		Buildpacks: group.Group,
+		Logger:     cmd.Logger,
+		LayerFactory: &layers.Factory{
+			ArtifactsDir: artifactsDir,
+			UID:          ea.uid,
+			GID:          ea.uid,
+			Logger:       cmd.Logger,
+		},
 	}
 
 	var appImage imgutil.Image

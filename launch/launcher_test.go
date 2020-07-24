@@ -206,7 +206,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if runtime.GOOS == "windows" {
-					h.AssertEq(t, syscallExecArgsColl[0].argv0, `C:\Windows\system32\notepad.exe`)
+					h.AssertEq(t, strings.ToLower(syscallExecArgsColl[0].argv0), `c:\windows\system32\notepad.exe`)
 					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg2"})
 				} else {
 					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/sh")
@@ -232,7 +232,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if runtime.GOOS == "windows" {
-					h.AssertEq(t, syscallExecArgsColl[0].argv0, `C:\Windows\system32\notepad.exe`)
+					h.AssertEq(t, strings.ToLower(syscallExecArgsColl[0].argv0), `c:\windows\system32\notepad.exe`)
 					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg2"})
 				} else {
 					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/sh")

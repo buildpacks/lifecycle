@@ -15,7 +15,11 @@ RUN mklink C:\git\usr\bin\bash.exe sh.exe && \
     mkdir c:\docker-cli\bin && \
     curl.exe -o c:\docker-cli\bin\docker.exe -L "https://github.com/StefanScherer/docker-cli-builder/releases/download/19.03.3/docker.exe" && \
     \
-    setx /M PATH "%PATH%;c:\make\bin;c:\jq\bin;c:\docker-cli\bin"
+    setx /M PATH "%PATH%;c:\make\bin;c:\jq\bin;c:\docker-cli\bin" && \
+    \
+    git config --global core.autocrlf false && \
+    git config --global core.eol lf && \
+    git config --global core.symlinks true
 
 # For reusing dependencies `-v gopathcache:c:/gopath`
 ENV GOPATH=c:\\gopath
@@ -24,5 +28,7 @@ VOLUME ["c:/gopath"]
 
 WORKDIR /lifecycle
 
-# Copy source for consistent filesystem duplication of source (docker cp, volumes are inconsistent with symlinks/hardlinks on Windows)
-COPY . /lifecycle/
+# Copy git directory for consistent filesystem duplication of source (docker build, cp, volumes are inconsistent with symlinks/hardlinks on Windows)
+COPY . /lifecycle/.git
+
+RUN git reset --hard HEAD

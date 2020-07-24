@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/layers"
 )
 
 const (
@@ -18,7 +19,7 @@ type BuildMetadata struct {
 	Buildpacks []Buildpack      `toml:"buildpacks" json:"buildpacks"`
 	BOM        []BOMEntry       `toml:"bom" json:"bom"`
 	Launcher   LauncherMetadata `toml:"-" json:"launcher"`
-	Slices     []Slice          `toml:"slices" json:"-"`
+	Slices     []layers.Slice   `toml:"slices" json:"-"`
 }
 
 type LauncherMetadata struct {
