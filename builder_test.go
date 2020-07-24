@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,7 +19,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
@@ -67,11 +68,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:     layersDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
+			PlatformAPI:   api.MustParse("0.3"),
 			Env:           env,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1"},
-					{ID: "B", Version: "v2"},
+					{ID: "A", Version: "v1", API: "0.3"},
+					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
 			Out: outLog,
@@ -89,6 +91,44 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+			})
+
+			when("platformApi is less than 0.4", func() {
+				it("writes the bom version at the top-level", func() {
+					builder.PlatformAPI = api.MustParse("0.3")
+					mkfile(t,
+						"[[entries]]\n"+
+							`name = "dep1"`+"\n"+
+							"[entries.metadata]\n"+
+							`version = "v1"`+"\n",
+						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+					)
+					buildMetadata, err := builder.Build()
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+					h.AssertEq(t, buildMetadata.BOM[0].Version, "v1")
+					_, versionExist := buildMetadata.BOM[0].Metadata["version"]
+					h.AssertEq(t, versionExist, true)
+				})
+			})
+
+			when("platformApi is at least 0.4", func() {
+				it("writes the bom version at the lower-level (metadata entry)", func() {
+					builder.PlatformAPI = api.MustParse("0.4")
+					mkfile(t,
+						"[[entries]]\n"+
+							`name = "dep1"`+"\n"+
+							`version = "v1"`+"\n",
+						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+					)
+					buildMetadata, err := builder.Build()
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+					h.AssertEq(t, buildMetadata.BOM[0].Version, "")
+					h.AssertEq(t, buildMetadata.BOM[0].Metadata["version"], "v1")
+				})
 			})
 
 			it("should ensure each buildpack's layers dir exists and process build layers", func() {
@@ -157,13 +197,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{
-						{Type: "A-type", Command: "A-cmd"},
-						{Type: "B-type", Command: "B-cmd"},
-						{Type: "override-type", Command: "B-cmd"},
+						{Type: "A-type", Command: "A-cmd", BuildpackID: "A"},
+						{Type: "B-type", Command: "B-cmd", BuildpackID: "B"},
+						{Type: "override-type", Command: "B-cmd", BuildpackID: "B"},
 					},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v2"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected metadata:\n%s\n", s)
@@ -178,8 +218,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v2"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected:\n%s\n", s)
@@ -332,8 +372,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v2"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
 					},
 					BOM: []lifecycle.BOMEntry{
 						{
@@ -379,6 +419,31 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 					filepath.Join(appDir, "build-plan-in-B-v2.toml"),
 				)
+			})
+
+			it("should convert metadata version to top level version for buildpacks with buildpack api 0.2", func() {
+				builder.Plan = lifecycle.BuildPlan{
+					Entries: []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep2", Metadata: map[string]interface{}{"version": "v4"}},
+							},
+						},
+					},
+				}
+				_, err := builder.Build()
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				var bpPlanContents lifecycle.BuildpackPlan
+				_, err = toml.DecodeFile(filepath.Join(appDir, "build-plan-in-B-v2.toml"), &bpPlanContents)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				h.AssertEq(t, bpPlanContents.Entries[0].Version, "v4")
 			})
 		})
 
@@ -475,7 +540,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Error: %s\n", err)
 				}
 				_, err := builder.Build()
-				if _, ok := err.(*exec.ExitError); !ok {
+				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeBuildpack {
 					t.Fatalf("Incorrect error: %s\n", err)
 				}
 			})
@@ -528,6 +593,50 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error")
 				}
+			})
+
+			when("platformApi is less than 0.4", func() {
+				when("bom version is set both in the top level and in the metadata", func() {
+					it("returns an error", func() {
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						builder.PlatformAPI = api.MustParse("0.3")
+						mkfile(t,
+							"[[entries]]\n"+
+								`name = "dep1"`+"\n"+
+								`version = "v2"`+"\n"+
+								"[entries.metadata]\n"+
+								`version = "v1"`+"\n",
+							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+						)
+						_, err := builder.Build()
+						h.AssertNotNil(t, err)
+						expected := "top level version does not match metadata version"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
+				})
+			})
+
+			when("platformApi is at least 0.4", func() {
+				when("bom version is set both in the top level and in the metadata", func() {
+					it("returns an error", func() {
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						builder.PlatformAPI = api.MustParse("0.4")
+						mkfile(t,
+							"[[entries]]\n"+
+								`name = "dep1"`+"\n"+
+								`version = "v2"`+"\n"+
+								"[entries.metadata]\n"+
+								`version = "v1"`+"\n",
+							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+						)
+						_, err := builder.Build()
+						h.AssertNotNil(t, err)
+						expected := "metadata version does not match top level version"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
+				})
 			})
 		})
 	})

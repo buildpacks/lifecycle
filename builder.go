@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -23,6 +24,7 @@ type Builder struct {
 	Group         BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
+	Snapshotter   LayerSnapshotter
 }
 
 type BuildEnv interface {
@@ -33,8 +35,23 @@ type BuildEnv interface {
 }
 
 type LaunchTOML struct {
+	Labels    []Label
 	Processes []launch.Process `toml:"processes"`
 	Slices    []layers.Slice   `toml:"slices"`
+}
+
+type StackTOML struct {
+	Restores []string `toml:"restores"`
+	Excludes []string `toml:"excludes"`
+}
+
+type LayerSnapshotter interface {
+	TakeSnapshot(string) error
+}
+
+type Label struct {
+	Key   string `toml:"key"`
+	Value string `toml:"value"`
 }
 
 type BOMEntry struct {
@@ -44,6 +61,13 @@ type BOMEntry struct {
 
 type buildpackPlan struct {
 	Entries []Require `toml:"entries"`
+}
+
+type NoopSnapshotter struct {
+}
+
+func (ns *NoopSnapshotter) TakeSnapshot(string) error {
+	return nil
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
@@ -69,9 +93,10 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	plan := b.Plan
 	var bom []BOMEntry
 	var slices []layers.Slice
+	var labels []Label
 
 	for _, bp := range b.Group.Group {
-		bpInfo, err := bp.lookup(b.BuildpacksDir)
+		bpInfo, err := bp.Lookup(b.BuildpacksDir)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +111,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
+		if err := WriteTOML(bpPlanPath, plan.find(bp.noAPI())); err != nil {
 			return nil, err
 		}
 
@@ -124,21 +149,40 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		plan, bpBOM = plan.filter(bp, bpPlanOut)
 		bom = append(bom, bpBOM...)
 
-		var launch LaunchTOML
-		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
-		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
-			continue
-		} else if err != nil {
-			return nil, err
+		if bpInfo.Buildpack.Privileged {
+			if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
+				return nil, err
+			}
+
+			// read stack.toml
+			var stack StackTOML
+			tomlPath := filepath.Join(bpLayersDir, "stack.toml")
+			if _, err := toml.DecodeFile(tomlPath, &stack); os.IsNotExist(err) {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			// append build.restores
+			// append run.excludes
+		} else {
+			var launch LaunchTOML
+			tomlPath := filepath.Join(bpLayersDir, "launch.toml")
+			if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			procMap.add(launch.Processes)
+			slices = append(slices, launch.Slices...)
+			labels = append(labels, launch.Labels...)
 		}
-		procMap.add(launch.Processes)
-		slices = append(slices, launch.Slices...)
 	}
 
 	return &BuildMetadata{
-		Processes:  procMap.list(),
-		Buildpacks: b.Group.Group,
 		BOM:        bom,
+		Buildpacks: b.Group.Group,
+		Labels:     labels,
+		Processes:  procMap.list(),
 		Slices:     slices,
 	}, nil
 }
@@ -166,7 +210,7 @@ func (p BuildPlan) filter(bp Buildpack, plan buildpackPlan) (BuildPlan, []BOMEnt
 	}
 	var bom []BOMEntry
 	for _, entry := range plan.Entries {
-		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp})
+		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI()})
 	}
 	return BuildPlan{Entries: out}, bom
 }

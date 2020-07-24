@@ -44,7 +44,6 @@ func MakeAndCopyLifecycle(t *testing.T, goos, destDir string, envs ...string) {
 
 	envs = append(
 		envs,
-		"GOOS="+goos,
 		"PWD="+cmd.Dir,
 		"BUILD_DIR="+buildDir,
 	)

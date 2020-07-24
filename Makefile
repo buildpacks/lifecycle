@@ -13,18 +13,16 @@ endif
 GOCMD?=go
 GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
+LIFECYCLE_DESCRIPTOR_PATH?=lifecycle.toml
+SCM_REPO?=github.com/buildpacks/lifecycle
+PARSED_COMMIT=$(shell git rev-parse --short HEAD)
+SCM_COMMIT?=$(PARSED_COMMIT)
 LDFLAGS=-s -w
-LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
-LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.PlatformAPI=$(PLATFORM_API)'
-GOBUILD=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
+LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
+GOBUILD:=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test $(GOFLAGS)
-PLATFORM_API?=0.3
-BUILDPACK_API?=0.2
-SCM_REPO?=github.com/buildpacks/lifecycle
-PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
-SCM_COMMIT?=$(PARSED_COMMIT)
 BUILD_DIR?=$(PWD)$/out
 LINUX_COMPILATION_IMAGE?=golang:1.14-alpine
 WINDOWS_COMPILATION_IMAGE?=golang:1.14-windowsservercore-1809
@@ -47,22 +45,22 @@ $(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 $(BUILD_DIR)/linux/lifecycle/lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
 $(BUILD_DIR)/linux/lifecycle/lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle $(LINUX_COMPILATION_IMAGE)
+$(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
 	$(DOCKER_RUN) sh -c 'apk add build-base && $(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
-$(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 
 build-linux-launcher: $(BUILD_DIR)/linux/lifecycle/launcher
 
 $(BUILD_DIR)/linux/lifecycle/launcher: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/linux/lifecycle/launcher: $(GOFILES)
 $(BUILD_DIR)/linux/lifecycle/launcher:
 	@echo "> Building lifecycle/launcher for linux..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
-$(BUILD_DIR)/linux/lifecycle/launcher: $(GOFILES)
 
 build-linux-symlinks: export GOOS:=linux
 build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -80,19 +78,19 @@ build-windows-lifecycle: $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
 
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe:
 	@echo "> Building lifecycle/lifecycle for Windows..."
-	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a ./cmd/lifecycle
-$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
+	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a .$/cmd$/lifecycle
 
 build-windows-launcher: $(BUILD_DIR)/windows/lifecycle/launcher.exe
 
 $(BUILD_DIR)/windows/lifecycle/launcher.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/launcher.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/launcher.exe:
 	@echo "> Building lifecycle/launcher for Windows..."
-	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a ./cmd/launcher
-$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
+	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a .$/cmd$/launcher
 
 build-windows-symlinks: export GOOS:=windows
 build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
@@ -105,12 +103,14 @@ ifeq ($(OS),Windows_NT)
 	call del $(OUT_DIR)$/builder.exe
 	call del $(OUT_DIR)$/exporter.exe
 	call del $(OUT_DIR)$/rebaser.exe
+	call del $(OUT_DIR)$/creator.exe
 	call mklink $(OUT_DIR)$/detector.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/analyzer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/restorer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/builder.exe  lifecycle.exe
 	call mklink $(OUT_DIR)$/exporter.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/rebaser.exe  lifecycle.exe
+	call mklink $(OUT_DIR)$/creator.exe  lifecycle.exe
 else
 	ln -sf lifecycle.exe $(OUT_DIR)$/detector.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/analyzer.exe
@@ -118,25 +118,35 @@ else
 	ln -sf lifecycle.exe $(OUT_DIR)$/builder.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/exporter.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/rebaser.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/creator.exe
 endif
 
-build-darwin: $(BUILD_DIR)/darwin/lifecycle
+build-darwin: build-darwin-lifecycle build-darwin-launcher
 
-$(BUILD_DIR)/darwin/lifecycle: export GOOS:=darwin
-$(BUILD_DIR)/darwin/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-$(BUILD_DIR)/darwin/lifecycle:
-	@echo "> Building for macos..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
+build-darwin-lifecycle: $(BUILD_DIR)/darwin/lifecycle/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: export GOOS:=darwin
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: $(GOFILES)
+$(BUILD_DIR)/darwin/lifecycle/lifecycle:
+	@echo "> Building lifecycle for macos..."
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+	@echo "> Creating lifecycle symlinks for macos..."
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
 	ln -sf lifecycle $(OUT_DIR)/restorer
 	ln -sf lifecycle $(OUT_DIR)/builder
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
-$(BUILD_DIR)/darwin/lifecycle: $(GOFILES)
+
+build-darwin-launcher: $(BUILD_DIR)/darwin/lifecycle/launcher
+$(BUILD_DIR)/darwin/lifecycle/launcher: export GOOS:=darwin
+$(BUILD_DIR)/darwin/lifecycle/launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/launcher: $(GOFILES)
+$(BUILD_DIR)/darwin/lifecycle/launcher:
+	@echo "> Building launcher for macos..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 
 install-goimports:
 	@echo "> Installing goimports..."
@@ -184,22 +194,24 @@ clean:
 
 package: package-linux package-windows
 
-package-linux: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 package-linux: GOOS:=linux
-package-linux: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
-package-linux: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
+package-linux: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+package-linux: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+package-linux: PACKAGER=./tools/packager/main.go
 package-linux:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run tools/packager/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)/lifecycle/launcher -lifecycleExePath $(GOOS_DIR)/lifecycle/lifecycle -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)/$(ARCHIVE_NAME).tgz
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH)
 
 package-windows: GOOS:=windows
-package-windows: GOOS_DIR:=$(BUILD_DIR)$/$(GOOS)
-package-windows: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
+package-windows: INPUT_DIR:=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+package-windows: ARCHIVE_PATH=$(BUILD_DIR)$/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+package-windows: PACKAGER=.$/tools$/packager$/main.go
 package-windows:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run tools$/packager$/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)$/lifecycle$/launcher.exe -lifecycleExePath $(GOOS_DIR)$/lifecycle$/lifecycle.exe -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)$/$(ARCHIVE_NAME).tgz
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH)
 
 # Ensure workdir is clean and build image from .git
+docker-build-source-image-windows: $(GOFILES)
 docker-build-source-image-windows:
 	$(if $(shell git status --short), @echo Uncommitted changes. Refusing to run. && exit 1)
 	docker build -f tools/Dockerfile.windows --tag $(SOURCE_COMPILATION_IMAGE) --build-arg image_tag=$(WINDOWS_COMPILATION_IMAGE) --cache-from=$(SOURCE_COMPILATION_IMAGE) --isolation=process --quiet .git

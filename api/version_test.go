@@ -31,64 +31,64 @@ func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("IsAPICompatible", func() {
-		when("pre-stable", func() {
-			it("matching minor value", func() {
-				lifecycle := api.MustParse("0.2")
-				platform := api.MustParse("0.2")
+	when("IsSupersetOf", func() {
+		when("0.x", func() {
+			it("matching Minor value", func() {
+				v := api.MustParse("0.2")
+				target := api.MustParse("0.2")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, platform), true)
+				h.AssertEq(t, v.IsSupersetOf(target), true)
 			})
 
-			it("lifecycle minor > platform minor", func() {
-				lifecycle := api.MustParse("0.2")
-				platform := api.MustParse("0.1")
+			it("Minor > target Minor", func() {
+				v := api.MustParse("0.2")
+				target := api.MustParse("0.1")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, platform), false)
+				h.AssertEq(t, v.IsSupersetOf(target), false)
 			})
 
-			it("lifecycle minor < platform minor", func() {
-				lifecycle := api.MustParse("0.1")
-				platform := api.MustParse("0.2")
+			it("Minor < target Minor", func() {
+				v := api.MustParse("0.1")
+				target := api.MustParse("0.2")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, platform), false)
+				h.AssertEq(t, v.IsSupersetOf(target), false)
 			})
 		})
 
-		when("stable", func() {
-			it("matching major and minor", func() {
-				lifecycle := api.MustParse("1.2")
-				comparison := api.MustParse("1.2")
+		when("1.x", func() {
+			it("matching Major and Minor", func() {
+				v := api.MustParse("1.2")
+				target := api.MustParse("1.2")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, comparison), true)
+				h.AssertEq(t, v.IsSupersetOf(target), true)
 			})
 
-			it("matching major but minor > platform minor", func() {
-				lifecycle := api.MustParse("1.2")
-				platform := api.MustParse("1.1")
+			it("matching Major but Minor > target Minor", func() {
+				v := api.MustParse("1.2")
+				target := api.MustParse("1.1")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, platform), true)
+				h.AssertEq(t, v.IsSupersetOf(target), true)
 			})
 
-			it("matching major but minor < platform minor", func() {
-				lifecycle := api.MustParse("1.1")
-				platform := api.MustParse("1.2")
+			it("matching Major but Minor < target Minor", func() {
+				v := api.MustParse("1.1")
+				target := api.MustParse("1.2")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, platform), false)
+				h.AssertEq(t, v.IsSupersetOf(target), false)
 			})
 
-			it("major < platform major", func() {
-				lifecycle := api.MustParse("1.0")
-				platform := api.MustParse("2.0")
+			it("Major < target Major", func() {
+				v := api.MustParse("1.0")
+				target := api.MustParse("2.0")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, platform), false)
+				h.AssertEq(t, v.IsSupersetOf(target), false)
 			})
 
-			it("major > platform major", func() {
-				lifecycle := api.MustParse("2.0")
-				platform := api.MustParse("1.0")
+			it("Major > target Major", func() {
+				v := api.MustParse("2.0")
+				target := api.MustParse("1.0")
 
-				h.AssertEq(t, api.IsAPICompatible(lifecycle, platform), false)
+				h.AssertEq(t, v.IsSupersetOf(target), false)
 			})
 		})
 	})

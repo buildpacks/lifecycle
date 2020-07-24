@@ -32,7 +32,7 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	if r.cacheImageTag == "" && r.cacheDir == "" {
-		cmd.Logger.Warn("Not restoring cached layer data, no cache flag specified.")
+		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 	return nil
 }
@@ -52,6 +52,9 @@ func (r *restoreCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
+	if err := verifyBuildpackApis(group); err != nil {
+		return err
+	}
 	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir)
 	if err != nil {
 		return err
@@ -63,7 +66,7 @@ func restore(layersDir string, group lifecycle.BuildpackGroup, cacheStore lifecy
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
 		Buildpacks: group.Group,
-		Logger:     cmd.Logger,
+		Logger:     cmd.DefaultLogger,
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

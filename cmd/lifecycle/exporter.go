@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -24,9 +25,9 @@ import (
 
 type exportCmd struct {
 	//flags: inputs
-	groupPath             string
-	cacheImageTag         string
 	cacheDir              string
+	cacheImageTag         string
+	groupPath             string
 	deprecatedRunImageRef string
 	exportArgs
 
@@ -36,39 +37,43 @@ type exportCmd struct {
 
 type exportArgs struct {
 	// inputs needed when run by creator
-	stackPath           string
+	appDir              string
 	imageNames          []string
 	launchCacheDir      string
-	appDir              string
-	layersDir           string
 	launcherPath        string
+	layersDir           string
+	platformAPI         string
+	processType         string
 	projectMetadataPath string
+	reportPath          string
 	runImageRef         string
+	stackPath           string
 	useDaemon           bool
 	uid, gid            int
-	processType         string
 
 	//construct if necessary before dropping privileges
 	docker client.CommonAPIClient
 }
 
 func (e *exportCmd) Init() {
-	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
-	cmd.FlagRunImage(&e.runImageRef)
-	cmd.FlagLayersDir(&e.layersDir)
-	cmd.FlagAppDir(&e.appDir)
-	cmd.FlagGroupPath(&e.groupPath)
 	cmd.FlagAnalyzedPath(&e.analyzedPath)
-	cmd.FlagStackPath(&e.stackPath)
-	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
-	cmd.FlagUseDaemon(&e.useDaemon)
-	cmd.FlagUID(&e.uid)
-	cmd.FlagGID(&e.gid)
-	cmd.FlagLauncherPath(&e.launcherPath)
-	cmd.FlagCacheImage(&e.cacheImageTag)
+	cmd.FlagAppDir(&e.appDir)
 	cmd.FlagCacheDir(&e.cacheDir)
-	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
+	cmd.FlagCacheImage(&e.cacheImageTag)
+	cmd.FlagGID(&e.gid)
+	cmd.FlagGroupPath(&e.groupPath)
+	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
+	cmd.FlagLauncherPath(&e.launcherPath)
+	cmd.FlagLayersDir(&e.layersDir)
 	cmd.FlagProcessType(&e.processType)
+	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
+	cmd.FlagReportPath(&e.reportPath)
+	cmd.FlagRunImage(&e.runImageRef)
+	cmd.FlagStackPath(&e.stackPath)
+	cmd.FlagUID(&e.uid)
+	cmd.FlagUseDaemon(&e.useDaemon)
+
+	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
 
 func (e *exportCmd) Args(nargs int, args []string) error {
@@ -78,12 +83,12 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 
 	e.imageNames = args
 	if e.launchCacheDir != "" && !e.useDaemon {
-		cmd.Logger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
+		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
 		e.launchCacheDir = ""
 	}
 
 	if e.cacheImageTag == "" && e.cacheDir == "" {
-		cmd.Logger.Warn("Will not cache data, no cache flag specified.")
+		cmd.DefaultLogger.Warn("Will not cache data, no cache flag specified.")
 	}
 
 	if err := image.ValidateDestinationTags(e.useDaemon, e.imageNames...); err != nil {
@@ -123,15 +128,18 @@ func (e *exportCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
+	if err := verifyBuildpackApis(group); err != nil {
+		return err
+	}
 
-	analyzedMD, err := parseOptionalAnalyzedMD(cmd.Logger, e.analyzedPath)
+	analyzedMD, err := parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
 
 	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir)
 	if err != nil {
-		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
+		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
 	return e.export(group, cacheStore, analyzedMD)
@@ -161,18 +169,19 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		if !os.IsNotExist(err) {
 			return err
 		}
-		cmd.Logger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", ea.projectMetadataPath)
+		cmd.DefaultLogger.Debugf("no project metadata found at path '%s', project metadata will not be exported\n", ea.projectMetadataPath)
 	}
 
 	exporter := &lifecycle.Exporter{
 		Buildpacks: group.Group,
-		Logger:     cmd.Logger,
 		LayerFactory: &layers.Factory{
 			ArtifactsDir: artifactsDir,
 			UID:          ea.uid,
 			GID:          ea.uid,
-			Logger:       cmd.Logger,
+			Logger:       cmd.DefaultLogger,
 		},
+		Logger:      cmd.DefaultLogger,
+		PlatformAPI: api.MustParse(ea.platformAPI),
 	}
 
 	var appImage imgutil.Image
@@ -197,27 +206,31 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		return err
 	}
 
-	if err := exporter.Export(lifecycle.ExportOptions{
-		LayersDir:          ea.layersDir,
-		AppDir:             ea.appDir,
-		WorkingImage:       appImage,
-		RunImageRef:        runImageID,
-		OrigMetadata:       analyzedMD.Metadata,
+	report, err := exporter.Export(lifecycle.ExportOptions{
 		AdditionalNames:    ea.imageNames[1:],
-		LauncherConfig:     launcherConfig(ea.launcherPath),
-		Stack:              stackMD,
-		Project:            projectMD,
+		AppDir:             ea.appDir,
 		DefaultProcessType: ea.processType,
-	}); err != nil {
+		LauncherConfig:     launcherConfig(ea.launcherPath),
+		LayersDir:          ea.layersDir,
+		OrigMetadata:       analyzedMD.Metadata,
+		Project:            projectMD,
+		RunImageRef:        runImageID,
+		Stack:              stackMD,
+		WorkingImage:       appImage,
+	})
+	if err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}
 		return cmd.FailErr(err, "export")
 	}
+	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
+		return cmd.FailErr(err, "write buildpack group")
+	}
 
 	if cacheStore != nil {
 		if cacheErr := exporter.Cache(ea.layersDir, cacheStore); cacheErr != nil {
-			cmd.Logger.Warnf("Failed to export cache: %v\n", cacheErr)
+			cmd.DefaultLogger.Warnf("Failed to export cache: %v\n", cacheErr)
 		}
 	}
 	return nil
@@ -229,7 +242,7 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 	}
 
 	if analyzedMD.Image != nil {
-		cmd.Logger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
+		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
 		opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 	}
 
@@ -263,7 +276,7 @@ func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.
 	}
 
 	if analyzedMD.Image != nil {
-		cmd.Logger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
 		ref, err := name.ParseReference(analyzedMD.Image.Reference, name.WeakValidation)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "parse analyzed registry")
@@ -330,7 +343,7 @@ func resolveStack(stackPath, runImageRef, registry string) (lifecycle.StackMetad
 	var stackMD lifecycle.StackMetadata
 	_, err := toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
-		cmd.Logger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
+		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
 	}
 	if runImageRef == "" {
 		if stackMD.RunImage.Image == "" {

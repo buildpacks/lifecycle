@@ -20,6 +20,7 @@ import (
 type rebaseCmd struct {
 	//flags: inputs
 	imageNames            []string
+	reportPath            string
 	runImageRef           string
 	deprecatedRunImageRef string
 	useDaemon             bool
@@ -30,11 +31,13 @@ type rebaseCmd struct {
 }
 
 func (r *rebaseCmd) Init() {
-	cmd.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
-	cmd.FlagRunImage(&r.runImageRef)
-	cmd.FlagUseDaemon(&r.useDaemon)
-	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
+	cmd.FlagReportPath(&r.reportPath)
+	cmd.FlagRunImage(&r.runImageRef)
+	cmd.FlagUID(&r.uid)
+	cmd.FlagUseDaemon(&r.useDaemon)
+
+	cmd.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
 }
 
 func (r *rebaseCmd) Args(nargs int, args []string) error {
@@ -128,13 +131,17 @@ func (r *rebaseCmd) Exec() error {
 	}
 
 	rebaser := &lifecycle.Rebaser{
-		Logger: cmd.Logger,
+		Logger: cmd.DefaultLogger,
 	}
-	if err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:]); err != nil {
+	report, err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:])
+	if err != nil {
 		if _, ok := err.(*imgutil.SaveError); ok {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "rebase")
 		}
 		return cmd.FailErr(err, "rebase")
+	}
+	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
+		return cmd.FailErr(err, "write buildpack group")
 	}
 	return nil
 }
