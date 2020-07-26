@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,7 +15,7 @@ import (
 	kanikoutil "github.com/GoogleContainerTools/kaniko/pkg/util"
 
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/snapshot"
+	"github.com/buildpacks/lifecycle/snapshot" // https://github.com/GoogleContainerTools/kaniko/pull/1359
 )
 
 type RootBuilder struct {
@@ -55,7 +56,7 @@ func (b *RootBuilder) Build() (*BuildMetadata, error) {
 	}
 	defer os.RemoveAll(planDir)
 
-
+	logrus.SetLevel(logrus.FatalLevel)
 	kanikoconfig.RootDir = rootDir
 	kanikoDir, err := ioutil.TempDir("", "kaniko")
 	if err != nil {
@@ -68,7 +69,7 @@ func (b *RootBuilder) Build() (*BuildMetadata, error) {
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(rootDir, "layers"))
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(rootDir, "tmp"))
 	layeredMap := snapshot.NewLayeredMap(kanikoutil.Hasher(), kanikoutil.CacheHasher())
-	snapshotter := snapshot.NewSnapshotter(layeredMap, b.RootDir)
+	snapshotter := snapshot.NewSnapshotter(layeredMap, rootDir)
 	if err := snapshotter.Init(); err != nil {
 		return nil, err
 	}
@@ -96,7 +97,7 @@ func (b *RootBuilder) Build() (*BuildMetadata, error) {
 
 		cmd := exec.Command(
 			filepath.Join(bpInfo.Path, "bin", "build"),
-			rootDir,
+			layersDir,
 			platformDir,
 			bpPlanPath,
 		)
@@ -125,16 +126,6 @@ func (b *RootBuilder) Build() (*BuildMetadata, error) {
 		plan, bpBOM = plan.filter(bp, bpPlanOut)
 		bom = append(bom, bpBOM...)
 
-		//var launch LaunchTOML
-		//tomlPath := filepath.Join(rootDir, "launch.toml")
-		//if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
-		//	continue
-		//} else if err != nil {
-		//	return nil, err
-		//}
-		//procMap.add(launch.Processes)
-		//slices = append(slices, launch.Slices...)
-
 		snapshotTmpFile, err := snapshotter.TakeSnapshotFS()
 		if err != nil {
 			return nil, err
@@ -145,6 +136,16 @@ func (b *RootBuilder) Build() (*BuildMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		var launch LaunchTOML
+		tomlPath := filepath.Join(layersDir, "launch.toml") // Q: should we let them write launch.toml in the layers dir?
+		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		procMap.add(launch.Processes)
+		slices = append(slices, launch.Slices...)
 	}
 
 	return &BuildMetadata{
