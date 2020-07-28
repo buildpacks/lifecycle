@@ -84,15 +84,15 @@ build-windows-lifecycle: descriptor-windows $(BUILD_DIR)/windows/lifecycle/lifec
 descriptor-windows: $(BUILD_DIR)/windows/lifecycle/lifecycle.toml
 $(BUILD_DIR)/windows/lifecycle/lifecycle.toml: $(LIFECYCLE_DESCRIPTOR_PATH)
 $(BUILD_DIR)/windows/lifecycle/lifecycle.toml:
-	mkdir -p $(BUILD_DIR)/windows/lifecycle
-	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)/windows/lifecycle/lifecycle.toml
+	mkdir -p $(BUILD_DIR)$/windows$/lifecycle
+	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)$/windows$/lifecycle$/lifecycle.toml
 
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe:
 	@echo "> Building lifecycle/lifecycle for Windows..."
-	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a ./cmd/lifecycle
+	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a .$/cmd$/lifecycle
 
 build-windows-launcher: $(BUILD_DIR)/windows/lifecycle/launcher.exe
 
@@ -101,7 +101,7 @@ $(BUILD_DIR)/windows/lifecycle/launcher.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lif
 $(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/launcher.exe:
 	@echo "> Building lifecycle/launcher for Windows..."
-	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a ./cmd/launcher
+	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a .$/cmd$/launcher
 
 build-windows-symlinks: export GOOS:=windows
 build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
