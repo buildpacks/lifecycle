@@ -1,7 +1,9 @@
 [apis]
 [apis.buildpack]
+  deprecated = []
   supported = ["0.3", "0.4"]
 [apis.platform]
+  deprecated = []
   supported = ["0.3", "0.4"]
 
 [lifecycle]
