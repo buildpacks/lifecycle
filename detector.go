@@ -20,8 +20,8 @@ const (
 	EnvBuildpackDir = "CNB_BUILDPACK_DIR"
 )
 
-var ErrFail = errors.New("no buildpacks participating")
-var ErrFailWithErrors = errors.New("no buildpacks participating: failed with errors")
+var ErrFailedDetection = errors.New("no buildpacks participating")
+var ErrBuildpack = errors.New("no buildpacks participating: detect failed with errors")
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -110,9 +110,9 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 	}
 	if !detected {
 		if detectErr {
-			return nil, nil, ErrFailWithErrors
+			return nil, nil, ErrBuildpack
 		}
-		return nil, nil, ErrFail
+		return nil, nil, ErrFailedDetection
 	}
 
 	i := 0
@@ -166,7 +166,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 			retry = true
 			if !bp.Optional {
 				c.Logger.Debugf("fail: %s requires %s", bp, name)
-				return ErrFail
+				return ErrFailedDetection
 			}
 			c.Logger.Debugf("skip: %s requires %s", bp, name)
 			trial = trial.remove(bp)
@@ -179,7 +179,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 			retry = true
 			if !bp.Optional {
 				c.Logger.Debugf("fail: %s provides unused %s", bp, name)
-				return ErrFail
+				return ErrFailedDetection
 			}
 			c.Logger.Debugf("skip: %s provides unused %s", bp, name)
 			trial = trial.remove(bp)
@@ -191,7 +191,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 
 	if len(trial) == 0 {
 		c.Logger.Debugf("fail: no viable buildpacks in group")
-		return nil, nil, ErrFail
+		return nil, nil, ErrFailedDetection
 	}
 	return deps, trial, nil
 }
@@ -312,10 +312,10 @@ func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.
 	for _, group := range bo {
 		// FIXME: double-check slice safety here
 		found, plan, err := group.append(ngroup).detect(done, wg, c)
-		if err == ErrFailWithErrors {
+		if err == ErrBuildpack {
 			hadErr = true
 		}
-		if err == ErrFail || err == ErrFailWithErrors {
+		if err == ErrFailedDetection || err == ErrBuildpack {
 			wg = &sync.WaitGroup{}
 			continue
 		}
@@ -326,9 +326,9 @@ func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.
 	}
 
 	if hadErr {
-		return nil, nil, ErrFailWithErrors
+		return nil, nil, ErrBuildpack
 	}
-	return nil, nil, ErrFail
+	return nil, nil, ErrFailedDetection
 }
 
 func hasID(bps []Buildpack, id string) bool {

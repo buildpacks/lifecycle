@@ -79,12 +79,12 @@ func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, er
 		Logger:        cmd.Logger,
 	})
 	if err != nil {
-		if err == lifecycle.ErrFail || err == lifecycle.ErrFailWithErrors {
+		if err == lifecycle.ErrFailedDetection || err == lifecycle.ErrBuildpack {
 			cmd.Logger.Error("No buildpack groups passed detection.")
 			cmd.Logger.Error("Please check that you are running against the correct path.")
 		}
 		exitCode := cmd.CodeFailedDetect
-		if err == lifecycle.ErrFailWithErrors {
+		if err == lifecycle.ErrBuildpack {
 			exitCode = cmd.CodeFailedDetectWithErrors
 		}
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, exitCode, "detect")
