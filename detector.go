@@ -21,7 +21,7 @@ const (
 )
 
 var ErrFailedDetection = errors.New("no buildpacks participating")
-var ErrBuildpack = errors.New("no buildpacks participating: detect failed with errors")
+var ErrBuildpack = errors.New("buildpack(s) failed with err")
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
