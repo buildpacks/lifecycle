@@ -21,16 +21,17 @@ type createCmd struct {
 	launcherPath        string
 	layersDir           string
 	orderPath           string
+	platformAPI         string
 	platformDir         string
 	previousImage       string
+	processType         string
+	projectMetadataPath string
 	runImageRef         string
 	stackPath           string
 	uid, gid            int
 	additionalTags      cmd.StringSlice
 	skipRestore         bool
 	useDaemon           bool
-	projectMetadataPath string
-	processType         string
 
 	//set if necessary before dropping privileges
 	docker client.CommonAPIClient
@@ -153,18 +154,19 @@ func (c *createCmd) Exec() error {
 
 	cmd.DefaultLogger.Phase("EXPORTING")
 	return exportArgs{
-		stackPath:           c.stackPath,
+		appDir:              c.appDir,
+		docker:              c.docker,
+		gid:                 c.gid,
 		imageNames:          append([]string{c.imageName}, c.additionalTags...),
 		launchCacheDir:      c.launchCacheDir,
-		appDir:              c.appDir,
-		layersDir:           c.layersDir,
 		launcherPath:        c.launcherPath,
+		layersDir:           c.layersDir,
+		platformAPI:         c.platformAPI,
+		processType:         c.processType,
 		projectMetadataPath: c.projectMetadataPath,
 		runImageRef:         c.runImageRef,
-		useDaemon:           c.useDaemon,
+		stackPath:           c.stackPath,
 		uid:                 c.uid,
-		gid:                 c.gid,
-		processType:         c.processType,
-		docker:              c.docker,
+		useDaemon:           c.useDaemon,
 	}.export(group, cacheStore, analyzedMD)
 }

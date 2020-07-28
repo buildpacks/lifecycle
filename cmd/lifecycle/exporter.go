@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -41,6 +42,7 @@ type exportArgs struct {
 	launchCacheDir      string
 	launcherPath        string
 	layersDir           string
+	platformAPI         string
 	processType         string
 	projectMetadataPath string
 	reportPath          string
@@ -169,13 +171,14 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 
 	exporter := &lifecycle.Exporter{
 		Buildpacks: group.Group,
-		Logger:     cmd.DefaultLogger,
 		LayerFactory: &layers.Factory{
 			ArtifactsDir: artifactsDir,
 			UID:          ea.uid,
 			GID:          ea.uid,
 			Logger:       cmd.DefaultLogger,
 		},
+		Logger:      cmd.DefaultLogger,
+		PlatformAPI: api.MustParse(ea.platformAPI),
 	}
 
 	var appImage imgutil.Image

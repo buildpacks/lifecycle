@@ -27,11 +27,11 @@ func main() {
 	case "builder":
 		cmd.Run(&buildCmd{}, false)
 	case "exporter":
-		cmd.Run(&exportCmd{}, false)
+		cmd.Run(&exportCmd{exportArgs: exportArgs{platformAPI: platformAPI}}, false)
 	case "rebaser":
 		cmd.Run(&rebaseCmd{}, false)
 	case "creator":
-		cmd.Run(&createCmd{}, false)
+		cmd.Run(&createCmd{platformAPI: platformAPI}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
