@@ -38,34 +38,32 @@ func NewAPIs(supported []string, deprecated []string) (APIs, error) {
 		apis.Supported = append(apis.Supported, MustParse(api))
 	}
 	for _, d := range deprecated {
-		if err := validateDeprecated(apis, d); err != nil {
+		dAPI := MustParse(d)
+		if err := validateDeprecated(apis, dAPI); err != nil {
 			return APIs{}, errors.Wrapf(err, "invalid deprecated API '%s'", d)
 		}
-		if !apis.IsSupported(d) {
+		if !apis.IsSupported(dAPI) {
 			return APIs{}, fmt.Errorf("invalid depreacted API '%s': all depreacted APIs must also be supported", d)
 		}
-		dAPI := MustParse(d)
 		apis.Deprecated = append(apis.Deprecated, dAPI)
 	}
 	return apis, nil
 }
 
-func validateDeprecated(apis APIs, d string) error {
-	if !apis.IsSupported(d) {
+func validateDeprecated(apis APIs, depreacted *Version) error {
+	if !apis.IsSupported(depreacted) {
 		return errors.New("all deprecated APIs must also be supported")
 	}
-	dAPI := MustParse(d)
-	if dAPI.Major != 0 && dAPI.Minor != 0 {
+	if depreacted.Major != 0 && depreacted.Minor != 0 {
 		return errors.New("deprecated APIs may only contain 0.x or major version")
 	}
 	return nil
 }
 
 // IsSupported returns true or false depending on whether the target API is supported
-func (a APIs) IsSupported(target string) bool {
-	tAPI := MustParse(target)
+func (a APIs) IsSupported(target *Version) bool {
 	for _, sAPI := range a.Supported {
-		if sAPI.IsSupersetOf(tAPI) {
+		if sAPI.IsSupersetOf(target) {
 			return true
 		}
 	}
@@ -73,10 +71,9 @@ func (a APIs) IsSupported(target string) bool {
 }
 
 // IsDeprecated returns true or false depending on whether the target API is deprecated
-func (a APIs) IsDeprecated(target string) bool {
-	tAPI := MustParse(target)
+func (a APIs) IsDeprecated(target *Version) bool {
 	for _, dAPI := range a.Deprecated {
-		if tAPI.IsSupersetOf(dAPI) {
+		if target.IsSupersetOf(dAPI) {
 			return true
 		}
 	}

@@ -31,6 +31,17 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 			cmd.DefaultLogger = &cmd.Logger{Logger: &log.Logger{Handler: logHandler}}
 		})
 
+		when("is invalid", func() {
+			it("error with exit code 11", func() {
+				err := cmd.VerifyPlatformAPI("bad-api")
+				failErr, ok := err.(*cmd.ErrorFail)
+				if !ok {
+					t.Fatalf("expected an error of type cmd.ErrorFail")
+				}
+				h.AssertEq(t, failErr.Code, 11)
+			})
+		})
+
 		when("is unsupported", func() {
 			it("error with exit code 11", func() {
 				err := cmd.VerifyPlatformAPI("2.2")

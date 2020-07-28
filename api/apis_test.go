@@ -42,7 +42,7 @@ func testAPIs(t *testing.T, when spec.G, it spec.S) {
 		when("IsSupported", func() {
 			it("returns true if API is supported", func() {
 				for _, a := range []string{"0.2", "0.3", "1", "1.0", "1.1", "1.2", "1.3", "2", "2.0", "2.1"} {
-					if !apis.IsSupported(a) {
+					if !apis.IsSupported(api.MustParse(a)) {
 						t.Fatalf("Expected API %s to be supported", a)
 					}
 				}
@@ -50,7 +50,7 @@ func testAPIs(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns false if API is not supported", func() {
 				for _, a := range []string{"0.1", "0.4", "1.4", "2.2", "3"} {
-					if apis.IsSupported(a) {
+					if apis.IsSupported(api.MustParse(a)) {
 						t.Fatalf("Expected API %s NOT to be supported", a)
 					}
 				}
@@ -60,7 +60,7 @@ func testAPIs(t *testing.T, when spec.G, it spec.S) {
 		when("IsDeprecated", func() {
 			it("returns true if API is deprecated", func() {
 				for _, a := range []string{"0.2", "0.3", "1", "1.0", "1.1", "1.2", "1.3"} {
-					if !apis.IsDeprecated(a) {
+					if !apis.IsDeprecated(api.MustParse(a)) {
 						t.Fatalf("Expected API %s to be depreacted", a)
 					}
 				}
@@ -68,7 +68,7 @@ func testAPIs(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns false if API is not deprecated", func() {
 				for _, a := range []string{"2", "2.0", "2.1"} {
-					if apis.IsDeprecated(a) {
+					if apis.IsDeprecated(api.MustParse(a)) {
 						t.Fatalf("Expected API %s NOT to be deprecated", a)
 					}
 				}

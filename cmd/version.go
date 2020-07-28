@@ -34,28 +34,35 @@ func buildVersion() string {
 	return fmt.Sprintf("%s+%s", Version, SCMCommit)
 }
 
-func VerifyPlatformAPI(requestedAPI string) error {
+func VerifyPlatformAPI(requested string) error {
+	requestedAPI, err := api.NewVersion(requested)
+	if err != nil {
+		return FailErrCode(
+			fmt.Errorf("parse platform API '%s'", requested),
+			CodeIncompatible,
+		)
+	}
 	if api.Platform.IsSupported(requestedAPI) {
 		if api.Platform.IsDeprecated(requestedAPI) {
 			switch DeprecationMode {
 			case DeprecationModeQuiet:
 				break
 			case DeprecationModeError:
-				return platformAPIError(requestedAPI)
+				return platformAPIError(requested)
 			case DeprecationModeWarn:
-				DefaultLogger.Warnf("Platform API '%s' is deprecated", requestedAPI)
+				DefaultLogger.Warnf("Platform API '%s' is deprecated", requested)
 			default:
-				DefaultLogger.Warnf("Platform API '%s' is deprecated", requestedAPI)
+				DefaultLogger.Warnf("Platform API '%s' is deprecated", requested)
 			}
 		}
 		return nil
 	}
-	return platformAPIError(requestedAPI)
+	return platformAPIError(requested)
 }
 
-func platformAPIError(requestedAPI string) error {
+func platformAPIError(requested string) error {
 	return FailErrCode(
-		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requestedAPI),
+		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requested),
 		CodeIncompatible,
 	)
 }
