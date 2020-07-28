@@ -84,7 +84,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 
 	results := detectResults{}
 	detected := true
-	detectErr := false
+	buildpackErr := false
 	for i, bp := range done {
 		run := runs[i]
 		switch run.Code {
@@ -100,16 +100,16 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 			detected = detected && bp.Optional
 		case -1:
 			c.Logger.Debugf("err:  %s", bp)
-			detectErr = true
+			buildpackErr = true
 			detected = detected && bp.Optional
 		default:
 			c.Logger.Debugf("err:  %s (%d)", bp, run.Code)
-			detectErr = true
+			buildpackErr = true
 			detected = detected && bp.Optional
 		}
 	}
 	if !detected {
-		if detectErr {
+		if buildpackErr {
 			return nil, nil, ErrBuildpack
 		}
 		return nil, nil, ErrFailedDetection
@@ -308,12 +308,12 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 
 func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []BuildPlanEntry, error) {
 	ngroup := BuildpackGroup{Group: next}
-	hadErr := false
+	buildpackErr := false
 	for _, group := range bo {
 		// FIXME: double-check slice safety here
 		found, plan, err := group.append(ngroup).detect(done, wg, c)
 		if err == ErrBuildpack {
-			hadErr = true
+			buildpackErr = true
 		}
 		if err == ErrFailedDetection || err == ErrBuildpack {
 			wg = &sync.WaitGroup{}
@@ -325,7 +325,7 @@ func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.
 		return ngroup.detect(done, wg, c)
 	}
 
-	if hadErr {
+	if buildpackErr {
 		return nil, nil, ErrBuildpack
 	}
 	return nil, nil, ErrFailedDetection
