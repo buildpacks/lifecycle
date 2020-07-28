@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
 )
@@ -15,8 +15,24 @@ var (
 	SCMCommit = ""
 	// SCMRepository is the source repository.
 	SCMRepository = ""
-	// PlatformAPI is the version of the Platform API implemented.
-	PlatformAPI = "0.0"
+
+	// SupportedPlatformAPIs contains a comma separated list of supported platforms APIs
+	SupportedPlatformAPIs string
+	// DepreactedPlatformAPIs contains a comma separated list of depreacted platforms APIs
+	DeprecatedPlatformAPIs string
+
+	EnvPlatformAPI     = "CNB_PLATFORM_API"
+	EnvDeprecationMode = "CNB_DEPRECATION_MODE"
+
+	// DefaultPlatformAPI specifies platform API to provide when "CNB_PLATFORM_API" is unset
+	DefaultPlatformAPI     = "0.3"
+	DefaultDeprecationMode = "warn"
+)
+
+const (
+	DeprecationModeQuiet = "quiet"
+	DeprecationModeWarn  = "warn"
+	DeprecationModeError = "error"
 )
 
 // buildVersion is a display format of the version and build metadata in compliance with semver.
@@ -30,25 +46,38 @@ func buildVersion() string {
 }
 
 func VerifyCompatibility() error {
-	pAPI := os.Getenv("CNB_PLATFORM_API")
-	if pAPI != "" {
-		platformAPIFromPlatform, err := api.NewVersion(pAPI)
-		if err != nil {
-			return err
-		}
+	apis, _ := api.NewAPIs(splitApis(SupportedPlatformAPIs), splitApis(DeprecatedPlatformAPIs))
 
-		platformAPIFromLifecycle := api.MustParse(PlatformAPI)
-		if !api.IsAPICompatible(platformAPIFromLifecycle, platformAPIFromPlatform) {
-			return FailErrCode(
-				fmt.Errorf(
-					"the Lifecycle's Platform API version is %s which is incompatible with Platform API version %s",
-					platformAPIFromLifecycle.String(),
-					platformAPIFromPlatform.String(),
-				),
-				CodeIncompatible,
-			)
+	requestedAPI := envOrDefault(EnvPlatformAPI, DefaultPlatformAPI)
+	if apis.IsSupported(requestedAPI) {
+		if apis.IsDeprecated(requestedAPI) {
+			switch envOrDefault(EnvDeprecationMode, DeprecationModeWarn) {
+			case DeprecationModeQuiet:
+				break
+			case DeprecationModeError:
+				return platformAPIError(requestedAPI)
+			case DeprecationModeWarn:
+				Logger.Warnf("Platform API '%s' is deprecated", requestedAPI)
+			default:
+				Logger.Warnf("Platform API '%s' is deprecated", requestedAPI)
+			}
 		}
+		return nil
 	}
+	return platformAPIError(requestedAPI)
+}
 
-	return nil
+func splitApis(joined string) []string {
+	supported := strings.Split(joined, `,`)
+	if len(supported) == 1 && supported[0] == "" {
+		supported = nil
+	}
+	return supported
+}
+
+func platformAPIError(requestedAPI string) error {
+	return FailErrCode(
+		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requestedAPI),
+		CodeIncompatible,
+	)
 }

@@ -1,0 +1,61 @@
+package api
+
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
+
+type APIs struct {
+	Supported  []*Version
+	Deprecated []*Version
+}
+
+func NewAPIs(supported []string, deprecated []string) (APIs, error) {
+	apis := APIs{}
+	for _, api := range supported {
+		apis.Supported = append(apis.Supported, MustParse(api))
+	}
+	for _, d := range deprecated {
+		if err := validateDeprecated(apis, d); err != nil {
+			return APIs{}, errors.Wrapf(err, "invalid deprecated API '%s'", d)
+		}
+		if !apis.IsSupported(d) {
+			return APIs{}, fmt.Errorf("invalid depreacted API '%s': all depreacted APIs must also be supported", d)
+		}
+		dAPI := MustParse(d)
+		apis.Deprecated = append(apis.Deprecated, dAPI)
+	}
+	return apis, nil
+}
+
+func validateDeprecated(apis APIs, d string) error {
+	if !apis.IsSupported(d) {
+		return errors.New("all deprecated APIs must also be supported")
+	}
+	dAPI := MustParse(d)
+	if dAPI.Major != 0 && dAPI.Minor != 0 {
+		return errors.New("deprecated APIs may only contain 0.x or major version")
+	}
+	return nil
+}
+
+func (a APIs) IsSupported(target string) bool {
+	tAPI := MustParse(target)
+	for _, sAPI := range a.Supported {
+		if sAPI.IsSupersetOf(tAPI) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a APIs) IsDeprecated(target string) bool {
+	tAPI := MustParse(target)
+	for _, dAPI := range a.Deprecated {
+		if tAPI.IsSupersetOf(dAPI) {
+			return true
+		}
+	}
+	return false
+}

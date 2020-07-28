@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	expectedPlatformAPI = "0.9"
-	expectedVersion     = "some-version"
-	expectedCommit      = "asdf123"
+	expectedVersion = "some-version"
+	expectedCommit  = "asdf123"
 )
 
 var buildDir string
@@ -33,12 +32,13 @@ func TestVersion(t *testing.T) {
 
 	outDir := filepath.Join(buildDir, runtime.GOOS, "lifecycle")
 	h.AssertNil(t, os.MkdirAll(outDir, 0755))
+	descriptorPath, err := filepath.Abs(filepath.Join("testdata/lifecycle.toml"))
+	h.AssertNil(t, err)
 
 	h.MakeAndCopyLifecycle(t,
 		runtime.GOOS,
 		outDir,
-		"PLATFORM_API="+expectedPlatformAPI,
-		"LIFECYCLE_VERSION="+expectedVersion,
+		"LIFECYCLE_DESCRIPTOR_PATH="+descriptorPath,
 		"SCM_COMMIT="+expectedCommit,
 	)
 	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -46,13 +46,14 @@ func TestVersion(t *testing.T) {
 
 type testCase struct {
 	description string
+	focus       bool
 	command     string
 	args        []string
 }
 
 func testVersion(t *testing.T, when spec.G, it spec.S) {
 	when("All", func() {
-		when("CNB_PLATFORM_API is set and incompatible", func() {
+		when("CNB_PLATFORM_API", func() {
 			for _, phase := range []string{
 				"analyzer",
 				"builder",
@@ -63,13 +64,72 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"lifecycle",
 			} {
 				phase := phase
-				it(phase+"/should fail with error message and exit code 11", func() {
-					cmd := lifecycleCmd(phase)
-					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")
+				when("is unsupported", func() {
+					it(phase+"/should fail with error message and exit code 11", func() {
+						cmd := lifecycleCmd(phase)
+						cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=1.4")
 
-					_, exitCode, err := h.RunE(cmd)
-					h.AssertError(t, err, fmt.Sprintf("the Lifecycle's Platform API version is %s which is incompatible with Platform API version 0.8", expectedPlatformAPI))
-					h.AssertEq(t, exitCode, 11)
+						_, exitCode, err := h.RunE(cmd)
+						h.AssertError(t, err, fmt.Sprintf("platform API version '1.4' is incompatible with the lifecycle"))
+						h.AssertEq(t, exitCode, 11)
+					})
+				})
+
+				when("is deprecated", func() {
+					when("CNB_DEPRECATION_MODE is unset", func() {
+						it(phase+"/should warn", func() {
+							cmd := lifecycleCmd(phase, "-version")
+							cmd.Env = []string{
+								"CNB_PLATFORM_API=1.3",
+							}
+
+							out, _, err := h.RunE(cmd)
+							h.AssertNil(t, err)
+							h.AssertStringContains(t, out, "Platform API '1.3' is deprecated")
+						})
+					})
+
+					when("CNB_DEPRECATION_MODE=warn", func() {
+						it(phase+"/should warn", func() {
+							cmd := lifecycleCmd(phase, "-version")
+							cmd.Env = []string{
+								"CNB_PLATFORM_API=1.3",
+								"CNB_DEPRECATION_MODE=warn",
+							}
+
+							out, _, err := h.RunE(cmd)
+							h.AssertNil(t, err)
+							h.AssertStringContains(t, out, "Platform API '1.3' is deprecated")
+						})
+					})
+
+					when("CNB_DEPRECATION_MODE=quiet", func() {
+						it(phase+"/should not warn", func() {
+							cmd := lifecycleCmd(phase, "-version")
+							cmd.Env = []string{
+								"CNB_PLATFORM_API=1.3",
+								"CNB_DEPRECATION_MODE=quiet",
+							}
+
+							out, _, err := h.RunE(cmd)
+							h.AssertNil(t, err)
+							h.AssertStringDoesNotContain(t, out, "deprecated")
+						})
+					})
+
+					when("CNB_DEPRECATION_MODE=error", func() {
+						it(phase+"/should error", func() {
+							cmd := lifecycleCmd(phase, "-version")
+							cmd.Env = []string{
+								"CNB_PLATFORM_API=1.3",
+								"CNB_DEPRECATION_MODE=error",
+							}
+
+							_, exitCode, err := h.RunE(cmd)
+							h.AssertError(t, err, fmt.Sprintf("platform API version '1.3' is incompatible with the lifecycle"))
+							h.AssertEq(t, exitCode, 11)
+						})
+					})
 				})
 			}
 		})
@@ -153,9 +213,14 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				},
 			} {
 				tc := tc
-				when(tc.description, func() {
+				w := when
+				if tc.focus {
+					w = when.Focus
+				}
+				w(tc.description, func() {
 					it("only prints the version", func() {
 						cmd := lifecycleCmd(tc.command, tc.args...)
+						cmd.Env = []string{"CNB_PLATFORM_API=2.0"}
 						output, err := cmd.CombinedOutput()
 						if err != nil {
 							t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)

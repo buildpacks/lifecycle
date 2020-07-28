@@ -1,0 +1,8 @@
+[apis]
+[apis.buildpack]
+  supported = ["0.3", "0.4"]
+[apis.platform]
+  supported = ["0.3", "0.4"]
+
+[lifecycle]
+  version = "0.9.0"
