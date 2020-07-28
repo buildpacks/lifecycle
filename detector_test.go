@@ -163,6 +163,29 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		it("should fail with specific error if any bp detect fails in an unexpected way", func() {
+			mkappfile("100", "detect-status")
+			mkappfile("0", "detect-status-A-v1")
+			mkappfile("-1", "detect-status-B-v1")
+			_, _, err := lifecycle.BuildpackOrder{
+				{Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}},
+			}.Detect(config)
+			if err != lifecycle.ErrFailWithErrors {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+
+			if s := allLogs(logHandler); !strings.HasSuffix(s,
+				"======== Results ========\n"+
+					"pass: A@v1\n"+
+					"err:  B@v1 (255)\n",
+			) {
+				t.Fatalf("Unexpected log:\n%s\n", s)
+			}
+		})
+
 		it("should select an appropriate env type", func() {
 			mkappfile("0", "detect-status-A-v1.clear", "detect-status-B-v1")
 

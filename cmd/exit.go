@@ -12,9 +12,10 @@ const (
 	CodeInvalidArgs = 3
 	// 4: CodeInvalidEnv
 	// 5: CodeNotFound
-	CodeFailedDetect = 6
-	CodeFailedBuild  = 7
-	CodeFailedLaunch = 8
+	CodeFailedDetect           = 100
+	CodeFailedDetectWithErrors = 101
+	CodeFailedBuild            = 7
+	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
 	CodeFailedSave   = 10
 	CodeIncompatible = 11

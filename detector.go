@@ -21,6 +21,7 @@ const (
 )
 
 var ErrFail = errors.New("no buildpacks participating")
+var ErrFailWithErrors = errors.New("no buildpacks participating: failed with errors")
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -83,6 +84,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 
 	results := detectResults{}
 	detected := true
+	detectErr := false
 	for i, bp := range done {
 		run := runs[i]
 		switch run.Code {
@@ -98,13 +100,18 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 			detected = detected && bp.Optional
 		case -1:
 			c.Logger.Debugf("err:  %s", bp)
+			detectErr = true
 			detected = detected && bp.Optional
 		default:
 			c.Logger.Debugf("err:  %s (%d)", bp, run.Code)
+			detectErr = true
 			detected = detected && bp.Optional
 		}
 	}
 	if !detected {
+		if detectErr {
+			return nil, nil, ErrFailWithErrors
+		}
 		return nil, nil, ErrFail
 	}
 
@@ -301,10 +308,14 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 
 func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []BuildPlanEntry, error) {
 	ngroup := BuildpackGroup{Group: next}
+	hadErr := false
 	for _, group := range bo {
 		// FIXME: double-check slice safety here
 		found, plan, err := group.append(ngroup).detect(done, wg, c)
-		if err == ErrFail {
+		if err == ErrFailWithErrors {
+			hadErr = true
+		}
+		if err == ErrFail || err == ErrFailWithErrors {
 			wg = &sync.WaitGroup{}
 			continue
 		}
@@ -312,6 +323,10 @@ func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.
 	}
 	if optional {
 		return ngroup.detect(done, wg, c)
+	}
+
+	if hadErr {
+		return nil, nil, ErrFailWithErrors
 	}
 	return nil, nil, ErrFail
 }
