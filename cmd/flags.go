@@ -12,12 +12,14 @@ var (
 	DefaultAnalyzedPath        = filepath.Join(".", "analyzed.toml")
 	DefaultAppDir              = filepath.Join(rootDir, "workspace")
 	DefaultBuildpacksDir       = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultDeprecationMode     = DeprecationModeWarn
 	DefaultGroupPath           = filepath.Join(".", "group.toml")
 	DefaultLauncherPath        = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
 	DefaultLayersDir           = filepath.Join(rootDir, "layers")
 	DefaultLogLevel            = "info"
 	DefaultOrderPath           = filepath.Join(rootDir, "cnb", "order.toml")
 	DefaultPlanPath            = filepath.Join(".", "plan.toml")
+	DefaultPlatformAPI         = "0.3"
 	DefaultPlatformDir         = filepath.Join(rootDir, "platform")
 	DefaultProcessType         = "web"
 	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
@@ -31,6 +33,7 @@ const (
 	EnvBuildpacksDir       = "CNB_BUILDPACKS_DIR"
 	EnvCacheDir            = "CNB_CACHE_DIR"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
+	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
@@ -39,6 +42,7 @@ const (
 	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
 	EnvOrderPath           = "CNB_ORDER_PATH"
 	EnvPlanPath            = "CNB_PLAN_PATH"
+	EnvPlatformAPI         = "CNB_PLATFORM_API"
 	EnvPlatformDir         = "CNB_PLATFORM_DIR"
 	EnvPreviousImage       = "CNB_PREVIOUS_IMAGE"
 	EnvProcessType         = "CNB_PROCESS_TYPE"
@@ -56,15 +60,15 @@ const (
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
 
 func FlagAnalyzedPath(dir *string) {
-	flagSet.StringVar(dir, "analyzed", envOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")
+	flagSet.StringVar(dir, "analyzed", EnvOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")
 }
 
 func FlagAppDir(dir *string) {
-	flagSet.StringVar(dir, "app", envOrDefault(EnvAppDir, DefaultAppDir), "path to app directory")
+	flagSet.StringVar(dir, "app", EnvOrDefault(EnvAppDir, DefaultAppDir), "path to app directory")
 }
 
 func FlagBuildpacksDir(dir *string) {
-	flagSet.StringVar(dir, "buildpacks", envOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
+	flagSet.StringVar(dir, "buildpacks", EnvOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
 func FlagCacheDir(dir *string) {
@@ -80,7 +84,7 @@ func FlagGID(gid *int) {
 }
 
 func FlagGroupPath(path *string) {
-	flagSet.StringVar(path, "group", envOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
+	flagSet.StringVar(path, "group", EnvOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
 }
 
 func FlagLaunchCacheDir(dir *string) {
@@ -92,7 +96,7 @@ func FlagLauncherPath(path *string) {
 }
 
 func FlagLayersDir(dir *string) {
-	flagSet.StringVar(dir, "layers", envOrDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
+	flagSet.StringVar(dir, "layers", EnvOrDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
 }
 
 func FlagNoColor(skip *bool) {
@@ -100,15 +104,15 @@ func FlagNoColor(skip *bool) {
 }
 
 func FlagOrderPath(path *string) {
-	flagSet.StringVar(path, "order", envOrDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
+	flagSet.StringVar(path, "order", EnvOrDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
 }
 
 func FlagPlanPath(path *string) {
-	flagSet.StringVar(path, "plan", envOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
+	flagSet.StringVar(path, "plan", EnvOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
 }
 
 func FlagPlatformDir(dir *string) {
-	flagSet.StringVar(dir, "platform", envOrDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
+	flagSet.StringVar(dir, "platform", EnvOrDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
 }
 
 func FlagPreviousImage(image *string) {
@@ -116,7 +120,7 @@ func FlagPreviousImage(image *string) {
 }
 
 func FlagReportPath(path *string) {
-	flagSet.StringVar(path, "report", envOrDefault(EnvReportPath, DefaultReportPath), "path to report.toml")
+	flagSet.StringVar(path, "report", EnvOrDefault(EnvReportPath, DefaultReportPath), "path to report.toml")
 }
 
 func FlagRunImage(image *string) {
@@ -132,7 +136,7 @@ func FlagSkipRestore(skip *bool) {
 }
 
 func FlagStackPath(path *string) {
-	flagSet.StringVar(path, "stack", envOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
+	flagSet.StringVar(path, "stack", EnvOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
 }
 
 func FlagTags(tags *StringSlice) {
@@ -152,11 +156,11 @@ func FlagVersion(version *bool) {
 }
 
 func FlagLogLevel(level *string) {
-	flagSet.StringVar(level, "log-level", envOrDefault(EnvLogLevel, DefaultLogLevel), "logging level")
+	flagSet.StringVar(level, "log-level", EnvOrDefault(EnvLogLevel, DefaultLogLevel), "logging level")
 }
 
 func FlagProjectMetadataPath(projectMetadataPath *string) {
-	flagSet.StringVar(projectMetadataPath, "project-metadata", envOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataPath), "path to project-metadata.toml")
+	flagSet.StringVar(projectMetadataPath, "project-metadata", EnvOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataPath), "path to project-metadata.toml")
 }
 
 func FlagProcessType(processType *string) {
@@ -196,7 +200,7 @@ func boolEnv(k string) bool {
 	return b
 }
 
-func envOrDefault(key string, defaultVal string) string {
+func EnvOrDefault(key string, defaultVal string) string {
 	if envVal := os.Getenv(key); envVal != "" {
 		return envVal
 	}

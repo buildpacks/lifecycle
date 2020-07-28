@@ -58,7 +58,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	if a.cacheImageTag == "" && a.cacheDir == "" {
-		cmd.Logger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+		cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 	}
 	a.imageName = args[0]
 	return nil
@@ -129,7 +129,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks: group.Group,
 		LayersDir:  aa.layersDir,
-		Logger:     cmd.Logger,
+		Logger:     cmd.DefaultLogger,
 		SkipLayers: aa.skipLayers,
 	}).Analyze(img, cacheStore)
 	if err != nil {

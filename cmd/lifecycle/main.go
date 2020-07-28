@@ -12,7 +12,8 @@ import (
 )
 
 func main() {
-	if err := cmd.VerifyCompatibility(); err != nil {
+	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
+	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
 		cmd.Exit(err)
 	}
 

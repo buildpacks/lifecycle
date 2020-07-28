@@ -6,11 +6,32 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	Platform  = newApisMustParse([]string{"0.3", "0.4"}, nil)
+	Buildpack = newApisMustParse([]string{"0.3", "0.4"}, nil)
+)
+
 type APIs struct {
 	Supported  []*Version
 	Deprecated []*Version
 }
 
+// newApisMustParse calls NewApis and panics on error
+func newApisMustParse(supported []string, deprecated []string) APIs {
+	apis, err := NewAPIs(supported, deprecated)
+	if err != nil {
+		panic(err)
+	}
+	return apis
+}
+
+// NewApis constructs an instance of APIs
+//  supported must be a superset of deprecated
+//  deprecated APIs greater than 1.0 should should not include minor versions
+//  supported APIs should always include minor versions
+//  Examples:
+//     deprecated API 1 implies all 1.x APIs are deprecated
+//     supported API 1 implies only 1.0 is supported
 func NewAPIs(supported []string, deprecated []string) (APIs, error) {
 	apis := APIs{}
 	for _, api := range supported {
@@ -40,6 +61,7 @@ func validateDeprecated(apis APIs, d string) error {
 	return nil
 }
 
+// IsSupported returns true or false depending on whether the target API is supported
 func (a APIs) IsSupported(target string) bool {
 	tAPI := MustParse(target)
 	for _, sAPI := range a.Supported {
@@ -50,6 +72,7 @@ func (a APIs) IsSupported(target string) bool {
 	return false
 }
 
+// IsDeprecated returns true or false depending on whether the target API is deprecated
 func (a APIs) IsDeprecated(target string) bool {
 	tAPI := MustParse(target)
 	for _, dAPI := range a.Deprecated {

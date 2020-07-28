@@ -55,7 +55,7 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	Logger.Errorf("%s\n", err)
+	DefaultLogger.Errorf("%s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
@@ -63,6 +63,6 @@ func Exit(err error) {
 }
 
 func ExitWithVersion() {
-	Logger.Infof(buildVersion())
+	DefaultLogger.Infof(buildVersion())
 	os.Exit(0)
 }

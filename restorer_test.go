@@ -54,7 +54,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				Logger: &log.Logger{Handler: &discard.Handler{}},
 			}
 			if testing.Verbose() {
-				restorer.Logger = cmd.Logger
+				restorer.Logger = cmd.DefaultLogger
 				cmd.SetLogLevel("debug")
 			}
 		})

@@ -19,9 +19,8 @@ func init() {
 	//color.Disable(!terminal.IsTerminal(int(os.Stdout.Fd())))
 }
 
-// Default logger
 var (
-	Logger = &logger{
+	DefaultLogger = &Logger{
 		&log.Logger{
 			Handler: &handler{
 				writer: os.Stdout,
@@ -33,17 +32,17 @@ var (
 	phaseStyle = color.New(color.FgCyan).SprintfFunc()
 )
 
-type logger struct {
+type Logger struct {
 	*log.Logger
 }
 
-func (l *logger) Phase(name string) {
+func (l *Logger) Phase(name string) {
 	l.Infof(phaseStyle("===> %s", name))
 }
 
 func SetLogLevel(level string) *ErrorFail {
 	var err error
-	Logger.Level, err = log.ParseLevel(level)
+	DefaultLogger.Level, err = log.ParseLevel(level)
 	if err != nil {
 		return FailErrCode(err, CodeInvalidArgs, "parse log level")
 	}

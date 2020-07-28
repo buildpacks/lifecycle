@@ -15,28 +15,20 @@ func main() {
 }
 
 func runLaunch() error {
-	defaultProcessType := cmd.DefaultProcessType
-	if v := os.Getenv(cmd.EnvProcessType); v != "" {
-		defaultProcessType = v
-	}
-	layersDir := cmd.DefaultLayersDir
-	if v := os.Getenv(cmd.EnvLayersDir); v != "" {
-		layersDir = v
-	}
-	appDir := cmd.DefaultAppDir
-	if v := os.Getenv(cmd.EnvAppDir); v != "" {
-		appDir = v
+	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
+	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
+		cmd.Exit(err)
 	}
 
 	var md launch.Metadata
-	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(layersDir), &md); err != nil {
+	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir)), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 
 	launcher := &launch.Launcher{
-		DefaultProcessType: defaultProcessType,
-		LayersDir:          layersDir,
-		AppDir:             appDir,
+		DefaultProcessType: cmd.EnvOrDefault(cmd.EnvProcessType, cmd.DefaultProcessType),
+		LayersDir:          cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir),
+		AppDir:             cmd.EnvOrDefault(cmd.EnvAppDir, cmd.DefaultAppDir),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
 		Env:                env.NewLaunchEnv(os.Environ()),

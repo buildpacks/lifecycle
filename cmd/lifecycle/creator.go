@@ -65,12 +65,12 @@ func (c *createCmd) Args(nargs int, args []string) error {
 
 	c.imageName = args[0]
 	if c.launchCacheDir != "" && !c.useDaemon {
-		cmd.Logger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
+		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
 		c.launchCacheDir = ""
 	}
 
 	if c.cacheImageTag == "" && c.cacheDir == "" {
-		cmd.Logger.Warn("Not restoring or caching layer data, no cache flag specified.")
+		cmd.DefaultLogger.Warn("Not restoring or caching layer data, no cache flag specified.")
 	}
 
 	if c.previousImage == "" {
@@ -110,7 +110,7 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	cmd.Logger.Phase("DETECTING")
+	cmd.DefaultLogger.Phase("DETECTING")
 	group, plan, err := detectArgs{
 		buildpacksDir: c.buildpacksDir,
 		appDir:        c.appDir,
@@ -121,7 +121,7 @@ func (c *createCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeFailed, "detect")
 	}
 
-	cmd.Logger.Phase("ANALYZING")
+	cmd.DefaultLogger.Phase("ANALYZING")
 	analyzedMD, err := analyzeArgs{
 		imageName:  c.previousImage,
 		layersDir:  c.layersDir,
@@ -134,13 +134,13 @@ func (c *createCmd) Exec() error {
 	}
 
 	if !c.skipRestore {
-		cmd.Logger.Phase("RESTORING")
+		cmd.DefaultLogger.Phase("RESTORING")
 		if err := restore(c.layersDir, group, cacheStore); err != nil {
 			return err
 		}
 	}
 
-	cmd.Logger.Phase("BUILDING")
+	cmd.DefaultLogger.Phase("BUILDING")
 	err = buildArgs{
 		buildpacksDir: c.buildpacksDir,
 		layersDir:     c.layersDir,
@@ -151,7 +151,7 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	cmd.Logger.Phase("EXPORTING")
+	cmd.DefaultLogger.Phase("EXPORTING")
 	return exportArgs{
 		stackPath:           c.stackPath,
 		imageNames:          append([]string{c.imageName}, c.additionalTags...),

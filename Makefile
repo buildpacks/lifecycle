@@ -4,19 +4,20 @@ PWD?=$(subst /,\,${CURDIR})
 LDFLAGS=-s -w
 BLANK:=
 /:=\$(BLANK)
+LIFECYCLE_VERSION?=$(shell type VERSION)
 else
 /:=/
+LIFECYCLE_VERSION?=$(shell cat VERSION)
 endif
 
 GOCMD?=go
 GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LIFECYCLE_DESCRIPTOR_PATH?=lifecycle.toml
-LIFECYCLE_VERSION:=$(shell $(GOCMD) run tools/descriptor/main.go version $(LIFECYCLE_DESCRIPTOR_PATH))
 LDFLAGS=-s -w
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
-LDFLAGS+=$(shell $(GOCMD) run tools/descriptor/main.go build-args $(LIFECYCLE_DESCRIPTOR_PATH))
+LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 GOBUILD:=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test $(GOFLAGS)
 SCM_REPO?=github.com/buildpacks/lifecycle
@@ -54,7 +55,6 @@ $(BUILD_DIR)/linux/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
 	$(DOCKER_RUN) sh -c 'apk add build-base && $(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
-$(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 
 build-linux-launcher: $(BUILD_DIR)/linux/lifecycle/launcher
 
@@ -89,20 +89,19 @@ $(BUILD_DIR)/windows/lifecycle/lifecycle.toml:
 
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
-$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: descriptor-windows
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe:
 	@echo "> Building lifecycle/lifecycle for Windows..."
 	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a ./cmd/lifecycle
-$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
 
 build-windows-launcher: $(BUILD_DIR)/windows/lifecycle/launcher.exe
 
 $(BUILD_DIR)/windows/lifecycle/launcher.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/launcher.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/launcher.exe:
 	@echo "> Building lifecycle/launcher for Windows..."
 	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a ./cmd/launcher
-$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
 
 build-windows-symlinks: export GOOS:=windows
 build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
@@ -136,23 +135,32 @@ $(BUILD_DIR)/darwin/lifecycle/lifecycle.toml:
 	mkdir -p $(BUILD_DIR)/darwin/lifecycle
 	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)/darwin/lifecycle/lifecycle.toml
 
-build-darwin: $(BUILD_DIR)/darwin/lifecycle
-$(BUILD_DIR)/darwin/lifecycle: export GOOS:=darwin
-$(BUILD_DIR)/darwin/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-$(BUILD_DIR)/darwin/lifecycle:
-	@echo "> Building for macos..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
+build-darwin: descriptor-darwin build-darwin-lifecycle build-darwin-launcher
+
+build-darwin-lifecycle: $(BUILD_DIR)/darwin/lifecycle/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: export GOOS:=darwin
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: $(GOFILES)
+$(BUILD_DIR)/darwin/lifecycle/lifecycle:
+	@echo "> Building lifecycle for macos..."
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+	@echo "> Creating lifecycle symlinks for macos..."
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
 	ln -sf lifecycle $(OUT_DIR)/restorer
 	ln -sf lifecycle $(OUT_DIR)/builder
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
-$(BUILD_DIR)/darwin/lifecycle: $(GOFILES)
-$(BUILD_DIR)/darwin/lifecycle: descriptor-darwin
+
+build-darwin-launcher: $(BUILD_DIR)/darwin/lifecycle/launcher
+$(BUILD_DIR)/darwin/lifecycle/launcher: export GOOS:=darwin
+$(BUILD_DIR)/darwin/lifecycle/launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/launcher: $(GOFILES)
+$(BUILD_DIR)/darwin/lifecycle/launcher:
+	@echo "> Building launcher for macos..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 
 install-goimports:
 	@echo "> Installing goimports..."

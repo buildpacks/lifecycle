@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
 )
@@ -16,17 +15,7 @@ var (
 	// SCMRepository is the source repository.
 	SCMRepository = ""
 
-	// SupportedPlatformAPIs contains a comma separated list of supported platforms APIs
-	SupportedPlatformAPIs string
-	// DepreactedPlatformAPIs contains a comma separated list of depreacted platforms APIs
-	DeprecatedPlatformAPIs string
-
-	EnvPlatformAPI     = "CNB_PLATFORM_API"
-	EnvDeprecationMode = "CNB_DEPRECATION_MODE"
-
-	// DefaultPlatformAPI specifies platform API to provide when "CNB_PLATFORM_API" is unset
-	DefaultPlatformAPI     = "0.3"
-	DefaultDeprecationMode = "warn"
+	DeprecationMode = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
 )
 
 const (
@@ -45,34 +34,23 @@ func buildVersion() string {
 	return fmt.Sprintf("%s+%s", Version, SCMCommit)
 }
 
-func VerifyCompatibility() error {
-	apis, _ := api.NewAPIs(splitApis(SupportedPlatformAPIs), splitApis(DeprecatedPlatformAPIs))
-
-	requestedAPI := envOrDefault(EnvPlatformAPI, DefaultPlatformAPI)
-	if apis.IsSupported(requestedAPI) {
-		if apis.IsDeprecated(requestedAPI) {
-			switch envOrDefault(EnvDeprecationMode, DeprecationModeWarn) {
+func VerifyPlatformAPI(requestedAPI string) error {
+	if api.Platform.IsSupported(requestedAPI) {
+		if api.Platform.IsDeprecated(requestedAPI) {
+			switch DeprecationMode {
 			case DeprecationModeQuiet:
 				break
 			case DeprecationModeError:
 				return platformAPIError(requestedAPI)
 			case DeprecationModeWarn:
-				Logger.Warnf("Platform API '%s' is deprecated", requestedAPI)
+				DefaultLogger.Warnf("Platform API '%s' is deprecated", requestedAPI)
 			default:
-				Logger.Warnf("Platform API '%s' is deprecated", requestedAPI)
+				DefaultLogger.Warnf("Platform API '%s' is deprecated", requestedAPI)
 			}
 		}
 		return nil
 	}
 	return platformAPIError(requestedAPI)
-}
-
-func splitApis(joined string) []string {
-	supported := strings.Split(joined, `,`)
-	if len(supported) == 1 && supported[0] == "" {
-		supported = nil
-	}
-	return supported
 }
 
 func platformAPIError(requestedAPI string) error {
