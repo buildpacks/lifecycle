@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -177,12 +178,22 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := allLogs(logHandler); !strings.HasSuffix(s,
-				"======== Results ========\n"+
-					"pass: A@v1\n"+
-					"err:  B@v1 (255)\n",
-			) {
-				t.Fatalf("Unexpected log:\n%s\n", s)
+			if runtime.GOOS == "windows" {
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"err:  B@v1 (4294967295)\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			} else {
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"err:  B@v1 (255)\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
 			}
 		})
 
