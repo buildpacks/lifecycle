@@ -12,6 +12,7 @@ type Buildpack struct {
 	ID       string `toml:"id" json:"id"`
 	Version  string `toml:"version" json:"version"`
 	Optional bool   `toml:"optional,omitempty" json:"optional,omitempty"`
+	API      string `toml:"api,omitempty" json:"-"`
 }
 
 func (bp Buildpack) String() string {
@@ -20,6 +21,11 @@ func (bp Buildpack) String() string {
 
 func (bp Buildpack) noOpt() Buildpack {
 	bp.Optional = false
+	return bp
+}
+
+func (bp Buildpack) noAPI() Buildpack {
+	bp.API = ""
 	return bp
 }
 
@@ -38,6 +44,7 @@ func (bp Buildpack) lookup(buildpacksDir string) (*buildpackTOML, error) {
 }
 
 type buildpackTOML struct {
+	API       string         `toml:"api"`
 	Buildpack buildpackInfo  `toml:"buildpack"`
 	Order     BuildpackOrder `toml:"order"`
 	Path      string         `toml:"-"`

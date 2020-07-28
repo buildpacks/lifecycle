@@ -93,7 +93,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
+		if err := WriteTOML(bpPlanPath, plan.find(bp.noAPI())); err != nil {
 			return nil, err
 		}
 
@@ -175,7 +175,7 @@ func (p BuildPlan) filter(bp Buildpack, plan buildpackPlan) (BuildPlan, []BOMEnt
 	}
 	var bom []BOMEntry
 	for _, entry := range plan.Entries {
-		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp})
+		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI()})
 	}
 	return BuildPlan{Entries: out}, bom
 }

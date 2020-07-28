@@ -35,7 +35,7 @@ type BuildPlanEntry struct {
 func (be BuildPlanEntry) noOpt() BuildPlanEntry {
 	var out []Buildpack
 	for _, p := range be.Providers {
-		out = append(out, p.noOpt())
+		out = append(out, p.noOpt().noAPI())
 	}
 	be.Providers = out
 	return be
@@ -277,6 +277,7 @@ func (bg BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectC
 		if err != nil {
 			return nil, nil, err
 		}
+		bp.API = info.API
 		if info.Order != nil {
 			// TODO: double-check slice safety here
 			// FIXME: cyclical references lead to infinite recursion

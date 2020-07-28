@@ -70,8 +70,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			Env:           env,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1"},
-					{ID: "B", Version: "v2"},
+					{ID: "A", Version: "v1", API: "0.3"},
+					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
 			Out: outLog,
@@ -162,8 +162,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{Type: "override-type", Command: "B-cmd"},
 					},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v2"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected metadata:\n%s\n", s)
@@ -178,8 +178,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v2"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected:\n%s\n", s)
@@ -332,8 +332,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v2"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
 					},
 					BOM: []lifecycle.BOMEntry{
 						{
