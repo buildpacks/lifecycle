@@ -9,46 +9,48 @@ import (
 )
 
 var (
-	DefaultLayersDir           = filepath.Join(rootDir, "layers")
+	DefaultAnalyzedPath        = filepath.Join(".", "analyzed.toml")
 	DefaultAppDir              = filepath.Join(rootDir, "workspace")
 	DefaultBuildpacksDir       = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultPlatformDir         = filepath.Join(rootDir, "platform")
-	DefaultOrderPath           = filepath.Join(rootDir, "cnb", "order.toml")
 	DefaultGroupPath           = filepath.Join(".", "group.toml")
-	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
-	DefaultAnalyzedPath        = filepath.Join(".", "analyzed.toml")
-	DefaultPlanPath            = filepath.Join(".", "plan.toml")
 	DefaultLauncherPath        = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
-	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
-	DefaultProcessType         = "web"
+	DefaultLayersDir           = filepath.Join(rootDir, "layers")
 	DefaultLogLevel            = "info"
+	DefaultOrderPath           = filepath.Join(rootDir, "cnb", "order.toml")
+	DefaultPlanPath            = filepath.Join(".", "plan.toml")
+	DefaultPlatformDir         = filepath.Join(rootDir, "platform")
+	DefaultProcessType         = "web"
+	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
+	DefaultReportPath          = filepath.Join(".", "report.toml")
+	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
 )
 
 const (
-	EnvLayersDir           = "CNB_LAYERS_DIR"
+	EnvAnalyzedPath        = "CNB_ANALYZED_PATH"
 	EnvAppDir              = "CNB_APP_DIR"
 	EnvBuildpacksDir       = "CNB_BUILDPACKS_DIR"
-	EnvPlatformDir         = "CNB_PLATFORM_DIR"
-	EnvAnalyzedPath        = "CNB_ANALYZED_PATH"
-	EnvOrderPath           = "CNB_ORDER_PATH"
-	EnvGroupPath           = "CNB_GROUP_PATH"
-	EnvStackPath           = "CNB_STACK_PATH"
-	EnvPlanPath            = "CNB_PLAN_PATH"
-	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
-	EnvRunImage            = "CNB_RUN_IMAGE"
-	EnvPreviousImage       = "CNB_PREVIOUS_IMAGE"
-	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvCacheDir            = "CNB_CACHE_DIR"
-	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
-	EnvUID                 = "CNB_USER_ID"
+	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvGID                 = "CNB_GROUP_ID"
+	EnvGroupPath           = "CNB_GROUP_PATH"
+	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
+	EnvLayersDir           = "CNB_LAYERS_DIR"
+	EnvLogLevel            = "CNB_LOG_LEVEL"
+	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
+	EnvOrderPath           = "CNB_ORDER_PATH"
+	EnvPlanPath            = "CNB_PLAN_PATH"
+	EnvPlatformDir         = "CNB_PLATFORM_DIR"
+	EnvPreviousImage       = "CNB_PREVIOUS_IMAGE"
+	EnvProcessType         = "CNB_PROCESS_TYPE"
+	EnvProjectMetadataPath = "CNB_PROJECT_METADATA_PATH"
 	EnvRegistryAuth        = "CNB_REGISTRY_AUTH"
+	EnvReportPath          = "CNB_REPORT_PATH"
+	EnvRunImage            = "CNB_RUN_IMAGE"
 	EnvSkipLayers          = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
 	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
-	EnvProcessType         = "CNB_PROCESS_TYPE"
-	EnvLogLevel            = "CNB_LOG_LEVEL"
-	EnvProjectMetadataPath = "CNB_PROJECT_METADATA_PATH"
-	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
+	EnvStackPath           = "CNB_STACK_PATH"
+	EnvUID                 = "CNB_USER_ID"
+	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -93,6 +95,10 @@ func FlagLayersDir(dir *string) {
 	flagSet.StringVar(dir, "layers", envOrDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
 }
 
+func FlagNoColor(skip *bool) {
+	flagSet.BoolVar(skip, "no-color", boolEnv(EnvNoColor), "disable color output")
+}
+
 func FlagOrderPath(path *string) {
 	flagSet.StringVar(path, "order", envOrDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
 }
@@ -105,32 +111,16 @@ func FlagPlatformDir(dir *string) {
 	flagSet.StringVar(dir, "platform", envOrDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
 }
 
-func DeprecatedFlagRunImage(image *string) {
-	flagSet.StringVar(image, "image", "", "reference to run image")
-}
-
-func FlagRunImage(image *string) {
-	flagSet.StringVar(image, "run-image", os.Getenv(EnvRunImage), "reference to run image")
-}
-
 func FlagPreviousImage(image *string) {
 	flagSet.StringVar(image, "previous-image", os.Getenv(EnvPreviousImage), "reference to previous image")
 }
 
-func FlagTags(tags *StringSlice) {
-	flagSet.Var(tags, "tag", "additional tags")
+func FlagReportPath(path *string) {
+	flagSet.StringVar(path, "report", os.Getenv(EnvReportPath), "path to report.toml")
 }
 
-func FlagStackPath(path *string) {
-	flagSet.StringVar(path, "stack", envOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
-}
-
-func FlagUID(uid *int) {
-	flagSet.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
-}
-
-func FlagUseDaemon(use *bool) {
-	flagSet.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
+func FlagRunImage(image *string) {
+	flagSet.StringVar(image, "run-image", os.Getenv(EnvRunImage), "reference to run image")
 }
 
 func FlagSkipLayers(skip *bool) {
@@ -139,6 +129,22 @@ func FlagSkipLayers(skip *bool) {
 
 func FlagSkipRestore(skip *bool) {
 	flagSet.BoolVar(skip, "skip-restore", boolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
+}
+
+func FlagStackPath(path *string) {
+	flagSet.StringVar(path, "stack", envOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
+}
+
+func FlagTags(tags *StringSlice) {
+	flagSet.Var(tags, "tag", "additional tags")
+}
+
+func FlagUID(uid *int) {
+	flagSet.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
+}
+
+func FlagUseDaemon(use *bool) {
+	flagSet.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
 }
 
 func FlagVersion(version *bool) {
@@ -157,8 +163,8 @@ func FlagProcessType(processType *string) {
 	flagSet.StringVar(processType, "process-type", os.Getenv(EnvProcessType), "default process type")
 }
 
-func FlagNoColor(skip *bool) {
-	flagSet.BoolVar(skip, "no-color", boolEnv(EnvNoColor), "disable color output")
+func DeprecatedFlagRunImage(image *string) {
+	flagSet.StringVar(image, "image", "", "reference to run image")
 }
 
 type StringSlice []string

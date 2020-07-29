@@ -24,9 +24,9 @@ import (
 
 type exportCmd struct {
 	//flags: inputs
-	groupPath             string
-	cacheImageTag         string
 	cacheDir              string
+	cacheImageTag         string
+	groupPath             string
 	deprecatedRunImageRef string
 	exportArgs
 
@@ -36,39 +36,42 @@ type exportCmd struct {
 
 type exportArgs struct {
 	// inputs needed when run by creator
-	stackPath           string
+	appDir              string
 	imageNames          []string
 	launchCacheDir      string
-	appDir              string
-	layersDir           string
 	launcherPath        string
+	layersDir           string
+	processType         string
 	projectMetadataPath string
+	reportPath          string
 	runImageRef         string
+	stackPath           string
 	useDaemon           bool
 	uid, gid            int
-	processType         string
 
 	//construct if necessary before dropping privileges
 	docker client.CommonAPIClient
 }
 
 func (e *exportCmd) Init() {
-	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
-	cmd.FlagRunImage(&e.runImageRef)
-	cmd.FlagLayersDir(&e.layersDir)
-	cmd.FlagAppDir(&e.appDir)
-	cmd.FlagGroupPath(&e.groupPath)
 	cmd.FlagAnalyzedPath(&e.analyzedPath)
-	cmd.FlagStackPath(&e.stackPath)
-	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
-	cmd.FlagUseDaemon(&e.useDaemon)
-	cmd.FlagUID(&e.uid)
-	cmd.FlagGID(&e.gid)
-	cmd.FlagLauncherPath(&e.launcherPath)
-	cmd.FlagCacheImage(&e.cacheImageTag)
+	cmd.FlagAppDir(&e.appDir)
 	cmd.FlagCacheDir(&e.cacheDir)
-	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
+	cmd.FlagCacheImage(&e.cacheImageTag)
+	cmd.FlagGID(&e.gid)
+	cmd.FlagGroupPath(&e.groupPath)
+	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
+	cmd.FlagLauncherPath(&e.launcherPath)
+	cmd.FlagLayersDir(&e.layersDir)
 	cmd.FlagProcessType(&e.processType)
+	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
+	cmd.FlagReportPath(&e.reportPath)
+	cmd.FlagRunImage(&e.runImageRef)
+	cmd.FlagStackPath(&e.stackPath)
+	cmd.FlagUID(&e.uid)
+	cmd.FlagUseDaemon(&e.useDaemon)
+
+	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
 
 func (e *exportCmd) Args(nargs int, args []string) error {
@@ -197,22 +200,26 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		return err
 	}
 
-	if err := exporter.Export(lifecycle.ExportOptions{
-		LayersDir:          ea.layersDir,
-		AppDir:             ea.appDir,
-		WorkingImage:       appImage,
-		RunImageRef:        runImageID,
-		OrigMetadata:       analyzedMD.Metadata,
+	report, err := exporter.Export(lifecycle.ExportOptions{
 		AdditionalNames:    ea.imageNames[1:],
-		LauncherConfig:     launcherConfig(ea.launcherPath),
-		Stack:              stackMD,
-		Project:            projectMD,
+		AppDir:             ea.appDir,
 		DefaultProcessType: ea.processType,
-	}); err != nil {
+		LauncherConfig:     launcherConfig(ea.launcherPath),
+		LayersDir:          ea.layersDir,
+		OrigMetadata:       analyzedMD.Metadata,
+		Project:            projectMD,
+		RunImageRef:        runImageID,
+		Stack:              stackMD,
+		WorkingImage:       appImage,
+	})
+	if err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
 			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
 		}
 		return cmd.FailErr(err, "export")
+	}
+	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
+		return cmd.FailErr(err, "write buildpack group")
 	}
 
 	if cacheStore != nil {

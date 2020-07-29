@@ -55,23 +55,33 @@ type ExportOptions struct {
 	DefaultProcessType string
 }
 
-func (e *Exporter) Export(opts ExportOptions) error {
+type ExportReport struct {
+	Image ImageReport `toml:"image"`
+}
+
+type ImageReport struct {
+	Tags    []string `toml:"tags"`
+	ImageID string   `toml:"image-id,omitempty"`
+	Digest  string   `toml:"digest,omitempty"`
+}
+
+func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	var err error
 
 	opts.LayersDir, err = filepath.Abs(opts.LayersDir)
 	if err != nil {
-		return errors.Wrapf(err, "layers dir absolute path")
+		return ExportReport{}, errors.Wrapf(err, "layers dir absolute path")
 	}
 
 	opts.AppDir, err = filepath.Abs(opts.AppDir)
 	if err != nil {
-		return errors.Wrapf(err, "app dir absolute path")
+		return ExportReport{}, errors.Wrapf(err, "app dir absolute path")
 	}
 
 	meta := LayersMetadata{}
 	meta.RunImage.TopLayer, err = opts.WorkingImage.TopLayer()
 	if err != nil {
-		return errors.Wrap(err, "get run image top layer SHA")
+		return ExportReport{}, errors.Wrap(err, "get run image top layer SHA")
 	}
 
 	meta.RunImage.Reference = opts.RunImageRef
@@ -79,26 +89,26 @@ func (e *Exporter) Export(opts ExportOptions) error {
 
 	buildMD := &BuildMetadata{}
 	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(opts.LayersDir), buildMD); err != nil {
-		return errors.Wrap(err, "read build metadata")
+		return ExportReport{}, errors.Wrap(err, "read build metadata")
 	}
 
 	// creating app layers (slices + app dir)
 	appSlices, err := e.LayerFactory.SliceLayers(opts.AppDir, buildMD.Slices)
 	if err != nil {
-		return errors.Wrap(err, "creating app layers")
+		return ExportReport{}, errors.Wrap(err, "creating app layers")
 	}
 
 	// launcher
 	meta.Launcher.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer{path: opts.LauncherConfig.Path, identifier: "launcher"}, opts.OrigMetadata.Launcher.SHA)
 	if err != nil {
-		return errors.Wrap(err, "exporting launcher layer")
+		return ExportReport{}, errors.Wrap(err, "exporting launcher layer")
 	}
 
 	// layers
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp)
 		if err != nil {
-			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
+			return ExportReport{}, errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
 		bpMD := BuildpackLayersMetadata{
 			ID:      bp.ID,
@@ -110,28 +120,28 @@ func (e *Exporter) Export(opts ExportOptions) error {
 			layer := layer
 			lmd, err := layer.read()
 			if err != nil {
-				return errors.Wrapf(err, "reading '%s' metadata", layer.Identifier())
+				return ExportReport{}, errors.Wrapf(err, "reading '%s' metadata", layer.Identifier())
 			}
 
 			if layer.hasLocalContents() {
 				origLayerMetadata := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
 				lmd.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer, origLayerMetadata.SHA)
 				if err != nil {
-					return err
+					return ExportReport{}, err
 				}
 			} else {
 				if lmd.Cache {
-					return fmt.Errorf("layer '%s' is cache=true but has no contents", layer.Identifier())
+					return ExportReport{}, fmt.Errorf("layer '%s' is cache=true but has no contents", layer.Identifier())
 				}
 				origLayerMetadata, ok := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
 				if !ok {
-					return fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())
+					return ExportReport{}, fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())
 				}
 
 				e.Logger.Infof("Reusing layer '%s'\n", layer.Identifier())
 				e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), origLayerMetadata.SHA)
 				if err := opts.WorkingImage.ReuseLayer(origLayerMetadata.SHA); err != nil {
-					return errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
+					return ExportReport{}, errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
 				}
 				lmd.SHA = origLayerMetadata.SHA
 			}
@@ -144,87 +154,93 @@ func (e *Exporter) Export(opts ExportOptions) error {
 			for _, ml := range malformedLayers {
 				ids = append(ids, ml.Identifier())
 			}
-			return fmt.Errorf("failed to parse metadata for layers '%s'", ids)
+			return ExportReport{}, fmt.Errorf("failed to parse metadata for layers '%s'", ids)
 		}
 	}
 
 	// app
 	meta.App, err = e.addSliceLayers(opts.WorkingImage, appSlices, opts.OrigMetadata.App)
 	if err != nil {
-		return errors.Wrap(err, "exporting app slice layers")
+		return ExportReport{}, errors.Wrap(err, "exporting app slice layers")
 	}
 
 	// config
 	meta.Config.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer{path: filepath.Join(opts.LayersDir, "config"), identifier: "config"}, opts.OrigMetadata.Config.SHA)
 	if err != nil {
-		return errors.Wrap(err, "exporting config layer")
+		return ExportReport{}, errors.Wrap(err, "exporting config layer")
 	}
 
 	data, err := json.Marshal(meta)
 	if err != nil {
-		return errors.Wrap(err, "marshall metadata")
+		return ExportReport{}, errors.Wrap(err, "marshall metadata")
 	}
 
 	e.Logger.Infof("Adding label '%s'", LayerMetadataLabel)
 	if err = opts.WorkingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
-		return errors.Wrap(err, "set app image metadata label")
+		return ExportReport{}, errors.Wrap(err, "set app image metadata label")
 	}
 
 	buildMD.Launcher = opts.LauncherConfig.Metadata
 	buildJSON, err := json.Marshal(buildMD)
 	if err != nil {
-		return errors.Wrap(err, "parse build metadata")
+		return ExportReport{}, errors.Wrap(err, "parse build metadata")
 	}
 
 	e.Logger.Infof("Adding label '%s'", BuildMetadataLabel)
 	if err := opts.WorkingImage.SetLabel(BuildMetadataLabel, string(buildJSON)); err != nil {
-		return errors.Wrap(err, "set build image metadata label")
+		return ExportReport{}, errors.Wrap(err, "set build image metadata label")
 	}
 
 	projectJSON, err := json.Marshal(opts.Project)
 	if err != nil {
-		return errors.Wrap(err, "parse project metadata")
+		return ExportReport{}, errors.Wrap(err, "parse project metadata")
 	}
 
 	e.Logger.Infof("Adding label '%s'", ProjectMetadataLabel)
 	if err := opts.WorkingImage.SetLabel(ProjectMetadataLabel, string(projectJSON)); err != nil {
-		return errors.Wrap(err, "set project metadata label")
+		return ExportReport{}, errors.Wrap(err, "set project metadata label")
 	}
 
 	for _, label := range buildMD.Labels {
 		e.Logger.Infof("Adding label '%s'", label.Key)
 		if err := opts.WorkingImage.SetLabel(label.Key, label.Value); err != nil {
-			return errors.Wrapf(err, "set buildpack-provided label '%s'", label.Key)
+			return ExportReport{}, errors.Wrapf(err, "set buildpack-provided label '%s'", label.Key)
 		}
 	}
 
 	if err = opts.WorkingImage.SetEnv(cmd.EnvLayersDir, opts.LayersDir); err != nil {
-		return errors.Wrapf(err, "set app image env %s", cmd.EnvLayersDir)
+		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvLayersDir)
 	}
 
 	if err = opts.WorkingImage.SetEnv(cmd.EnvAppDir, opts.AppDir); err != nil {
-		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
+		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
 	if opts.DefaultProcessType != "" {
 		if !buildMD.hasProcess(opts.DefaultProcessType) {
-			return processTypeError(buildMD, opts.DefaultProcessType)
+			return ExportReport{}, processTypeError(buildMD, opts.DefaultProcessType)
 		}
 
 		if err = opts.WorkingImage.SetEnv(cmd.EnvProcessType, opts.DefaultProcessType); err != nil {
-			return errors.Wrapf(err, "set app image env %s", cmd.EnvProcessType)
+			return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvProcessType)
 		}
 	}
 
 	if err = opts.WorkingImage.SetEntrypoint(opts.LauncherConfig.Path); err != nil {
-		return errors.Wrap(err, "setting entrypoint")
+		return ExportReport{}, errors.Wrap(err, "setting entrypoint")
 	}
 
 	if err = opts.WorkingImage.SetCmd(); err != nil { // Note: Command intentionally empty
-		return errors.Wrap(err, "setting cmd")
+		return ExportReport{}, errors.Wrap(err, "setting cmd")
 	}
 
-	return saveImage(opts.WorkingImage, opts.AdditionalNames, e.Logger)
+	report := ExportReport{}
+	report.Image, err = saveImage(opts.WorkingImage, opts.AdditionalNames, e.Logger)
+	if err != nil {
+		return ExportReport{}, err
+	}
+
+	return report, nil
 }
 
 func processTypeError(buildMD *BuildMetadata, defaultProcessType string) error {
