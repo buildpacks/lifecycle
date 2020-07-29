@@ -73,8 +73,6 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 
 		switch run.Code {
 		case CodeDetectPass, CodeDetectFail:
-		case -1:
-			outputLogf = c.Logger.Infof
 		default:
 			outputLogf = c.Logger.Infof
 		}
