@@ -165,6 +165,7 @@ func (e *Exporter) Export(opts ExportOptions) error {
 		return errors.Wrap(err, "marshall metadata")
 	}
 
+	e.Logger.Infof("Adding label '%s'", LayerMetadataLabel)
 	if err = opts.WorkingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
@@ -174,6 +175,8 @@ func (e *Exporter) Export(opts ExportOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "parse build metadata")
 	}
+
+	e.Logger.Infof("Adding label '%s'", BuildMetadataLabel)
 	if err := opts.WorkingImage.SetLabel(BuildMetadataLabel, string(buildJSON)); err != nil {
 		return errors.Wrap(err, "set build image metadata label")
 	}
@@ -182,8 +185,17 @@ func (e *Exporter) Export(opts ExportOptions) error {
 	if err != nil {
 		return errors.Wrap(err, "parse project metadata")
 	}
+
+	e.Logger.Infof("Adding label '%s'", ProjectMetadataLabel)
 	if err := opts.WorkingImage.SetLabel(ProjectMetadataLabel, string(projectJSON)); err != nil {
 		return errors.Wrap(err, "set project metadata label")
+	}
+
+	for _, label := range buildMD.Labels {
+		e.Logger.Infof("Adding label '%s'", label.Key)
+		if err := opts.WorkingImage.SetLabel(label.Key, label.Value); err != nil {
+			return errors.Wrapf(err, "set buildpack-provided label '%s'", label.Key)
+		}
 	}
 
 	if err = opts.WorkingImage.SetEnv(cmd.EnvLayersDir, opts.LayersDir); err != nil {

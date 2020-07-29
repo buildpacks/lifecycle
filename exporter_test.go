@@ -638,6 +638,16 @@ type = "Apache-2.0"
 				h.AssertNil(t, exporter.Export(opts))
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
 			})
+
+			it("adds buildpack-provided labels to the image", func() {
+				h.AssertNil(t, exporter.Export(opts))
+				label, err := fakeAppImage.Label("some.label.key")
+				h.AssertNil(t, err)
+				h.AssertEq(t, label, "some-label-value")
+				label, err = fakeAppImage.Label("other.label.key")
+				h.AssertNil(t, err)
+				h.AssertEq(t, label, "other-label-value")
+			})
 		})
 
 		when("previous image doesn't exist", func() {
