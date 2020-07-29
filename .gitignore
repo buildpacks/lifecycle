@@ -4,6 +4,6 @@
 *.test
 *~
 /out
-/tmp/lifecycle*
+/tmp/kaniko*
 
 acceptance/testdata/*/**/container/cnb/lifecycle/*

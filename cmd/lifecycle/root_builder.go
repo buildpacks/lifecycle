@@ -75,7 +75,7 @@ func (b *rootBuildCmd) Exec() error {
 }
 
 func (ba rootBuildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
-	snapshotter, err := snapshot.NewLayerSnapshotter("/")
+	snapshotter, err := snapshot.NewKanikoSnapshotter("/")
 	if err != nil {
 		return err
 	}

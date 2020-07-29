@@ -741,7 +741,7 @@ func createRootBuilder(t *testing.T, tmpDir string, env lifecycle.BuildEnv, outL
 
 	buildpacksDir := filepath.Join("testdata", "by-id")
 
-	snapshotter, err := snapshot.NewLayerSnapshotter(appDir)
+	snapshotter, err := snapshot.NewKanikoSnapshotter(appDir)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err)
 	}

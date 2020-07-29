@@ -6,9 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/sirupsen/logrus"
+
 	kanikoconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
 	kanikoutil "github.com/GoogleContainerTools/kaniko/pkg/util"
-	"github.com/sirupsen/logrus"
 )
 
 type KanikoSnapshotter struct {
@@ -16,7 +17,7 @@ type KanikoSnapshotter struct {
 	snapshotter *Snapshotter
 }
 
-func NewLayerSnapshotter(rootDir string) (*KanikoSnapshotter, error) {
+func NewKanikoSnapshotter(rootDir string) (*KanikoSnapshotter, error) {
 	ls := KanikoSnapshotter{
 		RootDir: rootDir,
 	}
@@ -35,10 +36,10 @@ func (ls *KanikoSnapshotter) Init() error {
 	}
 	kanikoconfig.KanikoDir = kanikoDir
 
-	// TODO set kanikoconfig.IgnoreListPath
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "cnb"))
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "layers"))
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "tmp"))
+
 	layeredMap := NewLayeredMap(kanikoutil.Hasher(), kanikoutil.CacheHasher())
 	ls.snapshotter = NewSnapshotter(layeredMap, ls.RootDir)
 	if err := ls.snapshotter.Init(); err != nil {
