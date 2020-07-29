@@ -80,7 +80,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			_, _, err := lifecycle.BuildpackOrder{
 				{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
 			}.Detect(config)
-			if err != lifecycle.ErrFail {
+			if err != lifecycle.ErrFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -127,7 +127,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it("should fail if the group is empty", func() {
 			_, _, err := lifecycle.BuildpackOrder([]lifecycle.BuildpackGroup{{}}).Detect(config)
-			if err != lifecycle.ErrFail {
+			if err != lifecycle.ErrFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -148,7 +148,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v1", Optional: true},
 				}},
 			}.Detect(config)
-			if err != lifecycle.ErrFail {
+			if err != lifecycle.ErrFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -158,6 +158,29 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"skip: B@v1\n"+
 					"Resolving plan... (try #1)\n"+
 					"fail: no viable buildpacks in group\n",
+			) {
+				t.Fatalf("Unexpected log:\n%s\n", s)
+			}
+		})
+
+		it("should fail with specific error if any bp detect fails in an unexpected way", func() {
+			mkappfile("100", "detect-status")
+			mkappfile("0", "detect-status-A-v1")
+			mkappfile("127", "detect-status-B-v1")
+			_, _, err := lifecycle.BuildpackOrder{
+				{Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}},
+			}.Detect(config)
+			if err != lifecycle.ErrBuildpack {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+
+			if s := allLogs(logHandler); !strings.HasSuffix(s,
+				"======== Results ========\n"+
+					"pass: A@v1\n"+
+					"err:  B@v1 (127)\n",
 			) {
 				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
@@ -297,7 +320,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						{ID: "C", Version: "v1"},
 					}},
 				}.Detect(config)
-				if err != lifecycle.ErrFail {
+				if err != lifecycle.ErrFailedDetection {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
@@ -325,7 +348,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						{ID: "C", Version: "v1", Optional: true},
 					}},
 				}.Detect(config)
-				if err != lifecycle.ErrFail {
+				if err != lifecycle.ErrFailedDetection {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 

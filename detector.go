@@ -20,7 +20,8 @@ const (
 	EnvBuildpackDir = "CNB_BUILDPACK_DIR"
 )
 
-var ErrFail = errors.New("no buildpacks participating")
+var ErrFailedDetection = errors.New("no buildpacks participating")
+var ErrBuildpack = errors.New("buildpack(s) failed with err")
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -83,6 +84,7 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 
 	results := detectResults{}
 	detected := true
+	buildpackErr := false
 	for i, bp := range done {
 		run := runs[i]
 		switch run.Code {
@@ -98,14 +100,19 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 			detected = detected && bp.Optional
 		case -1:
 			c.Logger.Debugf("err:  %s", bp)
+			buildpackErr = true
 			detected = detected && bp.Optional
 		default:
 			c.Logger.Debugf("err:  %s (%d)", bp, run.Code)
+			buildpackErr = true
 			detected = detected && bp.Optional
 		}
 	}
 	if !detected {
-		return nil, nil, ErrFail
+		if buildpackErr {
+			return nil, nil, ErrBuildpack
+		}
+		return nil, nil, ErrFailedDetection
 	}
 
 	i := 0
@@ -159,7 +166,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 			retry = true
 			if !bp.Optional {
 				c.Logger.Debugf("fail: %s requires %s", bp, name)
-				return ErrFail
+				return ErrFailedDetection
 			}
 			c.Logger.Debugf("skip: %s requires %s", bp, name)
 			trial = trial.remove(bp)
@@ -172,7 +179,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 			retry = true
 			if !bp.Optional {
 				c.Logger.Debugf("fail: %s provides unused %s", bp, name)
-				return ErrFail
+				return ErrFailedDetection
 			}
 			c.Logger.Debugf("skip: %s provides unused %s", bp, name)
 			trial = trial.remove(bp)
@@ -184,7 +191,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 
 	if len(trial) == 0 {
 		c.Logger.Debugf("fail: no viable buildpacks in group")
-		return nil, nil, ErrFail
+		return nil, nil, ErrFailedDetection
 	}
 	return deps, trial, nil
 }
@@ -301,10 +308,14 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 
 func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []BuildPlanEntry, error) {
 	ngroup := BuildpackGroup{Group: next}
+	buildpackErr := false
 	for _, group := range bo {
 		// FIXME: double-check slice safety here
 		found, plan, err := group.append(ngroup).detect(done, wg, c)
-		if err == ErrFail {
+		if err == ErrBuildpack {
+			buildpackErr = true
+		}
+		if err == ErrFailedDetection || err == ErrBuildpack {
 			wg = &sync.WaitGroup{}
 			continue
 		}
@@ -313,7 +324,11 @@ func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.
 	if optional {
 		return ngroup.detect(done, wg, c)
 	}
-	return nil, nil, ErrFail
+
+	if buildpackErr {
+		return nil, nil, ErrBuildpack
+	}
+	return nil, nil, ErrFailedDetection
 }
 
 func hasID(bps []Buildpack, id string) bool {
