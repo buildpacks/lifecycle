@@ -52,6 +52,9 @@ func (r *restoreCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
+	if err := verifyBuildpackApis(group); err != nil {
+		return err
+	}
 	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir)
 	if err != nil {
 		return err

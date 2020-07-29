@@ -17,8 +17,9 @@ const (
 	CodeFailedBuild            = 7
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
-	CodeFailedSave   = 10
-	CodeIncompatible = 11
+	CodeFailedSave               = 10
+	CodeIncompatiblePlatformAPI  = 11
+	CodeIncompatibleBuildpackAPI = 12
 )
 
 type ErrorFail struct {

@@ -78,7 +78,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	var labels []Label
 
 	for _, bp := range b.Group.Group {
-		bpInfo, err := bp.lookup(b.BuildpacksDir)
+		bpInfo, err := bp.Lookup(b.BuildpacksDir)
 		if err != nil {
 			return nil, err
 		}

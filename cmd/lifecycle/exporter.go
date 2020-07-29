@@ -128,6 +128,9 @@ func (e *exportCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
+	if err := verifyBuildpackApis(group); err != nil {
+		return err
+	}
 
 	analyzedMD, err := parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {

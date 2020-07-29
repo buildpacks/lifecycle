@@ -18,7 +18,8 @@ type Metadata struct {
 }
 
 type Buildpack struct {
-	ID string `toml:"id"`
+	API string `toml:"api"`
+	ID  string `toml:"id"`
 }
 
 type Env interface {

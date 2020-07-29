@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/buildpacks/lifecycle"
@@ -64,6 +65,9 @@ func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, er
 	if err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
+	if err := da.verifyBuildpackApis(order); err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, err
+	}
 
 	envv := env.NewBuildEnv(os.Environ())
 	fullEnv, err := envv.WithPlatform(da.platformDir)
@@ -93,6 +97,21 @@ func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, er
 	}
 
 	return group, plan, nil
+}
+
+func (da detectArgs) verifyBuildpackApis(order lifecycle.BuildpackOrder) error {
+	for _, group := range order {
+		for _, bp := range group.Group {
+			bpTOML, err := bp.Lookup(da.buildpacksDir)
+			if err != nil {
+				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", bp.String()))
+			}
+			if err := cmd.VerifyBuildpackAPI(bp.String(), bpTOML.API); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (d *detectCmd) writeData(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {

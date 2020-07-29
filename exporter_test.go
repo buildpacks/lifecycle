@@ -553,6 +553,15 @@ type = "Apache-2.0"
 				h.AssertEq(t, val, "0.3")
 			})
 
+			it("sets CNB_DEPRECATION_MODE=quiet", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				val, err := opts.WorkingImage.Env("CNB_DEPRECATION_MODE")
+				h.AssertNil(t, err)
+				h.AssertEq(t, val, "quiet")
+			})
+
 			it("sets ENTRYPOINT to launcher", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)

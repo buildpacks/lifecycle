@@ -18,17 +18,20 @@ func TestPlatformAPI(t *testing.T) {
 }
 
 func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
-	when("VerifyPlatformAPI", func() {
-		var (
-			logHandler *memory.Handler
-		)
+	var (
+		logHandler *memory.Handler
+	)
 
+	it.Before(func() {
+		logHandler = memory.New()
+		cmd.DefaultLogger = &cmd.Logger{Logger: &log.Logger{Handler: logHandler}}
+	})
+
+	when("VerifyPlatformAPI", func() {
 		it.Before(func() {
 			var err error
 			api.Platform, err = api.NewAPIs([]string{"1.2", "2.1"}, []string{"1"})
 			h.AssertNil(t, err)
-			logHandler = memory.New()
-			cmd.DefaultLogger = &cmd.Logger{Logger: &log.Logger{Handler: logHandler}}
 		})
 
 		when("is invalid", func() {
@@ -54,16 +57,6 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("is deprecated", func() {
-			when("default deprecation mode", func() {
-				it("should warn", func() {
-					err := cmd.VerifyPlatformAPI("1.1")
-					h.AssertNil(t, err)
-					h.AssertEq(t, len(logHandler.Entries), 1)
-					h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
-					h.AssertEq(t, logHandler.Entries[0].Message, "Platform API '1.1' is deprecated")
-				})
-			})
-
 			when("CNB_DEPRECATION_MODE=warn", func() {
 				it("should warn", func() {
 					cmd.DeprecationMode = cmd.DeprecationModeWarn
@@ -71,7 +64,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
 					h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
-					h.AssertEq(t, logHandler.Entries[0].Message, "Platform API '1.1' is deprecated")
+					h.AssertEq(t, logHandler.Entries[0].Message, "Platform requested deprecated API '1.1'")
 				})
 			})
 
@@ -93,6 +86,70 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("expected an error of type cmd.ErrorFail")
 					}
 					h.AssertEq(t, failErr.Code, 11)
+				})
+			})
+		})
+	})
+
+	when("VerifyBuildpackAPIs", func() {
+		it.Before(func() {
+			var err error
+			api.Buildpack, err = api.NewAPIs([]string{"1.2", "2.1"}, []string{"1"})
+			h.AssertNil(t, err)
+		})
+
+		when("is invalid", func() {
+			it("error with exit code 12", func() {
+				err := cmd.VerifyBuildpackAPI("some-buildpack", "bad-api")
+				failErr, ok := err.(*cmd.ErrorFail)
+				if !ok {
+					t.Fatalf("expected an error of type cmd.ErrorFail")
+				}
+				h.AssertEq(t, failErr.Code, 12)
+			})
+		})
+
+		when("is unsupported", func() {
+			it("error with exit code 11", func() {
+				err := cmd.VerifyBuildpackAPI("some-buildpack", "2.2")
+				failErr, ok := err.(*cmd.ErrorFail)
+				if !ok {
+					t.Fatalf("expected an error of type cmd.ErrorFail")
+				}
+				h.AssertEq(t, failErr.Code, 12)
+			})
+		})
+
+		when("is deprecated", func() {
+			when("CNB_DEPRECATION_MODE=warn", func() {
+				it("should warn", func() {
+					cmd.DeprecationMode = cmd.DeprecationModeWarn
+					err := cmd.VerifyBuildpackAPI("some-buildpack", "1.1")
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(logHandler.Entries), 1)
+					h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
+					h.AssertEq(t, logHandler.Entries[0].Message, "Buildpack 'some-buildpack' requests deprecated API '1.1'")
+				})
+			})
+
+			when("CNB_DEPRECATION_MODE=quiet", func() {
+				it("should succeed silently", func() {
+					cmd.DeprecationMode = cmd.DeprecationModeQuiet
+					err := cmd.VerifyBuildpackAPI("some-buildpack", "1.1")
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(logHandler.Entries), 0)
+				})
+			})
+
+			when("CNB_DEPRECATION_MODE=error", func() {
+				it("error with exit code 11", func() {
+					cmd.DeprecationMode = cmd.DeprecationModeError
+					err := cmd.VerifyBuildpackAPI("some-buildpack", "1.1")
+					failErr, ok := err.(*cmd.ErrorFail)
+					if !ok {
+						t.Fatalf("expected an error of type cmd.ErrorFail")
+					}
+					h.AssertEq(t, failErr.Code, 12)
 				})
 			})
 		})

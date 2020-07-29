@@ -39,7 +39,7 @@ func VerifyPlatformAPI(requested string) error {
 	if err != nil {
 		return FailErrCode(
 			fmt.Errorf("parse platform API '%s'", requested),
-			CodeIncompatible,
+			CodeIncompatiblePlatformAPI,
 		)
 	}
 	if api.Platform.IsSupported(requestedAPI) {
@@ -48,11 +48,13 @@ func VerifyPlatformAPI(requested string) error {
 			case DeprecationModeQuiet:
 				break
 			case DeprecationModeError:
+				DefaultLogger.Errorf("Platform requested deprecated API '%s'", requested)
+				DefaultLogger.Errorf("Deprecated APIs are disable by %s=%s", EnvDeprecationMode, DeprecationModeError)
 				return platformAPIError(requested)
 			case DeprecationModeWarn:
-				DefaultLogger.Warnf("Platform API '%s' is deprecated", requested)
+				DefaultLogger.Warnf("Platform requested deprecated API '%s'", requested)
 			default:
-				DefaultLogger.Warnf("Platform API '%s' is deprecated", requested)
+				DefaultLogger.Warnf("Platform requested deprecated API '%s'", requested)
 			}
 		}
 		return nil
@@ -60,9 +62,44 @@ func VerifyPlatformAPI(requested string) error {
 	return platformAPIError(requested)
 }
 
+func VerifyBuildpackAPI(bp string, requested string) error {
+	requestedAPI, err := api.NewVersion(requested)
+	if err != nil {
+		return FailErrCode(
+			fmt.Errorf("parse buildpack API '%s' for buildpack '%s'", requestedAPI, bp),
+			CodeIncompatibleBuildpackAPI,
+		)
+	}
+	if api.Buildpack.IsSupported(requestedAPI) {
+		if api.Buildpack.IsDeprecated(requestedAPI) {
+			switch DeprecationMode {
+			case DeprecationModeQuiet:
+				break
+			case DeprecationModeError:
+				DefaultLogger.Errorf("Buildpack '%s' requests deprecated API '%s'", bp, requested)
+				DefaultLogger.Errorf("Deprecated APIs are disable by %s=%s", EnvDeprecationMode, DeprecationModeError)
+				return buildpackAPIError(bp, requested)
+			case DeprecationModeWarn:
+				DefaultLogger.Warnf("Buildpack '%s' requests deprecated API '%s'", bp, requested)
+			default:
+				DefaultLogger.Warnf("Buildpack '%s' requests deprecated API '%s'", bp, requested)
+			}
+		}
+		return nil
+	}
+	return buildpackAPIError(bp, requested)
+}
+
 func platformAPIError(requested string) error {
 	return FailErrCode(
 		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requested),
-		CodeIncompatible,
+		CodeIncompatiblePlatformAPI,
+	)
+}
+
+func buildpackAPIError(bp string, requested string) error {
+	return FailErrCode(
+		fmt.Errorf("set API for buildpack '%s': buildpack API version '%s' is incompatible with the lifecycle", bp, requested),
+		CodeIncompatibleBuildpackAPI,
 	)
 }

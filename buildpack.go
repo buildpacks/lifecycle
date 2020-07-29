@@ -29,8 +29,8 @@ func (bp Buildpack) noAPI() Buildpack {
 	return bp
 }
 
-func (bp Buildpack) lookup(buildpacksDir string) (*buildpackTOML, error) {
-	bpTOML := buildpackTOML{}
+func (bp Buildpack) Lookup(buildpacksDir string) (*BuildpackTOML, error) {
+	bpTOML := BuildpackTOML{}
 	bpPath, err := filepath.Abs(filepath.Join(buildpacksDir, launch.EscapeID(bp.ID), bp.Version))
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (bp Buildpack) lookup(buildpacksDir string) (*buildpackTOML, error) {
 	return &bpTOML, nil
 }
 
-type buildpackTOML struct {
+type BuildpackTOML struct {
 	API       string         `toml:"api"`
 	Buildpack buildpackInfo  `toml:"buildpack"`
 	Order     BuildpackOrder `toml:"order"`
@@ -57,6 +57,6 @@ type buildpackInfo struct {
 	ClearEnv bool   `toml:"clear-env,omitempty"`
 }
 
-func (bp buildpackTOML) String() string {
+func (bp BuildpackTOML) String() string {
 	return bp.Buildpack.Name + " " + bp.Buildpack.Version
 }

@@ -222,6 +222,10 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
+	if err = opts.WorkingImage.SetEnv(cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet); err != nil {
+		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
+	}
+
 	if opts.DefaultProcessType != "" {
 		if !buildMD.hasProcess(opts.DefaultProcessType) {
 			return ExportReport{}, processTypeError(buildMD, opts.DefaultProcessType)

@@ -58,6 +58,9 @@ func (b *buildCmd) Exec() error {
 	if err != nil {
 		return err
 	}
+	if err := verifyBuildpackApis(group); err != nil {
+		return err
+	}
 	return b.build(group, plan)
 }
 

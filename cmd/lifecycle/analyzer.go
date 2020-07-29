@@ -86,6 +86,9 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
+	if err := verifyBuildpackApis(group); err != nil {
+		return err
+	}
 
 	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir)
 	if err != nil {
