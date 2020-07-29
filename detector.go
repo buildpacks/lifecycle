@@ -70,8 +70,18 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		}
 		run := t.(detectRun)
 		if len(run.Output) > 0 {
-			c.Logger.Debugf("======== Output: %s ========", bp)
-			c.Logger.Debug(string(run.Output))
+			outputLogf := c.Logger.Debugf
+
+			switch run.Code {
+			case CodeDetectPass, CodeDetectFail:
+			case -1:
+				outputLogf = c.Logger.Infof
+			default:
+				outputLogf = c.Logger.Infof
+			}
+
+			outputLogf("======== Output: %s ========", bp)
+			outputLogf(string(run.Output))
 		}
 		if run.Err != nil {
 			c.Logger.Debugf("======== Error: %s ========", bp)
@@ -99,11 +109,11 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 			}
 			detected = detected && bp.Optional
 		case -1:
-			c.Logger.Debugf("err:  %s", bp)
+			c.Logger.Infof("err:  %s", bp)
 			buildpackErr = true
 			detected = detected && bp.Optional
 		default:
-			c.Logger.Debugf("err:  %s (%d)", bp, run.Code)
+			c.Logger.Infof("err:  %s (%d)", bp, run.Code)
 			buildpackErr = true
 			detected = detected && bp.Optional
 		}

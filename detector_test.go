@@ -236,6 +236,53 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		it("should not output detect pass and fail as info level", func() {
+			mkappfile("100", "detect-status")
+			mkappfile("0", "detect-status-A-v1")
+			mkappfile("100", "detect-status-B-v1")
+			config.Logger = &log.Logger{Handler: logHandler, Level: log.InfoLevel}
+
+			_, _, err := lifecycle.BuildpackOrder{
+				{Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}},
+			}.Detect(config)
+			if err != lifecycle.ErrFailedDetection {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+
+			if s := allLogs(logHandler); s != "" {
+				t.Fatalf("Unexpected log:\n%s\n", s)
+			}
+		})
+
+		it("should output detect errors as info level", func() {
+			mkappfile("100", "detect-status")
+			mkappfile("0", "detect-status-A-v1")
+			mkappfile("127", "detect-status-B-v1")
+			config.Logger = &log.Logger{Handler: logHandler, Level: log.InfoLevel}
+
+			_, _, err := lifecycle.BuildpackOrder{
+				{Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}},
+			}.Detect(config)
+			if err != lifecycle.ErrBuildpack {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+
+			if s := allLogs(logHandler); !strings.HasSuffix(s,
+				"======== Output: B@v1 ========\n"+
+					"detect out: B@v1\n"+
+					"detect err: B@v1\n"+
+					"err:  B@v1 (127)\n",
+			) {
+				t.Fatalf("Unexpected log:\n%s\n", s)
+			}
+		})
+
 		when("a build plan is employed", func() {
 			it("should return a build plan with matched dependencies", func() {
 				mkappfile("100", "detect-status-C-v1")
