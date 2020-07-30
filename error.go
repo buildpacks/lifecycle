@@ -6,26 +6,21 @@ const ErrTypeBuildpack ErrorType = "ERR_BUILDPACK"
 const ErrTypeFailedDetection ErrorType = "ERR_FAILED_DETECTION"
 
 type Error struct {
-	Errors []error
-	Type   ErrorType
+	RootError error
+	Type      ErrorType
 }
 
 func (le *Error) Error() string {
 	if le.Cause() != nil {
 		return le.Cause().Error()
 	}
-	return ""
+	return string(le.Type)
 }
 
 func (le *Error) Cause() error {
-	switch len(le.Errors) {
-	case 0:
-		return nil
-	default:
-		return le.Errors[0]
-	}
+	return le.RootError
 }
 
 func NewLifecycleError(cause error, errType ErrorType) *Error {
-	return &Error{Errors: []error{cause}, Type: errType}
+	return &Error{RootError: cause, Type: errType}
 }

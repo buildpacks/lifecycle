@@ -45,7 +45,7 @@ func runLaunch() error {
 	}
 
 	if err := launcher.Launch(os.Args[0], os.Args[1:]); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeExportError, "launch")
+		return cmd.FailErrCode(err, cmd.CodeLaunchError, "launch")
 	}
 	return nil
 }

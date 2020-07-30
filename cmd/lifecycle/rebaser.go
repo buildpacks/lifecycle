@@ -131,10 +131,7 @@ func (r *rebaseCmd) Exec() error {
 		Logger: cmd.Logger,
 	}
 	if err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:]); err != nil {
-		if _, ok := err.(*imgutil.SaveError); ok {
-			return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
-		}
-		return cmd.FailErr(err, "rebase")
+		return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
 	}
 	return nil
 }

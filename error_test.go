@@ -16,10 +16,10 @@ func TestError(t *testing.T) {
 
 func testError(t *testing.T, when spec.G, it spec.S) {
 	when("#Cause", func() {
-		it("returns the first error", func() {
+		it("returns the error", func() {
 			expectedErr := errors.New("root cause")
 			testErr := &lifecycle.Error{
-				Errors: []error{expectedErr, errors.New("another")},
+				RootError: expectedErr,
 			}
 
 			cause := testErr.Cause()
@@ -34,6 +34,29 @@ func testError(t *testing.T, when spec.G, it spec.S) {
 
 			if testErr.Cause() != nil {
 				t.Fatalf("Unexpected cause:\n%s\n", testErr.Cause())
+			}
+		})
+	})
+
+	when("#Error", func() {
+		it("returns the underlying error", func() {
+			expectedErr := errors.New("root cause")
+			testErr := &lifecycle.Error{
+				RootError: expectedErr,
+			}
+
+			if testErr.Error() != expectedErr.Error() {
+				t.Fatalf("Unexpected error:\n%s\n", testErr.Error())
+			}
+		})
+
+		it("returns the type when there is no error", func() {
+			testErr := &lifecycle.Error{
+				Type: lifecycle.ErrTypeBuildpack,
+			}
+
+			if testErr.Error() != "ERR_BUILDPACK" {
+				t.Fatalf("Unexpected error value:\n%s\n", testErr.Error())
 			}
 		})
 	})
