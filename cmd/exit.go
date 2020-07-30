@@ -18,7 +18,7 @@ const (
 	CodeAnalyzeError           = 202
 	CodeRestoreError           = 302
 	CodeFailedBuild            = 400
-	CodeFailedLaunch           = 8
+	CodeLaunchError            = 702
 	// 9: CodeFailedUpdate
 	CodeFailedExport = 500
 <<<<<<< HEAD
