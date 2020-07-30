@@ -12,23 +12,19 @@ const (
 	CodeInvalidArgs = 3
 	// 4: CodeInvalidEnv
 	// 5: CodeNotFound
-	CodeFailedDetect           = 100
-	CodeFailedDetectWithErrors = 101
-	CodeDetectError            = 102
-	CodeAnalyzeError           = 202
-	CodeRestoreError           = 302
-	CodeFailedBuild            = 400
-	CodeLaunchError            = 702
-	// 9: CodeFailedUpdate
-	CodeFailedExport = 500
-<<<<<<< HEAD
-	CodeFailedSave   = 10
 	CodeIncompatiblePlatformAPI  = 11
 	CodeIncompatibleBuildpackAPI = 12
-=======
-	CodeFailedRebase = 600
+	CodeFailedDetect             = 100
+	CodeFailedDetectWithErrors   = 101
+	CodeDetectError              = 102
+	CodeAnalyzeError             = 202
+	CodeRestoreError             = 302
+	CodeFailedBuild              = 400
+	CodeLaunchError              = 702
+	// 9: CodeFailedUpdate
+	CodeExportError  = 502
+	CodeRebaseError  = 602
 	CodeIncompatible = 11
->>>>>>> update rebaser with rebaser specific error codes
 )
 
 type ErrorFail struct {
@@ -65,7 +61,7 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	Logger.Errorf("%s\n", err)
+	DefaultLogger.Errorf("%s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
@@ -73,6 +69,6 @@ func Exit(err error) {
 }
 
 func ExitWithVersion() {
-	Logger.Infof(buildVersion())
+	DefaultLogger.Infof(buildVersion())
 	os.Exit(0)
 }
