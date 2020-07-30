@@ -20,7 +20,8 @@ const (
 	CodeFailedBuild            = 400
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
-	CodeFailedSave               = 10
+	CodeFailedExport = 500
+	CodeFailedSave   = 10
 	CodeIncompatiblePlatformAPI  = 11
 	CodeIncompatibleBuildpackAPI = 12
 )
@@ -59,7 +60,7 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	DefaultLogger.Errorf("%s\n", err)
+	Logger.Errorf("%s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
@@ -67,6 +68,6 @@ func Exit(err error) {
 }
 
 func ExitWithVersion() {
-	DefaultLogger.Infof(buildVersion())
+	Logger.Infof(buildVersion())
 	os.Exit(0)
 }
