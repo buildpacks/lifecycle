@@ -1,4 +1,4 @@
 [buildpack]
-id = "example/stackpack"
+id = "example/stack"
 version = "1.0"
 privileged = true

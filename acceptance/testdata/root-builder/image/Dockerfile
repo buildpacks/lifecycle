@@ -7,6 +7,7 @@ COPY container /
 RUN mkdir -p /cnb
 COPY buildpacks /cnb/buildpacks
 COPY group.toml /cnb/
+COPY plan.toml /cnb/
 
 WORKDIR /layers
 
