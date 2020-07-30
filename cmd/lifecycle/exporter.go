@@ -210,7 +210,7 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		DefaultProcessType: ea.processType,
 	}); err != nil {
 		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
-			return cmd.FailErrCode(err, cmd.CodeFailedSave, "export")
+			return cmd.FailErrCode(err, cmd.CodeFailedExport, "export")
 		}
 		return cmd.FailErr(err, "export")
 	}

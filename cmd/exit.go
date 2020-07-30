@@ -20,6 +20,7 @@ const (
 	CodeFailedBuild            = 400
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
+	CodeFailedExport = 500
 	CodeFailedSave   = 10
 	CodeIncompatible = 11
 )
