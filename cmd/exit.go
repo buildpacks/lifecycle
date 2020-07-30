@@ -21,9 +21,14 @@ const (
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
 	CodeFailedExport = 500
+<<<<<<< HEAD
 	CodeFailedSave   = 10
 	CodeIncompatiblePlatformAPI  = 11
 	CodeIncompatibleBuildpackAPI = 12
+=======
+	CodeFailedRebase = 600
+	CodeIncompatible = 11
+>>>>>>> update rebaser with rebaser specific error codes
 )
 
 type ErrorFail struct {
