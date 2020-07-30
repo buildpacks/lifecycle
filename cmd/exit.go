@@ -14,6 +14,7 @@ const (
 	// 5: CodeNotFound
 	CodeFailedDetect           = 100
 	CodeFailedDetectWithErrors = 101
+	CodeDetectError            = 102
 	CodeFailedBuild            = 7
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
