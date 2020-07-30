@@ -1,8 +1,6 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 )
 
@@ -42,20 +40,17 @@ func NewAPIs(supported []string, deprecated []string) (APIs, error) {
 		if err := validateDeprecated(apis, dAPI); err != nil {
 			return APIs{}, errors.Wrapf(err, "invalid deprecated API '%s'", d)
 		}
-		if !apis.IsSupported(dAPI) {
-			return APIs{}, fmt.Errorf("invalid depreacted API '%s': all depreacted APIs must also be supported", d)
-		}
 		apis.Deprecated = append(apis.Deprecated, dAPI)
 	}
 	return apis, nil
 }
 
-func validateDeprecated(apis APIs, depreacted *Version) error {
-	if !apis.IsSupported(depreacted) {
+func validateDeprecated(apis APIs, deprecated *Version) error {
+	if !apis.IsSupported(deprecated) {
 		return errors.New("all deprecated APIs must also be supported")
 	}
-	if depreacted.Major != 0 && depreacted.Minor != 0 {
-		return errors.New("deprecated APIs may only contain 0.x or major version")
+	if deprecated.Major != 0 && deprecated.Minor != 0 {
+		return errors.New("deprecated APIs may only contain 0.x or a major version")
 	}
 	return nil
 }

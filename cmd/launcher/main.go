@@ -24,7 +24,7 @@ func runLaunch() error {
 	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir)), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
-	if err := verifyBuildpackApis(md.Buildpacks); err != nil {
+	if err := verifyBuildpackAPIs(md.Buildpacks); err != nil {
 		return err
 	}
 
@@ -45,7 +45,7 @@ func runLaunch() error {
 	return nil
 }
 
-func verifyBuildpackApis(bps []launch.Buildpack) error {
+func verifyBuildpackAPIs(bps []launch.Buildpack) error {
 	for _, bp := range bps {
 		if bp.API == "" {
 			// If the same lifecycle is used for build and launcher we should never end up here
