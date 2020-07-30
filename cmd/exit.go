@@ -21,7 +21,7 @@ const (
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
 	CodeFailedExport = 500
-	CodeFailedSave   = 10
+	CodeFailedRebase = 600
 	CodeIncompatible = 11
 )
 

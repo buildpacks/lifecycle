@@ -132,7 +132,7 @@ func (r *rebaseCmd) Exec() error {
 	}
 	if err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:]); err != nil {
 		if _, ok := err.(*imgutil.SaveError); ok {
-			return cmd.FailErrCode(err, cmd.CodeFailedSave, "rebase")
+			return cmd.FailErrCode(err, cmd.CodeFailedRebase, "rebase")
 		}
 		return cmd.FailErr(err, "rebase")
 	}
