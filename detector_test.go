@@ -80,7 +80,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			_, _, err := lifecycle.BuildpackOrder{
 				{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
 			}.Detect(config)
-			if err != lifecycle.ErrFailedDetection {
+			if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -127,7 +127,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it("should fail if the group is empty", func() {
 			_, _, err := lifecycle.BuildpackOrder([]lifecycle.BuildpackGroup{{}}).Detect(config)
-			if err != lifecycle.ErrFailedDetection {
+			if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -148,7 +148,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v1", Optional: true},
 				}},
 			}.Detect(config)
-			if err != lifecycle.ErrFailedDetection {
+			if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -173,7 +173,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v1", Optional: false},
 				}},
 			}.Detect(config)
-			if err != lifecycle.ErrBuildpack {
+			if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeBuildpack {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -248,7 +248,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v1", Optional: false},
 				}},
 			}.Detect(config)
-			if err != lifecycle.ErrFailedDetection {
+			if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -269,7 +269,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v1", Optional: false},
 				}},
 			}.Detect(config)
-			if err != lifecycle.ErrBuildpack {
+			if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeBuildpack {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
@@ -367,7 +367,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						{ID: "C", Version: "v1"},
 					}},
 				}.Detect(config)
-				if err != lifecycle.ErrFailedDetection {
+				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
@@ -395,7 +395,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						{ID: "C", Version: "v1", Optional: true},
 					}},
 				}.Detect(config)
-				if err != lifecycle.ErrFailedDetection {
+				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
