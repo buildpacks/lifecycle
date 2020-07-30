@@ -111,7 +111,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+bpInfo.Path)
 
 		if err := cmd.Run(); err != nil {
-			return nil, err
+			return nil, NewLifecycleError(err, ErrTypeBuildpack)
 		}
 		if err := setupEnv(b.Env, bpLayersDir); err != nil {
 			return nil, err
