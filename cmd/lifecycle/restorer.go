@@ -67,7 +67,7 @@ func restore(layersDir string, group lifecycle.BuildpackGroup, cacheStore lifecy
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailed, "restore")
+		return cmd.FailErrCode(err, cmd.CodeRestoreError, "restore")
 	}
 	return nil
 }

@@ -16,6 +16,7 @@ const (
 	CodeFailedDetectWithErrors = 101
 	CodeDetectError            = 102
 	CodeAnalyzeError           = 200
+	CodeRestoreError           = 300
 	CodeFailedBuild            = 7
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
