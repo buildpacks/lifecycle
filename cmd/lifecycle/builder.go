@@ -78,15 +78,12 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 	}
 	md, err := builder.Build()
 
-	switch err := err.(type) {
-	case *lifecycle.Error:
-		switch err.Type {
-		case lifecycle.ErrTypeBuildpack:
-			cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
-		default:
-			cmd.FailErrCode(err.Cause(), cmd.CodeBuildError, "build")
+	if err != nil {
+		if err, ok := err.(*lifecycle.Error); ok {
+			if err.Type == lifecycle.ErrTypeBuildpack {
+				return cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
+			}
 		}
-	default:
 		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
 	}
 

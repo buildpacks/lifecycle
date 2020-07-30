@@ -93,6 +93,8 @@ func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, er
 			case lifecycle.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetectWithErrors, "detect")
+			default:
+				return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
 			}
 		default:
 			return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")

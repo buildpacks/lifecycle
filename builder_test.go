@@ -474,7 +474,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Error: %s\n", err)
 				}
 				_, err := builder.Build()
-				if _, ok := err.(*lifecycle.Error); !ok {
+				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeBuildpack {
 					t.Fatalf("Incorrect error: %s\n", err)
 				}
 			})
