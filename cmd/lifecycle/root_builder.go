@@ -6,9 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/docker/docker/client"
-
 	"github.com/BurntSushi/toml"
+	"github.com/docker/docker/client"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"

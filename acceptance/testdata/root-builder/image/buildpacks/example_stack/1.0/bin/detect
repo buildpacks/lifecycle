@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -euo pipefail
+
+platform_dir=$1
+plan_path=$2
+
+bp_dir=$(cd $(dirname "$0")/.. && pwd)
+bp_id=$(cat "$bp_dir/buildpack.toml"|yj -t|jq -r .buildpack.id)
+bp_version=$(cat "$bp_dir/buildpack.toml"|yj -t|jq -r .buildpack.version)
+
+echo "detect out: ${bp_id}@${bp_version}"
+>&2 echo -n "detect err: ${bp_id}@${bp_version}"
+
+ls -1 "$platform_dir/env" > "detect-env-${bp_id}-${bp_version}"
+echo -n "$ENV_TYPE" > "detect-env-type-${bp_id}-${bp_version}"
+echo -n "${CNB_BUILDPACK_DIR:-unset}" > "detect-env-cnb-buildpack-dir-${bp_id}-${bp_version}"
+
+if [[ -f detect-plan-${bp_id}-${bp_version}.toml ]]; then
+  cat "detect-plan-${bp_id}-${bp_version}.toml" > "$plan_path"
+fi
+
+if [[ -f detect-status-${bp_id}-${bp_version} ]]; then
+  exit "$(cat "detect-status-${bp_id}-${bp_version}")"
+fi
+if [[ -f detect-status ]]; then
+  exit "$(cat detect-status)"
+fi
+
+exit 0

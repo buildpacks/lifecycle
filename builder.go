@@ -55,7 +55,7 @@ type buildpackPlan struct {
 type NoopSnapshotter struct {
 }
 
-func (_ *NoopSnapshotter) TakeSnapshot(string) error {
+func (ns *NoopSnapshotter) TakeSnapshot(string) error {
 	return nil
 }
 

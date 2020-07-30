@@ -75,6 +75,7 @@ build-linux-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
+	ln -sf lifecycle $(OUT_DIR)/root-builder
 
 build-windows-lifecycle: $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
 
@@ -105,12 +106,14 @@ ifeq ($(OS),Windows_NT)
 	call del $(OUT_DIR)$/builder.exe
 	call del $(OUT_DIR)$/exporter.exe
 	call del $(OUT_DIR)$/rebaser.exe
+	call del $(OUT_DIR)$/root-builder.exe
 	call mklink $(OUT_DIR)$/detector.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/analyzer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/restorer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/builder.exe  lifecycle.exe
 	call mklink $(OUT_DIR)$/exporter.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/rebaser.exe  lifecycle.exe
+	call mklink $(OUT_DIR)$/root-builder.exe  lifecycle.exe
 else
 	ln -sf lifecycle.exe $(OUT_DIR)$/detector.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/analyzer.exe
@@ -118,6 +121,7 @@ else
 	ln -sf lifecycle.exe $(OUT_DIR)$/builder.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/exporter.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/rebaser.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/root-builder.exe
 endif
 
 build-darwin: $(BUILD_DIR)/darwin/lifecycle
@@ -136,6 +140,7 @@ $(BUILD_DIR)/darwin/lifecycle:
 	ln -sf lifecycle $(OUT_DIR)/builder
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
+	ln -sf lifecycle $(OUT_DIR)/root-builder
 $(BUILD_DIR)/darwin/lifecycle: $(GOFILES)
 
 install-goimports:

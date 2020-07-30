@@ -596,7 +596,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 				fmt.Printf("Contents of %s:\n", hdr.Name)
 
-
 				switch hdr.Name {
 				case "/":
 					continue
@@ -608,7 +607,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Error: %s\n", err)
 					}
 
-					if ! strings.HasSuffix(b.String(), "testdata/by-id/A/v1") {
+					if !strings.HasSuffix(b.String(), "testdata/by-id/A/v1") {
 						t.Fatalf("Error: %s\n", err)
 					}
 				case "build-info-A-v1":
@@ -707,7 +706,7 @@ func each(it spec.S, befores []func(), text string, f func()) {
 	}
 }
 
-func createBuilder(t *testing.T, tmpDir string, env lifecycle.BuildEnv, outLog, errLog *log.Logger) *lifecycle.Builder  {
+func createBuilder(t *testing.T, tmpDir string, env lifecycle.BuildEnv, outLog, errLog *log.Logger) *lifecycle.Builder {
 	platformDir := filepath.Join(tmpDir, "platform")
 	layersDir := filepath.Join(tmpDir, "launch")
 	appDir := filepath.Join(layersDir, "app")
@@ -727,13 +726,13 @@ func createBuilder(t *testing.T, tmpDir string, env lifecycle.BuildEnv, outLog, 
 				{ID: "B", Version: "v2"},
 			},
 		},
-		Out: outLog,
-		Err: errLog,
+		Out:         outLog,
+		Err:         errLog,
 		Snapshotter: &lifecycle.NoopSnapshotter{},
 	}
 }
 
-func createRootBuilder(t *testing.T, tmpDir string, env lifecycle.BuildEnv, outLog, errLog *log.Logger) *lifecycle.Builder  {
+func createRootBuilder(t *testing.T, tmpDir string, env lifecycle.BuildEnv, outLog, errLog *log.Logger) *lifecycle.Builder {
 	platformDir := filepath.Join(tmpDir, "platform")
 	layersDir := filepath.Join(tmpDir, "launch")
 	appDir := filepath.Join(layersDir, "app")
@@ -758,8 +757,8 @@ func createRootBuilder(t *testing.T, tmpDir string, env lifecycle.BuildEnv, outL
 				{ID: "B", Version: "v2"},
 			},
 		},
-		Out: outLog,
-		Err: errLog,
+		Out:         outLog,
+		Err:         errLog,
 		Snapshotter: snapshotter,
 	}
 }

@@ -23,7 +23,7 @@ func TestKanikoSnapshotter(t *testing.T) {
 func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		snapshotter *snapshot.KanikoSnapshotter
-		tmpDir string
+		tmpDir      string
 	)
 
 	it.Before(func() {
@@ -58,8 +58,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			createTestFile(t, filepath.Join(snapshotter.RootDir, "file-to-delete"))
-
+			os.Remove(filepath.Join(snapshotter.RootDir, "file-to-delete"))
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "file-to-change"), "hola\n")
 			createTestFile(t, filepath.Join(snapshotter.RootDir, "my-space", "newfile-in-dir"))
 			createTestFile(t, filepath.Join(snapshotter.RootDir, "cnb", "file-to-ignore"))
@@ -106,9 +105,9 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 					continue
 				case "newfile":
 				case "my-space/newfile-in-dir":
-					assertSnapshotFile(t, tr,"hello\n")
+					assertSnapshotFile(t, tr, "hello\n")
 				case "file-to-change":
-					assertSnapshotFile(t, tr,"hola\n")
+					assertSnapshotFile(t, tr, "hola\n")
 				default:
 					t.Fatalf("Unexpected file: %s\n", hdr.Name)
 				}

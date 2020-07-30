@@ -13,7 +13,7 @@ import (
 )
 
 type KanikoSnapshotter struct {
-	RootDir string
+	RootDir     string
 	snapshotter *Snapshotter
 }
 

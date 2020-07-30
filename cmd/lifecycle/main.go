@@ -31,7 +31,7 @@ func main() {
 		cmd.Run(&rebaseCmd{}, false)
 	case "creator":
 		cmd.Run(&createCmd{}, false)
-	case "root_builder":
+	case "root-builder":
 		cmd.Run(&rootBuildCmd{}, false)
 	default:
 		if len(os.Args) < 2 {
@@ -61,6 +61,8 @@ func subcommand() {
 		cmd.Run(&rebaseCmd{}, true)
 	case "create":
 		cmd.Run(&createCmd{}, true)
+	case "root-build":
+		cmd.Run(&rootBuildCmd{}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}

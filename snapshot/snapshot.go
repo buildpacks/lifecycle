@@ -19,7 +19,6 @@ package snapshot
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sort"
 	"syscall"
@@ -138,12 +137,11 @@ func (s *Snapshotter) TakeSnapshotFS() (string, error) {
 	return f.Name(), nil
 }
 
-func (s *Snapshotter) getSnashotPathPrefix() (string) {
+func (s *Snapshotter) getSnashotPathPrefix() string {
 	if snapshotPathPrefix == "" {
 		return config.KanikoDir
-	} else {
-		return snapshotPathPrefix
 	}
+	return snapshotPathPrefix
 }
 
 func (s *Snapshotter) scanFullFilesystem() ([]string, []string, error) {
@@ -229,22 +227,4 @@ func writeToTar(t util.Tar, files, whiteouts []string) error {
 		addedPaths[path] = true
 	}
 	return nil
-}
-
-// filesWithLinks returns the symlink and the target path if its exists.
-func filesWithLinks(path string) ([]string, error) {
-	link, err := util.GetSymLink(path)
-	if err == util.ErrNotSymLink {
-		return []string{path}, nil
-	} else if err != nil {
-		return nil, err
-	}
-	// Add symlink if it exists in the FS
-	if !filepath.IsAbs(link) {
-		link = filepath.Join(filepath.Dir(path), link)
-	}
-	if _, err := os.Stat(link); err != nil {
-		return []string{path}, nil
-	}
-	return []string{path, link}, nil
 }

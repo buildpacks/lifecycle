@@ -61,6 +61,7 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				"restorer",
 				"rebaser",
 				"lifecycle",
+				"root-builder",
 			} {
 				phase := phase
 				it(phase+"/should fail with error message and exit code 11", func() {
@@ -149,6 +150,11 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				{
 					description: "lifecycle -version",
 					command:     "lifecycle",
+					args:        []string{"-version"},
+				},
+				{
+					description: "root-builder: only -version is present",
+					command:     "root-builder",
 					args:        []string{"-version"},
 				},
 			} {
