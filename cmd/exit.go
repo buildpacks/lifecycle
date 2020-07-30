@@ -17,11 +17,12 @@ const (
 	CodeDetectError            = 102
 	CodeAnalyzeError           = 202
 	CodeRestoreError           = 302
-	CodeFailedBuild            = 400
+	CodeFailedBuildWithErrors  = 401
+	CodeBuildError             = 402
 	CodeLaunchError            = 702
 	// 9: CodeFailedUpdate
-	CodeExportError = 502
-	CodeRebaseError = 602
+	CodeExportError  = 502
+	CodeRebaseError  = 602
 	CodeIncompatible = 11
 )
 
