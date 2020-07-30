@@ -1,3 +1,11 @@
 [[processes]]
   type = "some-process-type"
   command = "/some/command"
+
+[[labels]]
+  key = "some.label.key"
+  value = "some-label-value"
+
+[[labels]]
+  key = "other.label.key"
+  value = "other-label-value"

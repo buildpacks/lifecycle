@@ -33,8 +33,14 @@ type BuildEnv interface {
 }
 
 type LaunchTOML struct {
+	Labels    []Label
 	Processes []launch.Process `toml:"processes"`
 	Slices    []layers.Slice   `toml:"slices"`
+}
+
+type Label struct {
+	Key   string `toml:"key"`
+	Value string `toml:"value"`
 }
 
 type BOMEntry struct {
@@ -69,6 +75,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	plan := b.Plan
 	var bom []BOMEntry
 	var slices []layers.Slice
+	var labels []Label
 
 	for _, bp := range b.Group.Group {
 		bpInfo, err := bp.lookup(b.BuildpacksDir)
@@ -133,12 +140,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		}
 		procMap.add(launch.Processes)
 		slices = append(slices, launch.Slices...)
+		labels = append(labels, launch.Labels...)
 	}
 
 	return &BuildMetadata{
-		Processes:  procMap.list(),
-		Buildpacks: b.Group.Group,
 		BOM:        bom,
+		Buildpacks: b.Group.Group,
+		Labels:     labels,
+		Processes:  procMap.list(),
 		Slices:     slices,
 	}, nil
 }

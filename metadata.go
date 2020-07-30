@@ -15,10 +15,11 @@ const (
 )
 
 type BuildMetadata struct {
-	Processes  []launch.Process `toml:"processes" json:"processes"`
-	Buildpacks []Buildpack      `toml:"buildpacks" json:"buildpacks"`
 	BOM        []BOMEntry       `toml:"bom" json:"bom"`
+	Buildpacks []Buildpack      `toml:"buildpacks" json:"buildpacks"`
+	Labels     []Label          `toml:"labels" json:"-"`
 	Launcher   LauncherMetadata `toml:"-" json:"launcher"`
+	Processes  []launch.Process `toml:"processes" json:"processes"`
 	Slices     []layers.Slice   `toml:"slices" json:"-"`
 }
 
