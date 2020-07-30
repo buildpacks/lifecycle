@@ -102,8 +102,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1"},
-					{ID: "B", Version: "v1"},
+					{ID: "A", Version: "v1", API: "0.3"},
+					{ID: "B", Version: "v1", API: "0.2"},
 				},
 			}); s != "" {
 				t.Fatalf("Unexpected group:\n%s\n", s)
@@ -310,10 +310,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "C", Version: "v2"},
-						{ID: "D", Version: "v2"},
-						{ID: "B", Version: "v1"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "C", Version: "v2", API: "0.2"},
+						{ID: "D", Version: "v2", API: "0.2"},
+						{ID: "B", Version: "v1", API: "0.2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected group:\n%s\n", s)
@@ -430,7 +430,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1"},
+						{ID: "B", Version: "v1", API: "0.2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected group:\n%s\n", s)
@@ -495,9 +495,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v1"},
-						{ID: "C", Version: "v1"},
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v1", API: "0.2"},
+						{ID: "C", Version: "v1", API: "0.2"},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected group:\n%s\n", s)

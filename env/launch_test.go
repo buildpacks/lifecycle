@@ -23,6 +23,8 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 				"CNB_APP_DIR=excluded",
 				"CNB_LAYERS_DIR=excluded",
 				"CNB_PROCESS_TYPE=excluded",
+				"CNB_PLATFORM_API=excluded",
+				"CNB_DEPRECATION_MODE=excluded",
 				"CNB_FOO=not-excluded",
 			})
 			if s := cmp.Diff(lenv.List(), []string{

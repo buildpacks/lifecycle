@@ -58,7 +58,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			Logger:     &log.Logger{Handler: &discard.Handler{}},
 		}
 		if testing.Verbose() {
-			analyzer.Logger = cmd.Logger
+			analyzer.Logger = cmd.DefaultLogger
 			cmd.SetLogLevel("debug")
 		}
 		mockCtrl = gomock.NewController(t)

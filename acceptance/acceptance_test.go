@@ -1,7 +1,6 @@
 package acceptance
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -16,9 +15,8 @@ import (
 )
 
 const (
-	expectedPlatformAPI = "0.9"
-	expectedVersion     = "some-version"
-	expectedCommit      = "asdf123"
+	expectedVersion = "some-version"
+	expectedCommit  = "asdf123"
 )
 
 var buildDir string
@@ -37,8 +35,7 @@ func TestVersion(t *testing.T) {
 	h.MakeAndCopyLifecycle(t,
 		runtime.GOOS,
 		outDir,
-		"PLATFORM_API="+expectedPlatformAPI,
-		"LIFECYCLE_VERSION="+expectedVersion,
+		"LIFECYCLE_VERSION=some-version",
 		"SCM_COMMIT="+expectedCommit,
 	)
 	spec.Run(t, "acceptance", testVersion, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -46,34 +43,13 @@ func TestVersion(t *testing.T) {
 
 type testCase struct {
 	description string
+	focus       bool
 	command     string
 	args        []string
 }
 
 func testVersion(t *testing.T, when spec.G, it spec.S) {
 	when("All", func() {
-		when("CNB_PLATFORM_API is set and incompatible", func() {
-			for _, phase := range []string{
-				"analyzer",
-				"builder",
-				"detector",
-				"exporter",
-				"restorer",
-				"rebaser",
-				"lifecycle",
-			} {
-				phase := phase
-				it(phase+"/should fail with error message and exit code 11", func() {
-					cmd := lifecycleCmd(phase)
-					cmd.Env = append(os.Environ(), "CNB_PLATFORM_API=0.8")
-
-					_, exitCode, err := h.RunE(cmd)
-					h.AssertError(t, err, fmt.Sprintf("the Lifecycle's Platform API version is %s which is incompatible with Platform API version 0.8", expectedPlatformAPI))
-					h.AssertEq(t, exitCode, 11)
-				})
-			}
-		})
-
 		when("version flag is set", func() {
 			for _, tc := range []testCase{
 				{
@@ -153,7 +129,11 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 				},
 			} {
 				tc := tc
-				when(tc.description, func() {
+				w := when
+				if tc.focus {
+					w = when.Focus
+				}
+				w(tc.description, func() {
 					it("only prints the version", func() {
 						cmd := lifecycleCmd(tc.command, tc.args...)
 						output, err := cmd.CombinedOutput()

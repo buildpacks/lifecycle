@@ -23,6 +23,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -116,8 +117,9 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				{ID: "buildpack.id", Version: "1.2.3"},
 				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
-			Logger:       &log.Logger{Handler: logHandler},
 			LayerFactory: layerFactory,
+			Logger:       &log.Logger{Handler: logHandler},
+			PlatformAPI:  api.MustParse("0.3"),
 		}
 	})
 
@@ -540,6 +542,24 @@ type = "Apache-2.0"
 				val, err := opts.WorkingImage.Env("CNB_APP_DIR")
 				h.AssertNil(t, err)
 				h.AssertEq(t, val, opts.AppDir)
+			})
+
+			it("sets CNB_PLATFORM_API", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				val, err := opts.WorkingImage.Env("CNB_PLATFORM_API")
+				h.AssertNil(t, err)
+				h.AssertEq(t, val, "0.3")
+			})
+
+			it("sets CNB_DEPRECATION_MODE=quiet", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				val, err := opts.WorkingImage.Env("CNB_DEPRECATION_MODE")
+				h.AssertNil(t, err)
+				h.AssertEq(t, val, "quiet")
 			})
 
 			it("sets ENTRYPOINT to launcher", func() {

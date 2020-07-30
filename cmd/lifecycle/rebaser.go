@@ -131,7 +131,7 @@ func (r *rebaseCmd) Exec() error {
 	}
 
 	rebaser := &lifecycle.Rebaser{
-		Logger: cmd.Logger,
+		Logger: cmd.DefaultLogger,
 	}
 	report, err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {

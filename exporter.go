@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
@@ -29,6 +30,7 @@ type Exporter struct {
 	Buildpacks   []Buildpack
 	LayerFactory LayerFactory
 	Logger       Logger
+	PlatformAPI  *api.Version
 }
 
 //go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle LayerFactory
@@ -213,6 +215,14 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	}
 
 	if err = opts.WorkingImage.SetEnv(cmd.EnvAppDir, opts.AppDir); err != nil {
+		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
+	}
+
+	if err = opts.WorkingImage.SetEnv(cmd.EnvPlatformAPI, e.PlatformAPI.String()); err != nil {
+		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
+	}
+
+	if err = opts.WorkingImage.SetEnv(cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet); err != nil {
 		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 

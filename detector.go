@@ -35,7 +35,7 @@ type BuildPlanEntry struct {
 func (be BuildPlanEntry) noOpt() BuildPlanEntry {
 	var out []Buildpack
 	for _, p := range be.Providers {
-		out = append(out, p.noOpt())
+		out = append(out, p.noOpt().noAPI())
 	}
 	be.Providers = out
 	return be
@@ -204,7 +204,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 	return deps, trial, nil
 }
 
-func (bp *buildpackTOML) Detect(c *DetectConfig) detectRun {
+func (bp *BuildpackTOML) detect(c *DetectConfig) detectRun {
 	appDir, err := filepath.Abs(c.AppDir)
 	if err != nil {
 		return detectRun{Code: -1, Err: err}
@@ -273,10 +273,11 @@ func (bg BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectC
 		if hasID(done, bp.ID) {
 			continue
 		}
-		info, err := bp.lookup(c.BuildpacksDir)
+		info, err := bp.Lookup(c.BuildpacksDir)
 		if err != nil {
 			return nil, nil, err
 		}
+		bp.API = info.API
 		if info.Order != nil {
 			// TODO: double-check slice safety here
 			// FIXME: cyclical references lead to infinite recursion
@@ -286,7 +287,7 @@ func (bg BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectC
 		wg.Add(1)
 		go func() {
 			if _, ok := c.runs.Load(key); !ok {
-				c.runs.Store(key, info.Detect(c))
+				c.runs.Store(key, info.detect(c))
 			}
 			wg.Done()
 		}()

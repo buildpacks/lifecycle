@@ -17,8 +17,9 @@ const (
 	CodeFailedBuild            = 7
 	CodeFailedLaunch           = 8
 	// 9: CodeFailedUpdate
-	CodeFailedSave   = 10
-	CodeIncompatible = 11
+	CodeFailedSave               = 10
+	CodeIncompatiblePlatformAPI  = 11
+	CodeIncompatibleBuildpackAPI = 12
 )
 
 type ErrorFail struct {
@@ -55,7 +56,7 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	Logger.Errorf("%s\n", err)
+	DefaultLogger.Errorf("%s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
@@ -63,6 +64,6 @@ func Exit(err error) {
 }
 
 func ExitWithVersion() {
-	Logger.Infof(buildVersion())
+	DefaultLogger.Infof(buildVersion())
 	os.Exit(0)
 }
