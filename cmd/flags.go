@@ -116,7 +116,7 @@ func FlagPreviousImage(image *string) {
 }
 
 func FlagReportPath(path *string) {
-	flagSet.StringVar(path, "report", os.Getenv(EnvReportPath), "path to report.toml")
+	flagSet.StringVar(path, "report", envOrDefault(EnvReportPath, DefaultReportPath), "path to report.toml")
 }
 
 func FlagRunImage(image *string) {
