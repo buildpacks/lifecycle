@@ -20,8 +20,8 @@ const (
 	CodeFailedBuild            = 400
 	CodeLaunchError            = 702
 	// 9: CodeFailedUpdate
-	CodeFailedExport = 500
-	CodeFailedRebase = 600
+	CodeExportError = 502
+	CodeRebaseError = 602
 	CodeIncompatible = 11
 )
 
