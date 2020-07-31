@@ -2,7 +2,6 @@ package acceptance
 
 import (
 	"context"
-	"fmt"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -82,7 +81,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 	when("process is direct=false", func() {
 		when("the process type has no args", func() {
-			it("provides the command directly to bash", func() {
+			it("runs command as script", func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
 				cmd := exec.Command("docker", "run", "--rm",
 					"--env", "VAR1=val1",
 					"--env", "VAR2=val with space",
@@ -95,9 +95,15 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		when("the process type has args", func() {
 			when("buildpack API 0.4", func() {
 				it("command and args become shell-parsed tokens in a script", func() {
+					var val2 string
+					if runtime.GOOS == "windows" {
+						val2 = `"val with space"` //windows values with spaces must contain quotes
+					} else {
+						val2 = "val with space"
+					}
 					cmd := exec.Command("docker", "run", "--rm",
 						"--env", "VAR1=val1",
-						"--env", "VAR2=val with space",
+						"--env", "VAR2="+val2,
 						launchImage, "indirect-process-with-args",
 					)
 					assertOutput(t, cmd, "'val1' 'val with space'")
@@ -106,17 +112,19 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 			when("buildpack API < 0.4", func() {
 				it("args become arguments to bash", func() {
+					h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
 					cmd := exec.Command("docker", "run", "--rm",
 						launchImage, "legacy-indirect-process-with-args",
 					)
-					assertOutput(t, cmd, "arg1 arg2")
+					assertOutput(t, cmd, "'arg' 'arg with spaces'")
 				})
 			})
 		})
 
 		it("sources scripts from process specific directories", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "worker")
-			expected := "sourced bp profile\nsourced bp worker profile\nsourced app profile"
+			h.SkipIf(t, runtime.GOOS == "windows", "profile scripts are broken on windows?")
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "profile-checker")
+			expected := "sourced bp profile\nsourced bp profile-checker profile\nsourced app profile\nval-from-profile"
 			assertOutput(t, cmd, expected)
 		})
 	})
@@ -131,20 +139,20 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 	when("provided CMD is not a process-type", func() {
 		it("sources profiles and executes the command in a shell", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo something")
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo", "something")
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsomething")
 		})
 
 		it("sets env vars from layers", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo $SOME_VAR $OTHER_VAR $WORKER_VAR")
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "echo", "$SOME_VAR", "$OTHER_VAR", "$WORKER_VAR")
 			if runtime.GOOS == "windows" {
-				cmd = exec.Command("docker", "run", "--rm", launchImage, "echo %SOME_VAR% %OTHER_VAR% %WORKER_VAR%")
+				cmd = exec.Command("docker", "run", "--rm", launchImage, "echo", "%SOME_VAR%", "%OTHER_VAR%", "%WORKER_VAR%")
 			}
 			assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-bp-val other-bp-val worker-no-process-val")
 		})
 
 		it("passes through env vars from user, excluding excluded vars", func() {
-			args := []string{"echo $SOME_USER_VAR, $CNB_APP_DIR, $OTHER_VAR"}
+			args := []string{"echo", "$SOME_USER_VAR, $CNB_APP_DIR, $OTHER_VAR"}
 			if runtime.GOOS == "windows" {
 				args = []string{"echo", "%SOME_USER_VAR%, %CNB_APP_DIR%, %OTHER_VAR%"}
 			}
@@ -160,11 +168,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					args...)...,
 			)
 
-			emptyVar := ""
 			if runtime.GOOS == "windows" {
-				emptyVar = "%CNB_APP_DIR%"
+				// when windows values must be escaped, values contain quotes
+				// empty values on windows preserve variable names instead of interpolating to empty strings
+				assertOutput(t, cmd, "sourced bp profile\nsourced app profile\n\"some-user-val, %CNB_APP_DIR%, other-user-val**other-bp-val\"")
+			} else {
+				assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-user-val, , other-user-val**other-bp-val")
 			}
-			assertOutput(t, cmd, fmt.Sprintf("sourced bp profile\nsourced app profile\nsome-user-val, %s, other-user-val**other-bp-val", emptyVar))
 		})
 
 		it("adds buildpack bin dirs to the path", func() {

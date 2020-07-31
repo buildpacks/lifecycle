@@ -76,7 +76,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				{
 					Type:        "web",
 					Command:     "some-web-process",
-					Args:        []string{"arg1", "arg2"},
+					Args:        []string{"arg1", "arg with space"},
 					BuildpackID: "bp.1",
 				},
 				{
@@ -87,7 +87,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				{
 					Type:        "direct",
 					Command:     directBinary,
-					Args:        []string{"arg1", "arg2"},
+					Args:        []string{"arg1", "arg with space"},
 					Direct:      true,
 					BuildpackID: "bp.1",
 				},
@@ -128,12 +128,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS == "windows" {
 					h.AssertEq(t, syscallExecArgsColl[0].argv0, "cmd")
 					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
-						"cmd", "/q", "/s", "/c", "", "some-web-process", "arg1", "arg2",
+						"cmd", "/q", "/c", "some-web-process", "arg1", "arg with space",
 					})
 				} else {
 					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/bash")
 					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
-						"bash", "-c", `exec bash -c "$@"`, "/path/to/launcher", "some-web-process", "arg1", "arg2",
+						"bash", "-c", `exec bash -c "$@"`, "/path/to/launcher", "some-web-process", "arg1", "arg with space",
 					})
 				}
 				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
@@ -165,11 +165,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 					}
 
-					processIdx := 4
+					var diff string
 					if runtime.GOOS == "windows" {
-						processIdx = 5
+						diff = cmp.Diff(syscallExecArgsColl[0].argv[3], "some-worker-process")
+					} else {
+						diff = cmp.Diff(syscallExecArgsColl[0].argv[4], "some-worker-process")
 					}
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[processIdx], "some-worker-process"); diff != "" {
+					if diff != "" {
 						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
 					if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
@@ -188,11 +190,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 					}
 
-					processIdx := 4
+					var diff string
 					if runtime.GOOS == "windows" {
-						processIdx = 5
+						diff = cmp.Diff(syscallExecArgsColl[0].argv[3], "some-different-process")
+					} else {
+						diff = cmp.Diff(syscallExecArgsColl[0].argv[4], "some-different-process")
 					}
-					if diff := cmp.Diff(syscallExecArgsColl[0].argv[processIdx], "some-different-process"); diff != "" {
+					if diff != "" {
 						t.Fatalf("syscall.Exec Argv did not match: (-got +want)\n%s\n", diff)
 					}
 					if diff := cmp.Diff(syscallExecArgsColl[0].envv, envList); diff != "" {
@@ -230,10 +234,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				if runtime.GOOS == "windows" {
 					h.AssertEq(t, strings.ToLower(syscallExecArgsColl[0].argv0), `c:\windows\system32\notepad.exe`)
-					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg2"})
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg with space"})
 				} else {
 					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/sh")
-					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg2"})
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg with space"})
 				}
 				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
 			})
@@ -243,7 +247,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS == "windows" {
 					directBinary = "notepad"
 				}
-				if err := launcher.Launch("/path/to/launcher", []string{"--", directBinary, "arg1", "arg2"}); err != nil {
+				if err := launcher.Launch("/path/to/launcher", []string{"--", directBinary, "arg1", "arg with space"}); err != nil {
 					t.Fatal(err)
 				}
 
@@ -256,10 +260,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				if runtime.GOOS == "windows" {
 					h.AssertEq(t, strings.ToLower(syscallExecArgsColl[0].argv0), `c:\windows\system32\notepad.exe`)
-					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg2"})
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"notepad", "arg1", "arg with space"})
 				} else {
 					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/sh")
-					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg2"})
+					h.AssertEq(t, syscallExecArgsColl[0].argv, []string{"sh", "arg1", "arg with space"})
 				}
 				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
 			})
@@ -281,7 +285,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				when("there are one or more args", func() {
 					it.Before(func() {
-						launcher.Processes[0].Args = []string{"arg1", "arg2"}
+						launcher.Processes[0].Args = []string{"arg1", "arg with space"}
 					})
 
 					it("treats command and args as bash command tokens", func() {
@@ -296,14 +300,14 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						if runtime.GOOS == "windows" {
 							h.AssertEq(t, syscallExecArgsColl[0].argv0, "cmd")
 							h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
-								"cmd", "/q", "/s", "/c", "", "some-command", "arg1", "arg2",
+								"cmd", "/q", "/c", `some-command`, `arg1`, "arg with space",
 							})
 						} else {
 							h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/bash")
 							h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
 								"bash", "-c",
 								`exec bash -c '"$(eval echo \"$0\")" "$(eval echo \"$1\")" "$(eval echo \"$2\")"' "${@:1}"`,
-								"/path/to/launcher", "some-command", "arg1", "arg2",
+								"/path/to/launcher", "some-command", "arg1", "arg with space",
 							})
 						}
 					})
@@ -322,7 +326,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						if runtime.GOOS == "windows" {
 							h.AssertEq(t, syscallExecArgsColl[0].argv0, "cmd")
 							h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
-								"cmd", "/q", "/s", "/c", "", "some-command",
+								"cmd", "/q", "/c", "some-command",
 							})
 						} else {
 							h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/bash")

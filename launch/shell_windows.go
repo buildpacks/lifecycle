@@ -1,8 +1,6 @@
 package launch
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 )
 
@@ -12,12 +10,14 @@ var (
 )
 
 func (l *Launcher) execWithShell(self string, process Process, profiles []string) error {
-	var launcher string
+	var commandTokens []string
 	for _, profile := range profiles {
-		launcher += fmt.Sprintf("call %s && ", profile)
+		commandTokens = append(commandTokens, "call", profile, "&&")
 	}
+	commandTokens = append(commandTokens, process.Command)
+	commandTokens = append(commandTokens, process.Args...)
 	if err := l.Exec("cmd",
-		append(append([]string{"cmd", "/q", "/s", "/c"}, launcher, process.Command), process.Args...), l.Env.List(),
+		append([]string{"cmd", "/q", "/c"}, commandTokens...), l.Env.List(),
 	); err != nil {
 		return errors.Wrap(err, "cmd execute")
 	}

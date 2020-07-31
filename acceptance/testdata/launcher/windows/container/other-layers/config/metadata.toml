@@ -2,5 +2,6 @@
 
 [[processes]]
   type = "web"
-  command = "echo Executing other-layers web process-type"
+  command = "echo"
+  args = ["Executing", "other-layers", "web", "process-type"]
   direct = false

@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	bashCommandWithScript = `exec bash -c "$@"`   // for processes w/o argsument
+	bashCommandWithScript = `exec bash -c "$@"` // for processes w/o argsument
 	profileGlob           = "*"
 	appProfile            = ".profile"
 )
@@ -19,7 +19,7 @@ var (
 func (l *Launcher) execWithShell(self string, process Process, profiles []string) error {
 	launcher := ""
 	for _, profile := range profiles {
-		launcher += fmt.Sprintf("source %s \n", profile)
+		launcher += fmt.Sprintf("source \"%s\"\n", profile)
 	}
 	bashCommand, err := l.bashCommand(process)
 	if err != nil {
