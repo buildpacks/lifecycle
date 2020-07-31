@@ -4,6 +4,8 @@ var LaunchEnvExcludelist = []string{
 	"CNB_LAYERS_DIR",
 	"CNB_APP_DIR",
 	"CNB_PROCESS_TYPE",
+	"CNB_PLATFORM_API",
+	"CNB_DEPRECATION_MODE",
 }
 
 func NewLaunchEnv(environ []string) *Env {

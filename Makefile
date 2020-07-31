@@ -13,15 +13,13 @@ endif
 GOCMD?=go
 GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
+LIFECYCLE_DESCRIPTOR_PATH?=lifecycle.toml
 LDFLAGS=-s -w
-LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
-LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.PlatformAPI=$(PLATFORM_API)'
-GOBUILD=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
+LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
+GOBUILD:=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test $(GOFLAGS)
-PLATFORM_API?=0.3
-BUILDPACK_API?=0.2
 SCM_REPO?=github.com/buildpacks/lifecycle
 PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
 SCM_COMMIT?=$(PARSED_COMMIT)
@@ -41,7 +39,13 @@ build: build-linux build-windows
 build-linux: build-linux-lifecycle build-linux-symlinks build-linux-launcher
 build-windows: build-windows-lifecycle build-windows-symlinks build-windows-launcher
 
-build-linux-lifecycle: $(BUILD_DIR)/linux/lifecycle/lifecycle
+build-linux-lifecycle: descriptor-linux $(BUILD_DIR)/linux/lifecycle/lifecycle
+
+descriptor-linux: $(BUILD_DIR)/linux/lifecycle/lifecycle.toml
+$(BUILD_DIR)/linux/lifecycle/lifecycle.toml: $(LIFECYCLE_DESCRIPTOR_PATH)
+$(BUILD_DIR)/linux/lifecycle/lifecycle.toml:
+	mkdir -p $(BUILD_DIR)/linux/lifecycle
+	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)/linux/lifecycle/lifecycle.toml
 
 $(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -51,7 +55,6 @@ $(BUILD_DIR)/linux/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
 	$(DOCKER_RUN) sh -c 'apk add build-base && $(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
-$(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 
 build-linux-launcher: $(BUILD_DIR)/linux/lifecycle/launcher
 
@@ -77,23 +80,29 @@ build-linux-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/creator
 	ln -sf lifecycle $(OUT_DIR)/root-builder
 
-build-windows-lifecycle: $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
+build-windows-lifecycle: descriptor-windows $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
+
+descriptor-windows: $(BUILD_DIR)/windows/lifecycle/lifecycle.toml
+$(BUILD_DIR)/windows/lifecycle/lifecycle.toml: $(LIFECYCLE_DESCRIPTOR_PATH)
+$(BUILD_DIR)/windows/lifecycle/lifecycle.toml:
+	mkdir -p $(BUILD_DIR)$/windows$/lifecycle
+	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)$/windows$/lifecycle$/lifecycle.toml
 
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe:
 	@echo "> Building lifecycle/lifecycle for Windows..."
-	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a ./cmd/lifecycle
-$(BUILD_DIR)/windows/lifecycle/lifecycle.exe: $(GOFILES)
+	$(GOBUILD) -o $(OUT_DIR)$/lifecycle.exe -a .$/cmd$/lifecycle
 
 build-windows-launcher: $(BUILD_DIR)/windows/lifecycle/launcher.exe
 
 $(BUILD_DIR)/windows/lifecycle/launcher.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/launcher.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
 $(BUILD_DIR)/windows/lifecycle/launcher.exe:
 	@echo "> Building lifecycle/launcher for Windows..."
-	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a ./cmd/launcher
-$(BUILD_DIR)/windows/lifecycle/launcher.exe: $(GOFILES)
+	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a .$/cmd$/launcher
 
 build-windows-symlinks: export GOOS:=windows
 build-windows-symlinks: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
@@ -124,16 +133,22 @@ else
 	ln -sf lifecycle.exe $(OUT_DIR)$/root-builder.exe
 endif
 
-build-darwin: $(BUILD_DIR)/darwin/lifecycle
+descriptor-darwin: $(BUILD_DIR)/darwin/lifecycle/lifecycle.toml
+$(BUILD_DIR)/darwin/lifecycle/lifecycle.toml: $(LIFECYCLE_DESCRIPTOR_PATH)
+$(BUILD_DIR)/darwin/lifecycle/lifecycle.toml:
+	mkdir -p $(BUILD_DIR)/darwin/lifecycle
+	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)/darwin/lifecycle/lifecycle.toml
 
-$(BUILD_DIR)/darwin/lifecycle: export GOOS:=darwin
-$(BUILD_DIR)/darwin/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-$(BUILD_DIR)/darwin/lifecycle:
-	@echo "> Building for macos..."
-	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
+build-darwin: descriptor-darwin build-darwin-lifecycle build-darwin-launcher
+
+build-darwin-lifecycle: $(BUILD_DIR)/darwin/lifecycle/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: export GOOS:=darwin
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/lifecycle: $(GOFILES)
+$(BUILD_DIR)/darwin/lifecycle/lifecycle:
+	@echo "> Building lifecycle for macos..."
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+	@echo "> Creating lifecycle symlinks for macos..."
 	ln -sf lifecycle $(OUT_DIR)/detector
 	ln -sf lifecycle $(OUT_DIR)/analyzer
 	ln -sf lifecycle $(OUT_DIR)/restorer
@@ -142,6 +157,16 @@ $(BUILD_DIR)/darwin/lifecycle:
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/root-builder
 $(BUILD_DIR)/darwin/lifecycle: $(GOFILES)
+
+build-darwin-launcher: $(BUILD_DIR)/darwin/lifecycle/launcher
+$(BUILD_DIR)/darwin/lifecycle/launcher: export GOOS:=darwin
+$(BUILD_DIR)/darwin/lifecycle/launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/darwin/lifecycle/launcher: $(GOFILES)
+$(BUILD_DIR)/darwin/lifecycle/launcher:
+	@echo "> Building launcher for macos..."
+	mkdir -p $(OUT_DIR)
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
+	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 
 install-goimports:
 	@echo "> Installing goimports..."
@@ -189,20 +214,21 @@ clean:
 
 package: package-linux package-windows
 
-package-linux: export LIFECYCLE_DESCRIPTOR:=$(LIFECYCLE_DESCRIPTOR)
 package-linux: GOOS:=linux
-package-linux: GOOS_DIR:=$(BUILD_DIR)/$(GOOS)
-package-linux: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
+package-linux: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+package-linux: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+package-linux: PACKAGER=./tools/packager/main.go
 package-linux:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run tools/packager/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)/lifecycle/launcher -lifecycleExePath $(GOOS_DIR)/lifecycle/lifecycle -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)/$(ARCHIVE_NAME).tgz
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH)
 
 package-windows: GOOS:=windows
-package-windows: GOOS_DIR:=$(BUILD_DIR)$/$(GOOS)
-package-windows: ARCHIVE_NAME=lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64
+package-windows: INPUT_DIR:=$(BUILD_DIR)$/$(GOOS)$/lifecycle
+package-windows: ARCHIVE_PATH=$(BUILD_DIR)$/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+package-windows: PACKAGER=.$/tools$/packager$/main.go
 package-windows:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run tools$/packager$/main.go -os $(GOOS) -launcherExePath $(GOOS_DIR)$/lifecycle$/launcher.exe -lifecycleExePath $(GOOS_DIR)$/lifecycle$/lifecycle.exe -lifecycleVersion $(LIFECYCLE_VERSION) -platformAPI $(PLATFORM_API) -buildpackAPI $(BUILDPACK_API) -outputPackagePath $(BUILD_DIR)$/$(ARCHIVE_NAME).tgz
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH)
 
 # Ensure workdir is clean and build image from .git
 docker-build-source-image-windows:

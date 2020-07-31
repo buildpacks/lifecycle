@@ -35,12 +35,19 @@ type BuildEnv interface {
 }
 
 type LaunchTOML struct {
+	Labels    []Label
 	Processes []launch.Process `toml:"processes"`
 	Slices    []layers.Slice   `toml:"slices"`
 }
 
+
 type LayerSnapshotter interface {
 	TakeSnapshot(string) error
+}
+
+type Label struct {
+	Key   string `toml:"key"`
+	Value string `toml:"value"`
 }
 
 type BOMEntry struct {
@@ -82,9 +89,10 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	plan := b.Plan
 	var bom []BOMEntry
 	var slices []layers.Slice
+	var labels []Label
 
 	for _, bp := range b.Group.Group {
-		bpInfo, err := bp.lookup(b.BuildpacksDir)
+		bpInfo, err := bp.Lookup(b.BuildpacksDir)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +107,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-		if err := WriteTOML(bpPlanPath, plan.find(bp)); err != nil {
+		if err := WriteTOML(bpPlanPath, plan.find(bp.noAPI())); err != nil {
 			return nil, err
 		}
 
@@ -150,12 +158,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		}
 		procMap.add(launch.Processes)
 		slices = append(slices, launch.Slices...)
+		labels = append(labels, launch.Labels...)
 	}
 
 	return &BuildMetadata{
-		Processes:  procMap.list(),
-		Buildpacks: b.Group.Group,
 		BOM:        bom,
+		Buildpacks: b.Group.Group,
+		Labels:     labels,
+		Processes:  procMap.list(),
 		Slices:     slices,
 	}, nil
 }
@@ -183,7 +193,7 @@ func (p BuildPlan) filter(bp Buildpack, plan buildpackPlan) (BuildPlan, []BOMEnt
 	}
 	var bom []BOMEntry
 	for _, entry := range plan.Entries {
-		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp})
+		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI()})
 	}
 	return BuildPlan{Entries: out}, bom
 }

@@ -1,6 +1,7 @@
 [[buildpacks]]
   id = "some/buildpack"
   version = "0.0.1"
+  api = "0.2"
 
 [[processes]]
   type = "web"

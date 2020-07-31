@@ -83,6 +83,13 @@ func AssertStringContains(t *testing.T, str string, expected string) {
 	}
 }
 
+func AssertStringDoesNotContain(t *testing.T, str string, expected string) {
+	t.Helper()
+	if strings.Contains(str, expected) {
+		t.Fatalf("Expected %s not to contain: %s\n", str, expected)
+	}
+}
+
 func AssertError(t *testing.T, actual error, expected string) {
 	t.Helper()
 	if actual == nil {
