@@ -29,13 +29,14 @@ func TestBuilder(t *testing.T) {
 }
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
+//go:generate mockgen -package testmock -destination testmock/snapshotter.go github.com/buildpacks/lifecycle LayerSnapshotter
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		builder        *lifecycle.Builder
 		mockCtrl       *gomock.Controller
 		env            *testmock.MockBuildEnv
-		snapshotter    *testmock.MockSnapshotter
+		snapshotter    *testmock.MockLayerSnapshotter
 		stdout, stderr *bytes.Buffer
 		tmpDir         string
 		platformDir    string
@@ -46,7 +47,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
 		env = testmock.NewMockBuildEnv(mockCtrl)
-		snapshotter = testmock.NewMockSnapshotter(mockCtrl)
+		snapshotter = testmock.NewMockLayerSnapshotter(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
