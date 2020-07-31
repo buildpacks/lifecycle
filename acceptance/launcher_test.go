@@ -53,11 +53,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		when("CNB_PROCESS_TYPE is set", func() {
 			it("should run the specified CNB_PROCESS_TYPE", func() {
-				cmd := exec.Command("docker", "run", "--rm", "--env", "CNB_PROCESS_TYPE=other-process", launchImage)
+				cmd := exec.Command("docker", "run", "--rm", "--env", "CNB_PROCESS_TYPE=direct-process", launchImage)
 				if runtime.GOOS == "windows" {
 					assertOutput(t, cmd, "Usage: ping")
 				} else {
-					assertOutput(t, cmd, "Executing other-process process-type")
+					assertOutput(t, cmd, "Executing direct-process process-type")
 				}
 			})
 		})
@@ -65,8 +65,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 	when("process-type provided in CMD", func() {
 		it("launches that process-type", func() {
-			cmd := exec.Command("docker", "run", "--rm", launchImage, "other-process")
-			expected := "Executing other-process process-type"
+			cmd := exec.Command("docker", "run", "--rm", launchImage, "direct-process")
+			expected := "Executing direct-process process-type"
 			if runtime.GOOS == "windows" {
 				expected = "Usage: ping"
 			}
@@ -77,6 +77,41 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			cmd := exec.Command("docker", "run", "--rm", launchImage, "worker")
 			expected := "worker-process-val"
 			assertOutput(t, cmd, expected)
+		})
+	})
+
+	when("process is direct=false", func() {
+		when("the process type has no args", func() {
+			it("provides the command directly to bash", func() {
+				cmd := exec.Command("docker", "run", "--rm",
+					"--env", "VAR1=val1",
+					"--env", "VAR2=val with space",
+					launchImage, "indirect-process-with-script",
+				)
+				assertOutput(t, cmd, "'val1' 'val with space'")
+			})
+		})
+
+		when("the process type has args", func() {
+			when("buildpack API 0.4", func() {
+				it("command and args become shell-parsed tokens in a script", func() {
+					cmd := exec.Command("docker", "run", "--rm",
+						"--env", "VAR1=val1",
+						"--env", "VAR2=val with space",
+						launchImage, "indirect-process-with-args",
+					)
+					assertOutput(t, cmd, "'val1' 'val with space'")
+				})
+			})
+
+			when("buildpack API < 0.4", func() {
+				it("args become arguments to bash", func() {
+					cmd := exec.Command("docker", "run", "--rm",
+						launchImage, "legacy-indirect-process-with-args",
+					)
+					assertOutput(t, cmd, "arg1 arg2")
+				})
+			})
 		})
 
 		it("sources scripts from process specific directories", func() {

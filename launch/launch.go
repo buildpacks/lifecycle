@@ -6,10 +6,11 @@ import (
 )
 
 type Process struct {
-	Type    string   `toml:"type" json:"type"`
-	Command string   `toml:"command" json:"command"`
-	Args    []string `toml:"args" json:"args"`
-	Direct  bool     `toml:"direct" json:"direct"`
+	Type        string   `toml:"type" json:"type"`
+	Command     string   `toml:"command" json:"command"`
+	Args        []string `toml:"args" json:"args"`
+	Direct      bool     `toml:"direct" json:"direct"`
+	BuildpackID string   `toml:"buildpack-id" json:"buildpackID"`
 }
 
 type Metadata struct {

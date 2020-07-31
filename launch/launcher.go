@@ -6,8 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -30,6 +28,10 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
 	}
+	return l.LaunchProcess(self, process)
+}
+
+func (l *Launcher) LaunchProcess(self string, process Process) error {
 	if err := l.env(process); err != nil {
 		return errors.Wrap(err, "modify env")
 	}
@@ -37,48 +39,59 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 		return errors.Wrap(err, "change to app directory")
 	}
 	if process.Direct {
-		if err := l.Setenv("PATH", l.Env.Get("PATH")); err != nil {
-			return errors.Wrap(err, "set path")
-		}
-		binary, err := exec.LookPath(process.Command)
-		if err != nil {
-			return errors.Wrap(err, "path lookup")
-		}
-
-		if err := l.Exec(binary,
-			append([]string{process.Command}, process.Args...),
-			l.Env.List(),
-		); err != nil {
-			return errors.Wrap(err, "direct exec")
-		}
-		return nil
+		return l.launchDirect(process)
 	}
-	profileCmds, err := l.profileD(process)
+	return l.launchWithShell(self, process)
+}
+
+func (l *Launcher) launchDirect(process Process) error {
+	if err := l.Setenv("PATH", l.Env.Get("PATH")); err != nil {
+		return errors.Wrap(err, "set path")
+	}
+	binary, err := exec.LookPath(process.Command)
 	if err != nil {
-		return errors.Wrap(err, "determine profile")
+		return errors.Wrap(err, "path lookup")
 	}
 
-	if runtime.GOOS == "windows" {
-		var launcher string
-		if len(profileCmds) > 0 {
-			launcher = strings.Join(profileCmds, " && ") + " && "
-		}
-		if err := l.Exec("cmd",
-			append(append([]string{"cmd", "/q", "/s", "/c"}, launcher, process.Command), process.Args...), l.Env.List(),
-		); err != nil {
-			return errors.Wrap(err, "cmd execute")
-		}
-		return nil
-	}
-
-	launcher := strings.Join(append(profileCmds, `exec bash -c "$@"`), "\n")
-	if err := l.Exec("/bin/bash", append([]string{
-		"bash", "-c",
-		launcher, self, process.Command,
-	}, process.Args...), l.Env.List()); err != nil {
-		return errors.Wrap(err, "bash exec")
+	if err := l.Exec(binary,
+		append([]string{process.Command}, process.Args...),
+		l.Env.List(),
+	); err != nil {
+		return errors.Wrap(err, "direct exec")
 	}
 	return nil
+}
+
+func (l *Launcher) processFor(cmd []string) (Process, error) {
+	if len(cmd) == 0 {
+		if process, ok := l.findProcessType(l.DefaultProcessType); ok {
+			return process, nil
+		}
+
+		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
+	}
+
+	if len(cmd) == 1 {
+		if process, ok := l.findProcessType(cmd[0]); ok {
+			return process, nil
+		}
+	}
+
+	if len(cmd) > 1 && cmd[0] == "--" {
+		return Process{Command: cmd[1], Args: cmd[2:], Direct: true}, nil
+	}
+
+	return Process{Command: cmd[0], Args: cmd[1:]}, nil
+}
+
+func (l *Launcher) findProcessType(kind string) (Process, bool) {
+	for _, p := range l.Processes {
+		if p.Type == kind {
+			return p, true
+		}
+	}
+
+	return Process{}, false
 }
 
 func (l *Launcher) env(process Process) error {
@@ -118,97 +131,6 @@ func (l *Launcher) env(process Process) error {
 		}
 		return nil
 	})
-}
-
-func (l *Launcher) profileD(process Process) ([]string, error) {
-	var out []string
-
-	appendIfFile := func(path string) error {
-		fi, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if !fi.IsDir() {
-			if runtime.GOOS == "windows" {
-				out = append(out, fmt.Sprintf(`call %s`, path))
-			} else {
-				out = append(out, fmt.Sprintf(`source "%s"`, path))
-			}
-		}
-		return nil
-	}
-	layersDir, err := filepath.Abs(l.LayersDir)
-	if err != nil {
-		return nil, err
-	}
-	for _, bp := range l.Buildpacks {
-		fileGlob := "*"
-		if runtime.GOOS == "windows" {
-			fileGlob += ".bat"
-		}
-		globPaths := []string{filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", fileGlob)}
-		if process.Type != "" {
-			globPaths = append(globPaths, filepath.Join(layersDir, EscapeID(bp.ID), "*", "profile.d", process.Type, fileGlob))
-		}
-		var scripts []string
-		for _, globPath := range globPaths {
-			matches, err := filepath.Glob(globPath)
-			if err != nil {
-				return nil, err
-			}
-			scripts = append(scripts, matches...)
-		}
-		for _, script := range scripts {
-			if err := appendIfFile(script); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	profile := ".profile"
-	if runtime.GOOS == "windows" {
-		profile += ".bat"
-	}
-	if err := appendIfFile(filepath.Join(l.AppDir, profile)); err != nil {
-		return nil, err
-	}
-
-	return out, nil
-}
-
-func (l *Launcher) processFor(cmd []string) (Process, error) {
-	if len(cmd) == 0 {
-		if process, ok := l.findProcessType(l.DefaultProcessType); ok {
-			return process, nil
-		}
-
-		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
-	}
-
-	if len(cmd) == 1 {
-		if process, ok := l.findProcessType(cmd[0]); ok {
-			return process, nil
-		}
-	}
-
-	if len(cmd) > 1 && cmd[0] == "--" {
-		return Process{Command: cmd[1], Args: cmd[2:], Direct: true}, nil
-	}
-
-	return Process{Command: cmd[0], Args: cmd[1:]}, nil
-}
-
-func (l *Launcher) findProcessType(kind string) (Process, bool) {
-	for _, p := range l.Processes {
-		if p.Type == kind {
-			return p, true
-		}
-	}
-
-	return Process{}, false
 }
 
 func eachDir(dir string, fn func(path string) error) error {

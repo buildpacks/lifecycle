@@ -83,6 +83,10 @@ func (v *Version) Equal(o *Version) bool {
 	return v.Compare(o) == 0
 }
 
+// Compare returns one of the following results
+//   -1 is less that *Version o
+//    0 is equal to *Version o
+//    1 is greter than *Version o
 func (v *Version) Compare(o *Version) int {
 	if v.Major != o.Major {
 		if v.Major < o.Major {

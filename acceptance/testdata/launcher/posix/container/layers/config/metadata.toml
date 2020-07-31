@@ -3,18 +3,46 @@
   version = "0.0.1"
   api = "0.2"
 
+[[buildpacks]]
+  id = "0.4/buildpack"
+  version = "0.0.1"
+  api = "0.4"
+
+[[buildpacks]]
+  id = "0.3/buildpack"
+  version = "0.0.1"
+  api = "0.3"
+
 [[processes]]
   type = "web"
   command = "echo \"Executing web process-type\""
   direct = false
 
 [[processes]]
-  type = "other-process"
+  type = "direct-process"
   command = "echo"
-  args = ["Executing other-process process-type"]
+  args = ["Executing direct-process process-type"]
   direct = true
+
+[[processes]]
+  type = "indirect-process-with-args"
+  command = "echo"
+  args = ["'$VAR1'", "'$VAR2'"]
+  buildpack-id = "0.4/buildpack"
+
+[[processes]]
+  type = "legacy-indirect-process-with-args"
+  command = 'echo "$0" "$1"'
+  args = ["arg1", "arg2"]
+  buildpack-id = "0.3/buildpack"
+
+[[processes]]
+  type = "indirect-process-with-script"
+  command = "echo \"'$VAR1'\" \"'$VAR2'\""
+  buildpack-id = "0.4/buildpack"
 
 [[processes]]
   type = "worker"
   command = "echo $WORKER_VAR"
+  buildpack-id = "some/buildpack"
   direct = false

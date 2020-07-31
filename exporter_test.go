@@ -393,20 +393,24 @@ type = "web"
 direct = true
 command = "/web/command"
 args = ["web", "command", "args"]
+buildpack-id = "buildpack.id"
 
 [[processes]]
 type = "worker"
 direct = false
 command = "/worker/command"
 args = ["worker", "command", "args"]
+buildpack-id = "other.buildpack.id"
 
 [[buildpacks]]
 id = "buildpack.id"
 version = "1.2.3"
+api = "0.3"
 
 [[buildpacks]]
 id = "other.buildpack.id"
 version = "4.5.6"
+api = "0.4"
 
 [[bom]]
 name = "Spring Auto-reconfiguration"
@@ -482,13 +486,15 @@ type = "Apache-2.0"
       "type": "web",
       "direct": true,
       "command": "/web/command",
-      "args": ["web", "command", "args"]
+      "args": ["web", "command", "args"],
+      "buildpackID": "buildpack.id"
     },
     {
       "type": "worker",
       "direct": false,
       "command": "/worker/command",
-      "args": ["worker", "command", "args"]
+      "args": ["worker", "command", "args"],
+      "buildpackID": "other.buildpack.id"
     }
   ]
 }
