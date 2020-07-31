@@ -156,7 +156,6 @@ $(BUILD_DIR)/darwin/lifecycle/lifecycle:
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/root-builder
-$(BUILD_DIR)/darwin/lifecycle: $(GOFILES)
 
 build-darwin-launcher: $(BUILD_DIR)/darwin/lifecycle/launcher
 $(BUILD_DIR)/darwin/lifecycle/launcher: export GOOS:=darwin
