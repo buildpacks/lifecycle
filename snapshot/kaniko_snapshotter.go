@@ -8,14 +8,14 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	kanikoconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
-	kanikosnap "github.com/GoogleContainerTools/kaniko/pkg/snapshot"
-	kanikoutil "github.com/GoogleContainerTools/kaniko/pkg/util"
+	kconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
+	ksnap "github.com/GoogleContainerTools/kaniko/pkg/snapshot"
+	kutil "github.com/GoogleContainerTools/kaniko/pkg/util"
 )
 
 type KanikoSnapshotter struct {
 	RootDir     string
-	snapshotter *kanikosnap.Snapshotter
+	snapshotter *ksnap.Snapshotter
 }
 
 func NewKanikoSnapshotter(rootDir string) (*KanikoSnapshotter, error) {
@@ -30,20 +30,20 @@ func NewKanikoSnapshotter(rootDir string) (*KanikoSnapshotter, error) {
 
 func (ls *KanikoSnapshotter) Init() error {
 	logrus.SetLevel(logrus.FatalLevel)
-	kanikoconfig.RootDir = ls.RootDir
+	kconfig.RootDir = ls.RootDir
 	kanikoDir, err := ioutil.TempDir("", "kaniko")
 	if err != nil {
 		return err
 	}
-	kanikoconfig.KanikoDir = kanikoDir
+	kconfig.KanikoDir = kanikoDir
 
-	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "cnb"))
-	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "layers"))
-	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "tmp"))
-	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "proc"))
+	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "cnb"))
+	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "layers"))
+	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "tmp"))
+	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "proc"))
 
-	layeredMap := kanikosnap.NewLayeredMap(kanikoutil.Hasher(), kanikoutil.CacheHasher())
-	ls.snapshotter = kanikosnap.NewSnapshotter(layeredMap, ls.RootDir)
+	layeredMap := ksnap.NewLayeredMap(kutil.Hasher(), kutil.CacheHasher())
+	ls.snapshotter = ksnap.NewSnapshotter(layeredMap, ls.RootDir)
 	if err := ls.snapshotter.Init(); err != nil {
 		return err
 	}

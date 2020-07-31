@@ -35,6 +35,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		builder        *lifecycle.Builder
 		mockCtrl       *gomock.Controller
 		env            *testmock.MockBuildEnv
+		snapshotter    *testmock.MockSnapshotter
 		stdout, stderr *bytes.Buffer
 		tmpDir         string
 		platformDir    string
@@ -45,6 +46,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
 		env = testmock.NewMockBuildEnv(mockCtrl)
+		snapshotter = testmock.NewMockSnapshotter(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
@@ -76,7 +78,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			},
 			Out: outLog,
 			Err: errLog,
-			Snapshotter: &lifecycle.NoopSnapshotter{},
+			Snapshotter: snapshotter,
 		}
 	})
 
@@ -88,6 +90,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Build", func() {
 		when("building succeeds", func() {
 			it.Before(func() {
+				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
+				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B.tgz"))
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
 			})
@@ -385,6 +389,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("building succeeds with a clear env", func() {
 			it.Before(func() {
+				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
+				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B.tgz"))
 				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=with-platform"), nil)
 				builder.Group.Group[0].Version = "v1.clear"
@@ -524,6 +530,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when launch.toml is not writable", func() {
+				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
 				if _, err := builder.Build(); err == nil {
