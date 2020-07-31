@@ -26,6 +26,7 @@ type rootBuildCmd struct {
 type rootBuildArgs struct {
 	// inputs needed when run by creator
 	buildpacksDir string
+	layersDir     string
 	platformDir   string
 	useDaemon     bool
 	uid, gid      int
@@ -38,6 +39,7 @@ func (b *rootBuildCmd) Init() {
 	cmd.FlagBuildpacksDir(&b.buildpacksDir)
 	cmd.FlagGroupPath(&b.groupPath)
 	cmd.FlagPlanPath(&b.planPath)
+	cmd.FlagLayersDir(&b.layersDir)
 	cmd.FlagPlatformDir(&b.platformDir)
 }
 
@@ -81,6 +83,7 @@ func (ba rootBuildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.Bui
 
 	builder := &lifecycle.Builder{
 		AppDir:        snapshotter.RootDir,
+		LayersDir:     ba.layersDir,
 		PlatformDir:   ba.platformDir,
 		BuildpacksDir: ba.buildpacksDir,
 		Env:           env.NewBuildEnv(os.Environ()),

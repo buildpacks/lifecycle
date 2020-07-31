@@ -52,13 +52,11 @@ func testRootBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				rootBuilderImage,
-				h.WithBash(fmt.Sprintf("ls -al /cnb/lifecycle; %s -version; %s; ls -al /layers", rootBuilderPath, rootBuilderPath)),
+				h.WithBash(fmt.Sprintf("%s -group /cnb/group.toml -plan /cnb/plan.toml; tar tvf /layers/example_stack.tgz", rootBuilderPath)),
 			)
 
-			println(output)
-
-			// h.AssertMatch(t, output, "2222 3333 .+ \\.")
-			// h.AssertMatch(t, output, "2222 3333 .+ group.toml")
+			h.AssertMatch(t, output, ".wh.sbin")
+			h.AssertMatch(t, output, "bin/exe-to-snapshot")
 		})
 	})
 }

@@ -39,6 +39,7 @@ func (ls *KanikoSnapshotter) Init() error {
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "cnb"))
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "layers"))
 	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "tmp"))
+	kanikoutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "proc"))
 
 	layeredMap := NewLayeredMap(kanikoutil.Hasher(), kanikoutil.CacheHasher())
 	ls.snapshotter = NewSnapshotter(layeredMap, ls.RootDir)
