@@ -77,8 +77,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
-			Out: outLog,
-			Err: errLog,
+			Out:         outLog,
+			Err:         errLog,
 			Snapshotter: snapshotter,
 		}
 	})

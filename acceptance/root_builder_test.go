@@ -21,7 +21,6 @@ var (
 	rootBuilderDockerContext = filepath.Join("testdata", "root-builder", "image")
 	rootBuilderImage         = "lifecycle/acceptance/root-builder"
 	rootBuilderPath          = "/cnb/lifecycle/root-builder"
-	stackpackFixtureDir      = filepath.Join("testdata", "root-builder", "stackpack")
 )
 
 func TestRootBuilder(t *testing.T) {

@@ -5,9 +5,11 @@
 package testmock
 
 import (
-	layers "github.com/buildpacks/lifecycle/layers"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	layers "github.com/buildpacks/lifecycle/layers"
 )
 
 // MockLayerFactory is a mock of LayerFactory interface

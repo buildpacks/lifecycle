@@ -20,6 +20,12 @@ type rootBuildCmd struct {
 	// flags: inputs
 	groupPath string
 	planPath  string
+	useDaemon bool
+	uid, gid  int
+
+	//construct if necessary before dropping privileges
+	docker client.CommonAPIClient
+
 	rootBuildArgs
 }
 
@@ -28,11 +34,6 @@ type rootBuildArgs struct {
 	buildpacksDir string
 	layersDir     string
 	platformDir   string
-	useDaemon     bool
-	uid, gid      int
-
-	//construct if necessary before dropping privileges
-	docker client.CommonAPIClient
 }
 
 func (b *rootBuildCmd) Init() {

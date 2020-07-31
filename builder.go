@@ -40,7 +40,6 @@ type LaunchTOML struct {
 	Slices    []layers.Slice   `toml:"slices"`
 }
 
-
 type LayerSnapshotter interface {
 	TakeSnapshot(string) error
 }
