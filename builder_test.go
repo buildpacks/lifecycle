@@ -76,6 +76,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			},
 			Out: outLog,
 			Err: errLog,
+			Snapshotter: &lifecycle.NoopSnapshotter{},
 		}
 	})
 
