@@ -264,6 +264,11 @@ func (bg BuildpackGroup) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 		c.runs = &sync.Map{}
 	}
 	bps, entries, err := bg.detect(nil, &sync.WaitGroup{}, c)
+	if err == errBuildpack {
+		err = NewLifecycleError(err, ErrTypeBuildpack)
+	} else if err == errFailedDetection {
+		err = NewLifecycleError(err, ErrTypeFailedDetection)
+	}
 	return BuildpackGroup{Group: bps}, BuildPlan{Entries: entries}, err
 }
 
