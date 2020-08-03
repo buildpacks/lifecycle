@@ -177,7 +177,7 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		LayerFactory: &layers.Factory{
 			ArtifactsDir: artifactsDir,
 			UID:          ea.uid,
-			GID:          ea.uid,
+			GID:          ea.gid,
 			Logger:       cmd.DefaultLogger,
 		},
 		Logger:      cmd.DefaultLogger,
