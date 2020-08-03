@@ -77,8 +77,14 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		Err:           log.New(os.Stderr, "", 0),
 	}
 	md, err := builder.Build()
+
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
+		if err, ok := err.(*lifecycle.Error); ok {
+			if err.Type == lifecycle.ErrTypeBuildpack {
+				return cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
+			}
+		}
+		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
 	}
 
 	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {

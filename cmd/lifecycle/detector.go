@@ -83,16 +83,21 @@ func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, er
 		Logger:        cmd.DefaultLogger,
 	})
 	if err != nil {
-		switch err {
-		case lifecycle.ErrFailedDetection:
-			cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-			cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-			return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
-		case lifecycle.ErrBuildpack:
-			cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-			return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetectWithErrors, "detect")
+		switch err := err.(type) {
+		case *lifecycle.Error:
+			switch err.Type {
+			case lifecycle.ErrTypeFailedDetection:
+				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
+				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
+				return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
+			case lifecycle.ErrTypeBuildpack:
+				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
+				return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetectWithErrors, "detect")
+			default:
+				return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
+			}
 		default:
-			return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, 1, "detect")
+			return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
 		}
 	}
 

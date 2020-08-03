@@ -135,10 +135,7 @@ func (r *rebaseCmd) Exec() error {
 	}
 	report, err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
-		if _, ok := err.(*imgutil.SaveError); ok {
-			return cmd.FailErrCode(err, cmd.CodeFailedSave, "rebase")
-		}
-		return cmd.FailErr(err, "rebase")
+		return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
 	}
 	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
