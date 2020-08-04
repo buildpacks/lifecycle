@@ -127,11 +127,6 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 					command:     "lifecycle",
 					args:        []string{"-version"},
 				},
-				{
-					description: "root-builder: only -version is present",
-					command:     "root-builder",
-					args:        []string{"-version"},
-				},
 			} {
 				tc := tc
 				w := when

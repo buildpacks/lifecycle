@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	rootBuilderBinaryDir     = filepath.Join("testdata", "root-builder", "image", "container", "cnb", "lifecycle")
-	rootBuilderDockerContext = filepath.Join("testdata", "root-builder", "image")
-	rootBuilderImage         = "lifecycle/acceptance/root-builder"
+	rootBuilderBinaryDir     = filepath.Join("testdata", "builder", "image", "container", "cnb", "lifecycle")
+	rootBuilderDockerContext = filepath.Join("testdata", "builder", "image")
+	rootBuilderImage         = "lifecycle/acceptance/builder"
 	rootBuilderPath          = "/cnb/lifecycle/builder"
 )
 
@@ -41,7 +41,7 @@ func TestRootBuilder(t *testing.T) {
 	)
 	defer h.DockerImageRemove(t, rootBuilderImage)
 
-	spec.Run(t, "acceptance-root-builder", testRootBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "acceptance-builder", testRootBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testRootBuilder(t *testing.T, when spec.G, it spec.S) {
