@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -104,7 +103,7 @@ func rootOwnedDir(path string) *tar.Header {
 func typeSymlink(path string) *tar.Header {
 	return &tar.Header{
 		Typeflag: tar.TypeSymlink,
-		Name:     filepath.Join(launch.ProcessDir, path),
+		Name:     path,
 		Linkname: launch.LauncherPath,
 		Mode:     int64(0755 | os.ModeSymlink),
 	}
