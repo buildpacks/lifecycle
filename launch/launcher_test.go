@@ -314,7 +314,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("there are zero args", func() {
-					it("treats the command as a bash script on linux", func() {
+					it("treats the command as a bash script on linux or invokes with cmd on windows", func() {
 						if err := launcher.Launch("/path/to/launcher", nil); err != nil {
 							t.Fatal(err)
 						}
