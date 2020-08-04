@@ -37,13 +37,17 @@ type GitMetadata struct {
 	Commit     string `json:"commit"`
 }
 
-func (md BuildMetadata) hasProcess(processType string) bool {
-	for _, p := range md.Processes {
-		if p.Type == processType {
-			return true
-		}
+func (md BuildMetadata) toLaunchMD() launch.Metadata {
+	lmd := launch.Metadata{
+		Processes: md.Processes,
 	}
-	return false
+	for _, bp := range md.Buildpacks {
+		lmd.Buildpacks = append(lmd.Buildpacks, launch.Buildpack{
+			API: bp.API,
+			ID:  bp.ID,
+		})
+	}
+	return lmd
 }
 
 type CacheMetadata struct {

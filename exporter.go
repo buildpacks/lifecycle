@@ -186,18 +186,9 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 		return ExportReport{}, errors.Wrap(err, "exporting config layer")
 	}
 
-	// launcher config
-	if e.PlatformAPI.Compare(api.MustParse("0.4")) >= 0 && len(buildMD.Processes) > 0 {
-		processTypesLayer, err := e.LayerFactory.ProcessTypesLayer(launch.Metadata{
-			Processes: buildMD.Processes,
-		})
-		if err != nil {
-			return ExportReport{}, errors.Wrapf(err, "creating layer '%s'", processTypesLayer.ID)
-		}
-		meta.ProcessTypes.SHA, err = e.addOrReuseLayer(opts.WorkingImage, processTypesLayer, opts.OrigMetadata.ProcessTypes.SHA)
-		if err != nil {
-			return ExportReport{}, errors.Wrap(err, "exporting config layer")
-		}
+	// process-types
+	if err := e.launcherConfig(opts, buildMD, &meta); err != nil {
+		return ExportReport{}, err
 	}
 
 	data, err := json.Marshal(meta)
@@ -254,17 +245,21 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 		return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
-	if opts.DefaultProcessType != "" {
-		if !buildMD.hasProcess(opts.DefaultProcessType) {
-			return ExportReport{}, processTypeError(buildMD, opts.DefaultProcessType)
+	lmd := buildMD.toLaunchMD()
+	if opts.DefaultProcessType != "" && !e.supportsMulticallLauncher() {
+		if _, ok := lmd.FindProcessType(opts.DefaultProcessType); !ok {
+			return ExportReport{}, processTypeError(lmd, opts.DefaultProcessType)
 		}
-
 		if err = opts.WorkingImage.SetEnv(cmd.EnvProcessType, opts.DefaultProcessType); err != nil {
 			return ExportReport{}, errors.Wrapf(err, "set app image env %s", cmd.EnvProcessType)
 		}
 	}
 
-	if err = opts.WorkingImage.SetEntrypoint(opts.LauncherConfig.Path); err != nil {
+	entrypoint, err := e.entrypoint(lmd, opts.DefaultProcessType)
+	if err != nil {
+		return ExportReport{}, errors.Wrap(err, "determining entrypoint")
+	}
+	if err = opts.WorkingImage.SetEntrypoint(entrypoint); err != nil {
 		return ExportReport{}, errors.Wrap(err, "setting entrypoint")
 	}
 
@@ -281,9 +276,55 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	return report, nil
 }
 
-func processTypeError(buildMD *BuildMetadata, defaultProcessType string) error {
+// processTypes adds
+func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *BuildMetadata, meta *LayersMetadata) error {
+	if e.supportsMulticallLauncher() {
+		return e.launcherConfigNew(opts, buildMD, meta)
+	}
+	return nil
+}
+
+func (e *Exporter) supportsMulticallLauncher() bool {
+	return e.PlatformAPI.Compare(api.MustParse("0.4")) >= 0
+}
+
+func (e *Exporter) launcherConfigNew(opts ExportOptions, buildMD *BuildMetadata, meta *LayersMetadata) error {
+	launchMD := launch.Metadata{
+		Processes: buildMD.Processes,
+	}
+	if len(buildMD.Processes) > 0 {
+		processTypesLayer, err := e.LayerFactory.ProcessTypesLayer(launchMD)
+		if err != nil {
+			return errors.Wrapf(err, "creating layer '%s'", processTypesLayer.ID)
+		}
+		meta.ProcessTypes.SHA, err = e.addOrReuseLayer(opts.WorkingImage, processTypesLayer, opts.OrigMetadata.ProcessTypes.SHA)
+		if err != nil {
+			return errors.Wrapf(err, "exporting layer '%s'", processTypesLayer.ID)
+		}
+	}
+	return nil
+}
+
+func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType string) (string, error) {
+	if !e.supportsMulticallLauncher() {
+		return launch.LauncherPath, nil
+	}
+	if defaultProcessType == "" {
+		if len(launchMD.Processes) == 1 {
+			return launchMD.Processes[0].Path(), nil
+		}
+		return launch.LauncherPath, nil
+	}
+	defaultProcess, ok := launchMD.FindProcessType(defaultProcessType)
+	if !ok {
+		return "", processTypeError(launchMD, defaultProcessType)
+	}
+	return defaultProcess.Path(), nil
+}
+
+func processTypeError(launchMD launch.Metadata, defaultProcessType string) error {
 	var typeList []string
-	for _, p := range buildMD.Processes {
+	for _, p := range launchMD.Processes {
 		typeList = append(typeList, p.Type)
 	}
 	return fmt.Errorf("default process type '%s' not present in list %+v", defaultProcessType, typeList)

@@ -5,6 +5,11 @@ import (
 	"os/exec"
 )
 
+const (
+	CNBDir = `c:\cnb`
+	exe    = ".exe"
+)
+
 func OSExecFunc(argv0 string, argv []string, envv []string) error {
 	c := exec.Command(argv[0], argv[1:]...)
 	c.Env = envv

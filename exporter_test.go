@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -555,15 +556,6 @@ version = "4.5.6"
 				h.AssertEq(t, val, "quiet")
 			})
 
-			it("sets ENTRYPOINT to launcher", func() {
-				_, err := exporter.Export(opts)
-				h.AssertNil(t, err)
-
-				val, err := fakeAppImage.Entrypoint()
-				h.AssertNil(t, err)
-				h.AssertEq(t, val, []string{opts.LauncherConfig.Path})
-			})
-
 			it("sets empty CMD", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -924,43 +916,134 @@ version = "4.5.6"
 			})
 
 			when("default process type is set", func() {
-				it("sets CNB_PROCESS_TYPE", func() {
-					opts.DefaultProcessType = "some-process-type"
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
+				when("platform API is < 0.4", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.3")
+					})
 
-					val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-					h.AssertNil(t, err)
-					h.AssertEq(t, val, "some-process-type")
+					it("sets CNB_PROCESS_TYPE", func() {
+						opts.DefaultProcessType = "some-process-type"
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "some-process-type")
+					})
+
+					it("sets ENTRYPOINT to launcher", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						ep, err := fakeAppImage.Entrypoint()
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(ep), 1)
+						if runtime.GOOS == "windows" {
+							h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
+						} else {
+							h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
+						}
+					})
+
+					it("does not set CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "")
+					})
+
+					when("default process type is not in metadata.toml", func() {
+						it("returns an error", func() {
+							opts.DefaultProcessType = "some-missing-process"
+							_, err := exporter.Export(opts)
+							h.AssertError(t, err, "default process type 'some-missing-process' not present in list [some-process-type]")
+						})
+					})
 				})
 
-				when("default process type is not in metadata.toml", func() {
-					it("returns an error", func() {
-						opts.DefaultProcessType = "some-missing-process"
+				when("platform API is >= 0.4", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.4")
+					})
+
+					it("sets the ENTRYPOINT to the default process", func() {
+						opts.DefaultProcessType = "some-process-type"
 						_, err := exporter.Export(opts)
-						h.AssertError(t, err, "default process type 'some-missing-process' not present in list [some-process-type]")
+						h.AssertNil(t, err)
+
+						ep, err := fakeAppImage.Entrypoint()
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(ep), 1)
+						if runtime.GOOS == "windows" {
+							h.AssertEq(t, ep[0], `c:\cnb\process\some-proces-type.exe`)
+						} else {
+							h.AssertEq(t, ep[0], `/cnb/process/some-process-type`)
+						}
+					})
+
+					when("default process type is not in metadata.toml", func() {
+						it("returns an error", func() {
+							opts.DefaultProcessType = "some-missing-process"
+							_, err := exporter.Export(opts)
+							h.AssertError(t, err, "default process type 'some-missing-process' not present in list [some-process-type]")
+						})
 					})
 				})
 			})
 
 			when("default process type is empty", func() {
-				it("does not set CNB_PROCESS_TYPE", func() {
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
+				when("platform API is >= 0.4", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.4")
+					})
 
-					val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-					h.AssertNil(t, err)
-					h.AssertEq(t, val, "")
+					when("there is exactly one process", func() {
+						it("sets the ENTRYPOINT to the only process", func() {
+							_, err := exporter.Export(opts)
+							h.AssertNil(t, err)
+
+							ep, err := fakeAppImage.Entrypoint()
+							h.AssertNil(t, err)
+							h.AssertEq(t, len(ep), 1)
+							if runtime.GOOS == "windows" {
+								h.AssertEq(t, ep[0], `c:\cnb\process\some-process-type.exe`)
+							} else {
+								h.AssertEq(t, ep[0], `/cnb/process/some-process-type`)
+							}
+						})
+					})
 				})
-			})
 
-			it("sets ENTRYPOINT to launcher", func() {
-				_, err := exporter.Export(opts)
-				h.AssertNil(t, err)
+				when("platform API is < 0.4", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.3")
+					})
 
-				val, err := fakeAppImage.Entrypoint()
-				h.AssertNil(t, err)
-				h.AssertEq(t, val, []string{opts.LauncherConfig.Path})
+					it("does not set CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "")
+					})
+
+					it("sets ENTRYPOINT to launcher", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						ep, err := fakeAppImage.Entrypoint()
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(ep), 1)
+						if runtime.GOOS == "windows" {
+							h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
+						} else {
+							h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
+						}
+					})
+				})
 			})
 
 			it("sets empty CMD", func() {

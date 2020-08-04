@@ -14,11 +14,6 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 )
 
-const (
-	processDir   = "/cnb/process"
-	launcherPath = "/cnb/lifecycle/launcher"
-)
-
 // LauncherLayer creates a Layer containing the launcher at the given path
 func (f *Factory) LauncherLayer(path string) (layer Layer, err error) {
 	parents := []*tar.Header{
@@ -33,7 +28,7 @@ func (f *Factory) LauncherLayer(path string) (layer Layer, err error) {
 	if err != nil {
 		return Layer{}, fmt.Errorf("failed create TAR header for launcher at path '%s'", path)
 	}
-	hdr.Name = launcherPath
+	hdr.Name = launch.LauncherPath
 	hdr.Uid = 0
 	hdr.Gid = 0
 	hdr.Mode = 0755
@@ -67,8 +62,8 @@ func (f *Factory) LauncherLayer(path string) (layer Layer, err error) {
 //    * symlinks and their parent directories shall be root owned and world readable
 func (f *Factory) ProcessTypesLayer(config launch.Metadata) (layer Layer, err error) {
 	hdrs := []*tar.Header{
-		rootOwnedDir("/cnb"),
-		rootOwnedDir(processDir),
+		rootOwnedDir(launch.CNBDir),
+		rootOwnedDir(launch.ProcessDir),
 	}
 	for _, proc := range config.Processes {
 		if len(proc.Type) == 0 {
@@ -77,7 +72,7 @@ func (f *Factory) ProcessTypesLayer(config launch.Metadata) (layer Layer, err er
 		if err := validateProcessType(proc.Type); err != nil {
 			return Layer{}, errors.Wrapf(err, "invalid process type '%s'", proc.Type)
 		}
-		hdrs = append(hdrs, typeSymlink(proc.Type))
+		hdrs = append(hdrs, typeSymlink(proc.Path()))
 	}
 
 	return f.writeLayer("process-types", func(tw *archive.NormalizingTarWriter) error {
@@ -106,11 +101,11 @@ func rootOwnedDir(path string) *tar.Header {
 	}
 }
 
-func typeSymlink(processType string) *tar.Header {
+func typeSymlink(path string) *tar.Header {
 	return &tar.Header{
 		Typeflag: tar.TypeSymlink,
-		Name:     filepath.Join(processDir, processType),
-		Linkname: launcherPath,
+		Name:     filepath.Join(launch.ProcessDir, path),
+		Linkname: launch.LauncherPath,
 		Mode:     int64(0755 | os.ModeSymlink),
 	}
 }

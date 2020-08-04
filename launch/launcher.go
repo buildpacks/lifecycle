@@ -10,6 +10,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	LauncherPath = filepath.Join(CNBDir, "lifecycle", "launcher"+exe)
+	ProcessDir   = filepath.Join(CNBDir, "process")
+)
+
 type ExecFunc func(argv0 string, argv []string, envv []string) error
 
 type Launcher struct {
