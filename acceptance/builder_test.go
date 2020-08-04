@@ -51,7 +51,7 @@ func testRootBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				rootBuilderImage,
-				h.WithBash(fmt.Sprintf("%s -stack-group /cnb/group.toml -plan /cnb/plan.toml; tar tvf /layers/example_stack.tgz", rootBuilderPath)),
+				h.WithBash(fmt.Sprintf("%s -stack-group /cnb/stack-group.toml -plan /cnb/plan.toml; tar tvf /layers/example_stack.tgz", rootBuilderPath)),
 			)
 
 			h.AssertMatch(t, output, ".wh.sbin")
