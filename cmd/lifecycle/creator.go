@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/client"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/priv"
@@ -147,7 +148,7 @@ func (c *createCmd) Exec() error {
 		layersDir:     c.layersDir,
 		appDir:        c.appDir,
 		platformDir:   c.platformDir,
-	}.build(group, plan)
+	}.build(group, plan, c.appDir, &lifecycle.NoopSnapshotter{})
 	if err != nil {
 		return err
 	}

@@ -20,7 +20,7 @@ var (
 	rootBuilderBinaryDir     = filepath.Join("testdata", "root-builder", "image", "container", "cnb", "lifecycle")
 	rootBuilderDockerContext = filepath.Join("testdata", "root-builder", "image")
 	rootBuilderImage         = "lifecycle/acceptance/root-builder"
-	rootBuilderPath          = "/cnb/lifecycle/root-builder"
+	rootBuilderPath          = "/cnb/lifecycle/builder"
 )
 
 func TestRootBuilder(t *testing.T) {
@@ -51,7 +51,7 @@ func testRootBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				rootBuilderImage,
-				h.WithBash(fmt.Sprintf("%s -group /cnb/group.toml -plan /cnb/plan.toml; tar tvf /layers/example_stack.tgz", rootBuilderPath)),
+				h.WithBash(fmt.Sprintf("%s -stack-group /cnb/group.toml -plan /cnb/plan.toml; tar tvf /layers/example_stack.tgz", rootBuilderPath)),
 			)
 
 			h.AssertMatch(t, output, ".wh.sbin")

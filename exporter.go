@@ -27,16 +27,18 @@ type Cache interface {
 }
 
 type Exporter struct {
-	Buildpacks   []Buildpack
-	LayerFactory LayerFactory
-	Logger       Logger
-	PlatformAPI  *api.Version
+	Buildpacks     []Buildpack
+	RootBuildpacks []Buildpack
+	LayerFactory   LayerFactory
+	Logger         Logger
+	PlatformAPI    *api.Version
 }
 
 //go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle LayerFactory
 type LayerFactory interface {
 	DirLayer(id string, dir string) (layers.Layer, error)
 	SliceLayers(dir string, slices []layers.Slice) ([]layers.Layer, error)
+	//RootLayer(id, snapshot string) (layers.Layer, error)
 }
 
 type LauncherConfig struct {
@@ -105,6 +107,12 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	if err != nil {
 		return ExportReport{}, errors.Wrap(err, "exporting launcher layer")
 	}
+
+	// root layers
+	//for _, bp := range e.RootBuildpacks {
+	//	// TODO locate the snapshot(s) for this buildpack
+	//	// where will they be? they were generated on a different image (run-image)
+	//}
 
 	// layers
 	for _, bp := range e.Buildpacks {
@@ -268,6 +276,12 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 		return errors.Wrap(err, "metadata for previous cache")
 	}
 	meta := CacheMetadata{}
+
+	// root layers
+	//for _, bp := range e.RootBuildpacks {
+	//	// TODO locate the snapshot(s) for this buildpack
+	//	// put them in the cache as layers
+	//}
 
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(layersDir, bp)

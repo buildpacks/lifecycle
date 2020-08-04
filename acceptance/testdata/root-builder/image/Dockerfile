@@ -1,5 +1,7 @@
 FROM ubuntu:bionic
 
+RUN mkdir -p /workspace
+
 COPY container /
 
 RUN mkdir -p /cnb
