@@ -35,8 +35,12 @@ func (lw *layerWriter) Digest() string {
 }
 
 func tarWriter(lw *layerWriter) *archive.NormalizingTarWriter {
+	var tw *archive.NormalizingTarWriter
 	if runtime.GOOS == "windows" {
-		return archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lw))
+		tw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lw))
+	} else {
+		tw = archive.NewNormalizingTarWriter(tar.NewWriter(lw))
 	}
-	return archive.NewNormalizingTarWriter(tar.NewWriter(lw))
+	tw.WithModTime(archive.NormalizedModTime)
+	return tw
 }

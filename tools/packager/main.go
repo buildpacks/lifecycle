@@ -12,13 +12,15 @@ import (
 )
 
 var (
-	archivePath string
-	inputDir    string
+	archivePath    string
+	descriptorPath string
+	inputDir       string
 )
 
 // Write contents of inputDir to archive at archivePath
 func main() {
-	flag.StringVar(&archivePath, "archivePath", "", "path to output ")
+	flag.StringVar(&archivePath, "archivePath", "", "path to output")
+	flag.StringVar(&descriptorPath, "descriptorPath", "", "path to lifecycle descriptor file")
 	flag.StringVar(&inputDir, "inputDir", "", "dir to create package from")
 
 	flag.Parse()
@@ -35,16 +37,28 @@ func main() {
 	defer f.Close()
 	zw := gzip.NewWriter(f)
 	defer zw.Close()
-	tw := tar.NewWriter(zw)
+	tw := archive.NewNormalizingTarWriter(tar.NewWriter(zw))
+	tw.WithUID(0)
+	tw.WithGID(0)
 	defer tw.Close()
+
+	descriptorInfo, err := os.Stat(descriptorPath)
+	if err != nil {
+		fmt.Printf("Failed stat descriptor file at path %s: %s", descriptorPath, err)
+		os.Exit(3)
+	}
+	if err := archive.AddFileToArchive(tw, "lifecycle.toml", descriptorInfo); err != nil {
+		fmt.Printf("Failed to write descriptor to arichive: %s", err)
+		os.Exit(4)
+	}
 
 	if err := os.Chdir(filepath.Dir(inputDir)); err != nil {
 		fmt.Printf("Failed to switch directories to %s: %s", filepath.Dir(inputDir), err)
-		os.Exit(3)
+		os.Exit(5)
 	}
 
 	if err := archive.AddDirToArchive(tw, filepath.Base(inputDir)); err != nil {
 		fmt.Printf("Failed to write dir to arichive: %s", err)
-		os.Exit(4)
+		os.Exit(6)
 	}
 }

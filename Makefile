@@ -39,13 +39,7 @@ build: build-linux build-windows
 build-linux: build-linux-lifecycle build-linux-symlinks build-linux-launcher
 build-windows: build-windows-lifecycle build-windows-symlinks build-windows-launcher
 
-build-linux-lifecycle: descriptor-linux $(BUILD_DIR)/linux/lifecycle/lifecycle
-
-descriptor-linux: $(BUILD_DIR)/linux/lifecycle/lifecycle.toml
-$(BUILD_DIR)/linux/lifecycle/lifecycle.toml: $(LIFECYCLE_DESCRIPTOR_PATH)
-$(BUILD_DIR)/linux/lifecycle/lifecycle.toml:
-	mkdir -p $(BUILD_DIR)/linux/lifecycle
-	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)/linux/lifecycle/lifecycle.toml
+build-linux-lifecycle: $(BUILD_DIR)/linux/lifecycle/lifecycle
 
 $(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
@@ -79,13 +73,7 @@ build-linux-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
 
-build-windows-lifecycle: descriptor-windows $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
-
-descriptor-windows: $(BUILD_DIR)/windows/lifecycle/lifecycle.toml
-$(BUILD_DIR)/windows/lifecycle/lifecycle.toml: $(LIFECYCLE_DESCRIPTOR_PATH)
-$(BUILD_DIR)/windows/lifecycle/lifecycle.toml:
-	mkdir -p $(BUILD_DIR)$/windows$/lifecycle
-	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)$/windows$/lifecycle$/lifecycle.toml
+build-windows-lifecycle: $(BUILD_DIR)/windows/lifecycle/lifecycle.exe
 
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: export GOOS:=windows
 $(BUILD_DIR)/windows/lifecycle/lifecycle.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)$/lifecycle
@@ -129,13 +117,7 @@ else
 	ln -sf lifecycle.exe $(OUT_DIR)$/rebaser.exe
 endif
 
-descriptor-darwin: $(BUILD_DIR)/darwin/lifecycle/lifecycle.toml
-$(BUILD_DIR)/darwin/lifecycle/lifecycle.toml: $(LIFECYCLE_DESCRIPTOR_PATH)
-$(BUILD_DIR)/darwin/lifecycle/lifecycle.toml:
-	mkdir -p $(BUILD_DIR)/darwin/lifecycle
-	cp $(LIFECYCLE_DESCRIPTOR_PATH) $(BUILD_DIR)/darwin/lifecycle/lifecycle.toml
-
-build-darwin: descriptor-darwin build-darwin-lifecycle build-darwin-launcher
+build-darwin: build-darwin-lifecycle build-darwin-launcher
 
 build-darwin-lifecycle: $(BUILD_DIR)/darwin/lifecycle/lifecycle
 $(BUILD_DIR)/darwin/lifecycle/lifecycle: export GOOS:=darwin
@@ -214,7 +196,7 @@ package-linux: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS)
 package-linux: PACKAGER=./tools/packager/main.go
 package-linux:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH)
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH)
 
 package-windows: GOOS:=windows
 package-windows: INPUT_DIR:=$(BUILD_DIR)$/$(GOOS)$/lifecycle
@@ -222,7 +204,7 @@ package-windows: ARCHIVE_PATH=$(BUILD_DIR)$/lifecycle-v$(LIFECYCLE_VERSION)+$(GO
 package-windows: PACKAGER=.$/tools$/packager$/main.go
 package-windows:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH)
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH)
 
 # Ensure workdir is clean and build image from .git
 docker-build-source-image-windows:

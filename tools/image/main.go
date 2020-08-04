@@ -181,6 +181,7 @@ func lifecycleLayer() string {
 	defer lf.Close()
 	tw := tar.NewWriter(lf)
 	ntw := archive.NewNormalizingTarWriter(tw)
+	ntw.WithModTime(archive.NormalizedModTime)
 	ntw.WithUID(0)
 	ntw.WithGID(0)
 	ntw.WriteHeader(&tar.Header{
