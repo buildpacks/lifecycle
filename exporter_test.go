@@ -25,6 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -53,7 +54,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		mockCtrl = gomock.NewController(t)
 		layerFactory = testmock.NewMockLayerFactory(mockCtrl)
 
-		tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
+		var err error
+		tmpDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
 		h.AssertNil(t, err)
 
 		launcherPath, err := filepath.Abs(filepath.Join("testdata", "exporter", "launcher"))
@@ -90,27 +92,45 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		// mock LayerFactory returns layer with deterministic characteristic for a give layer it
 		h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "artifacts"), 0777))
-		layerFactory.EXPECT().DirLayer(
-			gomock.Any(),
-			gomock.Any(),
-		).DoAndReturn(func(id string, dir string) (layers.Layer, error) {
-			return createTestLayer(id, tmpDir)
-		}).AnyTimes()
+		layerFactory.EXPECT().
+			DirLayer(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+				return createTestLayer(id, tmpDir)
+			}).AnyTimes()
+
+		layerFactory.EXPECT().
+			LauncherLayer(launcherPath).
+			DoAndReturn(func(path string) (layers.Layer, error) { return createTestLayer("launcher", tmpDir) }).
+			AnyTimes()
+
+		layerFactory.EXPECT().
+			ProcessTypesLayer(launch.Metadata{
+				Processes: []launch.Process{
+					{
+						Type:    "some-process-type",
+						Command: "/some/command",
+						Args:    []string{"some", "command", "args"},
+						Direct:  true,
+					}},
+			}).
+			DoAndReturn(func(_ launch.Metadata) (layers.Layer, error) {
+				return createTestLayer("process-types", tmpDir)
+			}).
+			AnyTimes()
 
 		// if there are no slices return a single deterministic app layer
-		layerFactory.EXPECT().SliceLayers(
-			gomock.Any(),
-			nil,
-		).DoAndReturn(func(dir string, slices []layers.Slice) ([]layers.Layer, error) {
-			if dir != opts.AppDir {
-				return nil, fmt.Errorf("SliceLayers received %s but expected %s", dir, opts.AppDir)
-			}
-			layer, err := createTestLayer("app", tmpDir)
-			if err != nil {
-				return nil, err
-			}
-			return []layers.Layer{layer}, nil
-		}).AnyTimes()
+		layerFactory.EXPECT().
+			SliceLayers(gomock.Any(), nil).
+			DoAndReturn(func(dir string, slices []layers.Slice) ([]layers.Layer, error) {
+				if dir != opts.AppDir {
+					return nil, fmt.Errorf("SliceLayers received %s but expected %s", dir, opts.AppDir)
+				}
+				layer, err := createTestLayer("app", tmpDir)
+				if err != nil {
+					return nil, err
+				}
+				return []layers.Layer{layer}, nil
+			}).AnyTimes()
 
 		exporter = &lifecycle.Exporter{
 			Buildpacks: []lifecycle.Buildpack{
@@ -119,7 +139,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			},
 			LayerFactory: layerFactory,
 			Logger:       &log.Logger{Handler: logHandler},
-			PlatformAPI:  api.MustParse("0.3"),
+			PlatformAPI:  api.MustParse("0.4"),
 		}
 	})
 
@@ -137,6 +157,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				fakeAppImage.AddPreviousLayer("launcher-digest", "")
 				fakeAppImage.AddPreviousLayer("local-reusable-layer-digest", "")
 				fakeAppImage.AddPreviousLayer("launch-layer-no-local-dir-digest", "")
+				fakeAppImage.AddPreviousLayer("process-types-digest", "")
 				h.AssertNil(t, json.Unmarshal([]byte(fmt.Sprintf(`
 {
    "buildpacks": [
@@ -168,6 +189,9 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
    ],
    "launcher": {
       "sha": "launcher-digest"
+   },
+   "process-types": {
+      "sha": "process-types-digest"
    }
 }`)), &opts.OrigMetadata))
 			})
@@ -175,17 +199,19 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			when("there are slices", func() {
 				it.Before(func() {
 					opts.LayersDir = filepath.Join("testdata", "exporter", "app-slices", "layers")
-					layerFactory.EXPECT().SliceLayers(
-						opts.AppDir,
-						[]layers.Slice{
-							{Paths: []string{"static/**/*.txt", "static/**/*.svg"}},
-							{Paths: []string{"static/misc/resources/**/*.csv", "static/misc/resources/**/*.tps"}},
-						},
-					).Return([]layers.Layer{
-						{ID: "slice-1", Digest: "slice-1-digest"},
-						{ID: "slice-2", Digest: "slice-2-digest"},
-						{ID: "slice-3", Digest: "slice-3-digest"},
-					}, nil)
+					layerFactory.EXPECT().
+						SliceLayers(
+							opts.AppDir,
+							[]layers.Slice{
+								{Paths: []string{"static/**/*.txt", "static/**/*.svg"}},
+								{Paths: []string{"static/misc/resources/**/*.csv", "static/misc/resources/**/*.tps"}},
+							},
+						).
+						Return([]layers.Layer{
+							{ID: "slice-1", Digest: "slice-1-digest"},
+							{ID: "slice-2", Digest: "slice-2-digest"},
+							{ID: "slice-3", Digest: "slice-3-digest"},
+						}, nil)
 					fakeAppImage.AddPreviousLayer("slice-1-digest", "")
 					opts.OrigMetadata.App = append(opts.OrigMetadata.App, lifecycle.LayerMetadata{SHA: "slice-1-digest"})
 				})
@@ -220,6 +246,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.ReusedLayers(), "launcher-digest")
 				assertReuseLayerLog(t, logHandler, "launcher")
+			})
+
+			it("reuses process-types layer if the sha matches the sha in the metadata", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+				h.AssertContains(t, fakeAppImage.ReusedLayers(), "process-types-digest")
+				assertReuseLayerLog(t, logHandler, "process-types")
 			})
 
 			it("reuses launch layers when only layer.toml is present", func() {
@@ -258,16 +291,22 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
-				var applayer, configLayer, newBuildpackLayers = 1, 1, 2
-				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), applayer+configLayer+newBuildpackLayers)
+				// expects 4 layers
+				// 1. app layer
+				// 2. config layer
+				// 3-4. buildpack layers
+				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), 4)
 			})
 
 			it("only reuses expected layers", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
-				var launcherLayer, reusedBuildpackLayers = 1, 2
-				h.AssertEq(t, len(fakeAppImage.ReusedLayers()), launcherLayer+reusedBuildpackLayers)
+				// expects 4 layers
+				// 1. launcher layer
+				// 2. process-types layer
+				// 3-4. buildpack layers
+				h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 4)
 			})
 
 			it("saves lifecycle metadata with layer info", func() {
@@ -289,6 +328,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				t.Log("adds layer shas to metadata label")
 				h.AssertEq(t, meta.App[0].SHA, "app-digest")
 				h.AssertEq(t, meta.Config.SHA, "config-digest")
+				h.AssertEq(t, meta.Launcher.SHA, "launcher-digest")
+				h.AssertEq(t, meta.ProcessTypes.SHA, "process-types-digest")
 				h.AssertEq(t, meta.Buildpacks[0].ID, "buildpack.id")
 				h.AssertEq(t, meta.Buildpacks[0].Version, "1.2.3")
 				h.AssertEq(t, meta.Buildpacks[0].Layers["launch-layer-no-local-dir"].SHA, "launch-layer-no-local-dir-digest")
@@ -385,60 +426,14 @@ version = "4.5.6"
 				})
 			})
 
-			when("there is a complete metadata.toml", func() {
-				it.Before(func() {
-					err := ioutil.WriteFile(filepath.Join(opts.LayersDir, "config", "metadata.toml"), []byte(`
-[[processes]]
-type = "web"
-direct = true
-command = "/web/command"
-args = ["web", "command", "args"]
-buildpack-id = "buildpack.id"
+			it("combines metadata.toml with launcher config to create build label", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
 
-[[processes]]
-type = "worker"
-direct = false
-command = "/worker/command"
-args = ["worker", "command", "args"]
-buildpack-id = "other.buildpack.id"
+				metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+				h.AssertNil(t, err)
 
-[[buildpacks]]
-id = "buildpack.id"
-version = "1.2.3"
-api = "0.3"
-
-[[buildpacks]]
-id = "other.buildpack.id"
-version = "4.5.6"
-api = "0.4"
-
-[[bom]]
-name = "Spring Auto-reconfiguration"
-version = "2.7.0"
-[bom.metadata]
-sha256 = "0d524877db7344ec34620f7e46254053568292f5ce514f74e3a0e9b2dbfc338b"
-stacks = ["io.buildpacks.stacks.bionic", "org.cloudfoundry.stacks.cflinuxfs3"]
-uri = "https://example.com"
-[bom.buildpack]
-id = "buildpack.id"
-version = "1.2.3"
-
-[[bom.metadata.licenses]]
-type = "Apache-2.0"
-`),
-						os.ModePerm,
-					)
-					h.AssertNil(t, err)
-				})
-
-				it("combines metadata.toml with launcher config to create build label", func() {
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
-
-					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
-					h.AssertNil(t, err)
-
-					expectedJSON := `{
+				expectedJSON := `{
   "bom": [
     {
       "name": "Spring Auto-reconfiguration",
@@ -483,24 +478,16 @@ type = "Apache-2.0"
   },
   "processes": [
     {
-      "type": "web",
+      "type": "some-process-type",
       "direct": true,
-      "command": "/web/command",
-      "args": ["web", "command", "args"],
+      "command": "/some/command",
+      "args": ["some", "command", "args"],
       "buildpackID": "buildpack.id"
-    },
-    {
-      "type": "worker",
-      "direct": false,
-      "command": "/worker/command",
-      "args": ["worker", "command", "args"],
-      "buildpackID": "other.buildpack.id"
     }
   ]
 }
 `
-					h.AssertJSONEq(t, expectedJSON, metadataJSON)
-				})
+				h.AssertJSONEq(t, expectedJSON, metadataJSON)
 			})
 
 			when("there is project metadata", func() {
@@ -556,7 +543,7 @@ type = "Apache-2.0"
 
 				val, err := opts.WorkingImage.Env("CNB_PLATFORM_API")
 				h.AssertNil(t, err)
-				h.AssertEq(t, val, "0.3")
+				h.AssertEq(t, val, "0.4")
 			})
 
 			it("sets CNB_DEPRECATION_MODE=quiet", func() {
@@ -789,6 +776,26 @@ type = "Apache-2.0"
 				assertAddLayerLog(t, logHandler, "launcher")
 			})
 
+			when("platform API is greater than 0.4", func() {
+				it("creates process-types layer", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					assertHasLayer(t, fakeAppImage, "process-types")
+					assertAddLayerLog(t, logHandler, "process-types")
+				})
+			})
+
+			when("platform API is less than 0.4", func() {
+				it("doesn't create process-types layer", func() {
+					exporter.PlatformAPI = api.MustParse("0.3")
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					assertDoesNotHaveLayer(t, fakeAppImage, "process-types")
+				})
+			})
+
 			it("adds launch layers", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -803,8 +810,13 @@ type = "Apache-2.0"
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
-				var applayer, configLayer, launcherLayer, layer1, layer2 = 1, 1, 1, 1, 1
-				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), applayer+configLayer+launcherLayer+layer1+layer2)
+				// expects 6 layers
+				// 1. app layer
+				// 2. launcher layer
+				// 3. config layer
+				// 4. process-types layer
+				// 5-6. buildpack layers
+				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), 6)
 			})
 
 			it("saves metadata with layer info", func() {
@@ -1298,6 +1310,13 @@ func assertHasLayer(t *testing.T, fakeAppImage *fakes.Image, id string) {
 	contents, err := ioutil.ReadAll(rc)
 	h.AssertNil(t, err)
 	h.AssertEq(t, string(contents), testLayerContents(id))
+}
+
+func assertDoesNotHaveLayer(t *testing.T, fakeAppImage *fakes.Image, id string) {
+	t.Helper()
+
+	_, err := fakeAppImage.GetLayer(testLayerDigest(id))
+	h.AssertNotNil(t, err)
 }
 
 func assertCacheHasLayer(t *testing.T, cache lifecycle.Cache, id string) {

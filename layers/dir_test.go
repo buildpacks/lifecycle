@@ -39,7 +39,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 			UID:          1234,
 			GID:          4321,
 		}
-		dir, err = filepath.Abs(filepath.Join("testdata", "slices", "target-dir"))
+		dir, err = filepath.Abs(filepath.Join("testdata", "target-dir"))
 		h.AssertNil(t, err)
 	})
 
@@ -59,6 +59,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 		it("creates a layer from the directory", func() {
 			// parent layers should have uid/gid matching the filesystem
 			// the dir and it's children should have normalized uid/gid
+			h.AssertEq(t, dirLayer.ID, "some-layer-id")
 			assertTarEntries(t, dirLayer.TarPath, append(parents(t, dir), []*tar.Header{
 				{
 					Name:     tarPath(dir),

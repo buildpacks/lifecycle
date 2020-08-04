@@ -1,6 +1,30 @@
 [[processes]]
   type = "some-process-type"
+  direct = true
   command = "/some/command"
+  args = ["some", "command", "args"]
+
+[[buildpacks]]
+  id = "buildpack.id"
+  version = "1.2.3"
+
+[[buildpacks]]
+  id = "other.buildpack.id"
+  version = "4.5.6"
+
+[[bom]]
+  name = "Spring Auto-reconfiguration"
+  version = "2.7.0"
+[bom.metadata]
+  sha256 = "0d524877db7344ec34620f7e46254053568292f5ce514f74e3a0e9b2dbfc338b"
+  stacks = ["io.buildpacks.stacks.bionic", "org.cloudfoundry.stacks.cflinuxfs3"]
+  uri = "https://example.com"
+[bom.buildpack]
+  id = "buildpack.id"
+  version = "1.2.3"
+
+[[bom.metadata.licenses]]
+  type = "Apache-2.0"
 
 [[labels]]
   key = "some.label.key"

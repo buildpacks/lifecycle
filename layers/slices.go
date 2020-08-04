@@ -68,38 +68,17 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 	sort.SliceStable(files, func(i, j int) bool {
 		return files[i].Path < files[j].Path
 	})
-
-	tarPath := filepath.Join(f.ArtifactsDir, layerID+".tar")
-
-	lw, err := newFileLayerWriter(tarPath)
-	if err != nil {
-		return Layer{}, err
-	}
-	defer func() {
-		if closeErr := lw.Close(); err == nil {
-			err = closeErr
+	return f.writeLayer(layerID, func(tw *archive.NormalizingTarWriter) error {
+		if len(files) != 0 {
+			if err := archive.AddFilesToArchive(tw, sdir.parentDirs); err != nil {
+				return err
+			}
+			tw.WithUID(f.UID)
+			tw.WithGID(f.GID)
+			return archive.AddFilesToArchive(tw, files)
 		}
-	}()
-	tw := tarWriter(lw)
-	if len(files) != 0 {
-		if err := archive.AddFilesToArchive(tw, sdir.parentDirs); err != nil {
-			return Layer{}, err
-		}
-		tw.WithUID(f.UID)
-		tw.WithGID(f.GID)
-		err = archive.AddFilesToArchive(tw, files)
-		if err != nil {
-			return Layer{}, errors.Wrapf(err, "exporting slice layer '%s'", layerID)
-		}
-	}
-	if err := tw.Close(); err != nil {
-		return Layer{}, err
-	}
-	return Layer{
-		ID:      layerID,
-		Digest:  lw.Digest(),
-		TarPath: tarPath,
-	}, nil
+		return nil
+	})
 }
 
 type sliceableDir struct {

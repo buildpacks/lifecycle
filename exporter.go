@@ -36,6 +36,8 @@ type Exporter struct {
 //go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle LayerFactory
 type LayerFactory interface {
 	DirLayer(id string, dir string) (layers.Layer, error)
+	LauncherLayer(path string) (layers.Layer, error)
+	ProcessTypesLayer(metadata launch.Metadata) (layers.Layer, error)
 	SliceLayers(dir string, slices []layers.Slice) ([]layers.Layer, error)
 }
 
@@ -101,12 +103,16 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	}
 
 	// launcher
-	meta.Launcher.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer{path: opts.LauncherConfig.Path, identifier: "launcher"}, opts.OrigMetadata.Launcher.SHA)
+	launcherLayer, err := e.LayerFactory.LauncherLayer(opts.LauncherConfig.Path)
 	if err != nil {
-		return ExportReport{}, errors.Wrap(err, "exporting launcher layer")
+		return ExportReport{}, errors.Wrap(err, "creating launcher layers")
+	}
+	meta.Launcher.SHA, err = e.addOrReuseLayer(opts.WorkingImage, launcherLayer, opts.OrigMetadata.Launcher.SHA)
+	if err != nil {
+		return ExportReport{}, errors.Wrap(err, "exporting launcher configLayer")
 	}
 
-	// layers
+	// buildpack-provided layers
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp)
 		if err != nil {
@@ -118,36 +124,40 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 			Layers:  map[string]BuildpackLayerMetadata{},
 			Store:   bpDir.store,
 		}
-		for _, layer := range bpDir.findLayers(forLaunch) {
-			layer := layer
-			lmd, err := layer.read()
+		for _, fsLayer := range bpDir.findLayers(forLaunch) {
+			fsLayer := fsLayer
+			lmd, err := fsLayer.read()
 			if err != nil {
-				return ExportReport{}, errors.Wrapf(err, "reading '%s' metadata", layer.Identifier())
+				return ExportReport{}, errors.Wrapf(err, "reading '%s' metadata", fsLayer.Identifier())
 			}
 
-			if layer.hasLocalContents() {
-				origLayerMetadata := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
-				lmd.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer, origLayerMetadata.SHA)
+			if fsLayer.hasLocalContents() {
+				layer, err := e.LayerFactory.DirLayer(fsLayer.Identifier(), fsLayer.path)
+				if err != nil {
+					return ExportReport{}, errors.Wrapf(err, "creating layer")
+				}
+				origLayerMetadata := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[fsLayer.name()]
+				lmd.SHA, err = e.addOrReuseLayer(opts.WorkingImage, layer, origLayerMetadata.SHA)
 				if err != nil {
 					return ExportReport{}, err
 				}
 			} else {
 				if lmd.Cache {
-					return ExportReport{}, fmt.Errorf("layer '%s' is cache=true but has no contents", layer.Identifier())
+					return ExportReport{}, fmt.Errorf("layer '%s' is cache=true but has no contents", fsLayer.Identifier())
 				}
-				origLayerMetadata, ok := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
+				origLayerMetadata, ok := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[fsLayer.name()]
 				if !ok {
-					return ExportReport{}, fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", layer.Identifier(), layer.Identifier())
+					return ExportReport{}, fmt.Errorf("cannot reuse '%s', previous image has no metadata for layer '%s'", fsLayer.Identifier(), fsLayer.Identifier())
 				}
 
-				e.Logger.Infof("Reusing layer '%s'\n", layer.Identifier())
-				e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.Identifier(), origLayerMetadata.SHA)
+				e.Logger.Infof("Reusing layer '%s'\n", fsLayer.Identifier())
+				e.Logger.Debugf("Layer '%s' SHA: %s\n", fsLayer.Identifier(), origLayerMetadata.SHA)
 				if err := opts.WorkingImage.ReuseLayer(origLayerMetadata.SHA); err != nil {
-					return ExportReport{}, errors.Wrapf(err, "reusing layer: '%s'", layer.Identifier())
+					return ExportReport{}, errors.Wrapf(err, "reusing layer: '%s'", fsLayer.Identifier())
 				}
 				lmd.SHA = origLayerMetadata.SHA
 			}
-			bpMD.Layers[layer.name()] = lmd
+			bpMD.Layers[fsLayer.name()] = lmd
 		}
 		meta.Buildpacks = append(meta.Buildpacks, bpMD)
 
@@ -167,9 +177,27 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	}
 
 	// config
-	meta.Config.SHA, err = e.addOrReuseLayer(opts.WorkingImage, &layer{path: filepath.Join(opts.LayersDir, "config"), identifier: "config"}, opts.OrigMetadata.Config.SHA)
+	configLayer, err := e.LayerFactory.DirLayer("config", filepath.Join(opts.LayersDir, "config"))
+	if err != nil {
+		return ExportReport{}, errors.Wrapf(err, "creating layer '%s'", configLayer.ID)
+	}
+	meta.Config.SHA, err = e.addOrReuseLayer(opts.WorkingImage, configLayer, opts.OrigMetadata.Config.SHA)
 	if err != nil {
 		return ExportReport{}, errors.Wrap(err, "exporting config layer")
+	}
+
+	// launcher config
+	if e.PlatformAPI.Compare(api.MustParse("0.4")) >= 0 && len(buildMD.Processes) > 0 {
+		processTypesLayer, err := e.LayerFactory.ProcessTypesLayer(launch.Metadata{
+			Processes: buildMD.Processes,
+		})
+		if err != nil {
+			return ExportReport{}, errors.Wrapf(err, "creating layer '%s'", processTypesLayer.ID)
+		}
+		meta.ProcessTypes.SHA, err = e.addOrReuseLayer(opts.WorkingImage, processTypesLayer, opts.OrigMetadata.ProcessTypes.SHA)
+		if err != nil {
+			return ExportReport{}, errors.Wrap(err, "exporting config layer")
+		}
 	}
 
 	data, err := json.Marshal(meta)
@@ -307,10 +335,10 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 
 	return nil
 }
-func (e *Exporter) addOrReuseLayer(image imgutil.Image, layerDir layerDir, previousSHA string) (string, error) {
-	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
+func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, previousSHA string) (string, error) {
+	layer, err := e.LayerFactory.DirLayer(layer.ID, layer.TarPath)
 	if err != nil {
-		return "", errors.Wrapf(err, "tarring layer '%s'", layer.ID)
+		return "", errors.Wrapf(err, "creating layer '%s'", layer.ID)
 	}
 	if layer.Digest == previousSHA {
 		e.Logger.Infof("Reusing layer '%s'\n", layer.ID)
@@ -325,7 +353,7 @@ func (e *Exporter) addOrReuseLayer(image imgutil.Image, layerDir layerDir, previ
 func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir layerDir, previousSHA string) (string, error) {
 	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
 	if err != nil {
-		return "", errors.Wrapf(err, "tarring layer %q", layer.ID)
+		return "", errors.Wrapf(err, "creating layer %q", layer.ID)
 	}
 	if layer.Digest == previousSHA {
 		e.Logger.Infof("Reusing cache layer '%s'\n", layer.ID)

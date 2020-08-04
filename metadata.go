@@ -61,12 +61,13 @@ func (cm *CacheMetadata) MetadataForBuildpack(id string) BuildpackLayersMetadata
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadataCompat`
 type LayersMetadata struct {
-	App        []LayerMetadata           `json:"app" toml:"app"`
-	Config     LayerMetadata             `json:"config" toml:"config"`
-	Launcher   LayerMetadata             `json:"launcher" toml:"launcher"`
-	Buildpacks []BuildpackLayersMetadata `json:"buildpacks" toml:"buildpacks"`
-	RunImage   RunImageMetadata          `json:"runImage" toml:"run-image"`
-	Stack      StackMetadata             `json:"stack" toml:"stack"`
+	App          []LayerMetadata           `json:"app" toml:"app"`
+	Buildpacks   []BuildpackLayersMetadata `json:"buildpacks" toml:"buildpacks"`
+	Config       LayerMetadata             `json:"config" toml:"config"`
+	Launcher     LayerMetadata             `json:"launcher" toml:"launcher"`
+	ProcessTypes LayerMetadata             `json:"process-types" toml:"process-types"`
+	RunImage     RunImageMetadata          `json:"runImage" toml:"run-image"`
+	Stack        StackMetadata             `json:"stack" toml:"stack"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.

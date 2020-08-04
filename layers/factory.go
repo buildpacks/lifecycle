@@ -36,6 +36,43 @@ type Logger interface {
 	Errorf(fmt string, v ...interface{})
 }
 
+func (f *Factory) writeLayer(id string, addEntries func(tw *archive.NormalizingTarWriter) error) (Layer, error) {
+	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
+	if f.tarHashes == nil {
+		f.tarHashes = make(map[string]string)
+	}
+	if sha, ok := f.tarHashes[tarPath]; ok {
+		f.Logger.Debugf("Reusing tarball for layer %q with SHA: %s\n", id, sha)
+		return Layer{
+			ID:      id,
+			TarPath: tarPath,
+			Digest:  sha,
+		}, nil
+	}
+	lw, err := newFileLayerWriter(tarPath)
+	if err != nil {
+		return Layer{}, err
+	}
+	defer func() {
+		if closeErr := lw.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+	tw := tarWriter(lw)
+	addEntries(tw)
+
+	if err := tw.Close(); err != nil {
+		return Layer{}, err
+	}
+	digest := lw.Digest()
+	f.tarHashes[tarPath] = digest
+	return Layer{
+		ID:      id,
+		Digest:  digest,
+		TarPath: tarPath,
+	}, err
+}
+
 func escape(id string) string {
 	return strings.Replace(id, "/", "_", -1)
 }
