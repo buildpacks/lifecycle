@@ -45,38 +45,40 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 
 	when("#ProcessTypesLayer", func() {
 		it("creates a layer containing the config file and process type symlinks", func() {
+			proc1 := launch.Process{Type: "some-type"}
+			proc2 := launch.Process{Type: "other-type"}
 			configLayer, err := factory.ProcessTypesLayer(launch.Metadata{Processes: []launch.Process{
-				{Type: "some-type"},
-				{Type: "other-type"},
+				proc1,
+				proc2,
 			}})
 			h.AssertNil(t, err)
 			h.AssertEq(t, configLayer.ID, "process-types")
 			assertTarEntries(t, configLayer.TarPath, []*tar.Header{
 				{
-					Name:     "/cnb",
+					Name:     tarPath("/cnb"),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeDir,
 				},
 				{
-					Name:     "/cnb/process",
+					Name:     tarPath("/cnb/process"),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeDir,
 				},
 				{
-					Name:     "/cnb/process/some-type",
+					Name:     tarPath(proc1.Path()),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeSymlink,
-					Linkname: "/cnb/lifecycle/launcher",
+					Linkname: launch.LauncherPath,
 				},
 				{
-					Name:     "/cnb/process/other-type",
+					Name:     tarPath(proc2.Path()),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeSymlink,
-					Linkname: "/cnb/lifecycle/launcher",
+					Linkname: launch.LauncherPath,
 				},
 			})
 		})
@@ -107,26 +109,26 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, launcherLayer.ID, "launcher")
 			assertTarEntries(t, launcherLayer.TarPath, []*tar.Header{
 				{
-					Name:     "/cnb",
+					Name:     tarPath("/cnb"),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeDir,
 				},
 				{
-					Name:     "/cnb/lifecycle",
+					Name:     tarPath("/cnb/lifecycle"),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeDir,
 				},
 				{
-					Name:     "/cnb/lifecycle/launcher",
+					Name:     tarPath(launch.LauncherPath),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeReg,
-					Linkname: "/cnb/lifecycle/launcher",
+					Linkname: launch.LauncherPath,
 				},
 			})
-			assertEntryContent(t, launcherLayer.TarPath, "/cnb/lifecycle/launcher", "launcher-content")
+			assertEntryContent(t, launcherLayer.TarPath, tarPath(launch.LauncherPath), "launcher-content")
 		})
 	})
 }
@@ -138,12 +140,14 @@ func assertEntryContent(t *testing.T, tarPath string, name string, expected stri
 	defer lf.Close()
 	tr := tar.NewReader(lf)
 
+	var allEntryNames []string
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
-			t.Fatalf("missing expected archive entry '%s'", name)
+			t.Fatalf("missing expected archive entry '%s'\n archive contained %v", name, allEntryNames)
 		}
 		h.AssertNil(t, err)
+		allEntryNames = append(allEntryNames, header.Name)
 		if header.Name != name {
 			continue
 		}

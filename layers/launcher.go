@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -13,10 +14,10 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 )
 
-// LauncherLayer creates a Layer containing the launcher at the given path
+// LauncherLayer creates a Layer containing the launcher at path
 func (f *Factory) LauncherLayer(path string) (layer Layer, err error) {
 	parents := []*tar.Header{
-		rootOwnedDir("/cnb"),
+		rootOwnedDir(launch.CNBDir),
 		rootOwnedDir("/cnb/lifecycle"),
 	}
 	fi, err := os.Stat(path)
@@ -30,7 +31,11 @@ func (f *Factory) LauncherLayer(path string) (layer Layer, err error) {
 	hdr.Name = launch.LauncherPath
 	hdr.Uid = 0
 	hdr.Gid = 0
-	hdr.Mode = 0755
+	if runtime.GOOS == "windows" {
+		hdr.Mode = 0777
+	} else {
+		hdr.Mode = 0755
+	}
 
 	return f.writeLayer("launcher", func(tw *archive.NormalizingTarWriter) error {
 		for _, dir := range parents {
@@ -47,9 +52,7 @@ func (f *Factory) LauncherLayer(path string) (layer Layer, err error) {
 			return fmt.Errorf("failed to open launcher at path '%s'", path)
 		}
 		defer lf.Close()
-		n, err := io.Copy(tw, lf)
-		fmt.Println("wrote bytes", n)
-		if err != nil {
+		if _, err := io.Copy(tw, lf); err != nil {
 			return errors.Wrap(err, "failed to write launcher to layer")
 		}
 		return nil
@@ -93,18 +96,30 @@ func validateProcessType(pType string) error {
 }
 
 func rootOwnedDir(path string) *tar.Header {
+	var modePerm int64
+	if runtime.GOOS == "windows" {
+		modePerm = 0777
+	} else {
+		modePerm = 0755
+	}
 	return &tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     path,
-		Mode:     int64(0755 | os.ModeDir),
+		Mode:     modePerm,
 	}
 }
 
 func typeSymlink(path string) *tar.Header {
+	var modePerm int64
+	if runtime.GOOS == "windows" {
+		modePerm = 0777
+	} else {
+		modePerm = 0755
+	}
 	return &tar.Header{
 		Typeflag: tar.TypeSymlink,
 		Name:     path,
 		Linkname: launch.LauncherPath,
-		Mode:     int64(0755 | os.ModeSymlink),
+		Mode:     modePerm,
 	}
 }

@@ -151,12 +151,14 @@ func assertTarEntries(t *testing.T, tarPath string, expectedEntries []*tar.Heade
 	defer lf.Close()
 	tr := tar.NewReader(lf)
 	assertOSSpecificEntries(t, tr)
+	var allEntryNames []string
 	for i, expected := range expectedEntries {
 		header, err := tr.Next()
 		if err == io.EOF {
-			t.Fatalf("missing expected archive entry '%s'", expected.Name)
+			t.Fatalf("missing expected archive entry '%s'\n archive contained %v", expected.Name, allEntryNames)
 		}
 		h.AssertNil(t, err)
+		allEntryNames = append(allEntryNames, header.Name)
 		if header.Name != expected.Name {
 			t.Fatalf("expected entry '%d' to have name %q, got %q", i, expected.Name, header.Name)
 		}

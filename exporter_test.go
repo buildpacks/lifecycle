@@ -1017,7 +1017,7 @@ version = "4.5.6"
 						h.AssertNil(t, err)
 						h.AssertEq(t, len(ep), 1)
 						if runtime.GOOS == "windows" {
-							h.AssertEq(t, ep[0], `c:\cnb\process\some-proces-type.exe`)
+							h.AssertEq(t, ep[0], `c:\cnb\process\some-process-type.exe`)
 						} else {
 							h.AssertEq(t, ep[0], `/cnb/process/some-process-type`)
 						}

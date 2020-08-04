@@ -59,7 +59,9 @@ func (f *Factory) writeLayer(id string, addEntries func(tw *archive.NormalizingT
 		}
 	}()
 	tw := tarWriter(lw)
-	addEntries(tw)
+	if err := addEntries(tw); err != nil {
+		return Layer{}, err
+	}
 
 	if err := tw.Close(); err != nil {
 		return Layer{}, err
