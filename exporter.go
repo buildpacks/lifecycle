@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -323,7 +325,16 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
-	if opts.DefaultProcessType != "" && !e.supportsMulticallLauncher() {
+	if e.supportsMulticallLauncher() {
+		path, err := opts.WorkingImage.Env("PATH")
+		if err != nil {
+			return errors.Wrap(err, "failed to get PATH from app image")
+		}
+		path = strings.Join([]string{launch.ProcessDir, path}, string(os.PathListSeparator))
+		if err := opts.WorkingImage.SetEnv("PATH", path); err != nil {
+			return errors.Wrap(err, "set app image env PATH")
+		}
+	} else if opts.DefaultProcessType != "" {
 		if _, ok := launchMD.FindProcessType(opts.DefaultProcessType); !ok {
 			return processTypeError(launchMD, opts.DefaultProcessType)
 		}

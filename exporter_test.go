@@ -556,6 +556,46 @@ version = "4.5.6"
 				h.AssertEq(t, val, "quiet")
 			})
 
+			when("PATH", func() {
+				it.Before(func() {
+					h.AssertNil(t, fakeAppImage.SetEnv("PATH", "some-path"))
+				})
+
+				when("platform API >= 0.4", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.4")
+					})
+
+					it("prepends the process dir", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := opts.WorkingImage.Env("PATH")
+						h.AssertNil(t, err)
+						if runtime.GOOS == "windows" {
+							h.AssertEq(t, val, `c:\cnb\process;some-path`)
+						} else {
+							h.AssertEq(t, val, `/cnb/process:some-path`)
+						}
+					})
+				})
+
+				when("platform API < 0.4", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.3")
+					})
+
+					it("doesn't prepend the process dir", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := opts.WorkingImage.Env("PATH")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "some-path")
+					})
+				})
+			})
+
 			it("sets empty CMD", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
