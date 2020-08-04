@@ -210,6 +210,7 @@ package-windows:
 	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH)
 
 # Ensure workdir is clean and build image from .git
+docker-build-source-image-windows: $(GOFILES)
 docker-build-source-image-windows:
 	$(if $(shell git status --short), @echo Uncommitted changes. Refusing to run. && exit 1)
 	docker build -f tools/Dockerfile.windows --tag $(SOURCE_COMPILATION_IMAGE) --build-arg image_tag=$(WINDOWS_COMPILATION_IMAGE) --cache-from=$(SOURCE_COMPILATION_IMAGE) --isolation=process --quiet .git

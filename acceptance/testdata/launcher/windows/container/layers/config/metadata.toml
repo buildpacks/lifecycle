@@ -1,19 +1,39 @@
 [[buildpacks]]
   id = "some/buildpack"
   version = "0.0.1"
+  api = "0.4"
 
 [[processes]]
   type = "web"
-  command = "echo Executing web process-type"
+  command = "echo"
   direct = false
+  args = ["Executing", "web", "process-type"]
+  buildpack-id = "some/buildpack"
 
 [[processes]]
-  type = "other-process"
+  type = "direct-process"
   command = "ping"
   args = ["/?"]
   direct = true
+  buildpack-id = "some/buildpack"
+
+[[processes]]
+  type = "indirect-process-with-args"
+  command = "test tokens.bat"
+  args = ["%VAR1%", "%VAR2%"]
+  direct = false
+  buildpack-id = "some/buildpack"
+
+[[processes]]
+  type = "profile-checker"
+  command = "echo"
+  args = ["%VAR_FROM_PROFILE%"]
+  direct = false
+  buildpack-id = "some/buildpack"
 
 [[processes]]
   type = "worker"
-  command = "echo %WORKER_VAR%"
+  command = "echo"
+  args = ["%WORKER_VAR%"]
   direct = false
+  buildpack-id = "some/buildpack"

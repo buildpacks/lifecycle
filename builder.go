@@ -138,6 +138,9 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		} else if err != nil {
 			return nil, err
 		}
+		for i := range launch.Processes {
+			launch.Processes[i].BuildpackID = bp.ID
+		}
 		procMap.add(launch.Processes)
 		slices = append(slices, launch.Slices...)
 		labels = append(labels, launch.Labels...)

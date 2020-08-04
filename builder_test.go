@@ -156,9 +156,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{
-						{Type: "A-type", Command: "A-cmd"},
-						{Type: "B-type", Command: "B-cmd"},
-						{Type: "override-type", Command: "B-cmd"},
+						{Type: "A-type", Command: "A-cmd", BuildpackID: "A"},
+						{Type: "B-type", Command: "B-cmd", BuildpackID: "B"},
+						{Type: "override-type", Command: "B-cmd", BuildpackID: "B"},
 					},
 					Buildpacks: []lifecycle.Buildpack{
 						{ID: "A", Version: "v1", API: "0.3"},

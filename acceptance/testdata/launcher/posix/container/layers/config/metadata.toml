@@ -1,20 +1,64 @@
 [[buildpacks]]
   id = "some/buildpack"
   version = "0.0.1"
-  api = "0.2"
+  api = "0.4"
+
+[[buildpacks]]
+  id = "older/buildpack"
+  version = "0.0.1"
+  api = "0.3"
 
 [[processes]]
   type = "web"
-  command = "echo \"Executing web process-type\""
+  command = "echo"
+  args = ["Executing web process-type"]
   direct = false
+  buildpack-id = "some/buildpack"
 
 [[processes]]
-  type = "other-process"
+  type = "direct-process"
   command = "echo"
-  args = ["Executing other-process process-type"]
+  args = ["Executing direct-process process-type"]
   direct = true
+  buildpack-id = "some/buildpack"
+
+[[processes]]
+  type = "indirect-process-with-args"
+  command = "printf"
+  args = ["'%s' '%s'", "$VAR1", "$VAR2"]
+  direct = false
+  buildpack-id = "some/buildpack"
+
+[[processes]]
+  type = "legacy-indirect-process-with-args"
+  command = "printf \"'%s' '%s'\" \"$0\" \"$1\""
+  args = ["arg", "arg with spaces"]
+  direct = false
+  buildpack-id = "older/buildpack"
+
+[[processes]]
+  type = "legacy-indirect-process-with-incorrect-args"
+  command = "printf"
+  args = ["'%s' '%s'", "arg", "arg with spaces"]
+  direct = false
+  buildpack-id = "older/buildpack"
+
+[[processes]]
+  type = "indirect-process-with-script"
+  command = "printf \"'%s' '%s'\" \"$VAR1\" \"$VAR2\""
+  direct = false
+  buildpack-id = "some/buildpack"
+
+[[processes]]
+  type = "profile-checker"
+  command = "echo"
+  args = ["$VAR_FROM_PROFILE"]
+  direct = false
+  buildpack-id = "some/buildpack"
 
 [[processes]]
   type = "worker"
-  command = "echo $WORKER_VAR"
+  command = "echo"
+  args = ["$WORKER_VAR"]
   direct = false
+  buildpack-id = "some/buildpack"
