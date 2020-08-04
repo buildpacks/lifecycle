@@ -102,12 +102,14 @@ ifeq ($(OS),Windows_NT)
 	call del $(OUT_DIR)$/builder.exe
 	call del $(OUT_DIR)$/exporter.exe
 	call del $(OUT_DIR)$/rebaser.exe
+	call del $(OUT_DIR)$/creator.exe
 	call mklink $(OUT_DIR)$/detector.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/analyzer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/restorer.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/builder.exe  lifecycle.exe
 	call mklink $(OUT_DIR)$/exporter.exe lifecycle.exe
 	call mklink $(OUT_DIR)$/rebaser.exe  lifecycle.exe
+	call mklink $(OUT_DIR)$/creator.exe  lifecycle.exe
 else
 	ln -sf lifecycle.exe $(OUT_DIR)$/detector.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/analyzer.exe
@@ -115,6 +117,7 @@ else
 	ln -sf lifecycle.exe $(OUT_DIR)$/builder.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/exporter.exe
 	ln -sf lifecycle.exe $(OUT_DIR)$/rebaser.exe
+	ln -sf lifecycle.exe $(OUT_DIR)$/creator.exe
 endif
 
 build-darwin: build-darwin-lifecycle build-darwin-launcher

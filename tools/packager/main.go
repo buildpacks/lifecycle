@@ -48,7 +48,7 @@ func main() {
 		os.Exit(3)
 	}
 	if err := archive.AddFileToArchive(tw, "lifecycle.toml", descriptorInfo); err != nil {
-		fmt.Printf("Failed to write descriptor to arichive: %s", err)
+		fmt.Printf("Failed to write descriptor to archive: %s", err)
 		os.Exit(4)
 	}
 
@@ -58,7 +58,7 @@ func main() {
 	}
 
 	if err := archive.AddDirToArchive(tw, filepath.Base(inputDir)); err != nil {
-		fmt.Printf("Failed to write dir to arichive: %s", err)
+		fmt.Printf("Failed to write dir to archive: %s", err)
 		os.Exit(6)
 	}
 }
