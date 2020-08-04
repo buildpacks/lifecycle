@@ -23,6 +23,8 @@ type Launcher struct {
 	Setenv             func(string, string) error
 }
 
+// Launch uses cmd to select a process and launches that process
+//   For direct=false processes, self is used to set argv0 during profile script execution
 func (l *Launcher) Launch(self string, cmd []string) error {
 	process, err := l.processFor(cmd)
 	if err != nil {
@@ -31,6 +33,8 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	return l.LaunchProcess(self, process)
 }
 
+// LaunchProcess launches the provided process
+//   For direct=false processes, self is used to set argv0 during profile script execution
 func (l *Launcher) LaunchProcess(self string, process Process) error {
 	if err := l.env(process); err != nil {
 		return errors.Wrap(err, "modify env")

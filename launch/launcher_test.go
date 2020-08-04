@@ -314,7 +314,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("there are zero args", func() {
-					it("treats the command as a bash script", func() {
+					it("treats the command as a bash script on linux", func() {
 						if err := launcher.Launch("/path/to/launcher", nil); err != nil {
 							t.Fatal(err)
 						}
@@ -337,6 +337,45 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 							})
 						}
 					})
+				})
+			})
+
+			when("the providing buildpack has api < 0.4", func() {
+				it.Before(func() {
+					launcher.Buildpacks = []launch.Buildpack{
+						{API: "0.3", ID: "bp.1"},
+					}
+					launcher.Processes = []launch.Process{{
+						Type:        "some-type",
+						Command:     "some-command",
+						Args:        []string{"arg1", "arg with space"},
+						BuildpackID: "bp.1",
+					}}
+					launcher.DefaultProcessType = "some-type"
+				})
+
+				it("treats any args as arguments to bash on linux", func() {
+					if err := launcher.Launch("/path/to/launcher", nil); err != nil {
+						t.Fatal(err)
+					}
+
+					if len(syscallExecArgsColl) != 1 {
+						t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
+					}
+
+					if runtime.GOOS == "windows" {
+						h.AssertEq(t, syscallExecArgsColl[0].argv0, "cmd")
+						h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
+							"cmd", "/q", "/c", `some-command`, `arg1`, "arg with space",
+						})
+					} else {
+						h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/bash")
+						h.AssertEq(t, syscallExecArgsColl[0].argv, []string{
+							"bash", "-c",
+							`exec bash -c "$@"`,
+							"/path/to/launcher", "some-command", "arg1", "arg with space",
+						})
+					}
 				})
 			})
 

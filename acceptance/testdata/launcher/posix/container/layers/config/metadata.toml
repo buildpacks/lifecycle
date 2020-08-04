@@ -12,6 +12,7 @@
   type = "web"
   command = "echo"
   args = ["Executing web process-type"]
+  direct = false
   buildpack-id = "some/buildpack"
 
 [[processes]]
@@ -25,27 +26,39 @@
   type = "indirect-process-with-args"
   command = "printf"
   args = ["'%s' '%s'", "$VAR1", "$VAR2"]
+  direct = false
   buildpack-id = "some/buildpack"
 
 [[processes]]
   type = "legacy-indirect-process-with-args"
   command = "printf \"'%s' '%s'\" \"$0\" \"$1\""
   args = ["arg", "arg with spaces"]
+  direct = false
+  buildpack-id = "older/buildpack"
+
+[[processes]]
+  type = "legacy-indirect-process-with-incorrect-args"
+  command = "printf"
+  args = ["'%s' '%s'", "arg", "arg with spaces"]
+  direct = false
   buildpack-id = "older/buildpack"
 
 [[processes]]
   type = "indirect-process-with-script"
   command = "printf \"'%s' '%s'\" \"$VAR1\" \"$VAR2\""
+  direct = false
   buildpack-id = "some/buildpack"
 
 [[processes]]
   type = "profile-checker"
   command = "echo"
   args = ["$VAR_FROM_PROFILE"]
+  direct = false
   buildpack-id = "some/buildpack"
 
 [[processes]]
   type = "worker"
   command = "echo"
   args = ["$WORKER_VAR"]
+  direct = false
   buildpack-id = "some/buildpack"

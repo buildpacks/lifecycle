@@ -94,6 +94,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		when("the process type has args", func() {
 			when("buildpack API 0.4", func() {
+				// buildpack API is determined by looking up the API of the process buildpack in metadata.toml
+
 				it("command and args become shell-parsed tokens in a script", func() {
 					var val2 string
 					if runtime.GOOS == "windows" {
@@ -111,12 +113,24 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("buildpack API < 0.4", func() {
+				// buildpack API is determined by looking up the API of the process buildpack in metadata.toml
+
 				it("args become arguments to bash", func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
 					cmd := exec.Command("docker", "run", "--rm",
 						launchImage, "legacy-indirect-process-with-args",
 					)
 					assertOutput(t, cmd, "'arg' 'arg with spaces'")
+				})
+
+				it("script must be explicitly written to accept bash args", func() {
+					h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
+					cmd := exec.Command("docker", "run", "--rm",
+						launchImage, "legacy-indirect-process-with-incorrect-args",
+					)
+					output, err := cmd.CombinedOutput()
+					h.AssertNotNil(t, err)
+					h.AssertStringContains(t, string(output), "printf: usage: printf [-v var] format [arguments]")
 				})
 			})
 		})
@@ -169,7 +183,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			if runtime.GOOS == "windows" {
-				// when windows values must be escaped, values contain quotes
+				// windows values with spaces will contain quotes
 				// empty values on windows preserve variable names instead of interpolating to empty strings
 				assertOutput(t, cmd, "sourced bp profile\nsourced app profile\n\"some-user-val, %CNB_APP_DIR%, other-user-val**other-bp-val\"")
 			} else {

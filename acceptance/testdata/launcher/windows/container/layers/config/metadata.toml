@@ -6,6 +6,7 @@
 [[processes]]
   type = "web"
   command = "echo"
+  direct = false
   args = ["Executing", "web", "process-type"]
   buildpack-id = "some/buildpack"
 
@@ -20,16 +21,19 @@
   type = "indirect-process-with-args"
   command = "test tokens.bat"
   args = ["%VAR1%", "%VAR2%"]
+  direct = false
   buildpack-id = "some/buildpack"
 
 [[processes]]
   type = "profile-checker"
   command = "echo"
   args = ["%VAR_FROM_PROFILE%"]
+  direct = false
   buildpack-id = "some/buildpack"
 
 [[processes]]
   type = "worker"
   command = "echo"
   args = ["%WORKER_VAR%"]
+  direct = false
   buildpack-id = "some/buildpack"
