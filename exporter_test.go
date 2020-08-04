@@ -108,10 +108,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			ProcessTypesLayer(launch.Metadata{
 				Processes: []launch.Process{
 					{
-						Type:    "some-process-type",
-						Command: "/some/command",
-						Args:    []string{"some", "command", "args"},
-						Direct:  true,
+						Type:        "some-process-type",
+						Command:     "/some/command",
+						Args:        []string{"some", "command", "args"},
+						Direct:      true,
+						BuildpackID: "buildpack.id",
 					}},
 			}).
 			DoAndReturn(func(_ launch.Metadata) (layers.Layer, error) {

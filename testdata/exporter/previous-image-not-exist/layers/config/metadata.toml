@@ -3,3 +3,4 @@
   direct = true
   command = "/some/command"
   args = ["some", "command", "args"]
+  buildpack-id = "buildpack.id"
