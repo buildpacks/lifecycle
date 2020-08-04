@@ -51,6 +51,7 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 			tw = &archive.NormalizingTarWriter{TarWriter: tar.NewWriter(file)}
 			tw.WithUID(uid)
 			tw.WithGID(gid)
+			tw.WithModTime(archive.NormalizedModTime)
 		})
 
 		it.After(func() {

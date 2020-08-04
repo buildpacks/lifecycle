@@ -31,13 +31,13 @@ func testNormalizingTarWriter(t *testing.T, when spec.G, it spec.S) {
 			ntw = archive.NewNormalizingTarWriter(ftw)
 		})
 
-		it("normalizes the mod time", func() {
+		it("sets empty Uname and Gname", func() {
 			h.AssertNil(t, ntw.WriteHeader(&tar.Header{
-				ModTime: time.Now(),
+				Uname: "some-uname",
+				Gname: "some-gname",
 			}))
-			if !ftw.getLastHeader().ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
-				t.Fatalf("failed to normalize the mod time")
-			}
+			h.AssertEq(t, ftw.getLastHeader().Uname, "")
+			h.AssertEq(t, ftw.getLastHeader().Gname, "")
 		})
 
 		when("windows", func() {
@@ -55,7 +55,7 @@ func testNormalizingTarWriter(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("#UID", func() {
+		when("#WithUID", func() {
 			it("sets the uid", func() {
 				ntw.WithUID(999)
 				h.AssertNil(t, ntw.WriteHeader(&tar.Header{
@@ -65,13 +65,25 @@ func testNormalizingTarWriter(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("#GID", func() {
+		when("#WithGID", func() {
 			it("sets the gid", func() {
 				ntw.WithGID(999)
 				h.AssertNil(t, ntw.WriteHeader(&tar.Header{
 					Gid: 888,
 				}))
 				h.AssertEq(t, ftw.getLastHeader().Gid, 999)
+			})
+		})
+
+		when("#WithModTime", func() {
+			it("sets the mod time", func() {
+				ntw.WithModTime(archive.NormalizedModTime)
+				h.AssertNil(t, ntw.WriteHeader(&tar.Header{
+					ModTime: time.Now(),
+				}))
+				if !ftw.getLastHeader().ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
+					t.Fatalf("failed to normalize the mod time")
+				}
 			})
 		})
 	})

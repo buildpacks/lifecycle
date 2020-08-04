@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+var (
+	// NormalizedModTime provides a valid "zero" value for ModTime
+	NormalizedModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
+)
+
 type TarWriter interface {
 	WriteHeader(hdr *tar.Header) error
 	Write(b []byte) (int, error)
@@ -39,6 +44,14 @@ func (tw *NormalizingTarWriter) WithGID(gid int) {
 	})
 }
 
+// WithModTime sets the ModTime of any subsequently written *tar.Header to modTime
+func (tw *NormalizingTarWriter) WithModTime(modTime time.Time) {
+	tw.headerOpts = append(tw.headerOpts, func(hdr *tar.Header) *tar.Header {
+		hdr.ModTime = modTime
+		return hdr
+	})
+}
+
 // NewNormalizingTarWriter creates a NormalizingTarWriter that wraps the provided TarWriter
 func NewNormalizingTarWriter(tw TarWriter) *NormalizingTarWriter {
 	return &NormalizingTarWriter{tw, []HeaderOpt{}}
@@ -52,7 +65,6 @@ func (tw *NormalizingTarWriter) WriteHeader(hdr *tar.Header) error {
 		hdr = opt(hdr)
 	}
 	hdr.Name = filepath.ToSlash(strings.TrimPrefix(hdr.Name, filepath.VolumeName(hdr.Name)))
-	hdr.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 	hdr.Uname = ""
 	hdr.Gname = ""
 	return tw.TarWriter.WriteHeader(hdr)
