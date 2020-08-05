@@ -3,7 +3,6 @@ package lifecycle_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/buildpacks/lifecycle/api"
 	"io"
 	"io/ioutil"
 	"log"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/buildpacks/lifecycle/api"
 
 	"github.com/BurntSushi/toml"
 	"github.com/golang/mock/gomock"

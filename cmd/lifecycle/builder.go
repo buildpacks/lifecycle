@@ -2,9 +2,10 @@ package main
 
 import (
 	"errors"
-	"github.com/buildpacks/lifecycle/api"
 	"log"
 	"os"
+
+	"github.com/buildpacks/lifecycle/api"
 
 	"github.com/BurntSushi/toml"
 

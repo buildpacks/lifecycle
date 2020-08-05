@@ -2,7 +2,9 @@ package lifecycle
 
 import (
 	"fmt"
+
 	"github.com/BurntSushi/toml"
+
 	"github.com/buildpacks/lifecycle/api"
 
 	"io/ioutil"
@@ -146,10 +148,10 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		labels = append(labels, launch.Labels...)
 	}
 
-   	comparisonVersion := api.MustParse("0.4")
-   	if b.PlatformAPI.Compare(comparisonVersion) < 0 {
+	comparisonVersion := api.MustParse("0.4")
+	if b.PlatformAPI.Compare(comparisonVersion) < 0 {
 		//plaformApiVersion is less than comparisonVersion
-   		for _, bomEntry := range bom {
+		for _, bomEntry := range bom {
 			bomEntry.convertMetadataToVersion()
 		}
 	} else {
