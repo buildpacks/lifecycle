@@ -26,6 +26,7 @@ type createCmd struct {
 	previousImage       string
 	processType         string
 	projectMetadataPath string
+	reportPath          string
 	runImageRef         string
 	stackPath           string
 	uid, gid            int
@@ -49,6 +50,7 @@ func (c *createCmd) Init() {
 	cmd.FlagOrderPath(&c.orderPath)
 	cmd.FlagPlatformDir(&c.platformDir)
 	cmd.FlagPreviousImage(&c.previousImage)
+	cmd.FlagReportPath(&c.reportPath)
 	cmd.FlagRunImage(&c.runImageRef)
 	cmd.FlagSkipRestore(&c.skipRestore)
 	cmd.FlagStackPath(&c.stackPath)
@@ -164,6 +166,7 @@ func (c *createCmd) Exec() error {
 		platformAPI:         c.platformAPI,
 		processType:         c.processType,
 		projectMetadataPath: c.projectMetadataPath,
+		reportPath:          c.reportPath,
 		runImageRef:         c.runImageRef,
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
