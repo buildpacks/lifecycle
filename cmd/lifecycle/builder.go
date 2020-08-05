@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/buildpacks/lifecycle/api"
 	"log"
 	"os"
 
@@ -27,6 +28,7 @@ type buildArgs struct {
 	layersDir     string
 	appDir        string
 	platformDir   string
+	platformAPI   string
 }
 
 func (b *buildCmd) Init() {
@@ -70,6 +72,7 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		LayersDir:     ba.layersDir,
 		PlatformDir:   ba.platformDir,
 		BuildpacksDir: ba.buildpacksDir,
+		PlatformAPI:   api.MustParse(ba.platformAPI),
 		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
 		Plan:          plan,

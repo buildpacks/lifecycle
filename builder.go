@@ -1,14 +1,16 @@
 package lifecycle
 
 import (
+	"fmt"
+	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/lifecycle/api"
+
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
-
-	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
@@ -19,6 +21,7 @@ type Builder struct {
 	LayersDir     string
 	PlatformDir   string
 	BuildpacksDir string
+	PlatformAPI   *api.Version
 	Env           BuildEnv
 	Group         BuildpackGroup
 	Plan          BuildPlan
@@ -143,6 +146,18 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		labels = append(labels, launch.Labels...)
 	}
 
+   	comparisonVersion := api.MustParse("0.4")
+   	if b.PlatformAPI.Compare(comparisonVersion) < 0 {
+		//plaformApiVersion is less than comparisonVersion
+   		for _, bomEntry := range bom {
+			bomEntry.convertMetadataToVersion()
+		}
+	} else {
+		for _, bomEntry := range bom {
+			bomEntry.convertVersionToMetadata()
+		}
+	}
+
 	return &BuildMetadata{
 		BOM:        bom,
 		Buildpacks: b.Group.Group,
@@ -189,6 +204,23 @@ func (p buildpackPlan) has(entry BuildPlanEntry) bool {
 		}
 	}
 	return false
+}
+
+func (bom *BOMEntry) convertMetadataToVersion() {
+	if version, ok := bom.Metadata["version"]; ok {
+		bom.Version = fmt.Sprintf("%v", version)
+		delete(bom.Metadata, "version")
+	}
+}
+
+func (bom *BOMEntry) convertVersionToMetadata() {
+	if bom.Version != "" {
+		if bom.Metadata == nil {
+			bom.Metadata = make(map[string]interface{})
+		}
+		bom.Metadata["version"] = bom.Version
+		bom.Version = ""
+	}
 }
 
 func setupEnv(env BuildEnv, layersDir string) error {

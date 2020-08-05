@@ -3,6 +3,7 @@ package lifecycle_test
 import (
 	"bytes"
 	"fmt"
+	"github.com/buildpacks/lifecycle/api"
 	"io"
 	"io/ioutil"
 	"log"
@@ -66,6 +67,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:     layersDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
+			PlatformAPI:   api.MustParse("0.3"),
 			Env:           env,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
