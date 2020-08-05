@@ -11,8 +11,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil/layer"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -46,7 +48,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	img, err := remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage("gcr.io/distroless/static"))
+	baseImage := "gcr.io/distroless/static"
+	if runtime.GOOS == "windows" {
+		baseImage = "mcr.microsoft.com/windows/nanoserver:1809-amd64"
+	}
+	img, err := remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
 	if err != nil {
 		log.Fatal("Failed create remote image:", err)
 	}
@@ -179,8 +185,15 @@ func lifecycleLayer() string {
 		log.Fatal("Failed create temp layer file", err)
 	}
 	defer lf.Close()
-	tw := tar.NewWriter(lf)
-	ntw := archive.NewNormalizingTarWriter(tw)
+
+	var ntw *archive.NormalizingTarWriter
+	if runtime.GOOS == "windows" {
+		ntw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lf))
+	} else {
+		tw := tar.NewWriter(lf)
+		ntw = archive.NewNormalizingTarWriter(tw)
+	}
+
 	ntw.WithModTime(archive.NormalizedModTime)
 	ntw.WithUID(0)
 	ntw.WithGID(0)
