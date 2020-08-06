@@ -165,6 +165,12 @@ func (p BuildPlan) find(bp Buildpack) buildpackPlan {
 			}
 		}
 	}
+	if bp.API == "0.2" {
+		for i, entry := range out {
+			entry.convertMetadataToVersion()
+			out[i] = entry
+		}
+	}
 	return buildpackPlan{Entries: out}
 }
 
