@@ -1,13 +1,14 @@
 package launch
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/api"
 )
 
 var (
@@ -18,20 +19,22 @@ var (
 type ExecFunc func(argv0 string, argv []string, envv []string) error
 
 type Launcher struct {
-	DefaultProcessType string
-	LayersDir          string
 	AppDir             string
-	Processes          []Process
 	Buildpacks         []Buildpack
+	DefaultProcessType string
 	Env                Env
 	Exec               ExecFunc
+	Shell              Shell
+	LayersDir          string
+	PlatformAPI        *api.Version
+	Processes          []Process
 	Setenv             func(string, string) error
 }
 
 // Launch uses cmd to select a process and launches that process
 //   For direct=false processes, self is used to set argv0 during profile script execution
 func (l *Launcher) Launch(self string, cmd []string) error {
-	process, err := l.processFor(cmd)
+	process, err := l.ProcessFor(cmd)
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
 	}
@@ -69,28 +72,6 @@ func (l *Launcher) launchDirect(process Process) error {
 		return errors.Wrap(err, "direct exec")
 	}
 	return nil
-}
-
-func (l *Launcher) processFor(cmd []string) (Process, error) {
-	if len(cmd) == 0 {
-		if process, ok := l.findProcessType(l.DefaultProcessType); ok {
-			return process, nil
-		}
-
-		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
-	}
-
-	if len(cmd) == 1 {
-		if process, ok := l.findProcessType(cmd[0]); ok {
-			return process, nil
-		}
-	}
-
-	if len(cmd) > 1 && cmd[0] == "--" {
-		return Process{Command: cmd[1], Args: cmd[2:], Direct: true}, nil
-	}
-
-	return Process{Command: cmd[0], Args: cmd[1:]}, nil
 }
 
 func (l *Launcher) findProcessType(kind string) (Process, bool) {

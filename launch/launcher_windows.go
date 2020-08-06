@@ -6,8 +6,14 @@ import (
 )
 
 const (
-	CNBDir = `c:\cnb`
-	exe    = ".exe"
+	CNBDir      = `c:\cnb`
+	exe         = ".exe"
+	profileGlob = "*.bat"
+	appProfile  = ".profile.bat"
+)
+
+var (
+	DefaultShell = &CmdShell{Exec: OSExecFunc}
 )
 
 func OSExecFunc(argv0 string, argv []string, envv []string) error {

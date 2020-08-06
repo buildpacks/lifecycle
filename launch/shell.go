@@ -1,18 +1,46 @@
 package launch
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/api"
 )
 
+type Shell interface {
+	Launch(ShellProcess) error
+}
+
+type ShellProcess struct {
+	Script   bool     // if true treat the command like a script, if false build a script where command is a token
+	Args     []string `toml:"args" json:"args"`
+	Command  string   `toml:"command" json:"command"`
+	Caller   string
+	Profiles []string
+	Env      []string
+}
+
 func (l *Launcher) launchWithShell(self string, process Process) error {
-	profiles, err := l.profiles(process)
+	profs, err := l.profiles(process)
 	if err != nil {
 		return errors.Wrap(err, "find profiles")
 	}
-	return l.execWithShell(self, process, profiles)
+	script, err := l.isScript(process)
+	if err != nil {
+		return err
+	}
+	return l.Shell.Launch(ShellProcess{
+		Script:   script,
+		Caller:   self,
+		Command:  process.Command,
+		Args:     process.Args,
+		Profiles: profs,
+		Env:      l.Env.List(),
+	})
 }
 
 func (l *Launcher) profiles(process Process) ([]string, error) {
@@ -60,4 +88,35 @@ func (l *Launcher) profiles(process Process) ([]string, error) {
 	}
 
 	return profiles, nil
+}
+
+func (l *Launcher) isScript(process Process) (bool, error) {
+	if runtime.GOOS == "windows" {
+		// For now windows does not support script commands
+		return false, nil
+	}
+	if len(process.Args) == 0 {
+		return true, nil
+	}
+	if process.BuildpackID == "" {
+		return false, nil
+	}
+	for _, bp := range l.Buildpacks {
+		if bp.ID != process.BuildpackID {
+			continue
+		}
+		bpAPI, err := api.NewVersion(bp.API)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse api '%s' of buildpack '%s'", bp.API, bp.ID)
+		}
+		if isLegacyProcess(bpAPI) {
+			return true, nil
+		}
+		return false, nil
+	}
+	return false, fmt.Errorf("process type '%s' provided by unknown buildpack '%s'", process.Type, process.BuildpackID)
+}
+
+func isLegacyProcess(bpAPI *api.Version) bool {
+	return bpAPI.Compare(api.MustParse("0.4")) == -1
 }

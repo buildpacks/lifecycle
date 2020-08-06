@@ -3,8 +3,6 @@ package env
 import (
 	"os"
 	"strings"
-
-	"github.com/buildpacks/lifecycle/launch"
 )
 
 var LaunchEnvExcludelist = []string{
@@ -15,11 +13,11 @@ var LaunchEnvExcludelist = []string{
 	"CNB_DEPRECATION_MODE",
 }
 
-func NewLaunchEnv(environ []string) *Env {
+func NewLaunchEnv(environ []string, processDir string) *Env {
 	vars := varsFromEnviron(environ, ignoreEnvVarCase, isExcluded)
 	if path, ok := vars.vals["PATH"]; ok {
 		pathElems := strings.Split(path, string(os.PathListSeparator))
-		if pathElems[0] == launch.ProcessDir {
+		if pathElems[0] == processDir {
 			vars.Set("PATH", strings.Join(pathElems[1:], string(os.PathListSeparator)))
 		}
 	}

@@ -2,9 +2,13 @@ package main
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/heroku/color"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
@@ -15,6 +19,8 @@ func main() {
 }
 
 func runLaunch() error {
+	color.Disable(cmd.BoolEnv(cmd.EnvNoColor))
+
 	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
 	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
 		cmd.Exit(err)
@@ -28,14 +34,18 @@ func runLaunch() error {
 		return err
 	}
 
+	defaultProcessType := defaultProcessType(api.MustParse(platformAPI), md)
+
 	launcher := &launch.Launcher{
-		DefaultProcessType: cmd.EnvOrDefault(cmd.EnvProcessType, cmd.DefaultProcessType),
+		DefaultProcessType: defaultProcessType,
 		LayersDir:          cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir),
 		AppDir:             cmd.EnvOrDefault(cmd.EnvAppDir, cmd.DefaultAppDir),
+		PlatformAPI:        api.MustParse(platformAPI),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
-		Env:                env.NewLaunchEnv(os.Environ()),
+		Env:                env.NewLaunchEnv(os.Environ(), launch.ProcessDir),
 		Exec:               launch.OSExecFunc,
+		Shell:              launch.DefaultShell,
 		Setenv:             os.Setenv,
 	}
 
@@ -43,6 +53,21 @@ func runLaunch() error {
 		return cmd.FailErrCode(err, cmd.CodeLaunchError, "launch")
 	}
 	return nil
+}
+
+func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) string {
+	if platformAPI.Compare(api.MustParse("0.4")) < 0 {
+		return cmd.EnvOrDefault(cmd.EnvProcessType, cmd.DefaultProcessType)
+	}
+	if pType := os.Getenv(cmd.EnvProcessType); pType != "" {
+		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in platform API %s", platformAPI)
+		cmd.DefaultLogger.Warnf("Run with entrypoint /cnb/process/%s to invoke the '%s' process type", pType, pType)
+	}
+	process := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
+	if _, ok := launchMD.FindProcessType(process); ok {
+		return process
+	}
+	return ""
 }
 
 func verifyBuildpackAPIs(bps []launch.Buildpack) error {

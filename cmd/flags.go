@@ -100,7 +100,7 @@ func FlagLayersDir(dir *string) {
 }
 
 func FlagNoColor(skip *bool) {
-	flagSet.BoolVar(skip, "no-color", boolEnv(EnvNoColor), "disable color output")
+	flagSet.BoolVar(skip, "no-color", BoolEnv(EnvNoColor), "disable color output")
 }
 
 func FlagOrderPath(path *string) {
@@ -128,11 +128,11 @@ func FlagRunImage(image *string) {
 }
 
 func FlagSkipLayers(skip *bool) {
-	flagSet.BoolVar(skip, "skip-layers", boolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
+	flagSet.BoolVar(skip, "skip-layers", BoolEnv(EnvSkipLayers), "do not provide layer metadata to buildpacks")
 }
 
 func FlagSkipRestore(skip *bool) {
-	flagSet.BoolVar(skip, "skip-restore", boolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
+	flagSet.BoolVar(skip, "skip-restore", BoolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
 }
 
 func FlagStackPath(path *string) {
@@ -148,7 +148,7 @@ func FlagUID(uid *int) {
 }
 
 func FlagUseDaemon(use *bool) {
-	flagSet.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
+	flagSet.BoolVar(use, "daemon", BoolEnv(EnvUseDaemon), "export to docker daemon")
 }
 
 func FlagVersion(version *bool) {
@@ -191,7 +191,7 @@ func intEnv(k string) int {
 	return d
 }
 
-func boolEnv(k string) bool {
+func BoolEnv(k string) bool {
 	v := os.Getenv(k)
 	b, err := strconv.ParseBool(v)
 	if err != nil {
