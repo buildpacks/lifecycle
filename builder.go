@@ -151,12 +151,12 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	comparisonVersion := api.MustParse("0.4")
 	if b.PlatformAPI.Compare(comparisonVersion) < 0 {
 		//plaformApiVersion is less than comparisonVersion
-		for _, bomEntry := range bom {
-			bomEntry.convertMetadataToVersion()
+		for i := range bom {
+			bom[i].convertMetadataToVersion()
 		}
 	} else {
-		for _, bomEntry := range bom {
-			bomEntry.convertVersionToMetadata()
+		for i := range bom {
+			bom[i].convertVersionToMetadata()
 		}
 	}
 
