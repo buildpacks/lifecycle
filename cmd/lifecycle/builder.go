@@ -80,10 +80,10 @@ func (b *buildCmd) Exec() error {
 
 	// drop back to non-root user to run buildpacks
 	if err := priv.RunAs(b.uid, b.gid); err != nil {
-		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", b.uid, b.gid))
+		return errors.Wrap(err, fmt.Sprintf("exec as user %d:%d", b.uid, b.gid))
 	}
 	if err := priv.SetEnvironmentForUser(b.uid); err != nil {
-		cmd.FailErr(err, fmt.Sprintf("set environment for user %d", b.uid))
+		return errors.Wrap(err, fmt.Sprintf("set environment for user %d", b.uid))
 	}
 	if err = b.build(group, plan, b.appDir, &lifecycle.NoopSnapshotter{}); err != nil {
 		return errors.Wrap(err, "running buildpacks")
