@@ -148,6 +148,7 @@ func (c *createCmd) Exec() error {
 		buildpacksDir: c.buildpacksDir,
 		layersDir:     c.layersDir,
 		appDir:        c.appDir,
+		platformAPI:   c.platformAPI,
 		platformDir:   c.platformDir,
 	}.build(group, plan)
 	if err != nil {

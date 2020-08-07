@@ -20,9 +20,13 @@ var LaunchEnvExcludelist = []string{
 func NewLaunchEnv(environ []string, processDir string) *Env {
 	vars := varsFromEnviron(environ, ignoreEnvVarCase, isExcluded)
 	if path, ok := vars.vals["PATH"]; ok {
-		pathElems := strings.Split(path, string(os.PathListSeparator))
+		pathElems := strings.SplitN(path, string(os.PathListSeparator), 2)
 		if pathElems[0] == processDir {
-			vars.Set("PATH", strings.Join(pathElems[1:], string(os.PathListSeparator)))
+			if len(pathElems) == 2 {
+				vars.Set("PATH", pathElems[1])
+			} else {
+				vars.Set("PATH", "")
+			}
 		}
 	}
 	return &Env{

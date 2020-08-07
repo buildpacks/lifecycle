@@ -14,15 +14,15 @@ GOCMD?=go
 GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LIFECYCLE_DESCRIPTOR_PATH?=lifecycle.toml
+SCM_REPO?=github.com/buildpacks/lifecycle
+PARSED_COMMIT=$(shell git rev-parse --short HEAD)
+SCM_COMMIT?=$(PARSED_COMMIT)
 LDFLAGS=-s -w
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 GOBUILD:=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test $(GOFLAGS)
-SCM_REPO?=github.com/buildpacks/lifecycle
-PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
-SCM_COMMIT?=$(PARSED_COMMIT)
 BUILD_DIR?=$(PWD)$/out
 LINUX_COMPILATION_IMAGE?=golang:1.14-alpine
 WINDOWS_COMPILATION_IMAGE?=golang:1.14-windowsservercore-1809
