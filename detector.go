@@ -19,13 +19,14 @@ import (
 const (
 	CodeDetectPass  = 0
 	CodeDetectFail  = 100
+	CodeVersionFail = 200
 	EnvBuildpackDir = "CNB_BUILDPACK_DIR"
 )
 
 var errFailedDetection = errors.New("no buildpacks participating")
 var errBuildpack = errors.New("buildpack(s) failed with err")
-var errInconsistentVersion = errors.New("top level version does not match metadata version")
-var errDoublySpecifiedVersions = errors.New("top level version cannot be specified along with metadata version; use metadata version instead")
+var errInconsistentVersion = `buildpack %s has a "version" key that does not match "metadata.version"`
+var errDoublySpecifiedVersions = `buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`
 var warnTopLevelVersion = `Warning: buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`
 
 type BuildPlan struct {
@@ -111,6 +112,8 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		outputLogf := c.Logger.Debugf
 
 		switch run.Code {
+		case CodeVersionFail:
+			return nil, nil, run.Err
 		case CodeDetectPass, CodeDetectFail:
 		default:
 			outputLogf = c.Logger.Infof
@@ -121,12 +124,6 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 			outputLogf(string(run.Output))
 		}
 		if run.Err != nil {
-			if run.Err == errInconsistentVersion {
-				return nil, nil, errInconsistentVersion
-			}
-			if run.Err == errDoublySpecifiedVersions {
-				return nil, nil, errDoublySpecifiedVersions
-			}
 			outputLogf("======== Error: %s ========", bp)
 			outputLogf(run.Err.Error())
 		}
@@ -298,12 +295,14 @@ func (bp *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	}
 	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
-			t.Err = errInconsistentVersion
+			t.Err = errors.Errorf(errInconsistentVersion, bp.Buildpack.Name)
+			t.Code = CodeVersionFail
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
 		if t.hasDoublySpecifiedVersions() || t.Or.hasDoublySpecifiedVersions() {
-			t.Err = errDoublySpecifiedVersions
+			t.Err = errors.Errorf(errDoublySpecifiedVersions, bp.Buildpack.Name)
+			t.Code = CodeVersionFail
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {

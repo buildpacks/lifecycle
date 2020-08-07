@@ -603,6 +603,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: lifecycle.BuildpackInfo{
 						ID:      "D",
 						Version: "v2",
+						Name:    "Buildpack D",
 					},
 					Path: bpPath,
 				}
@@ -616,7 +617,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if err == nil {
 					t.Fatalf("Expected error")
 				}
-				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
+				h.AssertEq(t, err.Error(), `buildpack Buildpack D has a "version" key that does not match "metadata.version"`)
 			})
 
 			it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
@@ -627,6 +628,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: lifecycle.BuildpackInfo{
 						ID:      "B",
 						Version: "v1",
+						Name:    "Buildpack B",
 					},
 					Path: bpPath,
 				}
@@ -642,7 +644,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Expected error")
 				}
 
-				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
+				h.AssertEq(t, err.Error(), `buildpack Buildpack B has a "version" key that does not match "metadata.version"`)
 			})
 
 			it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
@@ -653,6 +655,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: lifecycle.BuildpackInfo{
 						ID:      "A",
 						Version: "v1",
+						Name:    "Buildpack A",
 					},
 					Path: bpPath,
 				}
@@ -666,7 +669,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Expected error")
 				}
 
-				h.AssertEq(t, err.Error(), "top level version cannot be specified along with metadata version; use metadata version instead")
+				h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 			})
 
 			it("should fail if buildpack with buildpack api 0.3+ has alternate build plan with both a top level version and a metadata version", func() {
@@ -677,6 +680,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: lifecycle.BuildpackInfo{
 						ID:      "A",
 						Version: "v1",
+						Name:    "Buildpack A",
 					},
 					Path: bpPath,
 				}
@@ -693,7 +697,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Expected error")
 				}
 
-				h.AssertEq(t, err.Error(), "top level version cannot be specified along with metadata version; use metadata version instead")
+				h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 			})
 
 			it("should warn if buildpacks with buildpack api 0.3+ have a top level version", func() {
