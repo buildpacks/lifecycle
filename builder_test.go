@@ -569,6 +569,50 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal("Expected error")
 				}
 			})
+
+			when("platformApi is less than 0.4", func() {
+				when("bom version is set both in the top level and in the metadata", func() {
+					it("returns an error", func() {
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						builder.PlatformAPI = api.MustParse("0.3")
+						mkfile(t,
+							"[[entries]]\n"+
+								`name = "dep1"`+"\n"+
+								`version = "v2"`+"\n"+
+								"[entries.metadata]\n"+
+								`version = "v1"`+"\n",
+							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+						)
+						_, err := builder.Build()
+						h.AssertNotNil(t, err)
+						expected := "top level version does not match metadata version"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
+				})
+			})
+
+			when("platformApi is at least 0.4", func() {
+				when("bom version is set both in the top level and in the metadata", func() {
+					it("returns an error", func() {
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						builder.PlatformAPI = api.MustParse("0.4")
+						mkfile(t,
+							"[[entries]]\n"+
+								`name = "dep1"`+"\n"+
+								`version = "v2"`+"\n"+
+								"[entries.metadata]\n"+
+								`version = "v1"`+"\n",
+							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+						)
+						_, err := builder.Build()
+						h.AssertNotNil(t, err)
+						expected := "metadata version does not match top level version"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
+				})
+			})
 		})
 	})
 }
