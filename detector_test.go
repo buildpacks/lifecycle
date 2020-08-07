@@ -614,6 +614,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 					detectRun := bpTOML.Detect(config)
 
+					h.AssertEq(t, detectRun.Code, -1)
 					err = detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
@@ -640,6 +641,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 					detectRun := bpTOML.Detect(config)
 
+					h.AssertEq(t, detectRun.Code, -1)
 					err = detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
@@ -665,6 +667,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 					detectRun := bpTOML.Detect(config)
 
+					h.AssertEq(t, detectRun.Code, -1)
 					err = detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
@@ -693,6 +696,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 					detectRun := bpTOML.Detect(config)
 
+					h.AssertEq(t, detectRun.Code, -1)
 					err = detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
@@ -717,11 +721,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 					detectRun := bpTOML.Detect(config)
 
+					h.AssertEq(t, detectRun.Code, 0)
 					err = detectRun.Err
 					if err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
-
 					if s := allLogs(logHandler); !strings.Contains(s,
 						`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {
@@ -748,11 +752,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 					detectRun := bpTOML.Detect(config)
 
+					h.AssertEq(t, detectRun.Code, 0)
 					err = detectRun.Err
 					if err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
-
 					if s := allLogs(logHandler); !strings.Contains(s,
 						`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {

@@ -19,7 +19,6 @@ import (
 const (
 	CodeDetectPass  = 0
 	CodeDetectFail  = 100
-	CodeVersionFail = 200
 	EnvBuildpackDir = "CNB_BUILDPACK_DIR"
 )
 
@@ -112,8 +111,6 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 		outputLogf := c.Logger.Debugf
 
 		switch run.Code {
-		case CodeVersionFail:
-			return nil, nil, run.Err
 		case CodeDetectPass, CodeDetectFail:
 		default:
 			outputLogf = c.Logger.Infof
@@ -296,13 +293,13 @@ func (bp *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
 			t.Err = errors.Errorf(errInconsistentVersion, bp.Buildpack.Name)
-			t.Code = CodeVersionFail
+			t.Code = -1
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
 		if t.hasDoublySpecifiedVersions() || t.Or.hasDoublySpecifiedVersions() {
 			t.Err = errors.Errorf(errDoublySpecifiedVersions, bp.Buildpack.Name)
-			t.Code = CodeVersionFail
+			t.Code = -1
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
