@@ -11,13 +11,12 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/env"
-	launch2 "github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestLaunchEnv(t *testing.T) {
 	spec.Run(t, "LaunchEnv", testLaunchEnv, spec.Report(report.Terminal{}))
-	//spec.Run(t, "LaunchEnvOS", testLaunchEnvOS, spec.Report(report.Terminal{}))
 }
 
 func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
@@ -56,7 +55,7 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 		it("allows keys with '='", func() {
 			lenv := env.NewLaunchEnv([]string{
 				"CNB_FOO=some=key",
-			}, launch2.ProcessDir)
+			}, launch.ProcessDir)
 			if s := cmp.Diff(lenv.List(), []string{
 				"CNB_FOO=some=key",
 			}); s != "" {
@@ -65,7 +64,7 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("assign the Launch time root dir map", func() {
-			lenv := env.NewLaunchEnv([]string{}, launch2.ProcessDir)
+			lenv := env.NewLaunchEnv([]string{}, launch.ProcessDir)
 			if s := cmp.Diff(lenv.RootDirMap, env.POSIXLaunchEnv); s != "" {
 				t.Fatalf("Unexpected root dir map\n%s\n", s)
 			}

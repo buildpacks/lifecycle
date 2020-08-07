@@ -8,6 +8,7 @@ type CmdShell struct {
 	Exec ExecFunc
 }
 
+// Launch launches the given ShellProcess with cmd
 func (c *CmdShell) Launch(proc ShellProcess) error {
 	var commandTokens []string
 	for _, profile := range proc.Profiles {

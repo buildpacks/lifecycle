@@ -70,7 +70,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 						stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
 						t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 					}
-					h.AssertStringContains(t, stdout, fmt.Sprintf("profile arv0: '%s'", filepath.Join("testdata", "profiles", "print_argv0.bat")))
+					h.AssertStringContains(t, stdout, fmt.Sprintf("profile argv0: '%s'", filepath.Join("testdata", "profiles", "print_argv0.bat")))
 				})
 
 				it("sets env for profile scripts", func() {

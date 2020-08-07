@@ -16,10 +16,10 @@ type Shell interface {
 }
 
 type ShellProcess struct {
-	Script   bool     // if true treat the command like a script, if false build a script where command is a token
-	Args     []string `toml:"args" json:"args"`
-	Command  string   `toml:"command" json:"command"`
-	Caller   string
+	Script   bool // Script indicates whether Command is a script or should be a token in a generated script
+	Args     []string
+	Command  string
+	Caller   string // Caller used to set argv0 for Bash profile scripts and is ignored in Cmd
 	Profiles []string
 	Env      []string
 }
@@ -92,7 +92,7 @@ func (l *Launcher) profiles(process Process) ([]string, error) {
 
 func (l *Launcher) isScript(process Process) (bool, error) {
 	if runtime.GOOS == "windows" {
-		// For now windows does not support script commands
+		// Windows does not support script commands
 		return false, nil
 	}
 	if len(process.Args) == 0 {

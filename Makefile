@@ -45,6 +45,7 @@ $(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 $(BUILD_DIR)/linux/lifecycle/lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
 $(BUILD_DIR)/linux/lifecycle/lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle $(LINUX_COMPILATION_IMAGE)
+$(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
@@ -54,12 +55,12 @@ build-linux-launcher: $(BUILD_DIR)/linux/lifecycle/launcher
 
 $(BUILD_DIR)/linux/lifecycle/launcher: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/launcher: OUT_DIR?=$(BUILD_DIR)/$(GOOS)/lifecycle
+$(BUILD_DIR)/linux/lifecycle/launcher: $(GOFILES)
 $(BUILD_DIR)/linux/lifecycle/launcher:
 	@echo "> Building lifecycle/launcher for linux..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
-$(BUILD_DIR)/linux/lifecycle/launcher: $(GOFILES)
 
 build-linux-symlinks: export GOOS:=linux
 build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle

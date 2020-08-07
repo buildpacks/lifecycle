@@ -121,7 +121,7 @@ func (c *createCmd) Exec() error {
 		orderPath:     c.orderPath,
 	}.detect()
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailed, "detect")
+		return err
 	}
 
 	cmd.DefaultLogger.Phase("ANALYZING")

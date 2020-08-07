@@ -14,8 +14,9 @@ type Process struct {
 	BuildpackID string   `toml:"buildpack-id" json:"buildpackID"`
 }
 
-func (p Process) Path() string {
-	return filepath.Join(ProcessDir, p.Type+exe)
+// ProcessPath returns the absolute path to the symlink for a given processType
+func ProcessPath(processType string) string {
+	return filepath.Join(ProcessDir, processType+exe)
 }
 
 type Metadata struct {

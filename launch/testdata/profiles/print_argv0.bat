@@ -1,1 +1,1 @@
-echo "profile arv0: '%0%'"
+echo "profile argv0: '%0%'"

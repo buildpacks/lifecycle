@@ -13,6 +13,10 @@ var LaunchEnvExcludelist = []string{
 	"CNB_DEPRECATION_MODE",
 }
 
+// NewLaunchEnv returns an Env for process launch from the given environ.
+//
+// Keys in the LaunchEnvExcludelist shall be removed.
+// processDir will be removed from the beginning of PATH if present.
 func NewLaunchEnv(environ []string, processDir string) *Env {
 	vars := varsFromEnviron(environ, ignoreEnvVarCase, isExcluded)
 	if path, ok := vars.vals["PATH"]; ok {

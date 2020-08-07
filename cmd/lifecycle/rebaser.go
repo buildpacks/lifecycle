@@ -138,7 +138,7 @@ func (r *rebaseCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
 	}
 	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErr(err, "write buildpack group")
+		return cmd.FailErrCode(err, cmd.CodeRebaseError, "write rebase report")
 	}
 	return nil
 }

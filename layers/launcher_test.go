@@ -67,14 +67,14 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 					Typeflag: tar.TypeDir,
 				},
 				{
-					Name:     tarPath(proc1.Path()),
+					Name:     tarPath(launch.ProcessPath(proc1.Type)),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeSymlink,
 					Linkname: launch.LauncherPath,
 				},
 				{
-					Name:     tarPath(proc2.Path()),
+					Name:     tarPath(launch.ProcessPath(proc2.Type)),
 					Uid:      0,
 					Gid:      0,
 					Typeflag: tar.TypeSymlink,

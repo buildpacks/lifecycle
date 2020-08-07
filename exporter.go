@@ -103,14 +103,14 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 		return ExportReport{}, err
 	}
 
-	// launcher layers (launcher binary, launcher config, process symlinks)
-	if err := e.addLauncherLayers(opts, buildMD, &meta); err != nil {
-		return ExportReport{}, err
-	}
-
 	// app layers (split into 1 or more slices)
 	if err := e.addAppLayers(opts, buildMD.Slices, &meta); err != nil {
 		return ExportReport{}, errors.Wrap(err, "exporting app layers")
+	}
+
+	// launcher layers (launcher binary, launcher config, process symlinks)
+	if err := e.addLauncherLayers(opts, buildMD, &meta); err != nil {
+		return ExportReport{}, err
 	}
 
 	if err := e.setLabels(opts, meta, buildMD); err != nil {
@@ -125,6 +125,7 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	if err != nil {
 		return ExportReport{}, errors.Wrap(err, "determining entrypoint")
 	}
+	e.Logger.Debugf("Setting ENTRYPOINT: '%s'", entrypoint)
 	if err = opts.WorkingImage.SetEntrypoint(entrypoint); err != nil {
 		return ExportReport{}, errors.Wrap(err, "setting entrypoint")
 	}
@@ -309,18 +310,22 @@ func (e *Exporter) setLabels(opts ExportOptions, meta LayersMetadata, buildMD *B
 }
 
 func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
+	e.Logger.Debugf("Setting %s=%s", cmd.EnvLayersDir, opts.LayersDir)
 	if err := opts.WorkingImage.SetEnv(cmd.EnvLayersDir, opts.LayersDir); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvLayersDir)
 	}
 
+	e.Logger.Debugf("Setting %s=%s", cmd.EnvAppDir, opts.AppDir)
 	if err := opts.WorkingImage.SetEnv(cmd.EnvAppDir, opts.AppDir); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
+	e.Logger.Debugf("Setting %s=%s", cmd.EnvPlatformAPI, e.PlatformAPI.String())
 	if err := opts.WorkingImage.SetEnv(cmd.EnvPlatformAPI, e.PlatformAPI.String()); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
+	e.Logger.Debugf("Setting %s=%s", cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet)
 	if err := opts.WorkingImage.SetEnv(cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
@@ -331,6 +336,7 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 			return errors.Wrap(err, "failed to get PATH from app image")
 		}
 		path = strings.Join([]string{launch.ProcessDir, path}, string(os.PathListSeparator))
+		e.Logger.Debugf("Prepending %s to PATH", launch.ProcessDir)
 		if err := opts.WorkingImage.SetEnv("PATH", path); err != nil {
 			return errors.Wrap(err, "set app image env PATH")
 		}
@@ -338,6 +344,7 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		if _, ok := launchMD.FindProcessType(opts.DefaultProcessType); !ok {
 			return processTypeError(launchMD, opts.DefaultProcessType)
 		}
+		e.Logger.Debugf("Setting %s=%s", cmd.EnvProcessType, opts.DefaultProcessType)
 		if err := opts.WorkingImage.SetEnv(cmd.EnvProcessType, opts.DefaultProcessType); err != nil {
 			return errors.Wrapf(err, "set app image env %s", cmd.EnvProcessType)
 		}
@@ -351,7 +358,8 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType strin
 	}
 	if defaultProcessType == "" {
 		if len(launchMD.Processes) == 1 {
-			return launchMD.Processes[0].Path(), nil
+			e.Logger.Infof("Setting default process '%s'", launchMD.Processes[0].Type)
+			return launch.ProcessPath(launchMD.Processes[0].Type), nil
 		}
 		return launch.LauncherPath, nil
 	}
@@ -359,7 +367,8 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType strin
 	if !ok {
 		return "", processTypeError(launchMD, defaultProcessType)
 	}
-	return defaultProcess.Path(), nil
+	e.Logger.Infof("Setting default process '%s'", defaultProcess.Type)
+	return launch.ProcessPath(defaultProcess.Type), nil
 }
 
 // processTypes adds

@@ -66,7 +66,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 						stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
 						t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 					}
-					h.AssertStringContains(t, stdout, "profile arv0: 'some-profile-argv0'")
+					h.AssertStringContains(t, stdout, "profile argv0: 'some-profile-argv0'")
 				})
 
 				it("sets env for profile scripts", func() {
@@ -159,7 +159,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 						stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
 						t.Fatalf("stdout was empty: stderr: %s\n", stderr)
 					}
-					h.AssertStringContains(t, stdout, "profile arv0: 'some-profile-argv0'")
+					h.AssertStringContains(t, stdout, "profile argv0: 'some-profile-argv0'")
 				})
 
 				it("sets env for profile scripts", func() {

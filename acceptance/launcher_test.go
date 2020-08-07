@@ -59,7 +59,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			it("appends any args to the process args", func() {
 				entrypoint := "/cnb/process/web"
 				if runtime.GOOS == "windows" {
-					entrypoint = `c:\cnb\process\web.exe`
+					entrypoint = `c:\cnb\process\web`
 				}
 				cmd := exec.Command("docker", "run", "--rm",
 					"--entrypoint="+entrypoint,
@@ -104,8 +104,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				)
 				out, err := cmd.CombinedOutput()
 				h.AssertNotNil(t, err)
-				h.AssertStringContains(t, string(out), "Warning: CNB_PROCESS_TYPE is not supported in platform API 0.4")
-				h.AssertStringContains(t, string(out), "Warning: Run with entrypoint /cnb/process/direct-process to invoke the 'direct-process' process type")
+				h.AssertStringContains(t, string(out), "Warning: CNB_PROCESS_TYPE is not supported in Platform API 0.4")
+				if runtime.GOOS == "windows" {
+					h.AssertStringContains(t, string(out), `Warning: Run with ENTRYPOINT 'c:\cnb\process\direct-process.exe' to invoke the 'direct-process' process type`)
+				} else {
+					h.AssertStringContains(t, string(out), "Warning: Run with ENTRYPOINT '/cnb/process/direct-process' to invoke the 'direct-process' process type")
+				}
 				h.AssertStringContains(t, string(out), "ERROR: failed to launch: determine start command: when there is no default process a command is required")
 			})
 		})

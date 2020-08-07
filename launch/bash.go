@@ -14,6 +14,11 @@ type BashShell struct {
 	Exec ExecFunc
 }
 
+// Launch launches the given ShellProcess with Bash
+//
+// It shall execute a Bash command that sources profile scripts and then executes the process in a nested Bash command
+// When ShellProcess.Script is true nested Bash script shall be proc.Command with proc.Args provided as argument to Bash
+// When ShellProcess.Script is false a Bash command shall be contructed from proc.Command and proc.Args
 func (b *BashShell) Launch(proc ShellProcess) error {
 	launcher := ""
 	for _, profile := range proc.Profiles {

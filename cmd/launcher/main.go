@@ -60,8 +60,8 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 		return cmd.EnvOrDefault(cmd.EnvProcessType, cmd.DefaultProcessType)
 	}
 	if pType := os.Getenv(cmd.EnvProcessType); pType != "" {
-		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in platform API %s", platformAPI)
-		cmd.DefaultLogger.Warnf("Run with entrypoint /cnb/process/%s to invoke the '%s' process type", pType, pType)
+		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
+		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", launch.ProcessPath(pType), pType)
 	}
 	process := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
 	if _, ok := launchMD.FindProcessType(process); ok {
