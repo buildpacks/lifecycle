@@ -115,7 +115,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 				process = launch.ShellProcess{
 					Script:  true,
 					Command: `printf "SOME_ARG: '%s'" "$1"`,
-					Args:    []string{"", "some arg1"},
+					Args:    []string{"bash", "some arg1"},
 					Caller:  "some-profile-argv0",
 					Env: []string{
 						"SOME_VAR=some-val",

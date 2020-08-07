@@ -335,8 +335,8 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to get PATH from app image")
 		}
-		path = strings.Join([]string{launch.ProcessDir, path}, string(os.PathListSeparator))
-		e.Logger.Debugf("Prepending %s to PATH", launch.ProcessDir)
+		path = strings.Join([]string{launch.ProcessDir, launch.LifecycleDir, path}, string(os.PathListSeparator))
+		e.Logger.Debugf("Prepending %s and %s to PATH", launch.ProcessDir, launch.LifecycleDir)
 		if err := opts.WorkingImage.SetEnv("PATH", path); err != nil {
 			return errors.Wrap(err, "set app image env PATH")
 		}
@@ -358,7 +358,7 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType strin
 	}
 	if defaultProcessType == "" {
 		if len(launchMD.Processes) == 1 {
-			e.Logger.Infof("Setting default process '%s'", launchMD.Processes[0].Type)
+			e.Logger.Infof("Setting default process type '%s'", launchMD.Processes[0].Type)
 			return launch.ProcessPath(launchMD.Processes[0].Type), nil
 		}
 		return launch.LauncherPath, nil
@@ -367,7 +367,7 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType strin
 	if !ok {
 		return "", processTypeError(launchMD, defaultProcessType)
 	}
-	e.Logger.Infof("Setting default process '%s'", defaultProcess.Type)
+	e.Logger.Infof("Setting default process type '%s'", defaultProcess.Type)
 	return launch.ProcessPath(defaultProcess.Type), nil
 }
 

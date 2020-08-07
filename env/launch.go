@@ -17,17 +17,18 @@ var LaunchEnvExcludelist = []string{
 //
 // Keys in the LaunchEnvExcludelist shall be removed.
 // processDir will be removed from the beginning of PATH if present.
-func NewLaunchEnv(environ []string, processDir string) *Env {
+func NewLaunchEnv(environ []string, processDir string, lifecycleDir string) *Env {
 	vars := varsFromEnviron(environ, ignoreEnvVarCase, isExcluded)
 	if path, ok := vars.vals["PATH"]; ok {
-		pathElems := strings.SplitN(path, string(os.PathListSeparator), 2)
-		if pathElems[0] == processDir {
-			if len(pathElems) == 2 {
-				vars.Set("PATH", pathElems[1])
-			} else {
-				vars.Set("PATH", "")
+		parts := strings.Split(path, string(os.PathListSeparator))
+		var stripped []string
+		for _, part := range parts {
+			if part == processDir || part == lifecycleDir {
+				continue
 			}
+			stripped = append(stripped, part)
 		}
+		vars.vals["PATH"] = strings.Join(stripped, string(os.PathListSeparator))
 	}
 	return &Env{
 		RootDirMap: POSIXLaunchEnv,

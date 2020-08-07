@@ -36,7 +36,7 @@ type Logger interface {
 	Errorf(fmt string, v ...interface{})
 }
 
-func (f *Factory) writeLayer(id string, addEntries func(tw *archive.NormalizingTarWriter) error) (Layer, error) {
+func (f *Factory) writeLayer(id string, addEntries func(tw *archive.NormalizingTarWriter) error) (layer Layer, err error) {
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
 	if f.tarHashes == nil {
 		f.tarHashes = make(map[string]string)

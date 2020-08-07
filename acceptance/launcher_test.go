@@ -45,24 +45,16 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	when("Platform API >= 0.4", func() {
 		when("entrypoint is a process", func() {
 			it("launches that process", func() {
-				entrypoint := "/cnb/process/web"
-				if runtime.GOOS == "windows" {
-					entrypoint = `c:\cnb\process\web.exe`
-				}
 				cmd := exec.Command("docker", "run", "--rm",
-					"--entrypoint="+entrypoint,
+					"--entrypoint=web",
 					"--env=CNB_PLATFORM_API=0.4",
 					launchImage)
 				assertOutput(t, cmd, "Executing web process-type")
 			})
 
 			it("appends any args to the process args", func() {
-				entrypoint := "/cnb/process/web"
-				if runtime.GOOS == "windows" {
-					entrypoint = `c:\cnb\process\web`
-				}
 				cmd := exec.Command("docker", "run", "--rm",
-					"--entrypoint="+entrypoint,
+					"--entrypoint=web",
 					"--env=CNB_PLATFORM_API=0.4",
 					launchImage, "with user provided args")
 				if runtime.GOOS == "windows" {
@@ -76,12 +68,12 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		when("entrypoint is a not a process", func() {
 			it("builds a process from the arguments", func() {
 				cmd := exec.Command("docker", "run", "--rm",
-					"--entrypoint=/cnb/lifecycle/launcher",
+					"--entrypoint=launcher",
 					"--env=CNB_PLATFORM_API=0.4",
 					launchImage, "--", "env")
 				if runtime.GOOS == "windows" {
 					cmd = exec.Command("docker", "run", "--rm",
-						`--entrypoint=c:\cnb\lifecycle\launcher.exe`,
+						`--entrypoint=launcher`,
 						"--env=CNB_PLATFORM_API=0.4",
 						launchImage, "--", "cmd", "/c", "set",
 					)
@@ -105,11 +97,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				out, err := cmd.CombinedOutput()
 				h.AssertNotNil(t, err)
 				h.AssertStringContains(t, string(out), "Warning: CNB_PROCESS_TYPE is not supported in Platform API 0.4")
-				if runtime.GOOS == "windows" {
-					h.AssertStringContains(t, string(out), `Warning: Run with ENTRYPOINT 'c:\cnb\process\direct-process.exe' to invoke the 'direct-process' process type`)
-				} else {
-					h.AssertStringContains(t, string(out), "Warning: Run with ENTRYPOINT '/cnb/process/direct-process' to invoke the 'direct-process' process type")
-				}
+				h.AssertStringContains(t, string(out), `Warning: Run with ENTRYPOINT 'direct-process' to invoke the 'direct-process' process type`)
 				h.AssertStringContains(t, string(out), "ERROR: failed to launch: determine start command: when there is no default process a command is required")
 			})
 		})

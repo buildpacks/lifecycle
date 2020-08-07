@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/apex/log"
@@ -53,23 +54,30 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 			}})
 			h.AssertNil(t, err)
 			h.AssertEq(t, configLayer.ID, "process-types")
+			var mode int64 = 0755
+			if runtime.GOOS == "windows" {
+				mode = 0777
+			}
 			assertTarEntries(t, configLayer.TarPath, []*tar.Header{
 				{
 					Name:     tarPath("/cnb"),
 					Uid:      0,
 					Gid:      0,
+					Mode:     mode,
 					Typeflag: tar.TypeDir,
 				},
 				{
 					Name:     tarPath("/cnb/process"),
 					Uid:      0,
 					Gid:      0,
+					Mode:     mode,
 					Typeflag: tar.TypeDir,
 				},
 				{
 					Name:     tarPath(launch.ProcessPath(proc1.Type)),
 					Uid:      0,
 					Gid:      0,
+					Mode:     mode,
 					Typeflag: tar.TypeSymlink,
 					Linkname: launch.LauncherPath,
 				},
@@ -77,6 +85,7 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 					Name:     tarPath(launch.ProcessPath(proc2.Type)),
 					Uid:      0,
 					Gid:      0,
+					Mode:     mode,
 					Typeflag: tar.TypeSymlink,
 					Linkname: launch.LauncherPath,
 				},
@@ -107,23 +116,30 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 			launcherLayer, err := factory.LauncherLayer(filepath.Join("testdata", "fake-launcher"))
 			h.AssertNil(t, err)
 			h.AssertEq(t, launcherLayer.ID, "launcher")
+			var mode int64 = 0755
+			if runtime.GOOS == "windows" {
+				mode = 0777
+			}
 			assertTarEntries(t, launcherLayer.TarPath, []*tar.Header{
 				{
 					Name:     tarPath("/cnb"),
 					Uid:      0,
 					Gid:      0,
+					Mode:     mode,
 					Typeflag: tar.TypeDir,
 				},
 				{
 					Name:     tarPath("/cnb/lifecycle"),
 					Uid:      0,
 					Gid:      0,
+					Mode:     mode,
 					Typeflag: tar.TypeDir,
 				},
 				{
 					Name:     tarPath(launch.LauncherPath),
 					Uid:      0,
 					Gid:      0,
+					Mode:     mode,
 					Typeflag: tar.TypeReg,
 					Linkname: launch.LauncherPath,
 				},

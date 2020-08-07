@@ -420,7 +420,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 						when("linux", func() {
 							it.Before(func() {
-								h.SkipIf(t, runtime.GOOS == "windows", "windows test")
+								h.SkipIf(t, runtime.GOOS == "windows", "linux test")
 							})
 
 							it("is script", func() {

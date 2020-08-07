@@ -78,12 +78,13 @@ type LayersMetadata struct {
 // It exists for situations where the `App` field type cannot be
 // guaranteed, yet the original struct data must be maintained.
 type LayersMetadataCompat struct {
-	App        interface{}               `json:"app" toml:"app"`
-	Config     LayerMetadata             `json:"config" toml:"config"`
-	Launcher   LayerMetadata             `json:"launcher" toml:"launcher"`
-	Buildpacks []BuildpackLayersMetadata `json:"buildpacks" toml:"buildpacks"`
-	RunImage   RunImageMetadata          `json:"runImage" toml:"run-image"`
-	Stack      StackMetadata             `json:"stack" toml:"stack"`
+	App          interface{}               `json:"app" toml:"app"`
+	Config       LayerMetadata             `json:"config" toml:"config"`
+	Launcher     LayerMetadata             `json:"launcher" toml:"launcher"`
+	ProcessTypes LayerMetadata             `json:"process-types" toml:"process-types"`
+	Buildpacks   []BuildpackLayersMetadata `json:"buildpacks" toml:"buildpacks"`
+	RunImage     RunImageMetadata          `json:"runImage" toml:"run-image"`
+	Stack        StackMetadata             `json:"stack" toml:"stack"`
 }
 
 type AnalyzedMetadata struct {

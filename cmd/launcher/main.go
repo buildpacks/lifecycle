@@ -43,7 +43,7 @@ func runLaunch() error {
 		PlatformAPI:        api.MustParse(platformAPI),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
-		Env:                env.NewLaunchEnv(os.Environ(), launch.ProcessDir),
+		Env:                env.NewLaunchEnv(os.Environ(), launch.ProcessDir, launch.LifecycleDir),
 		Exec:               launch.OSExecFunc,
 		Shell:              launch.DefaultShell,
 		Setenv:             os.Setenv,
@@ -61,7 +61,7 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 	}
 	if pType := os.Getenv(cmd.EnvProcessType); pType != "" {
 		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
-		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", launch.ProcessPath(pType), pType)
+		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}
 	process := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
 	if _, ok := launchMD.FindProcessType(process); ok {

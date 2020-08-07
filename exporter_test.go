@@ -567,16 +567,16 @@ version = "4.5.6"
 						exporter.PlatformAPI = api.MustParse("0.4")
 					})
 
-					it("prepends the process dir", func() {
+					it("prepends the process and lifecycle dirs to PATH", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
 						val, err := opts.WorkingImage.Env("PATH")
 						h.AssertNil(t, err)
 						if runtime.GOOS == "windows" {
-							h.AssertEq(t, val, `c:\cnb\process;some-path`)
+							h.AssertEq(t, val, `c:\cnb\process;c:\cnb\lifecycle;some-path`)
 						} else {
-							h.AssertEq(t, val, `/cnb/process:some-path`)
+							h.AssertEq(t, val, `/cnb/process:/cnb/lifecycle:some-path`)
 						}
 					})
 				})
@@ -957,13 +957,16 @@ version = "4.5.6"
 			})
 
 			when("default process type is set", func() {
+				it.Before(func() {
+					opts.DefaultProcessType = "some-process-type"
+				})
+
 				when("platform API is < 0.4", func() {
 					it.Before(func() {
 						exporter.PlatformAPI = api.MustParse("0.3")
 					})
 
 					it("sets CNB_PROCESS_TYPE", func() {
-						opts.DefaultProcessType = "some-process-type"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
@@ -984,15 +987,6 @@ version = "4.5.6"
 						} else {
 							h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
 						}
-					})
-
-					it("does not set CNB_PROCESS_TYPE", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "")
 					})
 
 					when("default process type is not in metadata.toml", func() {
@@ -1022,6 +1016,15 @@ version = "4.5.6"
 						} else {
 							h.AssertEq(t, ep[0], `/cnb/process/some-process-type`)
 						}
+					})
+
+					it("does not set CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "")
 					})
 
 					when("default process type is not in metadata.toml", func() {

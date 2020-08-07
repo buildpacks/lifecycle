@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	LauncherPath = filepath.Join(CNBDir, "lifecycle", "launcher"+exe)
+	LifecycleDir = filepath.Join(CNBDir, "lifecycle")
 	ProcessDir   = filepath.Join(CNBDir, "process")
+	LauncherPath = filepath.Join(LifecycleDir, "launcher"+exe)
 )
 
 type ExecFunc func(argv0 string, argv []string, envv []string) error
