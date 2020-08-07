@@ -45,12 +45,12 @@ func (bp Buildpack) Lookup(buildpacksDir string) (*BuildpackTOML, error) {
 
 type BuildpackTOML struct {
 	API       string         `toml:"api"`
-	Buildpack buildpackInfo  `toml:"buildpack"`
+	Buildpack BuildpackInfo  `toml:"buildpack"`
 	Order     BuildpackOrder `toml:"order"`
 	Path      string         `toml:"-"`
 }
 
-type buildpackInfo struct {
+type BuildpackInfo struct {
 	ID       string `toml:"id"`
 	Version  string `toml:"version"`
 	Name     string `toml:"name"`

@@ -101,13 +101,13 @@ type DetectConfig struct {
 }
 
 func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry, error) {
-	var runs []detectRun
+	var runs []DetectRun
 	for _, bp := range done {
 		t, ok := c.runs.Load(bp.String())
 		if !ok {
 			return nil, nil, errors.Errorf("missing detection of '%s'", bp)
 		}
-		run := t.(detectRun)
+		run := t.(DetectRun)
 		outputLogf := c.Logger.Debugf
 
 		switch run.Code {
@@ -249,24 +249,24 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 	return deps, trial, nil
 }
 
-func (bp *BuildpackTOML) detect(c *DetectConfig) detectRun {
+func (bp *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	appDir, err := filepath.Abs(c.AppDir)
 	if err != nil {
-		return detectRun{Code: -1, Err: err}
+		return DetectRun{Code: -1, Err: err}
 	}
 	platformDir, err := filepath.Abs(c.PlatformDir)
 	if err != nil {
-		return detectRun{Code: -1, Err: err}
+		return DetectRun{Code: -1, Err: err}
 	}
 	planDir, err := ioutil.TempDir("", "plan.")
 	if err != nil {
-		return detectRun{Code: -1, Err: err}
+		return DetectRun{Code: -1, Err: err}
 	}
 	defer os.RemoveAll(planDir)
 
 	planPath := filepath.Join(planDir, "plan.toml")
 	if err := ioutil.WriteFile(planPath, nil, 0777); err != nil {
-		return detectRun{Code: -1, Err: err}
+		return DetectRun{Code: -1, Err: err}
 	}
 
 	out := &bytes.Buffer{}
@@ -287,14 +287,14 @@ func (bp *BuildpackTOML) detect(c *DetectConfig) detectRun {
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			if status, ok := err.Sys().(syscall.WaitStatus); ok {
-				return detectRun{Code: status.ExitStatus(), Output: out.Bytes()}
+				return DetectRun{Code: status.ExitStatus(), Output: out.Bytes()}
 			}
 		}
-		return detectRun{Code: -1, Err: err, Output: out.Bytes()}
+		return DetectRun{Code: -1, Err: err, Output: out.Bytes()}
 	}
-	var t detectRun
+	var t DetectRun
 	if _, err := toml.DecodeFile(planPath, &t); err != nil {
-		return detectRun{Code: -1, Err: err}
+		return DetectRun{Code: -1, Err: err}
 	}
 	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
@@ -357,7 +357,7 @@ func (bg BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectC
 		wg.Add(1)
 		go func() {
 			if _, ok := c.runs.Load(key); !ok {
-				c.runs.Store(key, info.detect(c))
+				c.runs.Store(key, info.Detect(c))
 			}
 			wg.Done()
 		}()
@@ -429,7 +429,7 @@ func hasID(bps []Buildpack, id string) bool {
 	return false
 }
 
-type detectRun struct {
+type DetectRun struct {
 	planSections
 	Or     planSectionsList `toml:"or"`
 	Output []byte           `toml:"-"`
@@ -500,7 +500,7 @@ func (p *planSectionsList) hasTopLevelVersions() bool {
 
 type detectResult struct {
 	Buildpack
-	detectRun
+	DetectRun
 }
 
 func (r *detectResult) options() []detectOption {

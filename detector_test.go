@@ -532,73 +532,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should fail if buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
-				mkappfile("100", "detect-status-C-v1")
-				mkappfile("100", "detect-status-B-v2")
-
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
-				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
-				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
-
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-D-v2.toml")
-				toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-D-v2.toml")
-				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-A-v1.toml")
-
-				_, _, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "C", Version: "v2"},
-						{ID: "D", Version: "v2"},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-				if err == nil {
-					t.Fatalf("Expected error")
-				}
-
-				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
-			})
-
-			it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
-				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
-
-				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-B-v1.toml")
-				toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-B-v1.toml")
-
-				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-C-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
-
-				toappfile("\n[[requires]]\n name = \"dep7-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[provides]]\n name = \"dep8-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-D-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep9-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep10-missing\"", "detect-plan-D-v1.toml")
-
-				_, _, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Optional: true},
-						{ID: "B", Version: "v1", Optional: true},
-						{ID: "C", Version: "v1"},
-						{ID: "D", Version: "v1", Optional: true},
-					}},
-				}.Detect(config)
-				if err == nil {
-					t.Fatalf("Expected error")
-				}
-
-				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
-			})
-
 			it("should convert top level versions to metadata versions", func() {
 				mkappfile("100", "detect-status-C-v1")
 				mkappfile("100", "detect-status-B-v2")
@@ -662,29 +595,73 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
-				mkappfile("100", "detect-status-C-v1")
-				mkappfile("100", "detect-status-B-v2")
-
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
-				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+			it("should fail if buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
+				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "D", "v2"))
+				h.AssertNil(t, err)
+				bpTOML := lifecycle.BuildpackTOML{
+					API: "0.2",
+					Buildpack: lifecycle.BuildpackInfo{
+						ID:      "D",
+						Version: "v2",
+					},
+					Path: bpPath,
+				}
 				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-D-v2.toml")
+				toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-D-v2.toml")
 
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-D-v2.toml")
-				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
+				detectRun := bpTOML.Detect(config)
+
+				err = detectRun.Err
+				if err == nil {
+					t.Fatalf("Expected error")
+				}
+				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
+			})
+
+			it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
+				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "B", "v1"))
+				h.AssertNil(t, err)
+				bpTOML := lifecycle.BuildpackTOML{
+					API: "0.2",
+					Buildpack: lifecycle.BuildpackInfo{
+						ID:      "B",
+						Version: "v1",
+					},
+					Path: bpPath,
+				}
+				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-B-v1.toml")
+				toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-B-v1.toml")
+
+				detectRun := bpTOML.Detect(config)
+
+				err = detectRun.Err
+				if err == nil {
+					t.Fatalf("Expected error")
+				}
+
+				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
+			})
+
+			it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
+				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+				h.AssertNil(t, err)
+				bpTOML := lifecycle.BuildpackTOML{
+					API: "0.3",
+					Buildpack: lifecycle.BuildpackInfo{
+						ID:      "A",
+						Version: "v1",
+					},
+					Path: bpPath,
+				}
 				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 				toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				_, _, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "C", Version: "v2"},
-						{ID: "D", Version: "v2"},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
+				detectRun := bpTOML.Detect(config)
+
+				err = detectRun.Err
 				if err == nil {
 					t.Fatalf("Expected error")
 				}
@@ -693,36 +670,25 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail if buildpack with buildpack api 0.3+ has alternate build plan with both a top level version and a metadata version", func() {
+				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+				h.AssertNil(t, err)
+				bpTOML := lifecycle.BuildpackTOML{
+					API: "0.3",
+					Buildpack: lifecycle.BuildpackInfo{
+						ID:      "A",
+						Version: "v1",
+					},
+					Path: bpPath,
+				}
 				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 				toappfile("\n[or.requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep1-present\"", "detect-plan-B-v1.toml")
+				detectRun := bpTOML.Detect(config)
 
-				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-C-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
-
-				toappfile("\n[[requires]]\n name = \"dep7-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[provides]]\n name = \"dep8-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-D-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep9-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep10-missing\"", "detect-plan-D-v1.toml")
-
-				_, _, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Optional: true},
-						{ID: "B", Version: "v1", Optional: true},
-						{ID: "C", Version: "v1"},
-						{ID: "D", Version: "v1", Optional: true},
-					}},
-				}.Detect(config)
+				err = detectRun.Err
 				if err == nil {
 					t.Fatalf("Expected error")
 				}
@@ -731,27 +697,22 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should warn if buildpacks with buildpack api 0.3+ have a top level version", func() {
-				mkappfile("100", "detect-status-C-v1")
-				mkappfile("100", "detect-status-B-v2")
-
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
-				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
-				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
-
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-D-v2.toml")
-				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
+				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+				h.AssertNil(t, err)
+				bpTOML := lifecycle.BuildpackTOML{
+					API: "0.3",
+					Buildpack: lifecycle.BuildpackInfo{
+						ID:      "A",
+						Version: "v1",
+						Name:    "Buildpack A",
+					},
+					Path: bpPath,
+				}
 				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				_, _, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "C", Version: "v2"},
-						{ID: "D", Version: "v2"},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
+				detectRun := bpTOML.Detect(config)
+
+				err = detectRun.Err
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
@@ -764,35 +725,25 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should warn if buildpack with buildpack api 0.3+ has alternate build plan with a top level version", func() {
+				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+				h.AssertNil(t, err)
+				bpTOML := lifecycle.BuildpackTOML{
+					API: "0.3",
+					Buildpack: lifecycle.BuildpackInfo{
+						ID:      "A",
+						Version: "v1",
+						Name:    "Buildpack A",
+					},
+					Path: bpPath,
+				}
 				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep1-present\"", "detect-plan-B-v1.toml")
+				detectRun := bpTOML.Detect(config)
 
-				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-C-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
-
-				toappfile("\n[[requires]]\n name = \"dep7-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[provides]]\n name = \"dep8-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-D-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep9-missing\"", "detect-plan-D-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep10-missing\"", "detect-plan-D-v1.toml")
-
-				_, _, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Optional: true},
-						{ID: "B", Version: "v1", Optional: true},
-						{ID: "C", Version: "v1"},
-						{ID: "D", Version: "v1", Optional: true},
-					}},
-				}.Detect(config)
+				err = detectRun.Err
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
