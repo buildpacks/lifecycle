@@ -43,7 +43,7 @@ func (be BuildPlanEntry) noOpt() BuildPlanEntry {
 
 type Require struct {
 	Name     string                 `toml:"name" json:"name"`
-	Version  string                 `toml:"version" json:"version"`
+	Version  string                 `toml:"version,omitempty" json:"version,omitempty"`
 	Metadata map[string]interface{} `toml:"metadata" json:"metadata"`
 }
 

@@ -19,7 +19,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
@@ -66,6 +68,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:     layersDir,
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
+			PlatformAPI:   api.MustParse("0.3"),
 			Env:           env,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
@@ -88,6 +91,44 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+			})
+
+			when("platformApi is less than 0.4", func() {
+				it("writes the bom version at the top-level", func() {
+					builder.PlatformAPI = api.MustParse("0.3")
+					mkfile(t,
+						"[[entries]]\n"+
+							`name = "dep1"`+"\n"+
+							"[entries.metadata]\n"+
+							`version = "v1"`+"\n",
+						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+					)
+					buildMetadata, err := builder.Build()
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+					h.AssertEq(t, buildMetadata.BOM[0].Version, "v1")
+					_, versionExist := buildMetadata.BOM[0].Metadata["version"]
+					h.AssertEq(t, versionExist, false)
+				})
+			})
+
+			when("platformApi is at least 0.4", func() {
+				it("writes the bom version at the lower-level (metadata entry)", func() {
+					builder.PlatformAPI = api.MustParse("0.4")
+					mkfile(t,
+						"[[entries]]\n"+
+							`name = "dep1"`+"\n"+
+							`version = "v1"`+"\n",
+						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+					)
+					buildMetadata, err := builder.Build()
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+					h.AssertEq(t, buildMetadata.BOM[0].Version, "")
+					h.AssertEq(t, buildMetadata.BOM[0].Metadata["version"], "v1")
+				})
 			})
 
 			it("should ensure each buildpack's layers dir exists and process build layers", func() {
@@ -527,6 +568,50 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error")
 				}
+			})
+
+			when("platformApi is less than 0.4", func() {
+				when("bom version is set both in the top level and in the metadata", func() {
+					it("returns an error", func() {
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						builder.PlatformAPI = api.MustParse("0.3")
+						mkfile(t,
+							"[[entries]]\n"+
+								`name = "dep1"`+"\n"+
+								`version = "v2"`+"\n"+
+								"[entries.metadata]\n"+
+								`version = "v1"`+"\n",
+							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+						)
+						_, err := builder.Build()
+						h.AssertNotNil(t, err)
+						expected := "top level version does not match metadata version"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
+				})
+			})
+
+			when("platformApi is at least 0.4", func() {
+				when("bom version is set both in the top level and in the metadata", func() {
+					it("returns an error", func() {
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						builder.PlatformAPI = api.MustParse("0.4")
+						mkfile(t,
+							"[[entries]]\n"+
+								`name = "dep1"`+"\n"+
+								`version = "v2"`+"\n"+
+								"[entries.metadata]\n"+
+								`version = "v1"`+"\n",
+							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+						)
+						_, err := builder.Build()
+						h.AssertNotNil(t, err)
+						expected := "metadata version does not match top level version"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
+				})
 			})
 		})
 	})

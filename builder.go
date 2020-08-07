@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -9,7 +10,9 @@ import (
 	"sort"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -19,6 +22,7 @@ type Builder struct {
 	LayersDir     string
 	PlatformDir   string
 	BuildpacksDir string
+	PlatformAPI   *api.Version
 	Env           BuildEnv
 	Group         BuildpackGroup
 	Plan          BuildPlan
@@ -146,6 +150,21 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		labels = append(labels, launch.Labels...)
 	}
 
+	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 {
+		//plaformApiVersion is less than comparisonVersion
+		for i := range bom {
+			if err := bom[i].convertMetadataToVersion(); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		for i := range bom {
+			if err := bom[i].convertVersionToMetadata(); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return &BuildMetadata{
 		BOM:        bom,
 		Buildpacks: b.Group.Group,
@@ -192,6 +211,35 @@ func (p buildpackPlan) has(entry BuildPlanEntry) bool {
 		}
 	}
 	return false
+}
+
+func (bom *BOMEntry) convertMetadataToVersion() error {
+	if version, ok := bom.Metadata["version"]; ok {
+		metadataVersion := fmt.Sprintf("%v", version)
+		if bom.Version != "" && bom.Version != metadataVersion {
+			return errors.New("top level version does not match metadata version")
+		}
+		bom.Version = metadataVersion
+		delete(bom.Metadata, "version")
+	}
+	return nil
+}
+
+func (bom *BOMEntry) convertVersionToMetadata() error {
+	if bom.Version != "" {
+		if bom.Metadata == nil {
+			bom.Metadata = make(map[string]interface{})
+		}
+		if version, ok := bom.Metadata["version"]; ok {
+			metadataVersion := fmt.Sprintf("%v", version)
+			if metadataVersion != "" && metadataVersion != bom.Version {
+				return errors.New("metadata version does not match top level version")
+			}
+		}
+		bom.Metadata["version"] = bom.Version
+		bom.Version = ""
+	}
+	return nil
 }
 
 func setupEnv(env BuildEnv, layersDir string) error {

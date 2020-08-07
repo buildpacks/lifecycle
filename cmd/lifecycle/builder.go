@@ -8,6 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
@@ -27,6 +28,7 @@ type buildArgs struct {
 	layersDir     string
 	appDir        string
 	platformDir   string
+	platformAPI   string
 }
 
 func (b *buildCmd) Init() {
@@ -70,6 +72,7 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		LayersDir:     ba.layersDir,
 		PlatformDir:   ba.platformDir,
 		BuildpacksDir: ba.buildpacksDir,
+		PlatformAPI:   api.MustParse(ba.platformAPI),
 		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
 		Plan:          plan,
