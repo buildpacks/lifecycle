@@ -11,10 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	h "github.com/buildpacks/lifecycle/testhelpers"
-
-	"github.com/buildpacks/lifecycle/api"
-
 	"github.com/BurntSushi/toml"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
@@ -23,7 +19,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 

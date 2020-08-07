@@ -2,11 +2,6 @@ package lifecycle
 
 import (
 	"fmt"
-
-	"github.com/BurntSushi/toml"
-
-	"github.com/buildpacks/lifecycle/api"
-
 	"io/ioutil"
 	"log"
 	"os"
@@ -14,6 +9,9 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/BurntSushi/toml"
+
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )

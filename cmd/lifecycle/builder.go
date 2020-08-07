@@ -5,11 +5,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/buildpacks/lifecycle/api"
-
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
