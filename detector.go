@@ -292,19 +292,19 @@ func (bp *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	}
 	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
-			t.Err = errors.Errorf(errInconsistentVersion, bp.Buildpack.Name)
+			t.Err = errors.Errorf(errInconsistentVersion, bp.Buildpack.ID)
 			t.Code = -1
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
 		if t.hasDoublySpecifiedVersions() || t.Or.hasDoublySpecifiedVersions() {
-			t.Err = errors.Errorf(errDoublySpecifiedVersions, bp.Buildpack.Name)
+			t.Err = errors.Errorf(errDoublySpecifiedVersions, bp.Buildpack.ID)
 			t.Code = -1
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
 		if t.hasTopLevelVersions() || t.Or.hasTopLevelVersions() {
-			c.Logger.Warnf(warnTopLevelVersion, bp.Buildpack.Name)
+			c.Logger.Warnf(warnTopLevelVersion, bp.Buildpack.ID)
 		}
 	}
 	t.Output = out.Bytes()
