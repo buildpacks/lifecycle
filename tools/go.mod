@@ -3,7 +3,7 @@ module github.com/buildpacks/lifecycle/tools
 go 1.14
 
 require (
-	github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414
+	github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d
 	github.com/buildpacks/lifecycle v0.8.1
 	github.com/golang/mock v1.4.4
 	github.com/golangci/golangci-lint v1.22.2
