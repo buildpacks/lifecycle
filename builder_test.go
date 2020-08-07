@@ -420,6 +420,31 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(appDir, "build-plan-in-B-v2.toml"),
 				)
 			})
+
+			it("should convert metadata version to top level version for buildpacks with buildpack api 0.2", func() {
+				builder.Plan = lifecycle.BuildPlan{
+					Entries: []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "B", Version: "v2"},
+							},
+							Requires: []lifecycle.Require{
+								{Name: "dep2", Metadata: map[string]interface{}{"version": "v4"}},
+							},
+						},
+					},
+				}
+				_, err := builder.Build()
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				var bpPlanContents lifecycle.BuildpackPlan
+				_, err = toml.DecodeFile(filepath.Join(appDir, "build-plan-in-B-v2.toml"), &bpPlanContents)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				h.AssertEq(t, bpPlanContents.Entries[0].Version, "v4")
+			})
 		})
 
 		when("building succeeds with a clear env", func() {

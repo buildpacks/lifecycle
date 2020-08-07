@@ -52,7 +52,7 @@ type BOMEntry struct {
 	Buildpack Buildpack `toml:"buildpack" json:"buildpack"`
 }
 
-type buildpackPlan struct {
+type BuildpackPlan struct {
 	Entries []Require `toml:"entries"`
 }
 
@@ -97,7 +97,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-		if err := WriteTOML(bpPlanPath, plan.find(bp.noAPI())); err != nil {
+
+		foundPlan := plan.find(bp.noAPI())
+		if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
+			for i := range foundPlan.Entries {
+				foundPlan.Entries[i].convertMetadataToVersion()
+			}
+		}
+		if err := WriteTOML(bpPlanPath, foundPlan); err != nil {
 			return nil, err
 		}
 
@@ -127,7 +134,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := setupEnv(b.Env, bpLayersDir); err != nil {
 			return nil, err
 		}
-		var bpPlanOut buildpackPlan
+		var bpPlanOut BuildpackPlan
 		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
 			return nil, err
 		}
@@ -174,7 +181,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}, nil
 }
 
-func (p BuildPlan) find(bp Buildpack) buildpackPlan {
+func (p BuildPlan) find(bp Buildpack) BuildpackPlan {
 	var out []Require
 	for _, entry := range p.Entries {
 		for _, provider := range entry.Providers {
@@ -184,11 +191,11 @@ func (p BuildPlan) find(bp Buildpack) buildpackPlan {
 			}
 		}
 	}
-	return buildpackPlan{Entries: out}
+	return BuildpackPlan{Entries: out}
 }
 
 // TODO: ensure at least one claimed entry of each name is provided by the BP
-func (p BuildPlan) filter(bp Buildpack, plan buildpackPlan) (BuildPlan, []BOMEntry) {
+func (p BuildPlan) filter(bp Buildpack, plan BuildpackPlan) (BuildPlan, []BOMEntry) {
 	var out []BuildPlanEntry
 	for _, entry := range p.Entries {
 		if !plan.has(entry) {
@@ -202,7 +209,7 @@ func (p BuildPlan) filter(bp Buildpack, plan buildpackPlan) (BuildPlan, []BOMEnt
 	return BuildPlan{Entries: out}, bom
 }
 
-func (p buildpackPlan) has(entry BuildPlanEntry) bool {
+func (p BuildpackPlan) has(entry BuildPlanEntry) bool {
 	for _, buildEntry := range p.Entries {
 		for _, req := range entry.Requires {
 			if req.Name == buildEntry.Name {
