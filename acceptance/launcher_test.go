@@ -97,7 +97,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		when("CNB_PROCESS_TYPE is set", func() {
 			it("should warn", func() {
 				cmd := exec.Command("docker", "run", "--rm",
-					"--env", "CNB_PROCESS_TYPE=direct-process",
+					"--env=CNB_PROCESS_TYPE=direct-process",
 					"--env=CNB_PLATFORM_API=0.4",
 					"--env=CNB_NO_COLOR=true",
 					launchImage,
@@ -115,7 +115,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("Platform API <0.4", func() {
+	when("Platform API < 0.4", func() {
 		when("there is no CMD provided", func() {
 			when("CNB_PROCESS_TYPE is NOT set", func() {
 				it("web is the default process-type", func() {
