@@ -92,7 +92,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("doesn't exit", func() {
+				when("doesn't exist", func() {
 					it.Before(func() {
 						launcher.DefaultProcessType = "missing-type"
 					})
@@ -211,7 +211,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("doesn't exit", func() {
+				when("doesn't exist", func() {
 					it.Before(func() {
 						launcher.DefaultProcessType = "missing-type"
 					})
