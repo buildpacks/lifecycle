@@ -757,7 +757,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := allLogs(logHandler); !strings.Contains(s,
-					`Warning: the "version" key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+					`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 				) {
 					t.Fatalf("Expected log to contain warning:\n%s\n", s)
 				}
@@ -798,7 +798,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := allLogs(logHandler); !strings.Contains(s,
-					`Warning: the "version" key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+					`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 				) {
 					t.Fatalf("Expected log to contain warning:\n%s\n", s)
 				}

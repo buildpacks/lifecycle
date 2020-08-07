@@ -26,7 +26,7 @@ var errFailedDetection = errors.New("no buildpacks participating")
 var errBuildpack = errors.New("buildpack(s) failed with err")
 var errInconsistentVersion = errors.New("top level version does not match metadata version")
 var errDoublySpecifiedVersions = errors.New("top level version cannot be specified along with metadata version; use metadata version instead")
-var warnTopLevelVersion = `Warning: the "version" key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`
+var warnTopLevelVersion = `Warning: buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -308,7 +308,7 @@ func (bp *BuildpackTOML) detect(c *DetectConfig) detectRun {
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
 		if t.hasTopLevelVersions() || t.Or.hasTopLevelVersions() {
-			c.Logger.Warn(warnTopLevelVersion)
+			c.Logger.Warnf(warnTopLevelVersion, bp.Buildpack.Name)
 		}
 	}
 	t.Output = out.Bytes()
