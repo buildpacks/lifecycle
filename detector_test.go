@@ -595,168 +595,170 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should fail if buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
-				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "D", "v2"))
-				h.AssertNil(t, err)
-				bpTOML := lifecycle.BuildpackTOML{
-					API: "0.2",
-					Buildpack: lifecycle.BuildpackInfo{
-						ID:      "D",
-						Version: "v2",
-						Name:    "Buildpack D",
-					},
-					Path: bpPath,
-				}
-				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-D-v2.toml")
-				toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-D-v2.toml")
+			when("BuildpackTOML.Detect()", func() {
+				it("should fail if buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
+					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "D", "v2"))
+					h.AssertNil(t, err)
+					bpTOML := lifecycle.BuildpackTOML{
+						API: "0.2",
+						Buildpack: lifecycle.BuildpackInfo{
+							ID:      "D",
+							Version: "v2",
+							Name:    "Buildpack D",
+						},
+						Path: bpPath,
+					}
+					toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
+					toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-D-v2.toml")
+					toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-D-v2.toml")
 
-				detectRun := bpTOML.Detect(config)
+					detectRun := bpTOML.Detect(config)
 
-				err = detectRun.Err
-				if err == nil {
-					t.Fatalf("Expected error")
-				}
-				h.AssertEq(t, err.Error(), `buildpack Buildpack D has a "version" key that does not match "metadata.version"`)
-			})
+					err = detectRun.Err
+					if err == nil {
+						t.Fatalf("Expected error")
+					}
+					h.AssertEq(t, err.Error(), `buildpack Buildpack D has a "version" key that does not match "metadata.version"`)
+				})
 
-			it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
-				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "B", "v1"))
-				h.AssertNil(t, err)
-				bpTOML := lifecycle.BuildpackTOML{
-					API: "0.2",
-					Buildpack: lifecycle.BuildpackInfo{
-						ID:      "B",
-						Version: "v1",
-						Name:    "Buildpack B",
-					},
-					Path: bpPath,
-				}
-				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-B-v1.toml")
-				toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-B-v1.toml")
+				it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
+					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "B", "v1"))
+					h.AssertNil(t, err)
+					bpTOML := lifecycle.BuildpackTOML{
+						API: "0.2",
+						Buildpack: lifecycle.BuildpackInfo{
+							ID:      "B",
+							Version: "v1",
+							Name:    "Buildpack B",
+						},
+						Path: bpPath,
+					}
+					toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
+					toappfile("\n[[or]]", "detect-plan-B-v1.toml")
+					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-B-v1.toml")
+					toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-B-v1.toml")
 
-				detectRun := bpTOML.Detect(config)
+					detectRun := bpTOML.Detect(config)
 
-				err = detectRun.Err
-				if err == nil {
-					t.Fatalf("Expected error")
-				}
+					err = detectRun.Err
+					if err == nil {
+						t.Fatalf("Expected error")
+					}
 
-				h.AssertEq(t, err.Error(), `buildpack Buildpack B has a "version" key that does not match "metadata.version"`)
-			})
+					h.AssertEq(t, err.Error(), `buildpack Buildpack B has a "version" key that does not match "metadata.version"`)
+				})
 
-			it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
-				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
-				h.AssertNil(t, err)
-				bpTOML := lifecycle.BuildpackTOML{
-					API: "0.3",
-					Buildpack: lifecycle.BuildpackInfo{
-						ID:      "A",
-						Version: "v1",
-						Name:    "Buildpack A",
-					},
-					Path: bpPath,
-				}
-				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
-				toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
+				it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
+					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+					h.AssertNil(t, err)
+					bpTOML := lifecycle.BuildpackTOML{
+						API: "0.3",
+						Buildpack: lifecycle.BuildpackInfo{
+							ID:      "A",
+							Version: "v1",
+							Name:    "Buildpack A",
+						},
+						Path: bpPath,
+					}
+					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+					toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				detectRun := bpTOML.Detect(config)
+					detectRun := bpTOML.Detect(config)
 
-				err = detectRun.Err
-				if err == nil {
-					t.Fatalf("Expected error")
-				}
+					err = detectRun.Err
+					if err == nil {
+						t.Fatalf("Expected error")
+					}
 
-				h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
-			})
+					h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+				})
 
-			it("should fail if buildpack with buildpack api 0.3+ has alternate build plan with both a top level version and a metadata version", func() {
-				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
-				h.AssertNil(t, err)
-				bpTOML := lifecycle.BuildpackTOML{
-					API: "0.3",
-					Buildpack: lifecycle.BuildpackInfo{
-						ID:      "A",
-						Version: "v1",
-						Name:    "Buildpack A",
-					},
-					Path: bpPath,
-				}
-				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
-				toappfile("\n[or.requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
+				it("should fail if buildpack with buildpack api 0.3+ has alternate build plan with both a top level version and a metadata version", func() {
+					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+					h.AssertNil(t, err)
+					bpTOML := lifecycle.BuildpackTOML{
+						API: "0.3",
+						Buildpack: lifecycle.BuildpackInfo{
+							ID:      "A",
+							Version: "v1",
+							Name:    "Buildpack A",
+						},
+						Path: bpPath,
+					}
+					toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
+					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
+					toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
+					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+					toappfile("\n[or.requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				detectRun := bpTOML.Detect(config)
+					detectRun := bpTOML.Detect(config)
 
-				err = detectRun.Err
-				if err == nil {
-					t.Fatalf("Expected error")
-				}
+					err = detectRun.Err
+					if err == nil {
+						t.Fatalf("Expected error")
+					}
 
-				h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
-			})
+					h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+				})
 
-			it("should warn if buildpacks with buildpack api 0.3+ have a top level version", func() {
-				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
-				h.AssertNil(t, err)
-				bpTOML := lifecycle.BuildpackTOML{
-					API: "0.3",
-					Buildpack: lifecycle.BuildpackInfo{
-						ID:      "A",
-						Version: "v1",
-						Name:    "Buildpack A",
-					},
-					Path: bpPath,
-				}
-				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+				it("should warn if buildpacks with buildpack api 0.3+ have a top level version", func() {
+					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+					h.AssertNil(t, err)
+					bpTOML := lifecycle.BuildpackTOML{
+						API: "0.3",
+						Buildpack: lifecycle.BuildpackInfo{
+							ID:      "A",
+							Version: "v1",
+							Name:    "Buildpack A",
+						},
+						Path: bpPath,
+					}
+					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				detectRun := bpTOML.Detect(config)
+					detectRun := bpTOML.Detect(config)
 
-				err = detectRun.Err
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+					err = detectRun.Err
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
 
-				if s := allLogs(logHandler); !strings.Contains(s,
-					`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
-				) {
-					t.Fatalf("Expected log to contain warning:\n%s\n", s)
-				}
-			})
+					if s := allLogs(logHandler); !strings.Contains(s,
+						`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+					) {
+						t.Fatalf("Expected log to contain warning:\n%s\n", s)
+					}
+				})
 
-			it("should warn if buildpack with buildpack api 0.3+ has alternate build plan with a top level version", func() {
-				bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
-				h.AssertNil(t, err)
-				bpTOML := lifecycle.BuildpackTOML{
-					API: "0.3",
-					Buildpack: lifecycle.BuildpackInfo{
-						ID:      "A",
-						Version: "v1",
-						Name:    "Buildpack A",
-					},
-					Path: bpPath,
-				}
-				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
-				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
-				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+				it("should warn if buildpack with buildpack api 0.3+ has alternate build plan with a top level version", func() {
+					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
+					h.AssertNil(t, err)
+					bpTOML := lifecycle.BuildpackTOML{
+						API: "0.3",
+						Buildpack: lifecycle.BuildpackInfo{
+							ID:      "A",
+							Version: "v1",
+							Name:    "Buildpack A",
+						},
+						Path: bpPath,
+					}
+					toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
+					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
+					toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
+					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				detectRun := bpTOML.Detect(config)
+					detectRun := bpTOML.Detect(config)
 
-				err = detectRun.Err
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+					err = detectRun.Err
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
 
-				if s := allLogs(logHandler); !strings.Contains(s,
-					`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
-				) {
-					t.Fatalf("Expected log to contain warning:\n%s\n", s)
-				}
+					if s := allLogs(logHandler); !strings.Contains(s,
+						`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+					) {
+						t.Fatalf("Expected log to contain warning:\n%s\n", s)
+					}
+				})
 			})
 		})
 	})
