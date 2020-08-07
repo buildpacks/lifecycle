@@ -12,6 +12,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/api"
 )
 
 const (
@@ -22,6 +24,9 @@ const (
 
 var errFailedDetection = errors.New("no buildpacks participating")
 var errBuildpack = errors.New("buildpack(s) failed with err")
+var errInconsistentVersion = errors.New("top level version does not match metadata version")
+var errDoublySpecifiedVersions = errors.New("top level version cannot be specified along with metadata version; use metadata version instead")
+var warnTopLevelVersion = "Warning: top level version is deprecated in buildpack API 0.3"
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -45,6 +50,40 @@ type Require struct {
 	Name     string                 `toml:"name" json:"name"`
 	Version  string                 `toml:"version" json:"version"`
 	Metadata map[string]interface{} `toml:"metadata" json:"metadata"`
+}
+
+func (r *Require) convertMetadataToVersion() {
+	if version, ok := r.Metadata["version"]; ok {
+		r.Version = fmt.Sprintf("%v", version)
+	}
+}
+
+func (r *Require) convertVersionToMetadata() {
+	if r.Version != "" {
+		if r.Metadata == nil {
+			r.Metadata = make(map[string]interface{})
+		}
+		r.Metadata["version"] = r.Version
+		r.Version = ""
+	}
+}
+
+func (r *Require) hasInconsistentVersions() bool {
+	if version, ok := r.Metadata["version"]; ok {
+		return r.Version != "" && r.Version != version
+	}
+	return false
+}
+
+func (r *Require) hasDoublySpecifiedVersions() bool {
+	if _, ok := r.Metadata["version"]; ok {
+		return r.Version != ""
+	}
+	return false
+}
+
+func (r *Require) hasTopLevelVersions() bool {
+	return r.Version != ""
 }
 
 type Provide struct {
@@ -82,6 +121,12 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 			outputLogf(string(run.Output))
 		}
 		if run.Err != nil {
+			if run.Err == errInconsistentVersion {
+				return nil, nil, errInconsistentVersion
+			}
+			if run.Err == errDoublySpecifiedVersions {
+				return nil, nil, errDoublySpecifiedVersions
+			}
 			outputLogf("======== Error: %s ========", bp)
 			outputLogf(run.Err.Error())
 		}
@@ -251,6 +296,21 @@ func (bp *BuildpackTOML) detect(c *DetectConfig) detectRun {
 	if _, err := toml.DecodeFile(planPath, &t); err != nil {
 		return detectRun{Code: -1, Err: err}
 	}
+	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
+		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
+			t.Err = errInconsistentVersion
+		}
+	}
+	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
+		if t.hasDoublySpecifiedVersions() || t.Or.hasDoublySpecifiedVersions() {
+			t.Err = errDoublySpecifiedVersions
+		}
+	}
+	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
+		if t.hasTopLevelVersions() || t.Or.hasTopLevelVersions() {
+			c.Logger.Warn(warnTopLevelVersion)
+		}
+	}
 	t.Output = out.Bytes()
 	return t
 }
@@ -268,6 +328,13 @@ func (bg BuildpackGroup) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 		err = NewLifecycleError(err, ErrTypeBuildpack)
 	} else if err == errFailedDetection {
 		err = NewLifecycleError(err, ErrTypeFailedDetection)
+	}
+	for i, entry := range entries {
+		for j, req := range entry.Requires {
+			req.convertVersionToMetadata()
+			entry.Requires[j] = req
+		}
+		entries[i] = entry
 	}
 	return BuildpackGroup{Group: bps}, BuildPlan{Entries: entries}, err
 }
@@ -322,6 +389,13 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 	} else if err == errFailedDetection {
 		err = NewLifecycleError(err, ErrTypeFailedDetection)
 	}
+	for i, entry := range entries {
+		for j, req := range entry.Requires {
+			req.convertVersionToMetadata()
+			entry.Requires[j] = req
+		}
+		entries[i] = entry
+	}
 	return BuildpackGroup{Group: bps}, BuildPlan{Entries: entries}, err
 }
 
@@ -361,15 +435,71 @@ func hasID(bps []Buildpack, id string) bool {
 
 type detectRun struct {
 	planSections
-	Or     []planSections `toml:"or"`
-	Output []byte         `toml:"-"`
-	Code   int            `toml:"-"`
-	Err    error          `toml:"-"`
+	Or     planSectionsList `toml:"or"`
+	Output []byte           `toml:"-"`
+	Code   int              `toml:"-"`
+	Err    error            `toml:"-"`
 }
 
 type planSections struct {
 	Requires []Require `toml:"requires"`
 	Provides []Provide `toml:"provides"`
+}
+
+func (p *planSections) hasInconsistentVersions() bool {
+	for _, req := range p.Requires {
+		if req.hasInconsistentVersions() {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *planSections) hasDoublySpecifiedVersions() bool {
+	for _, req := range p.Requires {
+		if req.hasDoublySpecifiedVersions() {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *planSections) hasTopLevelVersions() bool {
+	for _, req := range p.Requires {
+		if req.hasTopLevelVersions() {
+			return true
+		}
+	}
+	return false
+}
+
+type planSectionsList []planSections
+
+func (p *planSectionsList) hasInconsistentVersions() bool {
+	for _, planSection := range *p {
+		if planSection.hasInconsistentVersions() {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *planSectionsList) hasDoublySpecifiedVersions() bool {
+	for _, planSection := range *p {
+		if planSection.hasDoublySpecifiedVersions() {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *planSectionsList) hasTopLevelVersions() bool {
+	for _, planSection := range *p {
+		if planSection.hasTopLevelVersions() {
+			return true
+		}
+	}
+	return false
 }
 
 type detectResult struct {

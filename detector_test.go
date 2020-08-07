@@ -15,6 +15,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestDetector(t *testing.T) {
@@ -465,9 +466,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
 
-				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep3-missing\"\n version=\"some-version\"", "detect-plan-B-v1.toml")
+				toappfile("\n[requires.metadata]\n version=\"some-version\"", "detect-plan-B-v1.toml")
 				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
-				toappfile("\n[[or.requires]]\n name = \"dep1-present\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version=\"some-version\"", "detect-plan-B-v1.toml")
+				toappfile("\n[or.requires.metadata]\n version=\"some-version\"", "detect-plan-B-v1.toml")
 
 				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
 				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
@@ -506,7 +509,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{{ID: "A", Version: "v1"}},
-						Requires:  []lifecycle.Require{{Name: "dep1-present"}},
+						Requires:  []lifecycle.Require{{Name: "dep1-present", Metadata: map[string]interface{}{"version": "some-version"}}},
 					},
 					{
 						Providers: []lifecycle.Buildpack{{ID: "C", Version: "v1"}},
@@ -526,6 +529,278 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"C v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should fail if buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
+				mkappfile("100", "detect-status-C-v1")
+				mkappfile("100", "detect-status-B-v2")
+
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-D-v2.toml")
+				toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-D-v2.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-A-v1.toml")
+
+				_, _, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "C", Version: "v2"},
+						{ID: "D", Version: "v2"},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err == nil {
+					t.Fatalf("Expected error")
+				}
+
+				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
+			})
+
+			it("should fail if alternate buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
+				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-B-v1.toml")
+				toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-B-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep7-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep8-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep9-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep10-missing\"", "detect-plan-D-v1.toml")
+
+				_, _, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Optional: true},
+						{ID: "B", Version: "v1", Optional: true},
+						{ID: "C", Version: "v1"},
+						{ID: "D", Version: "v1", Optional: true},
+					}},
+				}.Detect(config)
+				if err == nil {
+					t.Fatalf("Expected error")
+				}
+
+				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
+			})
+
+			it("should convert top level versions to metadata versions", func() {
+				mkappfile("100", "detect-status-C-v1")
+				mkappfile("100", "detect-status-B-v2")
+
+				toappfile("\n[[provides]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-D-v2.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+
+				group, plan, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "C", Version: "v2"},
+						{ID: "D", Version: "v2"},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "C", Version: "v2", API: "0.2"},
+						{ID: "D", Version: "v2", API: "0.2"},
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected group:\n%s\n", s)
+				}
+
+				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1"},
+							{ID: "C", Version: "v2"},
+						},
+						Requires: []lifecycle.Require{
+							{Name: "dep1", Metadata: map[string]interface{}{"version": "some-version"}},
+							{Name: "dep1", Metadata: map[string]interface{}{"version": "some-version"}},
+						},
+					},
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1"},
+							{ID: "C", Version: "v2"},
+							{ID: "D", Version: "v2"},
+						},
+						Requires: []lifecycle.Require{
+							{Name: "dep2", Metadata: map[string]interface{}{"version": "some-version"}},
+							{Name: "dep2", Metadata: map[string]interface{}{"version": "some-version"}},
+							{Name: "dep2", Metadata: map[string]interface{}{"version": "some-version"}},
+						},
+					},
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
+				}
+			})
+
+			it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
+				mkappfile("100", "detect-status-C-v1")
+				mkappfile("100", "detect-status-B-v2")
+
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-D-v2.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+				toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
+
+				_, _, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "C", Version: "v2"},
+						{ID: "D", Version: "v2"},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err == nil {
+					t.Fatalf("Expected error")
+				}
+
+				h.AssertEq(t, err.Error(), "top level version cannot be specified along with metadata version; use metadata version instead")
+			})
+
+			it("should fail if alternate buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
+				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+				toappfile("\n[or.requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"", "detect-plan-B-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep7-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep8-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep9-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep10-missing\"", "detect-plan-D-v1.toml")
+
+				_, _, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Optional: true},
+						{ID: "B", Version: "v1", Optional: true},
+						{ID: "C", Version: "v1"},
+						{ID: "D", Version: "v1", Optional: true},
+					}},
+				}.Detect(config)
+				if err == nil {
+					t.Fatalf("Expected error")
+				}
+
+				h.AssertEq(t, err.Error(), "top level version cannot be specified along with metadata version; use metadata version instead")
+			})
+
+			it("should warn if buildpacks with buildpack api 0.3+ have a top level version", func() {
+				mkappfile("100", "detect-status-C-v1")
+				mkappfile("100", "detect-status-B-v2")
+
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml", "detect-plan-C-v2.toml")
+				toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-D-v2.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"", "detect-plan-D-v2.toml", "detect-plan-B-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+
+				_, _, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "C", Version: "v2"},
+						{ID: "D", Version: "v2"},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := allLogs(logHandler); !strings.Contains(s,
+					"Warning: top level version is deprecated in buildpack API 0.3",
+				) {
+					t.Fatalf("Expected log to contain warning:\n%s\n", s)
+				}
+			})
+
+			it("should warn if alternate buildpacks with buildpack api 0.3+ have a top level version", func() {
+				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-B-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep1-present\"", "detect-plan-B-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep4-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep5-missing\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep6-present\"", "detect-plan-C-v1.toml")
+
+				toappfile("\n[[requires]]\n name = \"dep7-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep8-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"dep9-missing\"", "detect-plan-D-v1.toml")
+				toappfile("\n[[or.provides]]\n name = \"dep10-missing\"", "detect-plan-D-v1.toml")
+
+				_, _, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Optional: true},
+						{ID: "B", Version: "v1", Optional: true},
+						{ID: "C", Version: "v1"},
+						{ID: "D", Version: "v1", Optional: true},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := allLogs(logHandler); !strings.Contains(s,
+					"Warning: top level version is deprecated in buildpack API 0.3",
+				) {
+					t.Fatalf("Expected log to contain warning:\n%s\n", s)
 				}
 			})
 		})
