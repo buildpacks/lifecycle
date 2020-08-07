@@ -562,7 +562,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, err.Error(), "top level version does not match metadata version")
 			})
 
-			it("should fail if alternate buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
+			it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
 				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
@@ -692,7 +692,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, err.Error(), "top level version cannot be specified along with metadata version; use metadata version instead")
 			})
 
-			it("should fail if alternate buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
+			it("should fail if buildpack with buildpack api 0.3+ has alternate build plan with both a top level version and a metadata version", func() {
 				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
@@ -757,13 +757,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := allLogs(logHandler); !strings.Contains(s,
-					"Warning: top level version is deprecated in buildpack API 0.3",
+					`Warning: the "version" key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 				) {
 					t.Fatalf("Expected log to contain warning:\n%s\n", s)
 				}
 			})
 
-			it("should warn if alternate buildpacks with buildpack api 0.3+ have a top level version", func() {
+			it("should warn if buildpack with buildpack api 0.3+ has alternate build plan with a top level version", func() {
 				toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
@@ -798,7 +798,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := allLogs(logHandler); !strings.Contains(s,
-					"Warning: top level version is deprecated in buildpack API 0.3",
+					`Warning: the "version" key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 				) {
 					t.Fatalf("Expected log to contain warning:\n%s\n", s)
 				}

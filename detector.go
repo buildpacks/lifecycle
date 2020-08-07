@@ -26,7 +26,7 @@ var errFailedDetection = errors.New("no buildpacks participating")
 var errBuildpack = errors.New("buildpack(s) failed with err")
 var errInconsistentVersion = errors.New("top level version does not match metadata version")
 var errDoublySpecifiedVersions = errors.New("top level version cannot be specified along with metadata version; use metadata version instead")
-var warnTopLevelVersion = "Warning: top level version is deprecated in buildpack API 0.3"
+var warnTopLevelVersion = `Warning: the "version" key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -329,12 +329,10 @@ func (bg BuildpackGroup) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 	} else if err == errFailedDetection {
 		err = NewLifecycleError(err, ErrTypeFailedDetection)
 	}
-	for i, entry := range entries {
-		for j, req := range entry.Requires {
-			req.convertVersionToMetadata()
-			entry.Requires[j] = req
+	for i := range entries {
+		for j := range entries[i].Requires {
+			entries[i].Requires[j].convertVersionToMetadata()
 		}
-		entries[i] = entry
 	}
 	return BuildpackGroup{Group: bps}, BuildPlan{Entries: entries}, err
 }
@@ -389,12 +387,10 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 	} else if err == errFailedDetection {
 		err = NewLifecycleError(err, ErrTypeFailedDetection)
 	}
-	for i, entry := range entries {
-		for j, req := range entry.Requires {
-			req.convertVersionToMetadata()
-			entry.Requires[j] = req
+	for i := range entries {
+		for j := range entries[i].Requires {
+			entries[i].Requires[j].convertVersionToMetadata()
 		}
-		entries[i] = entry
 	}
 	return BuildpackGroup{Group: bps}, BuildPlan{Entries: entries}, err
 }
