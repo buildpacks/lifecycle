@@ -619,7 +619,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), `buildpack Buildpack D has a "version" key that does not match "metadata.version"`)
+					h.AssertEq(t, err.Error(), `buildpack D has a "version" key that does not match "metadata.version"`)
 				})
 
 				it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
@@ -647,7 +647,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Expected error")
 					}
 
-					h.AssertEq(t, err.Error(), `buildpack Buildpack B has a "version" key that does not match "metadata.version"`)
+					h.AssertEq(t, err.Error(), `buildpack B has a "version" key that does not match "metadata.version"`)
 				})
 
 				it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
@@ -673,7 +673,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Expected error")
 					}
 
-					h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 				})
 
 				it("should fail if buildpack with buildpack api 0.3+ has alternate build plan with both a top level version and a metadata version", func() {
@@ -702,7 +702,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Expected error")
 					}
 
-					h.AssertEq(t, err.Error(), `buildpack Buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 				})
 
 				it("should warn if buildpacks with buildpack api 0.3+ have a top level version", func() {
@@ -727,7 +727,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := allLogs(logHandler); !strings.Contains(s,
-						`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+						`Warning: buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {
 						t.Fatalf("Expected log to contain warning:\n%s\n", s)
 					}
@@ -758,7 +758,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := allLogs(logHandler); !strings.Contains(s,
-						`Warning: buildpack Buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+						`Warning: buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {
 						t.Fatalf("Expected log to contain warning:\n%s\n", s)
 					}
