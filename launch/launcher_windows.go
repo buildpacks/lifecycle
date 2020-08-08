@@ -5,6 +5,17 @@ import (
 	"os/exec"
 )
 
+const (
+	CNBDir      = `c:\cnb`
+	exe         = ".exe"
+	profileGlob = "*.bat"
+	appProfile  = ".profile.bat"
+)
+
+var (
+	DefaultShell = &CmdShell{Exec: OSExecFunc}
+)
+
 func OSExecFunc(argv0 string, argv []string, envv []string) error {
 	c := exec.Command(argv[0], argv[1:]...)
 	c.Env = envv

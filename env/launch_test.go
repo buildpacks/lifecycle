@@ -1,7 +1,9 @@
 package env_test
 
 import (
+	"os"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -26,11 +28,45 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 				"CNB_PLATFORM_API=excluded",
 				"CNB_DEPRECATION_MODE=excluded",
 				"CNB_FOO=not-excluded",
-			})
+			}, "", "")
 			if s := cmp.Diff(lenv.List(), []string{
 				"CNB_FOO=not-excluded",
 			}); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
+			}
+		})
+
+		when("path contains process and lifecycle dirs", func() {
+			it("strips them", func() {
+				lenv := env.NewLaunchEnv([]string{
+					"PATH=" + strings.Join(
+						[]string{"some-process-dir", "some-path", "some-lifecycle-dir"},
+						string(os.PathListSeparator),
+					),
+				}, "some-process-dir", "some-lifecycle-dir")
+				if s := cmp.Diff(lenv.List(), []string{
+					"PATH=some-path",
+				}); s != "" {
+					t.Fatalf("Unexpected env\n%s\n", s)
+				}
+			})
+		})
+
+		it("allows keys with '='", func() {
+			lenv := env.NewLaunchEnv([]string{
+				"CNB_FOO=some=key",
+			}, "", "")
+			if s := cmp.Diff(lenv.List(), []string{
+				"CNB_FOO=some=key",
+			}); s != "" {
+				t.Fatalf("Unexpected env\n%s\n", s)
+			}
+		})
+
+		it("assign the Launch time root dir map", func() {
+			lenv := env.NewLaunchEnv([]string{}, "", "")
+			if s := cmp.Diff(lenv.RootDirMap, env.POSIXLaunchEnv); s != "" {
+				t.Fatalf("Unexpected root dir map\n%s\n", s)
 			}
 		})
 
@@ -49,24 +85,6 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(out), 1)
 				h.AssertEq(t, out[0], "PATH=some-path")
 			})
-		})
-
-		it("allows keys with '='", func() {
-			lenv := env.NewLaunchEnv([]string{
-				"CNB_FOO=some=key",
-			})
-			if s := cmp.Diff(lenv.List(), []string{
-				"CNB_FOO=some=key",
-			}); s != "" {
-				t.Fatalf("Unexpected env\n%s\n", s)
-			}
-		})
-
-		it("assign the Launch time root dir map", func() {
-			lenv := env.NewLaunchEnv([]string{})
-			if s := cmp.Diff(lenv.RootDirMap, env.POSIXLaunchEnv); s != "" {
-				t.Fatalf("Unexpected root dir map\n%s\n", s)
-			}
 		})
 	})
 }

@@ -34,7 +34,6 @@ func SyscallExecWithStdout(t *testing.T, tmpDir string) launch.ExecFunc {
 		defer fstdout.Close()
 		defer fstderr.Close()
 		pid, err := syscall.ForkExec(argv0, argv, &syscall.ProcAttr{
-			Dir:   filepath.Join(tmpDir, "launch", "app"),
 			Env:   envv,
 			Files: []uintptr{fstdin.Fd(), fstdout.Fd(), fstderr.Fd()},
 			Sys: &syscall.SysProcAttr{

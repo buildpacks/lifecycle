@@ -32,7 +32,7 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 			UID:          1234,
 			GID:          4321,
 		}
-		dirToSlice, err = filepath.Abs(filepath.Join("testdata", "slices", "target-dir"))
+		dirToSlice, err = filepath.Abs(filepath.Join("testdata", "target-dir"))
 		h.AssertNil(t, err)
 	})
 
@@ -46,6 +46,7 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 				sliceLayers, err := factory.SliceLayers(dirToSlice, []layers.Slice{})
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(sliceLayers), 1)
+				h.AssertEq(t, sliceLayers[0].ID, "slice-1")
 				// parent layers should have uid/gid matching the filesystem
 				// the sliced dir and it's children should have normalized uid/gid
 				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []*tar.Header{
@@ -113,9 +114,10 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("resolves relative paths", func() {
-				sliceLayers, err := factory.SliceLayers(filepath.Join("testdata", "slices", "target-dir"), []layers.Slice{})
+				sliceLayers, err := factory.SliceLayers(filepath.Join("testdata", "target-dir"), []layers.Slice{})
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(sliceLayers), 1)
+				h.AssertEq(t, sliceLayers[0].ID, "slice-1")
 				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []*tar.Header{
 					{
 						Name:     tarPath(dirToSlice),
@@ -197,6 +199,11 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 
 			it("creates n+1 layers", func() {
 				h.AssertEq(t, len(sliceLayers), 5)
+				h.AssertEq(t, sliceLayers[0].ID, "slice-1")
+				h.AssertEq(t, sliceLayers[1].ID, "slice-2")
+				h.AssertEq(t, sliceLayers[2].ID, "slice-3")
+				h.AssertEq(t, sliceLayers[3].ID, "slice-4")
+				h.AssertEq(t, sliceLayers[4].ID, "slice-5")
 			})
 
 			it("creates slice from pattern", func() {

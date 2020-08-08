@@ -219,13 +219,10 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		if _, isSaveError := err.(*imgutil.SaveError); isSaveError {
-			return cmd.FailErrCode(err, cmd.CodeExportError, "export")
-		}
-		return cmd.FailErr(err, "export")
+		return cmd.FailErrCode(err, cmd.CodeExportError, "export")
 	}
 	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
-		return cmd.FailErr(err, "write buildpack group")
+		return cmd.FailErrCode(err, cmd.CodeExportError, "write export report")
 	}
 
 	if cacheStore != nil {

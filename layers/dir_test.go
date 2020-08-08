@@ -39,7 +39,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 			UID:          1234,
 			GID:          4321,
 		}
-		dir, err = filepath.Abs(filepath.Join("testdata", "slices", "target-dir"))
+		dir, err = filepath.Abs(filepath.Join("testdata", "target-dir"))
 		h.AssertNil(t, err)
 	})
 
@@ -59,6 +59,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 		it("creates a layer from the directory", func() {
 			// parent layers should have uid/gid matching the filesystem
 			// the dir and it's children should have normalized uid/gid
+			h.AssertEq(t, dirLayer.ID, "some-layer-id")
 			assertTarEntries(t, dirLayer.TarPath, append(parents(t, dir), []*tar.Header{
 				{
 					Name:     tarPath(dir),
@@ -150,17 +151,22 @@ func assertTarEntries(t *testing.T, tarPath string, expectedEntries []*tar.Heade
 	defer lf.Close()
 	tr := tar.NewReader(lf)
 	assertOSSpecificEntries(t, tr)
+	var allEntryNames []string
 	for i, expected := range expectedEntries {
 		header, err := tr.Next()
 		if err == io.EOF {
-			t.Fatalf("missing expected archive entry '%s'", expected.Name)
+			t.Fatalf("missing expected archive entry '%s'\n archive contained %v", expected.Name, allEntryNames)
 		}
 		h.AssertNil(t, err)
+		allEntryNames = append(allEntryNames, header.Name)
 		if header.Name != expected.Name {
 			t.Fatalf("expected entry '%d' to have name %q, got %q", i, expected.Name, header.Name)
 		}
 		if header.Typeflag != expected.Typeflag {
 			t.Fatalf("expected entry '%s' to have type %q, got %q", expected.Name, expected.Typeflag, header.Typeflag)
+		}
+		if expected.Mode != 0 && header.Mode != expected.Mode { // TODO: add modes to all expects to remove the 0 hack
+			t.Fatalf("expected entry '%s' to have mode %d, got %d", expected.Name, expected.Mode, header.Mode)
 		}
 		assertOSSpecificFields(t, expected, header)
 		if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {

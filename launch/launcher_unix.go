@@ -4,4 +4,14 @@ package launch
 
 import "syscall"
 
-var OSExecFunc = syscall.Exec
+const (
+	CNBDir      = `/cnb`
+	exe         = ""
+	profileGlob = "*"
+	appProfile  = ".profile"
+)
+
+var (
+	OSExecFunc   = syscall.Exec
+	DefaultShell = &BashShell{Exec: OSExecFunc}
+)

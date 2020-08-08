@@ -2,6 +2,7 @@ package launch
 
 import (
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -13,9 +14,23 @@ type Process struct {
 	BuildpackID string   `toml:"buildpack-id" json:"buildpackID"`
 }
 
+// ProcessPath returns the absolute path to the symlink for a given processType
+func ProcessPath(processType string) string {
+	return filepath.Join(ProcessDir, processType+exe)
+}
+
 type Metadata struct {
 	Processes  []Process   `toml:"processes" json:"processes"`
 	Buildpacks []Buildpack `toml:"buildpacks" json:"buildpacks"`
+}
+
+func (m Metadata) FindProcessType(kind string) (Process, bool) {
+	for _, p := range m.Processes {
+		if p.Type == kind {
+			return p, true
+		}
+	}
+	return Process{}, false
 }
 
 type Buildpack struct {
