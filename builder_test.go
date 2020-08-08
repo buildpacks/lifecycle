@@ -109,7 +109,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					}
 					h.AssertEq(t, buildMetadata.BOM[0].Version, "v1")
 					_, versionExist := buildMetadata.BOM[0].Metadata["version"]
-					h.AssertEq(t, versionExist, false)
+					h.AssertEq(t, versionExist, true)
 				})
 			})
 
