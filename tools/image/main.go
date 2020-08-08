@@ -24,6 +24,7 @@ import (
 var (
 	lifecyclePath string      // path to lifecycle TGZ
 	tags          stringSlice // tag reference to write lifecycle image
+	targetOS      string      // operating system
 )
 
 type stringSlice []string
@@ -40,6 +41,7 @@ func (s *stringSlice) Set(value string) error {
 // Creates lifecycle image from lifecycle tgz
 func main() {
 	flag.StringVar(&lifecyclePath, "lifecyclePath", "", "path to lifecycle TGZ")
+	flag.StringVar(&targetOS, "os", runtime.GOOS, "operating system")
 	flag.Var(&tags, "tag", "tag reference to write lifecycle image")
 
 	flag.Parse()
@@ -49,7 +51,7 @@ func main() {
 	}
 
 	baseImage := "gcr.io/distroless/static"
-	if runtime.GOOS == "windows" {
+	if targetOS == "windows" {
 		baseImage = "mcr.microsoft.com/windows/nanoserver:1809-amd64"
 	}
 	img, err := remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
@@ -187,11 +189,14 @@ func lifecycleLayer() string {
 	defer lf.Close()
 
 	var ntw *archive.NormalizingTarWriter
-	if runtime.GOOS == "windows" {
+	var mode int64
+	if targetOS == "windows" {
 		ntw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lf))
+		mode = 0755
 	} else {
 		tw := tar.NewWriter(lf)
 		ntw = archive.NewNormalizingTarWriter(tw)
+		mode = 0777
 	}
 
 	ntw.WithModTime(archive.NormalizedModTime)
@@ -200,7 +205,7 @@ func lifecycleLayer() string {
 	ntw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     "/cnb",
-		Mode:     0644,
+		Mode:     mode,
 	})
 	for {
 		hdr, err := ntr.Next()

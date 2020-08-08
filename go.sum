@@ -55,6 +55,8 @@ github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414 h1:p0JTQSapoTcx
 github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414/go.mod h1:0MWMP1K2tA1fJnQOzGZDq8NHaWH+r7YUuyYLCEqYCx8=
 github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d h1:uVTFIiev3f7fi5BSv1RtM5W5lcqQodqLRBG5AdoDe2U=
 github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d/go.mod h1:uVv0fNwOEBNgyM9ZvwV0g2Dvzk31q5TtSeoC1GGmW+k=
+github.com/buildpacks/imgutil v0.0.0-20200808231819-bedc3d0cd75a h1:VfNxNjP1Y5nM49gF2UkNTq5CoqELkmxdRUUYn8tZvj4=
+github.com/buildpacks/imgutil v0.0.0-20200808231819-bedc3d0cd75a/go.mod h1:uVv0fNwOEBNgyM9ZvwV0g2Dvzk31q5TtSeoC1GGmW+k=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
