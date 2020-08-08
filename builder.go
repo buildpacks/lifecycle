@@ -227,7 +227,6 @@ func (bom *BOMEntry) convertMetadataToVersion() error {
 			return errors.New("top level version does not match metadata version")
 		}
 		bom.Version = metadataVersion
-		delete(bom.Metadata, "version")
 	}
 	return nil
 }
