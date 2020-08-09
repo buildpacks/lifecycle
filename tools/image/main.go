@@ -192,16 +192,21 @@ func lifecycleLayer() string {
 	var mode int64
 	if targetOS == "windows" {
 		ntw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lf))
-		mode = 0755
+		mode = 0777
 	} else {
 		tw := tar.NewWriter(lf)
 		ntw = archive.NewNormalizingTarWriter(tw)
-		mode = 0777
+		mode = 0755
 	}
 
 	ntw.WithModTime(archive.NormalizedModTime)
-	ntw.WithUID(0)
-	ntw.WithGID(0)
+	if targetOS == "windows" {
+		ntw.WithUID(1) //gets translated to user permissions in windows writer
+		ntw.WithGID(1) //gets translated to user permissions in windows writer
+	} else {
+		ntw.WithUID(0)
+		ntw.WithGID(0)
+	}
 	ntw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     "/cnb",
