@@ -56,6 +56,7 @@ github.com/buildpacks/imgutil v0.0.0-20200528211046-5c4cfa56bb24/go.mod h1:rkRDO
 github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414 h1:p0JTQSapoTcxDG8pMgeXJ5Z9sYhYiFSVc/+0GM2RiTA=
 github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414/go.mod h1:0MWMP1K2tA1fJnQOzGZDq8NHaWH+r7YUuyYLCEqYCx8=
 github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d/go.mod h1:uVv0fNwOEBNgyM9ZvwV0g2Dvzk31q5TtSeoC1GGmW+k=
+github.com/buildpacks/imgutil v0.0.0-20200808231819-bedc3d0cd75a/go.mod h1:uVv0fNwOEBNgyM9ZvwV0g2Dvzk31q5TtSeoC1GGmW+k=
 github.com/buildpacks/lifecycle v0.8.1 h1:sRyb9281MrrJNfuaQBTI8hu1ERz9iiYtaDmp5xm6VyQ=
 github.com/buildpacks/lifecycle v0.8.1/go.mod h1:Spd3VyskOqUNXx76FKMRU3L3PLHxVGQBJ/JqXlFeLh8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
