@@ -120,6 +120,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			_, tempDir := h.DockerRunAndCopy(t,
 				analyzeImage,
+				true,
 				"/layers",
 				h.WithFlags(
 					"--env", "CNB_REGISTRY_AUTH={}",
@@ -143,6 +144,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("writes analyzed.toml at the provided path", func() {
 			_, tempDir := h.DockerRunAndCopy(t,
 				analyzeImage,
+				true,
 				"/other-layers/other-analyzed.toml",
 				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithArgs(
@@ -162,6 +164,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("writes analyzed.toml", func() {
 			_, tempDir := h.DockerRunAndCopy(t,
 				analyzeImage,
+				true,
 				"/layers/analyzed.toml",
 				h.WithFlags(variables.DockerSocketMount...),
 				h.WithArgs(analyzerPath, "-daemon", "some-image"),
@@ -196,6 +199,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("restores layer metadata", func() {
 				_, tempDir := h.DockerRunAndCopy(t,
 					analyzeImage,
+					true,
 					"/layers",
 					h.WithFlags(variables.DockerSocketMount...),
 					h.WithArgs(analyzerPath, "-daemon", appImage),
@@ -220,6 +224,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
+						true,
 						"/layers",
 						h.WithFlags(variables.DockerSocketMount...),
 						h.WithArgs(
@@ -275,6 +280,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					it("ignores the cache", func() {
 						_, tempDir := h.DockerRunAndCopy(t,
 							analyzeImage,
+							true,
 							"/layers",
 							h.WithFlags(append(
 								variables.DockerSocketMount,
@@ -315,6 +321,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					it("uses the provided cache", func() {
 						_, tempDir := h.DockerRunAndCopy(t,
 							analyzeImage,
+							true,
 							"/layers",
 							h.WithFlags(append(
 								variables.DockerSocketMount,
@@ -343,6 +350,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
+						true,
 						"/layers",
 						h.WithFlags(append(
 							variables.DockerSocketMount,
@@ -433,6 +441,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("writes analyzed.toml", func() {
 			_, tempDir := h.DockerRunAndCopy(t,
 				analyzeImage,
+				true,
 				"/layers/analyzed.toml",
 				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithArgs(analyzerPath, "some-image"),
@@ -446,6 +455,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("restores layer metadata", func() {
 				_, tempDir := h.DockerRunAndCopy(t,
 					analyzeImage,
+					true,
 					"/layers",
 					h.WithFlags(
 						"--network", "host",
@@ -473,6 +483,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
+						true,
 						"/layers",
 						h.WithFlags(
 							"--network", "host",
@@ -520,6 +531,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
+						true,
 						"/layers",
 						h.WithFlags(
 							"--mount", fmt.Sprintf("type=bind,source=%s,target=/mounted-docker-config", dockerConfig),
@@ -559,6 +571,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				it("uses the provided cache", func() {
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
+						true,
 						"/layers",
 						h.WithFlags(
 							"--network", "host",
@@ -584,6 +597,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					_, tempDir := h.DockerRunAndCopy(t,
 						analyzeImage,
+						true,
 						"/layers",
 						h.WithFlags(
 							"--env", "CNB_REGISTRY_AUTH={}",

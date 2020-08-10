@@ -3,14 +3,14 @@
 package acceptance
 
 import (
-	"fmt"
+	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/lifecycle"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -52,7 +52,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("running as a root", func() {
 		it("errors", func() {
-			cmd := exec.Command("docker", "run", "--rm", detectImage)
+			cmd := exec.Command("docker", "run", "--rm", "--user", "root", detectImage)
 			output, err := cmd.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to build: refusing to run as root"
@@ -83,127 +83,85 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("there is a buildpack group that pass detection", func() {
 		it("writes group.toml and plan.toml", func() {
-			containerName := "test-container-" + h.RandString(10)
-			h.Run(t, exec.Command(
-				"docker",
-				"run",
-				"--name", containerName,
-				"--user", userID,
-				"--env", "CNB_ORDER_PATH=/cnb/orders/simple_order.toml",
-				detectImage))
-			defer h.Run(t, exec.Command("docker", "rm", containerName))
+			_, tempDir := h.DockerRunAndCopy(t,
+				detectImage,
+				true,
+				"/layers",
+				h.WithFlags("--user", userID,
+					"--env", "CNB_ORDER_PATH=/cnb/orders/simple_order.toml",
+				),
+				h.WithArgs(),
+			)
+			defer os.RemoveAll(tempDir) // TODO: think about giving the DockerRunAndCopy the tempDir and remove it as part of After
 
 			// check group.toml
-			tempGroupToml, err := ioutil.TempFile("", "")
-			h.AssertNil(t, err)
-			defer os.RemoveAll(tempGroupToml.Name())
-
-			h.Run(t, exec.Command(
-				"docker", "cp",
-				fmt.Sprintf("%s:/layers/group.toml", containerName),
-				tempGroupToml.Name(),
-			))
-
-			groupContents, err := ioutil.ReadFile(tempGroupToml.Name())
+			tempGroupToml := filepath.Join(tempDir, "layers", "group.toml")
+			groupContents, err := ioutil.ReadFile(tempGroupToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(groupContents) > 0, true)
-			expected := "[[group]]\n  id = \"simple_buildpack\"\n  version = \"simple_buildpack_version\""
-			h.AssertStringContains(t, string(groupContents), expected)
+			var buildpackGroup lifecycle.BuildpackGroup
+			_, err = toml.Decode(string(groupContents), &buildpackGroup)
+			h.AssertNil(t, err)
+			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
+			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
 
 			// check plan.toml - should be empty
-			tempPlanToml, err := ioutil.TempFile("", "")
-			h.AssertNil(t, err)
-			defer os.RemoveAll(tempPlanToml.Name())
-
-			h.Run(t, exec.Command(
-				"docker", "cp",
-				fmt.Sprintf("%s:/layers/plan.toml", containerName),
-				tempPlanToml.Name(),
-			))
-
-			planContents, err := ioutil.ReadFile(tempPlanToml.Name())
+			tempPlanToml := filepath.Join(tempDir, "layers", "plan.toml")
+			planContents, err := ioutil.ReadFile(tempPlanToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(planContents) > 0, true)
-			expected = "[[entries]]\n\n  [[entries.providers]]\n    id = \"simple_buildpack\"\n    version = \"simple_buildpack_version\"\n\n  [[entries.requires]]\n    name = \"some-world\"\n    version = \"0.1\"\n    [entries.requires.metadata]\n      world = \"Earth-616\""
-			h.AssertStringContains(t, string(planContents), expected)
+			var buildPlan lifecycle.BuildPlan
+			_, err = toml.Decode(string(planContents), &buildPlan)
+			h.AssertNil(t, err)
+			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "simple_buildpack")
+			h.AssertEq(t, buildPlan.Entries[0].Providers[0].Version, "simple_buildpack_version")
+			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Name, "some_requirement")
+			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["some_metadata_key"], "some_metadata_val")
+			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["version"], "0.1")
 		})
 	})
 
 	when("environment variables are provided for buildpack and app directories and for the output files", func() {
 		it("writes group.toml and plan.toml in the right location and with the right names", func() {
-			containerName := "test-container-" + h.RandString(10)
-			h.Run(t, exec.Command(
-				"docker",
-				"run",
-				"--name", containerName,
-				"--user", userID,
-				"--env", "CNB_ORDER_PATH=/cnb/orders/always_detect_order.toml",
-				"--env", "CNB_BUILDPACKS_DIR=/cnb/custom_buildpacks",
-				"--env", "CNB_APP_DIR=/custom_workspace",
-				"--env", "CNB_GROUP_PATH=./custom_group.toml",
-				"--env", "CNB_PLAN_PATH=./custom_plan.toml",
-				"--env", "CNB_PLATFORM_DIR=/custom_platform",
+			containerName, tempDir := h.DockerRunAndCopy(t,
 				detectImage,
-				"-log-level=debug"))
-			defer h.Run(t, exec.Command("docker", "rm", containerName))
+				false,
+				"/layers",
+				h.WithFlags("--user", userID,
+					"--env", "CNB_ORDER_PATH=/cnb/orders/always_detect_order.toml",
+					"--env", "CNB_BUILDPACKS_DIR=/cnb/custom_buildpacks",
+					"--env", "CNB_APP_DIR=/custom_workspace",
+					"--env", "CNB_GROUP_PATH=./custom_group.toml",
+					"--env", "CNB_PLAN_PATH=./custom_plan.toml",
+					"--env", "CNB_PLATFORM_DIR=/custom_platform",
+				),
+				h.WithArgs("-log-level=debug"),
+			)
+			defer os.RemoveAll(tempDir)
 
 			// check group.toml
-			tempGroupToml, err := ioutil.TempFile("", "")
-			h.AssertNil(t, err)
-			defer os.RemoveAll(tempGroupToml.Name())
-
-			h.Run(t, exec.Command(
-				"docker", "cp",
-				fmt.Sprintf("%s:/layers/custom_group.toml", containerName),
-				tempGroupToml.Name(),
-			))
-
-			groupContents, err := ioutil.ReadFile(tempGroupToml.Name())
+			tempGroupToml := filepath.Join(tempDir, "layers", "custom_group.toml")
+			groupContents, err := ioutil.ReadFile(tempGroupToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(groupContents) > 0, true)
-			expectedGroupContents := "[[group]]\n  id = \"always_detect_buildpack\"\n  version = \"always_detect_buildpack_version\""
-			h.AssertStringContains(t, string(groupContents), expectedGroupContents)
+			var buildpackGroup lifecycle.BuildpackGroup
+			_, err = toml.Decode(string(groupContents), &buildpackGroup)
+			h.AssertNil(t, err)
+			h.AssertEq(t, buildpackGroup.Group[0].ID, "always_detect_buildpack")
+			h.AssertEq(t, buildpackGroup.Group[0].Version, "always_detect_buildpack_version")
 
 			// check plan.toml - should be empty
-			tempPlanToml, err := ioutil.TempFile("", "")
-			h.AssertNil(t, err)
-			defer os.RemoveAll(tempPlanToml.Name())
-
-			h.Run(t, exec.Command(
-				"docker", "cp",
-				fmt.Sprintf("%s:/layers/custom_plan.toml", containerName),
-				tempPlanToml.Name(),
-			))
-
-			planContents, err := ioutil.ReadFile(tempPlanToml.Name())
+			tempPlanToml := filepath.Join(tempDir, "layers", "custom_plan.toml")
+			planContents, err := ioutil.ReadFile(tempPlanToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(planContents) == 0, true)
 
 			// check platform directory
-			containerId := strings.TrimSuffix(h.Run(t, exec.Command("docker", "ps", "-aqf", fmt.Sprintf("name=%s", containerName))),"\n")
-			logs := h.Run(t, exec.Command("docker", "logs", containerId))
+			logs := h.Run(t, exec.Command("docker", "logs", containerName))
 			expectedLogs := "platform_path: /custom_platform"
 			h.AssertStringContains(t, string(logs), expectedLogs)
+
+			h.Run(t, exec.Command("docker", "rm", containerName))
 		})
 	})
-}
-
-func buildDetector(t *testing.T) {
-	cmd := exec.Command("make", "clean", "build-linux-lifecycle")
-	wd, err := os.Getwd()
-	h.AssertNil(t, err)
-	cmd.Dir = filepath.Join(wd, "..")
-	cmd.Env = append(
-		os.Environ(),
-		"PWD="+cmd.Dir,
-		"OUT_DIR="+detectorBinaryDir,
-		"LIFECYCLE_VERSION=some-version",
-		"SCM_COMMIT=asdf123",
-	)
-
-	t.Log("Building binaries: ", cmd.Args)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("failed to run %v\n OUTPUT: %s\n ERROR: %s\n", cmd.Args, output, err)
-	}
 }

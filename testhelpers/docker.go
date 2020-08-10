@@ -49,19 +49,25 @@ func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...))
 }
 
-func DockerRunAndCopy(t *testing.T, image, path string, ops ...DockerCmdOp) (string, string) {
+func DockerRunAndCopy(t *testing.T, image string, deleteContainer bool, path string, ops ...DockerCmdOp) (string, string) {
 	containerName := "test-container-" + RandString(10)
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
-	defer Run(t, exec.Command("docker", "rm", containerName))
+	Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
+	if deleteContainer {
+		defer Run(t, exec.Command("docker", "rm", containerName))
+	}
 
 	tempDir, err := ioutil.TempDir("", "test-docker-copy-")
 	AssertNil(t, err)
 	Run(t, exec.Command("docker", "cp", containerName+":"+path, tempDir))
 
-	return output, tempDir
+	if deleteContainer {
+		return "", tempDir
+	} else {
+		return containerName, tempDir
+	}
 }
 
 func DockerVolumeRemove(t *testing.T, volume string) {
