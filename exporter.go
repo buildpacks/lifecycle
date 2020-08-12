@@ -353,14 +353,7 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 }
 
 func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType string) (string, error) {
-	if !e.supportsMulticallLauncher() {
-		return launch.LauncherPath, nil
-	}
-	if defaultProcessType == "" {
-		if len(launchMD.Processes) == 1 {
-			e.Logger.Infof("Setting default process type '%s'", launchMD.Processes[0].Type)
-			return launch.ProcessPath(launchMD.Processes[0].Type), nil
-		}
+	if !e.supportsMulticallLauncher() || defaultProcessType == "" {
 		return launch.LauncherPath, nil
 	}
 	defaultProcess, ok := launchMD.FindProcessType(defaultProcessType)
