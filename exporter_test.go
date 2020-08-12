@@ -1043,18 +1043,20 @@ version = "4.5.6"
 						exporter.PlatformAPI = api.MustParse("0.4")
 					})
 
-					it("sets ENTRYPOINT to launcher", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
+					when("there is exactly one process", func() {
+						it("sets ENTRYPOINT to launcher", func() {
+							_, err := exporter.Export(opts)
+							h.AssertNil(t, err)
 
-						ep, err := fakeAppImage.Entrypoint()
-						h.AssertNil(t, err)
-						h.AssertEq(t, len(ep), 1)
-						if runtime.GOOS == "windows" {
-							h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
-						} else {
-							h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
-						}
+							ep, err := fakeAppImage.Entrypoint()
+							h.AssertNil(t, err)
+							h.AssertEq(t, len(ep), 1)
+							if runtime.GOOS == "windows" {
+								h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
+							} else {
+								h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
+							}
+						})
 					})
 				})
 
