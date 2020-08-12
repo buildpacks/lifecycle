@@ -1028,10 +1028,20 @@ version = "4.5.6"
 					})
 
 					when("default process type is not in metadata.toml", func() {
-						it("returns an error", func() {
+						it("warns and sets the ENTRYPOINT to launcher", func() {
 							opts.DefaultProcessType = "some-missing-process"
 							_, err := exporter.Export(opts)
-							h.AssertError(t, err, "default process type 'some-missing-process' not present in list [some-process-type]")
+							h.AssertNil(t, err)
+
+							assertLogEntry(t, logHandler, "default process type 'some-missing-process' not present in list [some-process-type]")
+							ep, err := fakeAppImage.Entrypoint()
+							h.AssertNil(t, err)
+							h.AssertEq(t, len(ep), 1)
+							if runtime.GOOS == "windows" {
+								h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
+							} else {
+								h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
+							}
 						})
 					})
 				})
