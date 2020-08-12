@@ -28,7 +28,7 @@ var (
 )
 
 func TestDetector(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "Detector is not yet supported on Windows")
+	h.SkipIf(t, runtime.GOOS == "windows", "Detector acceptance tests are not yet supported on Windows")
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -121,7 +121,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
 			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
 
-			// check plan.toml - should be empty
+			// check plan.toml
 			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
 			planContents, err := ioutil.ReadFile(tempPlanToml)
 			h.AssertNil(t, err)
