@@ -3,8 +3,6 @@
 package acceptance
 
 import (
-	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/lifecycle"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -14,17 +12,19 @@ import (
 	"testing"
 	"time"
 
-	h "github.com/buildpacks/lifecycle/testhelpers"
-
+	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 var (
 	detectDockerContext = filepath.Join("testdata", "detector")
-	detectorBinaryDir    = filepath.Join("testdata", "detector", "container", "cnb", "lifecycle")
+	detectorBinaryDir   = filepath.Join("testdata", "detector", "container", "cnb", "lifecycle")
 	detectImage         = "lifecycle/acceptance/detector"
-	userID = "1234"
+	userID              = "1234"
 )
 
 func TestDetector(t *testing.T) {
