@@ -397,11 +397,7 @@ func (e *Exporter) supportsMulticallLauncher() bool {
 }
 
 func processTypeError(launchMD launch.Metadata, defaultProcessType string) error {
-	var typeList []string
-	for _, p := range launchMD.Processes {
-		typeList = append(typeList, p.Type)
-	}
-	return fmt.Errorf("default process type '%s' not present in list %+v", defaultProcessType, typeList)
+	return fmt.Errorf(processTypeWarning(launchMD, defaultProcessType))
 }
 
 func processTypeWarning(launchMD launch.Metadata, defaultProcessType string) string {
