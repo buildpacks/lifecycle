@@ -114,13 +114,30 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("group path is provided", func() {
-		it("uses the provided group path", func() {
-			cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
-			defer h.DockerVolumeRemove(t, cacheVolume)
+		var copyDir, containerName, cacheVolume string
 
-			_, tempDir := h.DockerRunAndCopy(t,
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			h.DockerVolumeRemove(t, cacheVolume)
+			os.RemoveAll(copyDir)
+		})
+
+		it("uses the provided group path", func() {
+			cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
+
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
 				analyzeImage,
-				true,
 				"/layers",
 				h.WithFlags(
 					"--env", "CNB_REGISTRY_AUTH={}",
@@ -133,18 +150,34 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"some-image",
 				),
 			)
-			defer os.RemoveAll(tempDir)
 
-			h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-other-buildpack-id"))
-			h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id"))
+			h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-other-buildpack-id"))
+			h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id"))
 		})
 	})
 
 	when("layers path and analyzed path are provided", func() {
+		var copyDir, containerName string
+
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
 		it("writes analyzed.toml at the provided path", func() {
-			_, tempDir := h.DockerRunAndCopy(t,
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
 				analyzeImage,
-				true,
 				"/other-layers/other-analyzed.toml",
 				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithArgs(
@@ -154,24 +187,39 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"some-image",
 				),
 			)
-			defer os.RemoveAll(tempDir)
 
-			assertAnalyzedMetadata(t, filepath.Join(tempDir, "other-analyzed.toml"))
+			assertAnalyzedMetadata(t, filepath.Join(copyDir, "other-analyzed.toml"))
 		})
 	})
 
 	when("daemon case", func() {
+		var copyDir, containerName string
+
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
 		it("writes analyzed.toml", func() {
-			_, tempDir := h.DockerRunAndCopy(t,
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
 				analyzeImage,
-				true,
 				"/layers/analyzed.toml",
 				h.WithFlags(variables.DockerSocketMount...),
 				h.WithArgs(analyzerPath, "-daemon", "some-image"),
 			)
-			defer os.RemoveAll(tempDir)
 
-			assertAnalyzedMetadata(t, filepath.Join(tempDir, "analyzed.toml"))
+			assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
 		})
 
 		when("app image is found", func() {
@@ -197,14 +245,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores layer metadata", func() {
-				_, tempDir := h.DockerRunAndCopy(t,
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
 					analyzeImage,
-					true,
 					"/layers",
 					h.WithFlags(variables.DockerSocketMount...),
 					h.WithArgs(analyzerPath, "-daemon", appImage),
 				)
-				defer os.RemoveAll(tempDir)
 
 				layerFilenames := []string{
 					"launch-build-cache-layer.sha",
@@ -216,15 +264,16 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"store.toml",
 				}
 				for _, filename := range layerFilenames {
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", filename))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
 				}
 			})
 
 			when("skip layers is provided", func() {
 				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-					_, tempDir := h.DockerRunAndCopy(t,
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
 						analyzeImage,
-						true,
 						"/layers",
 						h.WithFlags(variables.DockerSocketMount...),
 						h.WithArgs(
@@ -234,10 +283,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							appImage,
 						),
 					)
-					defer os.RemoveAll(tempDir)
 
-					assertAnalyzedMetadata(t, filepath.Join(tempDir, "layers", "analyzed.toml"))
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "store.toml"))
+					assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "store.toml"))
 					layerFilenames := []string{
 						"launch-build-cache-layer.sha",
 						"launch-build-cache-layer.toml",
@@ -247,7 +295,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"launch-layer.toml",
 					}
 					for _, filename := range layerFilenames {
-						h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", filename))
+						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
 					}
 				})
 			})
@@ -255,6 +303,22 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("cache is provided", func() {
 			when("cache image case", func() {
+				var copyDir, containerName string
+
+				it.Before(func() {
+					containerName = "test-container-" + h.RandString(10)
+					var err error
+					copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					os.RemoveAll(copyDir)
+				})
+
 				when("cache image is in a daemon", func() {
 					var cacheImage string
 
@@ -278,9 +342,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("ignores the cache", func() {
-						_, tempDir := h.DockerRunAndCopy(t,
+						h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
 							analyzeImage,
-							true,
 							"/layers",
 							h.WithFlags(append(
 								variables.DockerSocketMount,
@@ -293,10 +358,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								"some-image",
 							),
 						)
-						defer os.RemoveAll(tempDir)
 
-						h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
-						h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
+						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
 					})
 				})
 
@@ -319,9 +383,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("uses the provided cache", func() {
-						_, tempDir := h.DockerRunAndCopy(t,
+						h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
 							analyzeImage,
-							true,
 							"/layers",
 							h.WithFlags(append(
 								variables.DockerSocketMount,
@@ -335,38 +400,55 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								"some-image",
 							),
 						)
-						defer os.RemoveAll(tempDir)
 
-						h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
-						h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+						h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
+						h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
 					})
 				})
 			})
 
 			when("cache directory case", func() {
-				it("uses the provided cache", func() {
-					cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
-					defer h.DockerVolumeRemove(t, cacheVolume)
+				when("running", func() {
+					var copyDir, containerName, cacheVolume string
 
-					_, tempDir := h.DockerRunAndCopy(t,
-						analyzeImage,
-						true,
-						"/layers",
-						h.WithFlags(append(
-							variables.DockerSocketMount,
-							"--volume", cacheVolume+":"+"/cache",
-						)...),
-						h.WithArgs(
-							analyzerPath,
-							"-daemon",
-							"-cache-dir", "/cache",
-							"some-image",
-						),
-					)
-					defer os.RemoveAll(tempDir)
+					it.Before(func() {
+						containerName = "test-container-" + h.RandString(10)
+						var err error
+						copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+						h.AssertNil(t, err)
+					})
 
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					it.After(func() {
+						if h.DockerContainerExists(t, containerName) {
+							h.Run(t, exec.Command("docker", "rm", containerName))
+						}
+						h.DockerVolumeRemove(t, cacheVolume)
+						os.RemoveAll(copyDir)
+					})
+
+					it("uses the provided cache", func() {
+						cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
+
+						h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							analyzeImage,
+							"/layers",
+							h.WithFlags(append(
+								variables.DockerSocketMount,
+								"--volume", cacheVolume+":"+"/cache",
+							)...),
+							h.WithArgs(
+								analyzerPath,
+								"-daemon",
+								"-cache-dir", "/cache",
+								"some-image",
+							),
+						)
+
+						h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
+						h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					})
 				})
 
 				when("the provided cache directory isn't writeable by the CNB user's group", func() {
@@ -438,24 +520,59 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			h.DockerImageRemove(t, appImage)
 		})
 
-		it("writes analyzed.toml", func() {
-			_, tempDir := h.DockerRunAndCopy(t,
-				analyzeImage,
-				true,
-				"/layers/analyzed.toml",
-				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
-				h.WithArgs(analyzerPath, "some-image"),
-			)
-			defer os.RemoveAll(tempDir)
+		when("running", func() {
+			var copyDir, containerName string
 
-			assertAnalyzedMetadata(t, filepath.Join(tempDir, "analyzed.toml"))
+			it.Before(func() {
+				containerName = "test-container-" + h.RandString(10)
+				var err error
+				copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+				h.AssertNil(t, err)
+			})
+
+			it.After(func() {
+				if h.DockerContainerExists(t, containerName) {
+					h.Run(t, exec.Command("docker", "rm", containerName))
+				}
+				os.RemoveAll(copyDir)
+			})
+
+			it("writes analyzed.toml", func() {
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					analyzeImage,
+					"/layers/analyzed.toml",
+					h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
+					h.WithArgs(analyzerPath, "some-image"),
+				)
+
+				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+			})
 		})
 
 		when("app image is found", func() {
+			var copyDir, containerName string
+
+			it.Before(func() {
+				containerName = "test-container-" + h.RandString(10)
+				var err error
+				copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+				h.AssertNil(t, err)
+			})
+
+			it.After(func() {
+				if h.DockerContainerExists(t, containerName) {
+					h.Run(t, exec.Command("docker", "rm", containerName))
+				}
+				os.RemoveAll(copyDir)
+			})
+
 			it("restores layer metadata", func() {
-				_, tempDir := h.DockerRunAndCopy(t,
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
 					analyzeImage,
-					true,
 					"/layers",
 					h.WithFlags(
 						"--network", "host",
@@ -463,7 +580,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					),
 					h.WithArgs(analyzerPath, appImage),
 				)
-				defer os.RemoveAll(tempDir)
 
 				layerFilenames := []string{
 					"launch-build-cache-layer.sha",
@@ -475,15 +591,16 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"store.toml",
 				}
 				for _, filename := range layerFilenames {
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", filename))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
 				}
 			})
 
 			when("skip layers is provided", func() {
 				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-					_, tempDir := h.DockerRunAndCopy(t,
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
 						analyzeImage,
-						true,
 						"/layers",
 						h.WithFlags(
 							"--network", "host",
@@ -495,10 +612,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							appImage,
 						),
 					)
-					defer os.RemoveAll(tempDir)
 
-					assertAnalyzedMetadata(t, filepath.Join(tempDir, "layers", "analyzed.toml"))
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "store.toml"))
+					assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "store.toml"))
 					layerFilenames := []string{
 						"launch-build-cache-layer.sha",
 						"launch-build-cache-layer.toml",
@@ -508,7 +624,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"launch-layer.toml",
 					}
 					for _, filename := range layerFilenames {
-						h.AssertPathDoesNotExist(t, filepath.Join(tempDir, "layers", "some-buildpack-id", filename))
+						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", filename))
 					}
 				})
 			})
@@ -516,6 +632,22 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("CNB_REGISTRY_AUTH is not provided", func() {
 			when("DOCKER_CONFIG is set", func() {
+				var copyDir, containerName string
+
+				it.Before(func() {
+					containerName = "test-container-" + h.RandString(10)
+					var err error
+					copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					os.RemoveAll(copyDir)
+				})
+
 				it("succeeds", func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "Can't run bash on Windows")
 
@@ -529,9 +661,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					dockerConfig, err = filepath.EvalSymlinks(dockerConfig)
 					h.AssertNil(t, err)
 
-					_, tempDir := h.DockerRunAndCopy(t,
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
 						analyzeImage,
-						true,
 						"/layers",
 						h.WithFlags(
 							"--mount", fmt.Sprintf("type=bind,source=%s,target=/mounted-docker-config", dockerConfig),
@@ -542,18 +675,21 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							fmt.Sprintf("chown -R 2222:3333 /mounted-docker-config; %s %s; ls -alR /layers", analyzerPath, appImage), // provide a real app image, so that we can test that the registry is accessible
 						),
 					)
-					defer os.RemoveAll(tempDir)
 
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id"))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id"))
 				})
 			})
 		})
 
 		when("cache is provided", func() {
 			when("cache image case", func() {
-				var cacheImage, cacheAuthConfig string
+				var copyDir, containerName, cacheImage, cacheAuthConfig string
 
 				it.Before(func() {
+					containerName = "test-container-" + h.RandString(10)
+					var err error
+					copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+					h.AssertNil(t, err)
 					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
 					cacheImage, cacheAuthConfig = buildRegistryImage(
 						t,
@@ -565,13 +701,18 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					os.RemoveAll(copyDir)
 					h.DockerImageRemove(t, cacheImage)
 				})
 
 				it("uses the provided cache", func() {
-					_, tempDir := h.DockerRunAndCopy(t,
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
 						analyzeImage,
-						true,
 						"/layers",
 						h.WithFlags(
 							"--network", "host",
@@ -583,21 +724,37 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							"some-image",
 						),
 					)
-					defer os.RemoveAll(tempDir)
 
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
 				})
 			})
 
 			when("cache directory case", func() {
-				it("uses the provided cache", func() {
-					cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
-					defer h.DockerVolumeRemove(t, cacheVolume)
+				var copyDir, containerName, cacheVolume string
 
-					_, tempDir := h.DockerRunAndCopy(t,
+				it.Before(func() {
+					containerName = "test-container-" + h.RandString(10)
+					var err error
+					copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					h.DockerVolumeRemove(t, cacheVolume)
+					os.RemoveAll(copyDir)
+				})
+
+				it("uses the provided cache", func() {
+					cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
+
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
 						analyzeImage,
-						true,
 						"/layers",
 						h.WithFlags(
 							"--env", "CNB_REGISTRY_AUTH={}",
@@ -609,10 +766,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							"some-image",
 						),
 					)
-					defer os.RemoveAll(tempDir)
 
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.sha"))
-					h.AssertPathExists(t, filepath.Join(tempDir, "layers", "some-buildpack-id", "some-layer.toml"))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
+					h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
 				})
 			})
 		})

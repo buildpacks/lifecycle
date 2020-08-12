@@ -82,20 +82,36 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("there is a buildpack group that pass detection", func() {
+		var copyDir, containerName string
+
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
 		it("writes group.toml and plan.toml", func() {
-			_, tempDir := h.DockerRunAndCopy(t,
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
 				detectImage,
-				true,
 				"/layers",
 				h.WithFlags("--user", userID,
 					"--env", "CNB_ORDER_PATH=/cnb/orders/simple_order.toml",
 				),
 				h.WithArgs(),
 			)
-			defer os.RemoveAll(tempDir) // TODO: think about giving the DockerRunAndCopy the tempDir and remove it as part of After
 
 			// check group.toml
-			tempGroupToml := filepath.Join(tempDir, "layers", "group.toml")
+			tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
 			groupContents, err := ioutil.ReadFile(tempGroupToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(groupContents) > 0, true)
@@ -106,7 +122,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
 
 			// check plan.toml - should be empty
-			tempPlanToml := filepath.Join(tempDir, "layers", "plan.toml")
+			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
 			planContents, err := ioutil.ReadFile(tempPlanToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(planContents) > 0, true)
@@ -122,10 +138,27 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("environment variables are provided for buildpack and app directories and for the output files", func() {
+		var copyDir, containerName string
+
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
 		it("writes group.toml and plan.toml in the right location and with the right names", func() {
-			containerName, tempDir := h.DockerRunAndCopy(t,
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
 				detectImage,
-				false,
 				"/layers",
 				h.WithFlags("--user", userID,
 					"--env", "CNB_ORDER_PATH=/cnb/orders/always_detect_order.toml",
@@ -137,10 +170,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				),
 				h.WithArgs("-log-level=debug"),
 			)
-			defer os.RemoveAll(tempDir)
 
 			// check group.toml
-			tempGroupToml := filepath.Join(tempDir, "layers", "custom_group.toml")
+			tempGroupToml := filepath.Join(copyDir, "layers", "custom_group.toml")
 			groupContents, err := ioutil.ReadFile(tempGroupToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(groupContents) > 0, true)
@@ -151,7 +183,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, buildpackGroup.Group[0].Version, "always_detect_buildpack_version")
 
 			// check plan.toml - should be empty
-			tempPlanToml := filepath.Join(tempDir, "layers", "custom_plan.toml")
+			tempPlanToml := filepath.Join(copyDir, "layers", "custom_plan.toml")
 			planContents, err := ioutil.ReadFile(tempPlanToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(planContents) == 0, true)
@@ -160,8 +192,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			logs := h.Run(t, exec.Command("docker", "logs", containerName))
 			expectedLogs := "platform_path: /custom_platform"
 			h.AssertStringContains(t, string(logs), expectedLogs)
-
-			h.Run(t, exec.Command("docker", "rm", containerName))
 		})
 	})
 }
