@@ -39,7 +39,7 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 			})
 			out := benv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
+			expectedVars := []string{
 				"CNB_STACK_ID=some-stack-id",
 				"CPATH=some-cpath",
 				"HOME=some-home",
@@ -51,10 +51,16 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				"NO_PROXY=some-no-proxy",
 				"PATH=some-path",
 				"PKG_CONFIG_PATH=some-pkg-config-path",
-				"http_proxy=some-http-proxy",
-				"https_proxy=some-https-proxy",
-				"no_proxy=some-no-proxy",
-			}); s != "" {
+			}
+			if runtime.GOOS != "windows" {
+				expectedVars = append(
+					expectedVars,
+					"http_proxy=some-http-proxy",
+					"https_proxy=some-https-proxy",
+					"no_proxy=some-no-proxy",
+				)
+			}
+			if s := cmp.Diff(out, expectedVars); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
 		})
