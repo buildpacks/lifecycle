@@ -22,6 +22,14 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 		it("includes expected vars", func() {
 			benv := env.NewBuildEnv([]string{
 				"CNB_STACK_ID=some-stack-id",
+				"HOSTNAME=some-hostname",
+				"HOME=some-home",
+				"HTTPS_PROXY=some-https-proxy",
+				"https_proxy=some-https-proxy",
+				"HTTP_PROXY=some-http-proxy",
+				"http_proxy=some-http-proxy",
+				"NO_PROXY=some-no-proxy",
+				"no_proxy=some-no-proxy",
 				"NOT_INCLUDED=not-included",
 				"PATH=some-path",
 				"LD_LIBRARY_PATH=some-ld-library-path",
@@ -31,14 +39,29 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 			})
 			out := benv.List()
 			sort.Strings(out)
-			if s := cmp.Diff(out, []string{
+			expectedVars := []string{
 				"CNB_STACK_ID=some-stack-id",
 				"CPATH=some-cpath",
+				"HOME=some-home",
+				"HOSTNAME=some-hostname",
+				"HTTPS_PROXY=some-https-proxy",
+				"HTTP_PROXY=some-http-proxy",
 				"LD_LIBRARY_PATH=some-ld-library-path",
 				"LIBRARY_PATH=some-library-path",
+				"NO_PROXY=some-no-proxy",
 				"PATH=some-path",
 				"PKG_CONFIG_PATH=some-pkg-config-path",
-			}); s != "" {
+			}
+			// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
+			if runtime.GOOS != "windows" {
+				expectedVars = append(
+					expectedVars,
+					"http_proxy=some-http-proxy",
+					"https_proxy=some-https-proxy",
+					"no_proxy=some-no-proxy",
+				)
+			}
+			if s := cmp.Diff(out, expectedVars); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}
 		})
