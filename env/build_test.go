@@ -52,6 +52,7 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				"PATH=some-path",
 				"PKG_CONFIG_PATH=some-pkg-config-path",
 			}
+			// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
 			if runtime.GOOS != "windows" {
 				expectedVars = append(
 					expectedVars,
