@@ -73,6 +73,13 @@ func main() {
 	if err := img.SetLabel("io.buildpacks.builder.metadata", legacyLabel(descriptor)); err != nil {
 		log.Fatal("Failed to set 'io.buildpacks.builder.metadata' label:", err)
 	}
+	workDir := "/layers"
+	if targetOS == "windows" {
+		workDir = `c:\layers`
+	}
+	if err := img.SetWorkingDir(workDir); err != nil {
+		log.Fatal("Failed to set working directory:", err)
+	}
 	if len(tags) > 1 {
 		if err := img.Save(tags[1:]...); err != nil {
 			log.Fatal("Failed to save image:", err)
