@@ -365,7 +365,8 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType strin
 	}
 	defaultProcess, ok := launchMD.FindProcessType(defaultProcessType)
 	if !ok {
-		return "", processTypeError(launchMD, defaultProcessType)
+		e.Logger.Warn(processTypeWarning(launchMD, defaultProcessType))
+		return launch.LauncherPath, nil
 	}
 	e.Logger.Infof("Setting default process type '%s'", defaultProcess.Type)
 	return launch.ProcessPath(defaultProcess.Type), nil
@@ -396,11 +397,15 @@ func (e *Exporter) supportsMulticallLauncher() bool {
 }
 
 func processTypeError(launchMD launch.Metadata, defaultProcessType string) error {
+	return fmt.Errorf(processTypeWarning(launchMD, defaultProcessType))
+}
+
+func processTypeWarning(launchMD launch.Metadata, defaultProcessType string) string {
 	var typeList []string
 	for _, p := range launchMD.Processes {
 		typeList = append(typeList, p.Type)
 	}
-	return fmt.Errorf("default process type '%s' not present in list %+v", defaultProcessType, typeList)
+	return fmt.Sprintf("default process type '%s' not present in list %+v", defaultProcessType, typeList)
 }
 
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
