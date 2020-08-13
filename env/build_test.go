@@ -22,6 +22,14 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 		it("includes expected vars", func() {
 			benv := env.NewBuildEnv([]string{
 				"CNB_STACK_ID=some-stack-id",
+				"HOSTNAME=some-hostname",
+				"HOME=some-home",
+				"HTTPS_PROXY=some-https-proxy",
+				"https_proxy=some-https-proxy",
+				"HTTP_PROXY=some-http-proxy",
+				"http_proxy=some-http-proxy",
+				"NO_PROXY=some-no-proxy",
+				"no_proxy=some-no-proxy",
 				"NOT_INCLUDED=not-included",
 				"PATH=some-path",
 				"LD_LIBRARY_PATH=some-ld-library-path",
@@ -34,10 +42,18 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 			if s := cmp.Diff(out, []string{
 				"CNB_STACK_ID=some-stack-id",
 				"CPATH=some-cpath",
+				"HOME=some-home",
+				"HOSTNAME=some-hostname",
+				"HTTPS_PROXY=some-https-proxy",
+				"HTTP_PROXY=some-http-proxy",
 				"LD_LIBRARY_PATH=some-ld-library-path",
 				"LIBRARY_PATH=some-library-path",
+				"NO_PROXY=some-no-proxy",
 				"PATH=some-path",
 				"PKG_CONFIG_PATH=some-pkg-config-path",
+				"http_proxy=some-http-proxy",
+				"https_proxy=some-https-proxy",
+				"no_proxy=some-no-proxy",
 			}); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}

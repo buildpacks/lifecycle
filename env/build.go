@@ -9,6 +9,12 @@ var BuildEnvIncludelist = []string{
 	"CNB_STACK_ID",
 	"HOSTNAME",
 	"HOME",
+	"HTTPS_PROXY",
+	"https_proxy",
+	"HTTP_PROXY",
+	"http_proxy",
+	"NO_PROXY",
+	"no_proxy",
 }
 
 var ignoreEnvVarCase = runtime.GOOS == "windows"
