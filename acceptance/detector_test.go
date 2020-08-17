@@ -17,6 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/cmd"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -63,7 +64,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("read buildpack order file failed", func() {
 		it("errors", func() {
 			// no order.toml file in the default directory
-			cmd := exec.Command("docker", "run", "--rm", "--user", userID, detectImage)
+			cmd := exec.Command("docker", "run", "--rm", detectImage)
 			output, err := cmd.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to read buildpack order file"
@@ -73,9 +74,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("no buildpack group passed detection", func() {
 		it("errors", func() {
-			cmd := exec.Command("docker", "run", "--rm", "--user", userID, "--env", "CNB_ORDER_PATH=/cnb/orders/empty_order.toml", detectImage)
-			output, err := cmd.CombinedOutput()
+			command := exec.Command("docker", "run", "--rm", "--env", "CNB_ORDER_PATH=/cnb/orders/empty_order.toml", detectImage)
+			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
+			failErr, ok := err.(*exec.ExitError)
+			if !ok {
+				t.Fatalf("expected an error of type exec.ExitError")
+			}
+			h.AssertEq(t, failErr.ExitCode(), cmd.CodeFailedDetect)
 			expected := "No buildpack groups passed detection."
 			h.AssertStringContains(t, string(output), expected)
 		})
@@ -112,28 +118,22 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check group.toml
 			tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-			groupContents, err := ioutil.ReadFile(tempGroupToml)
-			h.AssertNil(t, err)
-			h.AssertEq(t, len(groupContents) > 0, true)
 			var buildpackGroup lifecycle.BuildpackGroup
-			_, err = toml.Decode(string(groupContents), &buildpackGroup)
+			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
 			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
 
 			// check plan.toml
 			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
-			planContents, err := ioutil.ReadFile(tempPlanToml)
-			h.AssertNil(t, err)
-			h.AssertEq(t, len(planContents) > 0, true)
 			var buildPlan lifecycle.BuildPlan
-			_, err = toml.Decode(string(planContents), &buildPlan)
+			_, err = toml.DecodeFile(tempPlanToml, &buildPlan)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "simple_buildpack")
 			h.AssertEq(t, buildPlan.Entries[0].Providers[0].Version, "simple_buildpack_version")
 			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Name, "some_requirement")
 			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["some_metadata_key"], "some_metadata_val")
-			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["version"], "0.1")
+			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["version"], "some_version")
 		})
 	})
 
@@ -173,16 +173,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check group.toml
 			tempGroupToml := filepath.Join(copyDir, "layers", "custom_group.toml")
-			groupContents, err := ioutil.ReadFile(tempGroupToml)
-			h.AssertNil(t, err)
-			h.AssertEq(t, len(groupContents) > 0, true)
 			var buildpackGroup lifecycle.BuildpackGroup
-			_, err = toml.Decode(string(groupContents), &buildpackGroup)
+			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildpackGroup.Group[0].ID, "always_detect_buildpack")
 			h.AssertEq(t, buildpackGroup.Group[0].Version, "always_detect_buildpack_version")
 
-			// check plan.toml - should be empty
+			// check plan.toml - should be empty since we're using always_detect_order.toml so there is no "actual plan"
 			tempPlanToml := filepath.Join(copyDir, "layers", "custom_plan.toml")
 			planContents, err := ioutil.ReadFile(tempPlanToml)
 			h.AssertNil(t, err)
@@ -190,8 +187,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check platform directory
 			logs := h.Run(t, exec.Command("docker", "logs", containerName))
-			expectedLogs := "platform_path: /custom_platform"
-			h.AssertStringContains(t, string(logs), expectedLogs)
+			expectedPlatformPath := "platform_path: /custom_platform"
+			expectedAppDir := "app_dir: /custom_workspace"
+			h.AssertStringContains(t, string(logs), expectedPlatformPath)
+			h.AssertStringContains(t, string(logs), expectedAppDir)
 		})
 	})
 }

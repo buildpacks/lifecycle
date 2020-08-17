@@ -13,3 +13,5 @@ RUN groupadd cnb --gid ${cnb_gid} && \
 RUN chown -R "${cnb_uid}:${cnb_gid}" "/layers"
 
 WORKDIR /layers
+
+USER ${cnb_uid}:${cnb_gid}
