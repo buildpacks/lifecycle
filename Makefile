@@ -39,6 +39,18 @@ build: build-linux build-windows
 build-linux: build-linux-lifecycle build-linux-symlinks build-linux-launcher
 build-windows: build-windows-lifecycle build-windows-symlinks build-windows-launcher
 
+build-image-linux: build-linux package-linux
+build-image-linux: GOOS:=linux
+build-image-linux: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+build-image-linux:
+	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -tag lifecycle:dev
+
+build-image-windows: build-windows package-windows
+build-image-windows: GOOS:=windows
+build-image-windows: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+build-image-windows:
+	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os windows -tag lifecycle:dev
+
 build-linux-lifecycle: $(BUILD_DIR)/linux/lifecycle/lifecycle
 
 $(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux

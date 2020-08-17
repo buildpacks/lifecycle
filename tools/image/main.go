@@ -3,6 +3,7 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -14,8 +15,11 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layer"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle/archive"
@@ -25,6 +29,7 @@ var (
 	lifecyclePath string      // path to lifecycle TGZ
 	tags          stringSlice // tag reference to write lifecycle image
 	targetOS      string      // operating system
+	useDaemon     bool        // export to docker daemon
 )
 
 type stringSlice []string
@@ -43,6 +48,7 @@ func main() {
 	flag.StringVar(&lifecyclePath, "lifecyclePath", "", "path to lifecycle TGZ")
 	flag.StringVar(&targetOS, "os", runtime.GOOS, "operating system")
 	flag.Var(&tags, "tag", "tag reference to write lifecycle image")
+	flag.BoolVar(&useDaemon, "daemon", false, "export to docker daemon")
 
 	flag.Parse()
 	if lifecyclePath == "" || len(tags) == 0 {
@@ -54,10 +60,33 @@ func main() {
 	if targetOS == "windows" {
 		baseImage = "mcr.microsoft.com/windows/nanoserver:1809-amd64"
 	}
-	img, err := remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
-	if err != nil {
-		log.Fatal("Failed create remote image:", err)
+
+	var img imgutil.Image
+	switch useDaemon {
+	case true:
+		dockerClient, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
+		if err != nil {
+			log.Fatal("Failed initialize docker client:", err)
+		}
+		info, err := dockerClient.Info(context.Background())
+		if err != nil {
+			log.Fatal("Failed to get daemon info:", err)
+		}
+		if info.OSType != targetOS {
+			log.Fatal("Target OS and daemon OS must match")
+		}
+		img, err = local.NewImage(tags[0], dockerClient, local.FromBaseImage(baseImage))
+		if err != nil {
+			log.Fatal("Failed create local image:", err)
+		}
+	default:
+		var err error
+		img, err = remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
+		if err != nil {
+			log.Fatal("Failed create remote image:", err)
+		}
 	}
+
 	layerPath := lifecycleLayer()
 	if err := img.AddLayer(layerPath); err != nil {
 		log.Fatal("Failed add layer:", err)
