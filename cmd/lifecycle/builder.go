@@ -22,13 +22,13 @@ type buildCmd struct {
 	groupPath      string
 	stackGroupPath string
 	planPath       string
-	uid, gid       int
 
 	buildArgs
 }
 
 type buildArgs struct {
 	// inputs needed when run by creator
+	uid, gid      int
 	buildpacksDir string
 	layersDir     string
 	appDir        string
@@ -69,29 +69,47 @@ func (b *buildCmd) Exec() error {
 		return err
 	}
 
+	if err = b.buildWithSnapshot(stackGroup, plan); err != nil {
+		return err
+	}
+
+	if err = b.buildWithLayers(group, plan); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ba buildArgs) buildWithSnapshot(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	// run stack buildpacks as root
 	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
 	if err != nil {
 		return err
 	}
-	if err = b.build(stackGroup, plan, stackSnapshotter.RootDir, stackSnapshotter); err != nil {
+	if _, err = ba.build(group, plan, stackSnapshotter.RootDir, stackSnapshotter); err != nil {
 		return errors.Wrap(err, "running stack buildpacks")
-	}
-
-	// drop back to non-root user to run buildpacks
-	if err := priv.RunAs(b.uid, b.gid); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("exec as user %d:%d", b.uid, b.gid))
-	}
-	if err := priv.SetEnvironmentForUser(b.uid); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("set environment for user %d", b.uid))
-	}
-	if err = b.build(group, plan, b.appDir, &lifecycle.NoopSnapshotter{}); err != nil {
-		return errors.Wrap(err, "running buildpacks")
 	}
 	return nil
 }
 
-func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, baseDir string, snapshotter lifecycle.LayerSnapshotter) error {
+func (ba buildArgs) buildWithLayers(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	// drop back to non-root user to run buildpacks
+	if err := priv.RunAs(ba.uid, ba.gid); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("exec as user %d:%d", ba.uid, ba.gid))
+	}
+	if err := priv.SetEnvironmentForUser(ba.uid); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("set environment for user %d", ba.uid))
+	}
+	md, err := ba.build(group, plan, ba.appDir, &lifecycle.NoopSnapshotter{})
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
+	}
+	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
+		return errors.Wrap(err, "write build metadata")
+	}
+	return nil
+}
+
+func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, baseDir string, snapshotter lifecycle.LayerSnapshotter) (*lifecycle.BuildMetadata, error) {
 	builder := &lifecycle.Builder{
 		AppDir:        baseDir,
 		LayersDir:     ba.layersDir,
@@ -104,15 +122,7 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		Err:           log.New(os.Stderr, "", 0),
 		Snapshotter:   snapshotter,
 	}
-	md, err := builder.Build()
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeFailedBuild, "build")
-	}
-
-	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
-		return cmd.FailErr(err, "write build metadata")
-	}
-	return nil
+	return builder.Build()
 }
 
 func (b *buildCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {

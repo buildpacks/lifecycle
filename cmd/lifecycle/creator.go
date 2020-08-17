@@ -148,7 +148,7 @@ func (c *createCmd) Exec() error {
 		layersDir:     c.layersDir,
 		appDir:        c.appDir,
 		platformDir:   c.platformDir,
-	}.build(group, plan, c.appDir, &lifecycle.NoopSnapshotter{})
+	}.buildWithLayers(group, plan)
 	if err != nil {
 		return err
 	}
@@ -169,5 +169,5 @@ func (c *createCmd) Exec() error {
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
-	}.export(group, cacheStore, analyzedMD)
+	}.export(group, lifecycle.BuildpackGroup{}, cacheStore, analyzedMD)
 }

@@ -38,6 +38,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		env            *testmock.MockBuildEnv
 		snapshotter    *testmock.MockLayerSnapshotter
 		stdout, stderr *bytes.Buffer
+		outLog, errLog *log.Logger
 		tmpDir         string
 		platformDir    string
 		appDir         string
@@ -60,27 +61,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		appDir = filepath.Join(layersDir, "app")
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
-		outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
-		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
-
-		buildpacksDir := filepath.Join("testdata", "by-id")
-
-		builder = &lifecycle.Builder{
-			AppDir:        appDir,
-			LayersDir:     layersDir,
-			PlatformDir:   platformDir,
-			BuildpacksDir: buildpacksDir,
-			Env:           env,
-			Group: lifecycle.BuildpackGroup{
-				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1", API: "0.3"},
-					{ID: "B", Version: "v2", API: "0.2"},
-				},
-			},
-			Out:         outLog,
-			Err:         errLog,
-			Snapshotter: snapshotter,
-		}
+		outLog = log.New(io.MultiWriter(stdout, it.Out()), "", 0)
+		errLog = log.New(io.MultiWriter(stderr, it.Out()), "", 0)
 	})
 
 	it.After(func() {
@@ -89,10 +71,27 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Build", func() {
+		it.Before(func() {
+			builder = &lifecycle.Builder{
+				AppDir:        appDir,
+				LayersDir:     layersDir,
+				PlatformDir:   platformDir,
+				BuildpacksDir: filepath.Join("testdata", "by-id"),
+				Env:           env,
+				Group: lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
+					},
+				},
+				Out:         outLog,
+				Err:         errLog,
+				Snapshotter: snapshotter,
+			}
+		})
+
 		when("building succeeds", func() {
 			it.Before(func() {
-				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
-				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B.tgz"))
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
 			})
@@ -390,8 +389,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("building succeeds with a clear env", func() {
 			it.Before(func() {
-				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
-				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B.tgz"))
 				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=with-platform"), nil)
 				builder.Group.Group[0].Version = "v1.clear"
@@ -531,12 +528,55 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when launch.toml is not writable", func() {
-				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error")
 				}
+			})
+		})
+	})
+
+	when("privileged", func() {
+		it.Before(func() {
+			builder = &lifecycle.Builder{
+				AppDir:        appDir,
+				LayersDir:     layersDir,
+				PlatformDir:   platformDir,
+				BuildpacksDir: filepath.Join("testdata", "privileged"),
+				Env:           env,
+				Group: lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", API: "0.3"},
+					},
+				},
+				Out:         outLog,
+				Err:         errLog,
+				Snapshotter: snapshotter,
+			}
+		})
+
+		when("#Build", func() {
+			when("building succeeds", func() {
+				it.Before(func() {
+					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "X.tgz"))
+					env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil)
+				})
+
+				it("should take a snapshot", func() {
+					metadata, err := builder.Build()
+					if err != nil {
+						t.Fatalf("Error: %s\n", err)
+					}
+					if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
+						Processes: []launch.Process{},
+						Buildpacks: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected metadata:\n%s\n", s)
+					}
+				})
 			})
 		})
 	})

@@ -40,6 +40,11 @@ type LaunchTOML struct {
 	Slices    []layers.Slice   `toml:"slices"`
 }
 
+type StackTOML struct {
+	Restores []string `toml:"restores"`
+	Excludes []string `toml:"excludes"`
+}
+
 type LayerSnapshotter interface {
 	TakeSnapshot(string) error
 }
@@ -144,20 +149,33 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		plan, bpBOM = plan.filter(bp, bpPlanOut)
 		bom = append(bom, bpBOM...)
 
-		if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
-			return nil, err
-		}
+		if bpInfo.Buildpack.Privileged {
+			if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
+				return nil, err
+			}
 
-		var launch LaunchTOML
-		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
-		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
-			continue
-		} else if err != nil {
-			return nil, err
+			// read stack.toml
+			var stack StackTOML
+			tomlPath := filepath.Join(bpLayersDir, "stack.toml")
+			if _, err := toml.DecodeFile(tomlPath, &stack); os.IsNotExist(err) {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			// append build.restores
+			// append run.excludes
+		} else {
+			var launch LaunchTOML
+			tomlPath := filepath.Join(bpLayersDir, "launch.toml")
+			if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			procMap.add(launch.Processes)
+			slices = append(slices, launch.Slices...)
+			labels = append(labels, launch.Labels...)
 		}
-		procMap.add(launch.Processes)
-		slices = append(slices, launch.Slices...)
-		labels = append(labels, launch.Labels...)
 	}
 
 	return &BuildMetadata{
