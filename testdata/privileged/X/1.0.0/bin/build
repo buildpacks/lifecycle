@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+
+echo "hello" > file-to-snapshot
+
+mkdir -p bin
+echo "hello" > bin/exe-to-snapshot
+chmod +x bin/exe-to-snapshot
+
+exit 0

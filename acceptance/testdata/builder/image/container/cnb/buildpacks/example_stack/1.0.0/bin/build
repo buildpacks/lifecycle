@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo "hello" > /file-to-snapshot
+echo "hello" > /bin/exe-to-snapshot
+chmod +x /bin/exe-to-snapshot
+echo "done"
+exit 0

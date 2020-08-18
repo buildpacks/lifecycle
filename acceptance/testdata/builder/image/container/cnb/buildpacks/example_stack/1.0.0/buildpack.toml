@@ -1,0 +1,6 @@
+api = "0.3"
+
+[buildpack]
+id = "example/stack"
+version = "1.0.0"
+privileged = true
