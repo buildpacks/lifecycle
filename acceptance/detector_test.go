@@ -43,8 +43,8 @@ func TestDetector(t *testing.T) {
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("called with arguments", func() {
 		it("errors", func() {
-			cmd := exec.Command("docker", "run", "--rm", detectImage, "some-arg")
-			output, err := cmd.CombinedOutput()
+			command := exec.Command("docker", "run", "--rm", detectImage, "some-arg")
+			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to parse arguments: received unexpected arguments"
 			h.AssertStringContains(t, string(output), expected)
@@ -53,8 +53,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("running as a root", func() {
 		it("errors", func() {
-			cmd := exec.Command("docker", "run", "--rm", "--user", "root", detectImage)
-			output, err := cmd.CombinedOutput()
+			command := exec.Command("docker", "run", "--rm", "--user", "root", detectImage)
+			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to build: refusing to run as root"
 			h.AssertStringContains(t, string(output), expected)
@@ -64,8 +64,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("read buildpack order file failed", func() {
 		it("errors", func() {
 			// no order.toml file in the default directory
-			cmd := exec.Command("docker", "run", "--rm", detectImage)
-			output, err := cmd.CombinedOutput()
+			command := exec.Command("docker", "run", "--rm", detectImage)
+			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to read buildpack order file"
 			h.AssertStringContains(t, string(output), expected)
@@ -189,8 +189,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			logs := h.Run(t, exec.Command("docker", "logs", containerName))
 			expectedPlatformPath := "platform_path: /custom_platform"
 			expectedAppDir := "app_dir: /custom_workspace"
-			h.AssertStringContains(t, string(logs), expectedPlatformPath)
-			h.AssertStringContains(t, string(logs), expectedAppDir)
+			h.AssertStringContains(t, logs, expectedPlatformPath)
+			h.AssertStringContains(t, logs, expectedAppDir)
 		})
 	})
 }
