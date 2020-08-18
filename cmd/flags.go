@@ -24,6 +24,7 @@ var (
 	DefaultProcessType         = "web"
 	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
 	DefaultReportPath          = filepath.Join(".", "report.toml")
+	DefaultStackGroupPath      = ""
 	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
 )
 
@@ -53,6 +54,7 @@ const (
 	EnvSkipLayers          = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
 	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
 	EnvStackPath           = "CNB_STACK_PATH"
+	EnvStackGroupPath      = "CNB_STACK_GROUP_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 )
@@ -137,6 +139,10 @@ func FlagSkipRestore(skip *bool) {
 
 func FlagStackPath(path *string) {
 	flagSet.StringVar(path, "stack", EnvOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
+}
+
+func FlagStackGroupPath(path *string) {
+	flagSet.StringVar(path, "stack-group", EnvOrDefault(EnvStackGroupPath, DefaultStackGroupPath), "path to stack-group.toml")
 }
 
 func FlagTags(tags *StringSlice) {

@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
@@ -27,6 +28,7 @@ type Builder struct {
 	Group         BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
+	Snapshotter   LayerSnapshotter
 }
 
 type BuildEnv interface {
@@ -42,6 +44,15 @@ type LaunchTOML struct {
 	Slices    []layers.Slice   `toml:"slices"`
 }
 
+type StackTOML struct {
+	Restores []string `toml:"restores"`
+	Excludes []string `toml:"excludes"`
+}
+
+type LayerSnapshotter interface {
+	TakeSnapshot(string) error
+}
+
 type Label struct {
 	Key   string `toml:"key"`
 	Value string `toml:"value"`
@@ -54,6 +65,13 @@ type BOMEntry struct {
 
 type BuildpackPlan struct {
 	Entries []Require `toml:"entries"`
+}
+
+type NoopSnapshotter struct {
+}
+
+func (ns *NoopSnapshotter) TakeSnapshot(string) error {
+	return nil
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
@@ -142,19 +160,36 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		plan, bpBOM = plan.filter(bp, bpPlanOut)
 		bom = append(bom, bpBOM...)
 
-		var launch LaunchTOML
-		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
-		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
-			continue
-		} else if err != nil {
-			return nil, err
+		if bpInfo.Buildpack.Privileged {
+			if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
+				return nil, err
+			}
+
+			// read stack.toml
+			var stack StackTOML
+			tomlPath := filepath.Join(bpLayersDir, "stack.toml")
+			if _, err := toml.DecodeFile(tomlPath, &stack); os.IsNotExist(err) {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			// append build.restores
+			// append run.excludes
+		} else {
+			var launch LaunchTOML
+			tomlPath := filepath.Join(bpLayersDir, "launch.toml")
+			if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			for i := range launch.Processes {
+				launch.Processes[i].BuildpackID = bp.ID
+			}
+			procMap.add(launch.Processes)
+			slices = append(slices, launch.Slices...)
+			labels = append(labels, launch.Labels...)
 		}
-		for i := range launch.Processes {
-			launch.Processes[i].BuildpackID = bp.ID
-		}
-		procMap.add(launch.Processes)
-		slices = append(slices, launch.Slices...)
-		labels = append(labels, launch.Labels...)
 	}
 
 	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 {

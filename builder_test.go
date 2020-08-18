@@ -30,12 +30,14 @@ func TestBuilder(t *testing.T) {
 }
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
+//go:generate mockgen -package testmock -destination testmock/snapshotter.go github.com/buildpacks/lifecycle LayerSnapshotter
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		builder        *lifecycle.Builder
 		mockCtrl       *gomock.Controller
 		env            *testmock.MockBuildEnv
+		snapshotter    *testmock.MockLayerSnapshotter
 		stdout, stderr *bytes.Buffer
 		tmpDir         string
 		platformDir    string
@@ -46,6 +48,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
 		env = testmock.NewMockBuildEnv(mockCtrl)
+		snapshotter = testmock.NewMockLayerSnapshotter(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
@@ -57,28 +60,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
-
-		outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
-		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
-
-		buildpacksDir := filepath.Join("testdata", "by-id")
-
-		builder = &lifecycle.Builder{
-			AppDir:        appDir,
-			LayersDir:     layersDir,
-			PlatformDir:   platformDir,
-			BuildpacksDir: buildpacksDir,
-			PlatformAPI:   api.MustParse("0.3"),
-			Env:           env,
-			Group: lifecycle.BuildpackGroup{
-				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1", API: "0.3"},
-					{ID: "B", Version: "v2", API: "0.2"},
-				},
-			},
-			Out: outLog,
-			Err: errLog,
-		}
 	})
 
 	it.After(func() {
@@ -87,6 +68,28 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Build", func() {
+		it.Before(func() {
+			outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
+			errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
+			builder = &lifecycle.Builder{
+				AppDir:        appDir,
+				LayersDir:     layersDir,
+				PlatformDir:   platformDir,
+				BuildpacksDir: filepath.Join("testdata", "by-id"),
+				PlatformAPI:   api.MustParse("0.3"),
+				Env:           env,
+				Group: lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v2", API: "0.2"},
+					},
+				},
+				Out:         outLog,
+				Err:         errLog,
+				Snapshotter: snapshotter,
+			}
+		})
+
 		when("building succeeds", func() {
 			it.Before(func() {
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
@@ -636,6 +639,52 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						expected := "metadata version does not match top level version"
 						h.AssertStringContains(t, err.Error(), expected)
 					})
+				})
+			})
+		})
+	})
+
+	when("privileged", func() {
+		it.Before(func() {
+			outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
+			errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
+			builder = &lifecycle.Builder{
+				AppDir:        appDir,
+				LayersDir:     layersDir,
+				PlatformDir:   platformDir,
+				BuildpacksDir: filepath.Join("testdata", "privileged"),
+				PlatformAPI:   api.MustParse("0.3"),
+				Env:           env,
+				Group: lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", API: "0.3"},
+					},
+				},
+				Out:         outLog,
+				Err:         errLog,
+				Snapshotter: snapshotter,
+			}
+		})
+		when("#Build", func() {
+			when("building succeeds", func() {
+				it.Before(func() {
+					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "X.tgz"))
+					env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil)
+				})
+
+				it("should take a snapshot", func() {
+					metadata, err := builder.Build()
+					if err != nil {
+						t.Fatalf("Error: %s\n", err)
+					}
+					if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
+						Processes: []launch.Process{},
+						Buildpacks: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected metadata:\n%s\n", s)
+					}
 				})
 			})
 		})

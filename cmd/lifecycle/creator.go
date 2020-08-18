@@ -150,7 +150,7 @@ func (c *createCmd) Exec() error {
 		appDir:        c.appDir,
 		platformAPI:   c.platformAPI,
 		platformDir:   c.platformDir,
-	}.build(group, plan)
+	}.buildWithLayers(group, plan)
 	if err != nil {
 		return err
 	}
