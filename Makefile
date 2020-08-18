@@ -63,7 +63,7 @@ $(BUILD_DIR)/linux/lifecycle/launcher:
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 
 build-linux-symlinks: export GOOS:=linux
-build-linux-symlinks: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
+build-linux-symlinks: OUT_DIR?=$(BUILD_DIR)/$(GOOS)/lifecycle
 build-linux-symlinks:
 	@echo "> Creating phase symlinks for linux..."
 	ln -sf lifecycle $(OUT_DIR)/detector

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+## always detect
+
+platform_path=$1
+echo "platform_path: $platform_path"
+echo "app_dir: $(pwd)"

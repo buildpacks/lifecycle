@@ -49,23 +49,29 @@ func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...))
 }
 
-func DockerRunAndCopy(t *testing.T, image, path string, ops ...DockerCmdOp) (string, string) {
-	containerName := "test-container-" + RandString(10)
+func DockerRunAndCopy(t *testing.T, containerName, copyDir, image, path string, ops ...DockerCmdOp) {
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
-	defer Run(t, exec.Command("docker", "rm", containerName))
+	Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
+	Run(t, exec.Command("docker", "cp", containerName+":"+path, copyDir))
+}
 
-	tempDir, err := ioutil.TempDir("", "test-docker-copy-")
-	AssertNil(t, err)
-	Run(t, exec.Command("docker", "cp", containerName+":"+path, tempDir))
-
-	return output, tempDir
+func DockerContainerExists(t *testing.T, containerName string) bool {
+	output := Run(t, exec.Command("docker", "ps", "-a"))
+	return strings.Contains(output, containerName)
 }
 
 func DockerVolumeRemove(t *testing.T, volume string) {
 	Run(t, exec.Command("docker", "volume", "rm", volume))
+}
+
+func DockerVolumeExists(t *testing.T, volumeName string) bool {
+	if volumeName == "" {
+		return false
+	}
+	output := Run(t, exec.Command("docker", "volume", "ls"))
+	return strings.Contains(output, volumeName)
 }
 
 // TODO: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
