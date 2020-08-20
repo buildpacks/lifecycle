@@ -408,52 +408,6 @@ func processTypeWarning(launchMD launch.Metadata, defaultProcessType string) str
 	return fmt.Sprintf("default process type '%s' not present in list %+v", defaultProcessType, typeList)
 }
 
-func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
-	var err error
-	origMeta, err := cacheStore.RetrieveMetadata()
-	if err != nil {
-		return errors.Wrap(err, "metadata for previous cache")
-	}
-	meta := CacheMetadata{}
-
-	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, bp)
-		if err != nil {
-			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
-		}
-
-		bpMD := BuildpackLayersMetadata{
-			ID:      bp.ID,
-			Version: bp.Version,
-			Layers:  map[string]BuildpackLayerMetadata{},
-		}
-		for _, layer := range bpDir.findLayers(forCached) {
-			layer := layer
-			if !layer.hasLocalContents() {
-				return fmt.Errorf("failed to cache layer '%s' because it has no contents", layer.Identifier())
-			}
-			lmd, err := layer.read()
-			if err != nil {
-				return errors.Wrapf(err, "reading %q metadata", layer.Identifier())
-			}
-			origLayerMetadata := origMeta.MetadataForBuildpack(bp.ID).Layers[layer.name()]
-			if lmd.SHA, err = e.addOrReuseCacheLayer(cacheStore, &layer, origLayerMetadata.SHA); err != nil {
-				return err
-			}
-			bpMD.Layers[layer.name()] = lmd
-		}
-		meta.Buildpacks = append(meta.Buildpacks, bpMD)
-	}
-
-	if err := cacheStore.SetMetadata(meta); err != nil {
-		return errors.Wrap(err, "setting cache metadata")
-	}
-	if err := cacheStore.Commit(); err != nil {
-		return errors.Wrap(err, "committing cache")
-	}
-
-	return nil
-}
 func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, previousSHA string) (string, error) {
 	layer, err := e.LayerFactory.DirLayer(layer.ID, layer.TarPath)
 	if err != nil {
@@ -467,19 +421,4 @@ func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, prev
 	e.Logger.Infof("Adding layer '%s'\n", layer.ID)
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 	return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
-}
-
-func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir layerDir, previousSHA string) (string, error) {
-	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
-	if err != nil {
-		return "", errors.Wrapf(err, "creating layer %q", layer.ID)
-	}
-	if layer.Digest == previousSHA {
-		e.Logger.Infof("Reusing cache layer '%s'\n", layer.ID)
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-		return layer.Digest, cache.ReuseLayer(previousSHA)
-	}
-	e.Logger.Infof("Adding cache layer '%s'\n", layer.ID)
-	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-	return layer.Digest, cache.AddLayerFile(layer.TarPath, layer.Digest)
 }

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/discard"
 	"github.com/apex/log/handlers/memory"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
@@ -25,7 +24,6 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -1197,227 +1195,6 @@ version = "4.5.6"
 			})
 		})
 	})
-
-	when("#Cache", func() {
-		var (
-			cacheDir  string
-			testCache lifecycle.Cache
-			layersDir string
-			exporter  *lifecycle.Exporter
-		)
-
-		it.Before(func() {
-			var err error
-
-			cacheDir, err = ioutil.TempDir("", "lifecycle.cacher.layer")
-			h.AssertNil(t, err)
-
-			testCache, err = cache.NewVolumeCache(cacheDir)
-			h.AssertNil(t, err)
-
-			exporter = &lifecycle.Exporter{
-				Buildpacks: []lifecycle.Buildpack{
-					{ID: "buildpack.id"},
-					{ID: "other.buildpack.id"},
-				},
-				Logger:       &log.Logger{Handler: &discard.Handler{}},
-				LayerFactory: layerFactory,
-			}
-		})
-
-		it.After(func() {
-			h.AssertNil(t, os.RemoveAll(cacheDir))
-		})
-
-		when("the layers are valid", func() {
-			it.Before(func() {
-				layersDir = filepath.Join("testdata", "cacher", "layers")
-			})
-
-			when("there is no previous cache", func() {
-				it("adds layers with 'cache=true' to the cache", func() {
-					err := exporter.Cache(layersDir, testCache)
-					h.AssertNil(t, err)
-
-					assertCacheHasLayer(t, testCache, "buildpack.id:cache-true-layer")
-					assertCacheHasLayer(t, testCache, "other.buildpack.id:other-buildpack-layer")
-				})
-
-				it("sets cache metadata", func() {
-					err := exporter.Cache(layersDir, testCache)
-					h.AssertNil(t, err)
-
-					metadata, err := testCache.RetrieveMetadata()
-					h.AssertNil(t, err)
-
-					t.Log("adds layer shas to metadata")
-					h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
-					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, testLayerDigest("buildpack.id:cache-true-layer"))
-					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
-					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
-					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
-					h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
-						"cache-true-key": "cache-true-val",
-					})
-				})
-
-				it("doesn't export uncached layers", func() {
-					err := exporter.Cache(layersDir, testCache)
-					h.AssertNil(t, err)
-
-					matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
-					h.AssertNil(t, err)
-					h.AssertEq(t, len(matches), 3)
-				})
-			})
-
-			when("there are previously cached layers", func() {
-				var (
-					metadataTemplate string
-				)
-
-				it.Before(func() {
-					metadataTemplate = `{
-					"buildpacks": [
-					 {
-					   "key": "buildpack.id",
-					   "layers": {
-					     "cache-true-layer": {
-					       "cache": true,
-					       "sha": "%s",
-					       "data": {"old":"data"}
-					     },
-					     "cache-true-no-sha-layer": {
-					       "cache": true,
-					       "sha": "%s"
-					     }
-					   }
-					 }
-					]
-					}`
-				})
-
-				when("the SHAs match", func() {
-					it.Before(func() {
-						previousCache, err := cache.NewVolumeCache(cacheDir)
-						h.AssertNil(t, err)
-
-						err = exporter.Cache(layersDir, previousCache)
-						h.AssertNil(t, err)
-
-						testCache, err = cache.NewVolumeCache(cacheDir)
-						h.AssertNil(t, err)
-
-						h.AssertNil(t, ioutil.WriteFile(
-							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-							[]byte(fmt.Sprintf(metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer")),
-							0666,
-						))
-					})
-
-					it("reuses layers when the calculated sha matches previous metadata", func() {
-						previousLayers, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
-						h.AssertNil(t, err)
-
-						err = exporter.Cache(layersDir, testCache)
-						h.AssertNil(t, err)
-
-						reusedLayers, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
-						h.AssertNil(t, err)
-
-						h.AssertEq(t, previousLayers, reusedLayers)
-					})
-
-					it("sets cache metadata", func() {
-						err := exporter.Cache(layersDir, testCache)
-						h.AssertNil(t, err)
-
-						metadata, err := testCache.RetrieveMetadata()
-						h.AssertNil(t, err)
-
-						t.Log("adds layer shas to metadata")
-						h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, "cache-true-layer-digest")
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
-							"cache-true-key": "cache-true-val",
-						})
-
-						h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].SHA, "cache-true-no-sha-layer-digest")
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Launch, false)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Build, false)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Cache, true)
-						h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-no-sha-layer"].Data, map[string]interface{}{
-							"cache-true-no-sha-key": "cache-true-no-sha-val",
-						})
-
-						h.AssertEq(t, metadata.Buildpacks[1].ID, "other.buildpack.id")
-						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].SHA, "other-buildpack-layer-digest")
-						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Launch, true)
-						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Build, false)
-						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Cache, true)
-						h.AssertEq(t, metadata.Buildpacks[1].Layers["other-buildpack-layer"].Data, map[string]interface{}{
-							"other-buildpack-key": "other-buildpack-val",
-						})
-					})
-				})
-
-				when("the shas don't match", func() {
-					it.Before(func() {
-						err := ioutil.WriteFile(
-							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-							[]byte(fmt.Sprintf(metadataTemplate, "different-sha", "not-the-sha-you-want")),
-							0666,
-						)
-						h.AssertNil(t, err)
-
-						err = ioutil.WriteFile(
-							filepath.Join(cacheDir, "committed", "some-layer.tar"),
-							[]byte("some data"),
-							0666,
-						)
-						h.AssertNil(t, err)
-					})
-
-					it("doesn't reuse layers", func() {
-						err := exporter.Cache(layersDir, testCache)
-						h.AssertNil(t, err)
-
-						matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
-						h.AssertNil(t, err)
-						h.AssertEq(t, len(matches), 3)
-
-						for _, m := range matches {
-							if strings.Contains(m, "some-layer.tar") {
-								t.Fatal("expected layer 'some-layer.tar' not to exist")
-							}
-						}
-					})
-				})
-			})
-		})
-
-		when("there is a cache=true layer without contents", func() {
-			it.Before(func() {
-				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
-
-				err := ioutil.WriteFile(
-					filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-					[]byte("{}"),
-					0666,
-				)
-				h.AssertNil(t, err)
-			})
-
-			it("fails", func() {
-				err := exporter.Cache(layersDir, testCache)
-				h.AssertError(t, err, "failed to cache layer 'buildpack.id:cache-true-no-contents' because it has no contents")
-			})
-		})
-	})
 }
 
 func createTestLayer(id string, tmpDir string) (layers.Layer, error) {
@@ -1454,17 +1231,6 @@ func assertDoesNotHaveLayer(t *testing.T, fakeAppImage *fakes.Image, id string) 
 
 	_, err := fakeAppImage.GetLayer(testLayerDigest(id))
 	h.AssertNotNil(t, err)
-}
-
-func assertCacheHasLayer(t *testing.T, cache lifecycle.Cache, id string) {
-	t.Helper()
-
-	rc, err := cache.RetrieveLayer(testLayerDigest(id))
-	h.AssertNil(t, err)
-	defer rc.Close()
-	contents, err := ioutil.ReadAll(rc)
-	h.AssertNil(t, err)
-	h.AssertEq(t, string(contents), testLayerContents(id))
 }
 
 func assertAddLayerLog(t *testing.T, logHandler *memory.Handler, id string) {
