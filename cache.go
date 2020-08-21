@@ -31,7 +31,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			}
 			lmd, err := layer.read()
 			if err != nil {
-				e.Logger.Warnf("Failed to cache layer '%s' because of error reading metadata: %s", err)
+				e.Logger.Warnf("Failed to cache layer '%s' because of error reading metadata: %s", layer.Identifier(), err)
 				continue
 			}
 			origLayerMetadata := origMeta.MetadataForBuildpack(bp.ID).Layers[layer.name()]
