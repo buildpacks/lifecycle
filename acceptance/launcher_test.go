@@ -245,8 +245,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				if runtime.GOOS == "windows" {
 					// windows values with spaces will contain quotes
-					// empty values on windows preserve variable names instead of interpolating to empty strings
-					assertOutput(t, cmd, "sourced bp profile\nsourced app profile\n\"some-user-val, %CNB_APP_DIR%, other-user-val**other-bp-val\"")
+					assertOutput(t, cmd, "sourced bp profile\nsourced app profile\n\"some-user-val, , other-user-val**other-bp-val\"")
 				} else {
 					assertOutput(t, cmd, "sourced bp profile\nsourced app profile\nsome-user-val, , other-user-val**other-bp-val")
 				}
