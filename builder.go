@@ -26,6 +26,7 @@ type Builder struct {
 	PlatformAPI   *api.Version
 	Env           BuildEnv
 	Group         BuildpackGroup
+	StackGroup    BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
 	Snapshotter   LayerSnapshotter
@@ -44,12 +45,8 @@ type LaunchTOML struct {
 	Slices    []layers.Slice   `toml:"slices"`
 }
 
-type StackTOML struct {
-	Restores []string `toml:"restores"`
-	Excludes []string `toml:"excludes"`
-}
-
 type LayerSnapshotter interface {
+	GetRootDir() string
 	TakeSnapshot(string) error
 }
 
@@ -67,144 +64,28 @@ type BuildpackPlan struct {
 	Entries []Require `toml:"entries"`
 }
 
-type NoopSnapshotter struct {
-}
-
-func (ns *NoopSnapshotter) TakeSnapshot(string) error {
-	return nil
-}
-
 func (b *Builder) Build() (*BuildMetadata, error) {
-	platformDir, err := filepath.Abs(b.PlatformDir)
-	if err != nil {
-		return nil, err
-	}
-	layersDir, err := filepath.Abs(b.LayersDir)
-	if err != nil {
-		return nil, err
-	}
-	appDir, err := filepath.Abs(b.AppDir)
-	if err != nil {
-		return nil, err
-	}
-	planDir, err := ioutil.TempDir("", "plan.")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(planDir)
-
-	procMap := processMap{}
 	plan := b.Plan
+	procMap := processMap{}
 	var bom []BOMEntry
 	var slices []layers.Slice
 	var labels []Label
 
 	for _, bp := range b.Group.Group {
-		bpInfo, err := bp.Lookup(b.BuildpacksDir)
+		launchData, newPlan, bpBOM, err := b.build(bp, b.AppDir, plan)
 		if err != nil {
 			return nil, err
 		}
-		bpDirName := launch.EscapeID(bp.ID)
-		bpLayersDir := filepath.Join(layersDir, bpDirName)
-		bpPlanDir := filepath.Join(planDir, bpDirName)
-		if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
-			return nil, err
-		}
 
-		if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
-			return nil, err
-		}
-		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-
-		foundPlan := plan.find(bp.noAPI())
-		if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
-			for i := range foundPlan.Entries {
-				foundPlan.Entries[i].convertMetadataToVersion()
-			}
-		}
-		if err := WriteTOML(bpPlanPath, foundPlan); err != nil {
-			return nil, err
-		}
-
-		cmd := exec.Command(
-			filepath.Join(bpInfo.Path, "bin", "build"),
-			bpLayersDir,
-			platformDir,
-			bpPlanPath,
-		)
-		cmd.Dir = appDir
-		cmd.Stdout = b.Out.Writer()
-		cmd.Stderr = b.Err.Writer()
-
-		if bpInfo.Buildpack.ClearEnv {
-			cmd.Env = b.Env.List()
-		} else {
-			cmd.Env, err = b.Env.WithPlatform(platformDir)
-			if err != nil {
-				return nil, err
-			}
-		}
-		cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+bpInfo.Path)
-
-		if err := cmd.Run(); err != nil {
-			return nil, NewLifecycleError(err, ErrTypeBuildpack)
-		}
-		if err := setupEnv(b.Env, bpLayersDir); err != nil {
-			return nil, err
-		}
-		var bpPlanOut BuildpackPlan
-		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
-			return nil, err
-		}
-		var bpBOM []BOMEntry
-		plan, bpBOM = plan.filter(bp, bpPlanOut)
+		plan = newPlan
 		bom = append(bom, bpBOM...)
-
-		if bpInfo.Buildpack.Privileged {
-			if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
-				return nil, err
-			}
-
-			// read stack.toml
-			var stack StackTOML
-			tomlPath := filepath.Join(bpLayersDir, "stack.toml")
-			if _, err := toml.DecodeFile(tomlPath, &stack); os.IsNotExist(err) {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			// append build.restores
-			// append run.excludes
-		} else {
-			var launch LaunchTOML
-			tomlPath := filepath.Join(bpLayersDir, "launch.toml")
-			if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			for i := range launch.Processes {
-				launch.Processes[i].BuildpackID = bp.ID
-			}
-			procMap.add(launch.Processes)
-			slices = append(slices, launch.Slices...)
-			labels = append(labels, launch.Labels...)
-		}
+		procMap.add(launchData.Processes)
+		slices = append(slices, launchData.Slices...)
+		labels = append(labels, launchData.Labels...)
 	}
 
-	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 {
-		//plaformApiVersion is less than comparisonVersion
-		for i := range bom {
-			if err := bom[i].convertMetadataToVersion(); err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		for i := range bom {
-			if err := bom[i].convertVersionToMetadata(); err != nil {
-				return nil, err
-			}
-		}
+	if err := b.convertMetadataToVersion(bom); err != nil {
+		return nil, err
 	}
 
 	return &BuildMetadata{
@@ -214,6 +95,162 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		Processes:  procMap.list(),
 		Slices:     slices,
 	}, nil
+}
+
+func (b *Builder) StackBuild() (*BuildMetadata, error) {
+	// TODO hide the b.AppDir from the stackpacks?
+	layersDir, err := filepath.Abs(b.LayersDir)
+	if err != nil {
+		return nil, err
+	}
+
+	plan := b.Plan
+	procMap := processMap{}
+	var bom []BOMEntry
+	var slices []layers.Slice
+	var labels []Label
+
+	for _, bp := range b.StackGroup.Group {
+		launchData, newPlan, bpBOM, err := b.build(bp, b.Snapshotter.GetRootDir(), plan)
+		if err != nil {
+			return nil, err
+		}
+		bpDirName := launch.EscapeID(bp.ID)
+		bpLayersDir := filepath.Join(layersDir, bpDirName)
+
+		if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
+			return nil, err
+		}
+
+		plan = newPlan
+		bom = append(bom, bpBOM...)
+		procMap.add(launchData.Processes)
+		slices = append(slices, launchData.Slices...)
+		labels = append(labels, launchData.Labels...)
+	}
+
+	if err := b.convertMetadataToVersion(bom); err != nil {
+		return nil, err
+	}
+
+	return &BuildMetadata{
+		BOM:        bom,
+		Buildpacks: b.StackGroup.Group,
+		Labels:     labels,
+		Processes:  procMap.list(),
+		Slices:     slices,
+	}, nil
+}
+
+func (b *Builder) build(bp Buildpack, rawAppDir string, plan BuildPlan) (LaunchTOML, BuildPlan, []BOMEntry, error) {
+	platformDir, err := filepath.Abs(b.PlatformDir)
+	if err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	layersDir, err := filepath.Abs(b.LayersDir)
+	if err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	appDir, err := filepath.Abs(rawAppDir)
+	if err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	planDir, err := ioutil.TempDir("", "plan.")
+	if err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	defer os.RemoveAll(planDir)
+
+	bpInfo, err := bp.Lookup(b.BuildpacksDir)
+	if err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+
+	bpDirName := launch.EscapeID(bp.ID)
+	bpLayersDir := filepath.Join(layersDir, bpDirName)
+	bpPlanDir := filepath.Join(planDir, bpDirName)
+	if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+
+	if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
+
+	foundPlan := plan.find(bp.noAPI())
+	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
+		for i := range foundPlan.Entries {
+			foundPlan.Entries[i].convertMetadataToVersion()
+		}
+	}
+	if err := WriteTOML(bpPlanPath, foundPlan); err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+
+	cmd := exec.Command(
+		filepath.Join(bpInfo.Path, "bin", "build"),
+		bpLayersDir,
+		platformDir,
+		bpPlanPath,
+	)
+	cmd.Dir = appDir
+	cmd.Stdout = b.Out.Writer()
+	cmd.Stderr = b.Err.Writer()
+
+	if bpInfo.Buildpack.ClearEnv {
+		cmd.Env = b.Env.List()
+	} else {
+		cmd.Env, err = b.Env.WithPlatform(platformDir)
+		if err != nil {
+			return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+		}
+	}
+	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+bpInfo.Path)
+
+	if err := cmd.Run(); err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, NewLifecycleError(err, ErrTypeBuildpack)
+	}
+	if err := setupEnv(b.Env, bpLayersDir); err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	var bpPlanOut BuildpackPlan
+	if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	var bpBOM []BOMEntry
+	plan, bpBOM = plan.filter(bp, bpPlanOut)
+
+	var launch LaunchTOML
+	tomlPath := filepath.Join(bpLayersDir, "launch.toml")
+	if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
+		return LaunchTOML{}, plan, bpBOM, nil
+	} else if err != nil {
+		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
+	}
+	for i := range launch.Processes {
+		launch.Processes[i].BuildpackID = bp.ID
+	}
+
+	return launch, plan, bpBOM, nil
+}
+
+func (b Builder) convertMetadataToVersion(bom []BOMEntry) error {
+	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 {
+		//plaformApiVersion is less than comparisonVersion
+		for i := range bom {
+			if err := bom[i].convertMetadataToVersion(); err != nil {
+				return err
+			}
+		}
+	} else {
+		for i := range bom {
+			if err := bom[i].convertVersionToMetadata(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (p BuildPlan) find(bp Buildpack) BuildpackPlan {

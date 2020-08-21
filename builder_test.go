@@ -60,6 +60,31 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
+
+		outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
+		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
+		builder = &lifecycle.Builder{
+			AppDir:        appDir,
+			LayersDir:     layersDir,
+			PlatformDir:   platformDir,
+			BuildpacksDir: filepath.Join("testdata", "by-id"),
+			PlatformAPI:   api.MustParse("0.3"),
+			Env:           env,
+			StackGroup: lifecycle.BuildpackGroup{
+				Group: []lifecycle.Buildpack{
+					{ID: "X", Version: "1.0.0", API: "0.3"},
+				},
+			},
+			Group: lifecycle.BuildpackGroup{
+				Group: []lifecycle.Buildpack{
+					{ID: "A", Version: "v1", API: "0.3"},
+					{ID: "B", Version: "v2", API: "0.2"},
+				},
+			},
+			Out:         outLog,
+			Err:         errLog,
+			Snapshotter: snapshotter,
+		}
 	})
 
 	it.After(func() {
@@ -68,28 +93,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Build", func() {
-		it.Before(func() {
-			outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
-			errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
-			builder = &lifecycle.Builder{
-				AppDir:        appDir,
-				LayersDir:     layersDir,
-				PlatformDir:   platformDir,
-				BuildpacksDir: filepath.Join("testdata", "by-id"),
-				PlatformAPI:   api.MustParse("0.3"),
-				Env:           env,
-				Group: lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
-						{ID: "B", Version: "v2", API: "0.2"},
-					},
-				},
-				Out:         outLog,
-				Err:         errLog,
-				Snapshotter: snapshotter,
-			}
-		})
-
 		when("building succeeds", func() {
 			it.Before(func() {
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
@@ -644,48 +647,27 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("privileged", func() {
-		it.Before(func() {
-			outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
-			errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
-			builder = &lifecycle.Builder{
-				AppDir:        appDir,
-				LayersDir:     layersDir,
-				PlatformDir:   platformDir,
-				BuildpacksDir: filepath.Join("testdata", "privileged"),
-				PlatformAPI:   api.MustParse("0.3"),
-				Env:           env,
-				Group: lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
+	when("#StackBuild", func() {
+		when("building succeeds", func() {
+			it.Before(func() {
+				snapshotter.EXPECT().GetRootDir().DoAndReturn(func() string { return appDir })
+				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "X.tgz"))
+				env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil)
+			})
+
+			it("should take a snapshot", func() {
+				metadata, err := builder.StackBuild()
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
+					Processes: []launch.Process{},
+					Buildpacks: []lifecycle.Buildpack{
 						{ID: "X", Version: "1.0.0", API: "0.3"},
 					},
-				},
-				Out:         outLog,
-				Err:         errLog,
-				Snapshotter: snapshotter,
-			}
-		})
-		when("#Build", func() {
-			when("building succeeds", func() {
-				it.Before(func() {
-					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "X.tgz"))
-					env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil)
-				})
-
-				it("should take a snapshot", func() {
-					metadata, err := builder.Build()
-					if err != nil {
-						t.Fatalf("Error: %s\n", err)
-					}
-					if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-						Processes: []launch.Process{},
-						Buildpacks: []lifecycle.Buildpack{
-							{ID: "X", Version: "1.0.0", API: "0.3"},
-						},
-					}); s != "" {
-						t.Fatalf("Unexpected metadata:\n%s\n", s)
-					}
-				})
+				}); s != "" {
+					t.Fatalf("Unexpected metadata:\n%s\n", s)
+				}
 			})
 		})
 	})

@@ -23,7 +23,7 @@ var (
 	rootBuilderPath          = "/cnb/lifecycle/builder"
 )
 
-func TestRootBuilder(t *testing.T) {
+func TestStackBuilder(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "These tests need to be adapted to work on Windows")
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -41,10 +41,10 @@ func TestRootBuilder(t *testing.T) {
 	)
 	defer h.DockerImageRemove(t, rootBuilderImage)
 
-	spec.Run(t, "acceptance-builder", testRootBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "acceptance-builder", testStackBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testRootBuilder(t *testing.T, when spec.G, it spec.S) {
+func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("called", func() {
 		it("creates a snapshot", func() {
 			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
@@ -56,6 +56,7 @@ func testRootBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertMatch(t, output, ".wh.sbin")
 			h.AssertMatch(t, output, "bin/exe-to-snapshot")
+			// TODO verify timestamp is "1970-01-01 00:00"
 		})
 	})
 }

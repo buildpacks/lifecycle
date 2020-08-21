@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle"
+
 	"github.com/docker/docker/client"
 
 	"github.com/buildpacks/lifecycle/cmd"
@@ -150,7 +152,7 @@ func (c *createCmd) Exec() error {
 		appDir:        c.appDir,
 		platformAPI:   c.platformAPI,
 		platformDir:   c.platformDir,
-	}.buildWithLayers(group, plan)
+	}.buildAll(group, lifecycle.BuildpackGroup{}, plan)
 	if err != nil {
 		return err
 	}

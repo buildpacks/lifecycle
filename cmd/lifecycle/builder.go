@@ -65,33 +65,49 @@ func (b *buildCmd) Exec() error {
 	if err != nil {
 		return err
 	}
+
+	return b.buildAll(group, stackGroup, plan)
+}
+
+func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	if err := verifyBuildpackApis(group); err != nil {
 		return err
 	}
 
-	if err = b.buildWithSnapshot(stackGroup, plan); err != nil {
+	if err := verifyBuildpackApis(stackGroup); err != nil {
 		return err
 	}
 
-	if err = b.buildWithLayers(group, plan); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (ba buildArgs) buildWithSnapshot(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
-	// run stack buildpacks as root
-	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
+	builder, err := ba.createBuilder(group, stackGroup, plan)
 	if err != nil {
 		return err
 	}
-	if _, err = ba.build(group, plan, stackSnapshotter.RootDir, stackSnapshotter); err != nil {
+
+	if err = ba.stackBuild(builder); err != nil {
+		return err
+	}
+
+	if err = ba.build(builder); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ba buildArgs) buildWithLayers(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+func (ba buildArgs) stackBuild(builder *lifecycle.Builder) error {
+	// run stack buildpacks as root
+	_, err := builder.StackBuild()
+	if err != nil {
+		if err, ok := err.(*lifecycle.Error); ok {
+			if err.Type == lifecycle.ErrTypeBuildpack {
+				return cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "stack-build")
+			}
+		}
+		return cmd.FailErrCode(err, cmd.CodeBuildError, "stack-build")
+	}
+	return nil
+}
+
+func (ba buildArgs) build(builder *lifecycle.Builder) error {
 	// drop back to non-root user to run buildpacks
 	if err := priv.RunAs(ba.uid, ba.gid); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", ba.uid, ba.gid))
@@ -99,9 +115,14 @@ func (ba buildArgs) buildWithLayers(group lifecycle.BuildpackGroup, plan lifecyc
 	if err := priv.SetEnvironmentForUser(ba.uid); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", ba.uid))
 	}
-	md, err := ba.build(group, plan, ba.appDir, &lifecycle.NoopSnapshotter{})
+	md, err := builder.Build()
 	if err != nil {
-		return err
+		if err, ok := err.(*lifecycle.Error); ok {
+			if err.Type == lifecycle.ErrTypeBuildpack {
+				return cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
+			}
+		}
+		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
 	}
 	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write build metadata")
@@ -109,8 +130,13 @@ func (ba buildArgs) buildWithLayers(group lifecycle.BuildpackGroup, plan lifecyc
 	return nil
 }
 
-func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, baseDir string, snapshotter lifecycle.LayerSnapshotter) (*lifecycle.BuildMetadata, error) {
-	builder := &lifecycle.Builder{
+func (ba buildArgs) createBuilder(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) (*lifecycle.Builder, error) {
+	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
+	if err != nil {
+		return &lifecycle.Builder{}, err
+	}
+
+	return &lifecycle.Builder{
 		AppDir:        ba.appDir,
 		LayersDir:     ba.layersDir,
 		PlatformDir:   ba.platformDir,
@@ -118,23 +144,12 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		PlatformAPI:   api.MustParse(ba.platformAPI),
 		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
+		StackGroup:    stackGroup,
 		Plan:          plan,
 		Out:           log.New(os.Stdout, "", 0),
 		Err:           log.New(os.Stderr, "", 0),
-		Snapshotter:   snapshotter,
-	}
-	md, err := builder.Build()
-
-	if err != nil {
-		if err, ok := err.(*lifecycle.Error); ok {
-			if err.Type == lifecycle.ErrTypeBuildpack {
-				return md, cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
-			}
-		}
-		return md, cmd.FailErrCode(err, cmd.CodeBuildError, "build")
-	}
-
-	return md, nil
+		Snapshotter:   stackSnapshotter,
+	}, nil
 }
 
 func (b *buildCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
