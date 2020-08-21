@@ -198,7 +198,6 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sources scripts from process specific directories", func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "profile scripts are broken on windows?")
 				cmd := exec.Command("docker", "run", "--rm", launchImage, "profile-checker")
 				expected := "sourced bp profile\nsourced bp profile-checker profile\nsourced app profile\nval-from-profile"
 				assertOutput(t, cmd, expected)
