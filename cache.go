@@ -36,7 +36,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			}
 			origLayerMetadata := origMeta.MetadataForBuildpack(bp.ID).Layers[layer.name()]
 			if lmd.SHA, err = e.addOrReuseCacheLayer(cacheStore, &layer, origLayerMetadata.SHA); err != nil {
-				e.Logger.Warnf("Failed to cache layer '%s': %s", err)
+				e.Logger.Warnf("Failed to cache layer '%s': %s", layer.Identifier(), err)
 				continue
 			}
 			bpMD.Layers[layer.name()] = lmd
@@ -57,7 +57,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir layerDir, previousSHA string) (string, error) {
 	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
 	if err != nil {
-		return "", errors.Wrapf(err, "creating layer %q", layer.ID)
+		return "", errors.Wrapf(err, "creating layer '%s'", layerDir.Identifier())
 	}
 	if layer.Digest == previousSHA {
 		e.Logger.Infof("Reusing cache layer '%s'\n", layer.ID)

@@ -1,6 +1,7 @@
 package lifecycle_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -48,14 +49,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 			tmpDir, err = ioutil.TempDir("", "lifecycle.cacher.layer")
 			h.AssertNil(t, err)
-
-			// mock LayerFactory returns layer with deterministic characteristic for a give layer it
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "artifacts"), 0777))
-			layerFactory.EXPECT().
-				DirLayer(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(id string, dir string) (layers.Layer, error) {
-					return createTestLayer(id, tmpDir)
-				}).AnyTimes()
 
 			cacheDir = filepath.Join(tmpDir, "cache")
 			h.AssertNil(t, os.Mkdir(cacheDir, 0777))
@@ -81,6 +75,12 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("the layers are valid", func() {
 			it.Before(func() {
+				layerFactory.EXPECT().
+					DirLayer(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+						return createTestLayer(id, tmpDir)
+					}).AnyTimes()
+
 				layersDir = filepath.Join("testdata", "cacher", "layers")
 			})
 
@@ -250,15 +250,33 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("there is a cache=true layer without contents", func() {
+		when("there are invalid layers", func() {
 			it.Before(func() {
+				layerFactory.EXPECT().
+					DirLayer("buildpack.id:layer-1", gomock.Any()).
+					Return(layers.Layer{}, errors.New("test error"))
+				layerFactory.EXPECT().
+					DirLayer("buildpack.id:layer-2", gomock.Any()).
+					DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+						return createTestLayer(id, tmpDir)
+					}).
+					AnyTimes()
 				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
+				h.AssertNil(t, exporter.Cache(layersDir, testCache))
+				h.AssertEq(t, len(logHandler.Entries), 4)
 			})
 
-			it("warns", func() {
-				h.AssertNil(t, exporter.Cache(layersDir, testCache))
-				h.AssertEq(t, len(logHandler.Entries), 1)
+			it("warns when there is a cache=true layer without contents", func() {
 				h.AssertStringContains(t, logHandler.Entries[0].Message, "Failed to cache layer 'buildpack.id:cache-true-no-contents' because it has no contents")
+			})
+
+			it("warns when there is an error adding a layer", func() {
+				h.AssertStringContains(t, logHandler.Entries[1].Message, "Failed to cache layer 'buildpack.id:layer-1': creating layer 'buildpack.id:layer-1': test error")
+			})
+
+			it("continues caching valid layers", func() {
+				h.AssertStringContains(t, logHandler.Entries[2].Message, "Adding cache layer 'buildpack.id:layer-2'")
+				assertCacheHasLayer(t, testCache, "buildpack.id:layer-2")
 			})
 		})
 	})
