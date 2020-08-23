@@ -27,7 +27,7 @@
 [[processes]]
   type = "profile-checker"
   command = "echo"
-  args = ["%VAR_FROM_PROFILE%"]
+  args = ["!VAR_FROM_PROFILE!"]
   direct = false
   buildpack-id = "some/buildpack"
 
