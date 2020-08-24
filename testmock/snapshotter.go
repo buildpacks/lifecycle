@@ -47,6 +47,20 @@ func (mr *MockLayerSnapshotterMockRecorder) GetRootDir() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRootDir", reflect.TypeOf((*MockLayerSnapshotter)(nil).GetRootDir))
 }
 
+// Init mocks base method
+func (m *MockLayerSnapshotter) Init() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Init")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Init indicates an expected call of Init
+func (mr *MockLayerSnapshotterMockRecorder) Init() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockLayerSnapshotter)(nil).Init))
+}
+
 // TakeSnapshot mocks base method
 func (m *MockLayerSnapshotter) TakeSnapshot(arg0 string) error {
 	m.ctrl.T.Helper()

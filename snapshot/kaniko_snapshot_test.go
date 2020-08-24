@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -42,6 +43,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 		createTestFile(t, filepath.Join(tmpDir, "layers", "privatefile"))
 		createTestFile(t, filepath.Join(tmpDir, "file-to-change"))
 		createTestFile(t, filepath.Join(tmpDir, "file-not-to-change"))
+		createTestFile(t, filepath.Join(tmpDir, "file-to-delete"))
 		createTestFile(t, filepath.Join(tmpDir, "bin", "file-not-to-change"))
 
 		snapshotter, err = snapshot.NewKanikoSnapshotter(tmpDir)
@@ -105,6 +107,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 				case "cnb/":
 				case "layers/":
 				case "tmp/":
+				case strings.Trim(filepath.Join(snapshotter.RootDir, ".wh.file-to-delete"), "/"):
 					continue
 				case "newfile":
 				case "my-space/newfile-in-dir":

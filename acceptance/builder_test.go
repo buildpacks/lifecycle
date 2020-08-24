@@ -54,7 +54,7 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -plan plan.toml; tar tvf /layers/example_stack.tgz", rootBuilderPath)),
 			)
 
-			h.AssertMatch(t, output, ".wh.sbin")
+			h.AssertStringDoesNotContain(t, output, ".wh.sbin")
 			h.AssertMatch(t, output, "bin/exe-to-snapshot")
 			// TODO verify timestamp is "1970-01-01 00:00"
 		})
