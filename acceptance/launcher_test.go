@@ -282,6 +282,22 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 
+			it("merges env vars from system, user provided and CNB", func() {
+				if runtime.GOOS == "windows" {
+					cmd := exec.Command("docker", "run", "--rm",
+						`--env=PATH=c:\Windows\system32;c:\extra`,
+						launchImage, "--",
+						`cmd`, `/c`, `echo %PATH%`)
+					assertOutput(t, cmd, `c:\layers\some_buildpack\some_layer\bin;C:\Windows\system32;C:\Windows;c:\extra`)
+				} else {
+					cmd := exec.Command("docker", "run", "--rm",
+						"--env=PATH=/bin:/extra",
+						launchImage, "--",
+						"sh", "-c", "echo $PATH")
+					assertOutput(t, cmd, "/layers/some_buildpack/some_layer/bin:/bin:/extra")
+				}
+			})
+
 			it("passes through env vars from user, excluding excluded vars", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--env", "CNB_APP_DIR=/workspace",

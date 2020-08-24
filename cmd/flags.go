@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+
+	"github.com/buildpacks/lifecycle/env"
 )
 
 var (
@@ -205,4 +208,17 @@ func EnvOrDefault(key string, defaultVal string) string {
 		return envVal
 	}
 	return defaultVal
+}
+
+func PrepareOSEnv() error {
+	if runtime.GOOS != "windows" {
+		return nil
+	}
+
+	regEnvMap, err := env.WindowsRegistryEnvMap()
+	if err != nil {
+		return err
+	}
+
+	return env.PrepareWindowsOSEnv(regEnvMap, os.Getenv, os.Setenv)
 }

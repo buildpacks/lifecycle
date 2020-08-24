@@ -19,6 +19,10 @@ func main() {
 }
 
 func runLaunch() error {
+	if err := cmd.PrepareOSEnv(); err != nil {
+		cmd.Exit(err)
+	}
+
 	color.Disable(cmd.BoolEnv(cmd.EnvNoColor))
 
 	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
