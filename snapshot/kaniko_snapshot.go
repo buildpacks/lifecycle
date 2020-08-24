@@ -22,9 +22,6 @@ func NewKanikoSnapshotter(rootDir string) (*KanikoSnapshotter, error) {
 	ls := KanikoSnapshotter{
 		RootDir: rootDir,
 	}
-	if err := ls.Init(); err != nil {
-		return nil, err
-	}
 	return &ls, nil
 }
 
@@ -41,6 +38,7 @@ func (ls *KanikoSnapshotter) Init() error {
 	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "layers"))
 	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "tmp"))
 	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "proc"))
+	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "sys"))
 
 	layeredMap := ksnap.NewLayeredMap(kutil.Hasher(), kutil.CacheHasher())
 	ls.snapshotter = ksnap.NewSnapshotter(layeredMap, ls.RootDir)

@@ -48,6 +48,7 @@ type LaunchTOML struct {
 type LayerSnapshotter interface {
 	GetRootDir() string
 	TakeSnapshot(string) error
+	Init() error
 }
 
 type Label struct {
@@ -110,6 +111,9 @@ func (b *Builder) StackBuild() (*BuildMetadata, error) {
 	var slices []layers.Slice
 	var labels []Label
 
+	if err := b.Snapshotter.Init(); err != nil {
+		return nil, err
+	}
 	for _, bp := range b.StackGroup.Group {
 		launchData, newPlan, bpBOM, err := b.build(bp, b.Snapshotter.GetRootDir(), plan)
 		if err != nil {

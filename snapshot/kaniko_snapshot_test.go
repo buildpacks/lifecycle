@@ -14,6 +14,7 @@ import (
 	"github.com/sclevine/spec"
 
 	"github.com/buildpacks/lifecycle/snapshot"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestKanikoSnapshotter(t *testing.T) {
@@ -41,6 +42,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 		createTestFile(t, filepath.Join(tmpDir, "layers", "privatefile"))
 		createTestFile(t, filepath.Join(tmpDir, "file-to-change"))
 		createTestFile(t, filepath.Join(tmpDir, "file-not-to-change"))
+		createTestFile(t, filepath.Join(tmpDir, "bin", "file-not-to-change"))
 
 		snapshotter, err = snapshot.NewKanikoSnapshotter(tmpDir)
 		if err != nil {
@@ -58,6 +60,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
+			h.AssertNil(t, snapshotter.Init())
 			os.Remove(filepath.Join(snapshotter.RootDir, "file-to-delete"))
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "file-to-change"), "hola\n")
 			createTestFile(t, filepath.Join(snapshotter.RootDir, "my-space", "newfile-in-dir"))
