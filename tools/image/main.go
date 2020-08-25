@@ -19,6 +19,7 @@ import (
 	"github.com/buildpacks/imgutil/layer"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	dockertypes "github.com/docker/docker/api/types"
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -74,6 +75,10 @@ func main() {
 		}
 		if info.OSType != targetOS {
 			log.Fatal("Target OS and daemon OS must match")
+		}
+		err = pullImage(dockerClient, baseImage)
+		if err != nil {
+			log.Fatal("Failed pull base image:", err)
 		}
 		img, err = local.NewImage(tags[0], dockerClient, local.FromBaseImage(baseImage))
 		if err != nil {
@@ -230,8 +235,7 @@ func lifecycleLayer() string {
 		ntw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lf))
 		mode = 0777
 	} else {
-		tw := tar.NewWriter(lf)
-		ntw = archive.NewNormalizingTarWriter(tw)
+		ntw = archive.NewNormalizingTarWriter(tar.NewWriter(lf))
 		mode = 0755
 	}
 
@@ -270,4 +274,19 @@ func lifecycleLayer() string {
 		log.Fatal("Error closing tar writer:", err)
 	}
 	return lf.Name()
+}
+
+func pullImage(dockerCli dockercli.CommonAPIClient, ref string) error {
+	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	if err != nil {
+		// Retry
+		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+		return err
+	}
+	return rc.Close()
 }
