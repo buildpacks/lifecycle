@@ -50,7 +50,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 					process = launch.ShellProcess{
 						Script:  false,
 						Command: "echo",
-						Args:    []string{"profile env: '%PROFILE_VAR%'"},
+						Args:    []string{"profile env: '!PROFILE_VAR!'"},
 						Env: []string{
 							"SOME_VAR=some-val",
 						},
@@ -84,9 +84,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 					h.AssertStringContains(t, stdout, "SOME_VAR: 'some-val'")
 				})
 
-				it.Pend("env vars set in profile scripts are available to the command", func() {
-					// currently broken
-
+				it("env vars set in profile scripts are available to the command", func() {
 					err := shell.Launch(process)
 					h.AssertNil(t, err)
 					stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
