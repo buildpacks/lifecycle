@@ -67,34 +67,34 @@ func main() {
 	case true:
 		dockerClient, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
 		if err != nil {
-			log.Fatal("Failed initialize docker client:", err)
+			log.Fatal("Failed to initialize docker client:", err)
 		}
 		info, err := dockerClient.Info(context.Background())
 		if err != nil {
-			log.Fatal("Failed to get daemon info:", err)
+			log.Fatal("Failed to to get daemon info:", err)
 		}
 		if info.OSType != targetOS {
 			log.Fatal("Target OS and daemon OS must match")
 		}
 		err = pullImage(dockerClient, baseImage)
 		if err != nil {
-			log.Fatal("Failed pull base image:", err)
+			log.Fatal("Failed to pull base image:", err)
 		}
 		img, err = local.NewImage(tags[0], dockerClient, local.FromBaseImage(baseImage))
 		if err != nil {
-			log.Fatal("Failed create local image:", err)
+			log.Fatal("Failed to create local image:", err)
 		}
 	default:
 		var err error
 		img, err = remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
 		if err != nil {
-			log.Fatal("Failed create remote image:", err)
+			log.Fatal("Failed to create remote image:", err)
 		}
 	}
 
 	layerPath := lifecycleLayer()
 	if err := img.AddLayer(layerPath); err != nil {
-		log.Fatal("Failed add layer:", err)
+		log.Fatal("Failed to add layer:", err)
 	}
 	defer os.Remove(layerPath)
 	descriptor := readDescriptor()
@@ -153,7 +153,7 @@ func readDescriptor() Descriptor {
 	defer f.Close()
 	zr, err := gzip.NewReader(f)
 	if err != nil {
-		log.Fatalf("Failed create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
+		log.Fatalf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
@@ -215,7 +215,7 @@ func lifecycleLayer() string {
 	defer f.Close()
 	zr, err := gzip.NewReader(f)
 	if err != nil {
-		log.Fatalf("Failed create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
+		log.Fatalf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
@@ -225,7 +225,7 @@ func lifecycleLayer() string {
 
 	lf, err := ioutil.TempFile("", "lifecycle-layer")
 	if err != nil {
-		log.Fatal("Failed create temp layer file", err)
+		log.Fatal("Failed to create temp layer file", err)
 	}
 	defer lf.Close()
 
