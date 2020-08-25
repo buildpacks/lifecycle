@@ -221,7 +221,6 @@ func lifecycleLayer() string {
 	tr := tar.NewReader(zr)
 	ntr := archive.NewNormalizingTarReader(tr)
 	ntr.PrependDir("/cnb/")
-	ntr.Strip("/cnb/lifecycle/lifecycle.toml")
 
 	lf, err := ioutil.TempFile("", "lifecycle-layer")
 	if err != nil {
