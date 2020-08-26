@@ -63,8 +63,7 @@ func main() {
 	}
 
 	var img imgutil.Image
-	switch useDaemon {
-	case true:
+	if useDaemon {
 		dockerClient, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
 		if err != nil {
 			log.Fatal("Failed to initialize docker client:", err)
@@ -84,7 +83,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to create local image:", err)
 		}
-	default:
+	} else {
 		var err error
 		img, err = remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
 		if err != nil {
@@ -284,8 +283,9 @@ func pullImage(dockerCli dockercli.CommonAPIClient, ref string) error {
 			return err
 		}
 	}
+	defer rc.Close()
 	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
 		return err
 	}
-	return rc.Close()
+	return nil
 }
