@@ -46,9 +46,12 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("CNB_REGISTRY_AUTH is not set", func() {
-			it("returns the ggcr DefaultKeychain", func() {
-				envKeyChain := auth.NewKeychain("CNB_REGISTRY_AUTH")
-				h.AssertEq(t, envKeyChain, authn.DefaultKeychain)
+			it("returns the FallbackKeychain", func() {
+				keychain := auth.NewKeychain("CNB_REGISTRY_AUTH")
+				_, ok := keychain.(*auth.FallbackKeychain)
+				if ok != true {
+					t.Fatalf("expected *auth.FallbackKeychain, got %s", reflect.TypeOf(keychain))
+				}
 			})
 		})
 	})
@@ -134,6 +137,60 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					auth, err := envKeyChain.Resolve(registry)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, auth, authn.Anonymous)
+				})
+			})
+		})
+	})
+
+	when("#FallbackKeychain", func() {
+		when("#Resolve", func() {
+			when("DefaultKeychain resolves successfully", func() {
+				it("returns a non-anonymous authenticator", func() {
+					defaultKeychain := &FakeKeychain{
+						authMap: map[string]*authn.AuthConfig{
+							"basic-registry.com": {
+								Username: "user",
+								Password: "password",
+							},
+						},
+					}
+					fallbackKeychain := &auth.FallbackKeychain{DefaultKeychain: defaultKeychain}
+					registry, err := name.NewRegistry("basic-registry.com", name.WeakValidation)
+					h.AssertNil(t, err)
+
+					authenticator, err := fallbackKeychain.Resolve(registry)
+					h.AssertNil(t, err)
+
+					header, err := authenticator.Authorization()
+					h.AssertNil(t, err)
+					h.AssertEq(t, header.Username, "user")
+					h.AssertEq(t, header.Password, "password")
+				})
+			})
+
+			when("DefaultKeychain resolves with error", func() {
+				var dockerConfigEnv string
+				it.Before(func() {
+					dockerConfigEnv = os.Getenv("DOCKER_CONFIG")
+					// authn.DefaultKeychain will error if DOCKER_CONFIG directory is not readable
+					h.AssertNil(t, os.Setenv("DOCKER_CONFIG", "does-not-exist"))
+				})
+				it.After(func() {
+					h.AssertNil(t, os.Setenv("DOCKER_CONFIG", dockerConfigEnv))
+				})
+				it("returns an anonymous authenticator", func() {
+					keychain := auth.NewKeychain("VAR_NOT_SET") // force FallbackKeychain
+					_, ok := keychain.(*auth.FallbackKeychain)
+					if ok != true {
+						t.Fatalf("expected *auth.FallbackKeychain, got %s", reflect.TypeOf(keychain))
+					}
+					registry, err := name.NewRegistry("basic-registry.com", name.WeakValidation)
+					h.AssertNil(t, err)
+
+					auth, err := keychain.Resolve(registry)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, auth, authn.Anonymous)

@@ -92,7 +92,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("errors", func() {
 			cmd := exec.Command(
 				"docker", "run", "--rm",
-				"--env", "CNB_REGISTRY_AUTH={}",
 				analyzeImage,
 				analyzerPath,
 			)
@@ -108,7 +107,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("warns", func() {
 			output := h.DockerRun(t,
 				analyzeImage,
-				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithArgs(analyzerPath, "some-image"),
 			)
 
@@ -123,7 +121,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				analyzeImage,
-				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s some-image; ls -al /layers", analyzerPath)),
 			)
 
@@ -142,7 +139,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				analyzeImage,
 				"/layers",
 				h.WithFlags(
-					"--env", "CNB_REGISTRY_AUTH={}",
 					"--volume", cacheVolume+":"+"/cache", // use a cache so that we can observe the effect of other-group.toml on /layers
 				),
 				h.WithArgs(
@@ -165,7 +161,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				copyDir,
 				analyzeImage,
 				"/other-layers/other-analyzed.toml",
-				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithArgs(
 					analyzerPath,
 					"-layers", "/other-layers",
@@ -301,10 +296,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							copyDir,
 							analyzeImage,
 							"/layers",
-							h.WithFlags(append(
-								variables.DockerSocketMount,
-								"--env", "CNB_REGISTRY_AUTH={}", // In practice, we never set this variable in the daemon case. Setting to avoid failure to stat docker config directory when initializing cache
-							)...),
+							h.WithFlags(variables.DockerSocketMount...),
 							h.WithArgs(
 								analyzerPath,
 								"-daemon",
@@ -461,7 +453,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				copyDir,
 				analyzeImage,
 				"/layers/analyzed.toml",
-				h.WithFlags("--env", "CNB_REGISTRY_AUTH={}"),
 				h.WithArgs(analyzerPath, "some-image"),
 			)
 
@@ -617,7 +608,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						analyzeImage,
 						"/layers",
 						h.WithFlags(
-							"--env", "CNB_REGISTRY_AUTH={}",
 							"--volume", cacheVolume+":"+"/cache",
 						),
 						h.WithArgs(

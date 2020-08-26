@@ -16,9 +16,21 @@ import (
 func NewKeychain(envVar string) authn.Keychain {
 	_, ok := os.LookupEnv(envVar)
 	if !ok {
-		return authn.DefaultKeychain
+		return &FallbackKeychain{DefaultKeychain: authn.DefaultKeychain}
 	}
 	return &EnvKeychain{EnvVar: envVar}
+}
+
+type FallbackKeychain struct {
+	DefaultKeychain authn.Keychain
+}
+
+func (fk *FallbackKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+	auth, err := fk.DefaultKeychain.Resolve(resource)
+	if err != nil {
+		return authn.Anonymous, nil
+	}
+	return auth, nil
 }
 
 // EnvKeychain uses the contents of an environment variable to resolve auth for a registry
