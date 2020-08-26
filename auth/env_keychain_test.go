@@ -51,92 +51,92 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, envKeyChain, authn.DefaultKeychain)
 			})
 		})
+	})
 
-		when("#EnvKeychain", func() {
-			var envKeyChain authn.Keychain
+	when("#EnvKeychain", func() {
+		var envKeyChain authn.Keychain
 
-			when("#Resolve", func() {
+		when("#Resolve", func() {
+			it.Before(func() {
+				envKeyChain = &auth.EnvKeychain{EnvVar: "CNB_REGISTRY_AUTH"}
+			})
+
+			it.After(func() {
+				err := os.Unsetenv("CNB_REGISTRY_AUTH")
+				h.AssertNil(t, err)
+			})
+
+			when("valid auth env variable is set", func() {
 				it.Before(func() {
-					envKeyChain = &auth.EnvKeychain{EnvVar: "CNB_REGISTRY_AUTH"}
-				})
-
-				it.After(func() {
-					err := os.Unsetenv("CNB_REGISTRY_AUTH")
+					err := os.Setenv(
+						"CNB_REGISTRY_AUTH",
+						`{"basic-registry.com": "Basic asdf=", "bearer-registry.com": "Bearer qwerty="}`,
+					)
 					h.AssertNil(t, err)
 				})
 
-				when("valid auth env variable is set", func() {
-					it.Before(func() {
-						err := os.Setenv(
-							"CNB_REGISTRY_AUTH",
-							`{"basic-registry.com": "Basic asdf=", "bearer-registry.com": "Bearer qwerty="}`,
-						)
-						h.AssertNil(t, err)
-					})
+				it("loads the basic auth from the environment", func() {
+					registry, err := name.NewRegistry("basic-registry.com", name.WeakValidation)
+					h.AssertNil(t, err)
 
-					it("loads the basic auth from the environment", func() {
-						registry, err := name.NewRegistry("basic-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
+					authenticator, err := envKeyChain.Resolve(registry)
+					h.AssertNil(t, err)
 
-						authenticator, err := envKeyChain.Resolve(registry)
-						h.AssertNil(t, err)
+					header, err := authenticator.Authorization()
+					h.AssertNil(t, err)
 
-						header, err := authenticator.Authorization()
-						h.AssertNil(t, err)
-
-						h.AssertEq(t, header, &authn.AuthConfig{Auth: "asdf="})
-					})
-
-					it("loads the bearer auth from the environment", func() {
-						registry, err := name.NewRegistry("bearer-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
-
-						authenticator, err := envKeyChain.Resolve(registry)
-						h.AssertNil(t, err)
-
-						header, err := authenticator.Authorization()
-						h.AssertNil(t, err)
-
-						h.AssertEq(t, header, &authn.AuthConfig{RegistryToken: "qwerty="})
-					})
-
-					it("returns an Anonymous authenticator when the environment does not have a auth header", func() {
-						envKeyChain = auth.NewKeychain("CNB_REGISTRY_AUTH")
-						registry, err := name.NewRegistry("no-env-auth-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
-
-						authenticator, err := envKeyChain.Resolve(registry)
-						h.AssertNil(t, err)
-
-						h.AssertEq(t, authenticator, authn.Anonymous)
-					})
+					h.AssertEq(t, header, &authn.AuthConfig{Auth: "asdf="})
 				})
 
-				when("invalid env var is set", func() {
-					it.Before(func() {
-						err := os.Setenv("CNB_REGISTRY_AUTH", "NOT -- JSON")
-						h.AssertNil(t, err)
-					})
+				it("loads the bearer auth from the environment", func() {
+					registry, err := name.NewRegistry("bearer-registry.com", name.WeakValidation)
+					h.AssertNil(t, err)
 
-					it("returns an error", func() {
-						registry, err := name.NewRegistry("some-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
+					authenticator, err := envKeyChain.Resolve(registry)
+					h.AssertNil(t, err)
 
-						_, err = envKeyChain.Resolve(registry)
-						h.AssertError(t, err, "failed to parse CNB_REGISTRY_AUTH value")
-					})
+					header, err := authenticator.Authorization()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, header, &authn.AuthConfig{RegistryToken: "qwerty="})
 				})
 
-				when("env var is not set", func() {
-					it("returns an Anonymous authenticator", func() {
-						registry, err := name.NewRegistry("no-env-auth-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
+				it("returns an Anonymous authenticator when the environment does not have a auth header", func() {
+					envKeyChain = auth.NewKeychain("CNB_REGISTRY_AUTH")
+					registry, err := name.NewRegistry("no-env-auth-registry.com", name.WeakValidation)
+					h.AssertNil(t, err)
 
-						auth, err := envKeyChain.Resolve(registry)
-						h.AssertNil(t, err)
+					authenticator, err := envKeyChain.Resolve(registry)
+					h.AssertNil(t, err)
 
-						h.AssertEq(t, auth, authn.Anonymous)
-					})
+					h.AssertEq(t, authenticator, authn.Anonymous)
+				})
+			})
+
+			when("invalid env var is set", func() {
+				it.Before(func() {
+					err := os.Setenv("CNB_REGISTRY_AUTH", "NOT -- JSON")
+					h.AssertNil(t, err)
+				})
+
+				it("returns an error", func() {
+					registry, err := name.NewRegistry("some-registry.com", name.WeakValidation)
+					h.AssertNil(t, err)
+
+					_, err = envKeyChain.Resolve(registry)
+					h.AssertError(t, err, "failed to parse CNB_REGISTRY_AUTH value")
+				})
+			})
+
+			when("env var is not set", func() {
+				it("returns an Anonymous authenticator", func() {
+					registry, err := name.NewRegistry("no-env-auth-registry.com", name.WeakValidation)
+					h.AssertNil(t, err)
+
+					auth, err := envKeyChain.Resolve(registry)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, auth, authn.Anonymous)
 				})
 			})
 		})
