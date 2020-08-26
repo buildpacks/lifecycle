@@ -3,6 +3,7 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -14,8 +15,12 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layer"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	dockertypes "github.com/docker/docker/api/types"
+	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle/archive"
@@ -25,6 +30,7 @@ var (
 	lifecyclePath string      // path to lifecycle TGZ
 	tags          stringSlice // tag reference to write lifecycle image
 	targetOS      string      // operating system
+	useDaemon     bool        // export to docker daemon
 )
 
 type stringSlice []string
@@ -43,6 +49,7 @@ func main() {
 	flag.StringVar(&lifecyclePath, "lifecyclePath", "", "path to lifecycle TGZ")
 	flag.StringVar(&targetOS, "os", runtime.GOOS, "operating system")
 	flag.Var(&tags, "tag", "tag reference to write lifecycle image")
+	flag.BoolVar(&useDaemon, "daemon", false, "export to docker daemon")
 
 	flag.Parse()
 	if lifecyclePath == "" || len(tags) == 0 {
@@ -54,13 +61,39 @@ func main() {
 	if targetOS == "windows" {
 		baseImage = "mcr.microsoft.com/windows/nanoserver:1809-amd64"
 	}
-	img, err := remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
-	if err != nil {
-		log.Fatal("Failed create remote image:", err)
+
+	var img imgutil.Image
+	if useDaemon {
+		dockerClient, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
+		if err != nil {
+			log.Fatal("Failed to initialize docker client:", err)
+		}
+		info, err := dockerClient.Info(context.Background())
+		if err != nil {
+			log.Fatal("Failed to to get daemon info:", err)
+		}
+		if info.OSType != targetOS {
+			log.Fatal("Target OS and daemon OS must match")
+		}
+		err = pullImage(dockerClient, baseImage)
+		if err != nil {
+			log.Fatal("Failed to pull base image:", err)
+		}
+		img, err = local.NewImage(tags[0], dockerClient, local.FromBaseImage(baseImage))
+		if err != nil {
+			log.Fatal("Failed to create local image:", err)
+		}
+	} else {
+		var err error
+		img, err = remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
+		if err != nil {
+			log.Fatal("Failed to create remote image:", err)
+		}
 	}
+
 	layerPath := lifecycleLayer()
 	if err := img.AddLayer(layerPath); err != nil {
-		log.Fatal("Failed add layer:", err)
+		log.Fatal("Failed to add layer:", err)
 	}
 	defer os.Remove(layerPath)
 	descriptor := readDescriptor()
@@ -119,7 +152,7 @@ func readDescriptor() Descriptor {
 	defer f.Close()
 	zr, err := gzip.NewReader(f)
 	if err != nil {
-		log.Fatalf("Failed create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
+		log.Fatalf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
@@ -181,17 +214,16 @@ func lifecycleLayer() string {
 	defer f.Close()
 	zr, err := gzip.NewReader(f)
 	if err != nil {
-		log.Fatalf("Failed create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
+		log.Fatalf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
 	ntr := archive.NewNormalizingTarReader(tr)
 	ntr.PrependDir("/cnb/")
-	ntr.Strip("/cnb/lifecycle/lifecycle.toml")
 
 	lf, err := ioutil.TempFile("", "lifecycle-layer")
 	if err != nil {
-		log.Fatal("Failed create temp layer file", err)
+		log.Fatal("Failed to create temp layer file", err)
 	}
 	defer lf.Close()
 
@@ -201,8 +233,7 @@ func lifecycleLayer() string {
 		ntw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lf))
 		mode = 0777
 	} else {
-		tw := tar.NewWriter(lf)
-		ntw = archive.NewNormalizingTarWriter(tw)
+		ntw = archive.NewNormalizingTarWriter(tar.NewWriter(lf))
 		mode = 0755
 	}
 
@@ -241,4 +272,20 @@ func lifecycleLayer() string {
 		log.Fatal("Error closing tar writer:", err)
 	}
 	return lf.Name()
+}
+
+func pullImage(dockerCli dockercli.CommonAPIClient, ref string) error {
+	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	if err != nil {
+		// Retry
+		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	defer rc.Close()
+	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+		return err
+	}
+	return nil
 }
