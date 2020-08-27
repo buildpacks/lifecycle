@@ -10,11 +10,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/sclevine/spec"
 
+	kutil "github.com/GoogleContainerTools/kaniko/pkg/util"
+
 	"github.com/buildpacks/lifecycle/snapshot"
+	"github.com/buildpacks/lifecycle/snapshot/testmock"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -22,13 +27,19 @@ func TestKanikoSnapshotter(t *testing.T) {
 	spec.Run(t, "Test Image", testKanikoSnapshotter)
 }
 
+//go:generate mockgen -package testmock -destination testmock/ignore_list.go github.com/buildpacks/lifecycle/snapshot IgnoreList
+
 func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		snapshotter *snapshot.KanikoSnapshotter
 		tmpDir      string
+		ignoreList  *testmock.MockIgnoreList
 	)
 
 	it.Before(func() {
+		mockCtrl := gomock.NewController(t)
+		ignoreList = testmock.NewMockIgnoreList(mockCtrl)
+
 		// Using the default tmp dir causes kaniko to go haywire for some reason
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -46,9 +57,9 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 		createTestFile(t, filepath.Join(tmpDir, "file-to-delete"))
 		createTestFile(t, filepath.Join(tmpDir, "bin", "file-not-to-change"))
 
-		snapshotter, err = snapshot.NewKanikoSnapshotter(tmpDir)
-		if err != nil {
-			t.Fatalf("Error: %s\n", err)
+		snapshotter = &snapshot.KanikoSnapshotter{
+			RootDir:    tmpDir,
+			IgnoreList: ignoreList,
 		}
 	})
 
@@ -62,13 +73,22 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
+			ignoreList.EXPECT().Load()
+			ignoreList.EXPECT().CustomEntries().DoAndReturn(func() []kutil.IgnoreListEntry {
+				return []kutil.IgnoreListEntry{
+					{
+						Path:            filepath.Join(snapshotter.RootDir, "dir-with-ignored-files"),
+						PrefixMatchOnly: true,
+					},
+				}
+			})
+
 			h.AssertNil(t, snapshotter.Init())
+
 			os.Remove(filepath.Join(snapshotter.RootDir, "file-to-delete"))
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "file-to-change"), "hola\n")
 			createTestFile(t, filepath.Join(snapshotter.RootDir, "my-space", "newfile-in-dir"))
-			createTestFile(t, filepath.Join(snapshotter.RootDir, "cnb", "file-to-ignore"))
-			createTestFile(t, filepath.Join(snapshotter.RootDir, "layers", "file-to-ignore"))
-			createTestFile(t, filepath.Join(snapshotter.RootDir, "tmp", "file-to-ignore"))
+			createTestFile(t, filepath.Join(snapshotter.RootDir, "dir-with-ignored-files", "file-to-ignore"))
 
 			tmpFile, err := ioutil.TempFile("", "snapshot")
 			if err != nil {
@@ -103,10 +123,8 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 
 				switch hdr.Name {
 				case "/":
+				case "dir-with-ignored-files/":
 				case "my-space/":
-				case "cnb/":
-				case "layers/":
-				case "tmp/":
 				case strings.Trim(filepath.Join(snapshotter.RootDir, ".wh.file-to-delete"), "/"):
 					continue
 				case "newfile":

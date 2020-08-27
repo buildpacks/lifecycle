@@ -4,7 +4,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/sirupsen/logrus"
 
@@ -16,13 +15,44 @@ import (
 type KanikoSnapshotter struct {
 	RootDir     string
 	snapshotter *ksnap.Snapshotter
+	IgnoreList  IgnoreList
 }
 
 func NewKanikoSnapshotter(rootDir string) (*KanikoSnapshotter, error) {
 	ls := KanikoSnapshotter{
-		RootDir: rootDir,
+		RootDir:    rootDir,
+		IgnoreList: KanikoFilesystemIgnoreList{},
 	}
 	return &ls, nil
+}
+
+type IgnoreList interface {
+	Load() error
+	CustomEntries() []kutil.IgnoreListEntry
+}
+
+type KanikoFilesystemIgnoreList struct {
+}
+
+func (i KanikoFilesystemIgnoreList) Load() error {
+	return kutil.DetectFilesystemIgnoreList(kconfig.IgnoreListPath)
+}
+
+func (i KanikoFilesystemIgnoreList) CustomEntries() []kutil.IgnoreListEntry {
+	return []kutil.IgnoreListEntry{
+		{
+			Path:            "/tmp",
+			PrefixMatchOnly: true,
+		},
+		{
+			Path:            "/layers",
+			PrefixMatchOnly: true,
+		},
+		{
+			Path:            "/cnb",
+			PrefixMatchOnly: true,
+		},
+	}
 }
 
 func (ls *KanikoSnapshotter) Init() error {
@@ -34,11 +64,13 @@ func (ls *KanikoSnapshotter) Init() error {
 	}
 	kconfig.KanikoDir = kanikoDir
 
-	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "cnb"))
-	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "layers"))
-	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "tmp"))
-	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "proc"))
-	kutil.AddVolumePathToIgnoreList(filepath.Join(ls.RootDir, "sys"))
+	if err := ls.IgnoreList.Load(); err != nil {
+		return err
+	}
+
+	for _, e := range ls.IgnoreList.CustomEntries() {
+		kutil.AddToIgnoreList(e)
+	}
 
 	layeredMap := ksnap.NewLayeredMap(kutil.Hasher(), kutil.CacheHasher())
 	ls.snapshotter = ksnap.NewSnapshotter(layeredMap, ls.RootDir)

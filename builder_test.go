@@ -650,6 +650,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#StackBuild", func() {
 		when("building succeeds", func() {
 			it.Before(func() {
+				snapshotter.EXPECT().Init()
 				snapshotter.EXPECT().GetRootDir().DoAndReturn(func() string { return appDir })
 				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "X.tgz"))
 				env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil)

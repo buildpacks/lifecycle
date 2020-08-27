@@ -184,6 +184,7 @@ generate: install-mockgen
 	@echo "> Generating..."
 	$(GOCMD) generate
 	$(GOCMD) generate ./launch
+	$(GOCMD) generate ./snapshot
 
 format: install-goimports
 	@echo "> Formating code..."
