@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"syscall"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
@@ -65,6 +68,15 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 }
 
 func (a *analyzeCmd) Privileges() error {
+	info, err := os.Stat("/mounted-docker-config")
+	if err != nil {
+		fmt.Println("err:", err.Error())
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		fmt.Printf("uid1: %d\n", int(stat.Uid))
+		fmt.Printf("gid1: %d\n", int(stat.Gid))
+	}
+
 	if a.useDaemon {
 		var err error
 		a.docker, err = priv.DockerClient()
@@ -72,16 +84,65 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
+	info, err = os.Stat("/mounted-docker-config")
+	if err != nil {
+		fmt.Println("err:", err.Error())
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		fmt.Printf("uid11: %d\n", int(stat.Uid))
+		fmt.Printf("gid11: %d\n", int(stat.Gid))
+	}
 	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
+	info, err = os.Stat("/mounted-docker-config")
+	if err != nil {
+		fmt.Println("err:", err.Error())
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		fmt.Printf("uid12: %d\n", int(stat.Uid))
+		fmt.Printf("gid12: %d\n", int(stat.Gid))
+	}
+
+	command := exec.Command("ls", "-al", "/")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		fmt.Println("error:", err.Error())
+	}
+	fmt.Println("output:", string(output))
+
 	if err := priv.RunAs(a.uid, a.gid); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", a.uid, a.gid))
+	}
+
+	command = exec.Command("ls", "-al", "/")
+	output, err = command.CombinedOutput()
+	if err != nil {
+		fmt.Println("error:", err.Error())
+	}
+	fmt.Println("output:", string(output))
+
+	info, err = os.Stat("/mounted-docker-config")
+	if err != nil {
+		fmt.Println("err:", err.Error())
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		fmt.Printf("uid13: %d\n", int(stat.Uid))
+		fmt.Printf("gid13: %d\n", int(stat.Gid))
 	}
 	return nil
 }
 
 func (a *analyzeCmd) Exec() error {
+	info, err := os.Stat("/mounted-docker-config")
+	if err != nil {
+		fmt.Println("err:", err.Error())
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+		fmt.Printf("uid2: %d\n", int(stat.Uid))
+		fmt.Printf("gid2: %d\n", int(stat.Gid))
+	}
+
 	group, err := lifecycle.ReadGroup(a.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")

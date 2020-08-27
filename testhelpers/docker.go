@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -53,7 +54,8 @@ func DockerRunAndCopy(t *testing.T, containerName, copyDir, image, path string, 
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
+	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...)) // TODO: update this helper to return output
+	fmt.Println("output:", output)
 	Run(t, exec.Command("docker", "cp", containerName+":"+path, copyDir))
 }
 

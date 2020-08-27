@@ -101,6 +101,15 @@ func recursiveEnsureOwner(path string, uid, gid int) error {
 
 // RunAs sets the user ID and group ID of the calling process.
 func RunAs(uid, gid int) error {
+	//info, err := os.Stat("/mounted-docker-config")
+	//if err != nil {
+	//	fmt.Println("err:", err.Error())
+	//}
+	//if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+	//	fmt.Printf("uidrun: %d\n", int(stat.Uid))
+	//	fmt.Printf("gidrun: %d\n", int(stat.Gid))
+	//}
+
 	if uid == os.Getuid() && gid == os.Getgid() {
 		return nil
 	}
