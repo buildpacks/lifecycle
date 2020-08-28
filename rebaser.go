@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
@@ -67,6 +68,11 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 
 	if err := workingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set app image metadata label")
+	}
+
+	hasPrefix := func(l string) bool { return strings.HasPrefix(l, "io.buildpacks.stack.") }
+	if err := SyncLabels(newBaseImage, workingImage, hasPrefix); err != nil {
+		return RebaseReport{}, errors.Wrap(err, "set stack metadata label")
 	}
 
 	report := RebaseReport{}

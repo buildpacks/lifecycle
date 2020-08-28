@@ -61,3 +61,45 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 	}
 	return nil
 }
+
+// SyncLabels adds/updates/removes labels matching the predicate and a source image
+func SyncLabels(sourceImg imgutil.Image, destImage imgutil.Image, test func(string) bool) error {
+	if err := RemoveLabels(destImage, test); err != nil {
+		return err
+	}
+	return CopyLabels(sourceImg, destImage, test)
+}
+
+// RemoveLabels removes labels from an image matching the predicate
+func RemoveLabels(image imgutil.Image, test func(string) bool) error {
+	labels, err := image.Labels()
+	if err != nil {
+		return err
+	}
+
+	for label := range labels {
+		if test(label) {
+			if err := image.SetLabel(label, ""); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// CopyLabels copies labels from a source image to the destination image matching the predicate
+func CopyLabels(fromImage imgutil.Image, destImage imgutil.Image, test func(string) bool) error {
+	fromLabels, err := fromImage.Labels()
+	if err != nil {
+		return err
+	}
+
+	for label, labelValue := range fromLabels {
+		if test(label) {
+			if err := destImage.SetLabel(label, labelValue); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
