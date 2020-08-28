@@ -8,5 +8,5 @@ chmod +x /bin/exe-to-snapshot
 mkdir -p /cnb
 echo "hello" > /cnb/file-to-ignore
 
-echo "done"
+echo "done:stack"
 exit 0

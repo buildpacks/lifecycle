@@ -58,8 +58,8 @@ const (
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 
-	FlagNameGroupPath      = "group"
-	FlagNamePlanPath       = "plan"
+	FlagNameGroupPath = "group"
+	FlagNamePlanPath  = "plan"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)

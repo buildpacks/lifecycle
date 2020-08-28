@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"syscall"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -39,12 +40,14 @@ type buildArgs struct {
 
 func (b *buildCmd) Init() {
 	cmd.FlagBuildpacksDir(&b.buildpacksDir)
+	cmd.FlagGID(&b.gid)
 	cmd.FlagGroupPath(&b.groupPath)
 	cmd.FlagPlanPath(&b.planPath)
 	cmd.FlagLayersDir(&b.layersDir)
 	cmd.FlagAppDir(&b.appDir)
 	cmd.FlagPlatformDir(&b.platformDir)
 	cmd.FlagStackGroupPath(&b.stackGroupPath)
+	cmd.FlagUID(&b.uid)
 }
 
 func (b *buildCmd) Args(nargs int, args []string) error {
@@ -73,10 +76,14 @@ func (b *buildCmd) Exec() error {
 		return err
 	}
 
-	if len(stackGroup.Group) > 0 {
-		return b.buildAll(group, stackGroup, plan)
+	if len(stackGroup.Group) == 0 {
+		builder, err := b.createBuilder(group, stackGroup, plan)
+		if err != nil {
+			return err
+		}
+		return b.build(builder)
 	}
-	return b.buildAsSubProcess()
+	return b.buildAll(group, stackGroup, plan)
 }
 
 func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
@@ -140,13 +147,6 @@ func (ba buildArgs) buildAsSubProcess() error {
 }
 
 func (ba buildArgs) build(builder *lifecycle.Builder) error {
-	// drop back to non-root user to run buildpacks
-	if err := priv.RunAs(ba.uid, ba.gid); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", ba.uid, ba.gid))
-	}
-	if err := priv.SetEnvironmentForUser(ba.uid); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", ba.uid))
-	}
 	md, err := builder.Build()
 	if err != nil {
 		if err, ok := err.(*lifecycle.Error); ok {

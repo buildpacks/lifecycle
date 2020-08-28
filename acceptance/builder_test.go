@@ -60,8 +60,7 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 			// TODO verify timestamp is "1970-01-01 00:00"
 		})
 
-
-		it("creates layers", func() {
+		it("creates layers and snapshot", func() {
 			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
 			output := h.DockerRun(t,
@@ -69,9 +68,7 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -group group.toml -plan plan.toml; ls -al /layers/example_user", rootBuilderPath)),
 			)
 
-			h.AssertStringDoesNotContain(t, output, ".wh.sbin")
-			h.AssertMatch(t, output, "bin/exe-to-snapshot")
-			// TODO verify timestamp is "1970-01-01 00:00"
+			h.AssertMatch(t, output, "my-layer.toml")
 		})
 	})
 }
