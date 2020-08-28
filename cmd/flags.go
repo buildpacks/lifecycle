@@ -57,6 +57,9 @@ const (
 	EnvStackGroupPath      = "CNB_STACK_GROUP_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
+
+	FlagNameGroupPath      = "group"
+	FlagNamePlanPath       = "plan"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -86,7 +89,7 @@ func FlagGID(gid *int) {
 }
 
 func FlagGroupPath(path *string) {
-	flagSet.StringVar(path, "group", EnvOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
+	flagSet.StringVar(path, FlagNameGroupPath, EnvOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
 }
 
 func FlagLaunchCacheDir(dir *string) {
@@ -110,7 +113,7 @@ func FlagOrderPath(path *string) {
 }
 
 func FlagPlanPath(path *string) {
-	flagSet.StringVar(path, "plan", EnvOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
+	flagSet.StringVar(path, FlagNamePlanPath, EnvOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
 }
 
 func FlagPlatformDir(dir *string) {

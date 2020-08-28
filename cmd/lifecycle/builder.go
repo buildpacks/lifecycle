@@ -3,10 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"log"
 	"os"
-
-	"github.com/BurntSushi/toml"
+	"os/exec"
+	"path/filepath"
+	"syscall"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -19,15 +21,15 @@ import (
 
 type buildCmd struct {
 	// flags: inputs
-	groupPath      string
 	stackGroupPath string
-	planPath       string
 	buildArgs
 }
 
 type buildArgs struct {
 	// inputs needed when run by creator
 	uid, gid      int
+	groupPath     string
+	planPath      string
 	buildpacksDir string
 	layersDir     string
 	appDir        string
@@ -53,8 +55,13 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 }
 
 func (b *buildCmd) Privileges() error {
+	_, stackGroup, _, err := b.readData()
+	if err != nil {
+		return err
+	}
+
 	// builder should never be run with privileges if there aren't any stack buildpacks
-	if b.stackGroupPath == "" && priv.IsPrivileged() {
+	if len(stackGroup.Group) == 0 && priv.IsPrivileged() {
 		return cmd.FailErr(errors.New("refusing to run as root"), "build")
 	}
 	return nil
@@ -66,7 +73,10 @@ func (b *buildCmd) Exec() error {
 		return err
 	}
 
-	return b.buildAll(group, stackGroup, plan)
+	if len(stackGroup.Group) > 0 {
+		return b.buildAll(group, stackGroup, plan)
+	}
+	return b.buildAsSubProcess()
 }
 
 func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
@@ -87,8 +97,10 @@ func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan li
 		return err
 	}
 
-	if err = ba.build(builder); err != nil {
-		return err
+	if len(group.Group) > 0 {
+		if err = ba.buildAsSubProcess(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -105,6 +117,26 @@ func (ba buildArgs) stackBuild(builder *lifecycle.Builder) error {
 		return cmd.FailErrCode(err, cmd.CodeBuildError, "stack-build")
 	}
 	return nil
+}
+
+func (ba buildArgs) buildAsSubProcess() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	c := exec.Command(
+		filepath.Join(filepath.Dir(exe), "builder"),
+		fmt.Sprintf("-%s", cmd.FlagNameGroupPath), ba.groupPath,
+		fmt.Sprintf("-%s", cmd.FlagNamePlanPath), ba.planPath,
+		// TODO set other args
+	)
+	c.SysProcAttr = &syscall.SysProcAttr{}
+	c.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(ba.uid), Gid: uint32(ba.gid)}
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+
+	return c.Run()
 }
 
 func (ba buildArgs) build(builder *lifecycle.Builder) error {
