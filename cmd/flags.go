@@ -24,7 +24,7 @@ var (
 	DefaultProcessType         = "web"
 	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
 	DefaultReportPath          = filepath.Join(".", "report.toml")
-	DefaultStackGroupPath      = ""
+	DefaultStackBuildpacksDir  = filepath.Join(rootDir, "cnb", "stack", "buildpacks")
 	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
 )
 
@@ -53,13 +53,15 @@ const (
 	EnvRunImage            = "CNB_RUN_IMAGE"
 	EnvSkipLayers          = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
 	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
+	EnvStackBuildpacksDir  = "CNB_STACK_BUILDPACKS_DIR"
 	EnvStackPath           = "CNB_STACK_PATH"
 	EnvStackGroupPath      = "CNB_STACK_GROUP_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 
-	FlagNameGroupPath = "group"
-	FlagNamePlanPath  = "plan"
+	FlagNameBuildpacksDir = "buildpacks"
+	FlagNameGroupPath     = "group"
+	FlagNamePlanPath      = "plan"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -73,7 +75,7 @@ func FlagAppDir(dir *string) {
 }
 
 func FlagBuildpacksDir(dir *string) {
-	flagSet.StringVar(dir, "buildpacks", EnvOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
+	flagSet.StringVar(dir, FlagNameBuildpacksDir, EnvOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
 func FlagCacheDir(dir *string) {
@@ -140,12 +142,16 @@ func FlagSkipRestore(skip *bool) {
 	flagSet.BoolVar(skip, "skip-restore", BoolEnv(EnvSkipRestore), "do not restore layers or layer metadata")
 }
 
+func FlagStackBuildpacksDir(dir *string) {
+	flagSet.StringVar(dir, "stack-buildpacks", EnvOrDefault(EnvStackBuildpacksDir, DefaultStackBuildpacksDir), "path to stack buildpacks directory")
+}
+
 func FlagStackPath(path *string) {
 	flagSet.StringVar(path, "stack", EnvOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
 }
 
 func FlagStackGroupPath(path *string) {
-	flagSet.StringVar(path, "stack-group", EnvOrDefault(EnvStackGroupPath, DefaultStackGroupPath), "path to stack-group.toml")
+	flagSet.StringVar(path, "stack-group", EnvOrDefault(EnvStackGroupPath, ""), "path to stack-group.toml")
 }
 
 func FlagTags(tags *StringSlice) {

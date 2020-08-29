@@ -65,9 +65,10 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				rootBuilderImage,
-				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -group group.toml -plan plan.toml; ls -al /layers/example_user", rootBuilderPath)),
+				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -group group.toml -plan plan.toml; ls -al /layers/; ls -al /layers/example_user", rootBuilderPath)),
 			)
 
+			h.AssertMatch(t, output, "example_stack.tgz")
 			h.AssertMatch(t, output, "my-layer.toml")
 		})
 	})

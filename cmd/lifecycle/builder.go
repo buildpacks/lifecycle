@@ -22,20 +22,21 @@ import (
 
 type buildCmd struct {
 	// flags: inputs
-	stackGroupPath string
+	stackGroupPath     string
 	buildArgs
 }
 
 type buildArgs struct {
 	// inputs needed when run by creator
-	uid, gid      int
-	groupPath     string
-	planPath      string
-	buildpacksDir string
-	layersDir     string
-	appDir        string
-	platformDir   string
-	platformAPI   string
+	uid, gid           int
+	groupPath          string
+	planPath           string
+	buildpacksDir      string
+	layersDir          string
+	appDir             string
+	platformDir        string
+	platformAPI        string
+	stackBuildpacksDir string
 }
 
 func (b *buildCmd) Init() {
@@ -46,6 +47,7 @@ func (b *buildCmd) Init() {
 	cmd.FlagLayersDir(&b.layersDir)
 	cmd.FlagAppDir(&b.appDir)
 	cmd.FlagPlatformDir(&b.platformDir)
+	cmd.FlagStackBuildpacksDir(&b.stackBuildpacksDir)
 	cmd.FlagStackGroupPath(&b.stackGroupPath)
 	cmd.FlagUID(&b.uid)
 }
@@ -77,7 +79,7 @@ func (b *buildCmd) Exec() error {
 	}
 
 	if len(stackGroup.Group) == 0 {
-		builder, err := b.createBuilder(group, stackGroup, plan)
+		builder, err := b.createBuilder(group, lifecycle.BuildpackGroup{}, plan, b.buildpacksDir)
 		if err != nil {
 			return err
 		}
@@ -95,7 +97,7 @@ func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan li
 		return err
 	}
 
-	builder, err := ba.createBuilder(group, stackGroup, plan)
+	builder, err := ba.createBuilder(group, stackGroup, plan, ba.stackBuildpacksDir)
 	if err != nil {
 		return err
 	}
@@ -104,7 +106,16 @@ func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan li
 		return err
 	}
 
-	if len(group.Group) > 0 {
+	bin, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	if filepath.Base(bin) == "extender" {
+		// never run userspace buildpacks on the run-image
+		// TODO save stackpack to run image so it can be run on rebase
+		// TODO save this binary to the image so it can be run on rebase
+	} else if len(group.Group) > 0 {
 		if err = ba.buildAsSubProcess(); err != nil {
 			return err
 		}
@@ -127,15 +138,16 @@ func (ba buildArgs) stackBuild(builder *lifecycle.Builder) error {
 }
 
 func (ba buildArgs) buildAsSubProcess() error {
-	exe, err := os.Executable()
+	bin, err := os.Executable()
 	if err != nil {
 		return err
 	}
 
 	c := exec.Command(
-		filepath.Join(filepath.Dir(exe), "builder"),
+		filepath.Join(filepath.Dir(bin), "builder"),
 		fmt.Sprintf("-%s", cmd.FlagNameGroupPath), ba.groupPath,
 		fmt.Sprintf("-%s", cmd.FlagNamePlanPath), ba.planPath,
+		fmt.Sprintf("-%s", cmd.FlagNameBuildpacksDir), ba.buildpacksDir,
 		// TODO set other args
 	)
 	c.SysProcAttr = &syscall.SysProcAttr{}
@@ -162,7 +174,7 @@ func (ba buildArgs) build(builder *lifecycle.Builder) error {
 	return nil
 }
 
-func (ba buildArgs) createBuilder(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) (*lifecycle.Builder, error) {
+func (ba buildArgs) createBuilder(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, buildpacksDir string) (*lifecycle.Builder, error) {
 	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
 	if err != nil {
 		return &lifecycle.Builder{}, err
@@ -172,7 +184,7 @@ func (ba buildArgs) createBuilder(group, stackGroup lifecycle.BuildpackGroup, pl
 		AppDir:        ba.appDir,
 		LayersDir:     ba.layersDir,
 		PlatformDir:   ba.platformDir,
-		BuildpacksDir: ba.buildpacksDir,
+		BuildpacksDir: buildpacksDir,
 		PlatformAPI:   api.MustParse(ba.platformAPI),
 		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
