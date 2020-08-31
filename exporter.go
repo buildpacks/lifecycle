@@ -29,10 +29,11 @@ type Cache interface {
 }
 
 type Exporter struct {
-	Buildpacks   []Buildpack
-	LayerFactory LayerFactory
-	Logger       Logger
-	PlatformAPI  *api.Version
+	StackBuildpacks []Buildpack
+	Buildpacks      []Buildpack
+	LayerFactory    LayerFactory
+	Logger          Logger
+	PlatformAPI     *api.Version
 }
 
 //go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle LayerFactory
@@ -41,6 +42,7 @@ type LayerFactory interface {
 	LauncherLayer(path string) (layers.Layer, error)
 	ProcessTypesLayer(metadata launch.Metadata) (layers.Layer, error)
 	SliceLayers(dir string, slices []layers.Slice) ([]layers.Layer, error)
+	SnapshotLayer(id string, snapshot string) (layers.Layer, error)
 }
 
 type LauncherConfig struct {

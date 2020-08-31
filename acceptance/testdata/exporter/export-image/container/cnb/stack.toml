@@ -1,0 +1,2 @@
+[run-image]
+image = "lifecycle/acceptance/exporter-run"

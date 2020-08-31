@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -euo pipefail
+
+layers_dir=$1
+
+mkdir -p "$layers_dir/my-layer"
+touch "$layers_dir/my-layer.toml"
+echo "hello" > "$layers_dir/my-layer/new-file"
+
+echo "done:user"
+
+exit 0

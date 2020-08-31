@@ -28,6 +28,7 @@ type exportCmd struct {
 	cacheDir              string
 	cacheImageTag         string
 	groupPath             string
+	stackGroupPath        string
 	deprecatedRunImageRef string
 	exportArgs
 
@@ -124,9 +125,12 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(e.groupPath)
+	group, stackGroup, err := e.readData()
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
+	}
+	if err := verifyBuildpackApis(stackGroup); err != nil {
+		return err
 	}
 	if err := verifyBuildpackApis(group); err != nil {
 		return err
@@ -142,10 +146,10 @@ func (e *exportCmd) Exec() error {
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	return e.export(group, cacheStore, analyzedMD)
+	return e.export(stackGroup, group, cacheStore, analyzedMD)
 }
 
-func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
+func (ea exportArgs) export(stackGroup, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
 	ref, err := name.ParseReference(ea.imageNames[0], name.WeakValidation)
 	if err != nil {
 		return cmd.FailErr(err, "failed to parse registry")
@@ -173,7 +177,8 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	}
 
 	exporter := &lifecycle.Exporter{
-		Buildpacks: group.Group,
+		StackBuildpacks: stackGroup.Group,
+		Buildpacks:      group.Group,
 		LayerFactory: &layers.Factory{
 			ArtifactsDir: artifactsDir,
 			UID:          ea.uid,
@@ -231,6 +236,25 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		}
 	}
 	return nil
+}
+
+func (e *exportCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildpackGroup, error) {
+	group := lifecycle.BuildpackGroup{}
+	if _, err := os.Stat(e.groupPath); err == nil {
+		group, err = lifecycle.ReadGroup(e.groupPath)
+		if err != nil {
+			return lifecycle.BuildpackGroup{}, lifecycle.BuildpackGroup{}, cmd.FailErr(err, "read buildpack group")
+		}
+	}
+
+	stackGroup := lifecycle.BuildpackGroup{}
+	if _, err := os.Stat(e.stackGroupPath); err == nil {
+		stackGroup, err = lifecycle.ReadGroup(e.stackGroupPath)
+		if err != nil {
+			return group, lifecycle.BuildpackGroup{}, cmd.FailErr(err, "read stack buildpack group")
+		}
+	}
+	return group, stackGroup, nil
 }
 
 func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, launchCacheDir string, docker client.CommonAPIClient) (imgutil.Image, string, error) {

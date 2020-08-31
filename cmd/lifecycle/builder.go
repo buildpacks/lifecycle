@@ -22,7 +22,7 @@ import (
 
 type buildCmd struct {
 	// flags: inputs
-	stackGroupPath     string
+	stackGroupPath string
 	buildArgs
 }
 

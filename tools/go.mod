@@ -6,9 +6,9 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20200814190540-04db0a9bb84f
 	github.com/buildpacks/lifecycle v0.8.1
 	github.com/golang/mock v1.4.4
-	github.com/golangci/golangci-lint v1.22.2
+	github.com/golangci/golangci-lint v1.27.0
 	github.com/sclevine/yj v0.0.0-20190506050358-d9a48607cc5c
-	golang.org/x/tools v0.0.0-20200210192313-1ace956b0e17
+	golang.org/x/tools v0.0.0-20200527183253-8e7acdbce89d
 	rsc.io/quote/v3 v3.1.0 // indirect
 )
 

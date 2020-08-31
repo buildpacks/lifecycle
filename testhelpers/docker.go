@@ -74,6 +74,14 @@ func DockerVolumeExists(t *testing.T, volumeName string) bool {
 	return strings.Contains(output, volumeName)
 }
 
+func DockerImageExists(t *testing.T, imageName string) bool {
+	if imageName == "" {
+		return false
+	}
+	output := Run(t, exec.Command("docker", "image", "ls"))
+	return strings.Contains(output, imageName)
+}
+
 // TODO: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
 func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: auth})

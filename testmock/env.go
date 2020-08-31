@@ -5,9 +5,8 @@
 package testmock
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockBuildEnv is a mock of BuildEnv interface

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "hello" > /file-to-snapshot
+echo "hello" > /bin/exe-to-snapshot
+chmod +x /bin/exe-to-snapshot
+
+# this should be ignored
+mkdir -p /cnb
+echo "hello" > /cnb/file-to-ignore
+
+echo "done:stack"
+exit 0
