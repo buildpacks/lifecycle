@@ -72,7 +72,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 
 	hasPrefix := func(l string) bool { return strings.HasPrefix(l, "io.buildpacks.stack.") }
 	if err := SyncLabels(newBaseImage, workingImage, hasPrefix); err != nil {
-		return RebaseReport{}, errors.Wrap(err, "set stack metadata label")
+		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
 
 	report := RebaseReport{}
