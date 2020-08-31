@@ -51,8 +51,8 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
 github.com/blang/semver v3.5.0+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
-github.com/buildpacks/imgutil v0.0.0-20200828191547-108a5c59537a h1:l/veqbhUsWMzjA7nqMqStRb3IBtkbg3kmogcDxcglKg=
-github.com/buildpacks/imgutil v0.0.0-20200828191547-108a5c59537a/go.mod h1:Oj9x40zkDyafaKpvgPuLGFjzzrdQQ+w9DNi1JzqJV1I=
+github.com/buildpacks/imgutil v0.0.0-20200831154319-afd98bd2f655 h1:jIbUElEczuGsQaXaQ5RJw2ip+ka0ao4unuAHUHvUhCA=
+github.com/buildpacks/imgutil v0.0.0-20200831154319-afd98bd2f655/go.mod h1:Oj9x40zkDyafaKpvgPuLGFjzzrdQQ+w9DNi1JzqJV1I=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
