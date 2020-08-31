@@ -79,7 +79,7 @@ func RemoveLabels(image imgutil.Image, test func(string) bool) error {
 
 	for label := range labels {
 		if test(label) {
-			delete(labels, label)
+			image.RemoveLabel(label)
 		}
 	}
 	return nil
