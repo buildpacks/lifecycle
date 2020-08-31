@@ -113,6 +113,47 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, md.App, []interface{}{map[string]interface{}{"sha": "123456"}})
 			})
 
+			when("image has io.buildpacks.stack.* labels", func() {
+				var tests = []struct {
+					label             string
+					workingImageValue string
+					runImageValue     string
+					want              string
+				}{
+					{"io.buildpacks.stack.distro.name", "ubuntu", "ubuntu", "ubuntu"},
+					{"io.buildpacks.stack.changed", "v1", "v2", "v2"},
+					{"io.buildpacks.stack.added", "", "new", "new"},
+					{"io.buildpacks.stack.removed", "old", "", ""},
+					{"io.custom.old", "abc", "", "abc"},
+					{"io.custom.stack", "", "def", ""},
+				}
+
+				it.Before(func() {
+					for _, l := range tests {
+						if l.runImageValue != "" {
+							h.AssertNil(t, fakeNewBaseImage.SetLabel(l.label, l.runImageValue))
+						}
+						if l.workingImageValue != "" {
+							h.AssertNil(t, fakeWorkingImage.SetLabel(l.label, l.workingImageValue))
+						}
+					}
+				})
+
+				it("syncs matching labels", func() {
+					_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+					h.AssertNil(t, err)
+
+					for _, test := range tests {
+						test := test
+						t.Run(test.label, func(t *testing.T) {
+							actual, err := fakeWorkingImage.Label(test.label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, test.want, actual)
+						})
+					}
+				})
+			})
+
 			when("image has a digest identifier", func() {
 				var fakeRemoteDigest = "sha256:c27a27006b74a056bed5d9edcebc394783880abe8691a8c87c78b7cffa6fa5ad"
 
