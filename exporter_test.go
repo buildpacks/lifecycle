@@ -158,7 +158,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				fakeAppImage.AddPreviousLayer("local-reusable-layer-digest", "")
 				fakeAppImage.AddPreviousLayer("launch-layer-no-local-dir-digest", "")
 				fakeAppImage.AddPreviousLayer("process-types-digest", "")
-				h.AssertNil(t, json.Unmarshal([]byte(fmt.Sprintf(`
+				h.AssertNil(t, json.Unmarshal([]byte(`
 {
    "buildpacks": [
       {
@@ -193,7 +193,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
    "process-types": {
       "sha": "process-types-digest"
    }
-}`)), &opts.OrigMetadata))
+}`), &opts.OrigMetadata))
 			})
 
 			when("there are slices", func() {
