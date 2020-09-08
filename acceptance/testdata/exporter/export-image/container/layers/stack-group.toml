@@ -1,3 +1,0 @@
-group = [
-  { id = "example/stack", version = "1.0.0", api = "0.3" }
-]
