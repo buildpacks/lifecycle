@@ -57,7 +57,7 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringDoesNotContain(t, output, "file-to-ignore")
 			h.AssertStringDoesNotContain(t, output, ".wh.sbin")
 			h.AssertMatch(t, output, "bin/exe-to-snapshot")
-			// TODO verify timestamp is "1970-01-01 00:00"
+			h.AssertMatch(t, output, "usr/bin/.wh.apt")
 		})
 
 		it("creates layers and snapshot", func() {

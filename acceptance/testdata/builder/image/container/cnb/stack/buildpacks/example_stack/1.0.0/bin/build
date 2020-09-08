@@ -8,5 +8,8 @@ chmod +x /bin/exe-to-snapshot
 mkdir -p /cnb
 echo "hello" > /cnb/file-to-ignore
 
+# this should create a whiteout file
+rm -f /usr/bin/apt
+
 echo "done:stack"
 exit 0
