@@ -1,3 +1,5 @@
+// +build linux darwin
+
 package snapshot
 
 import (
@@ -6,6 +8,8 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/buildpacks/lifecycle"
 
 	kconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
 	ksnap "github.com/GoogleContainerTools/kaniko/pkg/snapshot"
@@ -18,7 +22,7 @@ type KanikoSnapshotter struct {
 	IgnoreList  IgnoreList
 }
 
-func NewKanikoSnapshotter(rootDir string) (*KanikoSnapshotter, error) {
+func NewKanikoSnapshotter(rootDir string) (lifecycle.LayerSnapshotter, error) {
 	ls := KanikoSnapshotter{
 		RootDir:    rootDir,
 		IgnoreList: KanikoFilesystemIgnoreList{},

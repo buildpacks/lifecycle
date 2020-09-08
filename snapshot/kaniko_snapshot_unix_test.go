@@ -1,3 +1,5 @@
+// +build linux darwin
+
 package snapshot_test
 
 import (
