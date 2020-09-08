@@ -1,6 +1,6 @@
 FROM ubuntu:bionic
 
-# TODO add metadata like it's a real run-image
+LABEL io.buildpacks.stack.id="exporter-run"
 
 ENV CNB_USER_ID=2222
 

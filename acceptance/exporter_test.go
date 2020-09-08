@@ -74,7 +74,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 	when("called", func() {
 		it.Before(func() {
-			newImageName = "test-container-" + h.RandString(10)
+			newImageName = "lifecycle/acceptance/test-container-" + h.RandString(10)
 		})
 
 		it.After(func() {
