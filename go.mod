@@ -11,11 +11,11 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.0.1-0.20200828004614-f20f49505162
 	github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5 // indirect
 	github.com/apex/log v1.3.0
-	github.com/buildpacks/imgutil v0.0.0-20200814190540-04db0a9bb84f
+	github.com/buildpacks/imgutil v0.0.0-20200831154319-afd98bd2f655
 	github.com/docker/cli v0.0.0-20200312141509-ef2f64abbd37 // indirect
 	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
 	github.com/golang/mock v1.4.4
-	github.com/google/go-cmp v0.5.1
+	github.com/google/go-cmp v0.5.2
 	github.com/google/go-containerregistry v0.1.2-0.20200804170047-b0d31a182cf0
 	github.com/heroku/color v0.0.6
 	github.com/pkg/errors v0.9.1

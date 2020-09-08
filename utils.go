@@ -61,3 +61,40 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 	}
 	return nil
 }
+
+func syncLabels(sourceImg imgutil.Image, destImage imgutil.Image, test func(string) bool) error {
+	if err := removeLabels(destImage, test); err != nil {
+		return err
+	}
+	return copyLabels(sourceImg, destImage, test)
+}
+
+func removeLabels(image imgutil.Image, test func(string) bool) error {
+	labels, err := image.Labels()
+	if err != nil {
+		return err
+	}
+
+	for label := range labels {
+		if test(label) {
+			image.RemoveLabel(label)
+		}
+	}
+	return nil
+}
+
+func copyLabels(fromImage imgutil.Image, destImage imgutil.Image, test func(string) bool) error {
+	fromLabels, err := fromImage.Labels()
+	if err != nil {
+		return err
+	}
+
+	for label, labelValue := range fromLabels {
+		if test(label) {
+			if err := destImage.SetLabel(label, labelValue); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
