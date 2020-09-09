@@ -29,7 +29,7 @@ func TestKanikoSnapshotter(t *testing.T) {
 	spec.Run(t, "Test Image", testKanikoSnapshotter)
 }
 
-//go:generate mockgen -package testmock -destination testmock/ignore_list.go github.com/buildpacks/lifecycle/snapshot IgnoreList
+//go:generate mockgen -package testmock -destination testmock/ignore_list_unix.go github.com/buildpacks/lifecycle/snapshot IgnoreList
 
 func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 	var (
