@@ -18,6 +18,7 @@ import (
 )
 
 func TestSnapshotLayers(t *testing.T) {
+	h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 	spec.Run(t, "Factory", testSnapshotLayers, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -55,8 +56,6 @@ func testSnapshotLayers(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("does something", func() {
-			h.SkipIf(t, runtime.GOOS == "windows", "These tests need to be adapted to work on Windows")
-
 			h.AssertEq(t, snapshotLayer.ID, "some-layer-id")
 			assertTarEntries(t, snapshotLayer.TarPath, []*tar.Header{
 				{
