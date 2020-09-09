@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/apex/log"
@@ -54,6 +55,8 @@ func testSnapshotLayers(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("does something", func() {
+			h.SkipIf(t, runtime.GOOS == "windows", "These tests need to be adapted to work on Windows")
+
 			h.AssertEq(t, snapshotLayer.ID, "some-layer-id")
 			assertTarEntries(t, snapshotLayer.TarPath, []*tar.Header{
 				{
