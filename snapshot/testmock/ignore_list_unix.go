@@ -5,9 +5,10 @@
 package testmock
 
 import (
+	reflect "reflect"
+
 	util "github.com/GoogleContainerTools/kaniko/pkg/util"
 	gomock "github.com/golang/mock/gomock"
-	reflect "reflect"
 )
 
 // MockIgnoreList is a mock of IgnoreList interface
