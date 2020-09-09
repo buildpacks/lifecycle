@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 
 	"github.com/BurntSushi/toml"
 
@@ -143,6 +142,10 @@ func (ba buildArgs) buildAsSubProcess() error {
 		return err
 	}
 
+	if err := priv.RunAs(ba.uid, ba.gid); err != nil {
+		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", ba.uid, ba.gid))
+	}
+
 	c := exec.Command(
 		filepath.Join(filepath.Dir(bin), "builder"),
 		fmt.Sprintf("-%s", cmd.FlagNameGroupPath), ba.groupPath,
@@ -150,8 +153,6 @@ func (ba buildArgs) buildAsSubProcess() error {
 		fmt.Sprintf("-%s", cmd.FlagNameBuildpacksDir), ba.buildpacksDir,
 		// TODO set other args
 	)
-	c.SysProcAttr = &syscall.SysProcAttr{}
-	c.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(ba.uid), Gid: uint32(ba.gid)}
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 
