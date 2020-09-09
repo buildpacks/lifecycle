@@ -11,7 +11,7 @@ import (
 type WindowsSnapshotter struct {
 }
 
-var errNotImplemented = errors.New("windows kaniko snapshotter is not implemented!")
+var errNotImplemented = errors.New("windows kaniko snapshotter is not implemented")
 
 func NewKanikoSnapshotter(rootDir string) (lifecycle.LayerSnapshotter, error) {
 	return &WindowsSnapshotter{}, nil
