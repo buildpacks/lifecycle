@@ -9,3 +9,5 @@ if exist detect-status-%bp_id%-%bp_version% (
     exit /b %%F
   )
 )
+
+exit /b 0
