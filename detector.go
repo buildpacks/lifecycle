@@ -437,9 +437,8 @@ func collectStackpacks(c *DetectConfig) ([]Buildpack, error) {
 	if _, err := os.Stat(c.StackBuildpacksDir); err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 
 	buildpackDirs, err := ioutil.ReadDir(c.StackBuildpacksDir)
