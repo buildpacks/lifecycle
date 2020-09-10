@@ -38,20 +38,18 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		}
 		platformDir = filepath.Join(tmpDir, "platform")
 		appDir := filepath.Join(tmpDir, "app")
-		stackBuildpacksDir := filepath.Join(tmpDir, "cnb", "stack", "buildpacks")
-		mkdir(t, appDir, filepath.Join(platformDir, "env"), stackBuildpacksDir)
+		mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
 		buildpacksDir := filepath.Join("testdata", "by-id")
 
 		logHandler = memory.New()
 		config = &lifecycle.DetectConfig{
-			FullEnv:            append(os.Environ(), "ENV_TYPE=full"),
-			ClearEnv:           append(os.Environ(), "ENV_TYPE=clear"),
-			AppDir:             appDir,
-			PlatformDir:        platformDir,
-			BuildpacksDir:      buildpacksDir,
-			StackBuildpacksDir: stackBuildpacksDir,
-			Logger:             &log.Logger{Handler: logHandler},
+			FullEnv:       append(os.Environ(), "ENV_TYPE=full"),
+			ClearEnv:      append(os.Environ(), "ENV_TYPE=clear"),
+			AppDir:        appDir,
+			PlatformDir:   platformDir,
+			BuildpacksDir: buildpacksDir,
+			Logger:        &log.Logger{Handler: logHandler},
 		}
 	})
 
@@ -770,18 +768,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		when("there are stack buildpacks", func() {
 			it.Before(func() {
-				h.RecursiveCopy(t, filepath.Join("testdata", "stackpacks"), config.StackBuildpacksDir)
+				config.StackBuildpacksDir = filepath.Join("testdata", "stackpacks")
 			})
 
-			it.After(func() {
-				err := os.RemoveAll(config.StackBuildpacksDir)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				mkdir(t, config.StackBuildpacksDir)
-			})
-
-			it.Focus("should select the first passing group", func() {
+			it("should select the first passing group", func() {
 				mkappfile("100", "detect-status")
 				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
 
@@ -796,6 +786,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Group: []lifecycle.Buildpack{
 						{ID: "A", Version: "v1", API: "0.3"},
 						{ID: "B", Version: "v1", API: "0.2"},
+						{ID: "stack_a", Version: "v1", API: "0.3", Privileged: true},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected group:\n%s\n", s)
@@ -809,15 +800,17 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"======== Results ========\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
+						"pass: stack_a@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"A v1\n"+
-						"B v1\n",
+						"A       v1\n"+
+						"B       v1\n"+
+						"stack_a v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
 			})
 
-			it.Focus("should not output detect pass and fail as info level", func() {
+			it("should not output detect pass and fail as info level", func() {
 				mkappfile("100", "detect-status")
 				mkappfile("0", "detect-status-A-v1")
 				mkappfile("100", "detect-status-B-v1")
