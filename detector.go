@@ -156,6 +156,17 @@ func (c *DetectConfig) process(done []Buildpack) ([]Buildpack, []BuildPlanEntry,
 			detected = detected && bp.Optional
 		}
 	}
+
+	if len(results) > 0 && detected {
+		detected = false
+		for _, res := range results {
+			if !res.Buildpack.Privileged {
+				detected = true
+				break
+			}
+		}
+	}
+
 	if !detected {
 		if buildpackErr {
 			return nil, nil, errBuildpack

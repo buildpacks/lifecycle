@@ -908,6 +908,33 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
 			})
+
+			it("should fail the group if only the stack buildpack passes detection", func() {
+				mkappfile("100", "detect-status")
+				mkappfile("100", "detect-status-A-v1")
+
+				_, plan, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Optional: true},
+					}},
+				}.Detect(config)
+
+				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: stack-a@v1\n"+
+						"skip: A@v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
 		})
 	})
 }
