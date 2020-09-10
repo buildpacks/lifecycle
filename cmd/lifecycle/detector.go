@@ -22,16 +22,18 @@ type detectCmd struct {
 
 type detectArgs struct {
 	// inputs needed when run by creator
-	buildpacksDir string
-	appDir        string
-	platformDir   string
-	orderPath     string
+	buildpacksDir      string
+	appDir             string
+	platformDir        string
+	orderPath          string
+	stackBuildpacksDir string
 }
 
 func (d *detectCmd) Init() {
 	cmd.FlagBuildpacksDir(&d.buildpacksDir)
 	cmd.FlagAppDir(&d.appDir)
 	cmd.FlagPlatformDir(&d.platformDir)
+	cmd.FlagStackBuildpacksDir(&d.stackBuildpacksDir)
 	cmd.FlagOrderPath(&d.orderPath)
 	cmd.FlagGroupPath(&d.groupPath)
 	cmd.FlagPlanPath(&d.planPath)
@@ -75,12 +77,13 @@ func (da detectArgs) detect() (lifecycle.BuildpackGroup, lifecycle.BuildPlan, er
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read full env")
 	}
 	group, plan, err := order.Detect(&lifecycle.DetectConfig{
-		FullEnv:       fullEnv,
-		ClearEnv:      envv.List(),
-		AppDir:        da.appDir,
-		PlatformDir:   da.platformDir,
-		BuildpacksDir: da.buildpacksDir,
-		Logger:        cmd.DefaultLogger,
+		FullEnv:            fullEnv,
+		ClearEnv:           envv.List(),
+		AppDir:             da.appDir,
+		PlatformDir:        da.platformDir,
+		BuildpacksDir:      da.buildpacksDir,
+		Logger:             cmd.DefaultLogger,
+		StackBuildpacksDir: da.stackBuildpacksDir,
 	})
 	if err != nil {
 		switch err := err.(type) {
