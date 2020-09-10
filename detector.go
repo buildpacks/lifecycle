@@ -380,6 +380,13 @@ func (bg BuildpackGroup) append(group ...BuildpackGroup) BuildpackGroup {
 	return bg
 }
 
+func (bg BuildpackGroup) prepend(group ...BuildpackGroup) BuildpackGroup {
+	for _, g := range group {
+		bg.Group = append(g.Group, bg.Group...)
+	}
+	return bg
+}
+
 type BuildpackOrder []BuildpackGroup
 
 func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, error) {
@@ -406,22 +413,13 @@ func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.
 	if err != nil {
 		return nil, nil, NewLifecycleError(err, ErrTypeBuildpack)
 	}
-
-	if len(stackBps) > 0 {
-		finalOrder := BuildpackOrder{}
-		for _, grp := range bo {
-			grp.Group = append(stackBps, grp.Group...)
-			finalOrder = append(finalOrder, grp)
-		}
-
-		bo = finalOrder
-	}
+	sgroup := BuildpackGroup{Group: stackBps}
 
 	ngroup := BuildpackGroup{Group: next}
 	buildpackErr := false
 	for _, group := range bo {
 		// FIXME: double-check slice safety here
-		found, plan, err := group.append(ngroup).detect(done, wg, c)
+		found, plan, err := group.prepend(sgroup).append(ngroup).detect(done, wg, c)
 		if err == errBuildpack {
 			buildpackErr = true
 		}
