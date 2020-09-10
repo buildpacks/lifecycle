@@ -810,6 +810,84 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should fail with specific error if stack buildpack fails in unexpected way", func() {
+				mkappfile("100", "detect-status")
+				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
+				mkappfile("127", "detect-status-stack_a-v1")
+
+				group, plan, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected group:\n%s\n", s)
+				}
+
+				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"pass: B@v1\n"+
+						"err:  stack_a@v1 (127)\n"+
+						"Resolving plan... (try #1)\n"+
+						"2 of 3 buildpacks participating\n"+
+						"A v1\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should skip if stack buildpack detection fails", func() {
+				mkappfile("100", "detect-status")
+				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
+				mkappfile("100", "detect-status-stack_a-v1")
+
+				group, plan, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected group:\n%s\n", s)
+				}
+
+				if !hasEntries(plan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"pass: B@v1\n"+
+						"skip: stack_a@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"2 of 3 buildpacks participating\n"+
+						"A v1\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
 			it("should not output detect pass and fail as info level", func() {
 				mkappfile("100", "detect-status")
 				mkappfile("0", "detect-status-A-v1")

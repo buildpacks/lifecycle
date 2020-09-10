@@ -1,6 +1,6 @@
 api = "0.3"
 
 [buildpack]
-id = "stack/a"
+id = "stack_a"
 name = "Stack Buildpack A"
 version = "v1"
