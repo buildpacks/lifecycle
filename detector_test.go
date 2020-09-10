@@ -786,7 +786,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Group: []lifecycle.Buildpack{
 						{ID: "A", Version: "v1", API: "0.3"},
 						{ID: "B", Version: "v1", API: "0.2"},
-						{ID: "stack_a", Version: "v1", API: "0.3", Privileged: true},
+						{ID: "stack-a", Version: "v1", API: "0.3", Privileged: true},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected group:\n%s\n", s)
@@ -800,11 +800,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"======== Results ========\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
-						"pass: stack_a@v1\n"+
+						"pass: stack-a@v1\n"+
 						"Resolving plan... (try #1)\n"+
 						"A       v1\n"+
 						"B       v1\n"+
-						"stack_a v1\n",
+						"stack-a v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
@@ -813,7 +813,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			it("should fail with specific error if stack buildpack fails in unexpected way", func() {
 				mkappfile("100", "detect-status")
 				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
-				mkappfile("127", "detect-status-stack_a-v1")
+				mkappfile("127", "detect-status-stack-a-v1")
 
 				group, plan, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
@@ -839,7 +839,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"======== Results ========\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
-						"err:  stack_a@v1 (127)\n"+
+						"err:  stack-a@v1 (127)\n"+
 						"Resolving plan... (try #1)\n"+
 						"2 of 3 buildpacks participating\n"+
 						"A v1\n"+
@@ -852,7 +852,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			it("should skip if stack buildpack detection fails", func() {
 				mkappfile("100", "detect-status")
 				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
-				mkappfile("100", "detect-status-stack_a-v1")
+				mkappfile("100", "detect-status-stack-a-v1")
 
 				group, plan, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
@@ -878,7 +878,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"======== Results ========\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
-						"skip: stack_a@v1\n"+
+						"skip: stack-a@v1\n"+
 						"Resolving plan... (try #1)\n"+
 						"2 of 3 buildpacks participating\n"+
 						"A v1\n"+
