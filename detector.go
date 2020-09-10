@@ -387,12 +387,7 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 		c.runs = &sync.Map{}
 	}
 
-	stackBps, err := collectStackpacks(c)
-	if err != nil {
-		return BuildpackGroup{}, BuildPlan{}, NewLifecycleError(err, ErrTypeBuildpack)
-	}
-
-	bps, entries, err := bo.detect(nil, stackBps, false, &sync.WaitGroup{}, c)
+	bps, entries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
 	if err == errBuildpack {
 		err = NewLifecycleError(err, ErrTypeBuildpack)
 	} else if err == errFailedDetection {
@@ -407,6 +402,21 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 }
 
 func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []BuildPlanEntry, error) {
+	stackBps, err := collectStackpacks(c)
+	if err != nil {
+		return nil, nil, NewLifecycleError(err, ErrTypeBuildpack)
+	}
+
+	if len(stackBps) > 0 {
+		finalOrder := BuildpackOrder{}
+		for _, grp := range bo {
+			grp.Group = append(stackBps, grp.Group...)
+			finalOrder = append(finalOrder, grp)
+		}
+
+		bo = finalOrder
+	}
+
 	ngroup := BuildpackGroup{Group: next}
 	buildpackErr := false
 	for _, group := range bo {
