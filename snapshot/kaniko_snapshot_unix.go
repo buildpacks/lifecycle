@@ -17,46 +17,23 @@ import (
 )
 
 type KanikoSnapshotter struct {
-	RootDir     string
-	snapshotter *ksnap.Snapshotter
-	IgnoreList  IgnoreList
+	RootDir                    string
+	DetectFilesystemIgnoreList bool
+	IgnoredPaths               []string
+	snapshotter                *ksnap.Snapshotter
 }
 
 func NewKanikoSnapshotter(rootDir string) (lifecycle.LayerSnapshotter, error) {
 	ls := KanikoSnapshotter{
-		RootDir:    rootDir,
-		IgnoreList: KanikoFilesystemIgnoreList{},
+		RootDir:                    rootDir,
+		DetectFilesystemIgnoreList: true,
+		IgnoredPaths: []string{
+			"/tmp",
+			"/layers",
+			"/cnb",
+		},
 	}
 	return &ls, nil
-}
-
-type IgnoreList interface {
-	Load() error
-	CustomEntries() []kutil.IgnoreListEntry
-}
-
-type KanikoFilesystemIgnoreList struct {
-}
-
-func (i KanikoFilesystemIgnoreList) Load() error {
-	return kutil.DetectFilesystemIgnoreList(kconfig.IgnoreListPath)
-}
-
-func (i KanikoFilesystemIgnoreList) CustomEntries() []kutil.IgnoreListEntry {
-	return []kutil.IgnoreListEntry{
-		{
-			Path:            "/tmp",
-			PrefixMatchOnly: true,
-		},
-		{
-			Path:            "/layers",
-			PrefixMatchOnly: true,
-		},
-		{
-			Path:            "/cnb",
-			PrefixMatchOnly: true,
-		},
-	}
 }
 
 func (ls *KanikoSnapshotter) Init() error {
@@ -68,11 +45,13 @@ func (ls *KanikoSnapshotter) Init() error {
 	}
 	kconfig.KanikoDir = kanikoDir
 
-	if err := ls.IgnoreList.Load(); err != nil {
-		return err
+	if ls.DetectFilesystemIgnoreList {
+		if err := kutil.DetectFilesystemIgnoreList(kconfig.IgnoreListPath); err != nil {
+			return err
+		}
 	}
 
-	for _, e := range ls.IgnoreList.CustomEntries() {
+	for _, e := range ignoreList(ls.IgnoredPaths) {
 		kutil.AddToIgnoreList(e)
 	}
 
@@ -111,4 +90,17 @@ func (ls *KanikoSnapshotter) TakeSnapshot(snapshotLayerFile string) error {
 
 func (ls *KanikoSnapshotter) GetRootDir() string {
 	return ls.RootDir
+}
+
+func ignoreList(pathsToIgnore []string) []kutil.IgnoreListEntry {
+	result := []kutil.IgnoreListEntry{}
+
+	for _, path := range pathsToIgnore {
+		result = append(result, kutil.IgnoreListEntry{
+			Path:            path,
+			PrefixMatchOnly: true,
+		})
+	}
+
+	return result
 }
