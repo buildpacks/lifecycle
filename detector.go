@@ -457,12 +457,12 @@ func collectStackpacks(c *DetectConfig) ([]Buildpack, error) {
 			}
 
 			buildpackID := filepath.Base(buildpackDir.Name())
-			if len(buildpackVersionDirs) > 0  && buildpackVersionDirs[0].IsDir() {
+			if len(buildpackVersionDirs) > 0 && buildpackVersionDirs[0].IsDir() {
 				buildpackVersion := filepath.Base(buildpackVersionDirs[0].Name())
 				bp := Buildpack{
-					ID: buildpackID,
-					Version: buildpackVersion,
-					Optional: true,
+					ID:         buildpackID,
+					Version:    buildpackVersion,
+					Optional:   true,
 					Privileged: true,
 				}
 				stackpacks = append(stackpacks, bp)
