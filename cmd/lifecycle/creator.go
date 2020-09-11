@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle"
-
 	"github.com/docker/docker/client"
 
 	"github.com/buildpacks/lifecycle/cmd"
@@ -116,7 +114,7 @@ func (c *createCmd) Exec() error {
 	}
 
 	cmd.DefaultLogger.Phase("DETECTING")
-	group, plan, err := detectArgs{
+	dr, err := detectArgs{
 		buildpacksDir: c.buildpacksDir,
 		appDir:        c.appDir,
 		platformDir:   c.platformDir,
@@ -133,14 +131,14 @@ func (c *createCmd) Exec() error {
 		skipLayers: c.skipRestore,
 		useDaemon:  c.useDaemon,
 		docker:     c.docker,
-	}.analyze(group, cacheStore)
+	}.analyze(dr.Group, cacheStore)
 	if err != nil {
 		return err
 	}
 
 	if !c.skipRestore {
 		cmd.DefaultLogger.Phase("RESTORING")
-		if err := restore(c.layersDir, group, cacheStore); err != nil {
+		if err := restore(c.layersDir, dr.Group, cacheStore); err != nil {
 			return err
 		}
 	}
@@ -152,7 +150,7 @@ func (c *createCmd) Exec() error {
 		appDir:        c.appDir,
 		platformAPI:   c.platformAPI,
 		platformDir:   c.platformDir,
-	}.buildAll(group, lifecycle.BuildpackGroup{}, plan)
+	}.buildAll(dr.Group, dr.StackGroup, dr.Plan)
 	if err != nil {
 		return err
 	}
@@ -174,5 +172,5 @@ func (c *createCmd) Exec() error {
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
-	}.export(lifecycle.BuildpackGroup{}, group, cacheStore, analyzedMD)
+	}.export(dr.StackGroup, dr.Group, cacheStore, analyzedMD)
 }

@@ -400,12 +400,18 @@ func (bg BuildpackGroup) prepend(group ...BuildpackGroup) BuildpackGroup {
 
 type BuildpackOrder []BuildpackGroup
 
-func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, error) {
+type DetectResult struct {
+	Group      BuildpackGroup
+	StackGroup BuildpackGroup
+	Plan       BuildPlan
+}
+
+func (bo BuildpackOrder) Detect(c *DetectConfig) (DetectResult, error) {
 	if c.runs == nil {
 		c.runs = &sync.Map{}
 	}
 
-	bps, entries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
+	allbps, entries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
 	if err == errBuildpack {
 		err = NewLifecycleError(err, ErrTypeBuildpack)
 	} else if err == errFailedDetection {
@@ -416,7 +422,23 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (BuildpackGroup, BuildPlan, err
 			entries[i].Requires[j].convertVersionToMetadata()
 		}
 	}
-	return BuildpackGroup{Group: bps}, BuildPlan{Entries: entries}, err
+
+	stackBps := []Buildpack{}
+	bps := []Buildpack{}
+
+	for _, bp := range allbps {
+		if bp.Privileged {
+			stackBps = append(stackBps, bp)
+		} else {
+			bps = append(bps, bp)
+		}
+	}
+
+	return DetectResult{
+		Group:      BuildpackGroup{Group: bps},
+		StackGroup: BuildpackGroup{Group: stackBps},
+		Plan:       BuildPlan{Entries: entries},
+	}, err
 }
 
 func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []BuildPlanEntry, error) {
