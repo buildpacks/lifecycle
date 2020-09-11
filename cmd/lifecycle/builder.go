@@ -151,6 +151,8 @@ func (ba buildArgs) buildAsSubProcess() error {
 		fmt.Sprintf("-%s", cmd.FlagNameGroupPath), ba.groupPath,
 		fmt.Sprintf("-%s", cmd.FlagNamePlanPath), ba.planPath,
 		fmt.Sprintf("-%s", cmd.FlagNameBuildpacksDir), ba.buildpacksDir,
+		// explicitly omit StackGroupPath to skip Stack Buildpacks on this execution
+		fmt.Sprintf("-%s", cmd.FlagNameStackGroupPath), "",
 		// TODO set other args
 	)
 	c.Stdout = os.Stdout

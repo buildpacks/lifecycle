@@ -60,9 +60,10 @@ const (
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 
-	FlagNameBuildpacksDir = "buildpacks"
-	FlagNameGroupPath     = "group"
-	FlagNamePlanPath      = "plan"
+	FlagNameBuildpacksDir  = "buildpacks"
+	FlagNameGroupPath      = "group"
+	FlagNamePlanPath       = "plan"
+	FlagNameStackGroupPath = "stack-group"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -152,7 +153,7 @@ func FlagStackPath(path *string) {
 }
 
 func FlagStackGroupPath(path *string) {
-	flagSet.StringVar(path, "stack-group", EnvOrDefault(EnvStackGroupPath, DefaultStackGroupPath), "path to stack-group.toml")
+	flagSet.StringVar(path, FlagNameStackGroupPath, EnvOrDefault(EnvStackGroupPath, DefaultStackGroupPath), "path to stack-group.toml")
 }
 
 func FlagTags(tags *StringSlice) {
