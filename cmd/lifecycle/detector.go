@@ -66,16 +66,16 @@ func (d *detectCmd) Exec() error {
 	return d.writeData(dr)
 }
 
-func (da detectArgs) mergeOrderWithStackBuildpacks(order *lifecycle.BuildpackOrder) error {
+func (da detectArgs) mergeOrderWithStackBuildpacks(order lifecycle.BuildpackOrder) (lifecycle.BuildpackOrder, error) {
 	if _, err := os.Stat(da.stackBuildpacksDir); err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return nil, nil
 		}
 	}
 
 	buildpackDirs, err := ioutil.ReadDir(da.stackBuildpacksDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	stackBuildpacks := []lifecycle.Buildpack{}
@@ -86,7 +86,7 @@ func (da detectArgs) mergeOrderWithStackBuildpacks(order *lifecycle.BuildpackOrd
 			path := filepath.Join(da.stackBuildpacksDir, buildpackDir.Name())
 			buildpackVersionDirs, err := ioutil.ReadDir(path)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			buildpackID := filepath.Base(buildpackDir.Name())
@@ -104,14 +104,15 @@ func (da detectArgs) mergeOrderWithStackBuildpacks(order *lifecycle.BuildpackOrd
 	}
 
 	if len(stackBuildpacks) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	for _, grp := range *order {
-		grp.Group = append(stackBuildpacks, grp.Group...)
+	fo := lifecycle.BuildpackOrder{}
+	for _, grp := range order {
+		fo = append(fo, lifecycle.BuildpackGroup{Group: append(stackBuildpacks, grp.Group...)})
 	}
 
-	return nil
+	return fo, nil
 }
 
 func (da detectArgs) detect() (lifecycle.DetectResult, error) {
@@ -120,7 +121,7 @@ func (da detectArgs) detect() (lifecycle.DetectResult, error) {
 		return lifecycle.DetectResult{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
-	err = da.mergeOrderWithStackBuildpacks(&order)
+	order, err = da.mergeOrderWithStackBuildpacks(order)
 	if err != nil {
 		return lifecycle.DetectResult{}, cmd.FailErr(err, "merge stack buildpacks into order")
 	}

@@ -64,9 +64,13 @@ func (b *buildCmd) Privileges() error {
 		return err
 	}
 
+	hasStackGroups := len(stackGroup.Group) > 0
+
 	// builder should never be run with privileges if there aren't any stack buildpacks
-	if len(stackGroup.Group) == 0 && priv.IsPrivileged() {
+	if !hasStackGroups && priv.IsPrivileged() {
 		return cmd.FailErr(errors.New("refusing to run as root"), "build")
+	} else if hasStackGroups && !priv.IsPrivileged() {
+		return cmd.FailErr(errors.New("must run as root"), "build")
 	}
 	return nil
 }
