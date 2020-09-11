@@ -69,7 +69,7 @@ func (d *detectCmd) Exec() error {
 func (da detectArgs) mergeOrderWithStackBuildpacks(order lifecycle.BuildpackOrder) (lifecycle.BuildpackOrder, error) {
 	if _, err := os.Stat(da.stackBuildpacksDir); err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return order, nil
 		}
 	}
 
@@ -104,7 +104,7 @@ func (da detectArgs) mergeOrderWithStackBuildpacks(order lifecycle.BuildpackOrde
 	}
 
 	if len(stackBuildpacks) == 0 {
-		return nil, nil
+		return order, nil
 	}
 
 	fo := lifecycle.BuildpackOrder{}
