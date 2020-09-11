@@ -25,6 +25,7 @@ var (
 	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
 	DefaultReportPath          = filepath.Join(".", "report.toml")
 	DefaultStackBuildpacksDir  = filepath.Join(rootDir, "cnb", "stack", "buildpacks")
+	DefaultStackGroupPath      = filepath.Join(".", "stack-group.toml")
 	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
 )
 
@@ -151,7 +152,7 @@ func FlagStackPath(path *string) {
 }
 
 func FlagStackGroupPath(path *string) {
-	flagSet.StringVar(path, "stack-group", EnvOrDefault(EnvStackGroupPath, ""), "path to stack-group.toml")
+	flagSet.StringVar(path, "stack-group", EnvOrDefault(EnvStackGroupPath, DefaultStackGroupPath), "path to stack-group.toml")
 }
 
 func FlagTags(tags *StringSlice) {

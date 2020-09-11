@@ -129,8 +129,7 @@ func (d *detectCmd) writeData(dr lifecycle.DetectResult) error {
 		return cmd.FailErr(err, "write buildpack group")
 	}
 
-	// we need to find a way to opt in that probably isn't the -stack-group-path flag
-	if d.stackBuildpacksDir != "" {
+	if len(dr.StackGroup.Group) > 0 {
 		if err := lifecycle.WriteTOML(d.stackGroupPath, dr.StackGroup); err != nil {
 			return cmd.FailErr(err, "write stack buildpack group")
 		}
