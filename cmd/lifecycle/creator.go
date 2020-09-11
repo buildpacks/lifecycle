@@ -150,7 +150,7 @@ func (c *createCmd) Exec() error {
 		appDir:        c.appDir,
 		platformAPI:   c.platformAPI,
 		platformDir:   c.platformDir,
-	}.buildAll(dr.Group, dr.StackGroup, dr.Plan)
+	}.buildAll(dr.Group, dr.PrivilegedGroup, dr.Plan)
 	if err != nil {
 		return err
 	}
@@ -172,5 +172,5 @@ func (c *createCmd) Exec() error {
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
-	}.export(dr.StackGroup, dr.Group, cacheStore, analyzedMD)
+	}.export(dr.PrivilegedGroup, dr.Group, cacheStore, analyzedMD)
 }

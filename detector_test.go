@@ -776,7 +776,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
 
 				dr, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
+					{
+						Group: []lifecycle.Buildpack{
+							{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+							{ID: "E", Version: "v1"}},
+					},
 				}.Detect(config)
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
@@ -791,7 +795,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected group:\n%s\n", s)
 				}
 
-				if s := cmp.Diff(dr.StackGroup, lifecycle.BuildpackGroup{
+				if s := cmp.Diff(dr.PrivilegedGroup, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
 						{ID: "stack-a", Version: "v1", API: "0.3", Privileged: true},
 					},
@@ -823,7 +827,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				mkappfile("127", "detect-status-stack-a-v1")
 
 				dr, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
+					{
+						Group: []lifecycle.Buildpack{
+							{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+							{ID: "E", Version: "v1"}},
+					},
 				}.Detect(config)
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
@@ -862,7 +870,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				mkappfile("100", "detect-status-stack-a-v1")
 
 				dr, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{{ID: "E", Version: "v1"}}},
+					{
+						Group: []lifecycle.Buildpack{
+							{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+							{ID: "E", Version: "v1"}},
+					},
 				}.Detect(config)
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
@@ -903,6 +915,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				_, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
+						{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
 						{ID: "A", Version: "v1", Optional: false},
 						{ID: "B", Version: "v1", Optional: false},
 					}},
@@ -922,6 +935,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				dr, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
+						{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
 						{ID: "A", Version: "v1", Optional: true},
 					}},
 				}.Detect(config)

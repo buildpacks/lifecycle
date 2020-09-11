@@ -355,11 +355,11 @@ func (bg BuildpackGroup) detect(done []Buildpack, wg *sync.WaitGroup, c *DetectC
 			err  error
 			info *BuildpackTOML
 		)
+		bpDir := c.BuildpacksDir
 		if bp.Privileged {
-			info, err = bp.Lookup(c.StackBuildpacksDir)
-		} else {
-			info, err = bp.Lookup(c.BuildpacksDir)
+			bpDir = c.StackBuildpacksDir
 		}
+		info, err = bp.Lookup(bpDir)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -391,19 +391,12 @@ func (bg BuildpackGroup) append(group ...BuildpackGroup) BuildpackGroup {
 	return bg
 }
 
-func (bg BuildpackGroup) prepend(group ...BuildpackGroup) BuildpackGroup {
-	for _, g := range group {
-		bg.Group = append(g.Group, bg.Group...)
-	}
-	return bg
-}
-
 type BuildpackOrder []BuildpackGroup
 
 type DetectResult struct {
-	Group      BuildpackGroup
-	StackGroup BuildpackGroup
-	Plan       BuildPlan
+	Group           BuildpackGroup
+	PrivilegedGroup BuildpackGroup
+	Plan            BuildPlan
 }
 
 func (bo BuildpackOrder) Detect(c *DetectConfig) (DetectResult, error) {
@@ -435,24 +428,18 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (DetectResult, error) {
 	}
 
 	return DetectResult{
-		Group:      BuildpackGroup{Group: bps},
-		StackGroup: BuildpackGroup{Group: stackBps},
-		Plan:       BuildPlan{Entries: entries},
+		Group:           BuildpackGroup{Group: bps},
+		PrivilegedGroup: BuildpackGroup{Group: stackBps},
+		Plan:            BuildPlan{Entries: entries},
 	}, err
 }
 
 func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.WaitGroup, c *DetectConfig) ([]Buildpack, []BuildPlanEntry, error) {
-	stackBps, err := collectStackpacks(c)
-	if err != nil {
-		return nil, nil, NewLifecycleError(err, ErrTypeBuildpack)
-	}
-	sgroup := BuildpackGroup{Group: stackBps}
-
 	ngroup := BuildpackGroup{Group: next}
 	buildpackErr := false
 	for _, group := range bo {
 		// FIXME: double-check slice safety here
-		found, plan, err := group.prepend(sgroup).append(ngroup).detect(done, wg, c)
+		found, plan, err := group.append(ngroup).detect(done, wg, c)
 		if err == errBuildpack {
 			buildpackErr = true
 		}
@@ -470,47 +457,6 @@ func (bo BuildpackOrder) detect(done, next []Buildpack, optional bool, wg *sync.
 		return nil, nil, errBuildpack
 	}
 	return nil, nil, errFailedDetection
-}
-
-func collectStackpacks(c *DetectConfig) ([]Buildpack, error) {
-	var stackpacks []Buildpack
-
-	if _, err := os.Stat(c.StackBuildpacksDir); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	buildpackDirs, err := ioutil.ReadDir(c.StackBuildpacksDir)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, buildpackDir := range buildpackDirs {
-		if buildpackDir.IsDir() {
-			// TODO get the latest version dir, or maybe error if there is more than one
-			path := filepath.Join(c.StackBuildpacksDir, buildpackDir.Name())
-			buildpackVersionDirs, err := ioutil.ReadDir(path)
-			if err != nil {
-				return nil, err
-			}
-
-			buildpackID := filepath.Base(buildpackDir.Name())
-			if len(buildpackVersionDirs) > 0 && buildpackVersionDirs[0].IsDir() {
-				buildpackVersion := filepath.Base(buildpackVersionDirs[0].Name())
-				bp := Buildpack{
-					ID:         buildpackID,
-					Version:    buildpackVersion,
-					Optional:   true,
-					Privileged: true,
-				}
-				stackpacks = append(stackpacks, bp)
-			}
-		}
-	}
-
-	return stackpacks, nil
 }
 
 func hasID(bps []Buildpack, id string) bool {
