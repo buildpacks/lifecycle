@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 
@@ -22,14 +23,14 @@ import (
 type buildCmd struct {
 	// flags: inputs
 	stackGroupPath string
+	groupPath      string
+	planPath       string
 	buildArgs
 }
 
 type buildArgs struct {
 	// inputs needed when run by creator
 	uid, gid           int
-	groupPath          string
-	planPath           string
 	buildpacksDir      string
 	layersDir          string
 	appDir             string
@@ -141,23 +142,35 @@ func (ba buildArgs) stackBuild(builder *lifecycle.Builder) error {
 }
 
 func (ba buildArgs) buildAsSubProcess() error {
-	bin, err := os.Executable()
-	if err != nil {
-		return err
-	}
-
 	if err := priv.RunAs(ba.uid, ba.gid); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", ba.uid, ba.gid))
 	}
 
+	// TODO: is this parsed anywhere already?
+	// we need to handle arg <value> and arg=<value> to remove the argument on re-exec
+	var args = os.Args[1:]
+	var sgPathIndex int
+	var sgPathIndexLength int = 2
+	for i, arg := range args {
+		if strings.HasPrefix(arg, cmd.FlagNameStackGroupPath) {
+			sgPathIndex = i
+			if strings.Contains(arg, "=") {
+				sgPathIndexLength = 1
+			}
+			break
+		}
+	}
+
+	if sgPathIndex > 0 {
+		args = append(args[:sgPathIndex], args[sgPathIndex+sgPathIndexLength:]...)
+	}
+
+	// explicitly omit StackGroupPath to skip Stack Buildpacks on this execution
+	args = append(args, fmt.Sprintf("-%s", cmd.FlagNameStackGroupPath), "")
+
 	c := exec.Command(
-		filepath.Join(filepath.Dir(bin), "builder"),
-		fmt.Sprintf("-%s", cmd.FlagNameGroupPath), ba.groupPath,
-		fmt.Sprintf("-%s", cmd.FlagNamePlanPath), ba.planPath,
-		fmt.Sprintf("-%s", cmd.FlagNameBuildpacksDir), ba.buildpacksDir,
-		// explicitly omit StackGroupPath to skip Stack Buildpacks on this execution
-		fmt.Sprintf("-%s", cmd.FlagNameStackGroupPath), "",
-		// TODO set other args
+		os.Args[0],
+		args...,
 	)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

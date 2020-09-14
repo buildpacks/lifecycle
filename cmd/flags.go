@@ -60,9 +60,6 @@ const (
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 
-	FlagNameBuildpacksDir  = "buildpacks"
-	FlagNameGroupPath      = "group"
-	FlagNamePlanPath       = "plan"
 	FlagNameStackGroupPath = "stack-group"
 )
 
@@ -77,7 +74,7 @@ func FlagAppDir(dir *string) {
 }
 
 func FlagBuildpacksDir(dir *string) {
-	flagSet.StringVar(dir, FlagNameBuildpacksDir, EnvOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
+	flagSet.StringVar(dir, "buildpacks", EnvOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
 func FlagCacheDir(dir *string) {
@@ -93,7 +90,7 @@ func FlagGID(gid *int) {
 }
 
 func FlagGroupPath(path *string) {
-	flagSet.StringVar(path, FlagNameGroupPath, EnvOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
+	flagSet.StringVar(path, "group", EnvOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
 }
 
 func FlagLaunchCacheDir(dir *string) {
@@ -117,7 +114,7 @@ func FlagOrderPath(path *string) {
 }
 
 func FlagPlanPath(path *string) {
-	flagSet.StringVar(path, FlagNamePlanPath, EnvOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
+	flagSet.StringVar(path, "plan", EnvOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
 }
 
 func FlagPlatformDir(dir *string) {
