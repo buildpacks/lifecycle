@@ -82,17 +82,6 @@ func (b *buildCmd) Exec() error {
 		return err
 	}
 
-	if len(stackGroup.Group) == 0 {
-		builder, err := b.createBuilder(group, lifecycle.BuildpackGroup{}, plan, b.buildpacksDir)
-		if err != nil {
-			return err
-		}
-		return b.build(builder)
-	}
-	return b.buildAll(group, stackGroup, plan)
-}
-
-func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	if err := verifyBuildpackApis(group); err != nil {
 		return err
 	}
@@ -101,12 +90,45 @@ func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan li
 		return err
 	}
 
-	builder, err := ba.createBuilder(group, stackGroup, plan, ba.stackBuildpacksDir)
+	if len(stackGroup.Group) == 0 {
+		builder, err := b.createBuilder(group, lifecycle.BuildpackGroup{}, plan, b.buildpacksDir)
+		if err != nil {
+			return err
+		}
+		return b.execBuild(builder)
+	}
+	return b.buildWithReexec(group, stackGroup, plan)
+}
+
+func (ba buildArgs) build(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	builder, err := ba.createBuilder(group, stackGroup, plan, ba.buildpacksDir)
 	if err != nil {
 		return err
 	}
 
-	if err = ba.stackBuild(builder); err != nil {
+	if len(stackGroup.Group) == 0 {
+		return ba.execBuild(builder)
+	}
+
+	sbuilder, err := ba.createBuilder(group, stackGroup, plan, ba.stackBuildpacksDir)
+	if err != nil {
+		return err
+	}
+
+	if err = ba.stackBuild(sbuilder); err != nil {
+		return err
+	}
+
+	return ba.execBuild(builder)
+}
+
+func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	sbuilder, err := ba.createBuilder(group, stackGroup, plan, ba.stackBuildpacksDir)
+	if err != nil {
+		return err
+	}
+
+	if err = ba.stackBuild(sbuilder); err != nil {
 		return err
 	}
 
@@ -178,7 +200,7 @@ func (ba buildArgs) buildAsSubProcess() error {
 	return c.Run()
 }
 
-func (ba buildArgs) build(builder *lifecycle.Builder) error {
+func (ba buildArgs) execBuild(builder *lifecycle.Builder) error {
 	md, err := builder.Build()
 	if err != nil {
 		if err, ok := err.(*lifecycle.Error); ok {

@@ -14,6 +14,7 @@ type createCmd struct {
 	//flags: inputs
 	appDir              string
 	buildpacksDir       string
+	stackBuildpacksDir  string
 	cacheDir            string
 	cacheImageTag       string
 	imageName           string
@@ -53,6 +54,7 @@ func (c *createCmd) Init() {
 	cmd.FlagReportPath(&c.reportPath)
 	cmd.FlagRunImage(&c.runImageRef)
 	cmd.FlagSkipRestore(&c.skipRestore)
+	cmd.FlagStackBuildpacksDir(&c.stackBuildpacksDir)
 	cmd.FlagStackPath(&c.stackPath)
 	cmd.FlagUID(&c.uid)
 	cmd.FlagUseDaemon(&c.useDaemon)
@@ -115,10 +117,11 @@ func (c *createCmd) Exec() error {
 
 	cmd.DefaultLogger.Phase("DETECTING")
 	dr, err := detectArgs{
-		buildpacksDir: c.buildpacksDir,
-		appDir:        c.appDir,
-		platformDir:   c.platformDir,
-		orderPath:     c.orderPath,
+		buildpacksDir:      c.buildpacksDir,
+		stackBuildpacksDir: c.stackBuildpacksDir,
+		appDir:             c.appDir,
+		platformDir:        c.platformDir,
+		orderPath:          c.orderPath,
 	}.detect()
 	if err != nil {
 		return err
@@ -144,13 +147,15 @@ func (c *createCmd) Exec() error {
 	}
 
 	cmd.DefaultLogger.Phase("BUILDING")
+	// TODO: we need to elevate/drop privs between stack buildpacks and regulard buildpacks
 	err = buildArgs{
-		buildpacksDir: c.buildpacksDir,
-		layersDir:     c.layersDir,
-		appDir:        c.appDir,
-		platformAPI:   c.platformAPI,
-		platformDir:   c.platformDir,
-	}.buildAll(dr.Group, dr.PrivilegedGroup, dr.Plan)
+		buildpacksDir:      c.buildpacksDir,
+		layersDir:          c.layersDir,
+		appDir:             c.appDir,
+		platformAPI:        c.platformAPI,
+		platformDir:        c.platformDir,
+		stackBuildpacksDir: c.stackBuildpacksDir,
+	}.build(dr.Group, dr.PrivilegedGroup, dr.Plan)
 	if err != nil {
 		return err
 	}
