@@ -88,10 +88,6 @@ func (ls *KanikoSnapshotter) TakeSnapshot(snapshotLayerFile string) error {
 	return out.Close()
 }
 
-func (ls *KanikoSnapshotter) GetRootDir() string {
-	return ls.RootDir
-}
-
 func ignoreList(pathsToIgnore []string) []kutil.IgnoreListEntry {
 	result := []kutil.IgnoreListEntry{}
 

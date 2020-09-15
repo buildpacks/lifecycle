@@ -46,7 +46,6 @@ type LaunchTOML struct {
 }
 
 type LayerSnapshotter interface {
-	GetRootDir() string
 	TakeSnapshot(string) error
 	Init() error
 }
@@ -99,8 +98,12 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 }
 
 func (b *Builder) StackBuild() (*BuildMetadata, error) {
-	// TODO hide the b.AppDir from the stackpacks?
 	layersDir, err := filepath.Abs(b.LayersDir)
+	if err != nil {
+		return nil, err
+	}
+
+	workspaceDir, err := ioutil.TempDir("", "stack-workspace")
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +118,7 @@ func (b *Builder) StackBuild() (*BuildMetadata, error) {
 		return nil, err
 	}
 	for _, bp := range b.StackGroup.Group {
-		launchData, newPlan, bpBOM, err := b.build(bp, b.Snapshotter.GetRootDir(), plan)
+		launchData, newPlan, bpBOM, err := b.build(bp, workspaceDir, plan)
 		if err != nil {
 			return nil, err
 		}
