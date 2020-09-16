@@ -103,11 +103,6 @@ func (b *Builder) StackBuild() (*BuildMetadata, error) {
 		return nil, err
 	}
 
-	workspaceDir, err := ioutil.TempDir("", "stack-workspace")
-	if err != nil {
-		return nil, err
-	}
-
 	plan := b.Plan
 	procMap := processMap{}
 	var bom []BOMEntry
@@ -118,7 +113,7 @@ func (b *Builder) StackBuild() (*BuildMetadata, error) {
 		return nil, err
 	}
 	for _, bp := range b.StackGroup.Group {
-		launchData, newPlan, bpBOM, err := b.build(bp, workspaceDir, plan)
+		launchData, newPlan, bpBOM, err := b.build(bp, b.AppDir, plan)
 		if err != nil {
 			return nil, err
 		}

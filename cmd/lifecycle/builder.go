@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -91,48 +92,32 @@ func (b *buildCmd) Exec() error {
 	}
 
 	if len(stackGroup.Group) == 0 {
-		builder, err := b.createBuilder(group, lifecycle.BuildpackGroup{}, plan, b.buildpacksDir)
-		if err != nil {
-			return err
-		}
-		return b.execBuild(builder)
+		return b.build(group, plan)
 	}
 	return b.buildWithReexec(group, stackGroup, plan)
 }
 
-func (ba buildArgs) build(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
-	builder, err := ba.createBuilder(group, stackGroup, plan, ba.buildpacksDir)
+func (ba buildArgs) stackBuild(stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	builder, err := ba.createStackBuilder(stackGroup, plan)
 	if err != nil {
 		return err
 	}
 
-	if len(stackGroup.Group) == 0 {
-		return ba.execBuild(builder)
-	}
+	return ba.execStackBuild(builder)
+}
 
-	sbuilder, err := ba.createBuilder(group, stackGroup, plan, ba.stackBuildpacksDir)
+func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	builder, err := ba.createBuilder(group, plan)
 	if err != nil {
 		return err
 	}
 
-	if err = ba.stackBuild(sbuilder); err != nil {
-		return err
-	}
-
-	if len(group.Group) > 0 {
-		return ba.execBuild(builder)
-	}
-
-	return nil
+	return ba.execBuild(builder)
 }
 
 func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
-	sbuilder, err := ba.createBuilder(group, stackGroup, plan, ba.stackBuildpacksDir)
+	err := ba.stackBuild(stackGroup, plan)
 	if err != nil {
-		return err
-	}
-
-	if err = ba.stackBuild(sbuilder); err != nil {
 		return err
 	}
 
@@ -153,7 +138,7 @@ func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, 
 	return nil
 }
 
-func (ba buildArgs) stackBuild(builder *lifecycle.Builder) error {
+func (ba buildArgs) execStackBuild(builder *lifecycle.Builder) error {
 	// run stack buildpacks as root
 	_, err := builder.StackBuild()
 	if err != nil {
@@ -220,25 +205,44 @@ func (ba buildArgs) execBuild(builder *lifecycle.Builder) error {
 	return nil
 }
 
-func (ba buildArgs) createBuilder(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, buildpacksDir string) (*lifecycle.Builder, error) {
+func (ba buildArgs) createStackBuilder(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) (*lifecycle.Builder, error) {
 	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
 	if err != nil {
 		return &lifecycle.Builder{}, err
 	}
 
+	workspaceDir, err := ioutil.TempDir("", "stack-workspace")
+	if err != nil {
+		return nil, err
+	}
+
 	return &lifecycle.Builder{
-		AppDir:        ba.appDir,
+		AppDir:        workspaceDir,
 		LayersDir:     ba.layersDir,
 		PlatformDir:   ba.platformDir,
-		BuildpacksDir: buildpacksDir,
+		BuildpacksDir: ba.stackBuildpacksDir,
 		PlatformAPI:   api.MustParse(ba.platformAPI),
 		Env:           env.NewBuildEnv(os.Environ()),
-		Group:         group,
-		StackGroup:    stackGroup,
+		StackGroup:    group,
 		Plan:          plan,
 		Out:           log.New(os.Stdout, "", 0),
 		Err:           log.New(os.Stderr, "", 0),
 		Snapshotter:   stackSnapshotter,
+	}, nil
+}
+
+func (ba buildArgs) createBuilder(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) (*lifecycle.Builder, error) {
+	return &lifecycle.Builder{
+		AppDir:        ba.appDir,
+		LayersDir:     ba.layersDir,
+		PlatformDir:   ba.platformDir,
+		BuildpacksDir: ba.buildpacksDir,
+		PlatformAPI:   api.MustParse(ba.platformAPI),
+		Env:           env.NewBuildEnv(os.Environ()),
+		Group:         group,
+		Plan:          plan,
+		Out:           log.New(os.Stdout, "", 0),
+		Err:           log.New(os.Stderr, "", 0),
 	}, nil
 }
 

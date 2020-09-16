@@ -6,7 +6,6 @@ import (
 
 	"github.com/docker/docker/client"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/priv"
@@ -166,7 +165,7 @@ func (c *createCmd) Exec() error {
 			cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.ouid, c.ogid))
 		}
 
-		err := buildArgs.build(lifecycle.BuildpackGroup{}, dr.PrivilegedGroup, dr.Plan)
+		err := buildArgs.stackBuild(dr.PrivilegedGroup, dr.Plan)
 		if err != nil {
 			return err
 		}
@@ -176,7 +175,7 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
-	err = buildArgs.build(dr.Group, lifecycle.BuildpackGroup{}, dr.Plan)
+	err = buildArgs.build(dr.Group, dr.Plan)
 	if err != nil {
 		return err
 	}
