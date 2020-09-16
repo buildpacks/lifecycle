@@ -151,34 +151,14 @@ func (c *createCmd) Exec() error {
 	}
 
 	cmd.DefaultLogger.Phase("BUILDING")
-	buildArgs := buildArgs{
+	err = buildArgs{
 		buildpacksDir:      c.buildpacksDir,
 		layersDir:          c.layersDir,
 		appDir:             c.appDir,
 		platformAPI:        c.platformAPI,
 		platformDir:        c.platformDir,
 		stackBuildpacksDir: c.stackBuildpacksDir,
-	}
-
-	if len(dr.PrivilegedGroup.Group) > 0 {
-		if err := priv.RunAsEffective(c.ouid, c.ogid); err != nil {
-			cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.ouid, c.ogid))
-		}
-
-		err := buildArgs.stackBuild(dr.PrivilegedGroup, dr.Plan)
-		if err != nil {
-			return err
-		}
-
-		if err := priv.RunAsEffective(c.uid, c.gid); err != nil {
-			cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
-		}
-	}
-
-	err = buildArgs.build(dr.Group, dr.Plan)
-	if err != nil {
-		return err
-	}
+	}.buildAll(dr.Group, dr.PrivilegedGroup, dr.Plan, c.ouid, c.ogid, c.uid, c.gid)
 
 	cmd.DefaultLogger.Phase("EXPORTING")
 	return exportArgs{

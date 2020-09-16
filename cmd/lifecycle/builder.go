@@ -97,6 +97,22 @@ func (b *buildCmd) Exec() error {
 	return b.buildWithReexec(group, stackGroup, plan)
 }
 
+func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, rootuid, rootgid, uid, gid int) error {
+	if len(stackGroup.Group) > 0 {
+		if err := priv.RunAsEffective(rootuid, rootgid); err != nil {
+			return err
+		}
+		if err := ba.stackBuild(stackGroup, plan); err != nil {
+			return err
+		}
+		if err := priv.RunAsEffective(uid, gid); err != nil {
+			return err
+		}
+	}
+
+	return ba.build(group, plan)
+}
+
 func (ba buildArgs) stackBuild(stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	builder, err := ba.createStackBuilder(stackGroup, plan)
 	if err != nil {
