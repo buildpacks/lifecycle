@@ -100,7 +100,8 @@ func (c *createCmd) Privileges() error {
 	if err := priv.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(c.uid, c.gid); err != nil {
+
+	if err := priv.RunAsEffective(c.uid, c.gid); err != nil {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
 	}
 	if err := priv.SetEnvironmentForUser(c.uid); err != nil {
@@ -146,6 +147,13 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
+	// TODO: do this _just_ for stack buildpacks, drop during build
+	if len(dr.PrivilegedGroup.Group) > 0 {
+		if err := priv.RunAsEffective(0, 0); err != nil {
+			cmd.FailErr(err, "exec as root")
+		}
+	}
+
 	cmd.DefaultLogger.Phase("BUILDING")
 	// TODO: we need to elevate/drop privs between stack buildpacks and regulard buildpacks
 	err = buildArgs{
@@ -158,6 +166,10 @@ func (c *createCmd) Exec() error {
 	}.build(dr.Group, dr.PrivilegedGroup, dr.Plan)
 	if err != nil {
 		return err
+	}
+
+	if err := priv.RunAsEffective(c.uid, c.gid); err != nil {
+		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
 	}
 
 	cmd.DefaultLogger.Phase("EXPORTING")
