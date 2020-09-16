@@ -114,12 +114,27 @@ func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan li
 }
 
 func (ba buildArgs) stackBuild(stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
-	builder, err := ba.createStackBuilder(stackGroup, plan)
+	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
 	if err != nil {
 		return err
 	}
 
-	return ba.execBuild(builder, false)
+	workspaceDir, err := ioutil.TempDir("", "stack-workspace")
+	if err != nil {
+		return err
+	}
+
+	builder, err := ba.createBuilder(stackGroup, plan)
+	if err != nil {
+		return err
+	}
+
+	builder.Snapshotter = stackSnapshotter
+	builder.AppDir = workspaceDir
+	builder.BuildpacksDir = ba.stackBuildpacksDir
+
+	_, err = ba.execBuild(builder)
+	return err
 }
 
 func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
@@ -127,8 +142,15 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 	if err != nil {
 		return err
 	}
+	md, err := ba.execBuild(builder)
+	if err != nil {
+		return err
+	}
 
-	return ba.execBuild(builder, true)
+	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
+		return cmd.FailErr(err, "write build metadata")
+	}
+	return nil
 }
 
 func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
@@ -191,48 +213,18 @@ func (ba buildArgs) buildAsSubProcess() error {
 	return c.Run()
 }
 
-func (ba buildArgs) execBuild(builder *lifecycle.Builder, writeMetadata bool) error {
+func (ba buildArgs) execBuild(builder *lifecycle.Builder) (*lifecycle.BuildMetadata, error) {
 	md, err := builder.Build()
 	if err != nil {
 		if err, ok := err.(*lifecycle.Error); ok {
 			if err.Type == lifecycle.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
+				return nil, cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
 			}
 		}
-		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
+		return nil, cmd.FailErrCode(err, cmd.CodeBuildError, "build")
 	}
 
-	if !writeMetadata {
-		return nil
-	}
-
-	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
-		return cmd.FailErr(err, "write build metadata")
-	}
-	return nil
-}
-
-func (ba buildArgs) createStackBuilder(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) (*lifecycle.Builder, error) {
-	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
-	if err != nil {
-		return &lifecycle.Builder{}, err
-	}
-
-	workspaceDir, err := ioutil.TempDir("", "stack-workspace")
-	if err != nil {
-		return nil, err
-	}
-
-	builder, err := ba.createBuilder(group, plan)
-	if err != nil {
-		return nil, err
-	}
-
-	builder.Snapshotter = stackSnapshotter
-	builder.AppDir = workspaceDir
-	builder.BuildpacksDir = ba.stackBuildpacksDir
-
-	return builder, nil
+	return md, nil
 }
 
 func (ba buildArgs) createBuilder(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) (*lifecycle.Builder, error) {

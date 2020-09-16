@@ -159,6 +159,9 @@ func (c *createCmd) Exec() error {
 		platformDir:        c.platformDir,
 		stackBuildpacksDir: c.stackBuildpacksDir,
 	}.buildAll(dr.Group, dr.PrivilegedGroup, dr.Plan, c.ouid, c.ogid, c.uid, c.gid)
+	if err != nil {
+		return err
+	}
 
 	cmd.DefaultLogger.Phase("EXPORTING")
 	return exportArgs{
