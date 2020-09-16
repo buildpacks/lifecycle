@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/docker/docker/client"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/priv"
@@ -36,7 +38,8 @@ type createCmd struct {
 	useDaemon           bool
 
 	//set if necessary before dropping privileges
-	docker client.CommonAPIClient
+	ouid, ogid int
+	docker     client.CommonAPIClient
 }
 
 func (c *createCmd) Init() {
@@ -90,6 +93,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 }
 
 func (c *createCmd) Privileges() error {
+	c.ogid, c.ouid = os.Getgid(), os.Getuid()
 	if c.useDaemon {
 		var err error
 		c.docker, err = priv.DockerClient()
@@ -147,29 +151,34 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
-	// TODO: do this _just_ for stack buildpacks, drop during build
-	if len(dr.PrivilegedGroup.Group) > 0 {
-		if err := priv.RunAsEffective(0, 0); err != nil {
-			cmd.FailErr(err, "exec as root")
-		}
-	}
-
 	cmd.DefaultLogger.Phase("BUILDING")
-	// TODO: we need to elevate/drop privs between stack buildpacks and regulard buildpacks
-	err = buildArgs{
+	buildArgs := buildArgs{
 		buildpacksDir:      c.buildpacksDir,
 		layersDir:          c.layersDir,
 		appDir:             c.appDir,
 		platformAPI:        c.platformAPI,
 		platformDir:        c.platformDir,
 		stackBuildpacksDir: c.stackBuildpacksDir,
-	}.build(dr.Group, dr.PrivilegedGroup, dr.Plan)
-	if err != nil {
-		return err
 	}
 
-	if err := priv.RunAsEffective(c.uid, c.gid); err != nil {
-		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
+	if len(dr.PrivilegedGroup.Group) > 0 {
+		if err := priv.RunAsEffective(c.ouid, c.ogid); err != nil {
+			cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.ouid, c.ogid))
+		}
+
+		err := buildArgs.build(lifecycle.BuildpackGroup{}, dr.PrivilegedGroup, dr.Plan)
+		if err != nil {
+			return err
+		}
+
+		if err := priv.RunAsEffective(c.uid, c.gid); err != nil {
+			cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
+		}
+	}
+
+	err = buildArgs.build(dr.Group, lifecycle.BuildpackGroup{}, dr.Plan)
+	if err != nil {
+		return err
 	}
 
 	cmd.DefaultLogger.Phase("EXPORTING")
