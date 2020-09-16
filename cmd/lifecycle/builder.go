@@ -119,7 +119,11 @@ func (ba buildArgs) build(group, stackGroup lifecycle.BuildpackGroup, plan lifec
 		return err
 	}
 
-	return ba.execBuild(builder)
+	if len(group.Group) > 0 {
+		return ba.execBuild(builder)
+	}
+
+	return nil
 }
 
 func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
