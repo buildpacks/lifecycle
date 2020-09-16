@@ -26,7 +26,6 @@ type Builder struct {
 	PlatformAPI   *api.Version
 	Env           BuildEnv
 	Group         BuildpackGroup
-	StackGroup    BuildpackGroup
 	Plan          BuildPlan
 	Out, Err      *log.Logger
 	Snapshotter   LayerSnapshotter
@@ -65,16 +64,37 @@ type BuildpackPlan struct {
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
+	layersDir, err := filepath.Abs(b.LayersDir)
+	if err != nil {
+		return nil, err
+	}
+
 	plan := b.Plan
 	procMap := processMap{}
 	var bom []BOMEntry
 	var slices []layers.Slice
 	var labels []Label
 
+	useSnapshotter := b.Snapshotter != nil
+
+	if useSnapshotter {
+		if err := b.Snapshotter.Init(); err != nil {
+			return nil, err
+		}
+	}
+
 	for _, bp := range b.Group.Group {
 		launchData, newPlan, bpBOM, err := b.build(bp, b.AppDir, plan)
 		if err != nil {
 			return nil, err
+		}
+
+		if useSnapshotter {
+			bpDirName := launch.EscapeID(bp.ID)
+			bpLayersDir := filepath.Join(layersDir, bpDirName)
+			if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
+				return nil, err
+			}
 		}
 
 		plan = newPlan
@@ -91,53 +111,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	return &BuildMetadata{
 		BOM:        bom,
 		Buildpacks: b.Group.Group,
-		Labels:     labels,
-		Processes:  procMap.list(),
-		Slices:     slices,
-	}, nil
-}
-
-func (b *Builder) StackBuild() (*BuildMetadata, error) {
-	layersDir, err := filepath.Abs(b.LayersDir)
-	if err != nil {
-		return nil, err
-	}
-
-	plan := b.Plan
-	procMap := processMap{}
-	var bom []BOMEntry
-	var slices []layers.Slice
-	var labels []Label
-
-	if err := b.Snapshotter.Init(); err != nil {
-		return nil, err
-	}
-	for _, bp := range b.StackGroup.Group {
-		launchData, newPlan, bpBOM, err := b.build(bp, b.AppDir, plan)
-		if err != nil {
-			return nil, err
-		}
-		bpDirName := launch.EscapeID(bp.ID)
-		bpLayersDir := filepath.Join(layersDir, bpDirName)
-
-		if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
-			return nil, err
-		}
-
-		plan = newPlan
-		bom = append(bom, bpBOM...)
-		procMap.add(launchData.Processes)
-		slices = append(slices, launchData.Slices...)
-		labels = append(labels, launchData.Labels...)
-	}
-
-	if err := b.convertMetadataToVersion(bom); err != nil {
-		return nil, err
-	}
-
-	return &BuildMetadata{
-		BOM:        bom,
-		Buildpacks: b.StackGroup.Group,
 		Labels:     labels,
 		Processes:  procMap.list(),
 		Slices:     slices,

@@ -70,20 +70,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			BuildpacksDir: filepath.Join("testdata", "by-id"),
 			PlatformAPI:   api.MustParse("0.3"),
 			Env:           env,
-			StackGroup: lifecycle.BuildpackGroup{
-				Group: []lifecycle.Buildpack{
-					{ID: "X", Version: "1.0.0", API: "0.3"},
-				},
-			},
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
 					{ID: "A", Version: "v1", API: "0.3"},
 					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
-			Out:         outLog,
-			Err:         errLog,
-			Snapshotter: snapshotter,
+			Out: outLog,
+			Err: errLog,
 		}
 	})
 
@@ -451,6 +445,34 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 				h.AssertEq(t, bpPlanContents.Entries[0].Version, "v4")
 			})
+
+			when("there is a snapshotter", func() {
+				it.Before(func() {
+					snapshotter.EXPECT().Init()
+					builder.Snapshotter = snapshotter
+				})
+
+				it("should take a snapshot for each buildpack", func() {
+					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
+					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B.tgz"))
+
+					metadata, err := builder.Build()
+					h.AssertNil(t, err)
+
+					if err != nil {
+						t.Fatalf("Error: %s\n", err)
+					}
+					if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
+						Processes: []launch.Process{},
+						Buildpacks: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1", API: "0.3"},
+							{ID: "B", Version: "v2", API: "0.2"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected metadata:\n%s\n", s)
+					}
+				})
+			})
 		})
 
 		when("building succeeds with a clear env", func() {
@@ -643,31 +665,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertStringContains(t, err.Error(), expected)
 					})
 				})
-			})
-		})
-	})
-
-	when("#StackBuild", func() {
-		when("building succeeds", func() {
-			it.Before(func() {
-				snapshotter.EXPECT().Init()
-				snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "X.tgz"))
-				env.EXPECT().WithPlatform(platformDir).Return(os.Environ(), nil)
-			})
-
-			it("should take a snapshot", func() {
-				metadata, err := builder.StackBuild()
-				if err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes: []launch.Process{},
-					Buildpacks: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected metadata:\n%s\n", s)
-				}
 			})
 		})
 	})

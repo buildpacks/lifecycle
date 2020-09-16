@@ -103,7 +103,7 @@ func (ba buildArgs) stackBuild(stackGroup lifecycle.BuildpackGroup, plan lifecyc
 		return err
 	}
 
-	return ba.execStackBuild(builder)
+	return ba.execBuild(builder, false)
 }
 
 func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
@@ -112,7 +112,7 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		return err
 	}
 
-	return ba.execBuild(builder)
+	return ba.execBuild(builder, true)
 }
 
 func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
@@ -134,20 +134,6 @@ func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, 
 		if err = ba.buildAsSubProcess(); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (ba buildArgs) execStackBuild(builder *lifecycle.Builder) error {
-	// run stack buildpacks as root
-	_, err := builder.StackBuild()
-	if err != nil {
-		if err, ok := err.(*lifecycle.Error); ok {
-			if err.Type == lifecycle.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "stack-build")
-			}
-		}
-		return cmd.FailErrCode(err, cmd.CodeBuildError, "stack-build")
 	}
 	return nil
 }
@@ -189,7 +175,7 @@ func (ba buildArgs) buildAsSubProcess() error {
 	return c.Run()
 }
 
-func (ba buildArgs) execBuild(builder *lifecycle.Builder) error {
+func (ba buildArgs) execBuild(builder *lifecycle.Builder, writeMetadata bool) error {
 	md, err := builder.Build()
 	if err != nil {
 		if err, ok := err.(*lifecycle.Error); ok {
@@ -199,6 +185,11 @@ func (ba buildArgs) execBuild(builder *lifecycle.Builder) error {
 		}
 		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
 	}
+
+	if !writeMetadata {
+		return nil
+	}
+
 	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write build metadata")
 	}
@@ -216,19 +207,16 @@ func (ba buildArgs) createStackBuilder(group lifecycle.BuildpackGroup, plan life
 		return nil, err
 	}
 
-	return &lifecycle.Builder{
-		AppDir:        workspaceDir,
-		LayersDir:     ba.layersDir,
-		PlatformDir:   ba.platformDir,
-		BuildpacksDir: ba.stackBuildpacksDir,
-		PlatformAPI:   api.MustParse(ba.platformAPI),
-		Env:           env.NewBuildEnv(os.Environ()),
-		StackGroup:    group,
-		Plan:          plan,
-		Out:           log.New(os.Stdout, "", 0),
-		Err:           log.New(os.Stderr, "", 0),
-		Snapshotter:   stackSnapshotter,
-	}, nil
+	builder, err := ba.createBuilder(group, plan)
+	if err != nil {
+		return nil, err
+	}
+
+	builder.Snapshotter = stackSnapshotter
+	builder.AppDir = workspaceDir
+	builder.BuildpacksDir = ba.stackBuildpacksDir
+
+	return builder, nil
 }
 
 func (ba buildArgs) createBuilder(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) (*lifecycle.Builder, error) {
