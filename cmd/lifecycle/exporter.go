@@ -126,14 +126,11 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, stackGroup, err := e.readData()
+	group, stackGroup, err := lifecycle.ReadGroups(e.groupPath, e.stackGroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
-	if err := verifyBuildpackApis(stackGroup); err != nil {
-		return err
-	}
-	if err := verifyBuildpackApis(group); err != nil {
+	if err := verifyBuildpackApis(group, stackGroup); err != nil {
 		return err
 	}
 
@@ -236,25 +233,6 @@ func (ea exportArgs) export(stackGroup, group lifecycle.BuildpackGroup, cacheSto
 		}
 	}
 	return nil
-}
-
-func (e *exportCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildpackGroup, error) {
-	group := lifecycle.BuildpackGroup{}
-	if _, err := os.Stat(e.groupPath); err == nil {
-		group, err = lifecycle.ReadGroup(e.groupPath)
-		if err != nil {
-			return lifecycle.BuildpackGroup{}, lifecycle.BuildpackGroup{}, cmd.FailErr(err, "read buildpack group")
-		}
-	}
-
-	stackGroup := lifecycle.BuildpackGroup{}
-	if _, err := os.Stat(e.stackGroupPath); err == nil {
-		stackGroup, err = lifecycle.ReadGroup(e.stackGroupPath)
-		if err != nil {
-			return group, lifecycle.BuildpackGroup{}, cmd.FailErr(err, "read stack buildpack group")
-		}
-	}
-	return group, stackGroup, nil
 }
 
 func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, launchCacheDir string, docker client.CommonAPIClient) (imgutil.Image, string, error) {

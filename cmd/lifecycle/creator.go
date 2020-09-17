@@ -138,14 +138,14 @@ func (c *createCmd) Exec() error {
 		skipLayers: c.skipRestore,
 		useDaemon:  c.useDaemon,
 		docker:     c.docker,
-	}.analyze(dr.Group, cacheStore)
+	}.analyze(dr.Group, dr.PrivilegedGroup, cacheStore)
 	if err != nil {
 		return err
 	}
 
 	if !c.skipRestore {
 		cmd.DefaultLogger.Phase("RESTORING")
-		if err := restore(c.layersDir, dr.Group, cacheStore); err != nil {
+		if err := restore(c.layersDir, dr.Group, dr.PrivilegedGroup, cacheStore); err != nil {
 			return err
 		}
 	}

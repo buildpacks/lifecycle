@@ -29,6 +29,25 @@ func ReadGroup(path string) (BuildpackGroup, error) {
 	return group, err
 }
 
+func ReadGroups(groupPath, stackGroupPath string) (BuildpackGroup, BuildpackGroup, error) {
+	group := BuildpackGroup{}
+	if _, err := os.Stat(groupPath); err == nil {
+		group, err = ReadGroup(groupPath)
+		if err != nil {
+			return BuildpackGroup{}, BuildpackGroup{}, errors.Wrap(err, "read buildpack group")
+		}
+	}
+
+	stackGroup := BuildpackGroup{}
+	if _, err := os.Stat(stackGroupPath); err == nil {
+		stackGroup, err = ReadGroup(stackGroupPath)
+		if err != nil {
+			return group, BuildpackGroup{}, errors.Wrap(err, "read stack buildpack group")
+		}
+	}
+	return group, stackGroup, nil
+}
+
 func ReadOrder(path string) (BuildpackOrder, error) {
 	var order struct {
 		Order BuildpackOrder `toml:"order"`

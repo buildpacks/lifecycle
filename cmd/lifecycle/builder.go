@@ -83,11 +83,7 @@ func (b *buildCmd) Exec() error {
 		return err
 	}
 
-	if err := verifyBuildpackApis(group); err != nil {
-		return err
-	}
-
-	if err := verifyBuildpackApis(stackGroup); err != nil {
+	if err := verifyBuildpackApis(group, stackGroup); err != nil {
 		return err
 	}
 
@@ -243,20 +239,9 @@ func (ba buildArgs) createBuilder(group lifecycle.BuildpackGroup, plan lifecycle
 }
 
 func (b *buildCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
-	group := lifecycle.BuildpackGroup{}
-	if _, err := os.Stat(b.groupPath); err == nil {
-		group, err = lifecycle.ReadGroup(b.groupPath)
-		if err != nil {
-			return lifecycle.BuildpackGroup{}, lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
-		}
-	}
-
-	stackGroup := lifecycle.BuildpackGroup{}
-	if _, err := os.Stat(b.stackGroupPath); err == nil {
-		stackGroup, err = lifecycle.ReadGroup(b.stackGroupPath)
-		if err != nil {
-			return group, lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read stack buildpack group")
-		}
+	group, stackGroup, err := lifecycle.ReadGroups(b.groupPath, b.stackGroupPath)
+	if err != nil {
+		return lifecycle.BuildpackGroup{}, lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}
 
 	var plan lifecycle.BuildPlan

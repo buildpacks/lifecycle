@@ -17,10 +17,11 @@ import (
 
 type analyzeCmd struct {
 	//flags: inputs
-	cacheDir      string
-	cacheImageTag string
-	groupPath     string
-	uid, gid      int
+	cacheDir       string
+	cacheImageTag  string
+	groupPath      string
+	stackGroupPath string
+	uid, gid       int
 	analyzeArgs
 
 	//flags: paths to write data
@@ -48,6 +49,7 @@ func (a *analyzeCmd) Init() {
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
+	cmd.FlagStackGroupPath(&a.stackGroupPath)
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
@@ -82,20 +84,19 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(a.groupPath)
+	group, stackGroup, err := lifecycle.ReadGroups(a.groupPath, a.stackGroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
-	if err := verifyBuildpackApis(group); err != nil {
+	if err := verifyBuildpackApis(group, stackGroup); err != nil {
 		return err
 	}
-
 	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir)
 	if err != nil {
 		return cmd.FailErr(err, "initialize cache")
 	}
 
-	analyzedMD, err := a.analyze(group, cacheStore)
+	analyzedMD, err := a.analyze(group, stackGroup, cacheStore)
 	if err != nil {
 		return err
 	}
@@ -107,7 +108,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze(group, stackGroup lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -130,7 +131,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: group.Group,
+		Buildpacks: append(stackGroup.Group, group.Group...),
 		LayersDir:  aa.layersDir,
 		Logger:     cmd.DefaultLogger,
 		SkipLayers: aa.skipLayers,
