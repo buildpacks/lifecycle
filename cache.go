@@ -1,12 +1,7 @@
 package lifecycle
 
 import (
-	"fmt"
-	"path/filepath"
-
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/lifecycle/launch"
 )
 
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
@@ -16,32 +11,6 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 		return errors.Wrap(err, "metadata for previous cache")
 	}
 	meta := CacheMetadata{}
-
-	for _, bp := range e.StackBuildpacks {
-		snapshot := filepath.Join(layersDir, fmt.Sprintf("%s.tgz", launch.EscapeID(bp.ID)))
-
-		layerName := "snapshot"
-		layerID := fmt.Sprintf("%s:%s", bp.ID, layerName)
-		lmd := BuildpackLayerMetadata{}
-
-		origLayerMetadata := origMeta.MetadataForBuildpack(bp.ID).Layers[layerName]
-		if lmd.SHA, err = e.addOrReuseSnapshotLayer(cacheStore, layerID, snapshot, origLayerMetadata.SHA); err != nil {
-			e.Logger.Warnf("Failed to cache layer '%s': %s", layerID, err)
-			continue
-		}
-
-		lmd.Cache = true
-		lmd.Build = false //it will be exposed at build whether we like it or not
-		lmd.Launch = false
-		bpMD := BuildpackLayersMetadata{
-			ID:      bp.ID,
-			Version: bp.Version,
-			Layers: map[string]BuildpackLayerMetadata{
-				layerName: lmd,
-			},
-		}
-		meta.Buildpacks = append(meta.Buildpacks, bpMD)
-	}
 
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(layersDir, bp)
@@ -83,21 +52,6 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	}
 
 	return nil
-}
-
-func (e *Exporter) addOrReuseSnapshotLayer(cache Cache, id string, snapshotFile string, previousSHA string) (string, error) {
-	layer, err := e.LayerFactory.SnapshotLayer(id, snapshotFile)
-	if err != nil {
-		return "", errors.Wrapf(err, "creating layer '%s'", id)
-	}
-	if layer.Digest == previousSHA {
-		e.Logger.Infof("Reusing cache layer '%s'\n", layer.ID)
-		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-		return layer.Digest, cache.ReuseLayer(previousSHA)
-	}
-	e.Logger.Infof("Adding cache layer '%s'\n", layer.ID)
-	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
-	return layer.Digest, cache.AddLayerFile(layer.TarPath, layer.Digest)
 }
 
 func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir layerDir, previousSHA string) (string, error) {

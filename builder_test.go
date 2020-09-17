@@ -453,8 +453,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should take a snapshot for each buildpack", func() {
-					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A.tgz"))
-					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B.tgz"))
+					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A", "snapshot", "snapshot.tgz"))
+					snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B", "snapshot", "snapshot.tgz"))
 
 					metadata, err := builder.Build()
 					h.AssertNil(t, err)

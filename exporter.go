@@ -29,11 +29,10 @@ type Cache interface {
 }
 
 type Exporter struct {
-	StackBuildpacks []Buildpack
-	Buildpacks      []Buildpack
-	LayerFactory    LayerFactory
-	Logger          Logger
-	PlatformAPI     *api.Version
+	Buildpacks   []Buildpack
+	LayerFactory LayerFactory
+	Logger       Logger
+	PlatformAPI  *api.Version
 }
 
 //go:generate mockgen -package testmock -destination testmock/layer_factory.go github.com/buildpacks/lifecycle LayerFactory

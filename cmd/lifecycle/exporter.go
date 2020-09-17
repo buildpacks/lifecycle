@@ -73,6 +73,7 @@ func (e *exportCmd) Init() {
 	cmd.FlagStackPath(&e.stackPath)
 	cmd.FlagUID(&e.uid)
 	cmd.FlagUseDaemon(&e.useDaemon)
+	cmd.FlagStackGroupPath(&e.stackGroupPath)
 
 	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
@@ -177,8 +178,7 @@ func (ea exportArgs) export(stackGroup, group lifecycle.BuildpackGroup, cacheSto
 	}
 
 	exporter := &lifecycle.Exporter{
-		StackBuildpacks: stackGroup.Group,
-		Buildpacks:      group.Group,
+		Buildpacks: append(stackGroup.Group, group.Group...),
 		LayerFactory: &layers.Factory{
 			ArtifactsDir: artifactsDir,
 			UID:          ea.uid,

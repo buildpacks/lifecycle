@@ -51,7 +51,7 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				rootBuilderImage,
-				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -plan plan.toml; tar tvf /layers/example_stack.tgz", rootBuilderPath)),
+				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -plan plan.toml; tar tvf /layers/example_stack/snapshot/snapshot.tgz", rootBuilderPath)),
 			)
 
 			h.AssertStringDoesNotContain(t, output, "file-to-ignore")
@@ -65,11 +65,12 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				rootBuilderImage,
-				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -group group.toml -plan plan.toml; ls -al /layers/; ls -al /layers/example_user", rootBuilderPath)),
+				h.WithBash(fmt.Sprintf("%s -stack-group stack-group.toml -group group.toml -plan plan.toml; ls -al /layers/example_stack; ls -al /layers/example_stack/snapshot;ls -al /layers/example_user", rootBuilderPath)),
 			)
 
-			h.AssertMatch(t, output, "example_stack.tgz")
 			h.AssertMatch(t, output, "my-layer.toml")
+			h.AssertMatch(t, output, "snapshot.tgz")
+			h.AssertMatch(t, output, "snapshot.toml")
 		})
 	})
 }

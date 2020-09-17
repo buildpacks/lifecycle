@@ -14,6 +14,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -92,8 +93,23 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if useSnapshotter {
 			bpDirName := launch.EscapeID(bp.ID)
 			bpLayersDir := filepath.Join(layersDir, bpDirName)
-			if err := b.Snapshotter.TakeSnapshot(fmt.Sprintf("%s.tgz", bpLayersDir)); err != nil {
+			layerDir := filepath.Join(bpLayersDir, "snapshot")
+			if err := os.MkdirAll(layerDir, 0777); err != nil {
 				return nil, err
+			}
+
+			snapshotPath := filepath.Join(layerDir, "snapshot.tgz")
+			if err := b.Snapshotter.TakeSnapshot(snapshotPath); err != nil {
+				return nil, err
+			}
+			layerTOMLPath := filepath.Join(bpLayersDir, "snapshot.toml")
+			md := BuildpackLayerMetadataFile{
+				Cache:  true,
+				Build:  true,
+				Launch: true,
+			}
+			if err := WriteTOML(layerTOMLPath, md); err != nil {
+				return nil, cmd.FailErr(err, "write build layer metadata")
 			}
 		}
 
