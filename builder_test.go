@@ -472,6 +472,40 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected metadata:\n%s\n", s)
 					}
 				})
+
+				when("there are existing snapshots", func() {
+					it.Before(func() {
+						layersDir = filepath.Join("testdata", "existing-snapshots")
+						builder.LayersDir = layersDir
+						env.EXPECT().AddRootDir(gomock.Any()).AnyTimes()
+						env.EXPECT().AddEnvDir(gomock.Any()).AnyTimes()
+					})
+
+					it("should apply a snapshot for each buildpack before taking a new one", func() {
+						gomock.InOrder(
+							snapshotter.EXPECT().ApplySnapshot(filepath.Join(layersDir, "A", "snapshot", "snapshot.tgz")),
+							snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "A", "snapshot", "snapshot.tgz")),
+							snapshotter.EXPECT().ApplySnapshot(filepath.Join(layersDir, "B", "snapshot", "snapshot.tgz")),
+							snapshotter.EXPECT().TakeSnapshot(filepath.Join(layersDir, "B", "snapshot", "snapshot.tgz")),
+						)
+
+						metadata, err := builder.Build()
+						h.AssertNil(t, err)
+
+						if err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+						if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
+							Processes: []launch.Process{},
+							Buildpacks: []lifecycle.Buildpack{
+								{ID: "A", Version: "v1", API: "0.3"},
+								{ID: "B", Version: "v2", API: "0.2"},
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected metadata:\n%s\n", s)
+						}
+					})
+				})
 			})
 		})
 

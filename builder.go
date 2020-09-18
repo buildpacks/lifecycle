@@ -66,11 +66,6 @@ type BuildpackPlan struct {
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
-	layersDir, err := filepath.Abs(b.LayersDir)
-	if err != nil {
-		return nil, err
-	}
-
 	plan := b.Plan
 	procMap := processMap{}
 	var bom []BOMEntry
@@ -102,7 +97,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 
 		if useSnapshotter {
 			bpDirName := launch.EscapeID(bp.ID)
-			bpLayersDir := filepath.Join(layersDir, bpDirName)
+			bpLayersDir := filepath.Join(b.LayersDir, bpDirName)
 			layerDir := filepath.Join(bpLayersDir, "snapshot")
 			if err := os.MkdirAll(layerDir, 0777); err != nil {
 				return nil, err
