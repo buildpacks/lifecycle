@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -155,16 +154,7 @@ func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, 
 		return err
 	}
 
-	bin, err := os.Executable()
-	if err != nil {
-		return err
-	}
-
-	if filepath.Base(bin) == "extender" {
-		// never run userspace buildpacks on the run-image
-		// TODO save stackpack to run image so it can be run on rebase
-		// TODO save this binary to the image so it can be run on rebase
-	} else if len(group.Group) > 0 {
+	if len(group.Group) > 0 {
 		if err = ba.buildAsSubProcess(); err != nil {
 			return err
 		}
