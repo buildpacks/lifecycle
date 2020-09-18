@@ -95,18 +95,3 @@ func (mr *MockLayerFactoryMockRecorder) SliceLayers(arg0, arg1 interface{}) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SliceLayers", reflect.TypeOf((*MockLayerFactory)(nil).SliceLayers), arg0, arg1)
 }
-
-// SnapshotLayer mocks base method
-func (m *MockLayerFactory) SnapshotLayer(arg0, arg1 string) (layers.Layer, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SnapshotLayer", arg0, arg1)
-	ret0, _ := ret[0].(layers.Layer)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SnapshotLayer indicates an expected call of SnapshotLayer
-func (mr *MockLayerFactoryMockRecorder) SnapshotLayer(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SnapshotLayer", reflect.TypeOf((*MockLayerFactory)(nil).SnapshotLayer), arg0, arg1)
-}

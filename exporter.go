@@ -41,7 +41,6 @@ type LayerFactory interface {
 	LauncherLayer(path string) (layers.Layer, error)
 	ProcessTypesLayer(metadata launch.Metadata) (layers.Layer, error)
 	SliceLayers(dir string, slices []layers.Slice) ([]layers.Layer, error)
-	SnapshotLayer(id string, snapshot string) (layers.Layer, error)
 }
 
 type LauncherConfig struct {
