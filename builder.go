@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/GoogleContainerTools/kaniko/pkg/util"
 	"github.com/pkg/errors"
 
 	"github.com/BurntSushi/toml"
@@ -85,6 +86,15 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}
 
 	for _, bp := range b.Group.Group {
+		if useSnapshotter {
+			// first, we apply the existing snapshots - if they exist from previous cache
+			// this allows snapshot buildpacks to have cache and opt to do nothing
+			err := bp.ApplyLayerSnapshots(b.LayersDir)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		launchData, newPlan, bpBOM, err := b.build(bp, b.AppDir, plan)
 		if err != nil {
 			return nil, err
@@ -106,7 +116,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			md := BuildpackLayerMetadataFile{
 				Cache:  true,
 				Build:  true,
-				Launch: true,
+				Launch: false,
 			}
 			if err := WriteTOML(layerTOMLPath, md); err != nil {
 				return nil, cmd.FailErr(err, "write build layer metadata")
@@ -131,6 +141,32 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		Processes:  procMap.list(),
 		Slices:     slices,
 	}, nil
+}
+
+func (bp Buildpack) ApplyLayerSnapshots(layersDir string) error {
+	bpDir, err := readBuildpackLayersDir(layersDir, bp)
+	if err != nil {
+		return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
+	}
+
+	for _, layer := range bpDir.findLayers(forCached) {
+		layer := layer
+		if !layer.hasLocalContents() {
+			continue
+		}
+		_, err := layer.read()
+		if err != nil {
+			continue
+		}
+
+		snapshotFile := filepath.Join(layer.path, fmt.Sprintf("%s.tgz", layer.name()))
+		_, err = util.UnpackLocalTarArchive(snapshotFile, "/")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (b *Builder) build(bp Buildpack, rawAppDir string, plan BuildPlan) (LaunchTOML, BuildPlan, []BOMEntry, error) {
