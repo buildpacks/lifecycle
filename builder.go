@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/GoogleContainerTools/kaniko/pkg/util"
 	"github.com/pkg/errors"
 
 	"github.com/BurntSushi/toml"
@@ -48,6 +47,7 @@ type LaunchTOML struct {
 
 type LayerSnapshotter interface {
 	TakeSnapshot(string) error
+	ApplySnapshot(string) error
 	Init() error
 }
 
@@ -89,7 +89,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if useSnapshotter {
 			// first, we apply the existing snapshots - if they exist from previous cache
 			// this allows snapshot buildpacks to have cache and opt to do nothing
-			err := bp.ApplyLayerSnapshots(b.LayersDir)
+			err := bp.ApplyLayerSnapshots(b.Snapshotter, b.LayersDir)
 			if err != nil {
 				return nil, err
 			}
@@ -143,7 +143,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}, nil
 }
 
-func (bp Buildpack) ApplyLayerSnapshots(layersDir string) error {
+func (bp Buildpack) ApplyLayerSnapshots(snapshotter LayerSnapshotter, layersDir string) error {
 	bpDir, err := readBuildpackLayersDir(layersDir, bp)
 	if err != nil {
 		return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
@@ -160,10 +160,7 @@ func (bp Buildpack) ApplyLayerSnapshots(layersDir string) error {
 		}
 
 		snapshotFile := filepath.Join(layer.path, fmt.Sprintf("%s.tgz", layer.name()))
-		_, err = util.UnpackLocalTarArchive(snapshotFile, "/")
-		if err != nil {
-			return err
-		}
+		return snapshotter.ApplySnapshot(snapshotFile)
 	}
 
 	return nil

@@ -88,6 +88,11 @@ func (ls *KanikoSnapshotter) TakeSnapshot(snapshotLayerFile string) error {
 	return out.Close()
 }
 
+func (ls *KanikoSnapshotter) ApplySnapshot(snapshotFile string) error {
+	_, err := kutil.UnpackLocalTarArchive(snapshotFile, "/")
+	return err
+}
+
 func ignoreList(pathsToIgnore []string) []kutil.IgnoreListEntry {
 	result := []kutil.IgnoreListEntry{}
 

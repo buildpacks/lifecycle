@@ -33,6 +33,20 @@ func (m *MockLayerSnapshotter) EXPECT() *MockLayerSnapshotterMockRecorder {
 	return m.recorder
 }
 
+// ApplySnapshot mocks base method
+func (m *MockLayerSnapshotter) ApplySnapshot(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApplySnapshot", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ApplySnapshot indicates an expected call of ApplySnapshot
+func (mr *MockLayerSnapshotterMockRecorder) ApplySnapshot(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplySnapshot", reflect.TypeOf((*MockLayerSnapshotter)(nil).ApplySnapshot), arg0)
+}
+
 // Init mocks base method
 func (m *MockLayerSnapshotter) Init() error {
 	m.ctrl.T.Helper()

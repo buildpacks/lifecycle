@@ -20,6 +20,9 @@ func NewKanikoSnapshotter(rootDir string) (lifecycle.LayerSnapshotter, error) {
 func (ws *WindowsSnapshotter) TakeSnapshot(string) error {
 	return errNotImplemented
 }
+func (ws *WindowsSnapshotter) ApplySnapshot(string) error {
+	return errNotImplemented
+}
 func (ws *WindowsSnapshotter) Init() error {
 	return errNotImplemented
 }
