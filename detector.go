@@ -49,6 +49,7 @@ func (be BuildPlanEntry) noOpt() BuildPlanEntry {
 type Require struct {
 	Name     string                 `toml:"name" json:"name"`
 	Version  string                 `toml:"version,omitempty" json:"version,omitempty"`
+	Mixin    bool                   `toml:"mixin,omitempty" json:"mixin,omitempty"`
 	Metadata map[string]interface{} `toml:"metadata" json:"metadata"`
 }
 
@@ -86,8 +87,29 @@ func (r *Require) hasTopLevelVersions() bool {
 	return r.Version != ""
 }
 
+type depKey struct {
+	name  string
+	mixin bool
+}
+
+func (r *Require) depKey() depKey {
+	return depKey{
+		r.Name,
+		r.Mixin,
+	}
+}
+
+func (p *Provide) depKey() depKey {
+	return depKey{
+		p.Name,
+		p.Mixin,
+	}
+}
+
 type Provide struct {
-	Name string `toml:"name"`
+	Name  string `toml:"name"`
+	Mixin bool   `toml:"mixin,omitempty" json:"mixin,omitempty"`
+	Any   bool   `toml:"any,omitempty" json:"any,omitempty"`
 }
 
 type DetectConfig struct {
@@ -599,7 +621,7 @@ type depEntry struct {
 	extraProvides []Buildpack
 }
 
-type depMap map[string]depEntry
+type depMap map[depKey]depEntry
 
 func newDepMap(trial detectTrial) depMap {
 	m := depMap{}
@@ -615,13 +637,13 @@ func newDepMap(trial detectTrial) depMap {
 }
 
 func (m depMap) provide(bp Buildpack, provide Provide) {
-	entry := m[provide.Name]
+	entry := m[provide.depKey()]
 	entry.extraProvides = append(entry.extraProvides, bp)
-	m[provide.Name] = entry
+	m[provide.depKey()] = entry
 }
 
 func (m depMap) require(bp Buildpack, require Require) {
-	entry := m[require.Name]
+	entry := m[require.depKey()]
 	entry.Providers = append(entry.Providers, entry.extraProvides...)
 	entry.extraProvides = nil
 
@@ -630,14 +652,14 @@ func (m depMap) require(bp Buildpack, require Require) {
 	} else {
 		entry.Requires = append(entry.Requires, require)
 	}
-	m[require.Name] = entry
+	m[require.depKey()] = entry
 }
 
 func (m depMap) eachUnmetProvide(f func(name string, bp Buildpack) error) error {
-	for name, entry := range m {
+	for key, entry := range m {
 		if len(entry.extraProvides) != 0 {
 			for _, bp := range entry.extraProvides {
-				if err := f(name, bp); err != nil {
+				if err := f(key.name, bp); err != nil {
 					return err
 				}
 			}
@@ -647,10 +669,10 @@ func (m depMap) eachUnmetProvide(f func(name string, bp Buildpack) error) error 
 }
 
 func (m depMap) eachUnmetRequire(f func(name string, bp Buildpack) error) error {
-	for name, entry := range m {
+	for key, entry := range m {
 		if len(entry.earlyRequires) != 0 {
 			for _, bp := range entry.earlyRequires {
-				if err := f(name, bp); err != nil {
+				if err := f(key.name, bp); err != nil {
 					return err
 				}
 			}
