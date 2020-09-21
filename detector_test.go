@@ -595,6 +595,166 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should returned a build plan with matched mixin dependencies", func() {
+				config.StackBuildpacksDir = config.BuildpacksDir
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-A-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				dr, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(dr.PrivilegedGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3", Privileged: true},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected priv group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.Group, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.Plan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+					},
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.Plan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"A v1\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should returned a build plan with matched dependencies from privileged buildpacks", func() {
+				config.StackBuildpacksDir = config.BuildpacksDir
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+
+				dr, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(dr.PrivilegedGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3", Privileged: true},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected priv group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.Group, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.Plan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: false}},
+					},
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.Plan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"A v1\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should fail if all requires are not met by mixins", func() {
+				config.StackBuildpacksDir = config.BuildpacksDir
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				_, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"fail: B@v1 requires dep1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should not fail if all mixin provides are not met by all requires", func() {
+				config.StackBuildpacksDir = config.BuildpacksDir
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-A-v1.toml")
+				_, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"skip: A@v1 provides unused dep1\n"+
+						"1 of 2 buildpacks participating\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
 			when("BuildpackTOML.Detect()", func() {
 				it("should fail if buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
 					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "D", "v2"))

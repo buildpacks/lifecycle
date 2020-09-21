@@ -258,7 +258,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 
 		if err := deps.eachUnmetProvide(func(name string, bp Buildpack) error {
 			retry = true
-			if !bp.Optional {
+			if !bp.Optional && !bp.Privileged {
 				c.Logger.Debugf("fail: %s provides unused %s", bp, name)
 				return errFailedDetection
 			}
