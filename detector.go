@@ -90,19 +90,25 @@ func (r *Require) hasTopLevelVersions() bool {
 type depKey struct {
 	name  string
 	mixin bool
+	any   bool
 }
 
 func (r *Require) depKey() depKey {
 	return depKey{
 		r.Name,
 		r.Mixin,
+		false,
 	}
 }
 
 func (p *Provide) depKey() depKey {
+	if p.Any {
+		return anyMixinKey
+	}
 	return depKey{
 		p.Name,
 		p.Mixin,
+		false,
 	}
 }
 
@@ -623,6 +629,8 @@ type depEntry struct {
 
 type depMap map[depKey]depEntry
 
+var anyMixinKey depKey = depKey{name: "any", mixin: true, any: true}
+
 func newDepMap(trial detectTrial) depMap {
 	m := depMap{}
 	for _, option := range trial {
@@ -643,7 +651,11 @@ func (m depMap) provide(bp Buildpack, provide Provide) {
 }
 
 func (m depMap) require(bp Buildpack, require Require) {
-	entry := m[require.depKey()]
+	reqKey := require.depKey()
+	if require.Mixin && len(m[anyMixinKey].extraProvides) != 0 {
+		reqKey = anyMixinKey
+	}
+	entry := m[reqKey]
 	entry.Providers = append(entry.Providers, entry.extraProvides...)
 	entry.extraProvides = nil
 
@@ -652,7 +664,7 @@ func (m depMap) require(bp Buildpack, require Require) {
 	} else {
 		entry.Requires = append(entry.Requires, require)
 	}
-	m[require.depKey()] = entry
+	m[reqKey] = entry
 }
 
 func (m depMap) eachUnmetProvide(f func(name string, bp Buildpack) error) error {
