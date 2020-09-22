@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -54,6 +55,22 @@ type Require struct {
 	Metadata map[string]interface{} `toml:"metadata" json:"metadata"`
 }
 
+func (r *Require) parseName() (string, string) {
+	parts := strings.SplitN(r.Name, ":", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return "", parts[0]
+}
+
+func (p *Provide) parseName() (string, string) {
+	parts := strings.SplitN(p.Name, ":", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return "", parts[0]
+}
+
 func (r *Require) convertMetadataToVersion() {
 	if version, ok := r.Metadata["version"]; ok {
 		r.Version = fmt.Sprintf("%v", version)
@@ -95,8 +112,9 @@ type depKey struct {
 }
 
 func (r *Require) depKey() depKey {
+	_, name := r.parseName()
 	return depKey{
-		r.Name,
+		name,
 		r.Mixin,
 		false,
 	}
@@ -106,8 +124,9 @@ func (p *Provide) depKey() depKey {
 	if p.Any {
 		return anyMixinKey
 	}
+	_, name := p.parseName()
 	return depKey{
-		p.Name,
+		name,
 		p.Mixin,
 		false,
 	}
@@ -248,32 +267,37 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 	retry := true
 	for retry {
 		retry = false
-		deps = newDepMap(trial)
+		for _, stage := range []string{"build", "run"} {
+			deps = newDepMap(trial, stage)
 
-		if err := deps.eachUnmetRequire(func(name string, bp Buildpack) error {
-			retry = true
-			if !bp.Optional {
-				c.Logger.Debugf("fail: %s requires %s", bp, name)
-				return errFailedDetection
+			if err := deps.eachUnmetRequire(func(name string, bp Buildpack) error {
+				retry = true
+				if !bp.Optional {
+					c.Logger.Debugf("fail: %s requires %s", bp, name)
+					return errFailedDetection
+				}
+				c.Logger.Debugf("skip: %s requires %s", bp, name)
+				trial = trial.remove(bp)
+				return nil
+			}); err != nil {
+				return nil, nil, err
 			}
-			c.Logger.Debugf("skip: %s requires %s", bp, name)
-			trial = trial.remove(bp)
-			return nil
-		}); err != nil {
-			return nil, nil, err
-		}
 
-		if err := deps.eachUnmetProvide(func(name string, bp Buildpack) error {
-			retry = true
-			if !bp.Optional && !bp.Privileged {
-				c.Logger.Debugf("fail: %s provides unused %s", bp, name)
-				return errFailedDetection
+			if err := deps.eachUnmetProvide(func(name string, bp Buildpack) error {
+				if bp.Privileged {
+					return nil
+				}
+				retry = true
+				if !bp.Optional && !bp.Privileged {
+					c.Logger.Debugf("fail: %s provides unused %s", bp, name)
+					return errFailedDetection
+				}
+				c.Logger.Debugf("skip: %s provides unused %s", bp, name)
+				trial = trial.remove(bp)
+				return nil
+			}); err != nil {
+				return nil, nil, err
 			}
-			c.Logger.Debugf("skip: %s provides unused %s", bp, name)
-			trial = trial.remove(bp)
-			return nil
-		}); err != nil {
-			return nil, nil, err
 		}
 	}
 
@@ -639,14 +663,20 @@ type depMap map[depKey]depEntry
 
 var anyMixinKey depKey = depKey{name: "any", mixin: true, any: true}
 
-func newDepMap(trial detectTrial) depMap {
+func newDepMap(trial detectTrial, stage string) depMap {
 	m := depMap{}
 	for _, option := range trial {
 		for _, p := range option.Provides {
-			m.provide(option.Buildpack, p)
+			pstage, _ := p.parseName()
+			if pstage == "" || pstage == stage {
+				m.provide(option.Buildpack, p)
+			}
 		}
 		for _, r := range option.Requires {
-			m.require(option.Buildpack, r)
+			rstage, _ := r.parseName()
+			if rstage == "" || rstage == stage {
+				m.require(option.Buildpack, r)
+			}
 		}
 	}
 	return m

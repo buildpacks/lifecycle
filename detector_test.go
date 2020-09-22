@@ -727,7 +727,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should not fail if all mixin provides are not met by all requires", func() {
+			it("should skip stack buildpack if all mixin provides are not met by all requires", func() {
 				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
 				_, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
@@ -819,6 +819,125 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if s := allLogs(logHandler); !strings.HasPrefix(s,
 					"======== Error: X@1.0.0 ========\n"+
 						"priviledged buildpack X has defined \"requires\", which is not allowed.\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should succeed if the stage requirement is met", func() {
+				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				_, _ = lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true},
+						{ID: "B", Version: "v1", Privileged: false},
+					}},
+				}.Detect(config)
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"X 1.0.0\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should succeed if the build stage requirement is met by no stage prefix", func() {
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				_, _ = lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+						{ID: "B", Version: "v1", Privileged: false},
+					}},
+				}.Detect(config)
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"X 1.0.0\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should succeed if the run stage requirement is met by no stage prefix", func() {
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				_, _ = lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+						{ID: "B", Version: "v1", Privileged: false},
+					}},
+				}.Detect(config)
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"X 1.0.0\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should allow stack buildpacks to provide unrequired deps", func() {
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true\n\n[[provides]]\n name = \"dep2\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				_, _ = lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+						{ID: "B", Version: "v1", Privileged: false},
+					}},
+				}.Detect(config)
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"X 1.0.0\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should allow different stack buildpacks to provide for different stages", func() {
+				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-Y-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				_, _ = lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+						{ID: "Y", Version: "1.0.0", Privileged: true, Optional: true},
+						{ID: "B", Version: "v1", Privileged: false},
+					}},
+				}.Detect(config)
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: Y@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"X 1.0.0\n"+
+						"Y 1.0.0\n"+
+						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
