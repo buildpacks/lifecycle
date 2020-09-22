@@ -27,6 +27,7 @@ var errBuildpack = errors.New("buildpack(s) failed with err")
 var errInconsistentVersion = `buildpack %s has a "version" key that does not match "metadata.version"`
 var errDoublySpecifiedVersions = `buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`
 var warnTopLevelVersion = `Warning: buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`
+var errInvalidRequirementsBuildpack = `priviledged buildpack %s has defined "requires", which is not allowed.`
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -330,6 +331,13 @@ func (bp *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	if _, err := toml.DecodeFile(planPath, &t); err != nil {
 		return DetectRun{Code: -1, Err: err}
 	}
+
+	if bp.Buildpack.Privileged {
+		if len(t.Requires) > 0 {
+			return DetectRun{Code: -1, Err: errors.Errorf(errInvalidRequirementsBuildpack, bp.Buildpack.ID)}
+		}
+	}
+
 	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
 			t.Err = errors.Errorf(errInconsistentVersion, bp.Buildpack.ID)

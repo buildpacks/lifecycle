@@ -1,3 +1,1 @@
-@echo off
-
-exit /b 0
+../../../../buildpack/bin/detect.bat

@@ -1,5 +1,1 @@
-#!/bin/bash
-
-set -euo pipefail
-
-exit 0
+../../../../buildpack/bin/detect

@@ -44,12 +44,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		logHandler = memory.New()
 		config = &lifecycle.DetectConfig{
-			FullEnv:       append(os.Environ(), "ENV_TYPE=full"),
-			ClearEnv:      append(os.Environ(), "ENV_TYPE=clear"),
-			AppDir:        appDir,
-			PlatformDir:   platformDir,
-			BuildpacksDir: buildpacksDir,
-			Logger:        &log.Logger{Handler: logHandler},
+			FullEnv:            append(os.Environ(), "ENV_TYPE=full"),
+			ClearEnv:           append(os.Environ(), "ENV_TYPE=clear"),
+			AppDir:             appDir,
+			PlatformDir:        platformDir,
+			BuildpacksDir:      buildpacksDir,
+			StackBuildpacksDir: buildpacksDir,
+			Logger:             &log.Logger{Handler: logHandler},
 		}
 	})
 
@@ -596,13 +597,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should returned a build plan with matched mixin dependencies", func() {
-				config.StackBuildpacksDir = config.BuildpacksDir
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-A-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "X", Version: "1.0.0", Privileged: true},
 						{ID: "B", Version: "v1"},
 					}},
 				}.Detect(config)
@@ -612,7 +612,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(dr.PrivilegedGroup, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3", Privileged: true},
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected priv group:\n%s\n", s)
@@ -629,7 +629,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if !hasEntries(dr.Plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{
-							{ID: "A", Version: "v1", Privileged: true},
+							{ID: "X", Version: "1.0.0", Privileged: true},
 						},
 						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
 					},
@@ -639,10 +639,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"pass: A@v1\n"+
+						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"A v1\n"+
+						"X 1.0.0\n"+
 						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
@@ -650,13 +650,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should returned a build plan with matched dependencies from privileged buildpacks", func() {
-				config.StackBuildpacksDir = config.BuildpacksDir
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "X", Version: "1.0.0", Privileged: true},
 						{ID: "B", Version: "v1"},
 					}},
 				}.Detect(config)
@@ -666,7 +665,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(dr.PrivilegedGroup, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3", Privileged: true},
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected priv group:\n%s\n", s)
@@ -683,7 +682,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if !hasEntries(dr.Plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{
-							{ID: "A", Version: "v1", Privileged: true},
+							{ID: "X", Version: "1.0.0", Privileged: true},
 						},
 						Requires: []lifecycle.Require{{Name: "dep1", Mixin: false}},
 					},
@@ -693,10 +692,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"pass: A@v1\n"+
+						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"A v1\n"+
+						"X 1.0.0\n"+
 						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
@@ -704,13 +703,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail if all requires are not met by mixins", func() {
-				config.StackBuildpacksDir = config.BuildpacksDir
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
 				_, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "X", Version: "1.0.0", Privileged: true},
 						{ID: "B", Version: "v1"},
 					}},
 				}.Detect(config)
@@ -720,7 +718,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"pass: A@v1\n"+
+						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
 						"fail: B@v1 requires dep1\n",
@@ -730,11 +728,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should not fail if all mixin provides are not met by all requires", func() {
-				config.StackBuildpacksDir = config.BuildpacksDir
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-A-v1.toml")
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
 				_, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "X", Version: "1.0.0", Privileged: true},
 						{ID: "B", Version: "v1"},
 					}},
 				}.Detect(config)
@@ -744,10 +741,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"pass: A@v1\n"+
+						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"skip: A@v1 provides unused dep1\n"+
+						"skip: X@1.0.0 provides unused dep1\n"+
 						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
@@ -756,13 +753,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should returned a build plan with matched mixin dependencies with any", func() {
-				config.StackBuildpacksDir = config.BuildpacksDir
-				toappfile("\n[[provides]]\n any = true", "detect-plan-A-v1.toml")
+				toappfile("\n[[provides]]\n any = true", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", Privileged: true},
+						{ID: "X", Version: "1.0.0", Privileged: true},
 						{ID: "B", Version: "v1"},
 					}},
 				}.Detect(config)
@@ -772,7 +768,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(dr.PrivilegedGroup, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3", Privileged: true},
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected priv group:\n%s\n", s)
@@ -789,7 +785,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if !hasEntries(dr.Plan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{
-							{ID: "A", Version: "v1", Privileged: true},
+							{ID: "X", Version: "1.0.0", Privileged: true},
 						},
 						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
 					},
@@ -799,11 +795,30 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"pass: A@v1\n"+
+						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"A v1\n"+
+						"X 1.0.0\n"+
 						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should fail if privileged bp specifies requirements", func() {
+				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+
+				_, _ = lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true},
+						{ID: "B", Version: "v1", Privileged: false},
+					}},
+				}.Detect(config)
+
+				if s := allLogs(logHandler); !strings.HasPrefix(s,
+					"======== Error: X@1.0.0 ========\n"+
+						"priviledged buildpack X has defined \"requires\", which is not allowed.\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
@@ -981,18 +996,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("there are stack buildpacks", func() {
-			it.Before(func() {
-				config.StackBuildpacksDir = filepath.Join("testdata", "stackpacks")
-			})
-
 			it("should select the first passing group", func() {
 				mkappfile("100", "detect-status")
-				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
+				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1", "detect-status-X-1.0.0")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{
 						Group: []lifecycle.Buildpack{
-							{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
 							{ID: "E", Version: "v1"}},
 					},
 				}.Detect(config)
@@ -1011,7 +1022,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(dr.PrivilegedGroup, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "stack-a", Version: "v1", API: "0.3", Privileged: true},
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 					},
 				}); s != "" {
 					t.Fatalf("Unexpected stack group:\n%s\n", s)
@@ -1023,13 +1034,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"pass: stack-a@v1\n"+
+						"pass: X@1.0.0\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"stack-a v1\n"+
-						"A       v1\n"+
-						"B       v1\n",
+						"X 1.0.0\n"+
+						"A v1\n"+
+						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
 				}
@@ -1038,12 +1049,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			it("should fail with specific error if stack buildpack fails in unexpected way", func() {
 				mkappfile("100", "detect-status")
 				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
-				mkappfile("127", "detect-status-stack-a-v1")
+				mkappfile("127", "detect-status-X-1.0.0")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{
 						Group: []lifecycle.Buildpack{
-							{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
 							{ID: "E", Version: "v1"}},
 					},
 				}.Detect(config)
@@ -1066,7 +1077,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"err:  stack-a@v1 (127)\n"+
+						"err:  X@1.0.0 (127)\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
@@ -1081,12 +1092,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			it("should skip if stack buildpack detection fails", func() {
 				mkappfile("100", "detect-status")
 				mkappfile("0", "detect-status-A-v1", "detect-status-B-v1")
-				mkappfile("100", "detect-status-stack-a-v1")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{
 						Group: []lifecycle.Buildpack{
-							{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
 							{ID: "E", Version: "v1"}},
 					},
 				}.Detect(config)
@@ -1109,7 +1119,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"skip: stack-a@v1\n"+
+						"skip: X@1.0.0\n"+
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
@@ -1129,7 +1139,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				_, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
-						{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
 						{ID: "A", Version: "v1", Optional: false},
 						{ID: "B", Version: "v1", Optional: false},
 					}},
@@ -1144,12 +1154,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail the group if only the stack buildpack passes detection", func() {
-				mkappfile("100", "detect-status")
-				mkappfile("100", "detect-status-A-v1")
+				mkappfile("100", "detect-status", "detect-status-A-v1")
+				mkappfile("0", "detect-status-X-1.0.0")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
-						{ID: "stack-a", Version: "v1", Privileged: true, Optional: true},
+						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
 						{ID: "A", Version: "v1", Optional: true},
 					}},
 				}.Detect(config)
@@ -1164,7 +1174,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
-						"pass: stack-a@v1\n"+
+						"pass: X@1.0.0\n"+
 						"skip: A@v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
