@@ -596,13 +596,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should returned a build plan with matched mixin dependencies", func() {
+			it("should produce build plans for both standard and privileged that provide the same dep", func() {
 				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-A-v1.toml")
 				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
 				dr, err := lifecycle.BuildpackOrder{
 					{Group: []lifecycle.Buildpack{
 						{ID: "X", Version: "1.0.0", Privileged: true},
+						{ID: "A", Version: "v1"},
 						{ID: "B", Version: "v1"},
 					}},
 				}.Detect(config)
@@ -620,6 +622,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(dr.Group, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3"},
 						{ID: "B", Version: "v1", API: "0.2"},
 					},
 				}); s != "" {
@@ -630,19 +633,33 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{
 						Providers: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "A", Version: "v1"},
 						},
 						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
 					},
 				}) {
-					t.Fatalf("Unexpected entries:\n%+v\n", dr.Plan.Entries)
+					t.Fatalf("Unexpected build entries:\n%+v\n", dr.Plan.Entries)
+				}
+
+				if !hasEntries(dr.PrivilegedPlan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+					},
+				}) {
+					t.Fatalf("Unexpected privileged entries:\n%+v\n", dr.PrivilegedPlan.Entries)
 				}
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
 						"pass: X@1.0.0\n"+
+						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
 						"X 1.0.0\n"+
+						"A v1\n"+
 						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)

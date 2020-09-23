@@ -467,6 +467,7 @@ type DetectResult struct {
 	Group           BuildpackGroup
 	PrivilegedGroup BuildpackGroup
 	Plan            BuildPlan
+	PrivilegedPlan  BuildPlan
 }
 
 func (bo BuildpackOrder) Detect(c *DetectConfig) (DetectResult, error) {
@@ -474,33 +475,57 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (DetectResult, error) {
 		c.runs = &sync.Map{}
 	}
 
-	allbps, entries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
+	allbps, allEntries, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
 	if err == errBuildpack {
 		err = NewLifecycleError(err, ErrTypeBuildpack)
 	} else if err == errFailedDetection {
 		err = NewLifecycleError(err, ErrTypeFailedDetection)
 	}
-	for i := range entries {
-		for j := range entries[i].Requires {
-			entries[i].Requires[j].convertVersionToMetadata()
+	for i := range allEntries {
+		for j := range allEntries[i].Requires {
+			allEntries[i].Requires[j].convertVersionToMetadata()
 		}
 	}
 
-	stackBps := []Buildpack{}
-	bps := []Buildpack{}
+	privBuildpacks := []Buildpack{}
+	buildpacks := []Buildpack{}
 
 	for _, bp := range allbps {
 		if bp.Privileged {
-			stackBps = append(stackBps, bp)
+			privBuildpacks = append(privBuildpacks, bp)
 		} else {
-			bps = append(bps, bp)
+			buildpacks = append(buildpacks, bp)
+		}
+	}
+
+	privEntries := []BuildPlanEntry{}
+	entries := []BuildPlanEntry{}
+
+	for _, entry := range allEntries {
+		privProviders := []Buildpack{}
+		providers := []Buildpack{}
+		for _, provider := range entry.Providers {
+			if provider.Privileged {
+				privProviders = append(privProviders, provider)
+			}
+			providers = append(providers, provider)
+		}
+
+		if len(privProviders) > 0 {
+			entry.Providers = privProviders
+			privEntries = append(privEntries, entry)
+		}
+		if len(providers) > 0 {
+			entry.Providers = providers
+			entries = append(entries, entry)
 		}
 	}
 
 	return DetectResult{
-		Group:           BuildpackGroup{Group: bps},
-		PrivilegedGroup: BuildpackGroup{Group: stackBps},
+		Group:           BuildpackGroup{Group: buildpacks},
 		Plan:            BuildPlan{Entries: entries},
+		PrivilegedGroup: BuildpackGroup{Group: privBuildpacks},
+		PrivilegedPlan:  BuildPlan{Entries: privEntries},
 	}, err
 }
 
