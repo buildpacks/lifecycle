@@ -269,6 +269,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 	for retry {
 		retry = false
 		for _, stage := range []string{"build", "run"} {
+			stage := stage
 			deps = newDepMap(trial, stage)
 
 			if err := deps.eachUnmetRequire(func(name string, bp Buildpack) error {
