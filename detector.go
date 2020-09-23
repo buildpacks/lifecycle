@@ -264,6 +264,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 	c.Logger.Debugf("Resolving plan... (try #%d)", i)
 
 	var deps depMap
+	candidateRemovals := make(map[Buildpack][]string)
 	retry := true
 	for retry {
 		retry = false
@@ -285,6 +286,7 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 
 			if err := deps.eachUnmetProvide(func(name string, bp Buildpack) error {
 				if bp.Privileged {
+					candidateRemovals[bp] = append(candidateRemovals[bp], stage)
 					return nil
 				}
 				retry = true
@@ -298,6 +300,13 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (depMap, detectTrial, 
 			}); err != nil {
 				return nil, nil, err
 			}
+		}
+	}
+
+	for bp, stages := range candidateRemovals {
+		if len(stages) == 2 {
+			c.Logger.Debugf("skip: %s provides unused deps", bp)
+			trial = trial.remove(bp)
 		}
 	}
 
