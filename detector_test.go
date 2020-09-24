@@ -873,7 +873,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Providers: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
 						},
-						Requires: []lifecycle.Require{{Name: "build:dep1", Mixin: true}},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
 					},
 				}) {
 					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
@@ -923,7 +923,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Providers: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
 						},
-						Requires: []lifecycle.Require{{Name: "build:dep1", Mixin: true}},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
 					},
 				}) {
 					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
@@ -984,7 +984,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Providers: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
 						},
-						Requires: []lifecycle.Require{{Name: "run:dep1", Mixin: true}},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
 					},
 				}) {
 					t.Fatalf("Unexpected run entries:\n%+v\n", dr.RunPlan.Entries)

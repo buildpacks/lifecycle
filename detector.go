@@ -55,20 +55,53 @@ type Require struct {
 	Metadata map[string]interface{} `toml:"metadata" json:"metadata"`
 }
 
-func (r *Require) parseName() (string, string) {
-	parts := strings.SplitN(r.Name, ":", 2)
-	if len(parts) == 2 {
-		return parts[0], parts[1]
+func (r Require) noStage() Require {
+	if !r.Mixin {
+		return r
 	}
-	return "", parts[0]
+	_, name := parseMixinName(r.Name)
+	r.Name = name
+	return r
 }
 
-func (p *Provide) parseName() (string, string) {
-	parts := strings.SplitN(p.Name, ":", 2)
+func parseMixinName(oname string) (stage stageName, name string) {
+	name = oname
+	parts := strings.SplitN(name, ":", 2)
 	if len(parts) == 2 {
-		return parts[0], parts[1]
+		stage = stageName(parts[0])
+		name = parts[1]
 	}
-	return "", parts[0]
+	return stage, name
+}
+
+func (p Provide) noStage() Provide {
+	if !p.Mixin {
+		return p
+	}
+	_, name := parseMixinName(p.Name)
+	p.Name = name
+	return p
+}
+
+type stageName string
+
+const allStages stageName = ""
+const buildStage stageName = stageName("build")
+const runStage stageName = stageName("run")
+
+func (p Provide) validFor(stage stageName) bool {
+	parsedStage, _ := parseMixinName(p.Name)
+	return parsedStage == allStages || parsedStage == stage
+}
+
+func (r Require) validFor(stage stageName) bool {
+	// buildpacks can only require something for run image that is a mixin
+	if stage == runStage && !r.Mixin {
+		return false
+	}
+
+	parsedStage, _ := parseMixinName(r.Name)
+	return parsedStage == allStages || parsedStage == stage
 }
 
 func (r *Require) convertMetadataToVersion() {
@@ -112,10 +145,10 @@ type depKey struct {
 }
 
 func (r *Require) depKey() depKey {
-	_, name := r.parseName()
+	cleanRequire := r.noStage()
 	return depKey{
-		name,
-		r.Mixin,
+		cleanRequire.Name,
+		cleanRequire.Mixin,
 		false,
 	}
 }
@@ -124,10 +157,10 @@ func (p *Provide) depKey() depKey {
 	if p.Any {
 		return anyMixinKey
 	}
-	_, name := p.parseName()
+	cleanProvide := p.noStage()
 	return depKey{
-		name,
-		p.Mixin,
+		cleanProvide.Name,
+		cleanProvide.Mixin,
 		false,
 	}
 }
@@ -295,13 +328,13 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (*trialResult, error) 
 	c.Logger.Debugf("Resolving plan... (try #%d)", i)
 
 	buildTrial := append([]detectOption{}, trial...)
-	buildDeps, buildOptions, privOptions, err := c.runTrialForStage(buildTrial, "")
+	buildDeps, buildOptions, privOptions, err := c.runTrialForStage(buildTrial, buildStage)
 	if err != nil {
 		return nil, err
 	}
 
 	runTrial := append([]detectOption{}, trial...)
-	runDeps, _, runOptions, err := c.runTrialForStage(runTrial, "run")
+	runDeps, _, runOptions, err := c.runTrialForStage(runTrial, runStage)
 	if err != nil {
 		return nil, err
 	}
@@ -321,18 +354,16 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (*trialResult, error) 
 	}, nil
 }
 
-func (c *DetectConfig) runTrialForStage(trial detectTrial, stage string) (depMap, []detectOption, []detectOption, error) {
+func (c *DetectConfig) runTrialForStage(trial detectTrial, stage stageName) (depMap, []detectOption, []detectOption, error) {
 	var depMap depMap
 	loggedStage := ""
 	retry := true
 	for retry {
 		retry = false
-		if stage == "run" {
-			loggedStage = "[run]"
-			depMap = newRunDepMap(trial)
-		} else {
-			depMap = newBuildDepMap(trial)
+		if stage == runStage {
+			loggedStage = fmt.Sprintf("[%s]", stage)
 		}
+		depMap = newDepMap(trial, stage)
 
 		if err := depMap.eachUnmetRequire(func(name string, bp Buildpack) error {
 			retry = true
@@ -715,49 +746,21 @@ type depMap map[depKey]depEntry
 
 var anyMixinKey depKey = depKey{name: "any", mixin: true, any: true}
 
-func newBuildDepMap(trial detectTrial) depMap {
+func newDepMap(trial detectTrial, stage stageName) depMap {
 	m := depMap{}
-	stage := "build"
-	for _, option := range trial {
-		for _, p := range option.Provides {
-			pstage, _ := p.parseName()
-			if pstage == "" || pstage == stage {
-				m.provide(option.Buildpack, p)
-			}
-		}
-		for _, r := range option.Requires {
-			rstage, _ := r.parseName()
-			if rstage == "" || rstage == stage {
-				m.require(option.Buildpack, r)
-			}
-		}
-	}
-	return m
-}
-
-func newRunDepMap(trial detectTrial) depMap {
-	m := depMap{}
-	stage := "run"
 	for _, option := range trial {
 		for _, p := range option.Provides {
 			// only privileged buildpacks can provide something for run image extension
-			if !option.Buildpack.Privileged {
+			if stage == runStage && !option.Buildpack.Privileged {
 				continue
 			}
-
-			pstage, _ := p.parseName()
-			if pstage == "" || pstage == stage {
-				m.provide(option.Buildpack, p)
+			if p.validFor(stage) {
+				m.provide(option.Buildpack, p.noStage())
 			}
 		}
 		for _, r := range option.Requires {
-			// buildpacks can only require something for run image that is _not_ a mixin
-			if !r.Mixin {
-				continue
-			}
-			rstage, _ := r.parseName()
-			if rstage == "" || rstage == stage {
-				m.require(option.Buildpack, r)
+			if r.validFor(stage) {
+				m.require(option.Buildpack, r.noStage())
 			}
 		}
 	}
