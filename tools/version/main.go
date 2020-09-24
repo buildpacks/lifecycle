@@ -6,7 +6,6 @@ import (
 	"regexp"
 )
 
-
 func main() {
 
 	// if the current branch is a release branch, parse the version number from the branch
