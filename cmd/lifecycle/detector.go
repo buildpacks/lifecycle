@@ -115,25 +115,25 @@ func (da detectArgs) mergeOrderWithStackBuildpacks(order lifecycle.BuildpackOrde
 	return fo, nil
 }
 
-func (da detectArgs) detect() (lifecycle.DetectResult, error) {
+func (da detectArgs) detect() (lifecycle.DetectStageResult, error) {
 	order, err := lifecycle.ReadOrder(da.orderPath)
 	if err != nil {
-		return lifecycle.DetectResult{}, cmd.FailErr(err, "read buildpack order file")
+		return lifecycle.DetectStageResult{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
 	order, err = da.mergeOrderWithStackBuildpacks(order)
 	if err != nil {
-		return lifecycle.DetectResult{}, cmd.FailErr(err, "merge stack buildpacks into order")
+		return lifecycle.DetectStageResult{}, cmd.FailErr(err, "merge stack buildpacks into order")
 	}
 
 	if err := da.verifyBuildpackApis(order); err != nil {
-		return lifecycle.DetectResult{}, err
+		return lifecycle.DetectStageResult{}, err
 	}
 
 	envv := env.NewBuildEnv(os.Environ())
 	fullEnv, err := envv.WithPlatform(da.platformDir)
 	if err != nil {
-		return lifecycle.DetectResult{}, cmd.FailErr(err, "read full env")
+		return lifecycle.DetectStageResult{}, cmd.FailErr(err, "read full env")
 	}
 	dr, err := order.Detect(&lifecycle.DetectConfig{
 		FullEnv:            fullEnv,
@@ -151,15 +151,15 @@ func (da detectArgs) detect() (lifecycle.DetectResult, error) {
 			case lifecycle.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return lifecycle.DetectResult{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
+				return lifecycle.DetectStageResult{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
 			case lifecycle.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return lifecycle.DetectResult{}, cmd.FailErrCode(err, cmd.CodeFailedDetectWithErrors, "detect")
+				return lifecycle.DetectStageResult{}, cmd.FailErrCode(err, cmd.CodeFailedDetectWithErrors, "detect")
 			default:
-				return lifecycle.DetectResult{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
+				return lifecycle.DetectStageResult{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
 			}
 		default:
-			return lifecycle.DetectResult{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
+			return lifecycle.DetectStageResult{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
 		}
 	}
 
@@ -185,7 +185,7 @@ func (da detectArgs) verifyBuildpackApis(order lifecycle.BuildpackOrder) error {
 	return nil
 }
 
-func (d *detectCmd) writeData(dr lifecycle.DetectResult) error {
+func (d *detectCmd) writeData(dr lifecycle.DetectStageResult) error {
 	if err := lifecycle.WriteTOML(d.groupPath, dr.Group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
