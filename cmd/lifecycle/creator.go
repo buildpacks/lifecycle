@@ -138,14 +138,14 @@ func (c *createCmd) Exec() error {
 		skipLayers: c.skipRestore,
 		useDaemon:  c.useDaemon,
 		docker:     c.docker,
-	}.analyze(dr.Group, dr.PrivilegedGroup, cacheStore)
+	}.analyze(dr.BuildGroup, dr.BuildPrivilegedGroup, cacheStore)
 	if err != nil {
 		return err
 	}
 
 	if !c.skipRestore {
 		cmd.DefaultLogger.Phase("RESTORING")
-		if err := restore(c.layersDir, dr.Group, dr.PrivilegedGroup, cacheStore); err != nil {
+		if err := restore(c.layersDir, dr.BuildGroup, dr.BuildPrivilegedGroup, cacheStore); err != nil {
 			return err
 		}
 	}
@@ -158,7 +158,7 @@ func (c *createCmd) Exec() error {
 		platformAPI:        c.platformAPI,
 		platformDir:        c.platformDir,
 		stackBuildpacksDir: c.stackBuildpacksDir,
-	}.buildAll(dr.Group, dr.PrivilegedGroup, dr.Plan, c.ouid, c.ogid, c.uid, c.gid)
+	}.buildAll(dr.BuildGroup, dr.BuildPrivilegedGroup, dr.BuildPlan, c.ouid, c.ogid, c.uid, c.gid)
 	if err != nil {
 		return err
 	}
@@ -180,5 +180,5 @@ func (c *createCmd) Exec() error {
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
-	}.export(dr.PrivilegedGroup, dr.Group, cacheStore, analyzedMD)
+	}.export(dr.BuildPrivilegedGroup, dr.BuildGroup, cacheStore, analyzedMD)
 }

@@ -232,13 +232,14 @@ func (c *DetectConfig) process(done []Buildpack) (*DetectResult, error) {
 	}
 
 	participatingBuildpacks := append(result.PrivOptions, result.BuildOptions...)
+
 	if len(done) != len(participatingBuildpacks) {
 		c.Logger.Infof("%d of %d buildpacks participating", len(participatingBuildpacks), len(done))
 	}
 
 	maxLength := 0
-	for _, t := range participatingBuildpacks {
-		l := len(t.ID)
+	for _, bp := range participatingBuildpacks {
+		l := len(bp.ID)
 		if l > maxLength {
 			maxLength = l
 		}
@@ -255,125 +256,54 @@ func (c *DetectConfig) process(done []Buildpack) (*DetectResult, error) {
 	for _, r := range result.BuildOptions {
 		found = append(found, r.Buildpack.noOpt())
 	}
+	var privFound []Buildpack
+	for _, r := range result.PrivOptions {
+		privFound = append(privFound, r.Buildpack.noOpt())
+	}
 	var plan []BuildPlanEntry
 	for _, dep := range result.BuildDeps {
 		plan = append(plan, dep.BuildPlanEntry.noOpt())
 	}
 
-	var privFound []Buildpack
-	for _, r := range result.PrivOptions {
-		privFound = append(privFound, r.Buildpack.noOpt())
+	var runFound []Buildpack
+	for _, r := range result.RunOptions {
+		runFound = append(runFound, r.Buildpack.noOpt())
+	}
+	var runPlan []BuildPlanEntry
+	for _, dep := range result.RunDeps {
+		runPlan = append(runPlan, dep.BuildPlanEntry.noOpt())
 	}
 
 	return &DetectResult{
 		BuildGroup:           BuildpackGroup{found},
 		BuildPrivilegedGroup: BuildpackGroup{privFound},
 		BuildPlan:            BuildPlan{plan},
-		RunGroup:             BuildpackGroup{},
-		RunPlan:              BuildPlan{},
+		RunGroup:             BuildpackGroup{runFound},
+		RunPlan:              BuildPlan{runPlan},
 	}, nil
 }
 
 type trialResult struct {
-	BuildDeps      depMap
-	BuildOptions   []detectOption
-	PrivOptions    []detectOption
-	PrivRunDeps    depMap
-	PrivRunOptions []detectOption
+	BuildDeps    depMap
+	BuildOptions []detectOption
+	PrivOptions  []detectOption
+	RunDeps      depMap
+	RunOptions   []detectOption
 }
 
 func (c *DetectConfig) runTrial(i int, trial detectTrial) (*trialResult, error) {
 	c.Logger.Debugf("Resolving plan... (try #%d)", i)
 
-	var buildTrial detectTrial
-	var runTrial detectTrial
-	buildTrial = append([]detectOption{}, trial...)
-	runTrial = append([]detectOption{}, trial...)
-
-	var buildDeps depMap
-	candidateRemovals := make(map[Buildpack][]string)
-	retry := true
-	for retry {
-		retry = false
-		stage := "build"
-		buildDeps = newDepMap(buildTrial, stage)
-
-		if err := buildDeps.eachUnmetRequire(func(name string, bp Buildpack) error {
-			retry = true
-			if !bp.Optional {
-				c.Logger.Debugf("fail: %s requires %s", bp, name)
-				return errFailedDetection
-			}
-			c.Logger.Debugf("skip: %s requires %s", bp, name)
-			buildTrial = buildTrial.remove(bp)
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-
-		if err := buildDeps.eachUnmetProvide(func(name string, bp Buildpack) error {
-			if bp.Privileged {
-				candidateRemovals[bp] = append(candidateRemovals[bp], stage)
-				return nil
-			}
-			retry = true
-			if !bp.Optional && !bp.Privileged {
-				c.Logger.Debugf("fail: %s provides unused %s", bp, name)
-				return errFailedDetection
-			}
-			c.Logger.Debugf("skip: %s provides unused %s", bp, name)
-			buildTrial = buildTrial.remove(bp)
-			return nil
-		}); err != nil {
-			return nil, err
-		}
+	buildTrial := append([]detectOption{}, trial...)
+	buildDeps, buildOptions, privOptions, err := c.runTrialForStage(buildTrial, "")
+	if err != nil {
+		return nil, err
 	}
 
-	var runDeps depMap
-	// retry = true
-	// for retry {
-	// 	retry = false
-	// 	stage := "run"
-	// 	runDeps = newDepMap(runTrial, stage)
-
-	// 	if err := runDeps.eachUnmetRequire(func(name string, bp Buildpack) error {
-	// 		retry = true
-	// 		if !bp.Optional {
-	// 			c.Logger.Debugf("fail: %s requires %s", bp, name)
-	// 			return errFailedDetection
-	// 		}
-	// 		c.Logger.Debugf("skip: %s requires %s", bp, name)
-	// 		runTrial = runTrial.remove(bp)
-	// 		return nil
-	// 	}); err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	if err := runDeps.eachUnmetProvide(func(name string, bp Buildpack) error {
-	// 		if bp.Privileged {
-	// 			candidateRemovals[bp] = append(candidateRemovals[bp], stage)
-	// 			return nil
-	// 		}
-	// 		retry = true
-	// 		if !bp.Optional && !bp.Privileged {
-	// 			c.Logger.Debugf("fail: %s provides unused %s", bp, name)
-	// 			return errFailedDetection
-	// 		}
-	// 		c.Logger.Debugf("skip: %s provides unused %s", bp, name)
-	// 		runTrial = runTrial.remove(bp)
-	// 		return nil
-	// 	}); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
-	// TODO: fix for skipping run stage (2?)
-	for bp, stages := range candidateRemovals {
-		if len(stages) == 1 {
-			c.Logger.Debugf("skip: %s provides unused deps", bp)
-			buildTrial = buildTrial.remove(bp)
-			runTrial = runTrial.remove(bp)
-		}
+	runTrial := append([]detectOption{}, trial...)
+	runDeps, _, runOptions, err := c.runTrialForStage(runTrial, "run")
+	if err != nil {
+		return nil, err
 	}
 
 	if len(buildTrial) == 0 && len(runTrial) == 0 {
@@ -381,27 +311,76 @@ func (c *DetectConfig) runTrial(i int, trial detectTrial) (*trialResult, error) 
 		return nil, errFailedDetection
 	}
 
-	// split build into 2 distinct bp collections, based on Privileged
-	// TODO: but keep the same build dep graph?
-	buildOptions := []detectOption{}
-	privOptions := []detectOption{}
-
-	for _, detectOption := range buildTrial {
-		if detectOption.Privileged {
-			privOptions = append(privOptions, detectOption)
-		} else {
-			buildOptions = append(buildOptions, detectOption)
-		}
-	}
-
 	return &trialResult{
 		BuildDeps:    buildDeps,
 		BuildOptions: buildOptions,
 		PrivOptions:  privOptions,
 
-		PrivRunDeps:    runDeps,
-		PrivRunOptions: runTrial,
+		RunDeps:    runDeps,
+		RunOptions: runOptions,
 	}, nil
+}
+
+func (c *DetectConfig) runTrialForStage(trial detectTrial, stage string) (depMap, []detectOption, []detectOption, error) {
+	var depMap depMap
+	loggedStage := ""
+	retry := true
+	for retry {
+		retry = false
+		if stage == "run" {
+			loggedStage = "[run]"
+			depMap = newRunDepMap(trial)
+		} else {
+			depMap = newBuildDepMap(trial)
+		}
+
+		if err := depMap.eachUnmetRequire(func(name string, bp Buildpack) error {
+			retry = true
+			if !bp.Optional {
+				c.Logger.Debugf("fail: %s%s requires %s", bp, loggedStage, name)
+				return errFailedDetection
+			}
+			c.Logger.Debugf("skip: %s%s requires %s", bp, loggedStage, name)
+			trial = trial.remove(bp)
+			return nil
+		}); err != nil {
+			return nil, nil, nil, err
+		}
+
+		if err := depMap.eachUnmetProvide(func(name string, bp Buildpack) error {
+			if bp.Privileged {
+				return nil
+			}
+			retry = true
+			if !bp.Optional && !bp.Privileged {
+				c.Logger.Debugf("fail: %s%s provides unused %s", bp, loggedStage, name)
+				return errFailedDetection
+			}
+			c.Logger.Debugf("skip: %s%s provides unused %s", bp, loggedStage, name)
+			trial = trial.remove(bp)
+			return nil
+		}); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	depMap.eachUnusedPrivilegedBuildpack(func(bp Buildpack) {
+		c.Logger.Debugf("skip: %s%s provides unused deps", bp, loggedStage)
+		trial = trial.remove(bp)
+	})
+
+	options := []detectOption{}
+	privOptions := []detectOption{}
+
+	for _, detectOption := range trial {
+		if detectOption.Privileged {
+			privOptions = append(privOptions, detectOption)
+		} else {
+			options = append(options, detectOption)
+		}
+	}
+
+	return depMap, options, privOptions, nil
 }
 
 func (bp *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
@@ -736,8 +715,9 @@ type depMap map[depKey]depEntry
 
 var anyMixinKey depKey = depKey{name: "any", mixin: true, any: true}
 
-func newDepMap(trial detectTrial, stage string) depMap {
+func newBuildDepMap(trial detectTrial) depMap {
 	m := depMap{}
+	stage := "build"
 	for _, option := range trial {
 		for _, p := range option.Provides {
 			pstage, _ := p.parseName()
@@ -746,6 +726,35 @@ func newDepMap(trial detectTrial, stage string) depMap {
 			}
 		}
 		for _, r := range option.Requires {
+			rstage, _ := r.parseName()
+			if rstage == "" || rstage == stage {
+				m.require(option.Buildpack, r)
+			}
+		}
+	}
+	return m
+}
+
+func newRunDepMap(trial detectTrial) depMap {
+	m := depMap{}
+	stage := "run"
+	for _, option := range trial {
+		for _, p := range option.Provides {
+			// only privileged buildpacks can provide something for run image extension
+			if !option.Buildpack.Privileged {
+				continue
+			}
+
+			pstage, _ := p.parseName()
+			if pstage == "" || pstage == stage {
+				m.provide(option.Buildpack, p)
+			}
+		}
+		for _, r := range option.Requires {
+			// buildpacks can only require something for run image that is _not_ a mixin
+			if !r.Mixin {
+				continue
+			}
 			rstage, _ := r.parseName()
 			if rstage == "" || rstage == stage {
 				m.require(option.Buildpack, r)
@@ -802,4 +811,29 @@ func (m depMap) eachUnmetRequire(f func(name string, bp Buildpack) error) error 
 		}
 	}
 	return nil
+}
+
+func (m depMap) eachUnusedPrivilegedBuildpack(f func(bp Buildpack)) {
+	candidateRemovals := make(map[string]Buildpack)
+	candidateRemovals2 := make(map[string]depKey)
+	for k, entry := range m {
+		if len(entry.extraProvides) != 0 {
+			for _, bp := range entry.extraProvides {
+				candidateRemovals[bp.ID] = bp
+				candidateRemovals2[bp.ID] = k
+			}
+		}
+	}
+
+	for _, entry := range m {
+		for _, bp := range entry.Providers {
+			delete(candidateRemovals, bp.ID)
+		}
+	}
+
+	// TODO: this feels...bad
+	for _, bp := range candidateRemovals {
+		f(bp)
+		delete(m, candidateRemovals2[bp.ID])
+	}
 }

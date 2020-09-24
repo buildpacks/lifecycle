@@ -647,6 +647,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0[run] provides unused deps\n"+
 						"X 1.0.0\n"+
 						"A v1\n"+
 						"B v1\n",
@@ -655,6 +656,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			// TODO: is this test valid? should stackpacks be able to provide non-mixins for _both_ stages?
 			it("should return a build plan with matched dependencies from privileged buildpacks", func() {
 				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
@@ -685,6 +687,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected group:\n%s\n", s)
 				}
 
+				// since it is not a mixin, dep1 is really build:dep1
+				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
+					Group: nil,
+				}); s != "" {
+					t.Fatalf("Unexpected run group:\n%s\n", s)
+				}
+
 				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
 					{
 						Providers: []lifecycle.Buildpack{
@@ -701,6 +710,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0[run] provides unused deps\n"+
 						"X 1.0.0\n"+
 						"B v1\n",
 				) {
@@ -751,6 +761,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
 						"skip: X@1.0.0 provides unused deps\n"+
+						"skip: X@1.0.0[run] provides unused deps\n"+
 						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
@@ -865,7 +876,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Requires: []lifecycle.Require{{Name: "build:dep1", Mixin: true}},
 					},
 				}) {
-					t.Fatalf("Unexpected privileged entries:\n%+v\n", dr.BuildPlan.Entries)
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
 				}
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
@@ -915,7 +926,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Requires: []lifecycle.Require{{Name: "build:dep1", Mixin: true}},
 					},
 				}) {
-					t.Fatalf("Unexpected privileged entries:\n%+v\n", dr.BuildPlan.Entries)
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
 				}
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
@@ -923,6 +934,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0[run] provides unused deps\n"+
 						"X 1.0.0\n"+
 						"B v1\n",
 				) {
@@ -930,7 +942,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it.Focus("should succeed if the run stage requirement is met by no stage prefix", func() {
+			it("should succeed if the run stage requirement is met by no stage prefix", func() {
 				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
@@ -963,8 +975,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected run group:\n%s\n", s)
 				}
 
-				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry{}) {
-					t.Fatalf("Unexpected privileged entries:\n%+v\n", dr.BuildPlan.Entries)
+				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
 				}
 
 				if !hasEntries(dr.RunPlan.Entries, []lifecycle.BuildPlanEntry{
@@ -975,7 +987,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Requires: []lifecycle.Require{{Name: "run:dep1", Mixin: true}},
 					},
 				}) {
-					t.Fatalf("Unexpected run entries:\n%+v\n", dr.BuildPlan.Entries)
+					t.Fatalf("Unexpected run entries:\n%+v\n", dr.RunPlan.Entries)
 				}
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
@@ -983,7 +995,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"X 1.0.0\n"+
+						"skip: X@1.0.0 provides unused deps\n"+
+						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
@@ -1028,7 +1041,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"X 1.0.0\n"+
+						"skip: X@1.0.0 provides unused deps\n"+
+						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
@@ -1406,8 +1420,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
-				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
-					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				if dr != nil {
+					t.Fatalf("Unexpected result:\n%+v\n", dr)
 				}
 
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
