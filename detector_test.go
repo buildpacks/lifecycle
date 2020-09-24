@@ -810,6 +810,17 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
 				}
 
+				if !hasEntries(dr.RunPlan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+					},
+				}) {
+					t.Fatalf("Unexpected run entries:\n%+v\n", dr.RunPlan.Entries)
+				}
+
 				if s := allLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
 						"pass: X@1.0.0\n"+

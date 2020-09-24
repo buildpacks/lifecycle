@@ -144,27 +144,6 @@ type depKey struct {
 	any   bool
 }
 
-func (r *Require) depKey() depKey {
-	cleanRequire := r.noStage()
-	return depKey{
-		cleanRequire.Name,
-		cleanRequire.Mixin,
-		false,
-	}
-}
-
-func (p *Provide) depKey() depKey {
-	if p.Any {
-		return anyMixinKey
-	}
-	cleanProvide := p.noStage()
-	return depKey{
-		cleanProvide.Name,
-		cleanProvide.Mixin,
-		false,
-	}
-}
-
 type Provide struct {
 	Name  string `toml:"name"`
 	Mixin bool   `toml:"mixin,omitempty" json:"mixin,omitempty"`
@@ -744,7 +723,7 @@ type depEntry struct {
 
 type depMap map[depKey]depEntry
 
-var anyMixinKey depKey = depKey{name: "any", mixin: true, any: true}
+var anyMixinKey depKey = depKey{name: "*", mixin: true, any: true}
 
 func newDepMap(trial detectTrial, stage stageName) depMap {
 	m := depMap{}
@@ -768,13 +747,23 @@ func newDepMap(trial detectTrial, stage stageName) depMap {
 }
 
 func (m depMap) provide(bp Buildpack, provide Provide) {
-	entry := m[provide.depKey()]
+	depKey := depKey{
+		name:  provide.Name,
+		mixin: provide.Mixin,
+	}
+	if bp.Privileged && provide.Any {
+		depKey = anyMixinKey
+	}
+	entry := m[depKey]
 	entry.extraProvides = append(entry.extraProvides, bp)
-	m[provide.depKey()] = entry
+	m[depKey] = entry
 }
 
 func (m depMap) require(bp Buildpack, require Require) {
-	reqKey := require.depKey()
+	reqKey := depKey{
+		name:  require.Name,
+		mixin: require.Mixin,
+	}
 	if require.Mixin && len(m[anyMixinKey].extraProvides) != 0 {
 		reqKey = anyMixinKey
 	}
