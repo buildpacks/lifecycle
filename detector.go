@@ -89,7 +89,12 @@ const allStages stageName = ""
 const buildStage stageName = stageName("build")
 const runStage stageName = stageName("run")
 
-func (p Provide) validFor(stage stageName) bool {
+func (p Provide) validFor(stage stageName, buildpack Buildpack) bool {
+	// only privileged buildpacks can provide something for run image extension
+	if stage == runStage && !buildpack.Privileged {
+		return false
+	}
+
 	parsedStage, _ := parseMixinName(p.Name)
 	return parsedStage == allStages || parsedStage == stage
 }
@@ -729,11 +734,7 @@ func newDepMap(trial detectTrial, stage stageName) depMap {
 	m := depMap{}
 	for _, option := range trial {
 		for _, p := range option.Provides {
-			// only privileged buildpacks can provide something for run image extension
-			if stage == runStage && !option.Buildpack.Privileged {
-				continue
-			}
-			if p.validFor(stage) {
+			if p.validFor(stage, option.Buildpack) {
 				m.provide(option.Buildpack, p.noStage())
 			}
 		}
@@ -806,13 +807,17 @@ func (m depMap) eachUnmetRequire(f func(name string, bp Buildpack) error) error 
 }
 
 func (m depMap) eachUnusedPrivilegedBuildpack(f func(bp Buildpack)) {
-	candidateRemovals := make(map[string]Buildpack)
-	candidateRemovals2 := make(map[string]depKey)
+	candidateRemovals := make(map[string]struct {
+		depKey depKey
+		bp     Buildpack
+	})
 	for k, entry := range m {
 		if len(entry.extraProvides) != 0 {
 			for _, bp := range entry.extraProvides {
-				candidateRemovals[bp.ID] = bp
-				candidateRemovals2[bp.ID] = k
+				candidateRemovals[bp.ID] = struct {
+					depKey depKey
+					bp     Buildpack
+				}{k, bp}
 			}
 		}
 	}
@@ -823,9 +828,8 @@ func (m depMap) eachUnusedPrivilegedBuildpack(f func(bp Buildpack)) {
 		}
 	}
 
-	// TODO: this feels...bad
-	for _, bp := range candidateRemovals {
-		f(bp)
-		delete(m, candidateRemovals2[bp.ID])
+	for _, v := range candidateRemovals {
+		f(v.bp)
+		delete(m, v.depKey)
 	}
 }
