@@ -22,11 +22,10 @@ const (
 	EnvBuildpackDir = "CNB_BUILDPACK_DIR"
 )
 
-var errFailedDetection = errors.New("no buildpacks participating")
-var errBuildpack = errors.New("buildpack(s) failed with err")
-var errInconsistentVersion = `buildpack %s has a "version" key that does not match "metadata.version"`
-var errDoublySpecifiedVersions = `buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`
-var warnTopLevelVersion = `Warning: buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`
+var (
+	errFailedDetection = errors.New("no buildpacks participating")
+	errBuildpack       = errors.New("buildpack(s) failed with err")
+)
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -292,19 +291,19 @@ func (bp *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	}
 	if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
-			t.Err = errors.Errorf(errInconsistentVersion, bp.Buildpack.ID)
+			t.Err = errors.Errorf(`buildpack %s has a "version" key that does not match "metadata.version"`, bp.Buildpack.ID)
 			t.Code = -1
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
 		if t.hasDoublySpecifiedVersions() || t.Or.hasDoublySpecifiedVersions() {
-			t.Err = errors.Errorf(errDoublySpecifiedVersions, bp.Buildpack.ID)
+			t.Err = errors.Errorf(`buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, bp.Buildpack.ID)
 			t.Code = -1
 		}
 	}
 	if api.MustParse(bp.API).Compare(api.MustParse("0.3")) >= 0 {
 		if t.hasTopLevelVersions() || t.Or.hasTopLevelVersions() {
-			c.Logger.Warnf(warnTopLevelVersion, bp.Buildpack.ID)
+			c.Logger.Warnf(`Warning: buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, bp.Buildpack.ID)
 		}
 	}
 	t.Output = out.Bytes()
