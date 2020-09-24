@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
 )
@@ -27,7 +28,7 @@ const (
 // buildVersion is a display format of the version and build metadata in compliance with semver.
 func buildVersion() string {
 	// noinspection GoBoolExpressions
-	if SCMCommit == "" {
+	if SCMCommit == "" || strings.Contains(Version, SCMCommit){
 		return Version
 	}
 

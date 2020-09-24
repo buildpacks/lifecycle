@@ -16,6 +16,8 @@ require (
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200523222454-059865788121
+	golang.org/x/tools v0.0.0-20200916195026-c9a70fc28ce3
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gotest.tools/v3 v3.0.2 // indirect
 )
 

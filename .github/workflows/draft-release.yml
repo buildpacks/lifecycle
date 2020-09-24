@@ -1,0 +1,187 @@
+name: draft-release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Derive lifecycle version from branch name
+        run: |
+          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]}
+          if [[ -z "${version}" ]]; then
+            echo "lifecycle version not detected."
+            exit 1
+          fi
+          echo "::set-env name=LIFECYCLE_VERSION::$version"
+        shell: bash
+      - name: Determine download url for linux
+        id: artifact-url-linux
+        uses: actions/github-script@0.8.0
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          result-encoding: string
+          script: |
+            return github.actions
+              .listRepoWorkflows({
+                 owner: "buildpacks",
+                 repo: "lifecycle",
+              })
+              .then(workflows_result => {
+                let workflows = workflows_result.data.workflows
+                  .filter(a => a.name === "build" && a.state === "active")
+                  .map(a => a.id);
+                if (workflows.length === 0) {
+                  throw "no active workflows found with name build"
+                }
+                return workflows[0]
+              })
+              .then(workflow_id => {
+                return github.actions.listRepoWorkflowRuns({
+                  owner: "buildpacks",
+                  repo: "lifecycle",
+                  workflow_id: workflow_id,
+                  branch: "release/${{ env.LIFECYCLE_VERSION }}",
+                  event: "push"
+                })
+              })
+              .then(workflow_runs_result => {
+                let workflow_runs = workflow_runs_result.data.workflow_runs
+                  .filter(run => run.conclusion === "success");
+                if (workflow_runs.length === 0) {
+                  throw "no successful workflow runs found for commit"
+                }
+                return workflow_runs[0].id
+              })
+              .then(workflow_runid => {
+                return github.actions.listWorkflowRunArtifacts({
+                  owner: "buildpacks",
+                  repo: "lifecycle",
+                  run_id: workflow_runid
+                })
+              })
+              .then(artifacts_result => {
+                let urls = artifacts_result.data.artifacts
+                  .filter(artifact => artifact.name.includes("linux"))
+                  .map(artifact => artifact.archive_download_url);
+                if (urls.length === 0) {
+                  throw "no artifacts found"
+                }
+                return urls[0]
+              })
+      - name: Determine download url for windows
+        id: artifact-url-windows
+        uses: actions/github-script@0.8.0
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          result-encoding: string
+          script: |
+            return github.actions
+              .listRepoWorkflows({
+                 owner: "buildpacks",
+                 repo: "lifecycle",
+              })
+              .then(workflows_result => {
+                let workflows = workflows_result.data.workflows
+                  .filter(a => a.name === "build" && a.state === "active")
+                  .map(a => a.id);
+                if (workflows.length === 0) {
+                  throw "no active workflows found with name build"
+                }
+                return workflows[0]
+              })
+              .then(workflow_id => {
+                return github.actions.listRepoWorkflowRuns({
+                  owner: "buildpacks",
+                  repo: "lifecycle",
+                  workflow_id: workflow_id,
+                  branch: "release/${{ env.LIFECYCLE_VERSION }}",
+                  event: "push"
+                })
+              })
+              .then(workflow_runs_result => {
+                let workflow_runs = workflow_runs_result.data.workflow_runs
+                  .filter(run => run.conclusion === "success");
+                if (workflow_runs.length === 0) {
+                  throw "no successful workflow runs found for commit"
+                }
+                return workflow_runs[0].id
+              })
+              .then(workflow_runid => {
+                return github.actions.listWorkflowRunArtifacts({
+                  owner: "buildpacks",
+                  repo: "lifecycle",
+                  run_id: workflow_runid
+                })
+              })
+              .then(artifacts_result => {
+                let urls = artifacts_result.data.artifacts
+                  .filter(artifact => artifact.name.includes("windows"))
+                  .map(artifact => artifact.archive_download_url);
+                if (urls.length === 0) {
+                  throw "no artifacts found"
+                }
+                return urls[0]
+              })
+      - name: Download linux artifact
+        run: |
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o artifact-linux.zip \
+            ${{ steps.artifact-url-linux.outputs.result }}
+          mkdir artifact-linux
+          unzip -d artifact-linux artifact-linux.zip
+          lifecycle_path=$(ls artifact-linux/lifecycle-*linux.x86-64.tgz)
+          echo "::set-env name=ARTIFACT_LINUX_PATH::$PWD/$lifecycle_path"
+      - name: Download windows artifact
+        run: |
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o artifact-windows.zip \
+            ${{ steps.artifact-url-windows.outputs.result }}
+          mkdir artifact-windows
+          unzip -d artifact-windows artifact-windows.zip
+          lifecycle_path=$(ls artifact-windows/lifecycle-*windows.x86-64.tgz)
+          echo "::set-env name=ARTIFACT_WINDOWS_PATH::$PWD/$lifecycle_path"
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.LIFECYCLE_VERSION }}
+          release_name: lifecycle v${{ env.LIFECYCLE_VERSION }}
+          draft: true
+          prerelease: false
+          body: |
+            # lifecycle v${{ env.LIFECYCLE_VERSION }}
+
+            Welcome to `v${{ env.LIFECYCLE_VERSION }}`, a **beta** release of the Cloud Native Buildpack Lifecycle.
+
+            ##  Prerequisites
+
+            The lifecycle runs as a normal user in a series of unprivileged containers. To export images and cache image layers, it requires access to a Docker daemon **or** Docker registry.
+
+            ## Install
+
+            Extract the `.tgz` file and copy the lifecycle binaries into a [build stack base image](https://github.com/buildpack/spec/blob/master/platform.md#stacks). The build image can then be orchestrated by a platform implementation such as the [pack CLI](https://github.com/buildpack/pack) or [tekton](https://github.com/tektoncd/catalog/blob/master/task/buildpacks/0.1/README.md).
+      - name: Upload Release Asset - linux
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT_LINUX_PATH }}
+          asset_name: lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz
+          asset_content_type: application/gzip
+      - name: Upload Release Asset - windows
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT_WINDOWS_PATH }}
+          asset_name: lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz
+          asset_content_type: application/gzip

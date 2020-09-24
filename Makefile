@@ -4,10 +4,15 @@ PWD?=$(subst /,\,${CURDIR})
 LDFLAGS=-s -w
 BLANK:=
 /:=\$(BLANK)
-LIFECYCLE_VERSION?=$(shell type VERSION)
 else
 /:=/
-LIFECYCLE_VERSION?=$(shell cat VERSION)
+endif
+
+ifeq ($(LIFECYCLE_VERSION),)
+LIFECYCLE_IMAGE_TAG?=$(shell git describe --always --dirty)
+LIFECYCLE_VERSION:=$(shell go run tools/version/main.go)
+else
+LIFECYCLE_IMAGE_TAG?=$(LIFECYCLE_VERSION)
 endif
 
 GOCMD?=go
@@ -41,15 +46,13 @@ build-windows: build-windows-lifecycle build-windows-symlinks build-windows-laun
 
 build-image-linux: build-linux package-linux
 build-image-linux: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
-build-image-linux: TAG=$(shell git describe --always --dirty)
 build-image-linux:
-	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -tag lifecycle:$(TAG)
+	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
 build-image-windows: build-windows package-windows
 build-image-windows: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+windows.x86-64.tgz
-build-image-windows: TAG=$(shell git describe --always --dirty)
 build-image-windows:
-	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os windows -tag lifecycle:$(TAG)
+	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os windows -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
 build-linux-lifecycle: $(BUILD_DIR)/linux/lifecycle/lifecycle
 
@@ -212,7 +215,7 @@ package-linux: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS)
 package-linux: PACKAGER=./tools/packager/main.go
 package-linux:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH)
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
 
 package-windows: GOOS:=windows
 package-windows: INPUT_DIR:=$(BUILD_DIR)$/$(GOOS)$/lifecycle
@@ -220,7 +223,7 @@ package-windows: ARCHIVE_PATH=$(BUILD_DIR)$/lifecycle-v$(LIFECYCLE_VERSION)+$(GO
 package-windows: PACKAGER=.$/tools$/packager$/main.go
 package-windows:
 	@echo "> Packaging lifecycle for $(GOOS)..."
-	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH)
+	$(GOCMD) run $(PACKAGER) --inputDir $(INPUT_DIR) -archivePath $(ARCHIVE_PATH) -descriptorPath $(LIFECYCLE_DESCRIPTOR_PATH) -version $(LIFECYCLE_VERSION)
 
 # Ensure workdir is clean and build image from .git
 docker-build-source-image-windows: $(GOFILES)

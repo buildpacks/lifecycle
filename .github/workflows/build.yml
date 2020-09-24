@@ -4,15 +4,19 @@ on:
   push:
     branches:
       - main
+      - 'release/**'
   pull_request:
     branches:
       - main
+      - 'release/**'
 
 jobs:
-  test-and-build:
+  test-and-build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Set up go
         uses: actions/setup-go@v2-beta
         with:
@@ -38,6 +42,12 @@ jobs:
         with:
           name: lifecycle-linux-x86-64
           path: out/lifecycle-v*+linux.x86-64.tgz
+      - name: Publish lifecycle image
+        run: |
+          if [[ ${{ github.event_name }} != 'push' ]]; then exit 0; fi
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
+          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
   test-and-build-windows:
     runs-on: windows-latest
     steps:
@@ -47,16 +57,16 @@ jobs:
           git config --global core.eol lf
           git config --global core.symlinks true
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Set up go
         uses: actions/setup-go@v2-beta
         with:
           go-version: '1.14'
       - name: Install jq
-        run: |
-          choco install jq
+        run: choco install jq
       - name: Test
-        run: |
-          make test
+        run: make test
         shell: cmd
       - name: Build
         run: |
@@ -67,3 +77,24 @@ jobs:
         with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
+      - name: Publish lifecycle image
+        run: |
+          If ("${{ github.event_name }}" -Ne 'push') { exit }
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          $LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
+          $LIFECYCLE_VERSION=$(go run ./tools/version/main.go)
+          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v${LIFECYCLE_VERSION}+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
+  create-lifecycle-image-manifest-list:
+    if: github.event_name == 'push'
+    needs:
+      - test-and-build-linux
+      - test-and-build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Create Manifest List
+        run: |
+          LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
