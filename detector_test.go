@@ -596,6 +596,70 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should ignore phase prefixes for non-mixin deps", func() {
+				toappfile("\n[[provides]]\n name = \"build:dep1\"\n[[provides]]\n name = \"run:dep2\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[requires]]\n name = \"build:dep1\"\n[[requires]]\n name = \"run:dep2\"", "detect-plan-B-v1.toml")
+
+				dr, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(dr.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+					Group: nil,
+				}); s != "" {
+					t.Fatalf("Unexpected priv group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.BuildGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
+					Group: nil,
+				}); s != "" {
+					t.Fatalf("Unexpected run group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1"},
+						},
+						Requires: []lifecycle.Require{{Name: "build:dep1", Mixin: false}},
+					},
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1"},
+						},
+						Requires: []lifecycle.Require{{Name: "run:dep2", Mixin: false}},
+					},
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: A@v1\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"A v1\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
 			it("should produce build plans for both standard and privileged that provide the same dep", func() {
 				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")

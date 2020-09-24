@@ -90,9 +90,8 @@ const buildStage stageName = stageName("build")
 const runStage stageName = stageName("run")
 
 func (p Provide) validFor(stage stageName, buildpack Buildpack) bool {
-	// only privileged buildpacks can provide something for run image extension
-	if stage == runStage && !buildpack.Privileged {
-		return false
+	if !p.Mixin {
+		return stage == buildStage || buildpack.Privileged
 	}
 
 	parsedStage, _ := parseMixinName(p.Name)
@@ -100,9 +99,8 @@ func (p Provide) validFor(stage stageName, buildpack Buildpack) bool {
 }
 
 func (r Require) validFor(stage stageName) bool {
-	// buildpacks can only require something for run image that is a mixin
-	if stage == runStage && !r.Mixin {
-		return false
+	if !r.Mixin {
+		return stage == buildStage
 	}
 
 	parsedStage, _ := parseMixinName(r.Name)
