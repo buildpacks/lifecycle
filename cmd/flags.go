@@ -27,6 +27,8 @@ var (
 	DefaultStackBuildpacksDir  = filepath.Join(rootDir, "cnb", "stack", "buildpacks")
 	DefaultStackGroupPath      = filepath.Join(".", "stack-group.toml")
 	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
+	DefaultRunGroupPath        = filepath.Join(".", "run-group.toml")
+	DefaultRunPlanPath         = filepath.Join(".", "run-plan.toml")
 )
 
 const (
@@ -57,6 +59,8 @@ const (
 	EnvStackBuildpacksDir  = "CNB_STACK_BUILDPACKS_DIR"
 	EnvStackPath           = "CNB_STACK_PATH"
 	EnvStackGroupPath      = "CNB_STACK_GROUP_PATH"
+	EnvRunGroupPath        = "CNB_RUN_GROUP_PATH"
+	EnvRunPlanPath         = "CNB_RUN_PLAN_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 
@@ -151,6 +155,14 @@ func FlagStackPath(path *string) {
 
 func FlagStackGroupPath(path *string) {
 	flagSet.StringVar(path, FlagNameStackGroupPath, EnvOrDefault(EnvStackGroupPath, DefaultStackGroupPath), "path to stack-group.toml")
+}
+
+func FlagRunGroupPath(path *string) {
+	flagSet.StringVar(path, "run-group", EnvOrDefault(EnvRunGroupPath, DefaultRunGroupPath), "path to run-group.toml")
+}
+
+func FlagRunPlanPath(path *string) {
+	flagSet.StringVar(path, "run-plan", EnvOrDefault(EnvRunPlanPath, DefaultRunPlanPath), "path to run-plan.toml")
 }
 
 func FlagTags(tags *StringSlice) {

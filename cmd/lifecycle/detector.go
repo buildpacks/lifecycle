@@ -21,6 +21,8 @@ type detectCmd struct {
 	groupPath      string
 	stackGroupPath string
 	planPath       string
+	runGroupPath   string
+	runPlanPath    string
 }
 
 type detectArgs struct {
@@ -41,6 +43,8 @@ func (d *detectCmd) Init() {
 	cmd.FlagGroupPath(&d.groupPath)
 	cmd.FlagStackGroupPath(&d.stackGroupPath)
 	cmd.FlagPlanPath(&d.planPath)
+	cmd.FlagRunGroupPath(&d.runGroupPath)
+	cmd.FlagRunPlanPath(&d.runPlanPath)
 }
 
 func (d *detectCmd) Args(nargs int, args []string) error {
@@ -199,5 +203,18 @@ func (d *detectCmd) writeData(dr lifecycle.DetectResult) error {
 	if err := lifecycle.WriteTOML(d.planPath, dr.BuildPlan); err != nil {
 		return cmd.FailErr(err, "write detect plan")
 	}
+
+	if len(dr.RunGroup.Group) > 0 {
+		if err := lifecycle.WriteTOML(d.runGroupPath, dr.RunGroup); err != nil {
+			return cmd.FailErr(err, "write run buildpack group")
+		}
+	}
+
+	if len(dr.RunPlan.Entries) != 0 {
+		if err := lifecycle.WriteTOML(d.runPlanPath, dr.RunPlan); err != nil {
+			return cmd.FailErr(err, "write run plan")
+		}
+	}
+
 	return nil
 }
