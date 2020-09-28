@@ -611,7 +611,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := cmp.Diff(dr.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: nil,
+					Group: []lifecycle.Buildpack{},
 				}); s != "" {
 					t.Fatalf("Unexpected priv group:\n%s\n", s)
 				}
@@ -626,7 +626,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
-					Group: nil,
+					Group: []lifecycle.Buildpack{},
 				}); s != "" {
 					t.Fatalf("Unexpected run group:\n%s\n", s)
 				}
@@ -752,7 +752,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// since it is not a mixin, dep1 is really build:dep1
 				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
-					Group: nil,
+					Group: []lifecycle.Buildpack{},
 				}); s != "" {
 					t.Fatalf("Unexpected run group:\n%s\n", s)
 				}
@@ -1036,7 +1036,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := cmp.Diff(dr.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: nil,
+					Group: []lifecycle.Buildpack{},
 				}); s != "" {
 					t.Fatalf("Unexpected priv group:\n%s\n", s)
 				}

@@ -267,36 +267,29 @@ func (c *DetectConfig) process(done []Buildpack) (*DetectResult, error) {
 		c.Logger.Infof(f, t.ID, t.Version)
 	}
 
-	// TODO: can we do this earlier?
-	var found []Buildpack
-	for _, r := range result.BuildOptions {
-		found = append(found, r.Buildpack.noOpt())
-	}
-	var privFound []Buildpack
-	for _, r := range result.PrivOptions {
-		privFound = append(privFound, r.Buildpack.noOpt())
-	}
-	var plan []BuildPlanEntry
-	for _, dep := range result.BuildDeps {
-		plan = append(plan, dep.BuildPlanEntry.noOpt())
-	}
-
-	var runFound []Buildpack
-	for _, r := range result.RunOptions {
-		runFound = append(runFound, r.Buildpack.noOpt())
-	}
-	var runPlan []BuildPlanEntry
-	for _, dep := range result.RunDeps {
-		runPlan = append(runPlan, dep.BuildPlanEntry.noOpt())
-	}
-
 	return &DetectResult{
-		BuildGroup:           BuildpackGroup{found},
-		BuildPrivilegedGroup: BuildpackGroup{privFound},
-		BuildPlan:            BuildPlan{plan},
-		RunGroup:             BuildpackGroup{runFound},
-		RunPlan:              BuildPlan{runPlan},
+		BuildGroup:           BuildpackGroup{noOpt(result.BuildOptions)},
+		BuildPrivilegedGroup: BuildpackGroup{noOpt(result.PrivOptions)},
+		BuildPlan:            BuildPlan{noOptPlan(result.BuildDeps)},
+		RunGroup:             BuildpackGroup{noOpt(result.RunOptions)},
+		RunPlan:              BuildPlan{noOptPlan(result.RunDeps)},
 	}, nil
+}
+
+func noOpt(opts []detectOption) []Buildpack {
+	result := []Buildpack{}
+	for _, o := range opts {
+		result = append(result, o.Buildpack.noOpt())
+	}
+	return result
+}
+
+func noOptPlan(depMap depMap) []BuildPlanEntry {
+	var result []BuildPlanEntry
+	for _, dep := range depMap {
+		result = append(result, dep.BuildPlanEntry.noOpt())
+	}
+	return result
 }
 
 type trialResult struct {

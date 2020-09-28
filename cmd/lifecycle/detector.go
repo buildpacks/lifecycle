@@ -211,7 +211,7 @@ func (d *detectCmd) writeData(dr lifecycle.DetectResult) error {
 
 	if len(dr.BuildPrivilegedGroup.Group) > 0 {
 		if err := lifecycle.WriteTOML(d.privilegedGroupPath, dr.BuildPrivilegedGroup); err != nil {
-			return cmd.FailErr(err, "write stack buildpack group")
+			return cmd.FailErr(err, "write privileged buildpack group")
 		}
 	}
 
