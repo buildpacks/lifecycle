@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -129,6 +130,10 @@ func (c *createCmd) Exec() error {
 	}.detect()
 	if err != nil {
 		return err
+	}
+
+	if len(dr.RunGroup.Group) > 0 {
+		return errors.New("creator does not support extending run image")
 	}
 
 	cmd.DefaultLogger.Phase("ANALYZING")
