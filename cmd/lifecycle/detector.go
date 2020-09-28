@@ -125,6 +125,10 @@ func (da detectArgs) detect() (lifecycle.DetectResult, error) {
 		return lifecycle.DetectResult{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
+	if err := da.validateBuildpacks(order); err != nil {
+		return lifecycle.DetectResult{}, cmd.FailErr(err, "validate buildpack")
+	}
+
 	order, err = da.mergeOrderWithStackBuildpacks(order)
 	if err != nil {
 		return lifecycle.DetectResult{}, cmd.FailErr(err, "merge stack buildpacks into order")
@@ -183,6 +187,17 @@ func (da detectArgs) verifyBuildpackApis(order lifecycle.BuildpackOrder) error {
 			}
 			if err := cmd.VerifyBuildpackAPI(bp.String(), bpTOML.API); err != nil {
 				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (da detectArgs) validateBuildpacks(order lifecycle.BuildpackOrder) error {
+	for _, group := range order {
+		for _, bp := range group.Group {
+			if bp.Privileged {
+				return fmt.Errorf("%s can not be marked as privileged", bp.String())
 			}
 		}
 	}
