@@ -221,14 +221,8 @@ func (c *DetectConfig) process(done []Buildpack) (*DetectResult, error) {
 		}
 	}
 
-	if len(results) > 0 && detected {
-		detected = false
-		for _, res := range results {
-			if !res.Buildpack.Privileged {
-				detected = true
-				break
-			}
-		}
+	if len(results) > 0 {
+		detected = detected && anyUserBuildpacks(results)
 	}
 
 	if !detected {
@@ -274,6 +268,15 @@ func (c *DetectConfig) process(done []Buildpack) (*DetectResult, error) {
 		RunGroup:             BuildpackGroup{noOpt(result.RunOptions)},
 		RunPlan:              BuildPlan{noOptPlan(result.RunDeps)},
 	}, nil
+}
+
+func anyUserBuildpacks(results []detectResult) bool {
+	for _, res := range results {
+		if !res.Buildpack.Privileged {
+			return true
+		}
+	}
+	return false
 }
 
 func noOpt(opts []detectOption) []Buildpack {
