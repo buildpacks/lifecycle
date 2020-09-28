@@ -1078,6 +1078,22 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should fail if a buildpack tries to provide a mixin", func() {
+				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-A-v1.toml")
+				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				_, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "A", Version: "v1"},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+
+				if err.Error() != "buildpack A@v1 has defined \"provide\" with \"mixin = true\", which is not allowed." {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+			})
+
 			it("should fail if the stage requirement is not met by provider", func() {
 				toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")

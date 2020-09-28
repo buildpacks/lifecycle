@@ -29,6 +29,7 @@ var errInconsistentVersion = `buildpack %s has a "version" key that does not mat
 var errDoublySpecifiedVersions = `buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`
 var warnTopLevelVersion = `Warning: buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`
 var errInvalidRequirementsBuildpack = `priviledged buildpack %s has defined "requires", which is not allowed.`
+var errInvalidProvidesBuildpack = `buildpack %s has defined "provide" with "mixin = true", which is not allowed.`
 
 type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
@@ -345,7 +346,11 @@ func (c *DetectConfig) runTrialForStage(trial detectTrial, stage stageName) (dep
 		if stage == runStage {
 			loggedStage = fmt.Sprintf("[%s]", stage)
 		}
-		depMap = newDepMap(trial, stage)
+		var err error
+		depMap, err = newDepMap(trial, stage)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 
 		if err := depMap.eachUnmetRequire(func(name string, bp Buildpack) error {
 			retry = true
@@ -728,10 +733,14 @@ type depMap map[depKey]depEntry
 
 var anyMixinKey depKey = depKey{name: "*", mixin: true, any: true}
 
-func newDepMap(trial detectTrial, stage stageName) depMap {
+func newDepMap(trial detectTrial, stage stageName) (depMap, error) {
 	m := depMap{}
 	for _, option := range trial {
 		for _, p := range option.Provides {
+			if p.Mixin && !option.Buildpack.Privileged {
+				return nil, fmt.Errorf(errInvalidProvidesBuildpack, option.Buildpack.String())
+			}
+
 			if p.validFor(stage, option.Buildpack) {
 				m.provide(option.Buildpack, p.noStage())
 			}
@@ -742,7 +751,7 @@ func newDepMap(trial detectTrial, stage stageName) depMap {
 			}
 		}
 	}
-	return m
+	return m, nil
 }
 
 func (m depMap) provide(bp Buildpack, provide Provide) {
