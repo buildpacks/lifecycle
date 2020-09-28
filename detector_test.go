@@ -720,7 +720,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			// TODO: is this test valid? should stackpacks be able to provide non-mixins for _both_ stages?
 			it("should return a build plan with matched dependencies from privileged buildpacks", func() {
 				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
 				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")

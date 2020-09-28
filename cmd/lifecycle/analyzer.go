@@ -17,11 +17,11 @@ import (
 
 type analyzeCmd struct {
 	//flags: inputs
-	cacheDir       string
-	cacheImageTag  string
-	groupPath      string
-	stackGroupPath string
-	uid, gid       int
+	cacheDir      string
+	cacheImageTag string
+	groupPath     string
+	privGroupPath string
+	uid, gid      int
 	analyzeArgs
 
 	//flags: paths to write data
@@ -49,7 +49,7 @@ func (a *analyzeCmd) Init() {
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
-	cmd.FlagStackGroupPath(&a.stackGroupPath)
+	cmd.FlagPrivilegedGroupPath(&a.privGroupPath)
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
@@ -84,11 +84,11 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	group, stackGroup, err := lifecycle.ReadGroups(a.groupPath, a.stackGroupPath)
+	group, privGroup, err := lifecycle.ReadGroups(a.groupPath, a.privGroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
-	if err := verifyBuildpackApis(group, stackGroup); err != nil {
+	if err := verifyBuildpackApis(group, privGroup); err != nil {
 		return err
 	}
 	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir)
@@ -96,7 +96,7 @@ func (a *analyzeCmd) Exec() error {
 		return cmd.FailErr(err, "initialize cache")
 	}
 
-	analyzedMD, err := a.analyze(group, stackGroup, cacheStore)
+	analyzedMD, err := a.analyze(group, privGroup, cacheStore)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group, stackGroup lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze(group, privGroup lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -131,7 +131,7 @@ func (aa analyzeArgs) analyze(group, stackGroup lifecycle.BuildpackGroup, cacheS
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: append(stackGroup.Group, group.Group...),
+		Buildpacks: append(privGroup.Group, group.Group...),
 		LayersDir:  aa.layersDir,
 		Logger:     cmd.DefaultLogger,
 		SkipLayers: aa.skipLayers,

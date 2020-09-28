@@ -28,7 +28,7 @@ type exportCmd struct {
 	cacheDir              string
 	cacheImageTag         string
 	groupPath             string
-	stackGroupPath        string
+	privilegedGroupPath   string
 	deprecatedRunImageRef string
 	exportArgs
 
@@ -73,7 +73,7 @@ func (e *exportCmd) Init() {
 	cmd.FlagStackPath(&e.stackPath)
 	cmd.FlagUID(&e.uid)
 	cmd.FlagUseDaemon(&e.useDaemon)
-	cmd.FlagStackGroupPath(&e.stackGroupPath)
+	cmd.FlagPrivilegedGroupPath(&e.privilegedGroupPath)
 
 	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
@@ -126,11 +126,11 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, stackGroup, err := lifecycle.ReadGroups(e.groupPath, e.stackGroupPath)
+	group, privGroup, err := lifecycle.ReadGroups(e.groupPath, e.privilegedGroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
-	if err := verifyBuildpackApis(group, stackGroup); err != nil {
+	if err := verifyBuildpackApis(group, privGroup); err != nil {
 		return err
 	}
 
@@ -144,10 +144,10 @@ func (e *exportCmd) Exec() error {
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	return e.export(stackGroup, group, cacheStore, analyzedMD)
+	return e.export(privGroup, group, cacheStore, analyzedMD)
 }
 
-func (ea exportArgs) export(stackGroup, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
+func (ea exportArgs) export(privGroup, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
 	ref, err := name.ParseReference(ea.imageNames[0], name.WeakValidation)
 	if err != nil {
 		return cmd.FailErr(err, "failed to parse registry")
@@ -175,7 +175,7 @@ func (ea exportArgs) export(stackGroup, group lifecycle.BuildpackGroup, cacheSto
 	}
 
 	exporter := &lifecycle.Exporter{
-		Buildpacks: append(stackGroup.Group, group.Group...),
+		Buildpacks: append(privGroup.Group, group.Group...),
 		LayerFactory: &layers.Factory{
 			ArtifactsDir: artifactsDir,
 			UID:          ea.uid,

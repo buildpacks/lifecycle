@@ -25,7 +25,7 @@ var (
 	DefaultProjectMetadataPath = filepath.Join(".", "project-metadata.toml")
 	DefaultReportPath          = filepath.Join(".", "report.toml")
 	DefaultStackBuildpacksDir  = filepath.Join(rootDir, "cnb", "stack", "buildpacks")
-	DefaultStackGroupPath      = filepath.Join(".", "stack-group.toml")
+	DefaultPrivilegedGroupPath = filepath.Join(".", "privileged-group.toml")
 	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
 	DefaultRunGroupPath        = filepath.Join(".", "run-group.toml")
 	DefaultRunPlanPath         = filepath.Join(".", "run-plan.toml")
@@ -58,13 +58,13 @@ const (
 	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
 	EnvStackBuildpacksDir  = "CNB_STACK_BUILDPACKS_DIR"
 	EnvStackPath           = "CNB_STACK_PATH"
-	EnvStackGroupPath      = "CNB_STACK_GROUP_PATH"
+	EnvPrivilegedGroupPath = "CNB_PRIVILEGED_GROUP_PATH"
 	EnvRunGroupPath        = "CNB_RUN_GROUP_PATH"
 	EnvRunPlanPath         = "CNB_RUN_PLAN_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 
-	FlagNameStackGroupPath = "stack-group"
+	FlagNamePrivilegedGroupPath = "privileged-group"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -153,8 +153,8 @@ func FlagStackPath(path *string) {
 	flagSet.StringVar(path, "stack", EnvOrDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
 }
 
-func FlagStackGroupPath(path *string) {
-	flagSet.StringVar(path, FlagNameStackGroupPath, EnvOrDefault(EnvStackGroupPath, DefaultStackGroupPath), "path to stack-group.toml")
+func FlagPrivilegedGroupPath(path *string) {
+	flagSet.StringVar(path, FlagNamePrivilegedGroupPath, EnvOrDefault(EnvPrivilegedGroupPath, DefaultPrivilegedGroupPath), "path to privileged-group.toml")
 }
 
 func FlagRunGroupPath(path *string) {

@@ -22,9 +22,9 @@ import (
 
 type buildCmd struct {
 	// flags: inputs
-	stackGroupPath string
-	groupPath      string
-	planPath       string
+	privGroupPath string
+	groupPath     string
+	planPath      string
 	buildArgs
 }
 
@@ -48,7 +48,7 @@ func (b *buildCmd) Init() {
 	cmd.FlagAppDir(&b.appDir)
 	cmd.FlagPlatformDir(&b.platformDir)
 	cmd.FlagStackBuildpacksDir(&b.stackBuildpacksDir)
-	cmd.FlagStackGroupPath(&b.stackGroupPath)
+	cmd.FlagPrivilegedGroupPath(&b.privGroupPath)
 	cmd.FlagUID(&b.uid)
 }
 
@@ -60,44 +60,44 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 }
 
 func (b *buildCmd) Privileges() error {
-	_, stackGroup, _, err := b.readData()
+	_, privGroup, _, err := b.readData()
 	if err != nil {
 		return err
 	}
 
-	hasStackGroups := len(stackGroup.Group) > 0
+	hasPrivGroups := len(privGroup.Group) > 0
 
 	// builder should never be run with privileges if there aren't any stack buildpacks
-	if !hasStackGroups && priv.IsPrivileged() {
+	if !hasPrivGroups && priv.IsPrivileged() {
 		return cmd.FailErr(errors.New("refusing to run as root"), "build")
-	} else if hasStackGroups && !priv.IsPrivileged() {
+	} else if hasPrivGroups && !priv.IsPrivileged() {
 		return cmd.FailErr(errors.New("must run as root"), "build")
 	}
 	return nil
 }
 
 func (b *buildCmd) Exec() error {
-	group, stackGroup, plan, err := b.readData()
+	group, privGroup, plan, err := b.readData()
 	if err != nil {
 		return err
 	}
 
-	if err := verifyBuildpackApis(group, stackGroup); err != nil {
+	if err := verifyBuildpackApis(group, privGroup); err != nil {
 		return err
 	}
 
-	if len(stackGroup.Group) == 0 {
+	if len(privGroup.Group) == 0 {
 		return b.build(group, plan)
 	}
-	return b.buildWithReexec(group, stackGroup, plan)
+	return b.buildWithReexec(group, privGroup, plan)
 }
 
-func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, rootuid, rootgid, uid, gid int) error {
-	if len(stackGroup.Group) > 0 {
+func (ba buildArgs) buildAll(group, privGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan, rootuid, rootgid, uid, gid int) error {
+	if len(privGroup.Group) > 0 {
 		if err := priv.RunAsEffective(rootuid, rootgid); err != nil {
 			return err
 		}
-		if err := ba.stackBuild(stackGroup, plan); err != nil {
+		if err := ba.stackBuild(privGroup, plan); err != nil {
 			return err
 		}
 		if err := priv.RunAsEffective(uid, gid); err != nil {
@@ -108,7 +108,7 @@ func (ba buildArgs) buildAll(group, stackGroup lifecycle.BuildpackGroup, plan li
 	return ba.build(group, plan)
 }
 
-func (ba buildArgs) stackBuild(stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+func (ba buildArgs) stackBuild(privGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (ba buildArgs) stackBuild(stackGroup lifecycle.BuildpackGroup, plan lifecyc
 		return err
 	}
 
-	builder, err := ba.createBuilder(stackGroup, plan)
+	builder, err := ba.createBuilder(privGroup, plan)
 	if err != nil {
 		return err
 	}
@@ -148,8 +148,8 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 	return nil
 }
 
-func (ba buildArgs) buildWithReexec(group, stackGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
-	err := ba.stackBuild(stackGroup, plan)
+func (ba buildArgs) buildWithReexec(group, privGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	err := ba.stackBuild(privGroup, plan)
 	if err != nil {
 		return err
 	}
@@ -167,13 +167,12 @@ func (ba buildArgs) buildAsSubProcess() error {
 		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", ba.uid, ba.gid))
 	}
 
-	// TODO: is this parsed anywhere already?
 	// we need to handle arg <value> and arg=<value> to remove the argument on re-exec
 	var args = os.Args[1:]
 	var sgPathIndex int
 	var sgPathIndexLength int = 2
 	for i, arg := range args {
-		if strings.HasPrefix(arg, cmd.FlagNameStackGroupPath) {
+		if strings.HasPrefix(arg, cmd.FlagNamePrivilegedGroupPath) {
 			sgPathIndex = i
 			if strings.Contains(arg, "=") {
 				sgPathIndexLength = 1
@@ -186,8 +185,8 @@ func (ba buildArgs) buildAsSubProcess() error {
 		args = append(args[:sgPathIndex], args[sgPathIndex+sgPathIndexLength:]...)
 	}
 
-	// explicitly omit StackGroupPath to skip Stack Buildpacks on this execution
-	args = append(args, fmt.Sprintf("-%s", cmd.FlagNameStackGroupPath), "")
+	// explicitly omit Privileged Group to skip Stack Buildpacks on this execution
+	args = append(args, fmt.Sprintf("-%s", cmd.FlagNamePrivilegedGroupPath), "")
 
 	c := exec.Command(
 		os.Args[0],
@@ -229,7 +228,7 @@ func (ba buildArgs) createBuilder(group lifecycle.BuildpackGroup, plan lifecycle
 }
 
 func (b *buildCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildpackGroup, lifecycle.BuildPlan, error) {
-	group, stackGroup, err := lifecycle.ReadGroups(b.groupPath, b.stackGroupPath)
+	group, privGroup, err := lifecycle.ReadGroups(b.groupPath, b.privGroupPath)
 	if err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}
@@ -238,5 +237,5 @@ func (b *buildCmd) readData() (lifecycle.BuildpackGroup, lifecycle.BuildpackGrou
 	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
 		return lifecycle.BuildpackGroup{}, lifecycle.BuildpackGroup{}, lifecycle.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
 	}
-	return group, stackGroup, plan, nil
+	return group, privGroup, plan, nil
 }

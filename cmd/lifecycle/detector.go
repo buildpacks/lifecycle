@@ -18,11 +18,11 @@ type detectCmd struct {
 	detectArgs
 
 	// flags: paths to write outputs
-	groupPath      string
-	stackGroupPath string
-	planPath       string
-	runGroupPath   string
-	runPlanPath    string
+	groupPath           string
+	privilegedGroupPath string
+	planPath            string
+	runGroupPath        string
+	runPlanPath         string
 }
 
 type detectArgs struct {
@@ -41,7 +41,7 @@ func (d *detectCmd) Init() {
 	cmd.FlagStackBuildpacksDir(&d.stackBuildpacksDir)
 	cmd.FlagOrderPath(&d.orderPath)
 	cmd.FlagGroupPath(&d.groupPath)
-	cmd.FlagStackGroupPath(&d.stackGroupPath)
+	cmd.FlagPrivilegedGroupPath(&d.privilegedGroupPath)
 	cmd.FlagPlanPath(&d.planPath)
 	cmd.FlagRunGroupPath(&d.runGroupPath)
 	cmd.FlagRunPlanPath(&d.runPlanPath)
@@ -210,7 +210,7 @@ func (d *detectCmd) writeData(dr lifecycle.DetectResult) error {
 	}
 
 	if len(dr.BuildPrivilegedGroup.Group) > 0 {
-		if err := lifecycle.WriteTOML(d.stackGroupPath, dr.BuildPrivilegedGroup); err != nil {
+		if err := lifecycle.WriteTOML(d.privilegedGroupPath, dr.BuildPrivilegedGroup); err != nil {
 			return cmd.FailErr(err, "write stack buildpack group")
 		}
 	}

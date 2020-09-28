@@ -11,12 +11,12 @@ import (
 
 type restoreCmd struct {
 	// flags: inputs
-	cacheDir       string
-	cacheImageTag  string
-	groupPath      string
-	stackGroupPath string
-	layersDir      string
-	uid, gid       int
+	cacheDir            string
+	cacheImageTag       string
+	groupPath           string
+	privilegedGroupPath string
+	layersDir           string
+	uid, gid            int
 }
 
 func (r *restoreCmd) Init() {
@@ -26,7 +26,7 @@ func (r *restoreCmd) Init() {
 	cmd.FlagLayersDir(&r.layersDir)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
-	cmd.FlagStackGroupPath(&r.stackGroupPath)
+	cmd.FlagPrivilegedGroupPath(&r.privilegedGroupPath)
 }
 
 func (r *restoreCmd) Args(nargs int, args []string) error {
@@ -50,24 +50,24 @@ func (r *restoreCmd) Privileges() error {
 }
 
 func (r *restoreCmd) Exec() error {
-	group, stackGroup, err := lifecycle.ReadGroups(r.groupPath, r.stackGroupPath)
+	group, privGroup, err := lifecycle.ReadGroups(r.groupPath, r.privilegedGroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
-	if err := verifyBuildpackApis(group, stackGroup); err != nil {
+	if err := verifyBuildpackApis(group, privGroup); err != nil {
 		return err
 	}
 	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir)
 	if err != nil {
 		return err
 	}
-	return restore(r.layersDir, group, stackGroup, cacheStore)
+	return restore(r.layersDir, group, privGroup, cacheStore)
 }
 
-func restore(layersDir string, group, stackGroup lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
+func restore(layersDir string, group, privGroup lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
-		Buildpacks: append(stackGroup.Group, group.Group...),
+		Buildpacks: append(privGroup.Group, group.Group...),
 		Logger:     cmd.DefaultLogger,
 	}
 
