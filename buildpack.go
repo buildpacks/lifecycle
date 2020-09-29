@@ -13,6 +13,7 @@ type Buildpack struct {
 	Version  string `toml:"version" json:"version"`
 	Optional bool   `toml:"optional,omitempty" json:"optional,omitempty"`
 	API      string `toml:"api,omitempty" json:"-"`
+	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty"`
 }
 
 func (bp Buildpack) String() string {
@@ -26,6 +27,11 @@ func (bp Buildpack) noOpt() Buildpack {
 
 func (bp Buildpack) noAPI() Buildpack {
 	bp.API = ""
+	return bp
+}
+
+func (bp Buildpack) withHomepage(bpInfo BuildpackInfo) Buildpack {
+	bp.Homepage = bpInfo.Homepage
 	return bp
 }
 
@@ -55,6 +61,7 @@ type BuildpackInfo struct {
 	Version  string `toml:"version"`
 	Name     string `toml:"name"`
 	ClearEnv bool   `toml:"clear-env,omitempty"`
+	Homepage string `toml:"homepage,omitempty"`
 }
 
 func (bp BuildpackTOML) String() string {

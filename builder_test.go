@@ -202,7 +202,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{Type: "override-type", Command: "B-cmd", BuildpackID: "B"},
 					},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
@@ -218,7 +218,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
@@ -372,7 +372,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v2", API: "0.2"},
 					},
 					BOM: []lifecycle.BOMEntry{
