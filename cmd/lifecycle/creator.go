@@ -24,6 +24,7 @@ type createCmd struct {
 	launcherPath        string
 	layersDir           string
 	orderPath           string
+	stackOrderPath      string
 	platformAPI         string
 	platformDir         string
 	previousImage       string
@@ -52,6 +53,7 @@ func (c *createCmd) Init() {
 	cmd.FlagLauncherPath(&c.launcherPath)
 	cmd.FlagLayersDir(&c.layersDir)
 	cmd.FlagOrderPath(&c.orderPath)
+	cmd.FlagStackOrderPath(&c.stackOrderPath)
 	cmd.FlagPlatformDir(&c.platformDir)
 	cmd.FlagPreviousImage(&c.previousImage)
 	cmd.FlagReportPath(&c.reportPath)
@@ -124,6 +126,7 @@ func (c *createCmd) Exec() error {
 	dr, err := detectArgs{
 		buildpacksDir:      c.buildpacksDir,
 		stackBuildpacksDir: c.stackBuildpacksDir,
+		stackOrderPath:     c.stackOrderPath,
 		appDir:             c.appDir,
 		platformDir:        c.platformDir,
 		orderPath:          c.orderPath,
