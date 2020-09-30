@@ -3,7 +3,7 @@ module github.com/buildpacks/lifecycle
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5 // indirect
-	github.com/apex/log v1.3.0
+	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20200831154319-afd98bd2f655
 	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/docker/cli v0.0.0-20200312141509-ef2f64abbd37 // indirect
