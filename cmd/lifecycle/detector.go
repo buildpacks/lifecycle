@@ -3,9 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -31,6 +29,7 @@ type detectArgs struct {
 	appDir             string
 	platformDir        string
 	orderPath          string
+	stackOrderPath     string
 	stackBuildpacksDir string
 }
 
@@ -40,6 +39,7 @@ func (d *detectCmd) Init() {
 	cmd.FlagPlatformDir(&d.platformDir)
 	cmd.FlagStackBuildpacksDir(&d.stackBuildpacksDir)
 	cmd.FlagOrderPath(&d.orderPath)
+	cmd.FlagStackOrderPath(&d.stackOrderPath)
 	cmd.FlagGroupPath(&d.groupPath)
 	cmd.FlagPrivilegedGroupPath(&d.privilegedGroupPath)
 	cmd.FlagPlanPath(&d.planPath)
@@ -71,45 +71,26 @@ func (d *detectCmd) Exec() error {
 }
 
 func (da detectArgs) mergeOrderWithStackBuildpacks(order lifecycle.BuildpackOrder) (lifecycle.BuildpackOrder, error) {
-	if _, err := os.Stat(da.stackBuildpacksDir); err != nil {
+	if _, err := os.Stat(da.stackOrderPath); err != nil {
 		if os.IsNotExist(err) {
 			return order, nil
 		}
 	}
 
-	buildpackDirs, err := ioutil.ReadDir(da.stackBuildpacksDir)
+	stackBuildPacksOrder, err := lifecycle.ReadOrder(da.stackOrderPath)
 	if err != nil {
 		return nil, err
 	}
 
-	stackBuildpacks := []lifecycle.Buildpack{}
-
-	for _, buildpackDir := range buildpackDirs {
-		if buildpackDir.IsDir() {
-			// TODO get the latest version dir, or maybe error if there is more than one
-			path := filepath.Join(da.stackBuildpacksDir, buildpackDir.Name())
-			buildpackVersionDirs, err := ioutil.ReadDir(path)
-			if err != nil {
-				return nil, err
-			}
-
-			buildpackID := filepath.Base(buildpackDir.Name())
-			if len(buildpackVersionDirs) > 0 && buildpackVersionDirs[0].IsDir() {
-				buildpackVersion := filepath.Base(buildpackVersionDirs[0].Name())
-				bp := lifecycle.Buildpack{
-					ID:         buildpackID,
-					Version:    buildpackVersion,
-					Privileged: true,
-					Optional:   true,
-				}
-				stackBuildpacks = append(stackBuildpacks, bp)
-			}
-		}
-	}
-
-	if len(stackBuildpacks) == 0 {
+	if len(stackBuildPacksOrder) == 0 {
 		return order, nil
 	}
+
+	if len(stackBuildPacksOrder) > 1 {
+		return nil, cmd.FailErr(err, fmt.Sprintf("too many groups defined in stack buildpack order file '%s'", da.stackOrderPath))
+	}
+
+	stackBuildpacks := stackBuildPacksOrder[0].Group
 
 	fo := lifecycle.BuildpackOrder{}
 	for _, grp := range order {
