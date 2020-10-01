@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/lifecycle/archive"
 )
 
@@ -35,8 +37,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := doPackage(); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(2)
+	}
+}
+
+func doPackage() error {
 	f, err := os.OpenFile(archivePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0777)
-	handle(err, fmt.Sprintf("Failed to open -archivePath %s: %s", archivePath, err))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to open -archivePath %s", archivePath))
+	}
 	defer f.Close()
 
 	zw := gzip.NewWriter(f)
@@ -48,37 +59,61 @@ func main() {
 	defer tw.Close()
 
 	templateContents, err := ioutil.ReadFile(descriptorPath)
-	handle(err, fmt.Sprintf("Failed to read descriptor file %s: %s", descriptorPath, err))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to read descriptor file %s", descriptorPath))
+	}
 
 	descriptorContents, err := fillTemplate(templateContents, map[string]interface{}{"lifecycle_version": version})
-	handle(err, fmt.Sprintf("Failed to fill template: %s", err))
+	if err != nil {
+		return errors.Wrap(err, "Failed to fill template")
+	}
 
 	descriptorTemplateInfo, err := os.Stat(descriptorPath)
-	handle(err, fmt.Sprintf("Failed to stat descriptor template file %s: %s", descriptorPath, err))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to stat descriptor template file %s", descriptorPath))
+	}
 
 	tempDir, err := ioutil.TempDir("", "lifecycle-descriptor")
-	handle(err, fmt.Sprintf("Failed to create a temp directory: %s", err))
+	if err != nil {
+		return errors.Wrap(err, "Failed to create a temp directory")
+	}
 
 	tempFile, err := os.Create(filepath.Join(tempDir, "lifecycle.toml"))
-	handle(err, fmt.Sprintf("Failed to create a temp file: %s", err))
+	if err != nil {
+		return errors.Wrap(err, "Failed to create a temp file")
+	}
 
 	err = ioutil.WriteFile(tempFile.Name(), descriptorContents, descriptorTemplateInfo.Mode())
-	handle(err, fmt.Sprintf("Failed to write descriptor contents to file %s: %s", tempFile.Name(), err))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to write descriptor contents to file %s", tempFile.Name()))
+	}
 
 	err = os.Chdir(tempDir)
-	handle(err, fmt.Sprintf("Failed to switch directories to %s: %s", tempDir, err))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to switch directories to %s", tempDir))
+	}
 
 	descriptorInfo, err := os.Stat(tempFile.Name())
-	handle(err, fmt.Sprintf("Failed to stat descriptor file %s: %s", tempFile.Name(), err))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to stat descriptor file %s", tempFile.Name()))
+	}
 
 	err = archive.AddFileToArchive(tw, "lifecycle.toml", descriptorInfo)
-	handle(err, fmt.Sprintf("Failed to write descriptor to archive: %s", err))
+	if err != nil {
+		return errors.Wrap(err, "Failed to write descriptor to archive")
+	}
 
 	err = os.Chdir(filepath.Dir(inputDir))
-	handle(err, fmt.Sprintf("Failed to switch directories to %s: %s", filepath.Dir(inputDir), err))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to switch directories to %s", filepath.Dir(inputDir)))
+	}
 
 	err = archive.AddDirToArchive(tw, filepath.Base(inputDir))
-	handle(err, fmt.Sprintf("Failed to write dir to archive: %s", err))
+	if err != nil {
+		return errors.Wrap(err, "Failed to write dir to archive")
+	}
+
+	return nil
 }
 
 func fillTemplate(templateContents []byte, data map[string]interface{}) ([]byte, error) {
@@ -94,12 +129,4 @@ func fillTemplate(templateContents []byte, data map[string]interface{}) ([]byte,
 	}
 
 	return templatedContent.Bytes(), nil
-}
-
-func handle(err error, msg string) {
-	if err != nil {
-		fmt.Println(msg)
-		os.Exit(exitCode)
-	}
-	exitCode++
 }

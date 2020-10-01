@@ -42,12 +42,6 @@ jobs:
         with:
           name: lifecycle-linux-x86-64
           path: out/lifecycle-v*+linux.x86-64.tgz
-      - name: Publish lifecycle image
-        run: |
-          if [[ ${{ github.event_name }} != 'push' ]]; then exit 0; fi
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
-          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
   test-and-build-windows:
     runs-on: windows-latest
     steps:
@@ -77,13 +71,6 @@ jobs:
         with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
-      - name: Publish lifecycle image
-        run: |
-          If ("${{ github.event_name }}" -Ne 'push') { exit }
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          $LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
-          $LIFECYCLE_VERSION=$(go run ./tools/version/main.go)
-          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v${LIFECYCLE_VERSION}+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
   create-lifecycle-image-manifest-list:
     if: github.event_name == 'push'
     needs:
@@ -92,9 +79,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Create Manifest List
+      - name: Set up go
+        uses: actions/setup-go@v2-beta
+        with:
+          go-version: '1.14'
+      - name: Set up go env
         run: |
-          LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
+          echo "::set-env name=GOPATH::$(go env GOPATH)"
+          echo "::add-path::$(go env GOPATH)/bin"
+        shell: bash
+      - name: Install jq
+        run: |
+          mkdir -p deps/bin
+          curl -s -L -o deps/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+          chmod +x deps/bin/jq
+          echo "::add-path::${PWD}/deps/bin"
+      - name: Download artifacts - linux
+        uses: actions/download-artifact@v1
+        with:
+          name: lifecycle-linux-x86-64
+      - name: Download artifacts - windows
+        uses: actions/download-artifact@v1
+        with:
+          name: lifecycle-windows-x86-64
+      - name: Publish linux and windows lifecycle images and create manifest list
+        run: |
+          if [[ ${{ github.event_name }} != 'push' ]]; then exit 0; fi
           echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
+          go run ./tools/image/main.go -lifecyclePath ./lifecycle-linux-x86-64/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
+          go run ./tools/image/main.go -lifecyclePath ./lifecycle-windows-x86-64/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
