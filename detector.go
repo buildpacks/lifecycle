@@ -65,6 +65,14 @@ func (r Require) noStage() Require {
 	return r
 }
 
+func (r Require) stage() stageName {
+	if !r.Mixin {
+		return buildStage
+	}
+	stage, _ := parseMixinName(r.Name)
+	return stage
+}
+
 func parseMixinName(oname string) (stage stageName, name string) {
 	name = oname
 	parts := strings.SplitN(name, ":", 2)
@@ -84,33 +92,61 @@ func (p Provide) noStage() Provide {
 	return p
 }
 
+func (p Provide) stage() stageName {
+	if !p.Mixin {
+		return buildStage
+	}
+	stage, _ := parseMixinName(p.Name)
+	return stage
+}
+
+func (p Provide) toStageProvides() []Provide {
+	if !p.Mixin {
+		return []Provide{p}
+	}
+	stage, _ := parseMixinName(p.Name)
+	if stage != allStages {
+		return []Provide{p}
+	}
+
+	return []Provide{
+		{
+			Name:  fmt.Sprintf("%s:%s", buildStage, p.Name),
+			Mixin: p.Mixin,
+		},
+		{
+			Name:  fmt.Sprintf("%s:%s", runStage, p.Name),
+			Mixin: p.Mixin,
+		},
+	}
+}
+
+func (r Require) toStageRequires() []Require {
+	if !r.Mixin {
+		return []Require{r}
+	}
+	stage, _ := parseMixinName(r.Name)
+	if stage != allStages {
+		return []Require{r}
+	}
+
+	return []Require{
+		{
+			Name:  fmt.Sprintf("%s:%s", buildStage, r.Name),
+			Mixin: r.Mixin,
+		},
+		{
+			Name:  fmt.Sprintf("%s:%s", runStage, r.Name),
+			Mixin: r.Mixin,
+		},
+	}
+}
+
 type stageName string
 
 const allStages stageName = ""
 const buildStage stageName = stageName("build")
 const runStage stageName = stageName("run")
-
-func (p Provide) validFor(stage stageName, buildpack Buildpack) bool {
-	if buildpack.Privileged {
-		return true
-	}
-
-	if !p.Mixin {
-		return stage == buildStage || buildpack.Privileged
-	}
-
-	parsedStage, _ := parseMixinName(p.Name)
-	return parsedStage == allStages || parsedStage == stage
-}
-
-func (r Require) validFor(stage stageName) bool {
-	if !r.Mixin {
-		return stage == buildStage
-	}
-
-	parsedStage, _ := parseMixinName(r.Name)
-	return parsedStage == allStages || parsedStage == stage
-}
 
 func (r *Require) convertMetadataToVersion() {
 	if version, ok := r.Metadata["version"]; ok {
@@ -294,6 +330,9 @@ func noOpt(opts []detectOption) []Buildpack {
 func noOptPlan(depMap depMap) []BuildPlanEntry {
 	var result []BuildPlanEntry
 	for _, dep := range depMap {
+		if len(dep.Providers) == 0 && len(dep.Requires) == 0 {
+			continue
+		}
 		result = append(result, dep.BuildPlanEntry.noOpt())
 	}
 	return result
@@ -741,22 +780,32 @@ func newDepMap(trial detectTrial, stage stageName) (depMap, error) {
 				return nil, fmt.Errorf(errInvalidProvidesBuildpack, option.Buildpack.String())
 			}
 
-			if p.validFor(stage, option.Buildpack) {
-				m.provide(option.Buildpack, p.noStage())
+			for _, prv := range p.toStageProvides() {
+				m.provide(stage, option.Buildpack, prv)
 			}
 		}
 		for _, r := range option.Requires {
-			if r.validFor(stage) {
-				m.require(option.Buildpack, r.noStage())
+			for _, req := range r.toStageRequires() {
+				m.require(stage, option.Buildpack, req)
 			}
 		}
 	}
 	return m, nil
 }
 
-func (m depMap) provide(bp Buildpack, provide Provide) {
+func (m depMap) provide(stage stageName, bp Buildpack, provide Provide) {
+	if !bp.Privileged && provide.stage() != stage {
+		return
+	}
+
+	// if it is not a match, use the full name to not match when required
+	name := provide.Name
+	if provide.stage() == stage {
+		name = provide.noStage().Name
+	}
+
 	depKey := depKey{
-		name:  provide.Name,
+		name:  name,
 		mixin: provide.Mixin,
 	}
 	if bp.Privileged && provide.Any {
@@ -767,9 +816,12 @@ func (m depMap) provide(bp Buildpack, provide Provide) {
 	m[depKey] = entry
 }
 
-func (m depMap) require(bp Buildpack, require Require) {
+func (m depMap) require(stage stageName, bp Buildpack, require Require) {
+	if require.stage() != stage {
+		return
+	}
 	reqKey := depKey{
-		name:  require.Name,
+		name:  require.noStage().Name,
 		mixin: require.Mixin,
 	}
 	if require.Mixin && len(m[anyMixinKey].extraProvides) != 0 {
@@ -782,7 +834,7 @@ func (m depMap) require(bp Buildpack, require Require) {
 	if len(entry.Providers) == 0 {
 		entry.earlyRequires = append(entry.earlyRequires, bp)
 	} else {
-		entry.Requires = append(entry.Requires, require)
+		entry.Requires = append(entry.Requires, require.noStage())
 	}
 	m[reqKey] = entry
 }

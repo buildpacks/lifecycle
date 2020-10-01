@@ -1419,8 +1419,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: Y@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
+						"skip: Y@1.0.0 not required\n"+
+						"skip: X@1.0.0[run] not required\n"+
+						"2 of 3 buildpacks participating\n"+
 						"X 1.0.0\n"+
-						"Y 1.0.0\n"+
 						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
