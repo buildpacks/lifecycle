@@ -132,12 +132,16 @@ func (r Require) toStageRequires() []Require {
 
 	return []Require{
 		{
-			Name:  fmt.Sprintf("%s:%s", buildStage, r.Name),
-			Mixin: r.Mixin,
+			Name:     fmt.Sprintf("%s:%s", buildStage, r.Name),
+			Mixin:    r.Mixin,
+			Metadata: r.Metadata,
+			Version:  r.Version,
 		},
 		{
-			Name:  fmt.Sprintf("%s:%s", runStage, r.Name),
-			Mixin: r.Mixin,
+			Name:     fmt.Sprintf("%s:%s", runStage, r.Name),
+			Mixin:    r.Mixin,
+			Metadata: r.Metadata,
+			Version:  r.Version,
 		},
 	}
 }
