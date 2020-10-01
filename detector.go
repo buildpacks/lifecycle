@@ -91,6 +91,10 @@ const buildStage stageName = stageName("build")
 const runStage stageName = stageName("run")
 
 func (p Provide) validFor(stage stageName, buildpack Buildpack) bool {
+	if buildpack.Privileged {
+		return true
+	}
+
 	if !p.Mixin {
 		return stage == buildStage || buildpack.Privileged
 	}
@@ -379,7 +383,7 @@ func (c *DetectConfig) runTrialForStage(trial detectTrial, stage stageName) (dep
 	}
 
 	depMap.eachUnusedPrivilegedBuildpack(func(bp Buildpack) {
-		c.Logger.Debugf("skip: %s%s provides unused deps", bp, loggedStage)
+		c.Logger.Debugf("skip: %s%s not required", bp, loggedStage)
 		trial = trial.remove(bp)
 	})
 

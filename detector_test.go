@@ -711,7 +711,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: A@v1\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] provides unused deps\n"+
+						"skip: X@1.0.0[run] not required\n"+
 						"X 1.0.0\n"+
 						"A v1\n"+
 						"B v1\n",
@@ -773,7 +773,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] provides unused deps\n"+
+						"skip: X@1.0.0[run] not required\n"+
 						"X 1.0.0\n"+
 						"B v1\n",
 				) {
@@ -823,8 +823,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 provides unused deps\n"+
-						"skip: X@1.0.0[run] provides unused deps\n"+
+						"skip: X@1.0.0 not required\n"+
+						"skip: X@1.0.0[run] not required\n"+
 						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
@@ -958,7 +958,268 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0[run] not required\n"+
 						"X 1.0.0\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should not require extending run image for build stage mixins", func() {
+				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				dr, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(dr.BuildGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected build group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected priv group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+					},
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{},
+				}); s != "" {
+					t.Fatalf("Unexpected run group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.RunPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0[run] not required\n"+
+						"X 1.0.0\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should not require extending run image for only build stage mixins provided for all", func() {
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				dr, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(dr.BuildGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected build group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected priv group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+					},
+				}) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{},
+				}); s != "" {
+					t.Fatalf("Unexpected run group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.RunPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0[run] not required\n"+
+						"X 1.0.0\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should not require stack buildpack for only run stage mixins", func() {
+				toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				dr, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(dr.BuildGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected build group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{},
+				}); s != "" {
+					t.Fatalf("Unexpected priv group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected run group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.RunPlan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+					},
+				}) {
+					t.Fatalf("Unexpected run entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0 not required\n"+
+						"1 of 2 buildpacks participating\n"+
+						"B v1\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("should not require stack buildpack for only run stage mixins provided for all", func() {
+				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+				dr, err := lifecycle.BuildpackOrder{
+					{Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", Privileged: true},
+						{ID: "B", Version: "v1"},
+					}},
+				}.Detect(config)
+
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := cmp.Diff(dr.BuildGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "B", Version: "v1", API: "0.2"},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected build group:\n%s\n", s)
+				}
+
+				if s := cmp.Diff(dr.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{},
+				}); s != "" {
+					t.Fatalf("Unexpected priv group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+					t.Fatalf("Unexpected entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := cmp.Diff(dr.RunGroup, lifecycle.BuildpackGroup{
+					Group: []lifecycle.Buildpack{
+						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+					},
+				}); s != "" {
+					t.Fatalf("Unexpected run group:\n%s\n", s)
+				}
+
+				if !hasEntries(dr.RunPlan.Entries, []lifecycle.BuildPlanEntry{
+					{
+						Providers: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true},
+						},
+						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+					},
+				}) {
+					t.Fatalf("Unexpected run entries:\n%+v\n", dr.BuildPlan.Entries)
+				}
+
+				if s := allLogs(logHandler); !strings.HasSuffix(s,
+					"======== Results ========\n"+
+						"pass: X@1.0.0\n"+
+						"pass: B@v1\n"+
+						"Resolving plan... (try #1)\n"+
+						"skip: X@1.0.0 not required\n"+
+						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
 					t.Fatalf("Unexpected log:\n%s\n", s)
@@ -1008,7 +1269,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] provides unused deps\n"+
+						"skip: X@1.0.0[run] not required\n"+
 						"X 1.0.0\n"+
 						"B v1\n",
 				) {
@@ -1069,7 +1330,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 provides unused deps\n"+
+						"skip: X@1.0.0 not required\n"+
 						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
@@ -1131,7 +1392,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"pass: X@1.0.0\n"+
 						"pass: B@v1\n"+
 						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 provides unused deps\n"+
+						"skip: X@1.0.0 not required\n"+
 						"1 of 2 buildpacks participating\n"+
 						"B v1\n",
 				) {
