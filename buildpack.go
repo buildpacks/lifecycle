@@ -30,8 +30,8 @@ func (bp Buildpack) noAPI() Buildpack {
 	return bp
 }
 
-func (bp Buildpack) withHomepage(bpInfo BuildpackInfo) Buildpack {
-	bp.Homepage = bpInfo.Homepage
+func (bp Buildpack) withHomepage(url string) Buildpack {
+	bp.Homepage = url
 	return bp
 }
 

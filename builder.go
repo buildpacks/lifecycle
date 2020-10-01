@@ -87,7 +87,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err != nil {
 			return nil, err
 		}
-		group = append(group, bp.withHomepage(bpInfo.Buildpack))
+		group = append(group, bp.withHomepage(bpInfo.Buildpack.Homepage))
 		bpDirName := launch.EscapeID(bp.ID)
 		bpLayersDir := filepath.Join(layersDir, bpDirName)
 		bpPlanDir := filepath.Join(planDir, bpDirName)
