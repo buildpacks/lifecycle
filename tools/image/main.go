@@ -59,7 +59,7 @@ func main() {
 
 	baseImage := "gcr.io/distroless/static"
 	if targetOS == "windows" {
-		baseImage = "mcr.microsoft.com/windows/nanoserver:1809-amd64"
+		baseImage = "mcr.microsoft.com/windows/servercore:ltsc2019"
 	}
 
 	var img imgutil.Image
