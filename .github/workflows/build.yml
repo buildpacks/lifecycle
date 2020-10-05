@@ -36,6 +36,7 @@ jobs:
         run: make test
       - name: Build
         run: |
+          make clean
           make build-linux
           make package-linux
       - uses: actions/upload-artifact@v2
@@ -64,6 +65,7 @@ jobs:
         shell: cmd
       - name: Build
         run: |
+          make clean
           make build-windows
           make package-windows
         shell: cmd
