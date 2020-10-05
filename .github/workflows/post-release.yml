@@ -1,0 +1,60 @@
+name: post-release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  retag-lifecycle-images-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Docker login
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Set env
+        run: |
+          echo "::set-env name=LIFECYCLE_VERSION::$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)"
+          echo "::set-env name=LIFECYCLE_IMAGE_TAG::$(git describe --always --dirty)"
+      - name: Retag release candidate lifecycle images
+        run: |
+          docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux
+          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux
+          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux buildpacksio/lifecycle:latest-linux
+          docker push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux
+          docker push buildpacksio/lifecycle:latest-linux
+  retag-lifecycle-images-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Docker login
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Set env
+        run: |
+          echo "::set-env name=LIFECYCLE_VERSION::$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)"
+          echo "::set-env name=LIFECYCLE_IMAGE_TAG::$(git describe --always --dirty)"
+      - name: Retag release candidate lifecycle images
+        run: |
+          docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows
+          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows
+          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows buildpacksio/lifecycle:latest-windows
+          docker push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows
+          docker push buildpacksio/lifecycle:latest-windows
+  create-manifest-lists:
+    runs-on: ubuntu-latest
+    needs: [retag-lifecycle-images-linux, retag-lifecycle-images-windows]
+    steps:
+      - name: Docker login
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Set env
+        run: |
+          echo "::set-env name=LIFECYCLE_VERSION::$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)"
+      - name: Create lifecycle image manifest lists
+        run: |
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:latest buildpacksio/lifecycle:latest-linux buildpacksio/lifecycle:latest-windows
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:latest

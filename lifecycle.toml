@@ -13,4 +13,4 @@
   buildpack = "0.2"
 
 [lifecycle]
-  version = "0.9.1"
+  version = "{{.lifecycle_version}}"
