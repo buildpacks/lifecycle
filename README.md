@@ -35,7 +35,7 @@ $ make all
 ```
 This will create an archive at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz`.
 
-`LIFECYCLE_VERSION` defaults to the value in the `VERSION` file at the root of the repo . It can be changed by prepending `LIFECYCLE_VERSION=<some version>` to the
+`LIFECYCLE_VERSION` defaults to the value returned by `git describe --tags` if not on a release branch. It can be changed by prepending `LIFECYCLE_VERSION=<some version>` to the
 `make` command. For example:
 
 ```bash
