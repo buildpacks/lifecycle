@@ -41,6 +41,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
 		buildpacksDir := filepath.Join("testdata", "by-id")
+		stackBuildpacksDir := filepath.Join("testdata", "stack-packs")
 
 		logHandler = memory.New()
 		config = &lifecycle.DetectConfig{
@@ -49,7 +50,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			AppDir:             appDir,
 			PlatformDir:        platformDir,
 			BuildpacksDir:      buildpacksDir,
-			StackBuildpacksDir: buildpacksDir,
+			StackBuildpacksDir: stackBuildpacksDir,
 			Logger:             &log.Logger{Handler: logHandler},
 		}
 	})
