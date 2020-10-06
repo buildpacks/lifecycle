@@ -312,5 +312,36 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 				}...))
 			})
 		})
+
+		when("the dir has special characters", func() {
+			it("does not treat the dir like a pattern", func() {
+				specialCharDir, err := filepath.Abs(filepath.Join("testdata", "*"))
+				h.AssertNil(t, err)
+				sliceLayers, err := factory.SliceLayers(specialCharDir, []layers.Slice{
+					{Paths: []string{"*"}},
+				})
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(sliceLayers), 2)
+				h.AssertEq(t, sliceLayers[0].ID, "slice-1")
+				// parent layers should have uid/gid matching the filesystem
+				// the sliced dir and it's children should have normalized uid/gid
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, specialCharDir), []*tar.Header{
+					{
+						Name:     tarPath(specialCharDir),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
+					},
+					{
+						Name:     tarPath(filepath.Join(specialCharDir, "special-char-test-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
+					},
+				}...))
+
+				assertTarEntries(t, sliceLayers[1].TarPath, []*tar.Header{})
+			})
+		})
 	})
 }

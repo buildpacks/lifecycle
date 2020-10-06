@@ -90,7 +90,7 @@ func (l *Launcher) env(process Process) error {
 	if err != nil {
 		return errors.Wrap(err, "find app directory")
 	}
-	return l.eachBuildpack(l.LayersDir, func(path string) error {
+	return l.eachBuildpack(func(path string) error {
 		bpInfo, err := os.Stat(path)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -142,9 +142,13 @@ func eachDir(dir string, fn func(path string) error) error {
 	return nil
 }
 
-func (l *Launcher) eachBuildpack(dir string, fn func(path string) error) error {
+func (l *Launcher) eachBuildpack(fn func(path string) error) error {
+	layersDir, err := filepath.Abs(l.LayersDir)
+	if err != nil {
+		return errors.Wrap(err, "failed to compute absolute path of layers directory")
+	}
 	for _, bp := range l.Buildpacks {
-		if err := fn(filepath.Join(l.LayersDir, EscapeID(bp.ID))); err != nil {
+		if err := fn(filepath.Join(layersDir, EscapeID(bp.ID))); err != nil {
 			return err
 		}
 	}
