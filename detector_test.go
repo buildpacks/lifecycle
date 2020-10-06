@@ -660,773 +660,776 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should produce build plans for both standard and privileged that provide the same dep", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+			when("there are stack buildpacks", func() {
 
-				result, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+				it("should produce build plans for both standard and privileged that provide the same dep", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")
+					toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
 
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
-
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					result, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
 							{ID: "A", Version: "v1"},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: false}},
-					},
-				}) {
-					t.Fatalf("Unexpected build entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: A@v1\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"X 1.0.0\n"+
-						"A v1\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1", API: "0.3"},
+							{ID: "B", Version: "v1", API: "0.2"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected group:\n%s\n", s)
+					}
 
-			it("should return a build plan with matched dependencies from privileged buildpacks", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+								{ID: "A", Version: "v1"},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: false}},
+						},
+					}) {
+						t.Fatalf("Unexpected build entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				result, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: A@v1\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"X 1.0.0\n"+
+							"A v1\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
+				it("should return a build plan with matched dependencies from privileged buildpacks", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
 
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected group:\n%s\n", s)
-				}
-
-				// since it is not a mixin, dep1 is really build:dep1
-				if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{},
-				}); s != "" {
-					t.Fatalf("Unexpected run group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					result, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: false}},
-					},
-				}) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"X 1.0.0\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected group:\n%s\n", s)
+					}
 
-			it("should fail if all requires are not met by mixins", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					// since it is not a mixin, dep1 is really build:dep1
+					if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{},
+					}); s != "" {
+						t.Fatalf("Unexpected run group:\n%s\n", s)
+					}
 
-				_, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: false}},
+						},
+					}) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"fail: B@v1 requires dep1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"X 1.0.0\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-			it("should skip stack buildpack if all mixin provides are not met by all requires", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				_, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+				it("should fail if all requires are not met by mixins", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 not required\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"1 of 2 buildpacks participating\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
-
-			it("should returned a build plan with matched mixin dependencies with any", func() {
-				toappfile("\n[[provides]]\n any = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
-
-				result, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
-
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					_, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
-						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+					if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeFailedDetection {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
 
-				if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"fail: B@v1 requires dep1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
+
+				it("should skip stack buildpack if all mixin provides are not met by all requires", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					_, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
-						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected run entries:\n%+v\n", result.RunPlan.Entries)
-				}
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"X 1.0.0\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0 not required\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"1 of 2 buildpacks participating\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-			it("should fail if privileged bp specifies requirements", func() {
-				toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
+				it("should returned a build plan with matched mixin dependencies with any", func() {
+					toappfile("\n[[provides]]\n any = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				_, _ = lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1", Privileged: false},
-					}},
-				}.Detect(config)
-
-				if s := allLogs(logHandler); !strings.HasPrefix(s,
-					"======== Error: X@1.0.0 ========\n"+
-						"priviledged buildpack X has defined \"requires\", which is not allowed.\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
-
-			it("should succeed if the stage requirement is met", func() {
-				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
-
-				result, _ := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
-
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					result, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"X 1.0.0\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected group:\n%s\n", s)
+					}
 
-			it("should not require extending run image for build stage mixins", func() {
-				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				result, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
+					if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected run entries:\n%+v\n", result.RunPlan.Entries)
+					}
 
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"X 1.0.0\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected build group:\n%s\n", s)
-				}
+				it("should fail if privileged bp specifies requirements", func() {
+					toappfile("\n[[requires]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-B-v1.toml")
 
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					_, _ = lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
-						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+							{ID: "B", Version: "v1", Privileged: false},
+						}},
+					}.Detect(config)
 
-				if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{},
-				}); s != "" {
-					t.Fatalf("Unexpected run group:\n%s\n", s)
-				}
+					if s := allLogs(logHandler); !strings.HasPrefix(s,
+						"======== Error: X@1.0.0 ========\n"+
+							"priviledged buildpack X has defined \"requires\", which is not allowed.\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+				it("should succeed if the stage requirement is met", func() {
+					toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"X 1.0.0\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
-
-			it("should not require extending run image for only build stage mixins provided for all", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
-
-				result, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected build group:\n%s\n", s)
-				}
-
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					result, _ := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-				if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{},
-				}); s != "" {
-					t.Fatalf("Unexpected run group:\n%s\n", s)
-				}
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected group:\n%s\n", s)
+					}
 
-				if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"X 1.0.0\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"X 1.0.0\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-			it("should not require stack buildpack for only run stage mixins", func() {
-				toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+				it("should not require extending run image for build stage mixins", func() {
+					toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				result, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
-
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected build group:\n%s\n", s)
-				}
-
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
-
-				if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected run group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					result, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected run entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected build group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 not required\n"+
-						"1 of 2 buildpacks participating\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-			it("should not require stack buildpack for only run stage mixins provided for all", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				result, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
+					if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{},
+					}); s != "" {
+						t.Fatalf("Unexpected run group:\n%s\n", s)
+					}
 
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+					if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected build group:\n%s\n", s)
-				}
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"X 1.0.0\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
+				it("should not require extending run image for only build stage mixins provided for all", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
-
-				if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected run group:\n%s\n", s)
-				}
-
-				if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					result, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected run entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected build group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 not required\n"+
-						"1 of 2 buildpacks participating\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-			it("should succeed if the build stage requirement is met by no stage prefix", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				result, _ := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
-						{ID: "B", Version: "v1", Privileged: false},
-					}},
-				}.Detect(config)
+					if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{},
+					}); s != "" {
+						t.Fatalf("Unexpected run group:\n%s\n", s)
+					}
 
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
+					if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected group:\n%s\n", s)
-				}
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"X 1.0.0\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+				it("should not require stack buildpack for only run stage mixins", func() {
+					toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+					result, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected build group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"X 1.0.0\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{},
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-			it("should succeed if the run stage requirement is met by no stage prefix", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				result, _ := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
-						{ID: "B", Version: "v1", Privileged: false},
-					}},
-				}.Detect(config)
+					if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected run group:\n%s\n", s)
+					}
 
-				if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "B", Version: "v1", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected group:\n%s\n", s)
-				}
+					if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected run entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{},
-				}); s != "" {
-					t.Fatalf("Unexpected priv group:\n%s\n", s)
-				}
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0 not required\n"+
+							"1 of 2 buildpacks participating\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
-					Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected run group:\n%s\n", s)
-				}
+				it("should not require stack buildpack for only run stage mixins provided for all", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
-					t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
-				}
-
-				if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
-					{
-						Providers: []lifecycle.Buildpack{
+					result, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
 							{ID: "X", Version: "1.0.0", Privileged: true},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
 						},
-						Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
-					},
-				}) {
-					t.Fatalf("Unexpected run entries:\n%+v\n", result.RunPlan.Entries)
-				}
+					}); s != "" {
+						t.Fatalf("Unexpected build group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 not required\n"+
-						"1 of 2 buildpacks participating\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{},
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-			it("should fail if a buildpack tries to provide a mixin", func() {
-				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-A-v1.toml")
-				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-				_, err := lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1"},
-						{ID: "B", Version: "v1"},
-					}},
-				}.Detect(config)
+					if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected run group:\n%s\n", s)
+					}
 
-				if err.Error() != "buildpack A@v1 has defined \"provide\" with \"mixin = true\", which is not allowed." {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-			})
+					if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected run entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-			it("should fail if the stage requirement is not met by provider", func() {
-				toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0 not required\n"+
+							"1 of 2 buildpacks participating\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				_, _ = lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
-						{ID: "B", Version: "v1", Privileged: false},
-					}},
-				}.Detect(config)
+				it("should succeed if the build stage requirement is met by no stage prefix", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"fail: B@v1 requires dep1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					result, _ := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+							{ID: "B", Version: "v1", Privileged: false},
+						}},
+					}.Detect(config)
 
-			it("should allow stack buildpacks to provide unrequired deps", func() {
-				toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true\n\n[[provides]]\n name = \"dep2\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
 
-				_, _ = lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
-						{ID: "B", Version: "v1", Privileged: false},
-					}},
-				}.Detect(config)
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected group:\n%s\n", s)
+					}
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: X@1.0.0 not required\n"+
-						"1 of 2 buildpacks participating\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
-			})
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
 
-			it("should allow different stack buildpacks to provide for different stages", func() {
-				toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
-				toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-Y-1.0.0.toml")
-				toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"X 1.0.0\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 
-				_, _ = lifecycle.BuildpackOrder{
-					{Group: []lifecycle.Buildpack{
-						{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
-						{ID: "Y", Version: "1.0.0", Privileged: true, Optional: true},
-						{ID: "B", Version: "v1", Privileged: false},
-					}},
-				}.Detect(config)
+				it("should succeed if the run stage requirement is met by no stage prefix", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
 
-				if s := allLogs(logHandler); !strings.HasSuffix(s,
-					"======== Results ========\n"+
-						"pass: X@1.0.0\n"+
-						"pass: Y@1.0.0\n"+
-						"pass: B@v1\n"+
-						"Resolving plan... (try #1)\n"+
-						"skip: Y@1.0.0 not required\n"+
-						"skip: X@1.0.0[run] not required\n"+
-						"2 of 3 buildpacks participating\n"+
-						"X 1.0.0\n"+
-						"B v1\n",
-				) {
-					t.Fatalf("Unexpected log:\n%s\n", s)
-				}
+					result, _ := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+							{ID: "B", Version: "v1", Privileged: false},
+						}},
+					}.Detect(config)
+
+					if s := cmp.Diff(result.BuildGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "B", Version: "v1", API: "0.2"},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected group:\n%s\n", s)
+					}
+
+					if s := cmp.Diff(result.BuildPrivilegedGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{},
+					}); s != "" {
+						t.Fatalf("Unexpected priv group:\n%s\n", s)
+					}
+
+					if s := cmp.Diff(result.RunGroup, lifecycle.BuildpackGroup{
+						Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", API: "0.3", Privileged: true},
+						},
+					}); s != "" {
+						t.Fatalf("Unexpected run group:\n%s\n", s)
+					}
+
+					if !hasEntries(result.BuildPlan.Entries, []lifecycle.BuildPlanEntry(nil)) {
+						t.Fatalf("Unexpected entries:\n%+v\n", result.BuildPlan.Entries)
+					}
+
+					if !hasEntries(result.RunPlan.Entries, []lifecycle.BuildPlanEntry{
+						{
+							Providers: []lifecycle.Buildpack{
+								{ID: "X", Version: "1.0.0", Privileged: true},
+							},
+							Requires: []lifecycle.Require{{Name: "dep1", Mixin: true}},
+						},
+					}) {
+						t.Fatalf("Unexpected run entries:\n%+v\n", result.RunPlan.Entries)
+					}
+
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0 not required\n"+
+							"1 of 2 buildpacks participating\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
+
+				it("should fail if a buildpack tries to provide a mixin", func() {
+					toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-A-v1.toml")
+					toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+					_, err := lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
+							{ID: "A", Version: "v1"},
+							{ID: "B", Version: "v1"},
+						}},
+					}.Detect(config)
+
+					if err.Error() != "buildpack A@v1 has defined \"provide\" with \"mixin = true\", which is not allowed." {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+				})
+
+				it("should fail if the stage requirement is not met by provider", func() {
+					toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+					_, _ = lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+							{ID: "B", Version: "v1", Privileged: false},
+						}},
+					}.Detect(config)
+
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"fail: B@v1 requires dep1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
+
+				it("should allow stack buildpacks to provide unrequired deps", func() {
+					toappfile("\n[[provides]]\n name = \"dep1\"\nmixin = true\n\n[[provides]]\n name = \"dep2\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+					_, _ = lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+							{ID: "B", Version: "v1", Privileged: false},
+						}},
+					}.Detect(config)
+
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: X@1.0.0 not required\n"+
+							"1 of 2 buildpacks participating\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
+
+				it("should allow different stack buildpacks to provide for different stages", func() {
+					toappfile("\n[[provides]]\n name = \"build:dep1\"\nmixin = true", "detect-plan-X-1.0.0.toml")
+					toappfile("\n[[provides]]\n name = \"run:dep1\"\nmixin = true", "detect-plan-Y-1.0.0.toml")
+					toappfile("\n[[requires]]\n name = \"dep1\"\nmixin = true", "detect-plan-B-v1.toml")
+
+					_, _ = lifecycle.BuildpackOrder{
+						{Group: []lifecycle.Buildpack{
+							{ID: "X", Version: "1.0.0", Privileged: true, Optional: true},
+							{ID: "Y", Version: "1.0.0", Privileged: true, Optional: true},
+							{ID: "B", Version: "v1", Privileged: false},
+						}},
+					}.Detect(config)
+
+					if s := allLogs(logHandler); !strings.HasSuffix(s,
+						"======== Results ========\n"+
+							"pass: X@1.0.0\n"+
+							"pass: Y@1.0.0\n"+
+							"pass: B@v1\n"+
+							"Resolving plan... (try #1)\n"+
+							"skip: Y@1.0.0 not required\n"+
+							"skip: X@1.0.0[run] not required\n"+
+							"2 of 3 buildpacks participating\n"+
+							"X 1.0.0\n"+
+							"B v1\n",
+					) {
+						t.Fatalf("Unexpected log:\n%s\n", s)
+					}
+				})
 			})
 
 			when("BuildpackTOML.Detect()", func() {
