@@ -28,11 +28,13 @@ const (
 // buildVersion is a display format of the version and build metadata in compliance with semver.
 func buildVersion() string {
 	// noinspection GoBoolExpressions
-	if SCMCommit == "" || strings.Contains(Version, SCMCommit) {
+
+	sha := strings.TrimSuffix(SCMCommit, "-dirty")
+	if SCMCommit == "" || strings.Contains(Version, sha) {
 		return Version
 	}
 
-	return fmt.Sprintf("%s+%s", Version, SCMCommit)
+	return fmt.Sprintf("%s+%s", Version, sha)
 }
 
 func VerifyPlatformAPI(requested string) error {
