@@ -67,7 +67,7 @@ func (r *rebaseCmd) Privileges() error {
 		}
 	}
 	if err := priv.RunAs(r.uid, r.gid); err != nil {
-		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
+		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
 	}
 	return nil
 }

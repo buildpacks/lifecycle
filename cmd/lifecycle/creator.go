@@ -99,10 +99,10 @@ func (c *createCmd) Privileges() error {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err := priv.RunAs(c.uid, c.gid); err != nil {
-		cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
+		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
 	}
 	if err := priv.SetEnvironmentForUser(c.uid); err != nil {
-		cmd.FailErr(err, fmt.Sprintf("set environment for user %d", c.uid))
+		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", c.uid))
 	}
 	return nil
 }

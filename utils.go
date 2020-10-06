@@ -77,7 +77,9 @@ func removeLabels(image imgutil.Image, test func(string) bool) error {
 
 	for label := range labels {
 		if test(label) {
-			image.RemoveLabel(label)
+			if err := image.RemoveLabel(label); err != nil {
+				return errors.Wrapf(err, "failed to remove label '%s'", label)
+			}
 		}
 	}
 	return nil

@@ -55,7 +55,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			}
 			if testing.Verbose() {
 				restorer.Logger = cmd.DefaultLogger
-				cmd.SetLogLevel("debug")
+				h.AssertNil(t, cmd.SetLogLevel("debug"))
 			}
 		})
 
@@ -234,7 +234,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				os.RemoveAll(tarTempDir)
+				h.AssertNil(t, os.RemoveAll(tarTempDir))
 			})
 
 			when("there is a cache=true layer", func() {
@@ -437,7 +437,7 @@ func TestWriteLayer(t *testing.T) {
 	}
 	defer os.RemoveAll(layersDir)
 
-	writeLayer(layersDir, "test-buildpack", "test-layer", "test-metadata", "test-sha")
+	h.AssertNil(t, writeLayer(layersDir, "test-buildpack", "test-layer", "test-metadata", "test-sha"))
 
 	got := h.MustReadFile(t, filepath.Join(layersDir, "test-buildpack", "test-layer.toml"))
 	want := "test-metadata"

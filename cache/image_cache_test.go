@@ -51,9 +51,9 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		os.RemoveAll(tmpDir)
-		fakeOriginalImage.Cleanup()
-		fakeNewImage.Cleanup()
+		h.AssertNil(t, os.RemoveAll(tmpDir))
+		h.AssertNil(t, fakeOriginalImage.Cleanup())
+		h.AssertNil(t, fakeNewImage.Cleanup())
 	})
 
 	when("#Name", func() {
@@ -235,7 +235,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		when("with #ReuseLayer", func() {
 			it.Before(func() {
 				fakeNewImage.AddPreviousLayer(testLayerSHA, testLayerTarPath)
-				fakeOriginalImage.AddLayer(testLayerTarPath)
+				h.AssertNil(t, fakeOriginalImage.AddLayer(testLayerTarPath))
 			})
 
 			when("reuse then commit", func() {
