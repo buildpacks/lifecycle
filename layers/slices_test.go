@@ -315,7 +315,7 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 
 		when("the dir has special characters", func() {
 			it("does not treat the dir like a pattern", func() {
-				specialCharDir, err := filepath.Abs(filepath.Join("testdata", "*"))
+				specialCharDir, err := filepath.Abs(filepath.Join("testdata", "target-di[rx]"))
 				h.AssertNil(t, err)
 				sliceLayers, err := factory.SliceLayers(specialCharDir, []layers.Slice{
 					{Paths: []string{"*"}},
