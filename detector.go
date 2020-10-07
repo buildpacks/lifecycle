@@ -586,22 +586,22 @@ func (bo BuildpackOrder) Detect(c *DetectConfig) (*DetectResult, error) {
 
 	dr, err := bo.detect(nil, nil, false, &sync.WaitGroup{}, c)
 	if err == errBuildpack {
-		err = NewLifecycleError(err, ErrTypeBuildpack)
+		return nil, NewLifecycleError(err, ErrTypeBuildpack)
 	} else if err == errFailedDetection {
-		err = NewLifecycleError(err, ErrTypeFailedDetection)
+		return nil, NewLifecycleError(err, ErrTypeFailedDetection)
+	} else if err != nil {
+		return nil, err
 	}
 
-	if dr != nil {
-		for i := range dr.BuildPlan.Entries {
-			for j := range dr.BuildPlan.Entries[i].Requires {
-				dr.BuildPlan.Entries[i].Requires[j].convertVersionToMetadata()
-			}
+	for i := range dr.BuildPlan.Entries {
+		for j := range dr.BuildPlan.Entries[i].Requires {
+			dr.BuildPlan.Entries[i].Requires[j].convertVersionToMetadata()
 		}
+	}
 
-		for i := range dr.RunPlan.Entries {
-			for j := range dr.RunPlan.Entries[i].Requires {
-				dr.RunPlan.Entries[i].Requires[j].convertVersionToMetadata()
-			}
+	for i := range dr.RunPlan.Entries {
+		for j := range dr.RunPlan.Entries[i].Requires {
+			dr.RunPlan.Entries[i].Requires[j].convertVersionToMetadata()
 		}
 	}
 
