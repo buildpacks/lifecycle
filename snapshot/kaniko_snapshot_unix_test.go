@@ -52,7 +52,11 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 			RootDir:                    tmpDir,
 			DetectFilesystemIgnoreList: false,
 		}
-		snapshotter.IgnoredPaths = []string{filepath.Join(snapshotter.RootDir, "dir-with-ignored-files")}
+		snapshotter.IgnoredPaths = []string{
+			filepath.Join(snapshotter.RootDir, "platform"),
+			filepath.Join(snapshotter.RootDir, "layers"),
+			filepath.Join(snapshotter.RootDir, "cnb"),
+		}
 	})
 
 	it.After(func() {
@@ -70,7 +74,9 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 			os.Remove(filepath.Join(snapshotter.RootDir, "file-to-delete"))
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "file-to-change"), "hola\n")
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "my-space", "newfile-in-dir"), "hello\n")
-			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "dir-with-ignored-files", "file-to-ignore"), "hello\n")
+			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "layers", "file-to-ignore"), "hello\n")
+			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "cnb", "file-to-ignore"), "hello\n")
+			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "platform", "file-to-ignore"), "hello\n")
 
 			tmpFile, err := ioutil.TempFile("", "snapshot")
 			if err != nil {
@@ -85,7 +91,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("includes the changed files in the snapshot", func() {
+		it("includes the expected files in the snapshot", func() {
 			data, err := os.Open(snapshotFile)
 			if err != nil {
 				t.Fatalf("Error: %s\n", err)
@@ -105,7 +111,9 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 
 				switch hdr.Name {
 				case "/":
-				case "dir-with-ignored-files/":
+				case "layers/":
+				case "cnb/":
+				case "platform/":
 				case "my-space/":
 				case strings.Trim(filepath.Join(snapshotter.RootDir, ".wh.file-to-delete"), "/"):
 					continue
@@ -114,6 +122,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 					assertSnapshotFile(t, tr, "hello\n")
 				case "file-to-change":
 					assertSnapshotFile(t, tr, "hola\n")
+				case "file-to-ignore":
 				default:
 					t.Fatalf("Unexpected file: %s\n", hdr.Name)
 				}
