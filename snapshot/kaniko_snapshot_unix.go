@@ -23,13 +23,14 @@ type KanikoSnapshotter struct {
 	snapshotter                *ksnap.Snapshotter
 }
 
-func NewKanikoSnapshotter(rootDir string) (lifecycle.LayerSnapshotter, error) {
+func NewKanikoSnapshotter(rootDir, layersDir, platformDir string) (lifecycle.LayerSnapshotter, error) {
 	ls := KanikoSnapshotter{
 		RootDir:                    rootDir,
 		DetectFilesystemIgnoreList: true,
 		IgnoredPaths: []string{
 			"/tmp",
-			"/layers",
+			layersDir,
+			platformDir,
 			"/cnb",
 		},
 	}

@@ -109,7 +109,7 @@ func (ba buildArgs) buildAll(group, privGroup lifecycle.BuildpackGroup, plan lif
 }
 
 func (ba buildArgs) stackBuild(privGroup lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
-	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/")
+	stackSnapshotter, err := snapshot.NewKanikoSnapshotter("/", ba.layersDir, ba.platformDir)
 	if err != nil {
 		return err
 	}
