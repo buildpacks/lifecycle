@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo "hello again" > /bin/stack-b-file
+chmod +x /bin/stack-b-file
+
+echo "done:stack"
+exit 0

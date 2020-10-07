@@ -1,3 +1,4 @@
 group = [
-  { id = "example/stack", version = "1.0.0", api = "0.3", privileged = true }
+  { id = "example/stack", version = "1.0.0", api = "0.3", privileged = true },
+  { id = "example/stack_b", version = "1.0.0", api = "0.3", privileged = true }
 ]

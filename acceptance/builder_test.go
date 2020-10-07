@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"testing"
 	"time"
@@ -71,6 +72,20 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertMatch(t, output, "my-layer.toml")
 			h.AssertMatch(t, output, "snapshot.tgz")
 			h.AssertMatch(t, output, "snapshot.toml")
+		})
+
+		it("subsequent stack buildpacks only contain their file changes", func() {
+			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
+			output := h.DockerRun(t,
+				rootBuilderImage,
+				h.WithBash(fmt.Sprintf("%s -privileged-group privileged-group.toml -group group.toml -plan plan.toml; tar tvf /layers/example_stack_b/snapshot/snapshot.tgz", rootBuilderPath)),
+			)
+
+			h.AssertMatch(t, output, "0/0 .+ bin/stack-b-file")
+			if regexp.MustCompile("0/0 .+ bin/file-to-snapshot").MatchString(output) {
+				t.Fatalf("Unexpected file in output: '%s'", output)
+			}
 		})
 
 		when("there is an existing snapshot", func() {
