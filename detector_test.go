@@ -662,7 +662,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("there are stack buildpacks", func() {
-
 				it("should produce build plans for both standard and privileged that provide the same dep", func() {
 					toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-X-1.0.0.toml")
 					toappfile("\n[[provides]]\n name = \"dep1\"", "detect-plan-A-v1.toml")

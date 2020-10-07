@@ -72,6 +72,24 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	var slices []layers.Slice
 	var labels []Label
 
+	platformDir, err := filepath.Abs(b.PlatformDir)
+	if err != nil {
+		return nil, err
+	}
+	layersDir, err := filepath.Abs(b.LayersDir)
+	if err != nil {
+		return nil, err
+	}
+	appDir, err := filepath.Abs(b.AppDir)
+	if err != nil {
+		return nil, err
+	}
+	planDir, err := ioutil.TempDir("", "plan.")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(planDir)
+
 	useSnapshotter := b.Snapshotter != nil
 
 	if useSnapshotter {
@@ -90,7 +108,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			}
 		}
 
-		launchData, newPlan, bpBOM, err := b.build(bp, b.AppDir, plan)
+		launchData, newPlan, bpBOM, err := b.build(bp, appDir, layersDir, platformDir, planDir, plan)
 		if err != nil {
 			return nil, err
 		}
@@ -161,25 +179,7 @@ func (bp Buildpack) ApplyLayerSnapshots(snapshotter LayerSnapshotter, layersDir 
 	return nil
 }
 
-func (b *Builder) build(bp Buildpack, rawAppDir string, plan BuildPlan) (LaunchTOML, BuildPlan, []BOMEntry, error) {
-	platformDir, err := filepath.Abs(b.PlatformDir)
-	if err != nil {
-		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
-	}
-	layersDir, err := filepath.Abs(b.LayersDir)
-	if err != nil {
-		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
-	}
-	appDir, err := filepath.Abs(rawAppDir)
-	if err != nil {
-		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
-	}
-	planDir, err := ioutil.TempDir("", "plan.")
-	if err != nil {
-		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
-	}
-	defer os.RemoveAll(planDir)
-
+func (b *Builder) build(bp Buildpack, appDir, layersDir, platformDir, planDir string, plan BuildPlan) (LaunchTOML, BuildPlan, []BOMEntry, error) {
 	bpInfo, err := bp.Lookup(b.BuildpacksDir)
 	if err != nil {
 		return LaunchTOML{}, BuildPlan{}, []BOMEntry{}, err
