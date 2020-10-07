@@ -41,12 +41,12 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 			t.Fatalf("Error: %s\n", err)
 		}
 
-		createTestFile(t, filepath.Join(tmpDir, "cnb", "privatefile"))
-		createTestFile(t, filepath.Join(tmpDir, "layers", "privatefile"))
-		createTestFile(t, filepath.Join(tmpDir, "file-to-change"))
-		createTestFile(t, filepath.Join(tmpDir, "file-not-to-change"))
-		createTestFile(t, filepath.Join(tmpDir, "file-to-delete"))
-		createTestFile(t, filepath.Join(tmpDir, "bin", "file-not-to-change"))
+		createTestFileWithContent(t, filepath.Join(tmpDir, "cnb", "privatefile"), "hello\n")
+		createTestFileWithContent(t, filepath.Join(tmpDir, "layers", "privatefile"), "hello\n")
+		createTestFileWithContent(t, filepath.Join(tmpDir, "file-to-change"), "hello\n")
+		createTestFileWithContent(t, filepath.Join(tmpDir, "file-not-to-change"), "hello\n")
+		createTestFileWithContent(t, filepath.Join(tmpDir, "file-to-delete"), "hello\n")
+		createTestFileWithContent(t, filepath.Join(tmpDir, "bin", "file-not-to-change"), "hello\n")
 
 		snapshotter = &snapshot.KanikoSnapshotter{
 			RootDir:                    tmpDir,
@@ -69,8 +69,8 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 
 			os.Remove(filepath.Join(snapshotter.RootDir, "file-to-delete"))
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "file-to-change"), "hola\n")
-			createTestFile(t, filepath.Join(snapshotter.RootDir, "my-space", "newfile-in-dir"))
-			createTestFile(t, filepath.Join(snapshotter.RootDir, "dir-with-ignored-files", "file-to-ignore"))
+			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "my-space", "newfile-in-dir"), "hello\n")
+			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "dir-with-ignored-files", "file-to-ignore"), "hello\n")
 
 			tmpFile, err := ioutil.TempFile("", "snapshot")
 			if err != nil {
@@ -129,10 +129,6 @@ func mkdir(t *testing.T, dirs ...string) {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}
-}
-
-func createTestFile(t *testing.T, path string) {
-	createTestFileWithContent(t, path, "hello\n")
 }
 
 func createTestFileWithContent(t *testing.T, path string, content string) {
