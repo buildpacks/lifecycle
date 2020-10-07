@@ -8,7 +8,7 @@ else
 /:=/
 endif
 
-PARSED_COMMIT:=$(shell git describe --always --dirty)
+PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
 
 ifeq ($(LIFECYCLE_VERSION),)
 LIFECYCLE_VERSION:=$(shell go run tools/version/main.go)
