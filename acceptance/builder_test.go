@@ -72,5 +72,18 @@ func testStackBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertMatch(t, output, "snapshot.tgz")
 			h.AssertMatch(t, output, "snapshot.toml")
 		})
+
+		when("there is an existing snapshot", func() {
+			it("restored the snapshot prior to stack buildpack execution", func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
+				output := h.DockerRun(t,
+					rootBuilderImage,
+					h.WithBash(fmt.Sprintf("%s -privileged-group privileged-group.toml -group group.toml -plan plan.toml; ls -al /layers/example_stack/snapshot;", rootBuilderPath)),
+				)
+
+				h.AssertMatch(t, output, "/bin/exe-to-snapshot restored from cache")
+			})
+		})
 	})
 }

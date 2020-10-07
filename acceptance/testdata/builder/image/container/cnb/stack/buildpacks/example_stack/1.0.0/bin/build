@@ -1,8 +1,15 @@
 #!/bin/bash
 
 echo "hello" > /file-to-snapshot
-echo "hello" > /bin/exe-to-snapshot
-chmod +x /bin/exe-to-snapshot
+
+EXECFILE=/bin/exe-to-snapshot
+if test -f "$EXECFILE"; then
+    echo "$EXECFILE restored from cache"
+else
+    echo "$EXECFILE does not exist!"
+    echo "hello" > /bin/exe-to-snapshot
+    chmod +x /bin/exe-to-snapshot
+fi
 
 # this should be ignored
 mkdir -p /cnb
