@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -188,12 +189,21 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
-					{Paths: []string{"*.txt", "**/*.txt"}},
-					{Paths: []string{"other-dir"}},
-					{Paths: []string{"dir-link/*"}},
-					{Paths: []string{"../**/dir-to-exclude"}},
-				})
+				if runtime.GOOS == "windows" {
+					sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
+						{Paths: []string{"*.txt", "**\\*.txt"}},
+						{Paths: []string{"other-dir"}},
+						{Paths: []string{"dir-link\\*"}},
+						{Paths: []string{"..\\**\\dir-to-exclude"}},
+					})
+				} else {
+					sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
+						{Paths: []string{"*.txt", "**/*.txt"}},
+						{Paths: []string{"other-dir"}},
+						{Paths: []string{"dir-link/*"}},
+						{Paths: []string{"../**/dir-to-exclude"}},
+					})
+				}
 				h.AssertNil(t, err)
 			})
 
@@ -315,7 +325,7 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 
 		when("the dir has special characters", func() {
 			it("does not treat the dir like a pattern", func() {
-				specialCharDir, err := filepath.Abs(filepath.Join("testdata", "target-di[rx]"))
+				specialCharDir, err := filepath.Abs(filepath.Join("testdata", "target-di[r]"))
 				h.AssertNil(t, err)
 				sliceLayers, err := factory.SliceLayers(specialCharDir, []layers.Slice{
 					{Paths: []string{"*"}},
