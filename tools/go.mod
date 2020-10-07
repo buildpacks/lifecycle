@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Djarvur/go-err113 v0.1.0 // indirect
-	github.com/buildpacks/imgutil v0.0.0-20200831154319-afd98bd2f655
+	github.com/buildpacks/imgutil v0.0.0-20201008151938-cea9fc548372
 	github.com/buildpacks/lifecycle v0.8.1
 	github.com/docker/docker v1.4.2-0.20200221181110-62bd5a33f707
 	github.com/golang/mock v1.4.4
