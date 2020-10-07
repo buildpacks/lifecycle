@@ -8,9 +8,11 @@ else
 /:=/
 endif
 
+PARSED_COMMIT:=$(shell git rev-parse --short HEAD)
+
 ifeq ($(LIFECYCLE_VERSION),)
-LIFECYCLE_IMAGE_TAG?=$(shell git describe --always --dirty)
 LIFECYCLE_VERSION:=$(shell go run tools/version/main.go)
+LIFECYCLE_IMAGE_TAG?=$(PARSED_COMMIT)
 else
 LIFECYCLE_IMAGE_TAG?=$(LIFECYCLE_VERSION)
 endif
@@ -20,7 +22,6 @@ GOARCH?=amd64
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LIFECYCLE_DESCRIPTOR_PATH?=lifecycle.toml
 SCM_REPO?=github.com/buildpacks/lifecycle
-PARSED_COMMIT=$(shell git rev-parse --short HEAD)
 SCM_COMMIT?=$(PARSED_COMMIT)
 LDFLAGS=-s -w
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
