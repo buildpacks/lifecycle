@@ -65,18 +65,29 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 
 	when("files are added and modified", func() {
 		var (
-			snapshotFile string
+			snapshotFile     string
+			expectedNumFiles int
 		)
 
 		it.Before(func() {
 			h.AssertNil(t, snapshotter.Init())
 
+			// this file should exist in a deleted state in the snapshot
 			os.Remove(filepath.Join(snapshotter.RootDir, "file-to-delete"))
-			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "file-to-change"), "hola\n")
+
+			// these files should exist in the snapshot
+			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "newfile"), "hello\n")
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "my-space", "newfile-in-dir"), "hello\n")
+
+			// these files should have updated content in the snapshot
+			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "file-to-change"), "hola\n")
+
+			// these files should not exist in the snapshot
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "layers", "file-to-ignore"), "hello\n")
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "cnb", "file-to-ignore"), "hello\n")
 			createTestFileWithContent(t, filepath.Join(snapshotter.RootDir, "platform", "file-to-ignore"), "hello\n")
+
+			expectedNumFiles = 4
 
 			tmpFile, err := ioutil.TempFile("", "snapshot")
 			if err != nil {
@@ -99,6 +110,7 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 			defer data.Close()
 
 			tr := tar.NewReader(data)
+			actualNumFiles := 0
 			for {
 				hdr, err := tr.Next()
 				if err == io.EOF {
@@ -109,24 +121,28 @@ func testKanikoSnapshotter(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Error: %s\n", err)
 				}
 
+				if hdr.FileInfo().IsDir() {
+					continue
+				}
+
+				actualNumFiles++
 				switch hdr.Name {
-				case "/":
-				case "layers/":
-				case "cnb/":
-				case "platform/":
-				case "my-space/":
 				case strings.Trim(filepath.Join(snapshotter.RootDir, ".wh.file-to-delete"), "/"):
+					// ensure we only count the whiteout file
 					continue
 				case "newfile":
 				case "my-space/newfile-in-dir":
+					// ensure the contents is as expected
 					assertSnapshotFile(t, tr, "hello\n")
 				case "file-to-change":
+					// ensure the contents is updated
 					assertSnapshotFile(t, tr, "hola\n")
-				case "file-to-ignore":
 				default:
-					t.Fatalf("Unexpected file: %s\n", hdr.Name)
+					t.Fatalf("Unexpected file in snapshot: %s\n", hdr.Name)
 				}
 			}
+			// make sure we have the right number of files in our snapshot
+			h.AssertEq(t, actualNumFiles, expectedNumFiles)
 		})
 	})
 }
