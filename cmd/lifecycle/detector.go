@@ -70,7 +70,7 @@ func (d *detectCmd) Exec() error {
 	return d.writeData(dr)
 }
 
-func (da detectArgs) mergeOrderWithStackBuildpacks(order lifecycle.BuildpackOrder) (lifecycle.BuildpackOrder, error) {
+func (da detectArgs) prependOrderWithStackBuildpacks(order lifecycle.BuildpackOrder) (lifecycle.BuildpackOrder, error) {
 	if _, err := os.Stat(da.stackOrderPath); err != nil {
 		if os.IsNotExist(err) {
 			return order, nil
@@ -106,11 +106,11 @@ func (da detectArgs) detect() (lifecycle.DetectResult, error) {
 		return lifecycle.DetectResult{}, cmd.FailErr(err, "read buildpack order file")
 	}
 
-	if err := da.validateBuildpacks(order); err != nil {
+	if err := da.verifyBuildpackPrivileges(order); err != nil {
 		return lifecycle.DetectResult{}, cmd.FailErr(err, "validate buildpack")
 	}
 
-	order, err = da.mergeOrderWithStackBuildpacks(order)
+	order, err = da.prependOrderWithStackBuildpacks(order)
 	if err != nil {
 		return lifecycle.DetectResult{}, cmd.FailErr(err, "merge stack buildpacks into order")
 	}
@@ -174,7 +174,7 @@ func (da detectArgs) verifyBuildpackApis(order lifecycle.BuildpackOrder) error {
 	return nil
 }
 
-func (da detectArgs) validateBuildpacks(order lifecycle.BuildpackOrder) error {
+func (da detectArgs) verifyBuildpackPrivileges(order lifecycle.BuildpackOrder) error {
 	for _, group := range order {
 		for _, bp := range group.Group {
 			if bp.Privileged {
