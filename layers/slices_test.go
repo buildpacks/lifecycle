@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -188,12 +189,21 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
-					{Paths: []string{"*.txt", "**/*.txt"}},
-					{Paths: []string{"other-dir"}},
-					{Paths: []string{"dir-link/*"}},
-					{Paths: []string{"../**/dir-to-exclude"}},
-				})
+				if runtime.GOOS == "windows" {
+					sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
+						{Paths: []string{"*.txt", "**\\*.txt"}},
+						{Paths: []string{"other-dir"}},
+						{Paths: []string{"dir-link\\*"}},
+						{Paths: []string{"..\\**\\dir-to-exclude"}},
+					})
+				} else {
+					sliceLayers, err = factory.SliceLayers(dirToSlice, []layers.Slice{
+						{Paths: []string{"*.txt", "**/*.txt"}},
+						{Paths: []string{"other-dir"}},
+						{Paths: []string{"dir-link/*"}},
+						{Paths: []string{"../**/dir-to-exclude"}},
+					})
+				}
 				h.AssertNil(t, err)
 			})
 
@@ -310,6 +320,37 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 						Typeflag: tar.TypeReg,
 					},
 				}...))
+			})
+		})
+
+		when("the dir has special characters", func() {
+			it("does not treat the dir like a pattern", func() {
+				specialCharDir, err := filepath.Abs(filepath.Join("testdata", "target-di[r]"))
+				h.AssertNil(t, err)
+				sliceLayers, err := factory.SliceLayers(specialCharDir, []layers.Slice{
+					{Paths: []string{"*"}},
+				})
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(sliceLayers), 2)
+				h.AssertEq(t, sliceLayers[0].ID, "slice-1")
+				// parent layers should have uid/gid matching the filesystem
+				// the sliced dir and it's children should have normalized uid/gid
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, specialCharDir), []*tar.Header{
+					{
+						Name:     tarPath(specialCharDir),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
+					},
+					{
+						Name:     tarPath(filepath.Join(specialCharDir, "special-char-test-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
+					},
+				}...))
+
+				assertTarEntries(t, sliceLayers[1].TarPath, []*tar.Header{})
 			})
 		})
 	})

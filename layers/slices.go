@@ -55,13 +55,40 @@ func (f *Factory) SliceLayers(dir string, slices []Slice) ([]Layer, error) {
 func (f *Factory) createLayerFromSlice(slice Slice, sdir *sliceableDir, layerID string) (Layer, error) {
 	var matches []string
 	for _, path := range slice.Paths {
-		globMatches, err := filepath.Glob(filepath.Join(sdir.path, path))
+		globMatches, err := glob(sdir, path)
 		if err != nil {
-			return Layer{}, errors.Wrap(err, "bad pattern for glob path")
+			return Layer{}, err
 		}
 		matches = append(matches, globMatches...)
 	}
 	return f.createLayerFromFiles(layerID, sdir, sdir.sliceFiles(matches))
+}
+
+func glob(sdir *sliceableDir, pattern string) ([]string, error) {
+	var matches []string
+	if err := filepath.Walk(sdir.path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == sdir.path {
+			return nil
+		}
+		relPath, err := filepath.Rel(sdir.path, path)
+		if err != nil {
+			return err
+		}
+		match, err := filepath.Match(pattern, relPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to check if '%s' matches '%s'", relPath, pattern)
+		}
+		if match {
+			matches = append(matches, path)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return matches, nil
 }
 
 func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files []archive.PathInfo) (layer Layer, err error) {

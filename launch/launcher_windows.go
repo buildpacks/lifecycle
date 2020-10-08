@@ -6,10 +6,9 @@ import (
 )
 
 const (
-	CNBDir      = `c:\cnb`
-	exe         = ".exe"
-	profileGlob = "*.bat"
-	appProfile  = ".profile.bat"
+	CNBDir     = `c:\cnb`
+	exe        = ".exe"
+	appProfile = ".profile.bat"
 )
 
 var (
