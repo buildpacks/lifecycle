@@ -20,7 +20,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
+	specreport "github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -32,7 +32,7 @@ import (
 
 func TestExporter(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	spec.Run(t, "Exporter", testExporter, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Exporter", testExporter, spec.Parallel(), spec.Report(specreport.Terminal{}))
 }
 
 func testExporter(t *testing.T, when spec.G, it spec.S) {
@@ -144,7 +144,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		fakeAppImage.Cleanup()
+		h.AssertNil(t, fakeAppImage.Cleanup())
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 		mockCtrl.Finish()
 	})
@@ -753,11 +753,11 @@ version = "4.5.6"
 
 				// TODO : this is an hacky way to create a non-existing image and should be improved in imgutil
 				nonExistingOriginalImage = fakes.NewImage("app/original-image", "", nil)
-				nonExistingOriginalImage.Delete()
+				h.AssertNil(t, nonExistingOriginalImage.Delete())
 			})
 
 			it.After(func() {
-				nonExistingOriginalImage.Cleanup()
+				h.AssertNil(t, nonExistingOriginalImage.Cleanup())
 			})
 
 			when("there are slices", func() {

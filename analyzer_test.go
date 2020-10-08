@@ -59,7 +59,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		}
 		if testing.Verbose() {
 			analyzer.Logger = cmd.DefaultLogger
-			cmd.SetLogLevel("debug")
+			h.AssertNil(t, cmd.SetLogLevel("debug"))
 		}
 		mockCtrl = gomock.NewController(t)
 	})
@@ -87,7 +87,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			image.Cleanup()
+			h.AssertNil(t, image.Cleanup())
 		})
 
 		when("image exists", func() {

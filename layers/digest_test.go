@@ -4,17 +4,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"testing"
+
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestConcurrentHasher(t *testing.T) {
 	msg := []byte("Some important message")
 
 	hasher := sha256.New()
-	hasher.Write(msg)
+	_, err := hasher.Write(msg)
+	h.AssertNil(t, err)
 	digest := hex.EncodeToString(hasher.Sum(nil))
 
 	cHasher := newConcurrentHasher(sha256.New())
-	cHasher.Write(msg)
+	_, err = cHasher.Write(msg)
+	h.AssertNil(t, err)
 	cDigest := hex.EncodeToString(cHasher.Sum(nil))
 
 	if digest != cDigest {

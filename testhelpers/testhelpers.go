@@ -219,6 +219,7 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatalf("failed to open file: %s", err)
 	}
+	defer file.Close()
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, file); err != nil {
 		t.Fatalf("failed to copy file to hasher: %s", err)
