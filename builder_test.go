@@ -3,9 +3,7 @@ package lifecycle_test
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,9 +56,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		appDir = filepath.Join(layersDir, "app")
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
-		outLog := log.New(io.MultiWriter(stdout, it.Out()), "", 0)
-		errLog := log.New(io.MultiWriter(stderr, it.Out()), "", 0)
-
 		buildpacksDir := filepath.Join("testdata", "by-id")
 
 		builder = &lifecycle.Builder{
@@ -76,8 +71,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
-			Out: outLog,
-			Err: errLog,
+			Out: stdout,
+			Err: stderr,
 		}
 	})
 

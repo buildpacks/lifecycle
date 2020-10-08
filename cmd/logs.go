@@ -23,10 +23,12 @@ var (
 	DefaultLogger = &Logger{
 		&log.Logger{
 			Handler: &handler{
-				writer: os.Stdout,
+				writer: Stdout,
 			},
 		},
 	}
+	Stdout     = color.NewConsole(os.Stdout)
+	Stderr     = color.NewConsole(os.Stderr)
 	warnStyle  = color.New(color.FgYellow, color.Bold).SprintfFunc()
 	errorStyle = color.New(color.FgRed, color.Bold).SprintfFunc()
 	phaseStyle = color.New(color.FgCyan).SprintfFunc()
@@ -48,6 +50,11 @@ func SetLogLevel(level string) *ErrorFail {
 	}
 
 	return nil
+}
+
+func DisableColor(noColor bool) {
+	Stdout.DisableColors(noColor)
+	Stderr.DisableColors(noColor)
 }
 
 type handler struct {

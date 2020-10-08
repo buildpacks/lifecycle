@@ -4,8 +4,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-
-	"github.com/heroku/color"
 )
 
 type Command interface {
@@ -38,7 +36,7 @@ func Run(c Command, asSubcommand bool) {
 			Exit(err)
 		}
 	}
-	color.Disable(noColor)
+	DisableColor(noColor)
 
 	if printVersion {
 		ExitWithVersion()
