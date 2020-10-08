@@ -69,7 +69,11 @@ func (l *Launcher) profiles(process Process) ([]string, error) {
 	}
 
 	if err := l.eachBuildpack(func(path string) error {
-		return eachDir(path, func(path string) error {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		return eachDir(absPath, func(path string) error {
 			if err := appendFilesInDir(filepath.Join(path, "profile.d")); err != nil {
 				return err
 			}
