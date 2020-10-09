@@ -2,8 +2,8 @@ package lifecycle
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,7 +26,7 @@ type Builder struct {
 	Env           BuildEnv
 	Group         BuildpackGroup
 	Plan          BuildPlan
-	Out, Err      *log.Logger
+	Out, Err      io.Writer
 }
 
 type BuildEnv interface {
@@ -115,8 +115,8 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			bpPlanPath,
 		)
 		cmd.Dir = appDir
-		cmd.Stdout = b.Out.Writer()
-		cmd.Stderr = b.Err.Writer()
+		cmd.Stdout = b.Out
+		cmd.Stderr = b.Err
 
 		if bpInfo.Buildpack.ClearEnv {
 			cmd.Env = b.Env.List()

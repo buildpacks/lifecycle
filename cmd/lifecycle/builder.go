@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -76,8 +75,8 @@ func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPl
 		Env:           env.NewBuildEnv(os.Environ()),
 		Group:         group,
 		Plan:          plan,
-		Out:           log.New(os.Stdout, "", 0),
-		Err:           log.New(os.Stderr, "", 0),
+		Out:           cmd.Stdout,
+		Err:           cmd.Stderr,
 	}
 	md, err := builder.Build()
 
