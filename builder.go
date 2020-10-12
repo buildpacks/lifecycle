@@ -80,14 +80,12 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	var bom []BOMEntry
 	var slices []layers.Slice
 	var labels []Label
-	var group []Buildpack
 
 	for _, bp := range b.Group.Group {
 		bpInfo, err := bp.Lookup(b.BuildpacksDir)
 		if err != nil {
 			return nil, err
 		}
-		group = append(group, bp.withHomepage(bpInfo.Buildpack.Homepage))
 		bpDirName := launch.EscapeID(bp.ID)
 		bpLayersDir := filepath.Join(layersDir, bpDirName)
 		bpPlanDir := filepath.Join(planDir, bpDirName)
@@ -100,7 +98,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
 
-		foundPlan := plan.find(bp.noAPI())
+		foundPlan := plan.find(bp.noAPI().noHomepage())
 		if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 			for i := range foundPlan.Entries {
 				foundPlan.Entries[i].convertMetadataToVersion()
@@ -176,7 +174,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 
 	return &BuildMetadata{
 		BOM:        bom,
-		Buildpacks: group,
+		Buildpacks: b.Group.Group,
 		Labels:     labels,
 		Processes:  procMap.list(),
 		Slices:     slices,

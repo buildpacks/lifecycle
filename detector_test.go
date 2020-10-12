@@ -103,7 +103,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1", API: "0.3"},
+					{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 					{ID: "B", Version: "v1", API: "0.2"},
 				},
 			}); s != "" {
@@ -311,7 +311,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 						{ID: "C", Version: "v2", API: "0.2"},
 						{ID: "D", Version: "v2", API: "0.2"},
 						{ID: "B", Version: "v1", API: "0.2"},
@@ -498,7 +498,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v1", API: "0.2"},
 						{ID: "C", Version: "v1", API: "0.2"},
 					},
@@ -558,7 +558,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				if s := cmp.Diff(group, lifecycle.BuildpackGroup{
 					Group: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3"},
+						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 						{ID: "C", Version: "v2", API: "0.2"},
 						{ID: "D", Version: "v2", API: "0.2"},
 						{ID: "B", Version: "v1", API: "0.2"},
