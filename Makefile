@@ -57,15 +57,25 @@ build-image-windows:
 
 build-linux-lifecycle: $(BUILD_DIR)/linux/lifecycle/lifecycle
 
+docker-compilation-image-linux:
+	docker build ./tools --build-arg from_image=$(LINUX_COMPILATION_IMAGE) --tag $(SOURCE_COMPILATION_IMAGE)
+
+
 $(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
 $(BUILD_DIR)/linux/lifecycle/lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
-$(BUILD_DIR)/linux/lifecycle/lifecycle: DOCKER_RUN=docker run --workdir=/lifecycle -v $(OUT_DIR):/out -v $(PWD):/lifecycle $(LINUX_COMPILATION_IMAGE)
+$(BUILD_DIR)/linux/lifecycle/lifecycle: docker-compilation-image-linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for linux..."
 	mkdir -p $(OUT_DIR)
-	$(DOCKER_RUN) sh -c 'apk add build-base && $(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
+	docker run \
+	  --workdir=/lifecycle \
+	  --volume $(OUT_DIR):/out \
+	  --volume $(PWD):/lifecycle \
+	  --volume gocache:/go \
+	  $(SOURCE_COMPILATION_IMAGE) \
+	  sh -c '$(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
 
 build-linux-launcher: $(BUILD_DIR)/linux/lifecycle/launcher
 
