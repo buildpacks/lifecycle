@@ -460,11 +460,13 @@ version = "4.5.6"
   "buildpacks": [
     {
       "id": "buildpack.id",
-      "version": "1.2.3"
+      "version": "1.2.3",
+      "homepage": "buildpack homepage"
     },
     {
       "id": "other.buildpack.id",
-      "version": "4.5.6"
+      "version": "4.5.6",
+      "homepage": "other buildpack homepage"
     }
   ],
   "launcher": {

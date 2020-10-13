@@ -378,11 +378,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					BOM: []lifecycle.BOMEntry{
 						{
 							Require:   lifecycle.Require{Name: "dep1", Version: "v1"},
-							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1", Homepage: "Buildpack A Homepage"},
+							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
 						},
 						{
 							Require:   lifecycle.Require{Name: "dep1-replace", Version: "v7"},
-							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1", Homepage: "Buildpack A Homepage"},
+							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
 						},
 						{
 							Require:   lifecycle.Require{Name: "dep1-next", Version: "v9"},

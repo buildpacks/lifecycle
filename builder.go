@@ -204,7 +204,7 @@ func (p BuildPlan) filter(bp Buildpack, plan BuildpackPlan) (BuildPlan, []BOMEnt
 	}
 	var bom []BOMEntry
 	for _, entry := range plan.Entries {
-		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI()})
+		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI().noHomepage()})
 	}
 	return BuildPlan{Entries: out}, bom
 }
