@@ -98,7 +98,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		}
 		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
 
-		foundPlan := plan.find(bp.noAPI())
+		foundPlan := plan.find(bp.noAPI().noHomepage())
 		if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
 			for i := range foundPlan.Entries {
 				foundPlan.Entries[i].convertMetadataToVersion()
@@ -204,7 +204,7 @@ func (p BuildPlan) filter(bp Buildpack, plan BuildpackPlan) (BuildPlan, []BOMEnt
 	}
 	var bom []BOMEntry
 	for _, entry := range plan.Entries {
-		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI()})
+		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI().noHomepage()})
 	}
 	return BuildPlan{Entries: out}, bom
 }
