@@ -11,7 +11,7 @@ on:
       - 'release/**'
 
 jobs:
-  test-linux-and-build:
+  test-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -34,19 +34,6 @@ jobs:
           echo "::add-path::${PWD}/deps/bin"
       - name: Test
         run: make test
-      - name: Build
-        run: |
-          make clean
-          make build
-          make package
-      - uses: actions/upload-artifact@v2
-        with:
-          name: lifecycle-linux-x86-64
-          path: out/lifecycle-v*+linux.x86-64.tgz
-      - uses: actions/upload-artifact@v2
-        with:
-          name: lifecycle-windows-x86-64
-          path: out/lifecycle-v*+windows.x86-64.tgz
   test-windows:
     runs-on: windows-latest
     steps:
@@ -67,10 +54,9 @@ jobs:
       - name: Test
         run: make test
         shell: cmd
-  create-lifecycle-image-manifest-list:
-    if: github.event_name == 'push'
+  build:
     needs:
-      - test-linux-and-build
+      - test-linux
       - test-windows
     runs-on: ubuntu-latest
     steps:
@@ -90,17 +76,22 @@ jobs:
           curl -s -L -o deps/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
           chmod +x deps/bin/jq
           echo "::add-path::${PWD}/deps/bin"
-      - name: Download artifacts - linux
-        uses: actions/download-artifact@v1
+      - name: Build
+        run: |
+          make clean
+          make build
+          make package
+      - uses: actions/upload-artifact@v2
         with:
           name: lifecycle-linux-x86-64
-      - name: Download artifacts - windows
-        uses: actions/download-artifact@v1
+          path: out/lifecycle-v*+linux.x86-64.tgz
+      - uses: actions/upload-artifact@v2
         with:
           name: lifecycle-windows-x86-64
-      - name: Publish linux and windows lifecycle images and create manifest list
+          path: out/lifecycle-v*+windows.x86-64.tgz
+      - name: Publish images
+        if: github.event_name == 'push'
         run: |
-          if [[ ${{ github.event_name }} != 'push' ]]; then exit 0; fi
           echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
           LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
           go run ./tools/image/main.go -lifecyclePath ./lifecycle-linux-x86-64/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
