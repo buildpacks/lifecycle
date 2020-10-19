@@ -11,7 +11,7 @@ on:
       - 'release/**'
 
 jobs:
-  test-and-build-linux:
+  test-linux-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -37,13 +37,17 @@ jobs:
       - name: Build
         run: |
           make clean
-          make build-linux
-          make package-linux
+          make build
+          make package
       - uses: actions/upload-artifact@v2
         with:
           name: lifecycle-linux-x86-64
           path: out/lifecycle-v*+linux.x86-64.tgz
-  test-and-build-windows:
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-windows-x86-64
+          path: out/lifecycle-v*+windows.x86-64.tgz
+  test-windows:
     runs-on: windows-latest
     steps:
       - name: Set git to use LF and symlinks
@@ -63,21 +67,11 @@ jobs:
       - name: Test
         run: make test
         shell: cmd
-      - name: Build
-        run: |
-          make clean
-          make build-windows
-          make package-windows
-        shell: cmd
-      - uses: actions/upload-artifact@v2
-        with:
-          name: lifecycle-windows-x86-64
-          path: out/lifecycle-v*+windows.x86-64.tgz
   create-lifecycle-image-manifest-list:
     if: github.event_name == 'push'
     needs:
-      - test-and-build-linux
-      - test-and-build-windows
+      - test-linux-and-build
+      - test-windows
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
