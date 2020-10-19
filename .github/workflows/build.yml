@@ -15,17 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - name: Set up go
         uses: actions/setup-go@v2-beta
         with:
           go-version: '1.15'
-      - name: Set up go env
-        run: |
-          echo "::set-env name=GOPATH::$(go env GOPATH)"
-          echo "::add-path::$(go env GOPATH)/bin"
-        shell: bash
       - name: Install jq
         run: |
           mkdir -p deps/bin
@@ -43,8 +36,6 @@ jobs:
           git config --global core.eol lf
           git config --global core.symlinks true
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - name: Set up go
         uses: actions/setup-go@v2-beta
         with:
@@ -53,7 +44,6 @@ jobs:
         run: choco install jq
       - name: Test
         run: make test
-        shell: cmd
   build:
     needs:
       - test-linux
@@ -61,15 +51,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Set up go
         uses: actions/setup-go@v2-beta
         with:
           go-version: '1.15'
-      - name: Set up go env
-        run: |
-          echo "::set-env name=GOPATH::$(go env GOPATH)"
-          echo "::add-path::$(go env GOPATH)/bin"
-        shell: bash
       - name: Build
         run: |
           make clean
@@ -88,7 +75,7 @@ jobs:
         run: |
           echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
           LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
-          go run ./tools/image/main.go -lifecyclePath ./lifecycle-linux-x86-64/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
-          go run ./tools/image/main.go -lifecyclePath ./lifecycle-windows-x86-64/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows
+          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
+          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
