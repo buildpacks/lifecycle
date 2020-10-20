@@ -53,7 +53,7 @@ func (b *BashShell) Launch(proc ShellProcess) error {
 func bashCommandWithTokens(nTokens int) string {
 	commandScript := `"$(eval echo \"$0\")"`
 	for i := 1; i < nTokens; i++ {
-		commandScript += fmt.Sprintf(` "$(eval echo \"$%d\")"`, i)
+		commandScript += fmt.Sprintf(` "$(eval echo \"${%d}\")"`, i)
 	}
 	return fmt.Sprintf(`exec bash -c '%s' "${@:1}"`, commandScript)
 }

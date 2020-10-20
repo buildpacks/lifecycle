@@ -130,6 +130,37 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 				}
 				h.AssertStringContains(t, stdout, "SOME_ARG: 'some arg1'")
 			})
+
+			it("handles many args", func() {
+				process = launch.ShellProcess{
+					Script:  false,
+					Command: `echo`,
+					Args: []string{
+						"one",
+						"two",
+						"three",
+						"four",
+						"five",
+						"six",
+						"seven",
+						"eight",
+						"nine",
+						"ten",
+					},
+					Caller: "some-profile-argv0",
+					Env: []string{
+						"SOME_VAR=some-val",
+					},
+				}
+				err := shell.Launch(process)
+				h.AssertNil(t, err)
+				stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
+				if len(stdout) == 0 {
+					stderr := rdfile(t, filepath.Join(tmpDir, "stderr"))
+					t.Fatalf("stdout was empty: stderr: %s\n", stderr)
+				}
+				h.AssertStringContains(t, stdout, "one two three four five six seven eight nine ten")
+			})
 		})
 
 		when("is not script", func() {
