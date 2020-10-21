@@ -26,6 +26,12 @@ import (
 	"github.com/buildpacks/lifecycle/archive"
 )
 
+const (
+	linuxBaseImage   = "gcr.io/distroless/static"
+	windowsBaseImage = "mcr.microsoft.com/windows/nanoserver:1809-amd64"
+)
+
+// commandline flags
 var (
 	lifecyclePath string      // path to lifecycle TGZ
 	tags          stringSlice // tag reference to write lifecycle image
@@ -57,9 +63,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	baseImage := "gcr.io/distroless/static"
+	baseImage := linuxBaseImage
 	if targetOS == "windows" {
-		baseImage = "mcr.microsoft.com/windows/servercore:ltsc2019-amd64"
+		baseImage = windowsBaseImage
 	}
 
 	var img imgutil.Image
