@@ -56,18 +56,18 @@ type exportArgs struct {
 }
 
 func (e *exportCmd) Init() {
-	cmd.FlagAnalyzedPath(&e.analyzedPath)
+	cmd.FlagLayersDir(&e.layersDir)
+	cmd.FlagAnalyzedPath(e.platformAPI, e.layersDir, &e.analyzedPath)
 	cmd.FlagAppDir(&e.appDir)
 	cmd.FlagCacheDir(&e.cacheDir)
 	cmd.FlagCacheImage(&e.cacheImageTag)
 	cmd.FlagGID(&e.gid)
-	cmd.FlagGroupPath(&e.groupPath)
+	cmd.FlagGroupPath(e.platformAPI, e.layersDir, &e.groupPath)
 	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
 	cmd.FlagLauncherPath(&e.launcherPath)
-	cmd.FlagLayersDir(&e.layersDir)
 	cmd.FlagProcessType(&e.processType)
-	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
-	cmd.FlagReportPath(&e.reportPath)
+	cmd.FlagProjectMetadataPath(e.platformAPI, e.layersDir, &e.projectMetadataPath)
+	cmd.FlagReportPath(e.platformAPI, e.layersDir, &e.reportPath)
 	cmd.FlagRunImage(&e.runImageRef)
 	cmd.FlagStackPath(&e.stackPath)
 	cmd.FlagUID(&e.uid)

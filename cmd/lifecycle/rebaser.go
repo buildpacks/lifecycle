@@ -23,6 +23,7 @@ type rebaseCmd struct {
 	reportPath            string
 	runImageRef           string
 	deprecatedRunImageRef string
+	platformAPI           string
 	useDaemon             bool
 	uid, gid              int
 
@@ -32,7 +33,7 @@ type rebaseCmd struct {
 
 func (r *rebaseCmd) Init() {
 	cmd.FlagGID(&r.gid)
-	cmd.FlagReportPath(&r.reportPath)
+	cmd.FlagReportPath(r.platformAPI, "", &r.reportPath)
 	cmd.FlagRunImage(&r.runImageRef)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagUseDaemon(&r.useDaemon)

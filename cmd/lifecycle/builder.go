@@ -31,10 +31,10 @@ type buildArgs struct {
 }
 
 func (b *buildCmd) Init() {
-	cmd.FlagBuildpacksDir(&b.buildpacksDir)
-	cmd.FlagGroupPath(&b.groupPath)
-	cmd.FlagPlanPath(&b.planPath)
 	cmd.FlagLayersDir(&b.layersDir)
+	cmd.FlagBuildpacksDir(&b.buildpacksDir)
+	cmd.FlagGroupPath(b.platformAPI, b.layersDir, &b.groupPath)
+	cmd.FlagPlanPath(b.platformAPI, b.layersDir, &b.planPath)
 	cmd.FlagAppDir(&b.appDir)
 	cmd.FlagPlatformDir(&b.platformDir)
 }

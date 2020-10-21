@@ -14,6 +14,7 @@ import (
 type detectCmd struct {
 	// flags: inputs
 	detectArgs
+	platformAPI string
 
 	// flags: paths to write outputs
 	groupPath string
@@ -33,8 +34,8 @@ func (d *detectCmd) Init() {
 	cmd.FlagAppDir(&d.appDir)
 	cmd.FlagPlatformDir(&d.platformDir)
 	cmd.FlagOrderPath(&d.orderPath)
-	cmd.FlagGroupPath(&d.groupPath)
-	cmd.FlagPlanPath(&d.planPath)
+	cmd.FlagGroupPath(d.platformAPI, "", &d.groupPath)
+	cmd.FlagPlanPath(d.platformAPI, "", &d.planPath)
 }
 
 func (d *detectCmd) Args(nargs int, args []string) error {

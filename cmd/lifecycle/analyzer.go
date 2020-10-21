@@ -20,6 +20,7 @@ type analyzeCmd struct {
 	cacheDir      string
 	cacheImageTag string
 	groupPath     string
+	platformAPI   string
 	uid, gid      int
 	analyzeArgs
 
@@ -39,11 +40,11 @@ type analyzeArgs struct {
 }
 
 func (a *analyzeCmd) Init() {
-	cmd.FlagAnalyzedPath(&a.analyzedPath)
+	cmd.FlagLayersDir(&a.layersDir)
+	cmd.FlagAnalyzedPath(a.platformAPI, a.layersDir, &a.analyzedPath)
 	cmd.FlagCacheDir(&a.cacheDir)
 	cmd.FlagCacheImage(&a.cacheImageTag)
-	cmd.FlagGroupPath(&a.groupPath)
-	cmd.FlagLayersDir(&a.layersDir)
+	cmd.FlagGroupPath(a.platformAPI, a.layersDir, &a.groupPath)
 	cmd.FlagSkipLayers(&a.skipLayers)
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)

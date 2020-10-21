@@ -15,14 +15,15 @@ type restoreCmd struct {
 	cacheImageTag string
 	groupPath     string
 	layersDir     string
+	platformAPI   string
 	uid, gid      int
 }
 
 func (r *restoreCmd) Init() {
 	cmd.FlagCacheDir(&r.cacheDir)
 	cmd.FlagCacheImage(&r.cacheImageTag)
-	cmd.FlagGroupPath(&r.groupPath)
 	cmd.FlagLayersDir(&r.layersDir)
+	cmd.FlagGroupPath(r.platformAPI, r.layersDir, &r.groupPath)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
 }

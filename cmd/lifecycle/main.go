@@ -19,17 +19,17 @@ func main() {
 
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cmd.Run(&detectCmd{}, false)
+		cmd.Run(&detectCmd{platformAPI: platformAPI}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{}, false)
+		cmd.Run(&analyzeCmd{platformAPI: platformAPI}, false)
 	case "restorer":
-		cmd.Run(&restoreCmd{}, false)
+		cmd.Run(&restoreCmd{platformAPI: platformAPI}, false)
 	case "builder":
 		cmd.Run(&buildCmd{buildArgs: buildArgs{platformAPI: platformAPI}}, false)
 	case "exporter":
 		cmd.Run(&exportCmd{exportArgs: exportArgs{platformAPI: platformAPI}}, false)
 	case "rebaser":
-		cmd.Run(&rebaseCmd{}, false)
+		cmd.Run(&rebaseCmd{platformAPI: platformAPI}, false)
 	case "creator":
 		cmd.Run(&createCmd{platformAPI: platformAPI}, false)
 	default:

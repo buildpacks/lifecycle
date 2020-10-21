@@ -50,14 +50,14 @@ func (c *createCmd) Init() {
 	cmd.FlagOrderPath(&c.orderPath)
 	cmd.FlagPlatformDir(&c.platformDir)
 	cmd.FlagPreviousImage(&c.previousImage)
-	cmd.FlagReportPath(&c.reportPath)
+	cmd.FlagReportPath(c.platformAPI, c.layersDir, &c.reportPath)
 	cmd.FlagRunImage(&c.runImageRef)
 	cmd.FlagSkipRestore(&c.skipRestore)
 	cmd.FlagStackPath(&c.stackPath)
 	cmd.FlagUID(&c.uid)
 	cmd.FlagUseDaemon(&c.useDaemon)
 	cmd.FlagTags(&c.additionalTags)
-	cmd.FlagProjectMetadataPath(&c.projectMetadataPath)
+	cmd.FlagProjectMetadataPath(c.platformAPI, c.layersDir, &c.projectMetadataPath)
 	cmd.FlagProcessType(&c.processType)
 }
 
