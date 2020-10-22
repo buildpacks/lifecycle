@@ -10,7 +10,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20200221181110-62bd5a33f707
 	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.5.2
-	github.com/google/go-containerregistry v0.1.3
+	github.com/google/go-containerregistry v0.1.4
 	github.com/heroku/color v0.0.6
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
