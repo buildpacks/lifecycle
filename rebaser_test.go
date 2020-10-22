@@ -181,6 +181,93 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, report.Image.ImageID, "some-image-id")
 				})
 			})
+
+			when("validating mixins", func() {
+				when("there are no mixin labels", func() {
+					it("allows rebase", func() {
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeWorkingImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("there are invalid mixin labels", func() {
+					it("returns an error", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "thisisn'tvalid!"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertError(t, err, "get working image mixins: failed to unmarshal context of label 'io.buildpacks.stack.mixins': invalid character 'h' in literal true (expecting 'r')")
+					})
+				})
+
+				when("mixins are not present in either image", func() {
+					it("allows rebase", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "null"))
+						h.AssertNil(t, fakeNewBaseImage.SetLabel(lifecycle.MixinsLabel, "null"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeWorkingImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("mixins are not present on the working image", func() {
+					it("allows rebase", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "null"))
+						h.AssertNil(t, fakeNewBaseImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\"]"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeWorkingImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("mixins match on the working and run images", func() {
+					it("allows rebase", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
+						h.AssertNil(t, fakeNewBaseImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeWorkingImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("extra mixins are present on the run image", func() {
+					it("allows rebase", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
+						h.AssertNil(t, fakeNewBaseImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\", \"mixin-3\"]"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeWorkingImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("mixins on the working image have stage specifiers that do not match the run image", func() {
+					it("allows rebase", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
+						h.AssertNil(t, fakeNewBaseImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"mixin-2\"]"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeWorkingImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("mixins on the run image have stage specifiers that do not match the working image", func() {
+					it("allows rebase", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
+						h.AssertNil(t, fakeNewBaseImage.SetLabel(lifecycle.MixinsLabel, "[\"run:mixin-1\", \"run:mixin-2\"]"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeWorkingImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("mixins are missing on the run image", func() {
+					it("does not allow rebase", func() {
+						h.AssertNil(t, fakeWorkingImage.SetLabel(lifecycle.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
+						h.AssertNil(t, fakeNewBaseImage.SetLabel(lifecycle.MixinsLabel, "[\"run:mixin-2\"]"))
+						_, err := rebaser.Rebase(fakeWorkingImage, fakeNewBaseImage, additionalNames)
+						h.AssertError(t, err, "missing required mixin(s): mixin-1")
+					})
+				})
+			})
 		})
 
 		when("app image and run image are based on different stacks", func() {
