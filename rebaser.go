@@ -99,8 +99,8 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 		return errors.Wrap(err, "get run image mixins")
 	}
 
-	appImageMixins = RemoveStagePrefixes(appImageMixins)
-	newBaseImageMixins = RemoveStagePrefixes(newBaseImageMixins)
+	appImageMixins = removeStagePrefixes(appImageMixins)
+	newBaseImageMixins = removeStagePrefixes(newBaseImageMixins)
 
 	_, missing, _ := Compare(newBaseImageMixins, appImageMixins)
 
