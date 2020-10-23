@@ -18,40 +18,40 @@ type RebaseReport struct {
 	Image ImageReport `toml:"image"`
 }
 
-func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
+func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
 	var origMetadata LayersMetadataCompat
-	if err := DecodeLabel(workingImage, LayerMetadataLabel, &origMetadata); err != nil {
+	if err := DecodeLabel(appImage, LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}
 
-	workingStackID, err := workingImage.Label(StackIDLabel)
+	appStackID, err := appImage.Label(StackIDLabel)
 	if err != nil {
-		return RebaseReport{}, errors.Wrap(err, "get working image stack")
+		return RebaseReport{}, errors.Wrap(err, "get app image stack")
 	}
 
 	newBaseStackID, err := newBaseImage.Label(StackIDLabel)
 	if err != nil {
-		return RebaseReport{}, errors.Wrap(err, "get  new base image stack")
+		return RebaseReport{}, errors.Wrap(err, "get new base image stack")
 	}
 
-	if workingStackID == "" {
-		return RebaseReport{}, errors.New("stack not defined on working image")
+	if appStackID == "" {
+		return RebaseReport{}, errors.New("stack not defined on app image")
 	}
 
 	if newBaseStackID == "" {
 		return RebaseReport{}, errors.New("stack not defined on new base image")
 	}
 
-	if workingStackID != newBaseStackID {
-		return RebaseReport{}, errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, workingStackID))
+	if appStackID != newBaseStackID {
+		return RebaseReport{}, errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, appStackID))
 	}
 
-	if err := validateMixins(workingImage, newBaseImage); err != nil {
+	if err := validateMixins(appImage, newBaseImage); err != nil {
 		return RebaseReport{}, err
 	}
 
-	if err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage); err != nil {
-		return RebaseReport{}, errors.Wrap(err, "rebase working image")
+	if err = appImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage); err != nil {
+		return RebaseReport{}, errors.Wrap(err, "rebase app image")
 	}
 
 	origMetadata.RunImage.TopLayer, err = newBaseImage.TopLayer()
@@ -70,39 +70,39 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, errors.Wrap(err, "marshall metadata")
 	}
 
-	if err := workingImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
+	if err := appImage.SetLabel(LayerMetadataLabel, string(data)); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set app image metadata label")
 	}
 
 	hasPrefix := func(l string) bool { return strings.HasPrefix(l, "io.buildpacks.stack.") }
-	if err := syncLabels(newBaseImage, workingImage, hasPrefix); err != nil {
+	if err := syncLabels(newBaseImage, appImage, hasPrefix); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
 
 	report := RebaseReport{}
-	report.Image, err = saveImage(workingImage, additionalNames, r.Logger)
+	report.Image, err = saveImage(appImage, additionalNames, r.Logger)
 	if err != nil {
 		return RebaseReport{}, err
 	}
 	return report, err
 }
 
-func validateMixins(workingImg, newBaseImg imgutil.Image) error {
-	var workingImageMixins []string
+func validateMixins(appImg, newBaseImg imgutil.Image) error {
+	var appImageMixins []string
 	var newBaseImageMixins []string
 
-	if err := DecodeLabel(workingImg, MixinsLabel, &workingImageMixins); err != nil {
-		return errors.Wrap(err, "get working image mixins")
+	if err := DecodeLabel(appImg, MixinsLabel, &appImageMixins); err != nil {
+		return errors.Wrap(err, "get app image mixins")
 	}
 
 	if err := DecodeLabel(newBaseImg, MixinsLabel, &newBaseImageMixins); err != nil {
 		return errors.Wrap(err, "get run image mixins")
 	}
 
-	workingImageMixins = RemoveStagePrefixes(workingImageMixins)
+	appImageMixins = RemoveStagePrefixes(appImageMixins)
 	newBaseImageMixins = RemoveStagePrefixes(newBaseImageMixins)
 
-	_, missing, _ := Compare(newBaseImageMixins, workingImageMixins)
+	_, missing, _ := Compare(newBaseImageMixins, appImageMixins)
 
 	if len(missing) > 0 {
 		sort.Strings(missing)
