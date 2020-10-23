@@ -46,13 +46,11 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, workingStackID))
 	}
 
-	err = validateMixins(workingImage, newBaseImage)
-	if err != nil {
+	if err := validateMixins(workingImage, newBaseImage); err != nil {
 		return RebaseReport{}, err
 	}
 
-	err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage)
-	if err != nil {
+	if err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "rebase working image")
 	}
 
