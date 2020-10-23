@@ -50,7 +50,7 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 		return RebaseReport{}, err
 	}
 
-	if err = appImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage); err != nil {
+	if err := appImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "rebase app image")
 	}
 
