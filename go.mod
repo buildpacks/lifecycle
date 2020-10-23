@@ -4,10 +4,10 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5 // indirect
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20201008151938-cea9fc548372
+	github.com/buildpacks/imgutil v0.0.0-20201022190551-6525b8cdcdd0
 	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/docker/cli v0.0.0-20200312141509-ef2f64abbd37 // indirect
-	github.com/docker/docker v1.4.2-0.20200221181110-62bd5a33f707
+	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
 	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.5.2
 	github.com/google/go-containerregistry v0.1.4
