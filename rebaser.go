@@ -102,7 +102,7 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 	appImageMixins = removeStagePrefixes(appImageMixins)
 	newBaseImageMixins = removeStagePrefixes(newBaseImageMixins)
 
-	_, missing, _ := Compare(newBaseImageMixins, appImageMixins)
+	_, missing, _ := compare(newBaseImageMixins, appImageMixins)
 
 	if len(missing) > 0 {
 		sort.Strings(missing)
