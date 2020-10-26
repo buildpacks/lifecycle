@@ -12,6 +12,7 @@ const (
 	BuildMetadataLabel = "io.buildpacks.build.metadata"
 	LayerMetadataLabel = "io.buildpacks.lifecycle.metadata"
 	StackIDLabel       = "io.buildpacks.stack.id"
+	MixinsLabel        = "io.buildpacks.stack.mixins"
 )
 
 type BuildMetadata struct {

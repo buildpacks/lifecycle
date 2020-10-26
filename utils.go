@@ -62,6 +62,51 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 	return nil
 }
 
+func removeStagePrefixes(mixins []string) []string {
+	var result []string
+	for _, m := range mixins {
+		s := strings.SplitN(m, ":", 2)
+		if len(s) == 1 {
+			result = append(result, s[0])
+		} else {
+			result = append(result, s[1])
+		}
+	}
+	return result
+}
+
+// compare performs a set comparison between two slices. `extra` represents elements present in
+// `strings1` but not `strings2`. `missing` represents elements present in `strings2` that are
+// missing from `strings1`. `common` represents elements present in both slices. Since the input
+// slices are treated as sets, duplicates will be removed in any outputs.
+// from: https://github.com/buildpacks/pack/blob/main/internal/stringset/stringset.go
+func compare(strings1, strings2 []string) (extra []string, missing []string, common []string) {
+	set1 := map[string]struct{}{}
+	set2 := map[string]struct{}{}
+	for _, s := range strings1 {
+		set1[s] = struct{}{}
+	}
+	for _, s := range strings2 {
+		set2[s] = struct{}{}
+	}
+
+	for s := range set1 {
+		if _, ok := set2[s]; !ok {
+			extra = append(extra, s)
+			continue
+		}
+		common = append(common, s)
+	}
+
+	for s := range set2 {
+		if _, ok := set1[s]; !ok {
+			missing = append(missing, s)
+		}
+	}
+
+	return extra, missing, common
+}
+
 func syncLabels(sourceImg imgutil.Image, destImage imgutil.Image, test func(string) bool) error {
 	if err := removeLabels(destImage, test); err != nil {
 		return err
