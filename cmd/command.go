@@ -6,8 +6,13 @@ import (
 	"os"
 )
 
+// PreInit defines all the flags that are going to be used.
+// If the default value is not going to be used,
+// the flags will be set as part of the flags.Parse function.
+// In Args, several paths will be changed to be under the updated layers directory (if the user didn't set them using a flag)
+// TODO: should we add more documentation?
 type Command interface {
-	Init()
+	PreInit()
 	Args(nargs int, args []string) error
 	Privileges() error
 	Exec() error
@@ -24,7 +29,7 @@ func Run(c Command, asSubcommand bool) {
 	FlagVersion(&printVersion)
 	FlagLogLevel(&logLevel)
 	FlagNoColor(&noColor)
-	c.Init()
+	c.PreInit()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
 			//flagSet exits on error, we shouldn't get here

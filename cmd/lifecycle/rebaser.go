@@ -23,6 +23,7 @@ type rebaseCmd struct {
 	reportPath            string
 	runImageRef           string
 	deprecatedRunImageRef string
+	platformAPI           string
 	useDaemon             bool
 	uid, gid              int
 
@@ -30,7 +31,7 @@ type rebaseCmd struct {
 	docker client.CommonAPIClient
 }
 
-func (r *rebaseCmd) Init() {
+func (r *rebaseCmd) PreInit() {
 	cmd.FlagGID(&r.gid)
 	cmd.FlagReportPath(&r.reportPath)
 	cmd.FlagRunImage(&r.runImageRef)
@@ -55,6 +56,9 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if r.deprecatedRunImageRef != "" {
 		r.runImageRef = r.deprecatedRunImageRef
 	}
+
+	cmd.UpdateReportPath(&r.reportPath, r.platformAPI, "")
+
 	return nil
 }
 

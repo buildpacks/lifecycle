@@ -15,10 +15,11 @@ type restoreCmd struct {
 	cacheImageTag string
 	groupPath     string
 	layersDir     string
+	platformAPI   string
 	uid, gid      int
 }
 
-func (r *restoreCmd) Init() {
+func (r *restoreCmd) PreInit() {
 	cmd.FlagCacheDir(&r.cacheDir)
 	cmd.FlagCacheImage(&r.cacheImageTag)
 	cmd.FlagGroupPath(&r.groupPath)
@@ -34,6 +35,9 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 	if r.cacheImageTag == "" && r.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
+
+	cmd.UpdateGroupPath(&r.groupPath, r.platformAPI, r.layersDir)
+
 	return nil
 }
 
