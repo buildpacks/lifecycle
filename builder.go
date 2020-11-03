@@ -5,30 +5,16 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
-
-type Builder struct {
-	AppDir        string
-	LayersDir     string
-	PlatformDir   string
-	BuildpacksDir string
-	PlatformAPI   *api.Version
-	Env           BuildEnv
-	Group         BuildpackGroup
-	Plan          BuildPlan
-	Out, Err      io.Writer
-}
 
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
@@ -37,15 +23,47 @@ type BuildEnv interface {
 	List() []string
 }
 
-type LaunchTOML struct {
-	Labels    []Label
-	Processes []launch.Process `toml:"processes"`
-	Slices    []layers.Slice   `toml:"slices"`
+type BuildpackFinder interface {
+	Find(bpID, bpVersion, buildpacksDir string) (BuildpackTOML, error)
 }
 
-type Label struct {
-	Key   string `toml:"key"`
-	Value string `toml:"value"`
+type DefaultBuildpackFinder struct{}
+
+// TODO: this duplicates code in buildpack.go
+func (f *DefaultBuildpackFinder) Find(bpID, bpVersion, buildpacksDir string) (BuildpackTOML, error) {
+	bpTOML := DefaultBuildpackTOML{}
+	bpPath, err := filepath.Abs(filepath.Join(buildpacksDir, launch.EscapeID(bpID), bpVersion))
+	if err != nil {
+		return nil, err
+	}
+	tomlPath := filepath.Join(bpPath, "buildpack.toml")
+	if _, err := toml.DecodeFile(tomlPath, &bpTOML); err != nil {
+		return nil, err
+	}
+	bpTOML.Path = bpPath
+	return &bpTOML, nil
+}
+
+type BuildpackTOML interface {
+	Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error)
+}
+
+type BuildConfig struct {
+	Env         BuildEnv
+	AppDir      string
+	PlatformDir string
+	LayersDir   string
+	PlanDir     string
+	Out         io.Writer
+	Err         io.Writer
+}
+
+type BuildResult struct {
+	BOM       []BOMEntry
+	Labels    []Label
+	Met       []string
+	Processes []launch.Process
+	Slices    []layers.Slice
 }
 
 type BOMEntry struct {
@@ -53,28 +71,35 @@ type BOMEntry struct {
 	Buildpack Buildpack `toml:"buildpack" json:"buildpack"`
 }
 
+type Label struct {
+	Key   string `toml:"key"`
+	Value string `toml:"value"`
+}
+
 type BuildpackPlan struct {
 	Entries []Require `toml:"entries"`
 }
 
+type Builder struct {
+	AppDir          string
+	LayersDir       string
+	PlatformDir     string
+	BuildpacksDir   string
+	PlatformAPI     *api.Version
+	Env             BuildEnv
+	Group           BuildpackGroup
+	Plan            BuildPlan
+	Out, Err        io.Writer
+	BuildpackFinder BuildpackFinder
+	planDir         string
+}
+
 func (b *Builder) Build() (*BuildMetadata, error) {
-	platformDir, err := filepath.Abs(b.PlatformDir)
+	config, err := b.BuildConfig()
 	if err != nil {
 		return nil, err
 	}
-	layersDir, err := filepath.Abs(b.LayersDir)
-	if err != nil {
-		return nil, err
-	}
-	appDir, err := filepath.Abs(b.AppDir)
-	if err != nil {
-		return nil, err
-	}
-	planDir, err := ioutil.TempDir("", "plan.")
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(planDir)
+	defer os.RemoveAll(config.PlanDir)
 
 	procMap := processMap{}
 	plan := b.Plan
@@ -83,93 +108,31 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	var labels []Label
 
 	for _, bp := range b.Group.Group {
-		bpInfo, err := bp.Lookup(b.BuildpacksDir)
+		bpTOML, err := b.BuildpackFinder.Find(bp.ID, bp.Version, b.BuildpacksDir)
 		if err != nil {
 			return nil, err
 		}
-		bpDirName := launch.EscapeID(bp.ID)
-		bpLayersDir := filepath.Join(layersDir, bpDirName)
-		bpPlanDir := filepath.Join(planDir, bpDirName)
-		if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
+
+		bpPlan := plan.find(bp.ID)
+		br, err := bpTOML.Build(bpPlan, config)
+		if err != nil {
 			return nil, err
 		}
 
-		if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
-			return nil, err
-		}
-		bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-
-		foundPlan := plan.find(bp.noAPI().noHomepage())
-		if api.MustParse(bp.API).Equal(api.MustParse("0.2")) {
-			for i := range foundPlan.Entries {
-				foundPlan.Entries[i].convertMetadataToVersion()
-			}
-		}
-		if err := WriteTOML(bpPlanPath, foundPlan); err != nil {
-			return nil, err
-		}
-
-		cmd := exec.Command(
-			filepath.Join(bpInfo.Path, "bin", "build"),
-			bpLayersDir,
-			platformDir,
-			bpPlanPath,
-		)
-		cmd.Dir = appDir
-		cmd.Stdout = b.Out
-		cmd.Stderr = b.Err
-
-		if bpInfo.Buildpack.ClearEnv {
-			cmd.Env = b.Env.List()
-		} else {
-			cmd.Env, err = b.Env.WithPlatform(platformDir)
-			if err != nil {
-				return nil, err
-			}
-		}
-		cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+bpInfo.Path)
-
-		if err := cmd.Run(); err != nil {
-			return nil, NewLifecycleError(err, ErrTypeBuildpack)
-		}
-		if err := b.setupEnv(api.MustParse(bp.API), bpLayersDir); err != nil {
-			return nil, err
-		}
-		var bpPlanOut BuildpackPlan
-		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
-			return nil, err
-		}
-		var bpBOM []BOMEntry
-		plan, bpBOM = plan.filter(bp, bpPlanOut)
-		bom = append(bom, bpBOM...)
-
-		var launch LaunchTOML
-		tomlPath := filepath.Join(bpLayersDir, "launch.toml")
-		if _, err := toml.DecodeFile(tomlPath, &launch); os.IsNotExist(err) {
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-		for i := range launch.Processes {
-			launch.Processes[i].BuildpackID = bp.ID
-		}
-		procMap.add(launch.Processes)
-		slices = append(slices, launch.Slices...)
-		labels = append(labels, launch.Labels...)
+		bom = append(bom, br.BOM...)
+		labels = append(labels, br.Labels...)
+		plan = plan.filter(br.Met)
+		procMap.add(br.Processes)
+		slices = append(slices, br.Slices...)
 	}
 
-	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 {
-		//plaformApiVersion is less than comparisonVersion
+	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 { // PlatformAPI <= 0.3
 		for i := range bom {
-			if err := bom[i].convertMetadataToVersion(); err != nil {
-				return nil, err
-			}
+			bom[i].convertMetadataToVersion()
 		}
 	} else {
 		for i := range bom {
-			if err := bom[i].convertVersionToMetadata(); err != nil {
-				return nil, err
-			}
+			bom[i].convertVersionToMetadata()
 		}
 	}
 
@@ -182,11 +145,43 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}, nil
 }
 
-func (p BuildPlan) find(bp Buildpack) BuildpackPlan {
+func (b *Builder) BuildConfig() (BuildConfig, error) {
+	appDir, err := filepath.Abs(b.AppDir)
+	if err != nil {
+		return BuildConfig{}, err
+	}
+	platformDir, err := filepath.Abs(b.PlatformDir)
+	if err != nil {
+		return BuildConfig{}, err
+	}
+	layersDir, err := filepath.Abs(b.LayersDir)
+	if err != nil {
+		return BuildConfig{}, err
+	}
+	if b.planDir == "" {
+		planDir, err := ioutil.TempDir("", "plan.")
+		if err != nil {
+			return BuildConfig{}, err
+		}
+		b.planDir = planDir
+	}
+
+	return BuildConfig{
+		Env:         b.Env,
+		AppDir:      appDir,
+		PlatformDir: platformDir,
+		LayersDir:   layersDir,
+		PlanDir:     b.planDir,
+		Out:         b.Out,
+		Err:         b.Err,
+	}, nil
+}
+
+func (p BuildPlan) find(bpID string) BuildpackPlan {
 	var out []Require
 	for _, entry := range p.Entries {
 		for _, provider := range entry.Providers {
-			if provider == bp {
+			if provider.ID == bpID {
 				out = append(out, entry.Requires...)
 				break
 			}
@@ -196,104 +191,25 @@ func (p BuildPlan) find(bp Buildpack) BuildpackPlan {
 }
 
 // TODO: ensure at least one claimed entry of each name is provided by the BP
-func (p BuildPlan) filter(bp Buildpack, plan BuildpackPlan) (BuildPlan, []BOMEntry) {
+func (p BuildPlan) filter(metRequires []string) BuildPlan {
 	var out []BuildPlanEntry
-	for _, entry := range p.Entries {
-		if !plan.has(entry) {
-			out = append(out, entry)
+	for _, planEntry := range p.Entries {
+		if !containsEntry(metRequires, planEntry) {
+			out = append(out, planEntry)
 		}
 	}
-	var bom []BOMEntry
-	for _, entry := range plan.Entries {
-		bom = append(bom, BOMEntry{Require: entry, Buildpack: bp.noAPI().noHomepage()})
-	}
-	return BuildPlan{Entries: out}, bom
+	return BuildPlan{Entries: out}
 }
 
-func (p BuildpackPlan) has(entry BuildPlanEntry) bool {
-	for _, buildEntry := range p.Entries {
-		for _, req := range entry.Requires {
-			if req.Name == buildEntry.Name {
+func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
+	for _, met := range metRequires {
+		for _, planReq := range entry.Requires {
+			if met == planReq.Name {
 				return true
 			}
 		}
 	}
 	return false
-}
-
-func (bom *BOMEntry) convertMetadataToVersion() error {
-	if version, ok := bom.Metadata["version"]; ok {
-		metadataVersion := fmt.Sprintf("%v", version)
-		if bom.Version != "" && bom.Version != metadataVersion {
-			return errors.New("top level version does not match metadata version")
-		}
-		bom.Version = metadataVersion
-	}
-	return nil
-}
-
-func (bom *BOMEntry) convertVersionToMetadata() error {
-	if bom.Version != "" {
-		if bom.Metadata == nil {
-			bom.Metadata = make(map[string]interface{})
-		}
-		if version, ok := bom.Metadata["version"]; ok {
-			metadataVersion := fmt.Sprintf("%v", version)
-			if metadataVersion != "" && metadataVersion != bom.Version {
-				return errors.New("metadata version does not match top level version")
-			}
-		}
-		bom.Metadata["version"] = bom.Version
-		bom.Version = ""
-	}
-	return nil
-}
-
-func (b *Builder) setupEnv(bpAPI *api.Version, layersDir string) error {
-	if err := eachDir(layersDir, func(path string) error {
-		if !isBuild(path + ".toml") {
-			return nil
-		}
-		return b.Env.AddRootDir(path)
-	}); err != nil {
-		return err
-	}
-
-	return eachDir(layersDir, func(path string) error {
-		if !isBuild(path + ".toml") {
-			return nil
-		}
-		if err := b.Env.AddEnvDir(filepath.Join(path, "env"), env.DefaultActionType(bpAPI)); err != nil {
-			return err
-		}
-		return b.Env.AddEnvDir(filepath.Join(path, "env.build"), env.DefaultActionType(bpAPI))
-	})
-}
-
-func eachDir(dir string, fn func(path string) error) error {
-	files, err := ioutil.ReadDir(dir)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	for _, f := range files {
-		if !f.IsDir() {
-			continue
-		}
-		if err := fn(filepath.Join(dir, f.Name())); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func isBuild(path string) bool {
-	var layerTOML struct {
-		Build bool `toml:"build"`
-	}
-	_, err := toml.DecodeFile(path, &layerTOML)
-	return err == nil && layerTOML.Build
 }
 
 type processMap map[string]launch.Process
@@ -315,4 +231,21 @@ func (m processMap) list() []launch.Process {
 		procs = append(procs, m[key])
 	}
 	return procs
+}
+
+func (bom *BOMEntry) convertMetadataToVersion() {
+	if version, ok := bom.Metadata["version"]; ok {
+		metadataVersion := fmt.Sprintf("%v", version)
+		bom.Version = metadataVersion
+	}
+}
+
+func (bom *BOMEntry) convertVersionToMetadata() {
+	if bom.Version != "" {
+		if bom.Metadata == nil {
+			bom.Metadata = make(map[string]interface{})
+		}
+		bom.Metadata["version"] = bom.Version
+		bom.Version = ""
+	}
 }

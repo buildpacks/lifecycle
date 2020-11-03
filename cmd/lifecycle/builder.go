@@ -76,16 +76,17 @@ func (b *buildCmd) Exec() error {
 
 func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
 	builder := &lifecycle.Builder{
-		AppDir:        ba.appDir,
-		LayersDir:     ba.layersDir,
-		PlatformDir:   ba.platformDir,
-		BuildpacksDir: ba.buildpacksDir,
-		PlatformAPI:   api.MustParse(ba.platformAPI),
-		Env:           env.NewBuildEnv(os.Environ()),
-		Group:         group,
-		Plan:          plan,
-		Out:           cmd.Stdout,
-		Err:           cmd.Stderr,
+		AppDir:          ba.appDir,
+		LayersDir:       ba.layersDir,
+		PlatformDir:     ba.platformDir,
+		BuildpacksDir:   ba.buildpacksDir,
+		PlatformAPI:     api.MustParse(ba.platformAPI),
+		Env:             env.NewBuildEnv(os.Environ()),
+		Group:           group,
+		Plan:            plan,
+		Out:             cmd.Stdout,
+		Err:             cmd.Stderr,
+		BuildpackFinder: &lifecycle.DefaultBuildpackFinder{},
 	}
 	md, err := builder.Build()
 

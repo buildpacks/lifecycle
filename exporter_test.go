@@ -1114,6 +1114,41 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
 			})
+
+			when("build.toml", func() {
+				when("platform api >= 0.5", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.5")
+						exporter.Buildpacks = []lifecycle.Buildpack{
+							{ID: "buildpack.id", Version: "1.2.3", API: "0.5"},
+							{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.5"},
+						}
+						opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "layers")
+					})
+
+					it("adds build bom entries to the report", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Build.BOM, []lifecycle.BOMEntry{
+							{
+								Require: lifecycle.Require{
+									Name:     "dep1",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: lifecycle.Buildpack{ID: "buildpack.id", Version: "1.2.3"},
+							},
+							{
+								Require: lifecycle.Require{
+									Name:     "dep2",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: lifecycle.Buildpack{ID: "other.buildpack.id", Version: "4.5.6"},
+							},
+						})
+					})
+				})
+			})
 		})
 
 		when("buildpack requires an escaped id", func() {

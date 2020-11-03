@@ -2,6 +2,7 @@ package lifecycle_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -20,31 +20,38 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
-	h "github.com/buildpacks/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
+
+const latestPlatformAPI = "0.5" // TODO: is there a good way to ensure this is kept up to date?
 
 func TestBuilder(t *testing.T) {
 	spec.Run(t, "Builder", testBuilder, spec.Report(report.Terminal{}))
 }
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
+//go:generate mockgen -package testmock -destination testmock/buildpack_finder.go github.com/buildpacks/lifecycle BuildpackFinder
+//go:generate mockgen -package testmock -destination testmock/buildpack_toml.go github.com/buildpacks/lifecycle BuildpackTOML
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		builder        *lifecycle.Builder
-		mockCtrl       *gomock.Controller
-		mockEnv        *testmock.MockBuildEnv
-		stdout, stderr *bytes.Buffer
-		tmpDir         string
-		platformDir    string
-		appDir         string
-		layersDir      string
+		builder         *lifecycle.Builder
+		mockCtrl        *gomock.Controller
+		env             *testmock.MockBuildEnv
+		buildpackFinder *testmock.MockBuildpackFinder
+		stdout, stderr  *bytes.Buffer
+		tmpDir          string
+		platformDir     string
+		appDir          string
+		layersDir       string
+		config          lifecycle.BuildConfig
 	)
 
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
-		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+		env = testmock.NewMockBuildEnv(mockCtrl)
+		buildpackFinder = testmock.NewMockBuildpackFinder(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
@@ -57,23 +64,27 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		appDir = filepath.Join(layersDir, "app")
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
-		buildpacksDir := filepath.Join("testdata", "by-id")
-
 		builder = &lifecycle.Builder{
 			AppDir:        appDir,
 			LayersDir:     layersDir,
 			PlatformDir:   platformDir,
-			BuildpacksDir: buildpacksDir,
-			PlatformAPI:   api.MustParse("0.3"),
-			Env:           mockEnv,
+			BuildpacksDir: filepath.Join("testdata", "by-id"),
+			PlatformAPI:   api.MustParse(latestPlatformAPI),
+			Env:           env,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
 					{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
-			Out: stdout,
-			Err: stderr,
+			Out:             stdout,
+			Err:             stderr,
+			BuildpackFinder: buildpackFinder,
+		}
+
+		config, err = builder.BuildConfig()
+		if err != nil {
+			t.Fatalf("Error: %s\n", err)
 		}
 	})
 
@@ -84,205 +95,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Build", func() {
 		when("building succeeds", func() {
-			it.Before(func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
-			})
-
-			when("platformApi is less than 0.4", func() {
-				it("writes the bom version at the top-level", func() {
-					builder.PlatformAPI = api.MustParse("0.3")
-					mkfile(t,
-						"[[entries]]\n"+
-							`name = "dep1"`+"\n"+
-							"[entries.metadata]\n"+
-							`version = "v1"`+"\n",
-						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
-					)
-					buildMetadata, err := builder.Build()
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-					h.AssertEq(t, buildMetadata.BOM[0].Version, "v1")
-					_, versionExist := buildMetadata.BOM[0].Metadata["version"]
-					h.AssertEq(t, versionExist, true)
-				})
-			})
-
-			when("platformApi is at least 0.4", func() {
-				it("writes the bom version at the lower-level (metadata entry)", func() {
-					builder.PlatformAPI = api.MustParse("0.4")
-					mkfile(t,
-						"[[entries]]\n"+
-							`name = "dep1"`+"\n"+
-							`version = "v1"`+"\n",
-						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
-					)
-					buildMetadata, err := builder.Build()
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-					h.AssertEq(t, buildMetadata.BOM[0].Version, "")
-					h.AssertEq(t, buildMetadata.BOM[0].Metadata["version"], "v1")
-				})
-			})
-
-			it("should ensure each buildpack's layers dir exists and process build layers", func() {
-				mkdir(t,
-					filepath.Join(layersDir, "A"),
-
-					filepath.Join(appDir, "layers-A-v1", "layer1"),
-					filepath.Join(appDir, "layers-A-v1", "layer2"),
-					filepath.Join(appDir, "layers-A-v1", "layer3"),
-					filepath.Join(appDir, "layers-B-v2", "layer4"),
-					filepath.Join(appDir, "layers-B-v2", "layer5"),
-					filepath.Join(appDir, "layers-B-v2", "layer6"),
-				)
-				mkfile(t, "build = true",
-					filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
-					filepath.Join(appDir, "layers-A-v1", "layer3.toml"),
-					filepath.Join(appDir, "layers-B-v2", "layer4.toml"),
-					filepath.Join(appDir, "layers-B-v2", "layer6.toml"),
-				)
-				gomock.InOrder(
-					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
-					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env"), env.ActionTypeOverride),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build"), env.ActionTypeOverride),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypeOverride),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypeOverride),
-
-					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer4")),
-					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer6")),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env"), env.ActionTypePrependPath),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env.build"), env.ActionTypePrependPath),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env"), env.ActionTypePrependPath),
-					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env.build"), env.ActionTypePrependPath),
-				)
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-				testExists(t,
-					filepath.Join(layersDir, "A"),
-					filepath.Join(layersDir, "B"),
-				)
-			})
-
-			it("should return build metadata when processes are present", func() {
-				mkfile(t,
-					`[[processes]]`+"\n"+
-						`type = "A-type"`+"\n"+
-						`command = "A-cmd"`+"\n"+
-						`[[processes]]`+"\n"+
-						`type = "override-type"`+"\n"+
-						`command = "A-cmd"`+"\n",
-					filepath.Join(appDir, "launch-A-v1.toml"),
-				)
-				mkfile(t,
-					`[[processes]]`+"\n"+
-						`type = "B-type"`+"\n"+
-						`command = "B-cmd"`+"\n"+
-						`[[processes]]`+"\n"+
-						`type = "override-type"`+"\n"+
-						`command = "B-cmd"`+"\n",
-					filepath.Join(appDir, "launch-B-v2.toml"),
-				)
-				metadata, err := builder.Build()
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes: []launch.Process{
-						{Type: "A-type", Command: "A-cmd", BuildpackID: "A"},
-						{Type: "B-type", Command: "B-cmd", BuildpackID: "B"},
-						{Type: "override-type", Command: "B-cmd", BuildpackID: "B"},
-					},
-					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-						{ID: "B", Version: "v2", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected metadata:\n%s\n", s)
-				}
-			})
-
-			it("should return build metadata when processes are not present", func() {
-				metadata, err := builder.Build()
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes: []launch.Process{},
-					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-						{ID: "B", Version: "v2", API: "0.2"},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected:\n%s\n", s)
-				}
-			})
-
-			it("should provide the platform dir", func() {
-				mkfile(t, "some-data",
-					filepath.Join(platformDir, "env", "SOME_VAR"),
-				)
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-				testExists(t,
-					filepath.Join(appDir, "build-env-A-v1", "SOME_VAR"),
-					filepath.Join(appDir, "build-env-B-v2", "SOME_VAR"),
-				)
-			})
-
-			it("should provide environment variables", func() {
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-A-v1")),
-					"TEST_ENV: Av1\n",
-				); s != "" {
-					t.Fatalf("Unexpected info:\n%s\n", s)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-B-v2")),
-					"TEST_ENV: Bv2\n",
-				); s != "" {
-					t.Fatalf("Unexpected info:\n%s\n", s)
-				}
-			})
-
-			it("should set CNB_BUILDPACK_DIR", func() {
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				bpsDir, err := filepath.Abs(builder.BuildpacksDir)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1")),
-					filepath.Join(bpsDir, "A/v1"),
-				); s != "" {
-					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-B-v2")),
-					filepath.Join(bpsDir, "B/v2"),
-				); s != "" {
-					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
-				}
-			})
-
-			it("should connect stdout and stdin to the terminal", func() {
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(cleanEndings(stdout.String()), "build out: A@v1\nbuild out: B@v2\n"); s != "" {
-					t.Fatalf("Unexpected stdout:\n%s\n", s)
-				}
-				if s := cmp.Diff(cleanEndings(stderr.String()), "build err: A@v1\nbuild err: B@v2\n"); s != "" {
-					t.Fatalf("Unexpected stderr:\n%s\n", s)
-				}
-			})
-
 			it("should provide a subset of the build plan to each buildpack", func() {
 				builder.Plan = lifecycle.BuildPlan{
 					Entries: []lifecycle.BuildPlanEntry{
@@ -292,7 +104,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{ID: "B", Version: "v2"},
 							},
 							Requires: []lifecycle.Require{
-								{Name: "dep1", Version: "v1"},
+								{Name: "some-dep", Version: "v1"}, // not provided to buildpack B because it is met
 							},
 						},
 						{
@@ -301,16 +113,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{ID: "B", Version: "v2"},
 							},
 							Requires: []lifecycle.Require{
-								{Name: "dep1-next", Version: "v2"},
-							},
-						},
-						{
-							Providers: []lifecycle.Buildpack{
-								{ID: "A", Version: "v1"},
-								{ID: "B", Version: "v2"},
-							},
-							Requires: []lifecycle.Require{
-								{Name: "dep1-replace", Version: "v3"},
+								{Name: "some-unmet-dep", Version: "v2"}, // provided to buildpack B because it is unmet
 							},
 						},
 						{
@@ -318,319 +121,317 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{ID: "B", Version: "v2"},
 							},
 							Requires: []lifecycle.Require{
-								{Name: "dep2", Version: "v4"},
-							},
-						},
-						{
-							Providers: []lifecycle.Buildpack{
-								{ID: "B", Version: "v2"},
-							},
-							Requires: []lifecycle.Require{
-								{Name: "dep2-next", Version: "v5"},
-							},
-						},
-						{
-							Providers: []lifecycle.Buildpack{
-								{ID: "B", Version: "v2"},
-							},
-							Requires: []lifecycle.Require{
-								{Name: "dep2-replace", Version: "v6"},
+								{Name: "other-dep", Version: "v4"}, // only provided to buildpack B
 							},
 						},
 					},
 				}
+				bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+				bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+				buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+				expectedPlanA := lifecycle.BuildpackPlan{Entries: []lifecycle.Require{
+					{Name: "some-dep", Version: "v1"},
+					{Name: "some-unmet-dep", Version: "v2"},
+				}}
+				bpA.EXPECT().Build(expectedPlanA, config).Return(lifecycle.BuildResult{
+					Met: []string{"some-dep"},
+				}, nil)
+				buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+				expectedPlanB := lifecycle.BuildpackPlan{Entries: []lifecycle.Require{
+					{Name: "some-unmet-dep", Version: "v2"},
+					{Name: "other-dep", Version: "v4"},
+				}}
+				bpB.EXPECT().Build(expectedPlanB, config)
 
-				mkfile(t,
-					"[[entries]]\n"+
-						`name = "dep1"`+"\n"+
-						`version = "v1"`+"\n"+
-						"[[entries]]\n"+
-						`name = "dep1-replace"`+"\n"+
-						`version = "v7"`+"\n",
-					filepath.Join(appDir, "build-plan-out-A-v1.toml"),
-				)
-				mkfile(t,
-					"[[entries]]\n"+
-						`name = "dep1-next"`+"\n"+
-						`version = "v9"`+"\n"+
-						"[[entries]]\n"+
-						`name = "dep2"`+"\n"+
-						`version = "v4"`+"\n"+
-						"[[entries]]\n"+
-						`name = "dep2-replace"`+"\n"+
-						`version = "v8"`+"\n",
-					filepath.Join(appDir, "build-plan-out-B-v2.toml"),
-				)
-				metadata, err := builder.Build()
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
-					Processes: []launch.Process{},
-					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-						{ID: "B", Version: "v2", API: "0.2"},
-					},
-					BOM: []lifecycle.BOMEntry{
-						{
-							Require:   lifecycle.Require{Name: "dep1", Version: "v1"},
-							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
-						},
-						{
-							Require:   lifecycle.Require{Name: "dep1-replace", Version: "v7"},
-							Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
-						},
-						{
-							Require:   lifecycle.Require{Name: "dep1-next", Version: "v9"},
-							Buildpack: lifecycle.Buildpack{ID: "B", Version: "v2"},
-						},
-						{
-							Require:   lifecycle.Require{Name: "dep2", Version: "v4"},
-							Buildpack: lifecycle.Buildpack{ID: "B", Version: "v2"},
-						},
-						{
-							Require:   lifecycle.Require{Name: "dep2-replace", Version: "v8"},
-							Buildpack: lifecycle.Buildpack{ID: "B", Version: "v2"},
-						},
-					},
-				}); s != "" {
-					t.Fatalf("Unexpected:\n%s\n", s)
-				}
-
-				testPlan(t,
-					[]lifecycle.Require{
-						{Name: "dep1", Version: "v1"},
-						{Name: "dep1-next", Version: "v2"},
-						{Name: "dep1-replace", Version: "v3"},
-					},
-					filepath.Join(appDir, "build-plan-in-A-v1.toml"),
-				)
-
-				testPlan(t,
-					[]lifecycle.Require{
-						{Name: "dep1-next", Version: "v2"},
-						{Name: "dep2", Version: "v4"},
-						{Name: "dep2-next", Version: "v5"},
-						{Name: "dep2-replace", Version: "v6"},
-					},
-					filepath.Join(appDir, "build-plan-in-B-v2.toml"),
-				)
-			})
-
-			it("should convert metadata version to top level version for buildpacks with buildpack api 0.2", func() {
-				builder.Plan = lifecycle.BuildPlan{
-					Entries: []lifecycle.BuildPlanEntry{
-						{
-							Providers: []lifecycle.Buildpack{
-								{ID: "B", Version: "v2"},
-							},
-							Requires: []lifecycle.Require{
-								{Name: "dep2", Metadata: map[string]interface{}{"version": "v4"}},
-							},
-						},
-					},
-				}
 				_, err := builder.Build()
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
-				var bpPlanContents lifecycle.BuildpackPlan
-				_, err = toml.DecodeFile(filepath.Join(appDir, "build-plan-in-B-v2.toml"), &bpPlanContents)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				h.AssertEq(t, bpPlanContents.Entries[0].Version, "v4")
-			})
-		})
-
-		when("building succeeds with a clear env", func() {
-			it.Before(func() {
-				mockEnv.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=with-platform"), nil)
-				builder.Group.Group[0].Version = "v1.clear"
 			})
 
-			it("should not apply user-provided env vars", func() {
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-A-v1.clear")),
-					"TEST_ENV: cleared\n",
-				); s != "" {
-					t.Fatalf("Unexpected info:\n%s\n", s)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-info-B-v2")),
-					"TEST_ENV: with-platform\n",
-				); s != "" {
-					t.Fatalf("Unexpected info:\n%s\n", s)
-				}
-			})
+			when("build metadata", func() {
+				when("bom", func() {
+					it("should convert top level version to metadata.version", func() {
+						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							BOM: []lifecycle.BOMEntry{
+								{
+									Require: lifecycle.Require{
+										Name:    "dep1",
+										Version: "v1",
+									},
+									Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								},
+							},
+						}, nil)
+						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB.EXPECT().Build(gomock.Any(), config)
 
-			it("should set CNB_BUILDPACK_DIR", func() {
-				if _, err := builder.Build(); err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				bpsDir, err := filepath.Abs(builder.BuildpacksDir)
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1.clear")),
-					filepath.Join(bpsDir, "A/v1.clear"),
-				); s != "" {
-					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
-				}
-				if s := cmp.Diff(rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-B-v2")),
-					filepath.Join(bpsDir, "B/v2"),
-				); s != "" {
-					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
-				}
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+						if s := cmp.Diff(metadata.BOM, []lifecycle.BOMEntry{
+							{
+								Require: lifecycle.Require{
+									Name:     "dep1",
+									Version:  "",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+					})
+				})
+
+				when("buildpacks", func() {
+					it("should include builder buildpacks", func() {
+						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config)
+						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB.EXPECT().Build(gomock.Any(), config)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+						if s := cmp.Diff(metadata.Buildpacks, []lifecycle.Buildpack{
+							{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+							{ID: "B", Version: "v2", API: "0.2"},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+					})
+				})
+
+				when("labels", func() {
+					it("should aggregate labels from each buildpack", func() {
+						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Labels: []lifecycle.Label{
+								{Key: "some-bpA-key", Value: "some-bpA-value"},
+								{Key: "some-other-bpA-key", Value: "some-other-bpA-value"},
+							},
+						}, nil)
+						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Labels: []lifecycle.Label{
+								{Key: "some-bpB-key", Value: "some-bpB-value"},
+								{Key: "some-other-bpB-key", Value: "some-other-bpB-value"},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+						if s := cmp.Diff(metadata.Labels, []lifecycle.Label{
+							{Key: "some-bpA-key", Value: "some-bpA-value"},
+							{Key: "some-other-bpA-key", Value: "some-other-bpA-value"},
+							{Key: "some-bpB-key", Value: "some-bpB-value"},
+							{Key: "some-other-bpB-key", Value: "some-other-bpB-value"},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+					})
+				})
+
+				when("processes", func() {
+					it("should override identical processes from earlier buildpacks", func() {
+						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Processes: []launch.Process{
+								{
+									Type:        "some-type",
+									Command:     "some-command",
+									Args:        []string{"some-arg"},
+									Direct:      true,
+									BuildpackID: "A",
+								},
+								{
+									Type:        "override-type",
+									Command:     "bpA-command",
+									Args:        []string{"bpA-arg"},
+									Direct:      true,
+									BuildpackID: "A",
+								},
+							},
+						}, nil)
+						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Processes: []launch.Process{
+								{
+									Type:        "some-other-type",
+									Command:     "some-other-command",
+									Args:        []string{"some-other-arg"},
+									Direct:      true,
+									BuildpackID: "B",
+								},
+								{
+									Type:        "override-type",
+									Command:     "bpB-command",
+									Args:        []string{"bpB-arg"},
+									Direct:      false,
+									BuildpackID: "B",
+								},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+						if s := cmp.Diff(metadata.Processes, []launch.Process{
+							{
+								Type:        "override-type",
+								Command:     "bpB-command",
+								Args:        []string{"bpB-arg"},
+								Direct:      false,
+								BuildpackID: "B",
+							},
+							{
+								Type:        "some-other-type",
+								Command:     "some-other-command",
+								Args:        []string{"some-other-arg"},
+								Direct:      true,
+								BuildpackID: "B",
+							},
+							{
+								Type:        "some-type",
+								Command:     "some-command",
+								Args:        []string{"some-arg"},
+								Direct:      true,
+								BuildpackID: "A",
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+					})
+				})
+
+				when("slices", func() {
+					it("should aggregate slices from each buildpack", func() {
+						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Slices: []layers.Slice{
+								{Paths: []string{"some-bpA-path", "some-other-bpA-path"}},
+								{Paths: []string{"duplicate-path"}},
+								{Paths: []string{"extra-path"}},
+							},
+						}, nil)
+						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Slices: []layers.Slice{
+								{Paths: []string{"some-bpB-path", "some-other-bpB-path"}},
+								{Paths: []string{"duplicate-path"}},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+						if s := cmp.Diff(metadata.Slices, []layers.Slice{
+							{Paths: []string{"some-bpA-path", "some-other-bpA-path"}},
+							{Paths: []string{"duplicate-path"}},
+							{Paths: []string{"extra-path"}},
+							{Paths: []string{"some-bpB-path", "some-other-bpB-path"}},
+							{Paths: []string{"duplicate-path"}},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+					})
+				})
 			})
 		})
 
 		when("building fails", func() {
-			it("should error when layer directories cannot be created", func() {
-				mkfile(t, "some-data", filepath.Join(layersDir, "A"))
-				_, err := builder.Build()
-				if _, ok := err.(*os.PathError); !ok {
-					t.Fatalf("Incorrect error: %s\n", err)
-				}
-			})
+			when("first buildpack build fails", func() {
+				it("should error", func() {
+					bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+					buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+					bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, errors.New("some error"))
 
-			it("should error when the provided build plan is invalid", func() {
-				builder.Plan = lifecycle.BuildPlan{
-					Entries: []lifecycle.BuildPlanEntry{{
-						Providers: []lifecycle.Buildpack{{ID: "A", Version: "v1"}},
-						Requires: []lifecycle.Require{{
-							Metadata: map[string]interface{}{"a": map[int64]int64{1: 2}},
-						}},
-					}}}
-				if _, err := builder.Build(); err == nil {
-					t.Fatal("Expected error.\n")
-				} else if !strings.Contains(err.Error(), "toml") {
-					t.Fatalf("Incorrect error: %s\n", err)
-				}
-			})
-
-			it("should error when any build plan entry is invalid", func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				mkfile(t, "bad-key", filepath.Join(appDir, "build-plan-out-A-v1.toml"))
-				if _, err := builder.Build(); err == nil {
-					t.Fatal("Expected error.\n")
-				} else if !strings.Contains(err.Error(), "key") {
-					t.Fatalf("Incorrect error: %s\n", err)
-				}
-			})
-
-			it("should error when the env cannot be found", func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
-				if _, err := builder.Build(); err == nil {
-					t.Fatal("Expected error.\n")
-				} else if !strings.Contains(err.Error(), "some error") {
-					t.Fatalf("Incorrect error: %s\n", err)
-				}
-			})
-
-			it("should error when the command fails", func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				if err := os.RemoveAll(platformDir); err != nil {
-					t.Fatalf("Error: %s\n", err)
-				}
-				_, err := builder.Build()
-				if err, ok := err.(*lifecycle.Error); !ok || err.Type != lifecycle.ErrTypeBuildpack {
-					t.Fatalf("Incorrect error: %s\n", err)
-				}
-			})
-
-			when("modifying the env fails", func() {
-				var appendErr error
-
-				it.Before(func() {
-					appendErr = errors.New("some error")
-				})
-
-				each(it, []func(){
-					func() {
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
-					},
-					func() {
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
-					},
-					func() {
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
-					},
-					func() {
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
-					},
-				}, "should error", func() {
-					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-					mkdir(t,
-						filepath.Join(appDir, "layers-A-v1", "layer1"),
-						filepath.Join(appDir, "layers-A-v1", "layer2"),
-					)
-					mkfile(t, "build = true",
-						filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
-						filepath.Join(appDir, "layers-A-v1", "layer2.toml"),
-					)
-					if _, err := builder.Build(); err != appendErr {
+					if _, err := builder.Build(); err == nil {
+						t.Fatal("Expected error.\n")
+					} else if !strings.Contains(err.Error(), "some error") {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
 				})
 			})
 
-			it("should error when launch.toml is not writable", func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
-				if _, err := builder.Build(); err == nil {
-					t.Fatal("Expected error")
-				}
-			})
+			when("later buildpack build fails", func() {
+				it("should error", func() {
+					bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+					buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+					bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, nil)
+					bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+					buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+					bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, errors.New("some error"))
 
-			when("platformApi is less than 0.4", func() {
-				when("bom version is set both in the top level and in the metadata", func() {
-					it("returns an error", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
-						builder.PlatformAPI = api.MustParse("0.3")
-						mkfile(t,
-							"[[entries]]\n"+
-								`name = "dep1"`+"\n"+
-								`version = "v2"`+"\n"+
-								"[entries.metadata]\n"+
-								`version = "v1"`+"\n",
-							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
-						)
-						_, err := builder.Build()
-						h.AssertNotNil(t, err)
-						expected := "top level version does not match metadata version"
-						h.AssertStringContains(t, err.Error(), expected)
-					})
+					if _, err := builder.Build(); err == nil {
+						t.Fatal("Expected error.\n")
+					} else if !strings.Contains(err.Error(), "some error") {
+						t.Fatalf("Incorrect error: %s\n", err)
+					}
 				})
 			})
+		})
 
-			when("platformApi is at least 0.4", func() {
-				when("bom version is set both in the top level and in the metadata", func() {
-					it("returns an error", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
-						builder.PlatformAPI = api.MustParse("0.4")
-						mkfile(t,
-							"[[entries]]\n"+
-								`name = "dep1"`+"\n"+
-								`version = "v2"`+"\n"+
-								"[entries.metadata]\n"+
-								`version = "v1"`+"\n",
-							filepath.Join(appDir, "build-plan-out-A-v1.toml"),
-						)
-						_, err := builder.Build()
-						h.AssertNotNil(t, err)
-						expected := "metadata version does not match top level version"
-						h.AssertStringContains(t, err.Error(), expected)
+		when("platform api < 0.4", func() {
+			it.Before(func() {
+				builder.PlatformAPI = api.MustParse("0.3")
+			})
+
+			when("build metadata", func() {
+				when("bom", func() {
+					it("should convert metadata.version to top level version", func() {
+						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							BOM: []lifecycle.BOMEntry{
+								{
+									Require: lifecycle.Require{
+										Name:     "dep1",
+										Metadata: map[string]interface{}{"version": string("v1")},
+									},
+									Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								},
+							},
+						}, nil)
+						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
+						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB.EXPECT().Build(gomock.Any(), config)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+
+						if s := cmp.Diff(metadata.BOM, []lifecycle.BOMEntry{
+							{
+								Require: lifecycle.Require{
+									Name:     "dep1",
+									Version:  "v1",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
 					})
 				})
 			})

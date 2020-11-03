@@ -35,8 +35,8 @@ func (bp Buildpack) noHomepage() Buildpack {
 	return bp
 }
 
-func (bp Buildpack) Lookup(buildpacksDir string) (*BuildpackTOML, error) {
-	bpTOML := BuildpackTOML{}
+func (bp Buildpack) Lookup(buildpacksDir string) (*DefaultBuildpackTOML, error) {
+	bpTOML := DefaultBuildpackTOML{}
 	bpPath, err := filepath.Abs(filepath.Join(buildpacksDir, launch.EscapeID(bp.ID), bp.Version))
 	if err != nil {
 		return nil, err
@@ -49,21 +49,10 @@ func (bp Buildpack) Lookup(buildpacksDir string) (*BuildpackTOML, error) {
 	return &bpTOML, nil
 }
 
-type BuildpackTOML struct {
-	API       string         `toml:"api"`
-	Buildpack BuildpackInfo  `toml:"buildpack"`
-	Order     BuildpackOrder `toml:"order"`
-	Path      string         `toml:"-"`
-}
-
 type BuildpackInfo struct {
 	ID       string `toml:"id"`
 	Version  string `toml:"version"`
 	Name     string `toml:"name"`
 	ClearEnv bool   `toml:"clear-env,omitempty"`
 	Homepage string `toml:"homepage,omitempty"`
-}
-
-func (bp BuildpackTOML) String() string {
-	return bp.Buildpack.Name + " " + bp.Buildpack.Version
 }

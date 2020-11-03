@@ -32,6 +32,10 @@ if exist build-plan-out-%bp_id%-%bp_version%.toml (
   type build-plan-out-%bp_id%-%bp_version%.toml > %plan_path%
 )
 
+if exist build-%bp_id%-%bp_version%.toml (
+  type build-%bp_id%-%bp_version%.toml > %layers_dir%\build.toml
+)
+
 if exist launch-%bp_id%-%bp_version%.toml (
   type launch-%bp_id%-%bp_version%.toml > %layers_dir%\launch.toml
 )

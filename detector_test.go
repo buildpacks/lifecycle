@@ -595,11 +595,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("BuildpackTOML.Detect()", func() {
+			when("DefaultBuildpackTOML.Detect()", func() {
 				it("should fail if buildpacks with buildpack api 0.2 have a top level version and a metadata version that are different", func() {
 					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "D", "v2"))
 					h.AssertNil(t, err)
-					bpTOML := lifecycle.BuildpackTOML{
+					bpTOML := lifecycle.DefaultBuildpackTOML{
 						API: "0.2",
 						Buildpack: lifecycle.BuildpackInfo{
 							ID:      "D",
@@ -625,7 +625,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("should fail if buildpack with buildpack api 0.2 has alternate build plan with a top level version and a metadata version that are different", func() {
 					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "B", "v1"))
 					h.AssertNil(t, err)
-					bpTOML := lifecycle.BuildpackTOML{
+					bpTOML := lifecycle.DefaultBuildpackTOML{
 						API: "0.2",
 						Buildpack: lifecycle.BuildpackInfo{
 							ID:      "B",
@@ -653,7 +653,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("should fail if buildpacks with buildpack api 0.3+ have both a top level version and a metadata version", func() {
 					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
 					h.AssertNil(t, err)
-					bpTOML := lifecycle.BuildpackTOML{
+					bpTOML := lifecycle.DefaultBuildpackTOML{
 						API: "0.3",
 						Buildpack: lifecycle.BuildpackInfo{
 							ID:      "A",
@@ -679,7 +679,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("should fail if buildpack with buildpack api 0.3+ has alternate build plan with both a top level version and a metadata version", func() {
 					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
 					h.AssertNil(t, err)
-					bpTOML := lifecycle.BuildpackTOML{
+					bpTOML := lifecycle.DefaultBuildpackTOML{
 						API: "0.3",
 						Buildpack: lifecycle.BuildpackInfo{
 							ID:      "A",
@@ -708,7 +708,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("should warn if buildpacks with buildpack api 0.3+ have a top level version", func() {
 					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
 					h.AssertNil(t, err)
-					bpTOML := lifecycle.BuildpackTOML{
+					bpTOML := lifecycle.DefaultBuildpackTOML{
 						API: "0.3",
 						Buildpack: lifecycle.BuildpackInfo{
 							ID:      "A",
@@ -736,7 +736,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("should warn if buildpack with buildpack api 0.3+ has alternate build plan with a top level version", func() {
 					bpPath, err := filepath.Abs(filepath.Join("testdata", "by-id", "A", "v1"))
 					h.AssertNil(t, err)
-					bpTOML := lifecycle.BuildpackTOML{
+					bpTOML := lifecycle.DefaultBuildpackTOML{
 						API: "0.3",
 						Buildpack: lifecycle.BuildpackInfo{
 							ID:      "A",
