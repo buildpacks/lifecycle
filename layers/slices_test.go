@@ -353,5 +353,43 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 				assertTarEntries(t, sliceLayers[1].TarPath, []*tar.Header{})
 			})
 		})
+
+		when("the pattern ends in a path separator", func() {
+			it("matches", func() {
+				pattern := "some-dir" + string(filepath.Separator)
+				sliceLayers, err := factory.SliceLayers(dirToSlice, []layers.Slice{
+					{Paths: []string{pattern}},
+				})
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(sliceLayers), 2)
+				h.AssertEq(t, sliceLayers[0].ID, "slice-1")
+				assertTarEntries(t, sliceLayers[0].TarPath, append(parents(t, dirToSlice), []*tar.Header{
+					{
+						Name:     tarPath(dirToSlice),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
+					},
+					{
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeDir,
+					},
+					{
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "file.md")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
+					},
+					{
+						Name:     tarPath(filepath.Join(dirToSlice, "some-dir", "some-file.txt")),
+						Uid:      factory.UID,
+						Gid:      factory.GID,
+						Typeflag: tar.TypeReg,
+					},
+				}...))
+			})
+		})
 	})
 }

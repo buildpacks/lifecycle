@@ -65,6 +65,7 @@ func (f *Factory) createLayerFromSlice(slice Slice, sdir *sliceableDir, layerID 
 }
 
 func glob(sdir *sliceableDir, pattern string) ([]string, error) {
+	pattern = filepath.Clean(pattern)
 	var matches []string
 	if err := filepath.Walk(sdir.path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
