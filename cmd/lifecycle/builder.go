@@ -30,7 +30,7 @@ type buildArgs struct {
 	platformAPI   string
 }
 
-func (b *buildCmd) PreInit() {
+func (b *buildCmd) DefineFlags() {
 	cmd.FlagBuildpacksDir(&b.buildpacksDir)
 	cmd.FlagGroupPath(&b.groupPath)
 	cmd.FlagPlanPath(&b.planPath)
@@ -44,8 +44,8 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	cmd.UpdateGroupPath(&b.groupPath, b.buildArgs.platformAPI, b.layersDir)
-	cmd.UpdatePlanPath(&b.planPath, b.buildArgs.platformAPI, b.layersDir)
+	cmd.UpdateGroupPath(&b.groupPath, b.platformAPI, b.layersDir)
+	cmd.UpdatePlanPath(&b.planPath, b.platformAPI, b.layersDir)
 
 	return nil
 }

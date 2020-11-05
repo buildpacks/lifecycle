@@ -11,22 +11,22 @@ import (
 )
 
 var (
-	DefaultAnalyzedPath        = "<layers>/analyzed.toml"
-	DefaultAppDir              = filepath.Join(rootDir, "workspace")
-	DefaultBuildpacksDir       = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultDeprecationMode     = DeprecationModeWarn
-	DefaultGroupPath           = "<layers>/group.toml"
-	DefaultLauncherPath        = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
-	DefaultLayersDir           = filepath.Join(rootDir, "layers")
-	DefaultLogLevel            = "info"
-	DefaultOrderPath           = filepath.Join(rootDir, "cnb", "order.toml")
-	DefaultPlanPath            = "<layers>/plan.toml"
-	DefaultPlatformAPI         = "0.3"
-	DefaultPlatformDir         = filepath.Join(rootDir, "platform")
-	DefaultProcessType         = "web"
-	DefaultProjectMetadataPath = "<layers>/project-metadata.toml"
-	DefaultReportPath          = "<layers>/report.toml"
-	DefaultStackPath           = filepath.Join(rootDir, "cnb", "stack.toml")
+	PlaceholderAnalyzedPath        = filepath.Join("<layers>", "analyzed.toml")
+	DefaultAppDir                  = filepath.Join(rootDir, "workspace")
+	DefaultBuildpacksDir           = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultDeprecationMode         = DeprecationModeWarn
+	PlaceholderGroupPath           = filepath.Join("<layers>", "group.toml")
+	DefaultLauncherPath            = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
+	DefaultLayersDir               = filepath.Join(rootDir, "layers")
+	DefaultLogLevel                = "info"
+	DefaultOrderPath               = filepath.Join(rootDir, "cnb", "order.toml")
+	PlaceholderPlanPath            = filepath.Join("<layers>", "plan.toml")
+	DefaultPlatformAPI             = "0.3"
+	DefaultPlatformDir             = filepath.Join(rootDir, "platform")
+	DefaultProcessType             = "web"
+	PlaceholderProjectMetadataPath = filepath.Join("<layers>", "project-metadata.toml")
+	PlaceholderReportPath          = filepath.Join("<layers>", "report.toml")
+	DefaultStackPath               = filepath.Join(rootDir, "cnb", "stack.toml")
 )
 
 const (
@@ -62,10 +62,10 @@ const (
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
 
 func FlagAnalyzedPath(analyzedPath *string) {
-	flagSet.StringVar(analyzedPath, "analyzed", EnvOrDefault(EnvAnalyzedPath, DefaultAnalyzedPath), "path to analyzed.toml")
+	flagSet.StringVar(analyzedPath, "analyzed", EnvOrDefault(EnvAnalyzedPath, PlaceholderAnalyzedPath), "path to analyzed.toml")
 }
 func UpdateAnalyzedPath(analyzedPath *string, platformAPI, layersDir string) {
-	updatePath(analyzedPath, DefaultAnalyzedPath, platformAPI, layersDir)
+	updatePath(analyzedPath, PlaceholderAnalyzedPath, platformAPI, layersDir)
 }
 
 func FlagAppDir(appDir *string) {
@@ -89,11 +89,11 @@ func FlagGID(gid *int) {
 }
 
 func FlagGroupPath(groupPath *string) {
-	flagSet.StringVar(groupPath, "group", EnvOrDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
+	flagSet.StringVar(groupPath, "group", EnvOrDefault(EnvGroupPath, PlaceholderGroupPath), "path to group.toml")
 }
 
 func UpdateGroupPath(groupPath *string, platformAPI, layersDir string) {
-	updatePath(groupPath, DefaultGroupPath, platformAPI, layersDir)
+	updatePath(groupPath, PlaceholderGroupPath, platformAPI, layersDir)
 }
 
 func FlagLaunchCacheDir(launchCacheDir *string) {
@@ -117,11 +117,11 @@ func FlagOrderPath(orderPath *string) {
 }
 
 func FlagPlanPath(planPath *string) {
-	flagSet.StringVar(planPath, "plan", EnvOrDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
+	flagSet.StringVar(planPath, "plan", EnvOrDefault(EnvPlanPath, PlaceholderPlanPath), "path to plan.toml")
 }
 
 func UpdatePlanPath(planPath *string, platformAPI, layersDir string) {
-	updatePath(planPath, DefaultPlanPath, platformAPI, layersDir)
+	updatePath(planPath, PlaceholderPlanPath, platformAPI, layersDir)
 }
 
 func FlagPlatformDir(platformDir *string) {
@@ -133,11 +133,11 @@ func FlagPreviousImage(image *string) {
 }
 
 func FlagReportPath(reportPath *string) {
-	flagSet.StringVar(reportPath, "report", EnvOrDefault(EnvReportPath, DefaultReportPath), "path to report.toml")
+	flagSet.StringVar(reportPath, "report", EnvOrDefault(EnvReportPath, PlaceholderReportPath), "path to report.toml")
 }
 
 func UpdateReportPath(reportPath *string, platformAPI, layersDir string) {
-	updatePath(reportPath, DefaultReportPath, platformAPI, layersDir)
+	updatePath(reportPath, PlaceholderReportPath, platformAPI, layersDir)
 }
 
 func FlagRunImage(runImage *string) {
@@ -177,11 +177,11 @@ func FlagLogLevel(level *string) {
 }
 
 func FlagProjectMetadataPath(projectMetadataPath *string) {
-	flagSet.StringVar(projectMetadataPath, "project-metadata", EnvOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataPath), "path to project-metadata.toml")
+	flagSet.StringVar(projectMetadataPath, "project-metadata", EnvOrDefault(EnvProjectMetadataPath, PlaceholderProjectMetadataPath), "path to project-metadata.toml")
 }
 
 func UpdateProjectMetadataPath(projectMetadataPath *string, platformAPI, layersDir string) {
-	updatePath(projectMetadataPath, DefaultProjectMetadataPath, platformAPI, layersDir)
+	updatePath(projectMetadataPath, PlaceholderProjectMetadataPath, platformAPI, layersDir)
 }
 
 func FlagProcessType(processType *string) {
@@ -233,14 +233,10 @@ func updatePath(pathToUpdate *string, defaultPath, platformAPI, layersDir string
 		return
 	}
 	fileName := filepath.Base(defaultPath)
-	if isPlatformAPILessThan05(platformAPI) || layersDir == "" {
+	if (api.MustParse(platformAPI).Compare(api.MustParse("0.5")) < 0) || (layersDir == "") {
 		// layersDir is unset when this call comes from the rebaser - will be fixed as part of https://github.com/buildpacks/spec/issues/156
 		*pathToUpdate = filepath.Join(".", fileName)
 	} else {
 		*pathToUpdate = filepath.Join(layersDir, fileName)
 	}
-}
-
-func isPlatformAPILessThan05(platformAPI string) bool {
-	return api.MustParse(platformAPI).Compare(api.MustParse("0.5")) < 0
 }

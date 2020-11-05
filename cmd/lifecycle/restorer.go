@@ -19,7 +19,7 @@ type restoreCmd struct {
 	uid, gid      int
 }
 
-func (r *restoreCmd) PreInit() {
+func (r *restoreCmd) DefineFlags() {
 	cmd.FlagCacheDir(&r.cacheDir)
 	cmd.FlagCacheImage(&r.cacheImageTag)
 	cmd.FlagGroupPath(&r.groupPath)

@@ -30,7 +30,7 @@ type detectArgs struct {
 	orderPath     string
 }
 
-func (d *detectCmd) PreInit() {
+func (d *detectCmd) DefineFlags() {
 	cmd.FlagBuildpacksDir(&d.buildpacksDir)
 	cmd.FlagAppDir(&d.appDir)
 	cmd.FlagLayersDir(&d.layersDir)
@@ -45,8 +45,8 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	cmd.UpdateGroupPath(&d.groupPath, d.detectArgs.platformAPI, d.layersDir)
-	cmd.UpdatePlanPath(&d.planPath, d.detectArgs.platformAPI, d.layersDir)
+	cmd.UpdateGroupPath(&d.groupPath, d.platformAPI, d.layersDir)
+	cmd.UpdatePlanPath(&d.planPath, d.platformAPI, d.layersDir)
 
 	return nil
 }

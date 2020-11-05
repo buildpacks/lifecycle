@@ -6,15 +6,18 @@ import (
 	"os"
 )
 
-// PreInit defines all the flags that are going to be used.
-// If the default value is not going to be used,
-// the flags will be set as part of the flags.Parse function.
-// In Args, several paths will be changed to be under the updated layers directory (if the user didn't set them using a flag)
-// TODO: should we add more documentation?
+// Command defines the interface for running the lifecycle phases
 type Command interface {
-	PreInit()
+	// Flags should be defined in DefineFlags
+	DefineFlags()
+
+	// Validation of the arguments and updates of the flags should happen in Args
 	Args(nargs int, args []string) error
+
+	// Validation of the needed priviledges should happen in Privileges
 	Privileges() error
+
+	// The command execution should happen in Exec
 	Exec() error
 }
 
@@ -29,7 +32,7 @@ func Run(c Command, asSubcommand bool) {
 	FlagVersion(&printVersion)
 	FlagLogLevel(&logLevel)
 	FlagNoColor(&noColor)
-	c.PreInit()
+	c.DefineFlags()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
 			//flagSet exits on error, we shouldn't get here

@@ -31,7 +31,7 @@ type rebaseCmd struct {
 	docker client.CommonAPIClient
 }
 
-func (r *rebaseCmd) PreInit() {
+func (r *rebaseCmd) DefineFlags() {
 	cmd.FlagGID(&r.gid)
 	cmd.FlagReportPath(&r.reportPath)
 	cmd.FlagRunImage(&r.runImageRef)

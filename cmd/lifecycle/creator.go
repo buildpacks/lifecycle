@@ -38,7 +38,7 @@ type createCmd struct {
 	docker client.CommonAPIClient
 }
 
-func (c *createCmd) PreInit() {
+func (c *createCmd) DefineFlags() {
 	cmd.FlagAppDir(&c.appDir)
 	cmd.FlagBuildpacksDir(&c.buildpacksDir)
 	cmd.FlagCacheDir(&c.cacheDir)

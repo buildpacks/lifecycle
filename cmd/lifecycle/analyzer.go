@@ -39,7 +39,7 @@ type analyzeArgs struct {
 	docker client.CommonAPIClient
 }
 
-func (a *analyzeCmd) PreInit() {
+func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheDir(&a.cacheDir)
 	cmd.FlagCacheImage(&a.cacheImageTag)
@@ -61,8 +61,8 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if a.cacheImageTag == "" && a.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 	}
-	cmd.UpdateAnalyzedPath(&a.analyzedPath, a.analyzeArgs.platformAPI, a.layersDir)
-	cmd.UpdateGroupPath(&a.groupPath, a.analyzeArgs.platformAPI, a.layersDir)
+	cmd.UpdateAnalyzedPath(&a.analyzedPath, a.platformAPI, a.layersDir)
+	cmd.UpdateGroupPath(&a.groupPath, a.platformAPI, a.layersDir)
 
 	a.imageName = args[0]
 	return nil
