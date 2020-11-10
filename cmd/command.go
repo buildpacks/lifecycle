@@ -8,16 +8,16 @@ import (
 
 // Command defines the interface for running the lifecycle phases
 type Command interface {
-	// Flags should be defined in DefineFlags
+	// DefineFlags defines flags
 	DefineFlags()
 
-	// Validation of the arguments and updates of the flags should happen in Args
+	// Args validates arguments and flags
 	Args(nargs int, args []string) error
 
-	// Validation of the needed priviledges should happen in Privileges
+	// Privileges validates the needed privileges
 	Privileges() error
 
-	// The command execution should happen in Exec
+	// Exec executes the command
 	Exec() error
 }
 

@@ -11,22 +11,23 @@ import (
 )
 
 var (
+	DefaultAppDir          = filepath.Join(rootDir, "workspace")
+	DefaultBuildpacksDir   = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultDeprecationMode = DeprecationModeWarn
+	DefaultLauncherPath    = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
+	DefaultLayersDir       = filepath.Join(rootDir, "layers")
+	DefaultLogLevel        = "info"
+	DefaultOrderPath       = filepath.Join(rootDir, "cnb", "order.toml")
+	DefaultPlatformAPI     = "0.3"
+	DefaultPlatformDir     = filepath.Join(rootDir, "platform")
+	DefaultProcessType     = "web"
+	DefaultStackPath       = filepath.Join(rootDir, "cnb", "stack.toml")
+
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", "analyzed.toml")
-	DefaultAppDir                  = filepath.Join(rootDir, "workspace")
-	DefaultBuildpacksDir           = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultDeprecationMode         = DeprecationModeWarn
 	PlaceholderGroupPath           = filepath.Join("<layers>", "group.toml")
-	DefaultLauncherPath            = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
-	DefaultLayersDir               = filepath.Join(rootDir, "layers")
-	DefaultLogLevel                = "info"
-	DefaultOrderPath               = filepath.Join(rootDir, "cnb", "order.toml")
 	PlaceholderPlanPath            = filepath.Join("<layers>", "plan.toml")
-	DefaultPlatformAPI             = "0.3"
-	DefaultPlatformDir             = filepath.Join(rootDir, "platform")
-	DefaultProcessType             = "web"
 	PlaceholderProjectMetadataPath = filepath.Join("<layers>", "project-metadata.toml")
 	PlaceholderReportPath          = filepath.Join("<layers>", "report.toml")
-	DefaultStackPath               = filepath.Join(rootDir, "cnb", "stack.toml")
 )
 
 const (

@@ -159,30 +159,23 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("analyzed path is provided", func() {
-		it("writes analyzed.toml at the provided path and uses group.toml from the working directory", func() {
-			// The working directory is set to /layers in the Dockerfile
-
-			cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
-
+		it("writes analyzed.toml at the provided path", func() {
 			h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
 				analyzeImage,
-				"/",
+				"/some-dir/some-analyzed.toml",
 				h.WithFlags(
 					"--env", "CNB_REGISTRY_AUTH={}",
-					"--volume", cacheVolume+":"+"/cache",
 				),
 				h.WithArgs(
 					analyzerPath,
 					"-analyzed", "/some-dir/some-analyzed.toml",
-					"-cache-dir", "/cache", // use a cache so that we can observe the effect of group.toml on /layers (since we don't have a previous image)
 					"some-image",
 				),
 			)
 
-			assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-dir", "some-analyzed.toml"))
-			h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-buildpack-id"))
+			assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-analyzed.toml"))
 		})
 	})
 
