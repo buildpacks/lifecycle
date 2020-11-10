@@ -9,3 +9,7 @@ WORKDIR /layers
 ENV CNB_USER_ID=2222
 
 ENV CNB_GROUP_ID=3333
+
+RUN chmod -R 777 /some-dir
+
+RUN chmod -R 777 /layers

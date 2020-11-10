@@ -230,13 +230,16 @@ func EnvOrDefault(key string, defaultVal string) string {
 
 func updatePath(pathToUpdate *string, defaultPath, platformAPI, layersDir string) {
 	if *pathToUpdate != defaultPath {
+		// The user passed a flag with the desired path
 		return
 	}
 	fileName := filepath.Base(defaultPath)
 	if (api.MustParse(platformAPI).Compare(api.MustParse("0.5")) < 0) || (layersDir == "") {
+		// prior to platform api 0.5, the default directory was the working dir.
 		// layersDir is unset when this call comes from the rebaser - will be fixed as part of https://github.com/buildpacks/spec/issues/156
 		*pathToUpdate = filepath.Join(".", fileName)
 	} else {
+		// starting from platform api 0.5, the default directory is the layers dir.
 		*pathToUpdate = filepath.Join(layersDir, fileName)
 	}
 }
