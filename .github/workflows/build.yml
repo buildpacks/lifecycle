@@ -24,7 +24,7 @@ jobs:
           mkdir -p deps/bin
           curl -s -L -o deps/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
           chmod +x deps/bin/jq
-          echo "::add-path::${PWD}/deps/bin"
+          echo "${PWD}/deps/bin" >> $GITHUB_PATH
       - name: Test
         run: make test
   test-windows:
