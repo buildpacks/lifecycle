@@ -36,7 +36,9 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 
-	cmd.UpdateGroupPath(&r.groupPath, r.platformAPI, r.layersDir)
+	if r.groupPath == cmd.PlaceholderGroupPath {
+		r.groupPath = cmd.DefaultGroupPath(r.platformAPI, r.layersDir)
+	}
 
 	return nil
 }

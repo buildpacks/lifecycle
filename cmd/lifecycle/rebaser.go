@@ -57,7 +57,9 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 		r.runImageRef = r.deprecatedRunImageRef
 	}
 
-	cmd.UpdateReportPath(&r.reportPath, r.platformAPI, "")
+	if r.reportPath == cmd.PlaceholderReportPath {
+		r.reportPath = cmd.DefaultReportPath(r.platformAPI, "")
+	}
 
 	return nil
 }

@@ -45,8 +45,13 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	cmd.UpdateGroupPath(&d.groupPath, d.platformAPI, d.layersDir)
-	cmd.UpdatePlanPath(&d.planPath, d.platformAPI, d.layersDir)
+	if d.groupPath == cmd.PlaceholderGroupPath {
+		d.groupPath = cmd.DefaultGroupPath(d.platformAPI, d.layersDir)
+	}
+
+	if d.planPath == cmd.PlaceholderPlanPath {
+		d.planPath = cmd.DefaultPlanPath(d.platformAPI, d.layersDir)
+	}
 
 	return nil
 }

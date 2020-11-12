@@ -61,8 +61,14 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if a.cacheImageTag == "" && a.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 	}
-	cmd.UpdateAnalyzedPath(&a.analyzedPath, a.platformAPI, a.layersDir)
-	cmd.UpdateGroupPath(&a.groupPath, a.platformAPI, a.layersDir)
+
+	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
+		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platformAPI, a.layersDir)
+	}
+
+	if a.groupPath == cmd.PlaceholderGroupPath {
+		a.groupPath = cmd.DefaultGroupPath(a.platformAPI, a.layersDir)
+	}
 
 	a.imageName = args[0]
 	return nil

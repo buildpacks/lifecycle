@@ -84,8 +84,13 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
-	cmd.UpdateProjectMetadataPath(&c.projectMetadataPath, c.platformAPI, c.layersDir)
-	cmd.UpdateReportPath(&c.projectMetadataPath, c.platformAPI, c.layersDir)
+	if c.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
+		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platformAPI, c.layersDir)
+	}
+
+	if c.reportPath == cmd.PlaceholderReportPath {
+		c.reportPath = cmd.DefaultReportPath(c.platformAPI, c.layersDir)
+	}
 
 	return nil
 }

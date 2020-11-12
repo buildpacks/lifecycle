@@ -99,10 +99,21 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	cmd.UpdateAnalyzedPath(&e.analyzedPath, e.platformAPI, e.layersDir)
-	cmd.UpdateGroupPath(&e.groupPath, e.platformAPI, e.layersDir)
-	cmd.UpdateProjectMetadataPath(&e.projectMetadataPath, e.platformAPI, e.layersDir)
-	cmd.UpdateReportPath(&e.projectMetadataPath, e.platformAPI, e.layersDir)
+	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
+		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platformAPI, e.layersDir)
+	}
+
+	if e.groupPath == cmd.PlaceholderGroupPath {
+		e.groupPath = cmd.DefaultGroupPath(e.platformAPI, e.layersDir)
+	}
+
+	if e.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
+		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platformAPI, e.layersDir)
+	}
+
+	if e.reportPath == cmd.PlaceholderReportPath {
+		e.reportPath = cmd.DefaultReportPath(e.platformAPI, e.layersDir)
+	}
 
 	if e.deprecatedRunImageRef != "" {
 		e.runImageRef = e.deprecatedRunImageRef
