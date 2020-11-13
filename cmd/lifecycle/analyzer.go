@@ -29,16 +29,17 @@ type analyzeCmd struct {
 
 type analyzeArgs struct {
 	//inputs needed when run by creator
-	imageName  string
-	layersDir  string
-	skipLayers bool
-	useDaemon  bool
+	imageName   string
+	layersDir   string
+	platformAPI string
+	skipLayers  bool
+	useDaemon   bool
 
 	//construct if necessary before dropping privileges
 	docker client.CommonAPIClient
 }
 
-func (a *analyzeCmd) Init() {
+func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheDir(&a.cacheDir)
 	cmd.FlagCacheImage(&a.cacheImageTag)
@@ -60,6 +61,15 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if a.cacheImageTag == "" && a.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 	}
+
+	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
+		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platformAPI, a.layersDir)
+	}
+
+	if a.groupPath == cmd.PlaceholderGroupPath {
+		a.groupPath = cmd.DefaultGroupPath(a.platformAPI, a.layersDir)
+	}
+
 	a.imageName = args[0]
 	return nil
 }

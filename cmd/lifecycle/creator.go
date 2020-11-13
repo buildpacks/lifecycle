@@ -38,7 +38,7 @@ type createCmd struct {
 	docker client.CommonAPIClient
 }
 
-func (c *createCmd) Init() {
+func (c *createCmd) DefineFlags() {
 	cmd.FlagAppDir(&c.appDir)
 	cmd.FlagBuildpacksDir(&c.buildpacksDir)
 	cmd.FlagCacheDir(&c.cacheDir)
@@ -84,6 +84,14 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
+	if c.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
+		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platformAPI, c.layersDir)
+	}
+
+	if c.reportPath == cmd.PlaceholderReportPath {
+		c.reportPath = cmd.DefaultReportPath(c.platformAPI, c.layersDir)
+	}
+
 	return nil
 }
 
@@ -117,6 +125,8 @@ func (c *createCmd) Exec() error {
 	group, plan, err := detectArgs{
 		buildpacksDir: c.buildpacksDir,
 		appDir:        c.appDir,
+		layersDir:     c.layersDir,
+		platformAPI:   c.platformAPI,
 		platformDir:   c.platformDir,
 		orderPath:     c.orderPath,
 	}.detect()
@@ -126,11 +136,12 @@ func (c *createCmd) Exec() error {
 
 	cmd.DefaultLogger.Phase("ANALYZING")
 	analyzedMD, err := analyzeArgs{
-		imageName:  c.previousImage,
-		layersDir:  c.layersDir,
-		skipLayers: c.skipRestore,
-		useDaemon:  c.useDaemon,
-		docker:     c.docker,
+		imageName:   c.previousImage,
+		layersDir:   c.layersDir,
+		platformAPI: c.platformAPI,
+		skipLayers:  c.skipRestore,
+		useDaemon:   c.useDaemon,
+		docker:      c.docker,
 	}.analyze(group, cacheStore)
 	if err != nil {
 		return err

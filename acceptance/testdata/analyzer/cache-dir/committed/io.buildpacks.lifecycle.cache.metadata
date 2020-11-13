@@ -23,6 +23,18 @@
           "sha": "some-layer-sha"
         }
       }
+    },
+    {
+      "key": "another-buildpack-id",
+      "layers": {
+        "some-layer": {
+          "cache": true,
+          "data": {
+            "some-layer-key": "some-layer-value"
+          },
+          "sha": "some-layer-sha"
+        }
+      }
     }
   ]
 }

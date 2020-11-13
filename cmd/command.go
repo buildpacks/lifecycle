@@ -6,10 +6,18 @@ import (
 	"os"
 )
 
+// Command defines the interface for running the lifecycle phases
 type Command interface {
-	Init()
+	// DefineFlags defines flags
+	DefineFlags()
+
+	// Args validates arguments and flags
 	Args(nargs int, args []string) error
+
+	// Privileges validates the needed privileges
 	Privileges() error
+
+	// Exec executes the command
 	Exec() error
 }
 
@@ -24,7 +32,7 @@ func Run(c Command, asSubcommand bool) {
 	FlagVersion(&printVersion)
 	FlagLogLevel(&logLevel)
 	FlagNoColor(&noColor)
-	c.Init()
+	c.DefineFlags()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
 			//flagSet exits on error, we shouldn't get here

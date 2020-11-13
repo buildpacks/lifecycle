@@ -24,13 +24,16 @@ type detectArgs struct {
 	// inputs needed when run by creator
 	buildpacksDir string
 	appDir        string
+	layersDir     string
+	platformAPI   string
 	platformDir   string
 	orderPath     string
 }
 
-func (d *detectCmd) Init() {
+func (d *detectCmd) DefineFlags() {
 	cmd.FlagBuildpacksDir(&d.buildpacksDir)
 	cmd.FlagAppDir(&d.appDir)
+	cmd.FlagLayersDir(&d.layersDir)
 	cmd.FlagPlatformDir(&d.platformDir)
 	cmd.FlagOrderPath(&d.orderPath)
 	cmd.FlagGroupPath(&d.groupPath)
@@ -41,6 +44,15 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
+
+	if d.groupPath == cmd.PlaceholderGroupPath {
+		d.groupPath = cmd.DefaultGroupPath(d.platformAPI, d.layersDir)
+	}
+
+	if d.planPath == cmd.PlaceholderPlanPath {
+		d.planPath = cmd.DefaultPlanPath(d.platformAPI, d.layersDir)
+	}
+
 	return nil
 }
 

@@ -55,7 +55,7 @@ type exportArgs struct {
 	docker client.CommonAPIClient
 }
 
-func (e *exportCmd) Init() {
+func (e *exportCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&e.analyzedPath)
 	cmd.FlagAppDir(&e.appDir)
 	cmd.FlagCacheDir(&e.cacheDir)
@@ -97,6 +97,22 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 
 	if e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage) {
 		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+
+	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
+		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platformAPI, e.layersDir)
+	}
+
+	if e.groupPath == cmd.PlaceholderGroupPath {
+		e.groupPath = cmd.DefaultGroupPath(e.platformAPI, e.layersDir)
+	}
+
+	if e.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
+		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platformAPI, e.layersDir)
+	}
+
+	if e.reportPath == cmd.PlaceholderReportPath {
+		e.reportPath = cmd.DefaultReportPath(e.platformAPI, e.layersDir)
 	}
 
 	if e.deprecatedRunImageRef != "" {
