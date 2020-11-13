@@ -13,7 +13,7 @@ jobs:
           mkdir -p deps/bin
           curl -s -L -o deps/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
           chmod +x deps/bin/jq
-          echo "::add-path::${PWD}/deps/bin"
+          echo "${PWD}/deps/bin" >> $GITHUB_PATH
       - name: Derive lifecycle version from branch name
         run: |
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]}
@@ -21,7 +21,7 @@ jobs:
             echo "lifecycle version not detected."
             exit 1
           fi
-          echo "::set-env name=LIFECYCLE_VERSION::$version"
+          echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
         shell: bash
       - name: Determine download urls for linux and windows
         id: artifact-urls
@@ -97,7 +97,7 @@ jobs:
           mkdir artifact-linux
           unzip -d artifact-linux artifact-linux.zip
           lifecycle_path=$(ls artifact-linux/lifecycle-*linux.x86-64.tgz)
-          echo "::set-env name=ARTIFACT_LINUX_PATH::$PWD/$lifecycle_path"
+          echo "ARTIFACT_LINUX_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
       - name: Download windows artifact
         run: |
           url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .windows )
@@ -107,7 +107,7 @@ jobs:
           mkdir artifact-windows
           unzip -d artifact-windows artifact-windows.zip
           lifecycle_path=$(ls artifact-windows/lifecycle-*windows.x86-64.tgz)
-          echo "::set-env name=ARTIFACT_WINDOWS_PATH::$PWD/$lifecycle_path"
+          echo "ARTIFACT_WINDOWS_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest
