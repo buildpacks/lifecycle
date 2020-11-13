@@ -23,11 +23,17 @@ var (
 	DefaultProcessType     = "web"
 	DefaultStackPath       = filepath.Join(rootDir, "cnb", "stack.toml")
 
-	PlaceholderAnalyzedPath        = filepath.Join("<layers>", "analyzed.toml")
-	PlaceholderGroupPath           = filepath.Join("<layers>", "group.toml")
-	PlaceholderPlanPath            = filepath.Join("<layers>", "plan.toml")
-	PlaceholderProjectMetadataPath = filepath.Join("<layers>", "project-metadata.toml")
-	PlaceholderReportPath          = filepath.Join("<layers>", "report.toml")
+	DefaultAnalyzedFile        = "analyzed.toml"
+	DefaultGroupFile           = "group.toml"
+	DefaultPlanFile            = "plan.toml"
+	DefaultProjectMetadataFile = "project-metadata.toml"
+	DefaultReportFile          = "report.toml"
+
+	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
+	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
+	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
+	PlaceholderProjectMetadataPath = filepath.Join("<layers>", DefaultProjectMetadataFile)
+	PlaceholderReportPath          = filepath.Join("<layers>", DefaultReportFile)
 )
 
 const (
@@ -67,7 +73,7 @@ func FlagAnalyzedPath(analyzedPath *string) {
 }
 
 func DefaultAnalyzedPath(platformAPI, layersDir string) string {
-	return defaultPath(PlaceholderAnalyzedPath, platformAPI, layersDir)
+	return defaultPath(DefaultAnalyzedFile, platformAPI, layersDir)
 }
 
 func FlagAppDir(appDir *string) {
@@ -95,7 +101,7 @@ func FlagGroupPath(groupPath *string) {
 }
 
 func DefaultGroupPath(platformAPI, layersDir string) string {
-	return defaultPath(PlaceholderGroupPath, platformAPI, layersDir)
+	return defaultPath(DefaultGroupFile, platformAPI, layersDir)
 }
 
 func FlagLaunchCacheDir(launchCacheDir *string) {
@@ -123,7 +129,7 @@ func FlagPlanPath(planPath *string) {
 }
 
 func DefaultPlanPath(platformAPI, layersDir string) string {
-	return defaultPath(PlaceholderPlanPath, platformAPI, layersDir)
+	return defaultPath(DefaultPlanFile, platformAPI, layersDir)
 }
 
 func FlagPlatformDir(platformDir *string) {
@@ -139,7 +145,7 @@ func FlagReportPath(reportPath *string) {
 }
 
 func DefaultReportPath(platformAPI, layersDir string) string {
-	return defaultPath(PlaceholderReportPath, platformAPI, layersDir)
+	return defaultPath(DefaultReportFile, platformAPI, layersDir)
 }
 
 func FlagRunImage(runImage *string) {
@@ -183,7 +189,7 @@ func FlagProjectMetadataPath(projectMetadataPath *string) {
 }
 
 func DefaultProjectMetadataPath(platformAPI, layersDir string) string {
-	return defaultPath(PlaceholderProjectMetadataPath, platformAPI, layersDir)
+	return defaultPath(DefaultProjectMetadataFile, platformAPI, layersDir)
 }
 
 func FlagProcessType(processType *string) {
@@ -230,13 +236,11 @@ func EnvOrDefault(key string, defaultVal string) string {
 	return defaultVal
 }
 
-func defaultPath(placeholderPath, platformAPI, layersDir string) string {
-	fileName := filepath.Base(placeholderPath)
-	path := filepath.Join(layersDir, fileName) // starting from platform api 0.5, the default directory is the layers dir.
+func defaultPath(fileName, platformAPI, layersDir string) string {
 	if (api.MustParse(platformAPI).Compare(api.MustParse("0.5")) < 0) || (layersDir == "") {
 		// prior to platform api 0.5, the default directory was the working dir.
 		// layersDir is unset when this call comes from the rebaser - will be fixed as part of https://github.com/buildpacks/spec/issues/156
-		path = filepath.Join(".", fileName)
+		return filepath.Join(".", fileName)
 	}
-	return path
+	return filepath.Join(layersDir, fileName) // starting from platform api 0.5, the default directory is the layers dir.
 }
