@@ -38,13 +38,6 @@ type Buildpack struct {
 	ID  string `toml:"id"`
 }
 
-type Env interface {
-	AddRootDir(baseDir string) error
-	AddEnvDir(envDir string) error
-	List() []string
-	Get(string) string
-}
-
 func EscapeID(id string) string {
 	return strings.Replace(id, "/", "_", -1)
 }

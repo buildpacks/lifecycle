@@ -1,10 +1,15 @@
 [[buildpacks]]
-  id = "some/buildpack"
+  id = "0.5/buildpack"
+  version = "0.0.1"
+  api = "0.5"
+
+[[buildpacks]]
+  id = "0.4/buildpack"
   version = "0.0.1"
   api = "0.4"
 
 [[buildpacks]]
-  id = "older/buildpack"
+  id = "0.3/buildpack"
   version = "0.0.1"
   api = "0.3"
 
@@ -13,52 +18,59 @@
   command = "echo"
   args = ["Executing web process-type"]
   direct = false
-  buildpack-id = "some/buildpack"
+  buildpack-id = "0.4/buildpack"
 
 [[processes]]
   type = "direct-process"
   command = "echo"
   args = ["Executing direct-process process-type"]
   direct = true
-  buildpack-id = "some/buildpack"
+  buildpack-id = "0.4/buildpack"
 
 [[processes]]
   type = "indirect-process-with-args"
   command = "printf"
   args = ["'%s' '%s'", "$VAR1", "$VAR2"]
   direct = false
-  buildpack-id = "some/buildpack"
+  buildpack-id = "0.4/buildpack"
 
 [[processes]]
   type = "legacy-indirect-process-with-args"
   command = "printf \"'%s' '%s'\" \"$0\" \"$1\""
   args = ["arg", "arg with spaces"]
   direct = false
-  buildpack-id = "older/buildpack"
+  buildpack-id = "0.3/buildpack"
 
 [[processes]]
   type = "legacy-indirect-process-with-incorrect-args"
   command = "printf"
   args = ["'%s' '%s'", "arg", "arg with spaces"]
   direct = false
-  buildpack-id = "older/buildpack"
+  buildpack-id = "0.3/buildpack"
 
 [[processes]]
   type = "indirect-process-with-script"
   command = "printf \"'%s' '%s'\" \"$VAR1\" \"$VAR2\""
   direct = false
-  buildpack-id = "some/buildpack"
+  buildpack-id = "0.4/buildpack"
 
 [[processes]]
   type = "profile-checker"
   command = "echo"
   args = ["$VAR_FROM_PROFILE"]
   direct = false
-  buildpack-id = "some/buildpack"
+  buildpack-id = "0.4/buildpack"
+
+[[processes]]
+  type = "exec.d-checker"
+  command = "printf"
+  args = ['VAR_FROM_EXEC_D: "%s"', "$VAR_FROM_EXEC_D"]
+  direct = false
+  buildpack-id = "0.5/buildpack"
 
 [[processes]]
   type = "worker"
   command = "echo"
   args = ["$WORKER_VAR"]
   direct = false
-  buildpack-id = "some/buildpack"
+  buildpack-id = "0.4/buildpack"

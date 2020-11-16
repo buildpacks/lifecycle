@@ -160,6 +160,20 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#Set", func() {
+		it("sets the variable", func() {
+			envv.Vars = env.NewVars(map[string]string{
+				"VAR": "orig-val",
+			}, false)
+			envv.Set("VAR", "new-val")
+			out := envv.List()
+			expected := []string{"VAR=new-val"}
+			if s := cmp.Diff(out, expected); s != "" {
+				t.Fatalf("Unexpected env:\n%s\n", s)
+			}
+		})
+	})
+
 	when("#WithPlatform", func() {
 		it("should apply platform env vars as filename=file-contents", func() {
 			mkdir(t, filepath.Join(tmpDir, "env", "some-dir"))

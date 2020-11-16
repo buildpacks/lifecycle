@@ -2,7 +2,6 @@ package launch
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -45,44 +44,8 @@ func (l *Launcher) launchWithShell(self string, process Process) error {
 }
 
 func (l *Launcher) profiles(process Process) ([]string, error) {
-	var profiles []string
-
-	appendIfFile := func(path string, fi os.FileInfo) {
-		if !fi.IsDir() {
-			profiles = append(profiles, path)
-		}
-	}
-
-	appendFilesInDir := func(path string) error {
-		fis, err := ioutil.ReadDir(path)
-		if os.IsNotExist(err) {
-			return nil
-		}
-		if err != nil {
-			return errors.Wrapf(err, "failed to list files in dir '%s'", path)
-		}
-
-		for _, fi := range fis {
-			appendIfFile(filepath.Join(path, fi.Name()), fi)
-		}
-		return nil
-	}
-
-	if err := l.eachBuildpack(func(path string) error {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return err
-		}
-		return eachDir(absPath, func(path string) error {
-			if err := appendFilesInDir(filepath.Join(path, "profile.d")); err != nil {
-				return err
-			}
-			if process.Type != "" {
-				return appendFilesInDir(filepath.Join(path, "profile.d", process.Type))
-			}
-			return nil
-		})
-	}); err != nil {
+	profiles, err := l.buildpackFiles(process, ProfileDDirName)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find all profile scripts in layers dir, '%s'", l.LayersDir)
 	}
 
@@ -92,7 +55,9 @@ func (l *Launcher) profiles(process Process) ([]string, error) {
 	} else if err != nil {
 		return nil, errors.Wrapf(err, "failed to determine if app profile script exists at path '%s'", filepath.Join(l.AppDir, appProfile))
 	}
-	appendIfFile(filepath.Join(l.AppDir, appProfile), fi)
+	if !fi.IsDir() {
+		profiles = append(profiles, appProfile)
+	}
 
 	return profiles, nil
 }

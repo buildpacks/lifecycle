@@ -11,13 +11,16 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 )
 
+const (
+	ProfileDDirName = "profile.d"
+	ExecDDirName    = "exec.d"
+)
+
 var (
 	LifecycleDir = filepath.Join(CNBDir, "lifecycle")
 	ProcessDir   = filepath.Join(CNBDir, "process")
 	LauncherPath = filepath.Join(LifecycleDir, "launcher"+exe)
 )
-
-type ExecFunc func(argv0 string, argv []string, envv []string) error
 
 type Launcher struct {
 	AppDir             string
@@ -25,6 +28,7 @@ type Launcher struct {
 	DefaultProcessType string
 	Env                Env
 	Exec               ExecFunc
+	ExecD              ExecD
 	Shell              Shell
 	LayersDir          string
 	PlatformAPI        *api.Version
@@ -32,8 +36,22 @@ type Launcher struct {
 	Setenv             func(string, string) error
 }
 
-// Launch uses cmd to select a process and launches that process
-//   For direct=false processes, self is used to set argv0 during profile script execution
+type ExecFunc func(argv0 string, argv []string, envv []string) error
+
+type ExecD interface {
+	ExecD(path string, env Env) error
+}
+
+type Env interface {
+	AddEnvDir(envDir string) error
+	AddRootDir(baseDir string) error
+	Get(string) string
+	List() []string
+	Set(name, k string)
+}
+
+// Launch uses cmd to select a process and launches that process.
+// For direct=false processes, self is used to set argv0 during profile script execution
 func (l *Launcher) Launch(self string, cmd []string) error {
 	process, err := l.ProcessFor(cmd)
 	if err != nil {
@@ -42,15 +60,19 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	return l.LaunchProcess(self, process)
 }
 
-// LaunchProcess launches the provided process
-//   For direct=false processes, self is used to set argv0 during profile script execution
+// LaunchProcess launches the provided process.
+// For direct=false processes, self is used to set argv0 during profile script execution
 func (l *Launcher) LaunchProcess(self string, process Process) error {
-	if err := l.env(process); err != nil {
-		return errors.Wrap(err, "modify env")
-	}
 	if err := os.Chdir(l.AppDir); err != nil {
 		return errors.Wrap(err, "change to app directory")
 	}
+	if err := l.env(process); err != nil {
+		return errors.Wrap(err, "modify env")
+	}
+	if err := l.execD(process); err != nil {
+		return errors.Wrap(err, "exec.d")
+	}
+
 	if process.Direct {
 		return l.launchDirect(process)
 	}
@@ -124,6 +146,85 @@ func (l *Launcher) env(process Process) error {
 	})
 }
 
+func (l *Launcher) execD(process Process) error {
+	execDs, err := l.buildpackFiles(process, ExecDDirName, supportsExecD)
+	if err != nil {
+		return errors.Wrapf(err, "failed to find all exec.d executables in layers dir, '%s'", l.LayersDir)
+	}
+	for _, execD := range execDs {
+		if err := l.ExecD.ExecD(execD, l.Env); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func supportsExecD(bp Buildpack) bool {
+	if bp.API == "" {
+		return false
+	}
+	return api.MustParse(bp.API).Compare(api.MustParse("0.5")) >= 0
+}
+
+func (l *Launcher) buildpackFiles(process Process, dirName string, filters ...func(Buildpack) bool) ([]string, error) {
+	var files []string
+
+	appendIfFile := func(path string, fi os.FileInfo) {
+		if !fi.IsDir() {
+			files = append(files, path)
+		}
+	}
+
+	appendFilesInDir := func(path string) error {
+		fis, err := ioutil.ReadDir(path)
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil {
+			return errors.Wrapf(err, "failed to list files in dir '%s'", path)
+		}
+
+		for _, fi := range fis {
+			appendIfFile(filepath.Join(path, fi.Name()), fi)
+		}
+		return nil
+	}
+
+	if err := l.eachBuildpack(func(path string) error {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		return eachDir(absPath, func(path string) error {
+			if err := appendFilesInDir(filepath.Join(path, dirName)); err != nil {
+				return err
+			}
+			if process.Type != "" {
+				return appendFilesInDir(filepath.Join(path, dirName, process.Type))
+			}
+			return nil
+		})
+	}, filters...); err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+func (l *Launcher) eachBuildpack(fn func(path string) error, filters ...func(bp Buildpack) bool) error {
+Loop:
+	for _, bp := range l.Buildpacks {
+		for _, filter := range filters {
+			if !filter(bp) {
+				continue Loop
+			}
+		}
+		if err := fn(filepath.Join(l.LayersDir, EscapeID(bp.ID))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func eachDir(dir string, fn func(path string) error) error {
 	files, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
@@ -136,15 +237,6 @@ func eachDir(dir string, fn func(path string) error) error {
 			continue
 		}
 		if err := fn(filepath.Join(dir, f.Name())); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (l *Launcher) eachBuildpack(fn func(path string) error) error {
-	for _, bp := range l.Buildpacks {
-		if err := fn(filepath.Join(l.LayersDir, EscapeID(bp.ID))); err != nil {
 			return err
 		}
 	}

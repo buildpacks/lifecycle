@@ -73,6 +73,10 @@ func (p *Env) AddEnvDir(envDir string) error {
 	})
 }
 
+func (p *Env) Set(name, v string) {
+	p.Vars.Set(name, v)
+}
+
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
 	vars := NewVars(p.Vars.vals, p.Vars.ignoreCase)
 
