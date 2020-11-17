@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up go
-        uses: actions/setup-go@v2-beta
+        uses: actions/setup-go@v2
         with:
           go-version: '1.15'
       - name: Install jq
@@ -37,7 +37,7 @@ jobs:
           git config --global core.symlinks true
       - uses: actions/checkout@v2
       - name: Set up go
-        uses: actions/setup-go@v2-beta
+        uses: actions/setup-go@v2
         with:
           go-version: '1.15'
       - name: Install jq
@@ -54,7 +54,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up go
-        uses: actions/setup-go@v2-beta
+        uses: actions/setup-go@v2
         with:
           go-version: '1.15'
       - name: Build
