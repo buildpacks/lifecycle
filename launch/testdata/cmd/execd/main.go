@@ -18,10 +18,14 @@ func main() {
 	f := os.NewFile(3, "/dev/fd/3")
 	defer f.Close()
 	val := "SOME_VAL"
-	if orig := os.Getenv("SOME_VAR"); orig != "" {
+	if orig := os.Getenv("APPEND_VAR"); orig != "" {
 		val = orig + "|" + val
 	}
-	if _, err := f.WriteString(fmt.Sprintf(`SOME_VAR = "%s"`, val)); err != nil {
+	if _, err := f.WriteString(fmt.Sprintf("APPEND_VAR = \"%s\"\n", val)); err != nil {
+		fmt.Println("ERROR: failed to write to FD 3:", err)
+		os.Exit(1)
+	}
+	if _, err := f.WriteString("OTHER_VAR = \"OTHER_VAL\"\n"); err != nil {
 		fmt.Println("ERROR: failed to write to FD 3:", err)
 		os.Exit(1)
 	}

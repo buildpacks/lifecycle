@@ -44,6 +44,10 @@ func TestLauncher(t *testing.T) {
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	when("Buildpack API >= 0.5", func() {
 		when("exec.d", func() {
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "exec.d is not yet supported on windows")
+			})
+
 			it("executes the binaries and modifies env before running profiles", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--env=VAR_FROM_EXEC_D=ORIG_VAL",
