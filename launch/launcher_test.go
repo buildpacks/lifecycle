@@ -270,7 +270,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						)
 					})
 
-					it("should run exec.d binaries after apply the static env files", func() {
+					it("should run exec.d binaries after static env files", func() {
 						gomock.InOrder(
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
