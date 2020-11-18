@@ -166,7 +166,7 @@ func supportsExecD(bp Buildpack) bool {
 	return api.MustParse(bp.API).Compare(api.MustParse("0.5")) >= 0
 }
 
-func (l *Launcher) buildpackFiles(process Process, dirName string, filters ...func(Buildpack) bool) ([]string, error) {
+func (l *Launcher) buildpackFiles(process Process, dirName string, predicates ...func(Buildpack) bool) ([]string, error) {
 	var files []string
 
 	appendIfFile := func(path string, fi os.FileInfo) {
@@ -204,19 +204,20 @@ func (l *Launcher) buildpackFiles(process Process, dirName string, filters ...fu
 			}
 			return nil
 		})
-	}, filters...); err != nil {
+	}, predicates...); err != nil {
 		return nil, err
 	}
 	return files, nil
 }
 
-func (l *Launcher) eachBuildpack(fn func(path string) error, filters ...func(bp Buildpack) bool) error {
-Loop:
+func (l *Launcher) eachBuildpack(fn func(path string) error, predicates ...func(bp Buildpack) bool) error {
 	for _, bp := range l.Buildpacks {
-		for _, filter := range filters {
-			if !filter(bp) {
-				continue Loop
-			}
+		var skip bool
+		for _, pred := range predicates {
+			skip = skip || !pred(bp)
+		}
+		if skip {
+			continue
 		}
 		if err := fn(filepath.Join(l.LayersDir, EscapeID(bp.ID))); err != nil {
 			return err
