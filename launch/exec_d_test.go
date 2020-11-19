@@ -103,7 +103,7 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 
 		when("windows", func() {
 			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS != "windows", "exec.d is not yet supported on windows")
+				h.SkipIf(t, runtime.GOOS != "windows", "windows test")
 			})
 
 			it("errors", func() {
