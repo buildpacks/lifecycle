@@ -50,7 +50,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 			it("executes the binaries and modifies env before running profiles", func() {
 				cmd := exec.Command("docker", "run", "--rm",
-					"--env=VAR_FROM_EXEC_D=ORIG_VAL",
+					"--env=VAR_FROM_EXEC_D=orig-val",
 					launchImage, "exec.d-checker")
 				expected := "/layers/0.5_buildpack/some_layer/exec.d/helper was executed\n"
 				expected += "Exec.d Working Dir: /workspace\n"
@@ -58,7 +58,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				expected += "Exec.d Working Dir: /workspace\n"
 				expected += "sourced bp profile\n"
 				expected += "sourced app profile\n"
-				expected += "VAR_FROM_EXEC_D: ORIG_VAL:VAL_FROM_EXEC_D:VAL_FROM_EXEC_D"
+				expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
 				assertOutput(t, cmd, expected)
 			})
 		})

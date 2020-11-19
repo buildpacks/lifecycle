@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -14,7 +15,12 @@ func main() {
 	}
 	fmt.Println("Exec.d Working Dir:", wd)
 	f := os.NewFile(3, "/dev/fd/3")
-	val := "VAL_FROM_EXEC_D"
+
+	parent := filepath.Base(filepath.Dir(os.Args[0]))
+	val := "val-from-exec.d"
+	if parent != "exec.d" {
+		val = "val-from-exec.d-for-process-type-" + parent
+	}
 	if orig := os.Getenv("VAR_FROM_EXEC_D"); orig != "" {
 		val = orig + ":" + val
 	}
