@@ -44,9 +44,11 @@ func (l *Launcher) launchWithShell(self string, process Process) error {
 }
 
 func (l *Launcher) profiles(process Process) ([]string, error) {
-	profiles, err := l.buildpackFiles(process, ProfileDDirName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to find all profile scripts in layers dir, '%s'", l.LayersDir)
+	var profiles []string
+	if err := l.eachBuildpack(func(path string) error {
+		return eachLayer(path, l.populateLayerProfiles(process, &profiles))
+	}); err != nil {
+		return nil, err
 	}
 
 	fi, err := os.Stat(filepath.Join(l.AppDir, appProfile))
@@ -60,6 +62,24 @@ func (l *Launcher) profiles(process Process) ([]string, error) {
 	}
 
 	return profiles, nil
+}
+
+func (l *Launcher) populateLayerProfiles(proc Process, profiles *[]string) action {
+	return func(path string) error {
+		if err := eachFile(filepath.Join(path, "profile.d"), func(path string) error {
+			*profiles = append(*profiles, path)
+			return nil
+		}); err != nil {
+			return err
+		}
+		if proc.Type == "" {
+			return nil
+		}
+		return eachFile(filepath.Join(path, "profile.d", proc.Type), func(path string) error {
+			*profiles = append(*profiles, path)
+			return nil
+		})
+	}
 }
 
 func (l *Launcher) isScript(process Process) (bool, error) {

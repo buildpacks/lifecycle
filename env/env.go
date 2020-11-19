@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type Env struct {
@@ -47,7 +49,7 @@ func (p *Env) AddRootDir(baseDir string) error {
 }
 
 func (p *Env) AddEnvDir(envDir string) error {
-	return eachEnvFile(envDir, func(k, v string) error {
+	if err := eachEnvFile(envDir, func(k, v string) error {
 		parts := strings.SplitN(k, ".", 2)
 		name := parts[0]
 		var action string
@@ -70,7 +72,10 @@ func (p *Env) AddEnvDir(envDir string) error {
 			p.Vars.Set(name, v+prefix(p.Vars.Get(name), delim(envDir, name, os.PathListSeparator)...))
 		}
 		return nil
-	})
+	}); err != nil {
+		return errors.Wrapf(err, "apply env files from dir '%s'", envDir)
+	}
+	return nil
 }
 
 func (p *Env) Set(name, v string) {

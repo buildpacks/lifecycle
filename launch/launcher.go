@@ -11,11 +11,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 )
 
-const (
-	ProfileDDirName = "profile.d"
-	ExecDDirName    = "exec.d"
-)
-
 var (
 	LifecycleDir = filepath.Join(CNBDir, "lifecycle")
 	ProcessDir   = filepath.Join(CNBDir, "process")
@@ -66,10 +61,10 @@ func (l *Launcher) LaunchProcess(self string, process Process) error {
 	if err := os.Chdir(l.AppDir); err != nil {
 		return errors.Wrap(err, "change to app directory")
 	}
-	if err := l.env(process); err != nil {
+	if err := l.doEnv(process); err != nil {
 		return errors.Wrap(err, "modify env")
 	}
-	if err := l.execD(process); err != nil {
+	if err := l.doExecD(process); err != nil {
 		return errors.Wrap(err, "exec.d")
 	}
 
@@ -97,66 +92,22 @@ func (l *Launcher) launchDirect(process Process) error {
 	return nil
 }
 
-func (l *Launcher) findProcessType(kind string) (Process, bool) {
-	for _, p := range l.Processes {
-		if p.Type == kind {
-			return p, true
-		}
-	}
-
-	return Process{}, false
-}
-
-func (l *Launcher) env(process Process) error {
-	appInfo, err := os.Stat(l.AppDir)
-	if err != nil {
-		return errors.Wrap(err, "find app directory")
-	}
-	return l.eachBuildpack(func(path string) error {
-		bpInfo, err := os.Stat(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return errors.Wrap(err, "find buildpack directory")
-		}
-		if os.SameFile(appInfo, bpInfo) {
-			return nil
-		}
-		if err := eachDir(path, func(path string) error {
-			return l.Env.AddRootDir(path)
-		}); err != nil {
+func (l *Launcher) doEnv(process Process) error {
+	return l.eachBuildpack(func(bpDir string) error {
+		if err := eachLayer(bpDir, l.doLayerRoot()); err != nil {
 			return errors.Wrap(err, "add layer root")
 		}
-		if err := eachDir(path, func(path string) error {
-			if err := l.Env.AddEnvDir(filepath.Join(path, "env")); err != nil {
-				return err
-			}
-			if err := l.Env.AddEnvDir(filepath.Join(path, "env.launch")); err != nil {
-				return err
-			}
-			if process.Type == "" {
-				return nil
-			}
-			return l.Env.AddEnvDir(filepath.Join(path, "env.launch", process.Type))
-		}); err != nil {
+		if err := eachLayer(bpDir, l.doLayerEnvFiles(process)); err != nil {
 			return errors.Wrap(err, "add layer env")
 		}
 		return nil
 	})
 }
 
-func (l *Launcher) execD(process Process) error {
-	execDs, err := l.buildpackFiles(process, ExecDDirName, supportsExecD)
-	if err != nil {
-		return errors.Wrapf(err, "failed to find all exec.d executables in layers dir, '%s'", l.LayersDir)
-	}
-	for _, execD := range execDs {
-		if err := l.ExecD.ExecD(execD, l.Env); err != nil {
-			return err
-		}
-	}
-	return nil
+func (l *Launcher) doExecD(process Process) error {
+	return l.eachBuildpack(func(path string) error {
+		return eachLayer(path, l.doLayerExecD(process))
+	}, supportsExecD)
 }
 
 func supportsExecD(bp Buildpack) bool {
@@ -166,51 +117,10 @@ func supportsExecD(bp Buildpack) bool {
 	return api.MustParse(bp.API).Compare(api.MustParse("0.5")) >= 0
 }
 
-func (l *Launcher) buildpackFiles(process Process, dirName string, predicates ...func(Buildpack) bool) ([]string, error) {
-	var files []string
+type action func(path string) error
+type bpPredicate func(bp Buildpack) bool
 
-	appendIfFile := func(path string, fi os.FileInfo) {
-		if !fi.IsDir() {
-			files = append(files, path)
-		}
-	}
-
-	appendFilesInDir := func(path string) error {
-		fis, err := ioutil.ReadDir(path)
-		if os.IsNotExist(err) {
-			return nil
-		}
-		if err != nil {
-			return errors.Wrapf(err, "failed to list files in dir '%s'", path)
-		}
-
-		for _, fi := range fis {
-			appendIfFile(filepath.Join(path, fi.Name()), fi)
-		}
-		return nil
-	}
-
-	if err := l.eachBuildpack(func(path string) error {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return err
-		}
-		return eachDir(absPath, func(path string) error {
-			if err := appendFilesInDir(filepath.Join(path, dirName)); err != nil {
-				return err
-			}
-			if process.Type != "" {
-				return appendFilesInDir(filepath.Join(path, dirName, process.Type))
-			}
-			return nil
-		})
-	}, predicates...); err != nil {
-		return nil, err
-	}
-	return files, nil
-}
-
-func (l *Launcher) eachBuildpack(fn func(path string) error, predicates ...func(bp Buildpack) bool) error {
+func (l *Launcher) eachBuildpack(fn action, predicates ...bpPredicate) error {
 	for _, bp := range l.Buildpacks {
 		var skip bool
 		for _, pred := range predicates {
@@ -219,25 +129,82 @@ func (l *Launcher) eachBuildpack(fn func(path string) error, predicates ...func(
 		if skip {
 			continue
 		}
-		if err := fn(filepath.Join(l.LayersDir, EscapeID(bp.ID))); err != nil {
+
+		dir := filepath.Join(l.LayersDir, EscapeID(bp.ID))
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			return nil
+		} else if err != nil {
+			return errors.Wrap(err, "find buildpack directory")
+		}
+		if err := fn(dir); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func eachDir(dir string, fn func(path string) error) error {
-	files, err := ioutil.ReadDir(dir)
+func (l *Launcher) doLayerRoot() action {
+	return func(path string) error {
+		return l.Env.AddRootDir(path)
+	}
+}
+
+func (l *Launcher) doLayerEnvFiles(proc Process) action {
+	return func(path string) error {
+		if err := l.Env.AddEnvDir(filepath.Join(path, "env")); err != nil {
+			return err
+		}
+		if err := l.Env.AddEnvDir(filepath.Join(path, "env.launch")); err != nil {
+			return err
+		}
+		if proc.Type == "" {
+			return nil
+		}
+		return l.Env.AddEnvDir(filepath.Join(path, "env.launch", proc.Type))
+	}
+}
+
+func (l *Launcher) doLayerExecD(proc Process) action {
+	return func(path string) error {
+		if err := eachFile(filepath.Join(path, "exec.d"), func(path string) error {
+			return l.ExecD.ExecD(path, l.Env)
+		}); err != nil {
+			return err
+		}
+		if proc.Type == "" {
+			return nil
+		}
+		return eachFile(filepath.Join(path, "exec.d", proc.Type), func(path string) error {
+			return l.ExecD.ExecD(path, l.Env)
+		})
+	}
+}
+
+func eachLayer(bpDir string, action action) error {
+	return eachInDir(bpDir, action, func(fi os.FileInfo) bool {
+		return fi.IsDir()
+	})
+}
+
+func eachFile(dir string, action action) error {
+	return eachInDir(dir, action, func(fi os.FileInfo) bool {
+		return !fi.IsDir()
+	})
+}
+
+func eachInDir(dir string, action action, pred func(fi os.FileInfo) bool) error {
+	fis, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
-	} else if err != nil {
-		return err
 	}
-	for _, f := range files {
-		if !f.IsDir() {
+	if err != nil {
+		return errors.Wrapf(err, "failed to list files in dir '%s'", dir)
+	}
+	for _, fi := range fis {
+		if !pred(fi) {
 			continue
 		}
-		if err := fn(filepath.Join(dir, f.Name())); err != nil {
+		if err := action(filepath.Join(dir, fi.Name())); err != nil {
 			return err
 		}
 	}
