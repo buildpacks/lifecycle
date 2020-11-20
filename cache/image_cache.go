@@ -95,12 +95,15 @@ func (c *ImageCache) Commit() error {
 		return errCacheCommitted
 	}
 
+	// Check if the cache image exists prior to saving the new cache at that same location
+	origImgExists := c.origImage.Found()
+
 	if err := c.newImage.Save(); err != nil {
 		return errors.Wrapf(err, "saving image '%s'", c.newImage.Name())
 	}
 	c.committed = true
 
-	if c.origImage.Found() {
+	if origImgExists {
 		// Deleting the original image is for cleanup only and should not fail the commit.
 		if err := c.DeleteOrigImage(); err != nil {
 			fmt.Printf("Unable to delete previous cache image: %v", err)
