@@ -23,19 +23,23 @@ Lifecycle Version | Platform APIs              | Buildpack APIs |
 
 ### Build
 
-* `detector` - chooses buildpacks (via `/bin/detect`)
-* `analyzer` - restores launch layer metadata from the previous build
-* `restorer` - restores cache
-* `builder` -  executes buildpacks (via `/bin/build`)
-* `exporter` - creates image and stores cache
+Either:
+* `detector` - Chooses buildpacks (via `/bin/detect`) and produces a build plan.
+* `analyzer` - Restores layer metadata from the previous image and from the cache.
+* `restorer` - Restores cached layers.
+* `builder` -  Executes buildpacks (via `/bin/build`).
+* `exporter` - Creates an image and caches layers.
+
+Or:
+* `creator` - Runs the five phases listed above in order.
 
 ### Run
 
-* `launcher` - invokes choice of process
+* `launcher` - Invokes a chosen process.
 
 ### Rebase
 
-* `rebaser` - remotely patches images with new base image
+* `rebaser` - Creates an image from a previous image with updated base layers.
 
 ## Development
 To test, build, and package binaries into an archive, simply run:
