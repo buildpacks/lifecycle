@@ -14,7 +14,7 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("Exec.d Working Dir:", wd)
-	f := os.NewFile(3, "/dev/fd/3")
+	f := os.NewFile(3, "fd3")
 
 	parent := filepath.Base(filepath.Dir(os.Args[0]))
 	val := "val-from-exec.d"

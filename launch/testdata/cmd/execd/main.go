@@ -15,7 +15,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	f := os.NewFile(3, "/dev/fd/3")
+	f := os.NewFile(3, "fd3")
 	defer f.Close()
 	val := "SOME_VAL"
 	if orig := os.Getenv("APPEND_VAR"); orig != "" {

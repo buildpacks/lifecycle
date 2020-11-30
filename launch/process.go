@@ -57,9 +57,9 @@ func (l *Launcher) processForLegacy(cmd []string) (Process, error) {
 	return l.userProvidedProcess(cmd)
 }
 
-func (l *Launcher) findProcessType(kind string) (Process, bool) {
+func (l *Launcher) findProcessType(pType string) (Process, bool) {
 	for _, p := range l.Processes {
-		if p.Type == kind {
+		if p.Type == pType {
 			return p, true
 		}
 	}

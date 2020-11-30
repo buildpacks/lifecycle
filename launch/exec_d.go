@@ -51,7 +51,7 @@ func (e *ExecDRunner) ExecD(path string, env Env) error {
 		return errors.Wrapf(cmdErr, "failed to execute exec.d file at path '%s'", path)
 	} else if err != nil {
 		// return the read error only if the command succeeded
-		return errors.Wrapf(cmdErr, "failed to read output from  exec.d file at path '%s'", path)
+		return errors.Wrapf(err, "failed to read output from  exec.d file at path '%s'", path)
 	}
 
 	envVars := map[string]string{}

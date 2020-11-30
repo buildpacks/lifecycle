@@ -48,43 +48,43 @@ type Env interface {
 // Launch uses cmd to select a process and launches that process.
 // For direct=false processes, self is used to set argv0 during profile script execution
 func (l *Launcher) Launch(self string, cmd []string) error {
-	process, err := l.ProcessFor(cmd)
+	proc, err := l.ProcessFor(cmd)
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
 	}
-	return l.LaunchProcess(self, process)
+	return l.LaunchProcess(self, proc)
 }
 
 // LaunchProcess launches the provided process.
 // For direct=false processes, self is used to set argv0 during profile script execution
-func (l *Launcher) LaunchProcess(self string, process Process) error {
+func (l *Launcher) LaunchProcess(self string, proc Process) error {
 	if err := os.Chdir(l.AppDir); err != nil {
 		return errors.Wrap(err, "change to app directory")
 	}
-	if err := l.doEnv(process); err != nil {
+	if err := l.doEnv(proc.Type); err != nil {
 		return errors.Wrap(err, "modify env")
 	}
-	if err := l.doExecD(process); err != nil {
+	if err := l.doExecD(proc.Type); err != nil {
 		return errors.Wrap(err, "exec.d")
 	}
 
-	if process.Direct {
-		return l.launchDirect(process)
+	if proc.Direct {
+		return l.launchDirect(proc)
 	}
-	return l.launchWithShell(self, process)
+	return l.launchWithShell(self, proc)
 }
 
-func (l *Launcher) launchDirect(process Process) error {
+func (l *Launcher) launchDirect(proc Process) error {
 	if err := l.Setenv("PATH", l.Env.Get("PATH")); err != nil {
 		return errors.Wrap(err, "set path")
 	}
-	binary, err := exec.LookPath(process.Command)
+	binary, err := exec.LookPath(proc.Command)
 	if err != nil {
 		return errors.Wrap(err, "path lookup")
 	}
 
 	if err := l.Exec(binary,
-		append([]string{process.Command}, process.Args...),
+		append([]string{proc.Command}, proc.Args...),
 		l.Env.List(),
 	); err != nil {
 		return errors.Wrap(err, "direct exec")
@@ -92,21 +92,21 @@ func (l *Launcher) launchDirect(process Process) error {
 	return nil
 }
 
-func (l *Launcher) doEnv(process Process) error {
+func (l *Launcher) doEnv(procType string) error {
 	return l.eachBuildpack(func(bpDir string) error {
 		if err := eachLayer(bpDir, l.doLayerRoot()); err != nil {
 			return errors.Wrap(err, "add layer root")
 		}
-		if err := eachLayer(bpDir, l.doLayerEnvFiles(process)); err != nil {
+		if err := eachLayer(bpDir, l.doLayerEnvFiles(procType)); err != nil {
 			return errors.Wrap(err, "add layer env")
 		}
 		return nil
 	})
 }
 
-func (l *Launcher) doExecD(process Process) error {
-	return l.eachBuildpack(func(path string) error {
-		return eachLayer(path, l.doLayerExecD(process))
+func (l *Launcher) doExecD(procType string) error {
+	return l.eachBuildpack(func(bpDir string) error {
+		return eachLayer(bpDir, l.doLayerExecD(procType))
 	}, supportsExecD)
 }
 
@@ -124,7 +124,7 @@ func (l *Launcher) eachBuildpack(fn action, predicates ...bpPredicate) error {
 	for _, bp := range l.Buildpacks {
 		var skip bool
 		for _, pred := range predicates {
-			skip = skip || !pred(bp)
+			skip = skip || !pred(bp) // skip unless all predicates return true
 		}
 		if skip {
 			continue
@@ -149,7 +149,7 @@ func (l *Launcher) doLayerRoot() action {
 	}
 }
 
-func (l *Launcher) doLayerEnvFiles(proc Process) action {
+func (l *Launcher) doLayerEnvFiles(procType string) action {
 	return func(path string) error {
 		if err := l.Env.AddEnvDir(filepath.Join(path, "env")); err != nil {
 			return err
@@ -157,24 +157,24 @@ func (l *Launcher) doLayerEnvFiles(proc Process) action {
 		if err := l.Env.AddEnvDir(filepath.Join(path, "env.launch")); err != nil {
 			return err
 		}
-		if proc.Type == "" {
+		if procType == "" {
 			return nil
 		}
-		return l.Env.AddEnvDir(filepath.Join(path, "env.launch", proc.Type))
+		return l.Env.AddEnvDir(filepath.Join(path, "env.launch", procType))
 	}
 }
 
-func (l *Launcher) doLayerExecD(proc Process) action {
+func (l *Launcher) doLayerExecD(procType string) action {
 	return func(path string) error {
 		if err := eachFile(filepath.Join(path, "exec.d"), func(path string) error {
 			return l.ExecD.ExecD(path, l.Env)
 		}); err != nil {
 			return err
 		}
-		if proc.Type == "" {
+		if procType == "" {
 			return nil
 		}
-		return eachFile(filepath.Join(path, "exec.d", proc.Type), func(path string) error {
+		return eachFile(filepath.Join(path, "exec.d", procType), func(path string) error {
 			return l.ExecD.ExecD(path, l.Env)
 		})
 	}
@@ -192,7 +192,7 @@ func eachFile(dir string, action action) error {
 	})
 }
 
-func eachInDir(dir string, action action, pred func(fi os.FileInfo) bool) error {
+func eachInDir(dir string, action action, predicate func(fi os.FileInfo) bool) error {
 	fis, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
@@ -201,7 +201,7 @@ func eachInDir(dir string, action action, pred func(fi os.FileInfo) bool) error 
 		return errors.Wrapf(err, "failed to list files in dir '%s'", dir)
 	}
 	for _, fi := range fis {
-		if !pred(fi) {
+		if !predicate(fi) {
 			continue
 		}
 		if err := action(filepath.Join(dir, fi.Name())); err != nil {
