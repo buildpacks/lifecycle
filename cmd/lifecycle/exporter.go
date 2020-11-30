@@ -307,7 +307,7 @@ func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.
 		opts...,
 	)
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "new app image")
+		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
 	runImage, err := remote.NewImage(runImageRef, auth.NewKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
