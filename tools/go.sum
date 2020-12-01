@@ -93,6 +93,7 @@ github.com/bombsimon/wsl/v3 v3.1.0 h1:E5SRssoBgtVFPcYWUOFJEcgaySgdtTNYzsSKDOY7ss
 github.com/bombsimon/wsl/v3 v3.1.0/go.mod h1:st10JtZYLE4D5sC7b8xV4zTKZwAQjCH/Hy2Pm1FNZIc=
 github.com/buildpacks/imgutil v0.0.0-20201022190551-6525b8cdcdd0 h1:NfMkYsjGmNJGl80WHEa4rGM1hU8IDUIdqBiPZpxkvRM=
 github.com/buildpacks/imgutil v0.0.0-20201022190551-6525b8cdcdd0/go.mod h1:tG2oQSjijSLsymHJz/K3dJyUfmQ72dBfxDqWlNMPFUQ=
+github.com/buildpacks/imgutil v0.0.0-20201201142712-a6b11a745ca6/go.mod h1:jrlRd+Htv2BB3l5ri0TBj49Nk5NuakkOe6Nx4+EUjYM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
@@ -298,8 +299,11 @@ github.com/google/go-cmp v0.4.1/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.2 h1:X2ev0eStA3AbceY54o37/0PQ/UWqKEiiO2dKL5OPaFM=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/google/go-cmp v0.5.4 h1:L8R9j+yAqZuZjsqh/z+F1NCffTKKLShY6zXTItVIZ8M=
+github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-containerregistry v0.1.4 h1:fZm+V2pYnvb8NMPM1YOsyxr31XKfpHTun5oVTRnG8qc=
 github.com/google/go-containerregistry v0.1.4/go.mod h1:6EGiuQp36pL82lX6rFN0s9AJOVL0Mlgx/DAsYZW5X3s=
+github.com/google/go-containerregistry v0.2.0/go.mod h1:Ts3Wioz1r5ayWx8sS6vLcWltWcM1aqFjd/eVrkFhrWM=
 github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367/go.mod h1:HP5RmnzzSNb993RKQDq4+1A4ia9nllfqcQFTQJedwGI=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/gofuzz v1.1.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
