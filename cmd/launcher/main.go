@@ -45,6 +45,7 @@ func runLaunch() error {
 		Buildpacks:         md.Buildpacks,
 		Env:                env.NewLaunchEnv(os.Environ(), launch.ProcessDir, launch.LifecycleDir),
 		Exec:               launch.OSExecFunc,
+		ExecD:              launch.NewExecDRunner(),
 		Shell:              launch.DefaultShell,
 		Setenv:             os.Setenv,
 	}

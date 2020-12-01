@@ -88,3 +88,15 @@ func (mr *MockEnvMockRecorder) List() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockEnv)(nil).List))
 }
+
+// Set mocks base method
+func (m *MockEnv) Set(arg0, arg1 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Set", arg0, arg1)
+}
+
+// Set indicates an expected call of Set
+func (mr *MockEnvMockRecorder) Set(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockEnv)(nil).Set), arg0, arg1)
+}

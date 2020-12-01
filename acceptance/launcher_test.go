@@ -42,6 +42,28 @@ func TestLauncher(t *testing.T) {
 }
 
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
+	when("Buildpack API >= 0.5", func() {
+		when("exec.d", func() {
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "exec.d is not yet supported on windows")
+			})
+
+			it("executes the binaries and modifies env before running profiles", func() {
+				cmd := exec.Command("docker", "run", "--rm",
+					"--env=VAR_FROM_EXEC_D=orig-val",
+					launchImage, "exec.d-checker")
+				expected := "/layers/0.5_buildpack/some_layer/exec.d/helper was executed\n"
+				expected += "Exec.d Working Dir: /workspace\n"
+				expected += "/layers/0.5_buildpack/some_layer/exec.d/exec.d-checker/helper was executed\n"
+				expected += "Exec.d Working Dir: /workspace\n"
+				expected += "sourced bp profile\n"
+				expected += "sourced app profile\n"
+				expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
+				assertOutput(t, cmd, expected)
+			})
+		})
+	})
+
 	when("Platform API >= 0.4", func() {
 		when("entrypoint is a process", func() {
 			it("launches that process", func() {

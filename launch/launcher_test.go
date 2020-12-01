@@ -21,6 +21,7 @@ import (
 )
 
 //go:generate mockgen -package testmock -destination testmock/launch_env.go github.com/buildpacks/lifecycle/launch Env
+//go:generate mockgen -package testmock -destination testmock/launch_execd.go github.com/buildpacks/lifecycle/launch ExecD
 
 func TestLauncher(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -49,6 +50,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		launcher            *launch.Launcher
 		mockCtrl            *gomock.Controller
 		env                 *testmock.MockEnv
+		execd               *testmock.MockExecD
 		tmpDir              string
 		syscallExecArgsColl []syscallExecArgs
 		envList             = []string{"TEST_ENV_ONE=1", "TEST_ENV_TWO=2"}
@@ -58,6 +60,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
 		env = testmock.NewMockEnv(mockCtrl)
+		execd = testmock.NewMockExecD(mockCtrl)
 		env.EXPECT().List().Return(envList).AnyTimes()
 
 		var err error
@@ -76,6 +79,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			Buildpacks: []launch.Buildpack{
 				{API: "0.3", ID: "0.3/buildpack"},
 				{API: "0.4", ID: "0.4/buildpack"},
+				{API: "0.5", ID: "0.5/buildpack"},
 			},
 			Env: env,
 			Exec: func(argv0 string, argv []string, envv []string) error {
@@ -86,6 +90,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				})
 				return nil
 			},
+			ExecD: execd,
 		}
 		wd, err = os.Getwd()
 		if err != nil {
@@ -180,6 +185,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2"),
 						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3"),
 						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4"),
+						filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5"),
 					)
 				})
 
@@ -198,6 +204,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch")),
 						env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env")),
 						env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch")),
+
+						env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
+						env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env")),
+						env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch")),
 					)
 					h.AssertNil(t, launcher.LaunchProcess("", process))
 					if len(syscallExecArgsColl) != 1 {
@@ -207,7 +217,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				when("process is buildpack-provided", func() {
 					it.Before(func() {
-						process.Type = "start"
+						process.Type = "some-process-type"
 					})
 
 					it("should apply process-specific env modifications", func() {
@@ -216,24 +226,143 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "some-process-type")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "some-process-type")),
 
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "some-process-type")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "some-process-type")),
+
+							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch", "some-process-type")),
 						)
 						h.AssertNil(t, launcher.LaunchProcess("", process))
 						if len(syscallExecArgsColl) != 1 {
 							t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 						}
+					})
+				})
+
+				when("buildpack API supports exec.d", func() {
+					it.Before(func() {
+						mkdir(t,
+							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d"),
+							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d", "some-process-type"),
+							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d"),
+							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type"),
+						)
+
+						// exec.d binaries from buildpacks with API < 0.5 should be ignored
+						mkfile(t, "",
+							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d", "exec_d_1"),
+							filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "exec.d", "some-process-type", "exec_d_1"),
+						)
+
+						// exec.d binaries from buildpacks with API >= 0.5 should be executed
+						mkfile(t, "",
+							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_1"),
+							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_2"),
+							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_1"),
+							filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_2"),
+						)
+					})
+
+					it("should run exec.d binaries after static env files", func() {
+						gomock.InOrder(
+							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
+							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch")),
+
+							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
+							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch")),
+
+							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch")),
+
+							execd.EXPECT().ExecD(
+								filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_1"),
+								env,
+							),
+							execd.EXPECT().ExecD(
+								filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_2"),
+								env,
+							),
+						)
+						h.AssertNil(t, launcher.LaunchProcess("", process))
+						if len(syscallExecArgsColl) != 1 {
+							t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
+						}
+					})
+
+					when("process is buildpack-provided", func() {
+						it.Before(func() {
+							process.Type = "some-process-type"
+						})
+
+						it("should run process-specific exec.d binaries", func() {
+							gomock.InOrder(
+								env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
+								env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "some-process-type")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "some-process-type")),
+
+								env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
+								env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "some-process-type")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "some-process-type")),
+
+								env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch")),
+								env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "env.launch", "some-process-type")),
+
+								execd.EXPECT().ExecD(
+									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_1"),
+									env,
+								),
+								execd.EXPECT().ExecD(
+									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "exec_d_2"),
+									env,
+								),
+								execd.EXPECT().ExecD(
+									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_1"),
+									env,
+								),
+								execd.EXPECT().ExecD(
+									filepath.Join(tmpDir, "launch", "0.5_buildpack", "layer5", "exec.d", "some-process-type", "exec_d_2"),
+									env,
+								),
+							)
+							h.AssertNil(t, launcher.LaunchProcess("", process))
+							if len(syscallExecArgsColl) != 1 {
+								t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
+							}
+						})
 					})
 				})
 			})
@@ -271,21 +400,21 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					mkdir(t,
 						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d"),
-						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "start"),
+						filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type"),
 						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d"),
-						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "start"),
+						filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type"),
 					)
 
 					if runtime.GOOS == "windows" {
 						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "start", "prof1.bat"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"))
 						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2.bat"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "start", "prof2.bat"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"))
 					} else {
 						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "start", "prof1"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1"))
 						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2"))
-						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "start", "prof2"))
+						mkfile(t, "", filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2"))
 					}
 
 					env.EXPECT().AddRootDir(gomock.Any()).AnyTimes()
@@ -310,7 +439,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				when("process has a type", func() {
 					it.Before(func() {
-						process.Type = "start"
+						process.Type = "some-process-type"
 					})
 
 					it("includes type-specifc  profiles", func() {
@@ -319,16 +448,16 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						if runtime.GOOS == "windows" {
 							h.AssertEq(t, shell.process.Profiles, []string{
 								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1.bat"),
-								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "start", "prof1.bat"),
+								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1.bat"),
 								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2.bat"),
-								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "start", "prof2.bat"),
+								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2.bat"),
 							})
 						} else {
 							h.AssertEq(t, shell.process.Profiles, []string{
 								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "prof1"),
-								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "start", "prof1"),
+								filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer", "profile.d", "some-process-type", "prof1"),
 								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "prof2"),
-								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "start", "prof2"),
+								filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer", "profile.d", "some-process-type", "prof2"),
 							})
 						}
 					})
@@ -367,7 +496,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				when("process has a type", func() {
 					it.Before(func() {
-						process.Type = "start"
+						process.Type = "some-process-type"
 					})
 
 					it("should apply type-specific env modifications", func() {
@@ -376,19 +505,19 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1", "env.launch", "some-process-type")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2", "env.launch", "some-process-type")),
 
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3")),
 							env.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer3", "env.launch", "some-process-type")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env")),
 							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch")),
-							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "start")),
+							env.EXPECT().AddEnvDir(filepath.Join(tmpDir, "launch", "0.4_buildpack", "layer4", "env.launch", "some-process-type")),
 						)
 						h.AssertNil(t, launcher.LaunchProcess("", process))
 						h.AssertEq(t, shell.nCalls, 1)

@@ -57,6 +57,16 @@ func (l *Launcher) processForLegacy(cmd []string) (Process, error) {
 	return l.userProvidedProcess(cmd)
 }
 
+func (l *Launcher) findProcessType(pType string) (Process, bool) {
+	for _, p := range l.Processes {
+		if p.Type == pType {
+			return p, true
+		}
+	}
+
+	return Process{}, false
+}
+
 func (l *Launcher) userProvidedProcess(cmd []string) (Process, error) {
 	if len(cmd) == 0 {
 		return Process{}, errors.New("when there is no default process a command is required")

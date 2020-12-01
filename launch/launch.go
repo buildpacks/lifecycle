@@ -14,9 +14,9 @@ type Process struct {
 	BuildpackID string   `toml:"buildpack-id" json:"buildpackID"`
 }
 
-// ProcessPath returns the absolute path to the symlink for a given processType
-func ProcessPath(processType string) string {
-	return filepath.Join(ProcessDir, processType+exe)
+// ProcessPath returns the absolute path to the symlink for a given process type
+func ProcessPath(pType string) string {
+	return filepath.Join(ProcessDir, pType+exe)
 }
 
 type Metadata struct {
@@ -24,9 +24,9 @@ type Metadata struct {
 	Buildpacks []Buildpack `toml:"buildpacks" json:"buildpacks"`
 }
 
-func (m Metadata) FindProcessType(kind string) (Process, bool) {
+func (m Metadata) FindProcessType(pType string) (Process, bool) {
 	for _, p := range m.Processes {
-		if p.Type == kind {
+		if p.Type == pType {
 			return p, true
 		}
 	}
@@ -36,13 +36,6 @@ func (m Metadata) FindProcessType(kind string) (Process, bool) {
 type Buildpack struct {
 	API string `toml:"api"`
 	ID  string `toml:"id"`
-}
-
-type Env interface {
-	AddRootDir(baseDir string) error
-	AddEnvDir(envDir string) error
-	List() []string
-	Get(string) string
 }
 
 func EscapeID(id string) string {
