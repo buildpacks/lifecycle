@@ -185,9 +185,9 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("default action matches a suffix", func() {
+			when("default action is Override", func() {
 				it("should preform that action", func() {
-					it("should prepend with pathlist separator or given delimiter", func() {
+					it("should override the value with the new value", func() {
 						envv.Vars = env.NewVars(map[string]string{
 							"VAR_NORMAL": "value-normal-orig",
 						}, false)
