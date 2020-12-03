@@ -505,7 +505,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						process.Type = "some-process-type"
 					})
 
-					it.Focus("should apply type-specific env modifications", func() {
+					it("should apply type-specific env modifications", func() {
 						gomock.InOrder(
 							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer1")),
 							mockEnv.EXPECT().AddRootDir(filepath.Join(tmpDir, "launch", "0.3_buildpack", "layer2")),
