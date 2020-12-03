@@ -18,6 +18,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -33,7 +34,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		builder        *lifecycle.Builder
 		mockCtrl       *gomock.Controller
-		env            *testmock.MockBuildEnv
+		mockEnv        *testmock.MockBuildEnv
 		stdout, stderr *bytes.Buffer
 		tmpDir         string
 		platformDir    string
@@ -43,7 +44,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
-		env = testmock.NewMockBuildEnv(mockCtrl)
+		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
@@ -64,10 +65,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			PlatformDir:   platformDir,
 			BuildpacksDir: buildpacksDir,
 			PlatformAPI:   api.MustParse("0.3"),
-			Env:           env,
+			Env:           mockEnv,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+					{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
@@ -84,8 +85,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Build", func() {
 		when("building succeeds", func() {
 			it.Before(func() {
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
 			})
 
 			when("platformApi is less than 0.4", func() {
@@ -144,19 +145,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(appDir, "layers-B-v2", "layer6.toml"),
 				)
 				gomock.InOrder(
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build")),
+					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
+					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env"), env.ActionTypeOverride),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build"), env.ActionTypeOverride),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypeOverride),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypeOverride),
 
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer4")),
-					env.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer6")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env.build")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env")),
-					env.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env.build")),
+					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer4")),
+					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "B", "layer6")),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env"), env.ActionTypePrependPath),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer4", "env.build"), env.ActionTypePrependPath),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env"), env.ActionTypePrependPath),
+					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "B", "layer6", "env.build"), env.ActionTypePrependPath),
 				)
 				if _, err := builder.Build(); err != nil {
 					t.Fatalf("Error: %s\n", err)
@@ -197,7 +198,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{Type: "override-type", Command: "B-cmd", BuildpackID: "B"},
 					},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
@@ -213,7 +214,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v2", API: "0.2"},
 					},
 				}); s != "" {
@@ -367,7 +368,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				if s := cmp.Diff(metadata, &lifecycle.BuildMetadata{
 					Processes: []launch.Process{},
 					Buildpacks: []lifecycle.Buildpack{
-						{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+						{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v2", API: "0.2"},
 					},
 					BOM: []lifecycle.BOMEntry{
@@ -444,8 +445,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("building succeeds with a clear env", func() {
 			it.Before(func() {
-				env.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=with-platform"), nil)
+				mockEnv.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=with-platform"), nil)
 				builder.Group.Group[0].Version = "v1.clear"
 			})
 
@@ -511,7 +512,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when any build plan entry is invalid", func() {
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				mkfile(t, "bad-key", filepath.Join(appDir, "build-plan-out-A-v1.toml"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error.\n")
@@ -521,7 +522,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when the env cannot be found", func() {
-				env.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error.\n")
 				} else if !strings.Contains(err.Error(), "some error") {
@@ -530,7 +531,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when the command fails", func() {
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				if err := os.RemoveAll(platformDir); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
@@ -549,25 +550,25 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				each(it, []func(){
 					func() {
-						env.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
-						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
 					},
 					func() {
-						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
 					},
 					func() {
-						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						env.EXPECT().AddEnvDir(gomock.Any()).Return(nil)
-						env.EXPECT().AddEnvDir(gomock.Any()).Return(appendErr)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
 					},
 				}, "should error", func() {
-					env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 					mkdir(t,
 						filepath.Join(appDir, "layers-A-v1", "layer1"),
 						filepath.Join(appDir, "layers-A-v1", "layer2"),
@@ -583,7 +584,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should error when launch.toml is not writable", func() {
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
 				if _, err := builder.Build(); err == nil {
 					t.Fatal("Expected error")
@@ -593,8 +594,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("platformApi is less than 0.4", func() {
 				when("bom version is set both in the top level and in the metadata", func() {
 					it("returns an error", func() {
-						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
 						builder.PlatformAPI = api.MustParse("0.3")
 						mkfile(t,
 							"[[entries]]\n"+
@@ -615,8 +616,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("platformApi is at least 0.4", func() {
 				when("bom version is set both in the top level and in the metadata", func() {
 					it("returns an error", func() {
-						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-						env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
+						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Bv2"), nil)
 						builder.PlatformAPI = api.MustParse("0.4")
 						mkfile(t,
 							"[[entries]]\n"+

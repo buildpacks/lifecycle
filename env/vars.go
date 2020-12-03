@@ -7,6 +7,21 @@ type Vars struct {
 	ignoreCase bool
 }
 
+func varsFromEnviron(environ []string, ignoreCase bool, removeKey func(string) bool) *Vars {
+	vars := NewVars(nil, ignoreCase)
+	for _, kv := range environ {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		if removeKey(parts[0]) {
+			continue
+		}
+		vars.Set(parts[0], parts[1])
+	}
+	return vars
+}
+
 func NewVars(vars map[string]string, ignoreCase bool) *Vars {
 	s := &Vars{
 		vals:       map[string]string{},

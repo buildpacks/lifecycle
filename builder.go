@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -31,7 +32,7 @@ type Builder struct {
 
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
-	AddEnvDir(envDir string) error
+	AddEnvDir(envDir string, defaultAction env.ActionType) error
 	WithPlatform(platformDir string) ([]string, error)
 	List() []string
 }
@@ -131,7 +132,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		if err := cmd.Run(); err != nil {
 			return nil, NewLifecycleError(err, ErrTypeBuildpack)
 		}
-		if err := setupEnv(b.Env, bpLayersDir); err != nil {
+		if err := b.setupEnv(api.MustParse(bp.API), bpLayersDir); err != nil {
 			return nil, err
 		}
 		var bpPlanOut BuildpackPlan
@@ -248,12 +249,12 @@ func (bom *BOMEntry) convertVersionToMetadata() error {
 	return nil
 }
 
-func setupEnv(env BuildEnv, layersDir string) error {
+func (b *Builder) setupEnv(bpAPI *api.Version, layersDir string) error {
 	if err := eachDir(layersDir, func(path string) error {
 		if !isBuild(path + ".toml") {
 			return nil
 		}
-		return env.AddRootDir(path)
+		return b.Env.AddRootDir(path)
 	}); err != nil {
 		return err
 	}
@@ -262,10 +263,10 @@ func setupEnv(env BuildEnv, layersDir string) error {
 		if !isBuild(path + ".toml") {
 			return nil
 		}
-		if err := env.AddEnvDir(filepath.Join(path, "env")); err != nil {
+		if err := b.Env.AddEnvDir(filepath.Join(path, "env"), env.DefaultActionType(bpAPI)); err != nil {
 			return err
 		}
-		return env.AddEnvDir(filepath.Join(path, "env.build"))
+		return b.Env.AddEnvDir(filepath.Join(path, "env.build"), env.DefaultActionType(bpAPI))
 	})
 }
 

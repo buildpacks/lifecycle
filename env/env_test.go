@@ -102,61 +102,111 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#AddEnvDir", func() {
-		it("should append env vars as filename=file-contents", func() {
-			mkdir(t, filepath.Join(tmpDir, "some-dir"))
-			mkfile(t, "value-normal", filepath.Join(tmpDir, "VAR_NORMAL"), filepath.Join(tmpDir, "VAR_NORMAL_NEW"))
-			mkfile(t, "value-normal-delim", filepath.Join(tmpDir, "VAR_NORMAL_DELIM"), filepath.Join(tmpDir, "VAR_NORMAL_DELIM_NEW"))
-			mkfile(t, "[]", filepath.Join(tmpDir, "VAR_NORMAL_DELIM.delim"), filepath.Join(tmpDir, "VAR_NORMAL_DELIM_NEW.delim"))
+		when("env files have a suffix", func() {
+			it.Before(func() {
+				mkdir(t, filepath.Join(tmpDir, "some-dir"))
+				mkfile(t, "value-append", filepath.Join(tmpDir, "VAR_APPEND.append"), filepath.Join(tmpDir, "VAR_APPEND_NEW.append"))
+				mkfile(t, "value-append-delim", filepath.Join(tmpDir, "VAR_APPEND_DELIM.append"), filepath.Join(tmpDir, "VAR_APPEND_DELIM_NEW.append"))
+				mkfile(t, "[]", filepath.Join(tmpDir, "VAR_APPEND_DELIM.delim"), filepath.Join(tmpDir, "VAR_APPEND_DELIM_NEW.delim"))
 
-			mkfile(t, "value-append", filepath.Join(tmpDir, "VAR_APPEND.append"), filepath.Join(tmpDir, "VAR_APPEND_NEW.append"))
-			mkfile(t, "value-append-delim", filepath.Join(tmpDir, "VAR_APPEND_DELIM.append"), filepath.Join(tmpDir, "VAR_APPEND_DELIM_NEW.append"))
-			mkfile(t, "[]", filepath.Join(tmpDir, "VAR_APPEND_DELIM.delim"), filepath.Join(tmpDir, "VAR_APPEND_DELIM_NEW.delim"))
+				mkfile(t, "value-prepend", filepath.Join(tmpDir, "VAR_PREPEND.prepend"), filepath.Join(tmpDir, "VAR_PREPEND_NEW.prepend"))
+				mkfile(t, "value-prepend-delim", filepath.Join(tmpDir, "VAR_PREPEND_DELIM.prepend"), filepath.Join(tmpDir, "VAR_PREPEND_DELIM_NEW.prepend"))
+				mkfile(t, "[]", filepath.Join(tmpDir, "VAR_PREPEND_DELIM.delim"), filepath.Join(tmpDir, "VAR_PREPEND_DELIM_NEW.delim"))
 
-			mkfile(t, "value-prepend", filepath.Join(tmpDir, "VAR_PREPEND.prepend"), filepath.Join(tmpDir, "VAR_PREPEND_NEW.prepend"))
-			mkfile(t, "value-prepend-delim", filepath.Join(tmpDir, "VAR_PREPEND_DELIM.prepend"), filepath.Join(tmpDir, "VAR_PREPEND_DELIM_NEW.prepend"))
-			mkfile(t, "[]", filepath.Join(tmpDir, "VAR_PREPEND_DELIM.delim"), filepath.Join(tmpDir, "VAR_PREPEND_DELIM_NEW.delim"))
+				mkfile(t, "value-default", filepath.Join(tmpDir, "VAR_DEFAULT.default"), filepath.Join(tmpDir, "VAR_DEFAULT_NEW.default"))
+				mkfile(t, "value-override", filepath.Join(tmpDir, "VAR_OVERRIDE.override"), filepath.Join(tmpDir, "VAR_OVERRIDE_NEW.override"))
+				mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
+			})
 
-			mkfile(t, "value-default", filepath.Join(tmpDir, "VAR_DEFAULT.default"), filepath.Join(tmpDir, "VAR_DEFAULT_NEW.default"))
-			mkfile(t, "value-override", filepath.Join(tmpDir, "VAR_OVERRIDE.override"), filepath.Join(tmpDir, "VAR_OVERRIDE_NEW.override"))
-			mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
+			it("preform the matching action", func() {
+				envv.Vars = env.NewVars(map[string]string{
+					"VAR_APPEND":        "value-append-orig",
+					"VAR_APPEND_DELIM":  "value-append-delim-orig",
+					"VAR_PREPEND":       "value-prepend-orig",
+					"VAR_PREPEND_DELIM": "value-prepend-delim-orig",
+					"VAR_DEFAULT":       "value-default-orig",
+					"VAR_OVERRIDE":      "value-override-orig",
+				}, false)
+				if err := envv.AddEnvDir(tmpDir, ""); err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				out := envv.List()
+				sort.Strings(out)
 
-			envv.Vars = env.NewVars(map[string]string{
-				"VAR_NORMAL":        "value-normal-orig",
-				"VAR_NORMAL_DELIM":  "value-normal-delim-orig",
-				"VAR_APPEND":        "value-append-orig",
-				"VAR_APPEND_DELIM":  "value-append-delim-orig",
-				"VAR_PREPEND":       "value-prepend-orig",
-				"VAR_PREPEND_DELIM": "value-prepend-delim-orig",
-				"VAR_DEFAULT":       "value-default-orig",
-				"VAR_OVERRIDE":      "value-override-orig",
-			}, false)
-			if err := envv.AddEnvDir(tmpDir); err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			out := envv.List()
-			sort.Strings(out)
+				expected := []string{
+					"VAR_APPEND=value-append-origvalue-append",
+					"VAR_APPEND_DELIM=value-append-delim-orig[]value-append-delim",
+					"VAR_APPEND_DELIM_NEW=value-append-delim",
+					"VAR_APPEND_NEW=value-append",
+					"VAR_DEFAULT=value-default-orig",
+					"VAR_DEFAULT_NEW=value-default",
+					"VAR_OVERRIDE=value-override",
+					"VAR_OVERRIDE_NEW=value-override",
+					"VAR_PREPEND=value-prependvalue-prepend-orig",
+					"VAR_PREPEND_DELIM=value-prepend-delim[]value-prepend-delim-orig",
+					"VAR_PREPEND_DELIM_NEW=value-prepend-delim",
+					"VAR_PREPEND_NEW=value-prepend",
+				}
+				if s := cmp.Diff(out, expected); s != "" {
+					t.Fatalf("Unexpected env:\n%s\n", s)
+				}
+			})
+		})
 
-			expected := []string{
-				formEnv("VAR_APPEND", "value-append-origvalue-append"),
-				formEnv("VAR_APPEND_DELIM", "value-append-delim-orig[]value-append-delim"),
-				formEnv("VAR_APPEND_DELIM_NEW", "value-append-delim"),
-				formEnv("VAR_APPEND_NEW", "value-append"),
-				formEnv("VAR_DEFAULT", "value-default-orig"),
-				formEnv("VAR_DEFAULT_NEW", "value-default"),
-				formEnv("VAR_NORMAL", "value-normal", "value-normal-orig"),
-				formEnv("VAR_NORMAL_DELIM", "value-normal-delim[]value-normal-delim-orig"),
-				formEnv("VAR_NORMAL_DELIM_NEW", "value-normal-delim"),
-				formEnv("VAR_NORMAL_NEW", "value-normal"),
-				formEnv("VAR_OVERRIDE", "value-override"),
-				formEnv("VAR_OVERRIDE_NEW", "value-override"),
-				formEnv("VAR_PREPEND", "value-prependvalue-prepend-orig"),
-				formEnv("VAR_PREPEND_DELIM", "value-prepend-delim[]value-prepend-delim-orig"),
-				formEnv("VAR_PREPEND_DELIM_NEW", "value-prepend-delim"),
-				formEnv("VAR_PREPEND_NEW", "value-prepend"),
-			}
-			if s := cmp.Diff(out, expected); s != "" {
-				t.Fatalf("Unexpected env:\n%s\n", s)
-			}
+		when("env files have no suffix", func() {
+			it.Before(func() {
+				mkdir(t, filepath.Join(tmpDir, "some-dir"))
+				mkfile(t, "value-normal", filepath.Join(tmpDir, "VAR_NORMAL"), filepath.Join(tmpDir, "VAR_NORMAL_NEW"))
+				mkfile(t, "value-normal-delim", filepath.Join(tmpDir, "VAR_NORMAL_DELIM"), filepath.Join(tmpDir, "VAR_NORMAL_DELIM_NEW"))
+				mkfile(t, "[]", filepath.Join(tmpDir, "VAR_NORMAL_DELIM.delim"), filepath.Join(tmpDir, "VAR_NORMAL_DELIM_NEW.delim"))
+			})
+
+			when("default action is PrependPath", func() {
+				it("should prepend with pathlist separator or given delimiter", func() {
+					envv.Vars = env.NewVars(map[string]string{
+						"VAR_NORMAL":       "value-normal-orig",
+						"VAR_NORMAL_DELIM": "value-normal-delim-orig",
+					}, false)
+					if err := envv.AddEnvDir(tmpDir, env.ActionTypePrependPath); err != nil {
+						t.Fatalf("Error: %s\n", err)
+					}
+					out := envv.List()
+					sort.Strings(out)
+
+					expected := []string{
+						"VAR_NORMAL=value-normal" + string(os.PathListSeparator) + "value-normal-orig",
+						"VAR_NORMAL_DELIM=value-normal-delim[]value-normal-delim-orig",
+						"VAR_NORMAL_DELIM_NEW=value-normal-delim",
+						"VAR_NORMAL_NEW=value-normal",
+					}
+					if s := cmp.Diff(out, expected); s != "" {
+						t.Fatalf("Unexpected env:\n%s\n", s)
+					}
+				})
+			})
+
+			when("default action matches a suffix", func() {
+				it("should preform that action", func() {
+					it("should prepend with pathlist separator or given delimiter", func() {
+						envv.Vars = env.NewVars(map[string]string{
+							"VAR_NORMAL": "value-normal-orig",
+						}, false)
+						if err := envv.AddEnvDir(tmpDir, env.ActionTypeOverride); err != nil {
+							t.Fatalf("Error: %s\n", err)
+						}
+						out := envv.List()
+						sort.Strings(out)
+
+						expected := []string{
+							"VAR_NORMAL=value-normal",
+							"VAR_NORMAL_NEW=value-normal",
+						}
+						if s := cmp.Diff(out, expected); s != "" {
+							t.Fatalf("Unexpected env:\n%s\n", s)
+						}
+					})
+				})
+			})
 		})
 	})
 
