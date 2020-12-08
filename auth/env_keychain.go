@@ -12,27 +12,37 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewKeychain returns either a EnvKeychain or a authn.DefaultKeychain depending on whether the provided environment variable is set
-func NewKeychain(envVar string) authn.Keychain {
+// ResolveKeychain returns either:
+// * a resolved keychain from the ggcr DefaultKeychain or
+// * a multi-keychain with a resolved keychain from the provided environment variable, and a resolved keychain from the ggcr DefaultKeychain
+// depending on whether the provided environment variable is set
+func ResolveKeychain(envVar string, images []string, overrideKeychain ...authn.Keychain) (authn.Keychain, error) {
+	fallbackKeychain := authn.DefaultKeychain
+	if len(overrideKeychain) == 1 {
+		fallbackKeychain = overrideKeychain[0]
+	}
+	defaultKeychain := resolvedKeychain{Auths: buildEnvMap(fallbackKeychain, images...)}
+
 	_, ok := os.LookupEnv(envVar)
 	if !ok {
-		return authn.DefaultKeychain
+		return &defaultKeychain, nil
 	}
-	return &EnvKeychain{EnvVar: envVar}
-}
 
-// EnvKeychain uses the contents of an environment variable to resolve auth for a registry
-type EnvKeychain struct {
-	EnvVar string
-}
-
-func (k *EnvKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
-	authHeaders, err := ReadEnvVar(k.EnvVar)
+	authHeaders, err := ReadEnvVar(envVar)
 	if err != nil {
-		return nil, errors.Wrap(err, "reading auth env var")
+		return nil, err
 	}
 
-	header, ok := authHeaders[resource.RegistryStr()]
+	envKeychain := resolvedKeychain{Auths: authHeaders}
+	return authn.NewMultiKeychain(&envKeychain, &defaultKeychain), nil
+}
+
+type resolvedKeychain struct {
+	Auths map[string]string
+}
+
+func (k *resolvedKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+	header, ok := k.Auths[resource.RegistryStr()]
 	if ok {
 		authConfig, err := authHeaderToConfig(header)
 		if err != nil {
@@ -77,16 +87,13 @@ func ReadEnvVar(envVar string) (map[string]string, error) {
 	return authMap, nil
 }
 
-// BuildEnvVar creates the contents to use for authentication environment variable.
-//
-// Complementary to `ReadEnvVar`.
-func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
+func buildEnvMap(keychain authn.Keychain, images ...string) map[string]string {
 	registryAuths := map[string]string{}
 
 	for _, image := range images {
 		reference, authenticator, err := ReferenceForRepoName(keychain, image)
 		if err != nil {
-			return "", nil
+			return map[string]string{}
 		}
 		if authenticator == authn.Anonymous {
 			continue
@@ -94,14 +101,23 @@ func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
 
 		authConfig, err := authenticator.Authorization()
 		if err != nil {
-			return "", nil
+			return map[string]string{}
 		}
 
 		registryAuths[reference.Context().Registry.Name()], err = authConfigToHeader(authConfig)
 		if err != nil {
-			return "", nil
+			return map[string]string{}
 		}
 	}
+
+	return registryAuths
+}
+
+// BuildEnvVar creates the contents to use for authentication environment variable.
+//
+// Complementary to `ReadEnvVar`.
+func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
+	registryAuths := buildEnvMap(keychain, images...)
 
 	authData, err := json.Marshal(registryAuths)
 	if err != nil {

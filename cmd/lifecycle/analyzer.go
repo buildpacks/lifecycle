@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -25,6 +26,9 @@ type analyzeCmd struct {
 
 	//flags: paths to write data
 	analyzedPath string
+
+	//construct before dropping privileges
+	keychain authn.Keychain
 }
 
 type analyzeArgs struct {
@@ -75,6 +79,12 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 }
 
 func (a *analyzeCmd) Privileges() error {
+	keychain, err := a.resolveKeychain()
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+	a.keychain = keychain
+
 	if a.useDaemon {
 		var err error
 		a.docker, err = priv.DockerClient()
@@ -100,12 +110,12 @@ func (a *analyzeCmd) Exec() error {
 		return err
 	}
 
-	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir)
+	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir, a.keychain)
 	if err != nil {
 		return cmd.FailErr(err, "initialize cache")
 	}
 
-	analyzedMD, err := a.analyze(group, cacheStore)
+	analyzedMD, err := a.analyze(group, cacheStore, a.keychain)
 	if err != nil {
 		return err
 	}
@@ -117,7 +127,18 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
+func (a *analyzeCmd) resolveKeychain() (authn.Keychain, error) {
+	var registryImages []string
+	if a.cacheImageTag != "" {
+		registryImages = append(registryImages, a.cacheImageTag)
+	}
+	if !a.useDaemon {
+		registryImages = append(registryImages, a.analyzeArgs.imageName)
+	}
+	return auth.ResolveKeychain(cmd.EnvRegistryAuth, registryImages)
+}
+
+func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, keychain authn.Keychain) (lifecycle.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -131,7 +152,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 	} else {
 		img, err = remote.NewImage(
 			aa.imageName,
-			auth.NewKeychain(cmd.EnvRegistryAuth),
+			keychain,
 			remote.FromBaseImage(aa.imageName),
 		)
 	}

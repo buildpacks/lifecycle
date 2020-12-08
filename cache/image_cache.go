@@ -49,6 +49,10 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 	return NewImageCache(origImage, emptyImage), nil
 }
 
+func (c *ImageCache) Exists() bool {
+	return c.origImage.Found()
+}
+
 func (c *ImageCache) Name() string {
 	return c.origImage.Name()
 }

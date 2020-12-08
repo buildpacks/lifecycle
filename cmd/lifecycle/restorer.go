@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -17,6 +20,9 @@ type restoreCmd struct {
 	layersDir     string
 	platformAPI   string
 	uid, gid      int
+
+	//set before dropping privileges
+	keychain authn.Keychain
 }
 
 func (r *restoreCmd) DefineFlags() {
@@ -44,6 +50,12 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 }
 
 func (r *restoreCmd) Privileges() error {
+	keychain, err := r.resolveKeychain()
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+	r.keychain = keychain
+
 	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -61,11 +73,18 @@ func (r *restoreCmd) Exec() error {
 	if err := verifyBuildpackApis(group); err != nil {
 		return err
 	}
-	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir)
+	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir, r.keychain)
 	if err != nil {
 		return err
 	}
 	return restore(r.layersDir, group, cacheStore)
+}
+
+func (r *restoreCmd) resolveKeychain() (authn.Keychain, error) {
+	if r.cacheImageTag == "" {
+		return authn.DefaultKeychain, nil // fix the keychain
+	}
+	return auth.ResolveKeychain(cmd.EnvRegistryAuth, []string{r.cacheImageTag})
 }
 
 func restore(layersDir string, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {

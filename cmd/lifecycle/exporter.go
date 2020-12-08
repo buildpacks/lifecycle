@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -33,6 +34,9 @@ type exportCmd struct {
 
 	//flags: paths to write outputs
 	analyzedPath string
+
+	//construct before dropping privileges
+	keychain authn.Keychain
 }
 
 type exportArgs struct {
@@ -123,6 +127,12 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 }
 
 func (e *exportCmd) Privileges() error {
+	keychain, err := e.resolveKeychain()
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+	e.keychain = keychain
+
 	if e.useDaemon {
 		var err error
 		e.docker, err = priv.DockerClient()
@@ -153,15 +163,27 @@ func (e *exportCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
 
-	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir)
+	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir, e.keychain)
 	if err != nil {
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	return e.export(group, cacheStore, analyzedMD)
+	return e.export(group, cacheStore, analyzedMD, e.keychain)
 }
 
-func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
+func (e *exportCmd) resolveKeychain() (authn.Keychain, error) {
+	var registryImages []string
+	if e.cacheImageTag != "" {
+		registryImages = append(registryImages, e.cacheImageTag)
+	}
+	if !e.useDaemon {
+		registryImages = append(registryImages, e.imageNames...)
+		registryImages = append(registryImages, e.runImageRef)
+	}
+	return auth.ResolveKeychain(cmd.EnvRegistryAuth, registryImages)
+}
+
+func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata, keychain authn.Keychain) error {
 	ref, err := name.ParseReference(ea.imageNames[0], name.WeakValidation)
 	if err != nil {
 		return cmd.FailErr(err, "failed to parse registry")
@@ -203,19 +225,16 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	var appImage imgutil.Image
 	var runImageID string
 	if ea.useDaemon {
-		appImage, runImageID, err = initDaemonImage(
-			ea.imageNames[0],
+		appImage, runImageID, err = ea.initDaemonImage(
 			runImageRef,
 			analyzedMD,
-			ea.launchCacheDir,
-			ea.docker,
 		)
 	} else {
-		appImage, runImageID, err = initRemoteImage(
-			ea.imageNames[0],
+		appImage, runImageID, err = ea.initRemoteImage(
 			runImageRef,
 			analyzedMD,
 			registry,
+			keychain,
 		)
 	}
 	if err != nil {
@@ -249,7 +268,7 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	return nil
 }
 
-func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, launchCacheDir string, docker client.CommonAPIClient) (imgutil.Image, string, error) {
+func (ea exportArgs) initDaemonImage(runImageRef string, analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
 		local.FromBaseImage(runImageRef),
 	}
@@ -260,8 +279,8 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 	}
 
 	appImage, err := local.NewImage(
-		imagName,
-		docker,
+		ea.imageNames[0],
+		ea.docker,
 		opts...,
 	)
 	if err != nil {
@@ -273,8 +292,8 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 		return nil, "", cmd.FailErr(err, "get run image ID")
 	}
 
-	if launchCacheDir != "" {
-		volumeCache, err := cache.NewVolumeCache(launchCacheDir)
+	if ea.launchCacheDir != "" {
+		volumeCache, err := cache.NewVolumeCache(ea.launchCacheDir)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "create launch cache")
 		}
@@ -283,7 +302,7 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 	return appImage, runImageID.String(), nil
 }
 
-func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, registry string) (imgutil.Image, string, error) {
+func (ea exportArgs) initRemoteImage(runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, registry string, keychain authn.Keychain) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(runImageRef),
 	}
@@ -302,15 +321,15 @@ func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.
 	}
 
 	appImage, err := remote.NewImage(
-		imageName,
-		auth.NewKeychain(cmd.EnvRegistryAuth),
+		ea.imageNames[0],
+		keychain,
 		opts...,
 	)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
-	runImage, err := remote.NewImage(runImageRef, auth.NewKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
+	runImage, err := remote.NewImage(runImageRef, keychain, remote.FromBaseImage(runImageRef))
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}

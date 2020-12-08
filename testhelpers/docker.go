@@ -49,12 +49,13 @@ func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...))
 }
 
-func DockerRunAndCopy(t *testing.T, containerName, copyDir, image, path string, ops ...DockerCmdOp) {
+func DockerRunAndCopy(t *testing.T, containerName, copyDir, image, path string, ops ...DockerCmdOp) string {
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
+	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
 	Run(t, exec.Command("docker", "cp", containerName+":"+path, copyDir))
+	return output
 }
 
 func DockerContainerExists(t *testing.T, containerName string) bool {

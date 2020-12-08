@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/priv"
@@ -35,7 +37,8 @@ type createCmd struct {
 	useDaemon           bool
 
 	//set if necessary before dropping privileges
-	docker client.CommonAPIClient
+	docker   client.CommonAPIClient
+	keychain authn.Keychain
 }
 
 func (c *createCmd) DefineFlags() {
@@ -96,6 +99,12 @@ func (c *createCmd) Args(nargs int, args []string) error {
 }
 
 func (c *createCmd) Privileges() error {
+	keychain, err := c.resolveKeychain()
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+	c.keychain = keychain
+
 	if c.useDaemon {
 		var err error
 		c.docker, err = priv.DockerClient()
@@ -116,7 +125,7 @@ func (c *createCmd) Privileges() error {
 }
 
 func (c *createCmd) Exec() error {
-	cacheStore, err := initCache(c.cacheImageTag, c.cacheDir)
+	cacheStore, err := initCache(c.cacheImageTag, c.cacheDir, c.keychain)
 	if err != nil {
 		return err
 	}
@@ -142,7 +151,7 @@ func (c *createCmd) Exec() error {
 		skipLayers:  c.skipRestore,
 		useDaemon:   c.useDaemon,
 		docker:      c.docker,
-	}.analyze(group, cacheStore)
+	}.analyze(group, cacheStore, c.keychain)
 	if err != nil {
 		return err
 	}
@@ -183,5 +192,17 @@ func (c *createCmd) Exec() error {
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
-	}.export(group, cacheStore, analyzedMD)
+	}.export(group, cacheStore, analyzedMD, c.keychain)
+}
+
+func (c *createCmd) resolveKeychain() (authn.Keychain, error) {
+	var registryImages []string
+	if c.cacheImageTag != "" {
+		registryImages = append(registryImages, c.cacheImageTag)
+	}
+	if !c.useDaemon {
+		registryImages = append(registryImages, append([]string{c.imageName}, c.additionalTags...)...)
+		registryImages = append(registryImages, c.runImageRef)
+	}
+	return auth.ResolveKeychain(cmd.EnvRegistryAuth, registryImages)
 }

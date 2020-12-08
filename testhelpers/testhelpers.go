@@ -131,6 +131,7 @@ func AssertJSONEq(t *testing.T, expected, actual string) {
 }
 
 func AssertPathExists(t *testing.T, path string) {
+	t.Helper()
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		t.Errorf("Expected %q to exist", path)
@@ -140,6 +141,7 @@ func AssertPathExists(t *testing.T, path string) {
 }
 
 func AssertPathDoesNotExist(t *testing.T, path string) {
+	t.Helper()
 	_, err := os.Stat(path)
 	if err == nil {
 		t.Errorf("Expected %q to not exist", path)

@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -28,7 +29,8 @@ type rebaseCmd struct {
 	uid, gid              int
 
 	//set if necessary before dropping privileges
-	docker client.CommonAPIClient
+	docker   client.CommonAPIClient
+	keychain authn.Keychain
 }
 
 func (r *rebaseCmd) DefineFlags() {
@@ -65,6 +67,12 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 }
 
 func (r *rebaseCmd) Privileges() error {
+	keychain, err := r.resolveKeychain()
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+	r.keychain = keychain
+
 	if r.useDaemon {
 		var err error
 		r.docker, err = priv.DockerClient()
@@ -95,7 +103,7 @@ func (r *rebaseCmd) Exec() error {
 	} else {
 		appImage, err = remote.NewImage(
 			r.imageNames[0],
-			auth.NewKeychain(cmd.EnvRegistryAuth),
+			r.keychain,
 			remote.FromBaseImage(r.imageNames[0]),
 		)
 	}
@@ -128,7 +136,7 @@ func (r *rebaseCmd) Exec() error {
 	} else {
 		newBaseImage, err = remote.NewImage(
 			r.imageNames[0],
-			auth.NewKeychain(cmd.EnvRegistryAuth),
+			r.keychain,
 			remote.FromBaseImage(r.runImageRef),
 		)
 	}
@@ -147,4 +155,8 @@ func (r *rebaseCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeRebaseError, "write rebase report")
 	}
 	return nil
+}
+
+func (r *rebaseCmd) resolveKeychain() (authn.Keychain, error) {
+	return auth.ResolveKeychain(cmd.EnvRegistryAuth, r.imageNames)
 }

@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 )
@@ -79,13 +80,13 @@ func verifyBuildpackApis(group lifecycle.BuildpackGroup) error {
 	return nil
 }
 
-func initCache(cacheImageTag, cacheDir string) (lifecycle.Cache, error) {
+func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecycle.Cache, error) {
 	var (
 		cacheStore lifecycle.Cache
 		err        error
 	)
 	if cacheImageTag != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, auth.NewKeychain(cmd.EnvRegistryAuth))
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain)
 		if err != nil {
 			return nil, cmd.FailErr(err, "create image cache")
 		}

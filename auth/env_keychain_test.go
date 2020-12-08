@@ -3,8 +3,8 @@ package auth_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -17,125 +17,112 @@ import (
 )
 
 func TestEnvKeychain(t *testing.T) {
-	spec.Run(t, "NewKeychain", testEnvKeychain, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "ResolveKeychain", testEnvKeychain, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
-	when("#NewKeychain", func() {
-		when("CNB_REGISTRY_AUTH is set", func() {
+	when("ResolveKeychain", func() {
+		when("#Resolve", func() {
 			it.Before(func() {
+				// set CNB_REGISTRY_AUTH
 				err := os.Setenv(
 					"CNB_REGISTRY_AUTH",
-					`foo`,
+					`{"basic-registry.com": "Basic some-basic-auth=", "bearer-registry.com": "Bearer some-bearer-auth="}`,
 				)
 				h.AssertNil(t, err)
 			})
 
 			it.After(func() {
-				err := os.Unsetenv("CNB_REGISTRY_AUTH")
-				h.AssertNil(t, err)
+				h.AssertNil(t, os.Unsetenv("CNB_REGISTRY_AUTH"))
 			})
 
-			it("returns an EnvKeychain", func() {
-				envKeyChain := auth.NewKeychain("CNB_REGISTRY_AUTH")
-				_, ok := envKeyChain.(*auth.EnvKeychain)
-				if ok != true {
-					t.Fatalf("expected *auth.EnvKeychain, got %s", reflect.TypeOf(envKeyChain))
-				}
-			})
-		})
-
-		when("CNB_REGISTRY_AUTH is not set", func() {
-			it("returns the ggcr DefaultKeychain", func() {
-				envKeyChain := auth.NewKeychain("CNB_REGISTRY_AUTH")
-				h.AssertEq(t, envKeyChain, authn.DefaultKeychain)
-			})
-		})
-
-		when("#EnvKeychain", func() {
-			var envKeyChain authn.Keychain
-
-			when("#Resolve", func() {
-				it.Before(func() {
-					envKeyChain = &auth.EnvKeychain{EnvVar: "CNB_REGISTRY_AUTH"}
-				})
-
-				it.After(func() {
-					err := os.Unsetenv("CNB_REGISTRY_AUTH")
-					h.AssertNil(t, err)
-				})
-
-				when("valid auth env variable is set", func() {
-					it.Before(func() {
-						err := os.Setenv(
-							"CNB_REGISTRY_AUTH",
-							`{"basic-registry.com": "Basic asdf=", "bearer-registry.com": "Bearer qwerty="}`,
-						)
+			when("valid auth env variable is set", func() {
+				when("valid variable", func() {
+					it("loads the basic auth from memory", func() {
+						resolvedKeychain, err := auth.ResolveKeychain("CNB_REGISTRY_AUTH", []string{})
 						h.AssertNil(t, err)
-					})
+						h.AssertNil(t, os.Unsetenv("CNB_REGISTRY_AUTH")) // unset variable to prove that our test is using a pre-resolved keychain
 
-					it("loads the basic auth from the environment", func() {
 						registry, err := name.NewRegistry("basic-registry.com", name.WeakValidation)
 						h.AssertNil(t, err)
 
-						authenticator, err := envKeyChain.Resolve(registry)
+						authenticator, err := resolvedKeychain.Resolve(registry)
 						h.AssertNil(t, err)
 
 						header, err := authenticator.Authorization()
 						h.AssertNil(t, err)
 
-						h.AssertEq(t, header, &authn.AuthConfig{Auth: "asdf="})
+						h.AssertEq(t, header, &authn.AuthConfig{Auth: "some-basic-auth="})
 					})
 
-					it("loads the bearer auth from the environment", func() {
+					it("loads the bearer auth from memory", func() {
+						resolvedKeychain, err := auth.ResolveKeychain("CNB_REGISTRY_AUTH", []string{})
+						h.AssertNil(t, err)
+						h.AssertNil(t, os.Unsetenv("CNB_REGISTRY_AUTH")) // unset variable to prove that our test is using a pre-resolved keychain
+
 						registry, err := name.NewRegistry("bearer-registry.com", name.WeakValidation)
 						h.AssertNil(t, err)
 
-						authenticator, err := envKeyChain.Resolve(registry)
+						authenticator, err := resolvedKeychain.Resolve(registry)
 						h.AssertNil(t, err)
 
 						header, err := authenticator.Authorization()
 						h.AssertNil(t, err)
 
-						h.AssertEq(t, header, &authn.AuthConfig{RegistryToken: "qwerty="})
+						h.AssertEq(t, header, &authn.AuthConfig{RegistryToken: "some-bearer-auth="})
 					})
 
-					it("returns an Anonymous authenticator when the environment does not have a auth header", func() {
-						envKeyChain = auth.NewKeychain("CNB_REGISTRY_AUTH")
-						registry, err := name.NewRegistry("no-env-auth-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
+					when("the environment does not have an auth header", func() {
+						it("uses the fallback keychain", func() {
+							useFallbackKeychain(t)
+						})
 
-						authenticator, err := envKeyChain.Resolve(registry)
-						h.AssertNil(t, err)
+						when("the fallback keychain does not have an auth header", func() {
+							it("returns an Anonymous authenticator", func() {
+								fallbackKeychainNoAuthHeader(t)
+							})
+						})
 
-						h.AssertEq(t, authenticator, authn.Anonymous)
-					})
-				})
-
-				when("invalid env var is set", func() {
-					it.Before(func() {
-						err := os.Setenv("CNB_REGISTRY_AUTH", "NOT -- JSON")
-						h.AssertNil(t, err)
-					})
-
-					it("returns an error", func() {
-						registry, err := name.NewRegistry("some-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
-
-						_, err = envKeyChain.Resolve(registry)
-						h.AssertError(t, err, "failed to parse CNB_REGISTRY_AUTH value")
+						when("the fallback keychain cannot be resolved", func() {
+							it("returns an Anonymous authenticator", func() {
+								fallbackKeychainNotResolved(t)
+							})
+						})
 					})
 				})
+			})
 
-				when("env var is not set", func() {
+			when("invalid auth env variable is set", func() {
+				it.Before(func() {
+					err := os.Setenv("CNB_REGISTRY_AUTH", "NOT -- JSON")
+					h.AssertNil(t, err)
+				})
+
+				it("errors", func() {
+					_, err := auth.ResolveKeychain("CNB_REGISTRY_AUTH", []string{"some-registry.com/some-image"})
+					h.AssertNotNil(t, err)
+					h.AssertStringContains(t, err.Error(), "failed to parse")
+				})
+			})
+
+			when("auth env variable is not set", func() {
+				it.Before(func() {
+					h.AssertNil(t, os.Unsetenv("CNB_REGISTRY_AUTH"))
+				})
+
+				it("uses the fallback keychain", func() {
+					useFallbackKeychain(t)
+				})
+
+				when("the fallback keychain does not have an auth header", func() {
 					it("returns an Anonymous authenticator", func() {
-						registry, err := name.NewRegistry("no-env-auth-registry.com", name.WeakValidation)
-						h.AssertNil(t, err)
+						fallbackKeychainNoAuthHeader(t)
+					})
+				})
 
-						auth, err := envKeyChain.Resolve(registry)
-						h.AssertNil(t, err)
-
-						h.AssertEq(t, auth, authn.Anonymous)
+				when("the fallback keychain cannot be resolved", func() {
+					it("returns an Anonymous authenticator", func() {
+						fallbackKeychainNotResolved(t)
 					})
 				})
 			})
@@ -189,10 +176,15 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 }
 
 type FakeKeychain struct {
-	authMap map[string]*authn.AuthConfig
+	authMap           map[string]*authn.AuthConfig
+	returnsForResolve error // if set, return the error
 }
 
 func (f *FakeKeychain) Resolve(r authn.Resource) (authn.Authenticator, error) {
+	if f.returnsForResolve != nil {
+		return nil, f.returnsForResolve
+	}
+
 	key, ok := f.authMap[r.RegistryStr()]
 	if ok {
 		return &providedAuth{config: key}, nil
@@ -207,4 +199,77 @@ type providedAuth struct {
 
 func (p *providedAuth) Authorization() (*authn.AuthConfig, error) {
 	return p.config, nil
+}
+
+func useFallbackKeychain(t *testing.T) {
+	fakeKeychain := FakeKeychain{authMap: map[string]*authn.AuthConfig{
+		"no-env-auth-registry.com": {
+			Auth: "asdf=",
+		},
+	}}
+
+	resolvedKeychain, err := auth.ResolveKeychain(
+		"CNB_REGISTRY_AUTH",
+		[]string{"no-env-auth-registry.com/some-image"},
+		&fakeKeychain,
+	)
+	h.AssertNil(t, err)
+	h.AssertNil(t, os.Unsetenv("CNB_REGISTRY_AUTH")) // unset variable to prove that our test is using a pre-resolved keychain
+
+	registry, err := name.NewRegistry("no-env-auth-registry.com", name.WeakValidation)
+	h.AssertNil(t, err)
+
+	authenticator, err := resolvedKeychain.Resolve(registry)
+	h.AssertNil(t, err)
+
+	header, err := authenticator.Authorization()
+	h.AssertNil(t, err)
+
+	h.AssertEq(t, header, &authn.AuthConfig{Auth: "asdf="})
+}
+
+func fallbackKeychainNoAuthHeader(t *testing.T) {
+	fakeKeychain := FakeKeychain{authMap: map[string]*authn.AuthConfig{}} // empty map
+
+	resolvedKeychain, err := auth.ResolveKeychain(
+		"CNB_REGISTRY_AUTH",
+		[]string{"no-auth-registry.com/some-image"},
+		&fakeKeychain,
+	)
+	h.AssertNil(t, err)
+	h.AssertNil(t, os.Unsetenv("CNB_REGISTRY_AUTH")) // unset variable to prove that our test is using a pre-resolved keychain
+
+	registry, err := name.NewRegistry("no-auth-registry.com", name.WeakValidation)
+	h.AssertNil(t, err)
+
+	authenticator, err := resolvedKeychain.Resolve(registry)
+	h.AssertNil(t, err)
+
+	_, err = authenticator.Authorization()
+	h.AssertNil(t, err)
+
+	h.AssertEq(t, authenticator, authn.Anonymous)
+}
+
+func fallbackKeychainNotResolved(t *testing.T) {
+	fakeKeychain := FakeKeychain{returnsForResolve: errors.New("some-error")}
+
+	resolvedKeychain, err := auth.ResolveKeychain(
+		"CNB_REGISTRY_AUTH",
+		[]string{"some-registry.com/some-image"},
+		&fakeKeychain,
+	)
+	h.AssertNil(t, err)
+	h.AssertNil(t, os.Unsetenv("CNB_REGISTRY_AUTH")) // unset variable to prove that our test is using a pre-resolved keychain
+
+	registry, err := name.NewRegistry("some-registry.com", name.WeakValidation)
+	h.AssertNil(t, err)
+
+	authenticator, err := resolvedKeychain.Resolve(registry)
+	h.AssertNil(t, err)
+
+	_, err = authenticator.Authorization()
+	h.AssertNil(t, err)
+
+	h.AssertEq(t, authenticator, authn.Anonymous)
 }
