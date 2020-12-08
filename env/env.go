@@ -18,8 +18,8 @@ type Env struct {
 	Vars       *Vars
 }
 
-// AddRootDir modifies the environment given a root dir. If the root contains a directory that matches a key the
-// the Env RooDirMap, the absolute path to the directory will be prepended to all the associated environment variables
+// AddRootDir modifies the environment given a root dir. If the root dir contains a directory that matches a key in
+// the Env RooDirMap, the absolute path to the keyed directory will be prepended to all the associated environment variables
 // using the OS path list separator as a delimiter.
 func (p *Env) AddRootDir(dir string) error {
 	absDir, err := filepath.Abs(dir)
@@ -64,10 +64,7 @@ const (
 // DefaultActionType returns the default action to preform for an unsuffixed env file as specified for the given
 // buildpack API
 func DefaultActionType(bpAPI *api.Version) ActionType {
-	if bpAPI == nil {
-		return ActionTypeOverride
-	}
-	if bpAPI.Compare(api.MustParse("0.5")) < 0 {
+	if bpAPI != nil &&  bpAPI.Compare(api.MustParse("0.5")) < 0 {
 		return ActionTypePrependPath
 	}
 	return ActionTypeOverride
@@ -114,8 +111,8 @@ func (p *Env) Set(name, v string) {
 }
 
 // WithPlatform returns the environment after applying modifications from the given platform dir.
-// For each file in the platformDir, if the name of the file does not match and environment variable name in the
-// RootDirMap, the given variable will be set to the contents of the file. If the name does match a environment
+// For each file in the platformDir, if the name of the file does not match an environment variable name in the
+// RootDirMap, the given variable will be set to the contents of the file. If the name does match an environment
 // variable name in the RootDirMap, the contents of the file will be prepended to the environment variable value
 // using the OS path list separator as a delimiter.
 func (p *Env) WithPlatform(platformDir string) (out []string, err error) {
