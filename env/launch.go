@@ -18,7 +18,7 @@ var LaunchEnvExcludelist = []string{
 // Keys in the LaunchEnvExcludelist shall be removed.
 // processDir will be removed from the beginning of PATH if present.
 func NewLaunchEnv(environ []string, processDir string, lifecycleDir string) *Env {
-	vars := varsFromEnviron(environ, ignoreEnvVarCase, isExcluded)
+	vars := varsFromEnv(environ, ignoreEnvVarCase, isExcluded)
 	if path, ok := vars.vals["PATH"]; ok {
 		parts := strings.Split(path, string(os.PathListSeparator))
 		var stripped []string

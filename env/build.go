@@ -25,7 +25,7 @@ var ignoreEnvVarCase = runtime.GOOS == "windows"
 func NewBuildEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		Vars:       varsFromEnviron(environ, ignoreEnvVarCase, isNotIncluded),
+		Vars:       varsFromEnv(environ, ignoreEnvVarCase, isNotIncluded),
 	}
 }
 

@@ -118,7 +118,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
 			})
 
-			it("performs the matching action", func() {
+			it("preform the matching action", func() {
 				envv.Vars = env.NewVars(map[string]string{
 					"VAR_APPEND":        "value-append-orig",
 					"VAR_APPEND_DELIM":  "value-append-delim-orig",
@@ -186,25 +186,26 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("default action is Override", func() {
-				it("should preform that action", func() {
-					it("should override the value with the new value", func() {
-						envv.Vars = env.NewVars(map[string]string{
-							"VAR_NORMAL": "value-normal-orig",
-						}, false)
-						if err := envv.AddEnvDir(tmpDir, env.ActionTypeOverride); err != nil {
-							t.Fatalf("Error: %s\n", err)
-						}
-						out := envv.List()
-						sort.Strings(out)
+				it("should override the value with the new value", func() {
+					envv.Vars = env.NewVars(map[string]string{
+						"VAR_NORMAL":       "value-normal-orig",
+						"VAR_NORMAL_DELIM": "value-normal-delim-orig",
+					}, false)
+					if err := envv.AddEnvDir(tmpDir, env.ActionTypeOverride); err != nil {
+						t.Fatalf("Error: %s\n", err)
+					}
+					out := envv.List()
+					sort.Strings(out)
 
-						expected := []string{
-							"VAR_NORMAL=value-normal",
-							"VAR_NORMAL_NEW=value-normal",
-						}
-						if s := cmp.Diff(out, expected); s != "" {
-							t.Fatalf("Unexpected env:\n%s\n", s)
-						}
-					})
+					expected := []string{
+						"VAR_NORMAL=value-normal",
+						"VAR_NORMAL_DELIM=value-normal-delim", // override ignores delimiter
+						"VAR_NORMAL_DELIM_NEW=value-normal-delim",
+						"VAR_NORMAL_NEW=value-normal",
+					}
+					if s := cmp.Diff(out, expected); s != "" {
+						t.Fatalf("Unexpected env:\n%s\n", s)
+					}
 				})
 			})
 		})

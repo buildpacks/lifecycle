@@ -27,14 +27,14 @@ func (p *Env) AddRootDir(dir string) error {
 		return err
 	}
 	for dir, vars := range p.RootDirMap {
-		newDir := filepath.Join(absDir, dir)
-		if _, err := os.Stat(newDir); os.IsNotExist(err) {
+		childDir := filepath.Join(absDir, dir)
+		if _, err := os.Stat(childDir); os.IsNotExist(err) {
 			continue
 		} else if err != nil {
 			return err
 		}
 		for _, key := range vars {
-			p.Vars.Set(key, newDir+prefix(p.Vars.Get(key), os.PathListSeparator))
+			p.Vars.Set(key, childDir+prefix(p.Vars.Get(key), os.PathListSeparator))
 		}
 	}
 	return nil
@@ -64,7 +64,7 @@ const (
 // DefaultActionType returns the default action to preform for an unsuffixed env file as specified for the given
 // buildpack API
 func DefaultActionType(bpAPI *api.Version) ActionType {
-	if bpAPI != nil &&  bpAPI.Compare(api.MustParse("0.5")) < 0 {
+	if bpAPI != nil && bpAPI.Compare(api.MustParse("0.5")) < 0 {
 		return ActionTypePrependPath
 	}
 	return ActionTypeOverride

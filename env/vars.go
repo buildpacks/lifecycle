@@ -7,9 +7,9 @@ type Vars struct {
 	ignoreCase bool
 }
 
-func varsFromEnviron(environ []string, ignoreCase bool, removeKey func(string) bool) *Vars {
+func varsFromEnv(env []string, ignoreCase bool, removeKey func(string) bool) *Vars {
 	vars := NewVars(nil, ignoreCase)
-	for _, kv := range environ {
+	for _, kv := range env {
 		parts := strings.SplitN(kv, "=", 2)
 		if len(parts) != 2 {
 			continue
