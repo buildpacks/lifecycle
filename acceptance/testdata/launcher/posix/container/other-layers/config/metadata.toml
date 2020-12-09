@@ -1,6 +1,9 @@
 [[buildpacks]]
+  id = "some-buildpack"
+  api = "0.5"
 
 [[processes]]
   type = "web"
   command = "echo \"Executing other-layers web process-type\""
   direct = false
+  buildpack-id = "some-buildpack"

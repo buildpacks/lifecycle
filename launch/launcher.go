@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/env"
 )
 
 var (
@@ -38,7 +39,7 @@ type ExecD interface {
 }
 
 type Env interface {
-	AddEnvDir(envDir string) error
+	AddEnvDir(envDir string, defaultAction env.ActionType) error
 	AddRootDir(baseDir string) error
 	Get(string) string
 	List() []string
@@ -93,11 +94,11 @@ func (l *Launcher) launchDirect(proc Process) error {
 }
 
 func (l *Launcher) doEnv(procType string) error {
-	return l.eachBuildpack(func(bpDir string) error {
+	return l.eachBuildpack(func(bpAPI *api.Version, bpDir string) error {
 		if err := eachLayer(bpDir, l.doLayerRoot()); err != nil {
 			return errors.Wrap(err, "add layer root")
 		}
-		if err := eachLayer(bpDir, l.doLayerEnvFiles(procType)); err != nil {
+		if err := eachLayer(bpDir, l.doLayerEnvFiles(procType, env.DefaultActionType(bpAPI))); err != nil {
 			return errors.Wrap(err, "add layer env")
 		}
 		return nil
@@ -105,66 +106,62 @@ func (l *Launcher) doEnv(procType string) error {
 }
 
 func (l *Launcher) doExecD(procType string) error {
-	return l.eachBuildpack(func(bpDir string) error {
+	return l.eachBuildpack(func(bpAPI *api.Version, bpDir string) error {
+		if !supportsExecD(bpAPI) {
+			return nil
+		}
 		return eachLayer(bpDir, l.doLayerExecD(procType))
-	}, supportsExecD)
+	})
 }
 
-func supportsExecD(bp Buildpack) bool {
-	if bp.API == "" {
-		return false
-	}
-	return api.MustParse(bp.API).Compare(api.MustParse("0.5")) >= 0
+func supportsExecD(bpAPI *api.Version) bool {
+	return bpAPI.Compare(api.MustParse("0.5")) >= 0
 }
 
-type action func(path string) error
-type bpPredicate func(bp Buildpack) bool
+type bpAction func(bpAPI *api.Version, bpDir string) error
+type dirAction func(layerDir string) error
 
-func (l *Launcher) eachBuildpack(fn action, predicates ...bpPredicate) error {
+func (l *Launcher) eachBuildpack(fn bpAction) error {
 	for _, bp := range l.Buildpacks {
-		var skip bool
-		for _, pred := range predicates {
-			skip = skip || !pred(bp) // skip unless all predicates return true
-		}
-		if skip {
-			continue
-		}
-
 		dir := filepath.Join(l.LayersDir, EscapeID(bp.ID))
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			return nil
 		} else if err != nil {
 			return errors.Wrap(err, "find buildpack directory")
 		}
-		if err := fn(dir); err != nil {
+		bpAPI, err := api.NewVersion(bp.API)
+		if err != nil {
+			return err
+		}
+		if err := fn(bpAPI, dir); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (l *Launcher) doLayerRoot() action {
+func (l *Launcher) doLayerRoot() dirAction {
 	return func(path string) error {
 		return l.Env.AddRootDir(path)
 	}
 }
 
-func (l *Launcher) doLayerEnvFiles(procType string) action {
+func (l *Launcher) doLayerEnvFiles(procType string, defaultAction env.ActionType) dirAction {
 	return func(path string) error {
-		if err := l.Env.AddEnvDir(filepath.Join(path, "env")); err != nil {
+		if err := l.Env.AddEnvDir(filepath.Join(path, "env"), defaultAction); err != nil {
 			return err
 		}
-		if err := l.Env.AddEnvDir(filepath.Join(path, "env.launch")); err != nil {
+		if err := l.Env.AddEnvDir(filepath.Join(path, "env.launch"), defaultAction); err != nil {
 			return err
 		}
 		if procType == "" {
 			return nil
 		}
-		return l.Env.AddEnvDir(filepath.Join(path, "env.launch", procType))
+		return l.Env.AddEnvDir(filepath.Join(path, "env.launch", procType), defaultAction)
 	}
 }
 
-func (l *Launcher) doLayerExecD(procType string) action {
+func (l *Launcher) doLayerExecD(procType string) dirAction {
 	return func(path string) error {
 		if err := eachFile(filepath.Join(path, "exec.d"), func(path string) error {
 			return l.ExecD.ExecD(path, l.Env)
@@ -180,19 +177,19 @@ func (l *Launcher) doLayerExecD(procType string) action {
 	}
 }
 
-func eachLayer(bpDir string, action action) error {
+func eachLayer(bpDir string, action dirAction) error {
 	return eachInDir(bpDir, action, func(fi os.FileInfo) bool {
 		return fi.IsDir()
 	})
 }
 
-func eachFile(dir string, action action) error {
+func eachFile(dir string, action dirAction) error {
 	return eachInDir(dir, action, func(fi os.FileInfo) bool {
 		return !fi.IsDir()
 	})
 }
 
-func eachInDir(dir string, action action, predicate func(fi os.FileInfo) bool) error {
+func eachInDir(dir string, action dirAction, predicate func(fi os.FileInfo) bool) error {
 	fis, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil

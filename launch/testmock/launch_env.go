@@ -8,6 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+
+	env "github.com/buildpacks/lifecycle/env"
 )
 
 // MockEnv is a mock of Env interface
@@ -34,17 +36,17 @@ func (m *MockEnv) EXPECT() *MockEnvMockRecorder {
 }
 
 // AddEnvDir mocks base method
-func (m *MockEnv) AddEnvDir(arg0 string) error {
+func (m *MockEnv) AddEnvDir(arg0 string, arg1 env.ActionType) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddEnvDir", arg0)
+	ret := m.ctrl.Call(m, "AddEnvDir", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddEnvDir indicates an expected call of AddEnvDir
-func (mr *MockEnvMockRecorder) AddEnvDir(arg0 interface{}) *gomock.Call {
+func (mr *MockEnvMockRecorder) AddEnvDir(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEnvDir", reflect.TypeOf((*MockEnv)(nil).AddEnvDir), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEnvDir", reflect.TypeOf((*MockEnv)(nil).AddEnvDir), arg0, arg1)
 }
 
 // AddRootDir mocks base method

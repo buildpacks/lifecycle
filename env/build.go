@@ -19,10 +19,13 @@ var BuildEnvIncludelist = []string{
 
 var ignoreEnvVarCase = runtime.GOOS == "windows"
 
+// NewBuildEnv returns an build-time Env from the given environment.
+//
+// Only keys in the BuildEnvIncludelist will be added to the Environment.
 func NewBuildEnv(environ []string) *Env {
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		Vars:       varsFromEnviron(environ, ignoreEnvVarCase, isNotIncluded),
+		Vars:       varsFromEnv(environ, ignoreEnvVarCase, isNotIncluded),
 	}
 }
 

@@ -45,7 +45,7 @@ func (l *Launcher) launchWithShell(self string, proc Process) error {
 
 func (l *Launcher) getProfiles(procType string) ([]string, error) {
 	var profiles []string
-	if err := l.eachBuildpack(func(bpDir string) error {
+	if err := l.eachBuildpack(func(_ *api.Version, bpDir string) error {
 		return eachLayer(bpDir, l.populateLayerProfiles(procType, &profiles))
 	}); err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (l *Launcher) getProfiles(procType string) ([]string, error) {
 	return profiles, nil
 }
 
-func (l *Launcher) populateLayerProfiles(procType string, profiles *[]string) action {
+func (l *Launcher) populateLayerProfiles(procType string, profiles *[]string) dirAction {
 	return func(layerDir string) error {
 		if err := eachFile(filepath.Join(layerDir, "profile.d"), func(path string) error {
 			*profiles = append(*profiles, path)
@@ -90,23 +90,35 @@ func (l *Launcher) isScript(proc Process) (bool, error) {
 	if len(proc.Args) == 0 {
 		return true, nil
 	}
+	bpAPI, err := l.buildpackAPI(proc)
+	if err != nil {
+		return false, err
+	}
+	if bpAPI == nil {
+		return false, err
+	}
+	if isLegacyProcess(bpAPI) {
+		return true, nil
+	}
+	return false, nil
+}
+
+// buildpackAPI returns the API of the buildpack that contributed the process and true if the process was contributed
+// by a buildpack. If the process was not provided by a buildpack it returns nil.
+func (l *Launcher) buildpackAPI(proc Process) (*api.Version, error) {
 	if proc.BuildpackID == "" {
-		return false, nil
+		return nil, nil
 	}
 	for _, bp := range l.Buildpacks {
-		if bp.ID != proc.BuildpackID {
-			continue
+		if bp.ID == proc.BuildpackID {
+			api, err := api.NewVersion(bp.API)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to parse api '%s' of buildpack '%s'", bp.API, bp.ID)
+			}
+			return api, nil
 		}
-		bpAPI, err := api.NewVersion(bp.API)
-		if err != nil {
-			return false, fmt.Errorf("failed to parse api '%s' of buildpack '%s'", bp.API, bp.ID)
-		}
-		if isLegacyProcess(bpAPI) {
-			return true, nil
-		}
-		return false, nil
 	}
-	return false, fmt.Errorf("process type '%s' provided by unknown buildpack '%s'", proc.Type, proc.BuildpackID)
+	return nil, fmt.Errorf("process type '%s' provided by unknown buildpack '%s'", proc.Type, proc.BuildpackID)
 }
 
 func isLegacyProcess(bpAPI *api.Version) bool {
