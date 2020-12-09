@@ -61,7 +61,7 @@ const (
 	ActionTypePrependPath ActionType = ""
 )
 
-// DefaultActionType returns the default action to preform for an unsuffixed env file as specified for the given
+// DefaultActionType returns the default action to perform for an unsuffixed env file as specified for the given
 // buildpack API
 func DefaultActionType(bpAPI *api.Version) ActionType {
 	if bpAPI != nil && bpAPI.Compare(api.MustParse("0.5")) < 0 {
@@ -71,8 +71,8 @@ func DefaultActionType(bpAPI *api.Version) ActionType {
 }
 
 // AddEnvDir modified the Env given a directory containing env files. For each file in the envDir, if the file has
-// a period delimited suffix, the action matching the given suffix will be preformed. If the file has no suffix,
-// the default action will be preformed. If the suffix does not match a known type, AddEnvDir will ignore the file.
+// a period delimited suffix, the action matching the given suffix will be performed. If the file has no suffix,
+// the default action will be performed. If the suffix does not match a known type, AddEnvDir will ignore the file.
 func (p *Env) AddEnvDir(envDir string, defaultAction ActionType) error {
 	if err := eachEnvFile(envDir, func(k, v string) error {
 		parts := strings.SplitN(k, ".", 2)

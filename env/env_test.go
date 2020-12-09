@@ -118,7 +118,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				mkfile(t, "value-ignore", filepath.Join(tmpDir, "VAR_IGNORE.ignore"))
 			})
 
-			it("preform the matching action", func() {
+			it("performs the matching action", func() {
 				envv.Vars = env.NewVars(map[string]string{
 					"VAR_APPEND":        "value-append-orig",
 					"VAR_APPEND_DELIM":  "value-append-delim-orig",
