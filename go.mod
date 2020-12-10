@@ -4,7 +4,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5 // indirect
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20201201142712-a6b11a745ca6
+	github.com/buildpacks/imgutil v0.0.0-20201209143029-339e186e495a
 	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/docker/cli v0.0.0-20200312141509-ef2f64abbd37 // indirect
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7

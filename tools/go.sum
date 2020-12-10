@@ -94,6 +94,7 @@ github.com/bombsimon/wsl/v3 v3.1.0/go.mod h1:st10JtZYLE4D5sC7b8xV4zTKZwAQjCH/Hy2
 github.com/buildpacks/imgutil v0.0.0-20201022190551-6525b8cdcdd0 h1:NfMkYsjGmNJGl80WHEa4rGM1hU8IDUIdqBiPZpxkvRM=
 github.com/buildpacks/imgutil v0.0.0-20201022190551-6525b8cdcdd0/go.mod h1:tG2oQSjijSLsymHJz/K3dJyUfmQ72dBfxDqWlNMPFUQ=
 github.com/buildpacks/imgutil v0.0.0-20201201142712-a6b11a745ca6/go.mod h1:jrlRd+Htv2BB3l5ri0TBj49Nk5NuakkOe6Nx4+EUjYM=
+github.com/buildpacks/imgutil v0.0.0-20201209143029-339e186e495a/go.mod h1:NC93OGDehA2ksqgTzugeQcPqmTpilMPYRO+XaFsDyts=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
