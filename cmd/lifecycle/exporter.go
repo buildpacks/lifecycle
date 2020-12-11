@@ -259,6 +259,7 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 		opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
 	}
 
+	var appImage imgutil.Image
 	appImage, err := local.NewImage(
 		imagName,
 		docker,
