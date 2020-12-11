@@ -12,63 +12,41 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ResolveKeychainCmd struct {
-	images           []string
-	fallbackKeychain authn.Keychain
-}
-
-type ResolveKeychainCmdOp func(*ResolveKeychainCmd)
-
-func WithImages(images ...string) ResolveKeychainCmdOp {
-	return func(cmd *ResolveKeychainCmd) {
-		cmd.images = append(cmd.images, images...)
-	}
-}
-
-func WithFallbackKeychain(fallbackKeychain authn.Keychain) ResolveKeychainCmdOp {
-	return func(cmd *ResolveKeychainCmd) {
-		cmd.fallbackKeychain = fallbackKeychain
-	}
-}
-
-func formatArgs(ops ...ResolveKeychainCmdOp) ResolveKeychainCmd {
-	cmd := ResolveKeychainCmd{fallbackKeychain: authn.DefaultKeychain}
-
-	for _, op := range ops {
-		op(&cmd)
-	}
-
-	return cmd
-}
-
-// ResolveKeychain returns either:
-// * a resolved keychain from the ggcr DefaultKeychain or
-// * a multi-keychain with a resolved keychain from the provided environment variable, and a resolved keychain from the ggcr DefaultKeychain
-// depending on whether the provided environment variable is set
-func ResolveKeychain(envVar string, ops ...ResolveKeychainCmdOp) (authn.Keychain, error) {
-	keychainCmd := formatArgs(ops...)
-
-	defaultKeychain := resolvedKeychain{Auths: buildEnvMap(keychainCmd.fallbackKeychain, keychainCmd.images...)}
-
-	_, ok := os.LookupEnv(envVar)
-	if !ok {
-		return &defaultKeychain, nil
-	}
-
-	authHeaders, err := ReadEnvVar(envVar)
+// DefaultKeychain returns a keychain containing authentication configuration for the given images
+// from the following sources, if they exist, in order of precedence:
+// the provided environment variable and the docker config.json file.
+func DefaultKeychain(envVar string, images ...string) (authn.Keychain, error) {
+	envKeychain, err := EnvKeychain(envVar)
 	if err != nil {
 		return nil, err
 	}
 
-	envKeychain := resolvedKeychain{Auths: authHeaders}
-	return authn.NewMultiKeychain(&envKeychain, &defaultKeychain), nil
+	return authn.NewMultiKeychain(
+		envKeychain,
+		InMemoryKeychain(authn.DefaultKeychain, images...),
+	), nil
 }
 
-type resolvedKeychain struct {
+type ResolvedKeychain struct {
 	Auths map[string]string
 }
 
-func (k *resolvedKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+func EnvKeychain(envVar string) (authn.Keychain, error) {
+	authHeaders, err := ReadEnvVar(envVar)
+	if err != nil {
+		return nil, err
+	}
+	return &ResolvedKeychain{Auths: authHeaders}, nil
+}
+
+func InMemoryKeychain(keychain authn.Keychain, images ...string) authn.Keychain {
+	// TODO: ignore blank image names
+	return &ResolvedKeychain{
+		Auths: buildAuthMap(keychain, images...),
+	}
+}
+
+func (k *ResolvedKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
 	header, ok := k.Auths[resource.RegistryStr()]
 	if ok {
 		authConfig, err := authHeaderToConfig(header)
@@ -114,7 +92,7 @@ func ReadEnvVar(envVar string) (map[string]string, error) {
 	return authMap, nil
 }
 
-func buildEnvMap(keychain authn.Keychain, images ...string) map[string]string {
+func buildAuthMap(keychain authn.Keychain, images ...string) map[string]string {
 	registryAuths := map[string]string{}
 
 	for _, image := range images {
@@ -144,7 +122,7 @@ func buildEnvMap(keychain authn.Keychain, images ...string) map[string]string {
 //
 // Complementary to `ReadEnvVar`.
 func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
-	registryAuths := buildEnvMap(keychain, images...)
+	registryAuths := buildAuthMap(keychain, images...)
 
 	authData, err := json.Marshal(registryAuths)
 	if err != nil {
