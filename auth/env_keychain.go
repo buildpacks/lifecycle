@@ -40,9 +40,15 @@ func EnvKeychain(envVar string) (authn.Keychain, error) {
 }
 
 func InMemoryKeychain(keychain authn.Keychain, images ...string) authn.Keychain {
-	// TODO: ignore blank image names
+	var nonEmpty []string
+	for _, image := range images {
+		if image != "" {
+			nonEmpty = append(nonEmpty, image)
+		}
+	}
+
 	return &ResolvedKeychain{
-		Auths: buildAuthMap(keychain, images...),
+		Auths: buildAuthMap(keychain, nonEmpty...),
 	}
 }
 

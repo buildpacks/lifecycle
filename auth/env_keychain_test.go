@@ -41,7 +41,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, keychain, &auth.ResolvedKeychain{
 						Auths: map[string]string{
-							"basic-registry.com": "Basic some-basic-auth=",
+							"basic-registry.com":  "Basic some-basic-auth=",
 							"bearer-registry.com": "Bearer some-bearer-auth=",
 						},
 					})
@@ -88,14 +88,26 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					"other-registry.com": {
 						Auth: "asdf=",
 					},
+					"index.docker.io": {
+						RegistryToken: "qwerty=",
+					},
 				},
 			}
 
-			inMemoryKeychain := auth.InMemoryKeychain(keychain, "some-registry-com")
+			inMemoryKeychain := auth.InMemoryKeychain(
+				keychain,
+				"some-registry.com/image",
+				"some-registry.com/image2",
+				"",
+				"other-registry.com/image3",
+				"my/image",
+			)
 
 			h.AssertEq(t, inMemoryKeychain, &auth.ResolvedKeychain{
 				Auths: map[string]string{
-					"some-registry.com": "FOO", // TODO: this is empty, why?
+					"index.docker.io":    "Bearer qwerty=",
+					"other-registry.com": "Basic asdf=",
+					"some-registry.com": "Basic dXNlcjpwYXNzd29yZA==",
 				},
 			})
 		})
@@ -106,9 +118,9 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("passed empty image names", func() {
-			it("ignores them", func() {
-
+		when("passed no images", func() {
+			it("returns an empty keychain", func() {
+				// TODO
 			})
 		})
 	})
@@ -119,7 +131,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				resolvedKeychain = auth.ResolvedKeychain{Auths: map[string]string{
-					"basic-registry.com": "Basic some-basic-auth=",
+					"basic-registry.com":  "Basic some-basic-auth=",
 					"bearer-registry.com": "Bearer some-bearer-auth=",
 				}}
 			})
