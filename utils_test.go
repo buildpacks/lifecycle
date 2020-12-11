@@ -46,8 +46,8 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 			if s := cmp.Diff(actual, lifecycle.BuildpackOrder{
-				{Group: []lifecycle.Buildpack{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
-				{Group: []lifecycle.Buildpack{{ID: "C"}, {}}},
+				{Group: []lifecycle.GroupBuildpack{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
+				{Group: []lifecycle.GroupBuildpack{{ID: "C"}, {}}},
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
@@ -78,7 +78,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 			if s := cmp.Diff(actual, lifecycle.BuildpackGroup{
-				Group: []lifecycle.Buildpack{
+				Group: []lifecycle.GroupBuildpack{
 					{ID: "A", Version: "v1"},
 					{ID: "B", Optional: true},
 				},
@@ -104,7 +104,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should write TOML", func() {
-			group := lifecycle.BuildpackGroup{Group: []lifecycle.Buildpack{{ID: "A", Version: "v1"}}}
+			group := lifecycle.BuildpackGroup{Group: []lifecycle.GroupBuildpack{{ID: "A", Version: "v1"}}}
 			if err := lifecycle.WriteTOML(filepath.Join(tmpDir, "subdir", "group.toml"), group); err != nil {
 				t.Fatal(err)
 			}

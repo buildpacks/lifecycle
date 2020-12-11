@@ -29,7 +29,7 @@ type Cache interface {
 }
 
 type Exporter struct {
-	Buildpacks   []Buildpack
+	Buildpacks   []GroupBuildpack
 	LayerFactory LayerFactory
 	Logger       Logger
 	PlatformAPI  *api.Version

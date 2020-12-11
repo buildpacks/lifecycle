@@ -15,23 +15,24 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
-const latestBuildpackAPI = "0.5" // TODO: is there a good way to ensure this is kept up to date?
+var latestBuildpackAPI = api.Buildpack.Latest()
 
 func TestBuildpackTOML(t *testing.T) {
-	spec.Run(t, "DefaultBuildpackTOML", testBuildpackTOML, spec.Report(report.Terminal{}))
+	spec.Run(t, "BuildpackTOML", testBuildpackTOML, spec.Report(report.Terminal{}))
 }
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
 
 func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 	var (
-		bpTOML         lifecycle.DefaultBuildpackTOML
+		bpTOML         lifecycle.BuildpackTOML
 		mockCtrl       *gomock.Controller
 		env            *testmock.MockBuildEnv
 		stdout, stderr *bytes.Buffer
@@ -68,13 +69,12 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 			AppDir:      appDir,
 			PlatformDir: platformDir,
 			LayersDir:   layersDir,
-			PlanDir:     appDir, // TODO: check if this makes sense
 			Out:         stdout,
 			Err:         stderr,
 		}
 
-		bpTOML = lifecycle.DefaultBuildpackTOML{
-			API: latestBuildpackAPI,
+		bpTOML = lifecycle.BuildpackTOML{
+			API: latestBuildpackAPI.String(),
 			Buildpack: lifecycle.BuildpackInfo{
 				ID:       "A",
 				Version:  "v1",
@@ -82,7 +82,7 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 				ClearEnv: false,
 				Homepage: "Buildpack A Homepage",
 			},
-			Path: filepath.Join(buildpacksDir, "A", "v1"), // TODO: avoid doubly specifying this information
+			Path: filepath.Join(buildpacksDir, "A", "v1"),
 		}
 	})
 
@@ -226,27 +226,27 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 									Name:     "some-deprecated-bp-replace-version-dep",
 									Metadata: map[string]interface{}{"version": "some-version-new"},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"}, // no api, no homepage
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
 							},
 							{
 								Require: lifecycle.Require{
 									Name:     "some-dep",
 									Metadata: map[string]interface{}{"version": "v1"},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"}, // no api, no homepage
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
 							},
 							{
 								Require: lifecycle.Require{
 									Name:     "some-replace-version-dep",
 									Metadata: map[string]interface{}{"version": "some-version-new"},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"}, // no api, no homepage
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
 							},
 						},
-						Labels:    []lifecycle.Label{},
-						Met:       []string{"some-deprecated-bp-replace-version-dep", "some-dep", "some-replace-version-dep"},
-						Processes: []launch.Process{},
-						Slices:    []layers.Slice{},
+						Labels:      []lifecycle.Label{},
+						MetRequires: []string{"some-deprecated-bp-replace-version-dep", "some-dep", "some-replace-version-dep"},
+						Processes:   []launch.Process{},
+						Slices:      []layers.Slice{},
 					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
 					}
@@ -274,9 +274,9 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 							{Key: "some-key", Value: "some-value"},
 							{Key: "some-other-key", Value: "some-other-value"},
 						},
-						Met:       nil,
-						Processes: []launch.Process{},
-						Slices:    []layers.Slice{},
+						MetRequires: nil,
+						Processes:   []launch.Process{},
+						Slices:      []layers.Slice{},
 					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
 					}
@@ -297,9 +297,9 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := cmp.Diff(br, lifecycle.BuildResult{
-						BOM:    nil, // TODO: fix
-						Labels: []lifecycle.Label{},
-						Met:    nil, // TODO: fix
+						BOM:         nil,
+						Labels:      []lifecycle.Label{},
+						MetRequires: nil,
 						Processes: []launch.Process{
 							{Type: "some-type", Command: "some-cmd", BuildpackID: "A"},
 							{Type: "other-type", Command: "other-cmd", BuildpackID: "A"},
@@ -323,11 +323,11 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					if s := cmp.Diff(br, lifecycle.BuildResult{
-						BOM:       nil,
-						Labels:    []lifecycle.Label{},
-						Met:       nil,
-						Processes: []launch.Process{},
-						Slices:    []layers.Slice{{Paths: []string{"some-path", "some-other-path"}}},
+						BOM:         nil,
+						Labels:      []lifecycle.Label{},
+						MetRequires: nil,
+						Processes:   []launch.Process{},
+						Slices:      []layers.Slice{{Paths: []string{"some-path", "some-other-path"}}},
 					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
 					}
@@ -341,7 +341,7 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 
 				bpTOML.Buildpack.Version = "v1.clear"
 				bpTOML.Path = filepath.Join(buildpacksDir, "A", "v1.clear")
-				bpTOML.Buildpack.ClearEnv = true // TODO: it is weird that all three of these conditions need to be specified
+				bpTOML.Buildpack.ClearEnv = true
 			})
 
 			it("should not apply user-provided env vars", func() {
@@ -359,7 +359,7 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 				if _, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
-				bpsDir, err := filepath.Abs(buildpacksDir) // TODO: this should be passed in somehow
+				bpsDir, err := filepath.Abs(buildpacksDir)
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
@@ -465,20 +465,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("should error when the build bom has a top level version", func() {
-				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				mkfile(t,
-					"[[bom]]\n"+
-						`name = "some-dep"`+"\n"+
-						`version = "some-version"`+"\n",
-					filepath.Join(appDir, "build-A-v1.toml"),
-				)
-				_, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
-				h.AssertNotNil(t, err)
-				expected := "top level version which is deprecated"
-				h.AssertStringContains(t, err.Error(), expected)
-			})
-
 			it("should error when the launch bom has a top level version", func() {
 				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				mkfile(t,
@@ -486,6 +472,20 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 						`name = "some-dep"`+"\n"+
 						`version = "some-version"`+"\n",
 					filepath.Join(appDir, "launch-A-v1.toml"),
+				)
+				_, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
+				h.AssertNotNil(t, err)
+				expected := "top level version which is deprecated"
+				h.AssertStringContains(t, err.Error(), expected)
+			})
+
+			it("should error when the build bom has a top level version", func() {
+				env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+				mkfile(t,
+					"[[bom]]\n"+
+						`name = "some-dep"`+"\n"+
+						`version = "some-version"`+"\n",
+					filepath.Join(appDir, "build-A-v1.toml"),
 				)
 				_, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
 				h.AssertNotNil(t, err)
@@ -569,7 +569,7 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 					env.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				})
 
-				it("should get bom entries and unmet requires from the buildpack plan", func() {
+				it("should get bom entries and unmet requires from the output buildpack plan", func() {
 					bpPlan := lifecycle.BuildpackPlan{
 						Entries: []lifecycle.Require{
 							{
@@ -579,14 +579,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 							{
 								Name:    "some-deprecated-bp-replace-version-dep",
 								Version: "some-version-orig", // top-level version is deprecated in buildpack API 0.3
-							},
-							{
-								Name:    "some-deprecated-bp-add-version-dep",
-								Version: "v2", // top-level version is deprecated in buildpack API 0.3
-							},
-							{
-								Name:    "some-deprecated-bp-move-version-dep",
-								Version: "v3", // top-level version is deprecated in buildpack API 0.3
 							},
 							{
 								Name:     "some-dep",
@@ -610,15 +602,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 							`name = "some-deprecated-bp-replace-version-dep"`+"\n"+
 							`version = "some-version-new"`+"\n"+
 							"[[entries]]\n"+
-							`name = "some-deprecated-bp-add-version-dep"`+"\n"+
-							`version = "v2"`+"\n"+
-							"[entries.metadata]\n"+
-							`version = "v2"`+"\n"+
-							"[[entries]]\n"+
-							`name = "some-deprecated-bp-move-version-dep"`+"\n"+
-							"[entries.metadata]\n"+
-							`version = "v3"`+"\n"+
-							"[[entries]]\n"+
 							`name = "some-dep"`+"\n"+
 							"[entries.metadata]\n"+
 							`version = "v1"`+"\n"+
@@ -641,56 +624,89 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 									Name:    "some-deprecated-bp-dep",
 									Version: "v1",
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 							},
 							{
 								Require: lifecycle.Require{
 									Name:    "some-deprecated-bp-replace-version-dep",
 									Version: "some-version-new",
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
-							},
-							{
-								Require: lifecycle.Require{
-									Name:     "some-deprecated-bp-add-version-dep",
-									Version:  "v2",
-									Metadata: map[string]interface{}{"version": "v2"},
-								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
-							},
-							{
-								Require: lifecycle.Require{
-									Name:     "some-deprecated-bp-move-version-dep",
-									Metadata: map[string]interface{}{"version": "v3"},
-								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 							},
 							{
 								Require: lifecycle.Require{
 									Name:     "some-dep",
 									Metadata: map[string]interface{}{"version": "v1"},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 							},
 							{
 								Require: lifecycle.Require{
 									Name:     "some-replace-version-dep",
 									Metadata: map[string]interface{}{"version": "some-version-new"},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 							},
 						},
-						Labels: []lifecycle.Label{},
-						Met: []string{
+						Labels: nil,
+						MetRequires: []string{
 							"some-deprecated-bp-dep",
 							"some-deprecated-bp-replace-version-dep",
-							"some-deprecated-bp-add-version-dep",
-							"some-deprecated-bp-move-version-dep",
 							"some-dep",
 							"some-replace-version-dep",
 						},
-						Processes: []launch.Process{},
-						Slices:    []layers.Slice{},
+						Processes: nil,
+						Slices:    nil,
+					}); s != "" {
+						t.Fatalf("Unexpected:\n%s\n", s)
+					}
+				})
+
+				it("bom is an exact reflection of the output buildpack plan", func() {
+					mkfile(t,
+						"[[entries]]\n"+
+							`name = "dep-1"`+"\n"+
+							`version = "v1"`+"\n"+
+							"[[entries]]\n"+
+							`name = "dep-2"`+"\n"+
+							`version = "v2"`+"\n"+
+							"[entries.metadata]\n"+
+							`version = "v2"`+"\n"+
+							"[[entries]]\n"+
+							`name = "dep-3"`+"\n"+
+							"[entries.metadata]\n"+
+							`version = "v3"`+"\n",
+						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
+					)
+
+					br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					if s := cmp.Diff(br.BOM, []lifecycle.BOMEntry{
+						{
+							Require: lifecycle.Require{
+								Name:    "dep-1",
+								Version: "v1",
+							},
+							Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
+						},
+						{
+							Require: lifecycle.Require{
+								Name:     "dep-2",
+								Version:  "v2",
+								Metadata: map[string]interface{}{"version": "v2"},
+							},
+							Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
+						},
+						{
+							Require: lifecycle.Require{
+								Name:     "dep-3",
+								Metadata: map[string]interface{}{"version": "v3"},
+							},
+							Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
+						},
 					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
 					}

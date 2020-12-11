@@ -15,6 +15,22 @@ import (
 	"github.com/buildpacks/lifecycle/layers"
 )
 
+type DirBuildpackStore struct {
+	Dir string
+}
+
+// TODO: this duplicates code in buildpack.go
+func (f *DirBuildpackStore) Lookup(bpID, bpVersion string) (Buildpack, error) {
+	bpTOML := BuildpackTOML{}
+	bpPath := filepath.Join(f.Dir, launch.EscapeID(bpID), bpVersion)
+	tomlPath := filepath.Join(bpPath, "buildpack.toml")
+	if _, err := toml.DecodeFile(tomlPath, &bpTOML); err != nil {
+		return nil, err
+	}
+	bpTOML.Path = bpPath
+	return &bpTOML, nil
+}
+
 type BuildTOML struct {
 	BOM   []BOMEntry `toml:"bom"`
 	Unmet []Unmet    `toml:"unmet"`
@@ -31,25 +47,31 @@ type LaunchTOML struct {
 	Slices    []layers.Slice   `toml:"slices"`
 }
 
-type DefaultBuildpackTOML struct {
+type BuildpackTOML struct {
 	API       string         `toml:"api"`
 	Buildpack BuildpackInfo  `toml:"buildpack"`
 	Order     BuildpackOrder `toml:"order"`
 	Path      string         `toml:"-"`
 }
 
-func (b DefaultBuildpackTOML) String() string {
+func (b BuildpackTOML) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }
 
-func (b *DefaultBuildpackTOML) Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error) {
+func (b *BuildpackTOML) Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error) {
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
 		for i := range bpPlan.Entries {
 			bpPlan.Entries[i].convertMetadataToVersion()
 		}
 	}
 
-	bpLayersDir, bpPlanPath, err := preparePaths(b.Buildpack.ID, bpPlan, config.LayersDir, config.PlanDir)
+	planDir, err := ioutil.TempDir("", launch.EscapeID(b.Buildpack.ID)+"-")
+	if err != nil {
+		return BuildResult{}, err
+	}
+	defer os.RemoveAll(planDir)
+
+	bpLayersDir, bpPlanPath, err := preparePaths(b.Buildpack.ID, bpPlan, config.LayersDir, planDir)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -83,7 +105,7 @@ func preparePaths(bpID string, bpPlan BuildpackPlan, layersDir, planDir string) 
 	return bpLayersDir, bpPlanPath, nil
 }
 
-func (b *DefaultBuildpackTOML) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig) error {
+func (b *BuildpackTOML) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig) error {
 	cmd := exec.Command(
 		filepath.Join(b.Path, "bin", "build"),
 		bpLayersDir,
@@ -158,16 +180,13 @@ func isBuild(path string) bool {
 	return err == nil && layerTOML.Build
 }
 
-func (b *DefaultBuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn BuildpackPlan) (BuildResult, error) {
+func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn BuildpackPlan) (BuildResult, error) {
 	br := BuildResult{}
-	bpFromBpInfo := Buildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
+	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
-	// read launch.toml
+	// setup launch.toml
 	var launchTOML LaunchTOML
 	launchPath := filepath.Join(bpLayersDir, "launch.toml")
-	if _, err := toml.DecodeFile(launchPath, &launchTOML); err != nil && !os.IsNotExist(err) {
-		return BuildResult{}, err
-	}
 
 	if api.MustParse(b.API).Compare(api.MustParse("0.5")) < 0 { // buildpack API <= 0.4
 		// read buildpack plan
@@ -175,11 +194,20 @@ func (b *DefaultBuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, b
 		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
 			return BuildResult{}, err
 		}
+
+		// set BOM and MetRequires
 		if err := validateBOM(bpPlanOut.toBOM(), b.API); err != nil {
 			return BuildResult{}, err
 		}
 		br.BOM = withBuildpack(bpFromBpInfo, bpPlanOut.toBOM())
-		br.Met = names(bpPlanOut.Entries)
+		br.MetRequires = names(bpPlanOut.Entries)
+
+		// read launch.toml, return if not exists
+		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
+			return br, nil
+		} else if err != nil {
+			return BuildResult{}, err
+		}
 	} else {
 		// read build.toml
 		var bpBuild BuildTOML
@@ -187,19 +215,31 @@ func (b *DefaultBuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, b
 		if _, err := toml.DecodeFile(buildPath, &bpBuild); err != nil && !os.IsNotExist(err) {
 			return BuildResult{}, err
 		}
-		if err := validateBOM(launchTOML.BOM, b.API); err != nil {
+		if err := validateBOM(bpBuild.BOM, b.API); err != nil {
 			return BuildResult{}, err
 		}
-		if err := validateBOM(bpBuild.BOM, b.API); err != nil { // TODO: maybe this validation should happen in exporter
-			return BuildResult{}, err
-		}
+
+		// set MetRequires
 		if err := validateUnmet(bpBuild.Unmet, bpPlanIn); err != nil {
 			return BuildResult{}, err
 		}
+		br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
+
+		// read launch.toml, return if not exists
+		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
+			return br, nil
+		} else if err != nil {
+			return BuildResult{}, err
+		}
+
+		// set BOM
+		if err := validateBOM(launchTOML.BOM, b.API); err != nil {
+			return BuildResult{}, err
+		}
 		br.BOM = withBuildpack(bpFromBpInfo, launchTOML.BOM)
-		br.Met = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
 	}
 
+	// set data from launch.toml
 	br.Labels = append([]Label{}, launchTOML.Labels...)
 	for i := range launchTOML.Processes {
 		launchTOML.Processes[i].BuildpackID = b.Buildpack.ID
@@ -284,7 +324,7 @@ func (p BuildpackPlan) toBOM() []BOMEntry {
 	return bom
 }
 
-func withBuildpack(bp Buildpack, bom []BOMEntry) []BOMEntry {
+func withBuildpack(bp GroupBuildpack, bom []BOMEntry) []BOMEntry {
 	var out []BOMEntry
 	for _, entry := range bom {
 		entry.Buildpack = bp.noAPI().noHomepage()

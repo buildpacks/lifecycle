@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 
@@ -75,18 +76,22 @@ func (b *buildCmd) Exec() error {
 }
 
 func (ba buildArgs) build(group lifecycle.BuildpackGroup, plan lifecycle.BuildPlan) error {
+	buildpacksDir, err := filepath.Abs(ba.buildpacksDir)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
+	}
+
 	builder := &lifecycle.Builder{
-		AppDir:          ba.appDir,
-		LayersDir:       ba.layersDir,
-		PlatformDir:     ba.platformDir,
-		BuildpacksDir:   ba.buildpacksDir,
-		PlatformAPI:     api.MustParse(ba.platformAPI),
-		Env:             env.NewBuildEnv(os.Environ()),
-		Group:           group,
-		Plan:            plan,
-		Out:             cmd.Stdout,
-		Err:             cmd.Stderr,
-		BuildpackFinder: &lifecycle.DefaultBuildpackFinder{},
+		AppDir:         ba.appDir,
+		LayersDir:      ba.layersDir,
+		PlatformDir:    ba.platformDir,
+		PlatformAPI:    api.MustParse(ba.platformAPI),
+		Env:            env.NewBuildEnv(os.Environ()),
+		Group:          group,
+		Plan:           plan,
+		Out:            cmd.Stdout,
+		Err:            cmd.Stderr,
+		BuildpackStore: &lifecycle.DirBuildpackStore{Dir: buildpacksDir},
 	}
 	md, err := builder.Build()
 

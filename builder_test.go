@@ -2,7 +2,6 @@ package lifecycle_test
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -24,34 +24,34 @@ import (
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
-const latestPlatformAPI = "0.5" // TODO: is there a good way to ensure this is kept up to date?
+var latestPlatformAPI = api.Platform.Latest()
 
 func TestBuilder(t *testing.T) {
 	spec.Run(t, "Builder", testBuilder, spec.Report(report.Terminal{}))
 }
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
-//go:generate mockgen -package testmock -destination testmock/buildpack_finder.go github.com/buildpacks/lifecycle BuildpackFinder
-//go:generate mockgen -package testmock -destination testmock/buildpack_toml.go github.com/buildpacks/lifecycle BuildpackTOML
+//go:generate mockgen -package testmock -destination testmock/buildpack_store.go github.com/buildpacks/lifecycle BuildpackStore
+//go:generate mockgen -package testmock -destination testmock/buildpack.go github.com/buildpacks/lifecycle Buildpack
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		builder         *lifecycle.Builder
-		mockCtrl        *gomock.Controller
-		env             *testmock.MockBuildEnv
-		buildpackFinder *testmock.MockBuildpackFinder
-		stdout, stderr  *bytes.Buffer
-		tmpDir          string
-		platformDir     string
-		appDir          string
-		layersDir       string
-		config          lifecycle.BuildConfig
+		builder        *lifecycle.Builder
+		mockCtrl       *gomock.Controller
+		env            *testmock.MockBuildEnv
+		buildpackStore *testmock.MockBuildpackStore
+		stdout, stderr *bytes.Buffer
+		tmpDir         string
+		platformDir    string
+		appDir         string
+		layersDir      string
+		config         lifecycle.BuildConfig
 	)
 
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
 		env = testmock.NewMockBuildEnv(mockCtrl)
-		buildpackFinder = testmock.NewMockBuildpackFinder(mockCtrl)
+		buildpackStore = testmock.NewMockBuildpackStore(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
@@ -65,21 +65,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
 		builder = &lifecycle.Builder{
-			AppDir:        appDir,
-			LayersDir:     layersDir,
-			PlatformDir:   platformDir,
-			BuildpacksDir: filepath.Join("testdata", "by-id"),
-			PlatformAPI:   api.MustParse(latestPlatformAPI),
-			Env:           env,
+			AppDir:      appDir,
+			LayersDir:   layersDir,
+			PlatformDir: platformDir,
+			PlatformAPI: latestPlatformAPI,
+			Env:         env,
 			Group: lifecycle.BuildpackGroup{
-				Group: []lifecycle.Buildpack{
-					{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
+				Group: []lifecycle.GroupBuildpack{
+					{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
-			Out:             stdout,
-			Err:             stderr,
-			BuildpackFinder: buildpackFinder,
+			Out:            stdout,
+			Err:            stderr,
+			BuildpackStore: buildpackStore,
 		}
 
 		config, err = builder.BuildConfig()
@@ -99,7 +98,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builder.Plan = lifecycle.BuildPlan{
 					Entries: []lifecycle.BuildPlanEntry{
 						{
-							Providers: []lifecycle.Buildpack{
+							Providers: []lifecycle.GroupBuildpack{
 								{ID: "A", Version: "v1"},
 								{ID: "B", Version: "v2"},
 							},
@@ -108,7 +107,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 						{
-							Providers: []lifecycle.Buildpack{
+							Providers: []lifecycle.GroupBuildpack{
 								{ID: "A", Version: "v1"},
 								{ID: "B", Version: "v2"},
 							},
@@ -117,7 +116,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 						{
-							Providers: []lifecycle.Buildpack{
+							Providers: []lifecycle.GroupBuildpack{
 								{ID: "B", Version: "v2"},
 							},
 							Requires: []lifecycle.Require{
@@ -126,17 +125,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-				bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-				buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+				bpA := testmock.NewMockBuildpack(mockCtrl)
+				bpB := testmock.NewMockBuildpack(mockCtrl)
+				buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 				expectedPlanA := lifecycle.BuildpackPlan{Entries: []lifecycle.Require{
 					{Name: "some-dep", Version: "v1"},
 					{Name: "some-unmet-dep", Version: "v2"},
 				}}
 				bpA.EXPECT().Build(expectedPlanA, config).Return(lifecycle.BuildResult{
-					Met: []string{"some-dep"},
+					MetRequires: []string{"some-dep"},
 				}, nil)
-				buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+				buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 				expectedPlanB := lifecycle.BuildpackPlan{Entries: []lifecycle.Require{
 					{Name: "some-unmet-dep", Version: "v2"},
 					{Name: "other-dep", Version: "v4"},
@@ -152,8 +151,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("build metadata", func() {
 				when("bom", func() {
 					it("should convert top level version to metadata.version", func() {
-						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						builder.Group.Group = []lifecycle.GroupBuildpack{
+							{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+							{ID: "B", Version: "v2", API: "0.2"},
+							{ID: "C", Version: "v1", API: "0.4"},
+						}
+
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							BOM: []lifecycle.BOMEntry{
 								{
@@ -161,13 +166,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 										Name:    "dep1",
 										Version: "v1",
 									},
-									Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+									Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config)
+						bpC := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("C", "v1").Return(bpC, nil)
+						bpC.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							BOM:         nil,
+							MetRequires: nil,
+						}, nil)
 
 						metadata, err := builder.Build()
 						if err != nil {
@@ -180,7 +191,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Version:  "",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -190,18 +201,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("buildpacks", func() {
 					it("should include builder buildpacks", func() {
-						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config)
-						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config)
 
 						metadata, err := builder.Build()
 						if err != nil {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
-						if s := cmp.Diff(metadata.Buildpacks, []lifecycle.Buildpack{
+						if s := cmp.Diff(metadata.Buildpacks, []lifecycle.GroupBuildpack{
 							{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: "0.2"},
 						}); s != "" {
@@ -212,16 +223,16 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("labels", func() {
 					it("should aggregate labels from each buildpack", func() {
-						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Labels: []lifecycle.Label{
 								{Key: "some-bpA-key", Value: "some-bpA-value"},
 								{Key: "some-other-bpA-key", Value: "some-other-bpA-value"},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Labels: []lifecycle.Label{
 								{Key: "some-bpB-key", Value: "some-bpB-value"},
@@ -246,8 +257,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("processes", func() {
 					it("should override identical processes from earlier buildpacks", func() {
-						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
 								{
@@ -266,8 +277,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
 								{
@@ -321,8 +332,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("slices", func() {
 					it("should aggregate slices from each buildpack", func() {
-						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Slices: []layers.Slice{
 								{Paths: []string{"some-bpA-path", "some-other-bpA-path"}},
@@ -330,8 +341,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{Paths: []string{"extra-path"}},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Slices: []layers.Slice{
 								{Paths: []string{"some-bpB-path", "some-other-bpB-path"}},
@@ -360,8 +371,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("building fails", func() {
 			when("first buildpack build fails", func() {
 				it("should error", func() {
-					bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-					buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+					bpA := testmock.NewMockBuildpack(mockCtrl)
+					buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, errors.New("some error"))
 
 					if _, err := builder.Build(); err == nil {
@@ -374,11 +385,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("later buildpack build fails", func() {
 				it("should error", func() {
-					bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-					buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+					bpA := testmock.NewMockBuildpack(mockCtrl)
+					buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, nil)
-					bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-					buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+					bpB := testmock.NewMockBuildpack(mockCtrl)
+					buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 					bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, errors.New("some error"))
 
 					if _, err := builder.Build(); err == nil {
@@ -398,8 +409,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("build metadata", func() {
 				when("bom", func() {
 					it("should convert metadata.version to top level version", func() {
-						bpA := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("A", "v1", builder.BuildpacksDir).Return(bpA, nil)
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							BOM: []lifecycle.BOMEntry{
 								{
@@ -407,12 +418,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 										Name:     "dep1",
 										Metadata: map[string]interface{}{"version": string("v1")},
 									},
-									Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+									Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpackTOML(mockCtrl)
-						buildpackFinder.EXPECT().Find("B", "v2", builder.BuildpacksDir).Return(bpB, nil)
+						bpB := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config)
 
 						metadata, err := builder.Build()
@@ -427,7 +438,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Version:  "v1",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "A", Version: "v1"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)

@@ -3,12 +3,8 @@ package lifecycle
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sort"
-
-	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/env"
@@ -23,28 +19,11 @@ type BuildEnv interface {
 	List() []string
 }
 
-type BuildpackFinder interface {
-	Find(bpID, bpVersion, buildpacksDir string) (BuildpackTOML, error)
+type BuildpackStore interface {
+	Lookup(bpID, bpVersion string) (Buildpack, error)
 }
 
-type DefaultBuildpackFinder struct{}
-
-// TODO: this duplicates code in buildpack.go
-func (f *DefaultBuildpackFinder) Find(bpID, bpVersion, buildpacksDir string) (BuildpackTOML, error) {
-	bpTOML := DefaultBuildpackTOML{}
-	bpPath, err := filepath.Abs(filepath.Join(buildpacksDir, launch.EscapeID(bpID), bpVersion))
-	if err != nil {
-		return nil, err
-	}
-	tomlPath := filepath.Join(bpPath, "buildpack.toml")
-	if _, err := toml.DecodeFile(tomlPath, &bpTOML); err != nil {
-		return nil, err
-	}
-	bpTOML.Path = bpPath
-	return &bpTOML, nil
-}
-
-type BuildpackTOML interface {
+type Buildpack interface {
 	Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error)
 }
 
@@ -53,22 +32,21 @@ type BuildConfig struct {
 	AppDir      string
 	PlatformDir string
 	LayersDir   string
-	PlanDir     string
 	Out         io.Writer
 	Err         io.Writer
 }
 
 type BuildResult struct {
-	BOM       []BOMEntry
-	Labels    []Label
-	Met       []string
-	Processes []launch.Process
-	Slices    []layers.Slice
+	BOM         []BOMEntry
+	Labels      []Label
+	MetRequires []string
+	Processes   []launch.Process
+	Slices      []layers.Slice
 }
 
 type BOMEntry struct {
 	Require
-	Buildpack Buildpack `toml:"buildpack" json:"buildpack"`
+	Buildpack GroupBuildpack `toml:"buildpack" json:"buildpack"`
 }
 
 type Label struct {
@@ -81,17 +59,15 @@ type BuildpackPlan struct {
 }
 
 type Builder struct {
-	AppDir          string
-	LayersDir       string
-	PlatformDir     string
-	BuildpacksDir   string
-	PlatformAPI     *api.Version
-	Env             BuildEnv
-	Group           BuildpackGroup
-	Plan            BuildPlan
-	Out, Err        io.Writer
-	BuildpackFinder BuildpackFinder
-	planDir         string
+	AppDir         string
+	LayersDir      string
+	PlatformDir    string
+	PlatformAPI    *api.Version
+	Env            BuildEnv
+	Group          BuildpackGroup
+	Plan           BuildPlan
+	Out, Err       io.Writer
+	BuildpackStore BuildpackStore
 }
 
 func (b *Builder) Build() (*BuildMetadata, error) {
@@ -99,7 +75,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(config.PlanDir)
 
 	procMap := processMap{}
 	plan := b.Plan
@@ -108,7 +83,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	var labels []Label
 
 	for _, bp := range b.Group.Group {
-		bpTOML, err := b.BuildpackFinder.Find(bp.ID, bp.Version, b.BuildpacksDir)
+		bpTOML, err := b.BuildpackStore.Lookup(bp.ID, bp.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +96,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
-		plan = plan.filter(br.Met)
+		plan = plan.filter(br.MetRequires)
 		procMap.add(br.Processes)
 		slices = append(slices, br.Slices...)
 	}
@@ -158,20 +133,12 @@ func (b *Builder) BuildConfig() (BuildConfig, error) {
 	if err != nil {
 		return BuildConfig{}, err
 	}
-	if b.planDir == "" {
-		planDir, err := ioutil.TempDir("", "plan.")
-		if err != nil {
-			return BuildConfig{}, err
-		}
-		b.planDir = planDir
-	}
 
 	return BuildConfig{
 		Env:         b.Env,
 		AppDir:      appDir,
 		PlatformDir: platformDir,
 		LayersDir:   layersDir,
-		PlanDir:     b.planDir,
 		Out:         b.Out,
 		Err:         b.Err,
 	}, nil

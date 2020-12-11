@@ -8,7 +8,7 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 )
 
-type Buildpack struct {
+type GroupBuildpack struct {
 	ID       string `toml:"id" json:"id"`
 	Version  string `toml:"version" json:"version"`
 	Optional bool   `toml:"optional,omitempty" json:"optional,omitempty"`
@@ -16,27 +16,27 @@ type Buildpack struct {
 	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty"`
 }
 
-func (bp Buildpack) String() string {
+func (bp GroupBuildpack) String() string {
 	return bp.ID + "@" + bp.Version
 }
 
-func (bp Buildpack) noOpt() Buildpack {
+func (bp GroupBuildpack) noOpt() GroupBuildpack {
 	bp.Optional = false
 	return bp
 }
 
-func (bp Buildpack) noAPI() Buildpack {
+func (bp GroupBuildpack) noAPI() GroupBuildpack {
 	bp.API = ""
 	return bp
 }
 
-func (bp Buildpack) noHomepage() Buildpack {
+func (bp GroupBuildpack) noHomepage() GroupBuildpack {
 	bp.Homepage = ""
 	return bp
 }
 
-func (bp Buildpack) Lookup(buildpacksDir string) (*DefaultBuildpackTOML, error) {
-	bpTOML := DefaultBuildpackTOML{}
+func (bp GroupBuildpack) Lookup(buildpacksDir string) (*BuildpackTOML, error) {
+	bpTOML := BuildpackTOML{}
 	bpPath, err := filepath.Abs(filepath.Join(buildpacksDir, launch.EscapeID(bp.ID), bp.Version))
 	if err != nil {
 		return nil, err

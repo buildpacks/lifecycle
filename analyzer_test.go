@@ -53,7 +53,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks: []lifecycle.Buildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
+			Buildpacks: []lifecycle.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
 			LayersDir:  layerDir,
 			Logger:     &log.Logger{Handler: &discard.Handler{}},
 		}
@@ -144,7 +144,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("subset of buildpacks are detected", func() {
 				it.Before(func() {
-					analyzer.Buildpacks = []lifecycle.Buildpack{{ID: "no.cache.buildpack"}}
+					analyzer.Buildpacks = []lifecycle.GroupBuildpack{{ID: "no.cache.buildpack"}}
 				})
 				it("restores layers for detected buildpacks", func() {
 					_, err := analyzer.Analyze(image, testCache)
@@ -193,7 +193,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
 					h.AssertNil(t, testCache.Commit())
 
-					analyzer.Buildpacks = append(analyzer.Buildpacks, lifecycle.Buildpack{ID: "escaped/buildpack/id"})
+					analyzer.Buildpacks = append(analyzer.Buildpacks, lifecycle.GroupBuildpack{ID: "escaped/buildpack/id"})
 				})
 
 				it("restores app and cache layer metadata", func() {
@@ -299,7 +299,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("subset of buildpacks are detected", func() {
 					it.Before(func() {
-						analyzer.Buildpacks = []lifecycle.Buildpack{{ID: "no.group.buildpack"}}
+						analyzer.Buildpacks = []lifecycle.GroupBuildpack{{ID: "no.group.buildpack"}}
 					})
 
 					it("restores layers for detected buildpacks", func() {
@@ -382,7 +382,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
 					h.AssertNil(t, testCache.Commit())
 
-					analyzer.Buildpacks = append(analyzer.Buildpacks, lifecycle.Buildpack{ID: "escaped/buildpack/id"})
+					analyzer.Buildpacks = append(analyzer.Buildpacks, lifecycle.GroupBuildpack{ID: "escaped/buildpack/id"})
 				})
 
 				it("restores cache=true layer metadata", func() {

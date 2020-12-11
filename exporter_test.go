@@ -133,7 +133,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}).AnyTimes()
 
 		exporter = &lifecycle.Exporter{
-			Buildpacks: []lifecycle.Buildpack{
+			Buildpacks: []lifecycle.GroupBuildpack{
 				{ID: "buildpack.id", Version: "1.2.3"},
 				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
 			},
@@ -903,7 +903,7 @@ version = "4.5.6"
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
 
-					h.AssertEq(t, meta.Buildpacks[0].Store, &lifecycle.BuildpackStore{Data: map[string]interface{}{
+					h.AssertEq(t, meta.Buildpacks[0].Store, &lifecycle.StoreTOML{Data: map[string]interface{}{
 						"key": "val",
 					}})
 				})
@@ -1119,7 +1119,7 @@ version = "4.5.6"
 				when("platform api >= 0.5", func() {
 					it.Before(func() {
 						exporter.PlatformAPI = api.MustParse("0.5")
-						exporter.Buildpacks = []lifecycle.Buildpack{
+						exporter.Buildpacks = []lifecycle.GroupBuildpack{
 							{ID: "buildpack.id", Version: "1.2.3", API: "0.5"},
 							{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.5"},
 						}
@@ -1136,14 +1136,14 @@ version = "4.5.6"
 									Name:     "dep1",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "buildpack.id", Version: "1.2.3"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "buildpack.id", Version: "1.2.3"},
 							},
 							{
 								Require: lifecycle.Require{
 									Name:     "dep2",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: lifecycle.Buildpack{ID: "other.buildpack.id", Version: "4.5.6"},
+								Buildpack: lifecycle.GroupBuildpack{ID: "other.buildpack.id", Version: "4.5.6"},
 							},
 						})
 					})
@@ -1153,7 +1153,7 @@ version = "4.5.6"
 
 		when("buildpack requires an escaped id", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []lifecycle.Buildpack{{ID: "some/escaped/bp/id"}}
+				exporter.Buildpacks = []lifecycle.GroupBuildpack{{ID: "some/escaped/bp/id"}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), opts.LayersDir)
 			})

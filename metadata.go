@@ -17,7 +17,7 @@ const (
 
 type BuildMetadata struct {
 	BOM        []BOMEntry       `toml:"bom" json:"bom"`
-	Buildpacks []Buildpack      `toml:"buildpacks" json:"buildpacks"`
+	Buildpacks []GroupBuildpack `toml:"buildpacks" json:"buildpacks"`
 	Labels     []Label          `toml:"labels" json:"-"`
 	Launcher   LauncherMetadata `toml:"-" json:"launcher"`
 	Processes  []launch.Process `toml:"processes" json:"processes"`
@@ -106,7 +106,7 @@ type BuildpackLayersMetadata struct {
 	ID      string                            `json:"key" toml:"key"`
 	Version string                            `json:"version" toml:"version"`
 	Layers  map[string]BuildpackLayerMetadata `json:"layers" toml:"layers"`
-	Store   *BuildpackStore                   `json:"store,omitempty" toml:"store"`
+	Store   *StoreTOML                        `json:"store,omitempty" toml:"store"`
 }
 
 type BuildpackLayerMetadata struct {
@@ -121,7 +121,7 @@ type BuildpackLayerMetadataFile struct {
 	Cache  bool        `json:"cache" toml:"cache"`
 }
 
-type BuildpackStore struct {
+type StoreTOML struct {
 	Data map[string]interface{} `json:"metadata" toml:"metadata"`
 }
 

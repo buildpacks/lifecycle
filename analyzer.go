@@ -11,7 +11,7 @@ import (
 )
 
 type Analyzer struct {
-	Buildpacks []Buildpack
+	Buildpacks []GroupBuildpack
 	LayersDir  string
 	Logger     Logger
 	SkipLayers bool
