@@ -127,11 +127,14 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 }
 
 func (e *exportCmd) Privileges() error {
-	keychain, err := e.resolveKeychain()
-	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+	registryImages := e.registryImages()
+	if len(registryImages) > 0 {
+		var err error
+		e.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(registryImages...))
+		if err != nil {
+			return cmd.FailErr(err, "resolve keychain")
+		}
 	}
-	e.keychain = keychain
 
 	if e.useDaemon {
 		var err error
@@ -171,7 +174,7 @@ func (e *exportCmd) Exec() error {
 	return e.export(group, cacheStore, analyzedMD, e.keychain)
 }
 
-func (e *exportCmd) resolveKeychain() (authn.Keychain, error) {
+func (e *exportCmd) registryImages() []string {
 	var registryImages []string
 	if e.cacheImageTag != "" {
 		registryImages = append(registryImages, e.cacheImageTag)
@@ -180,7 +183,7 @@ func (e *exportCmd) resolveKeychain() (authn.Keychain, error) {
 		registryImages = append(registryImages, e.imageNames...)
 		registryImages = append(registryImages, e.runImageRef)
 	}
-	return auth.ResolveKeychain(cmd.EnvRegistryAuth, registryImages)
+	return registryImages
 }
 
 func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata, keychain authn.Keychain) error {

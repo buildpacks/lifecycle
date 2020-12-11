@@ -12,16 +12,43 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ResolveKeychainCmd struct {
+	images           []string
+	fallbackKeychain authn.Keychain
+}
+
+type ResolveKeychainCmdOp func(*ResolveKeychainCmd)
+
+func WithImages(images ...string) ResolveKeychainCmdOp {
+	return func(cmd *ResolveKeychainCmd) {
+		cmd.images = append(cmd.images, images...)
+	}
+}
+
+func WithFallbackKeychain(fallbackKeychain authn.Keychain) ResolveKeychainCmdOp {
+	return func(cmd *ResolveKeychainCmd) {
+		cmd.fallbackKeychain = fallbackKeychain
+	}
+}
+
+func formatArgs(ops ...ResolveKeychainCmdOp) ResolveKeychainCmd {
+	cmd := ResolveKeychainCmd{fallbackKeychain: authn.DefaultKeychain}
+
+	for _, op := range ops {
+		op(&cmd)
+	}
+
+	return cmd
+}
+
 // ResolveKeychain returns either:
 // * a resolved keychain from the ggcr DefaultKeychain or
 // * a multi-keychain with a resolved keychain from the provided environment variable, and a resolved keychain from the ggcr DefaultKeychain
 // depending on whether the provided environment variable is set
-func ResolveKeychain(envVar string, images []string, overrideKeychain ...authn.Keychain) (authn.Keychain, error) {
-	fallbackKeychain := authn.DefaultKeychain
-	if len(overrideKeychain) == 1 {
-		fallbackKeychain = overrideKeychain[0]
-	}
-	defaultKeychain := resolvedKeychain{Auths: buildEnvMap(fallbackKeychain, images...)}
+func ResolveKeychain(envVar string, ops ...ResolveKeychainCmdOp) (authn.Keychain, error) {
+	keychainCmd := formatArgs(ops...)
+
+	defaultKeychain := resolvedKeychain{Auths: buildEnvMap(keychainCmd.fallbackKeychain, keychainCmd.images...)}
 
 	_, ok := os.LookupEnv(envVar)
 	if !ok {

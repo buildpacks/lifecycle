@@ -67,11 +67,11 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 }
 
 func (r *rebaseCmd) Privileges() error {
-	keychain, err := r.resolveKeychain()
+	var err error
+	r.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(r.imageNames...))
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
-	r.keychain = keychain
 
 	if r.useDaemon {
 		var err error
@@ -155,8 +155,4 @@ func (r *rebaseCmd) Exec() error {
 		return cmd.FailErrCode(err, cmd.CodeRebaseError, "write rebase report")
 	}
 	return nil
-}
-
-func (r *rebaseCmd) resolveKeychain() (authn.Keychain, error) {
-	return auth.ResolveKeychain(cmd.EnvRegistryAuth, r.imageNames)
 }

@@ -99,11 +99,14 @@ func (c *createCmd) Args(nargs int, args []string) error {
 }
 
 func (c *createCmd) Privileges() error {
-	keychain, err := c.resolveKeychain()
-	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+	registryImages := c.registryImages()
+	if len(registryImages) > 0 {
+		var err error
+		c.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(registryImages...))
+		if err != nil {
+			return cmd.FailErr(err, "resolve keychain")
+		}
 	}
-	c.keychain = keychain
 
 	if c.useDaemon {
 		var err error
@@ -195,7 +198,7 @@ func (c *createCmd) Exec() error {
 	}.export(group, cacheStore, analyzedMD, c.keychain)
 }
 
-func (c *createCmd) resolveKeychain() (authn.Keychain, error) {
+func (c *createCmd) registryImages() []string {
 	var registryImages []string
 	if c.cacheImageTag != "" {
 		registryImages = append(registryImages, c.cacheImageTag)
@@ -204,5 +207,5 @@ func (c *createCmd) resolveKeychain() (authn.Keychain, error) {
 		registryImages = append(registryImages, append([]string{c.imageName}, c.additionalTags...)...)
 		registryImages = append(registryImages, c.runImageRef)
 	}
-	return auth.ResolveKeychain(cmd.EnvRegistryAuth, registryImages)
+	return registryImages
 }

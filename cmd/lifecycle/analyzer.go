@@ -79,11 +79,14 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 }
 
 func (a *analyzeCmd) Privileges() error {
-	keychain, err := a.resolveKeychain()
-	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+	registryImages := a.registryImages()
+	if len(registryImages) > 0 {
+		var err error
+		a.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(registryImages...))
+		if err != nil {
+			return cmd.FailErr(err, "resolve keychain")
+		}
 	}
-	a.keychain = keychain
 
 	if a.useDaemon {
 		var err error
@@ -127,7 +130,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (a *analyzeCmd) resolveKeychain() (authn.Keychain, error) {
+func (a *analyzeCmd) registryImages() []string {
 	var registryImages []string
 	if a.cacheImageTag != "" {
 		registryImages = append(registryImages, a.cacheImageTag)
@@ -135,7 +138,7 @@ func (a *analyzeCmd) resolveKeychain() (authn.Keychain, error) {
 	if !a.useDaemon {
 		registryImages = append(registryImages, a.analyzeArgs.imageName)
 	}
-	return auth.ResolveKeychain(cmd.EnvRegistryAuth, registryImages)
+	return registryImages
 }
 
 func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, keychain authn.Keychain) (lifecycle.AnalyzedMetadata, error) {

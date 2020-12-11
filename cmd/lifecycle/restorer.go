@@ -50,11 +50,14 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 }
 
 func (r *restoreCmd) Privileges() error {
-	keychain, err := r.resolveKeychain()
-	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+	registryImages := r.registryImages()
+	if len(registryImages) > 0 {
+		var err error
+		r.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(registryImages...))
+		if err != nil {
+			return cmd.FailErr(err, "resolve keychain")
+		}
 	}
-	r.keychain = keychain
 
 	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
@@ -80,11 +83,11 @@ func (r *restoreCmd) Exec() error {
 	return restore(r.layersDir, group, cacheStore)
 }
 
-func (r *restoreCmd) resolveKeychain() (authn.Keychain, error) {
-	if r.cacheImageTag == "" {
-		return authn.DefaultKeychain, nil // fix the keychain
+func (r *restoreCmd) registryImages() []string {
+	if r.cacheImageTag != "" {
+		return []string{r.cacheImageTag}
 	}
-	return auth.ResolveKeychain(cmd.EnvRegistryAuth, []string{r.cacheImageTag})
+	return []string{}
 }
 
 func restore(layersDir string, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
