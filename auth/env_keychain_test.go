@@ -3,6 +3,7 @@ package auth_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 
@@ -78,7 +79,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("InMemoryKeychain", func() {
-		it.Focus("returns a resolved keychain from the provided keychain", func() {
+		it("returns a resolved keychain from the provided keychain", func() {
 			keychain := &FakeKeychain{
 				authMap: map[string]*authn.AuthConfig{
 					"some-registry.com": {
@@ -98,7 +99,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				keychain,
 				"some-registry.com/image",
 				"some-registry.com/image2",
-				"",
+				"", // empty strings should be ignored
 				"other-registry.com/image3",
 				"my/image",
 			)
@@ -107,20 +108,41 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				Auths: map[string]string{
 					"index.docker.io":    "Bearer qwerty=",
 					"other-registry.com": "Basic asdf=",
-					"some-registry.com": "Basic dXNlcjpwYXNzd29yZA==",
+					"some-registry.com":  "Basic dXNlcjpwYXNzd29yZA==",
 				},
 			})
 		})
 
 		when("the provided keychain fails to resolve", func() {
-			it("returns anonymous auth", func() {
+			it("returns an empty keychain", func() {
+				keychain := &FakeKeychain{
+					returnsForResolve: errors.New("some-error"),
+				}
 
+				inMemoryKeychain := auth.InMemoryKeychain(keychain)
+
+				h.AssertEq(t, inMemoryKeychain, &auth.ResolvedKeychain{
+					Auths: map[string]string{},
+				})
 			})
 		})
 
 		when("passed no images", func() {
 			it("returns an empty keychain", func() {
-				// TODO
+				keychain := &FakeKeychain{
+					authMap: map[string]*authn.AuthConfig{
+						"some-registry.com": {
+							Username: "user",
+							Password: "password",
+						},
+					},
+				}
+
+				inMemoryKeychain := auth.InMemoryKeychain(keychain)
+
+				h.AssertEq(t, inMemoryKeychain, &auth.ResolvedKeychain{
+					Auths: map[string]string{},
+				})
 			})
 		})
 	})

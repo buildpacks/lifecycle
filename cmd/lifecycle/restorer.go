@@ -51,7 +51,7 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 
 func (r *restoreCmd) Privileges() error {
 	var err error
-	r.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(r.registryImages()...))
+	r.keychain, err = auth.DefaultKeychain(cmd.EnvRegistryAuth, r.registryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
