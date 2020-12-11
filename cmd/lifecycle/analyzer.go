@@ -26,9 +26,6 @@ type analyzeCmd struct {
 
 	//flags: paths to write data
 	analyzedPath string
-
-	//construct before dropping privileges
-	keychain authn.Keychain
 }
 
 type analyzeArgs struct {
@@ -40,7 +37,8 @@ type analyzeArgs struct {
 	useDaemon   bool
 
 	//construct if necessary before dropping privileges
-	docker client.CommonAPIClient
+	docker   client.CommonAPIClient
+	keychain authn.Keychain
 }
 
 func (a *analyzeCmd) DefineFlags() {
@@ -79,13 +77,10 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 }
 
 func (a *analyzeCmd) Privileges() error {
-	registryImages := a.registryImages()
-	if len(registryImages) > 0 {
-		var err error
-		a.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(registryImages...))
-		if err != nil {
-			return cmd.FailErr(err, "resolve keychain")
-		}
+	var err error
+	a.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(a.registryImages()...))
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
 	}
 
 	if a.useDaemon {
@@ -118,7 +113,7 @@ func (a *analyzeCmd) Exec() error {
 		return cmd.FailErr(err, "initialize cache")
 	}
 
-	analyzedMD, err := a.analyze(group, cacheStore, a.keychain)
+	analyzedMD, err := a.analyze(group, cacheStore)
 	if err != nil {
 		return err
 	}
@@ -130,18 +125,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (a *analyzeCmd) registryImages() []string {
-	var registryImages []string
-	if a.cacheImageTag != "" {
-		registryImages = append(registryImages, a.cacheImageTag)
-	}
-	if !a.useDaemon {
-		registryImages = append(registryImages, a.analyzeArgs.imageName)
-	}
-	return registryImages
-}
-
-func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, keychain authn.Keychain) (lifecycle.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -155,7 +139,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 	} else {
 		img, err = remote.NewImage(
 			aa.imageName,
-			keychain,
+			aa.keychain,
 			remote.FromBaseImage(aa.imageName),
 		)
 	}
@@ -173,4 +157,15 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 		return lifecycle.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")
 	}
 	return analyzedMD, nil
+}
+
+func (a *analyzeCmd) registryImages() []string {
+	var registryImages []string
+	if a.cacheImageTag != "" {
+		registryImages = append(registryImages, a.cacheImageTag)
+	}
+	if !a.useDaemon {
+		registryImages = append(registryImages, a.analyzeArgs.imageName)
+	}
+	return registryImages
 }

@@ -50,13 +50,10 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 }
 
 func (r *restoreCmd) Privileges() error {
-	registryImages := r.registryImages()
-	if len(registryImages) > 0 {
-		var err error
-		r.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(registryImages...))
-		if err != nil {
-			return cmd.FailErr(err, "resolve keychain")
-		}
+	var err error
+	r.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(r.registryImages()...))
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
 	}
 
 	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {

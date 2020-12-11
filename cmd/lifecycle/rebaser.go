@@ -156,3 +156,11 @@ func (r *rebaseCmd) Exec() error {
 	}
 	return nil
 }
+
+func (r *rebaseCmd) registryImages() []string {
+	registryImages := r.imageNames
+	if r.runImageRef != "" {
+		registryImages = append(registryImages, r.runImageRef)
+	}
+	return registryImages
+}

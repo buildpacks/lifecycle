@@ -99,13 +99,10 @@ func (c *createCmd) Args(nargs int, args []string) error {
 }
 
 func (c *createCmd) Privileges() error {
-	registryImages := c.registryImages()
-	if len(registryImages) > 0 {
-		var err error
-		c.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(registryImages...))
-		if err != nil {
-			return cmd.FailErr(err, "resolve keychain")
-		}
+	var err error
+	c.keychain, err = auth.ResolveKeychain(cmd.EnvRegistryAuth, auth.WithImages(c.registryImages()...))
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
 	}
 
 	if c.useDaemon {
@@ -149,12 +146,13 @@ func (c *createCmd) Exec() error {
 	cmd.DefaultLogger.Phase("ANALYZING")
 	analyzedMD, err := analyzeArgs{
 		imageName:   c.previousImage,
+		keychain:    c.keychain,
 		layersDir:   c.layersDir,
 		platformAPI: c.platformAPI,
 		skipLayers:  c.skipRestore,
 		useDaemon:   c.useDaemon,
 		docker:      c.docker,
-	}.analyze(group, cacheStore, c.keychain)
+	}.analyze(group, cacheStore)
 	if err != nil {
 		return err
 	}
@@ -184,6 +182,7 @@ func (c *createCmd) Exec() error {
 		docker:              c.docker,
 		gid:                 c.gid,
 		imageNames:          append([]string{c.imageName}, c.additionalTags...),
+		keychain:            c.keychain,
 		launchCacheDir:      c.launchCacheDir,
 		launcherPath:        c.launcherPath,
 		layersDir:           c.layersDir,
@@ -195,7 +194,7 @@ func (c *createCmd) Exec() error {
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
-	}.export(group, cacheStore, analyzedMD, c.keychain)
+	}.export(group, cacheStore, analyzedMD)
 }
 
 func (c *createCmd) registryImages() []string {
