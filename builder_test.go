@@ -18,7 +18,6 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -38,7 +37,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		builder        *lifecycle.Builder
 		mockCtrl       *gomock.Controller
-		env            *testmock.MockBuildEnv
+		mockEnv        *testmock.MockBuildEnv
 		buildpackStore *testmock.MockBuildpackStore
 		stdout, stderr *bytes.Buffer
 		tmpDir         string
@@ -50,7 +49,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
-		env = testmock.NewMockBuildEnv(mockCtrl)
+		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
 		buildpackStore = testmock.NewMockBuildpackStore(mockCtrl)
 
 		var err error
@@ -69,10 +68,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:   layersDir,
 			PlatformDir: platformDir,
 			PlatformAPI: latestPlatformAPI,
-			Env:         env,
+			Env:         mockEnv,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.GroupBuildpack{
-					{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+					{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 					{ID: "B", Version: "v2", API: "0.2"},
 				},
 			},
@@ -152,9 +151,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("bom", func() {
 					it("should convert top level version to metadata.version", func() {
 						builder.Group.Group = []lifecycle.GroupBuildpack{
-							{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: "0.2"},
-							{ID: "C", Version: "v1", API: "0.4"},
 						}
 
 						bpA := testmock.NewMockBuildpack(mockCtrl)
@@ -173,12 +171,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config)
-						bpC := testmock.NewMockBuildpack(mockCtrl)
-						buildpackStore.EXPECT().Lookup("C", "v1").Return(bpC, nil)
-						bpC.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
-							BOM:         nil,
-							MetRequires: nil,
-						}, nil)
 
 						metadata, err := builder.Build()
 						if err != nil {
@@ -213,7 +205,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
 						if s := cmp.Diff(metadata.Buildpacks, []lifecycle.GroupBuildpack{
-							{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
+							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: "0.2"},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)

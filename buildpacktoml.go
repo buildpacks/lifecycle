@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -80,7 +81,7 @@ func (b *BuildpackTOML) Build(bpPlan BuildpackPlan, config BuildConfig) (BuildRe
 		return BuildResult{}, err
 	}
 
-	if err := setupEnv(config.Env, bpLayersDir); err != nil {
+	if err := b.setupEnv(config.Env, bpLayersDir); err != nil {
 		return BuildResult{}, err
 	}
 
@@ -133,12 +134,12 @@ func (b *BuildpackTOML) runBuildCmd(bpLayersDir, bpPlanPath string, config Build
 	return nil
 }
 
-func setupEnv(env BuildEnv, layersDir string) error {
+func (b *BuildpackTOML) setupEnv(buildEnv BuildEnv, layersDir string) error {
 	if err := eachDir(layersDir, func(path string) error {
 		if !isBuild(path + ".toml") {
 			return nil
 		}
-		return env.AddRootDir(path)
+		return buildEnv.AddRootDir(path)
 	}); err != nil {
 		return err
 	}
@@ -147,10 +148,11 @@ func setupEnv(env BuildEnv, layersDir string) error {
 		if !isBuild(path + ".toml") {
 			return nil
 		}
-		if err := env.AddEnvDir(filepath.Join(path, "env")); err != nil {
+		bpAPI := api.MustParse(b.API)
+		if err := buildEnv.AddEnvDir(filepath.Join(path, "env"), env.DefaultActionType(bpAPI)); err != nil {
 			return err
 		}
-		return env.AddEnvDir(filepath.Join(path, "env.build"))
+		return buildEnv.AddEnvDir(filepath.Join(path, "env.build"), env.DefaultActionType(bpAPI))
 	})
 }
 
