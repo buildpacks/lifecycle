@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
@@ -28,8 +29,10 @@ type createCmd struct {
 	previousImage       string
 	processType         string
 	projectMetadataPath string
+	registry            string
 	reportPath          string
 	runImageRef         string
+	stackMD             lifecycle.StackMetadata
 	stackPath           string
 	uid, gid            int
 	additionalTags      cmd.StringSlice
@@ -93,6 +96,12 @@ func (c *createCmd) Args(nargs int, args []string) error {
 
 	if c.reportPath == cmd.PlaceholderReportPath {
 		c.reportPath = cmd.DefaultReportPath(c.platformAPI, c.layersDir)
+	}
+
+	var err error
+	c.stackMD, c.runImageRef, c.registry, err = resolveStack(c.imageName, c.stackPath, c.runImageRef)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -189,8 +198,10 @@ func (c *createCmd) Exec() error {
 		platformAPI:         c.platformAPI,
 		processType:         c.processType,
 		projectMetadataPath: c.projectMetadataPath,
+		registry:            c.registry,
 		reportPath:          c.reportPath,
 		runImageRef:         c.runImageRef,
+		stackMD:             c.stackMD,
 		stackPath:           c.stackPath,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,

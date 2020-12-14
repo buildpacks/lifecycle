@@ -19,6 +19,7 @@ import (
 )
 
 type rebaseCmd struct {
+	appImage imgutil.Image
 	//flags: inputs
 	imageNames            []string
 	reportPath            string
@@ -63,6 +64,10 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 		r.reportPath = cmd.DefaultReportPath(r.platformAPI, "")
 	}
 
+	if err := r.readLabel(); err != nil {
+		return cmd.FailErrCode(errors.New(err.Error()), cmd.CodeRebaseError, "read label on image")
+	}
+
 	return nil
 }
 
@@ -87,45 +92,7 @@ func (r *rebaseCmd) Privileges() error {
 }
 
 func (r *rebaseCmd) Exec() error {
-	ref, err := name.ParseReference(r.imageNames[0], name.WeakValidation)
-	if err != nil {
-		return err
-	}
-	registry := ref.Context().RegistryStr()
-
-	var appImage imgutil.Image
-	if r.useDaemon {
-		appImage, err = local.NewImage(
-			r.imageNames[0],
-			r.docker,
-			local.FromBaseImage(r.imageNames[0]),
-		)
-	} else {
-		appImage, err = remote.NewImage(
-			r.imageNames[0],
-			r.keychain,
-			remote.FromBaseImage(r.imageNames[0]),
-		)
-	}
-	if err != nil || !appImage.Found() {
-		return cmd.FailErr(err, "access image to rebase")
-	}
-
-	var md lifecycle.LayersMetadata
-	if err := lifecycle.DecodeLabel(appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
-		return err
-	}
-
-	if r.runImageRef == "" {
-		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
-		}
-		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
-		if err != nil {
-			return err
-		}
-	}
-
+	var err error
 	var newBaseImage imgutil.Image
 	if r.useDaemon {
 		newBaseImage, err = local.NewImage(
@@ -147,7 +114,7 @@ func (r *rebaseCmd) Exec() error {
 	rebaser := &lifecycle.Rebaser{
 		Logger: cmd.DefaultLogger,
 	}
-	report, err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:])
+	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
 	}
@@ -163,4 +130,46 @@ func (r *rebaseCmd) registryImages() []string {
 		registryImages = append(registryImages, r.runImageRef)
 	}
 	return registryImages
+}
+
+func (r *rebaseCmd) readLabel() error {
+	ref, err := name.ParseReference(r.imageNames[0], name.WeakValidation)
+	if err != nil {
+		return err
+	}
+	registry := ref.Context().RegistryStr()
+
+	if r.useDaemon {
+		r.appImage, err = local.NewImage(
+			r.imageNames[0],
+			r.docker,
+			local.FromBaseImage(r.imageNames[0]),
+		)
+	} else {
+		r.appImage, err = remote.NewImage(
+			r.imageNames[0],
+			r.keychain,
+			remote.FromBaseImage(r.imageNames[0]),
+		)
+	}
+	if err != nil || !r.appImage.Found() {
+		return cmd.FailErr(err, "access image to rebase")
+	}
+
+	var md lifecycle.LayersMetadata
+	if err := lifecycle.DecodeLabel(r.appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
+		return err
+	}
+
+	if r.runImageRef == "" {
+		if md.Stack.RunImage.Image == "" {
+			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
+		}
+		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
