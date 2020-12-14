@@ -18,7 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/testhelpers"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
@@ -58,7 +58,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		platformDir = filepath.Join(tmpDir, "platform")
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
-		testhelpers.Mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
+		h.Mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
 		builder = &lifecycle.Builder{
 			AppDir:      appDir,
