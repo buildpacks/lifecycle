@@ -215,7 +215,7 @@ func (c *createCmd) registryImages() []string {
 	}
 	if !c.useDaemon {
 		registryImages = append(registryImages, append([]string{c.imageName}, c.additionalTags...)...)
-		registryImages = append(registryImages, c.runImageRef)
+		registryImages = append(registryImages, c.runImageRef, c.previousImage)
 	}
 	return registryImages
 }
