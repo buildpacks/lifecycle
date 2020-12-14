@@ -146,9 +146,14 @@ func (r *rebaseCmd) setAppImage() error {
 			local.FromBaseImage(r.imageNames[0]),
 		)
 	} else {
+		var keychain authn.Keychain
+		keychain, err = auth.DefaultKeychain(r.imageNames[0])
+		if err != nil {
+			return err
+		}
 		r.appImage, err = remote.NewImage(
 			r.imageNames[0],
-			r.keychain,
+			keychain,
 			remote.FromBaseImage(r.imageNames[0]),
 		)
 	}

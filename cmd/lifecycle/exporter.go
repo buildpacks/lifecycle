@@ -25,6 +25,8 @@ import (
 )
 
 type exportCmd struct {
+	analyzedMD lifecycle.AnalyzedMetadata
+
 	//flags: inputs
 	cacheDir              string
 	cacheImageTag         string
@@ -129,6 +131,11 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return err
 	}
 
+	e.analyzedMD, err = parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+	}
+
 	return nil
 }
 
@@ -164,17 +171,12 @@ func (e *exportCmd) Exec() error {
 		return err
 	}
 
-	analyzedMD, err := parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
-	}
-
 	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir, e.keychain)
 	if err != nil {
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	return e.export(group, cacheStore, analyzedMD)
+	return e.export(group, cacheStore, e.analyzedMD)
 }
 
 func (e *exportCmd) registryImages() []string {
@@ -184,7 +186,7 @@ func (e *exportCmd) registryImages() []string {
 	}
 	if !e.useDaemon {
 		registryImages = append(registryImages, e.imageNames...)
-		registryImages = append(registryImages, e.runImageRef)
+		registryImages = append(registryImages, e.runImageRef, e.analyzedMD.Image.Reference)
 	}
 	return registryImages
 }
@@ -385,6 +387,8 @@ func resolveStack(imageName, stackPath, runImageRefOrig string) (lifecycle.Stack
 		if err != nil {
 			return lifecycle.StackMetadata{}, "", "", err
 		}
+	} else {
+		runImageRef = runImageRefOrig
 	}
 
 	return stackMD, runImageRef, registry, nil
