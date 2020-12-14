@@ -11,6 +11,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestUtils(t *testing.T) {
@@ -34,7 +35,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should return an ordering of buildpacks", func() {
-			mkfile(t,
+			testhelpers.Mkfile(t,
 				"[[order]]\n"+
 					`group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`+"\n"+
 					"[[order]]\n"+
@@ -70,7 +71,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should return a group of buildpacks", func() {
-			mkfile(t, `group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`,
+			testhelpers.Mkfile(t, `group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`,
 				filepath.Join(tmpDir, "group.toml"),
 			)
 			actual, err := lifecycle.ReadGroup(filepath.Join(tmpDir, "group.toml"))
@@ -108,7 +109,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 			if err := lifecycle.WriteTOML(filepath.Join(tmpDir, "subdir", "group.toml"), group); err != nil {
 				t.Fatal(err)
 			}
-			b := rdfile(t, filepath.Join(tmpDir, "subdir", "group.toml"))
+			b := testhelpers.Rdfile(t, filepath.Join(tmpDir, "subdir", "group.toml"))
 			if s := cmp.Diff(b,
 				"[[group]]\n"+
 					`  id = "A"`+"\n"+

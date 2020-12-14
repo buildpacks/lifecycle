@@ -105,10 +105,6 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		for i := range bom {
 			bom[i].convertMetadataToVersion()
 		}
-	} else {
-		for i := range bom {
-			bom[i].convertVersionToMetadata()
-		}
 	}
 
 	return &BuildMetadata{

@@ -38,7 +38,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		}
 		platformDir = filepath.Join(tmpDir, "platform")
 		appDir := filepath.Join(tmpDir, "app")
-		mkdir(t, appDir, filepath.Join(platformDir, "env"))
+		h.Mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
 		buildpacksDir := filepath.Join("testdata", "by-id")
 
@@ -60,7 +60,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	mkappfile := func(data string, paths ...string) {
 		t.Helper()
 		for _, p := range paths {
-			mkfile(t, data, filepath.Join(config.AppDir, p))
+			h.Mkfile(t, data, filepath.Join(config.AppDir, p))
 		}
 	}
 	toappfile := func(data string, paths ...string) {
@@ -71,7 +71,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	}
 	rdappfile := func(path string) string {
 		t.Helper()
-		return rdfile(t, filepath.Join(config.AppDir, path))
+		return h.Rdfile(t, filepath.Join(config.AppDir, path))
 	}
 
 	when("#Detect", func() {
@@ -606,7 +606,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							Version: "v2",
 							Name:    "GroupBuildpack D",
 						},
-						Path: bpPath,
+						Dir: bpPath,
 					}
 					toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-D-v2.toml")
 					toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-D-v2.toml")
@@ -632,7 +632,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							Version: "v1",
 							Name:    "Buildpack B",
 						},
-						Path: bpPath,
+						Dir: bpPath,
 					}
 					toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-B-v1.toml")
 					toappfile("\n[[or]]", "detect-plan-B-v1.toml")
@@ -660,7 +660,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							Version: "v1",
 							Name:    "Buildpack A",
 						},
-						Path: bpPath,
+						Dir: bpPath,
 					}
 					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
@@ -686,7 +686,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							Version: "v1",
 							Name:    "Buildpack A",
 						},
-						Path: bpPath,
+						Dir: bpPath,
 					}
 					toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
@@ -715,7 +715,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							Version: "v1",
 							Name:    "Buildpack A",
 						},
-						Path: bpPath,
+						Dir: bpPath,
 					}
 					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
@@ -743,7 +743,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							Version: "v1",
 							Name:    "Buildpack A",
 						},
-						Path: bpPath,
+						Dir: bpPath,
 					}
 					toappfile("\n[[provides]]\n name = \"dep2-missing\"", "detect-plan-A-v1.toml")
 					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
@@ -794,7 +794,7 @@ func allLogs(logHandler *memory.Handler) string {
 	for _, le := range logHandler.Entries {
 		out = out + le.Message + "\n"
 	}
-	return cleanEndings(out)
+	return h.CleanEndings(out)
 }
 
 const outputFailureEv1 = `
@@ -860,3 +860,18 @@ fail: A@v1
 fail: D@v1
 fail: B@v1
 `
+
+func tofile(t *testing.T, data string, paths ...string) {
+	t.Helper()
+	for _, p := range paths {
+		f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0777)
+		if err != nil {
+			t.Fatalf("Error: %s\n", err)
+		}
+		if _, err := f.Write([]byte(data)); err != nil {
+			f.Close()
+			t.Fatalf("Error: %s\n", err)
+		}
+		f.Close()
+	}
+}

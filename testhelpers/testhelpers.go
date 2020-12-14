@@ -319,3 +319,34 @@ func MustReadFile(t *testing.T, path string) []byte {
 	}
 	return data
 }
+
+func Mkdir(t *testing.T, dirs ...string) {
+	t.Helper()
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0777); err != nil {
+			t.Fatalf("Error: %s\n", err)
+		}
+	}
+}
+
+func Mkfile(t *testing.T, data string, paths ...string) {
+	t.Helper()
+	for _, p := range paths {
+		if err := ioutil.WriteFile(p, []byte(data), 0777); err != nil {
+			t.Fatalf("Error: %s\n", err)
+		}
+	}
+}
+
+func CleanEndings(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
+}
+
+func Rdfile(t *testing.T, path string) string {
+	t.Helper()
+	out, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Error: %s\n", err)
+	}
+	return CleanEndings(string(out))
+}

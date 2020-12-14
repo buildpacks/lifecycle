@@ -264,7 +264,7 @@ func (b *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 
 	out := &bytes.Buffer{}
 	cmd := exec.Command(
-		filepath.Join(b.Path, "bin", "detect"),
+		filepath.Join(b.Dir, "bin", "detect"),
 		platformDir,
 		planPath,
 	)
@@ -275,7 +275,7 @@ func (b *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	if b.Buildpack.ClearEnv {
 		cmd.Env = c.ClearEnv
 	}
-	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Path)
+	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
 
 	if err := cmd.Run(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {

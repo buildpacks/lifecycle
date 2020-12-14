@@ -45,7 +45,7 @@ func (bp GroupBuildpack) Lookup(buildpacksDir string) (*BuildpackTOML, error) {
 	if _, err := toml.DecodeFile(tomlPath, &bpTOML); err != nil {
 		return nil, err
 	}
-	bpTOML.Path = bpPath
+	bpTOML.Dir = bpPath
 	return &bpTOML, nil
 }
 

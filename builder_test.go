@@ -2,14 +2,12 @@ package lifecycle_test
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -20,10 +18,9 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
-
-var latestPlatformAPI = api.Platform.Latest()
 
 func TestBuilder(t *testing.T) {
 	spec.Run(t, "Builder", testBuilder, spec.Report(report.Terminal{}))
@@ -61,13 +58,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		platformDir = filepath.Join(tmpDir, "platform")
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
-		mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
+		testhelpers.Mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
 		builder = &lifecycle.Builder{
 			AppDir:      appDir,
 			LayersDir:   layersDir,
 			PlatformDir: platformDir,
-			PlatformAPI: latestPlatformAPI,
+			PlatformAPI: api.Platform.Latest(),
 			Env:         mockEnv,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.GroupBuildpack{
@@ -149,7 +146,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("build metadata", func() {
 				when("bom", func() {
-					it("should convert top level version to metadata.version", func() {
+					it("should aggregate BOM from each buildpack", func() {
 						builder.Group.Group = []lifecycle.GroupBuildpack{
 							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: "0.2"},
@@ -161,8 +158,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							BOM: []lifecycle.BOMEntry{
 								{
 									Require: lifecycle.Require{
-										Name:    "dep1",
-										Version: "v1",
+										Name:     "dep1",
+										Metadata: map[string]interface{}{"version": "v1"},
 									},
 									Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
 								},
@@ -170,7 +167,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						}, nil)
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
-						bpB.EXPECT().Build(gomock.Any(), config)
+						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							BOM: []lifecycle.BOMEntry{
+								{
+									Require: lifecycle.Require{
+										Name:     "dep2",
+										Metadata: map[string]interface{}{"version": "v1"},
+									},
+									Buildpack: lifecycle.GroupBuildpack{ID: "B", Version: "v2"},
+								},
+							},
+						}, nil)
 
 						metadata, err := builder.Build()
 						if err != nil {
@@ -184,6 +191,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
 								Buildpack: lifecycle.GroupBuildpack{ID: "A", Version: "v1"},
+							},
+							{
+								Require: lifecycle.Require{
+									Name:     "dep2",
+									Version:  "",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: lifecycle.GroupBuildpack{ID: "B", Version: "v2"},
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -440,81 +455,4 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func mkdir(t *testing.T, dirs ...string) {
-	t.Helper()
-	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0777); err != nil {
-			t.Fatalf("Error: %s\n", err)
-		}
-	}
-}
-
-func mkfile(t *testing.T, data string, paths ...string) {
-	t.Helper()
-	for _, p := range paths {
-		if err := ioutil.WriteFile(p, []byte(data), 0777); err != nil {
-			t.Fatalf("Error: %s\n", err)
-		}
-	}
-}
-
-func tofile(t *testing.T, data string, paths ...string) {
-	t.Helper()
-	for _, p := range paths {
-		f, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0777)
-		if err != nil {
-			t.Fatalf("Error: %s\n", err)
-		}
-		if _, err := f.Write([]byte(data)); err != nil {
-			f.Close()
-			t.Fatalf("Error: %s\n", err)
-		}
-		f.Close()
-	}
-}
-
-func cleanEndings(s string) string {
-	return strings.ReplaceAll(s, "\r\n", "\n")
-}
-
-func rdfile(t *testing.T, path string) string {
-	t.Helper()
-	out, err := ioutil.ReadFile(path)
-	if err != nil {
-		t.Fatalf("Error: %s\n", err)
-	}
-	return cleanEndings(string(out))
-}
-
-func testExists(t *testing.T, paths ...string) {
-	t.Helper()
-	for _, p := range paths {
-		if _, err := os.Stat(p); err != nil {
-			t.Fatalf("Error: %s\n", err)
-		}
-	}
-}
-
-func testPlan(t *testing.T, plan []lifecycle.Require, paths ...string) {
-	t.Helper()
-	for _, p := range paths {
-		var c struct {
-			Entries []lifecycle.Require `toml:"entries"`
-		}
-		if _, err := toml.DecodeFile(p, &c); err != nil {
-			t.Fatalf("Error: %s\n", err)
-		}
-		if s := cmp.Diff(c.Entries, plan); s != "" {
-			t.Fatalf("Unexpected plan:\n%s\n", s)
-		}
-	}
-}
-
-func each(it spec.S, befores []func(), text string, f func()) {
-	for i := range befores {
-		before := befores[i]
-		it(fmt.Sprintf("%s #%d", text, i), func() { before(); f() })
-	}
 }

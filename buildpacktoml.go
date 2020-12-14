@@ -20,7 +20,6 @@ type DirBuildpackStore struct {
 	Dir string
 }
 
-// TODO: this duplicates code in buildpack.go
 func (f *DirBuildpackStore) Lookup(bpID, bpVersion string) (Buildpack, error) {
 	bpTOML := BuildpackTOML{}
 	bpPath := filepath.Join(f.Dir, launch.EscapeID(bpID), bpVersion)
@@ -28,7 +27,7 @@ func (f *DirBuildpackStore) Lookup(bpID, bpVersion string) (Buildpack, error) {
 	if _, err := toml.DecodeFile(tomlPath, &bpTOML); err != nil {
 		return nil, err
 	}
-	bpTOML.Path = bpPath
+	bpTOML.Dir = bpPath
 	return &bpTOML, nil
 }
 
@@ -52,10 +51,10 @@ type BuildpackTOML struct {
 	API       string         `toml:"api"`
 	Buildpack BuildpackInfo  `toml:"buildpack"`
 	Order     BuildpackOrder `toml:"order"`
-	Path      string         `toml:"-"`
+	Dir       string         `toml:"-"`
 }
 
-func (b BuildpackTOML) String() string {
+func (b *BuildpackTOML) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }
 
@@ -108,7 +107,7 @@ func preparePaths(bpID string, bpPlan BuildpackPlan, layersDir, planDir string) 
 
 func (b *BuildpackTOML) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig) error {
 	cmd := exec.Command(
-		filepath.Join(b.Path, "bin", "build"),
+		filepath.Join(b.Dir, "bin", "build"),
 		bpLayersDir,
 		config.PlatformDir,
 		bpPlanPath,
@@ -126,7 +125,7 @@ func (b *BuildpackTOML) runBuildCmd(bpLayersDir, bpPlanPath string, config Build
 			return err
 		}
 	}
-	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Path)
+	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
 
 	if err := cmd.Run(); err != nil {
 		return NewLifecycleError(err, ErrTypeBuildpack)
@@ -202,6 +201,9 @@ func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn
 			return BuildResult{}, err
 		}
 		br.BOM = withBuildpack(bpFromBpInfo, bpPlanOut.toBOM())
+		for i := range br.BOM {
+			br.BOM[i].convertVersionToMetadata()
+		}
 		br.MetRequires = names(bpPlanOut.Entries)
 
 		// read launch.toml, return if not exists
@@ -265,7 +267,7 @@ func validateBOM(bom []BOMEntry, bpAPI string) error {
 	} else {
 		for _, entry := range bom {
 			if entry.Version != "" {
-				return fmt.Errorf("bom entry '%s' has a top level version which is deprecated", entry.Name)
+				return fmt.Errorf("bom entry '%s' has a top level version which is not allowed. The buildpack should instead set metadata.version", entry.Name)
 			}
 		}
 	}
