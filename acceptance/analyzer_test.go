@@ -478,21 +478,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	when("registry case", func() {
 		var appImage, appAuthConfig string
 
-		it.Before(func() {
-			metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
-			appImage, appAuthConfig = buildRegistryImage(
-				t,
-				"some-app-image-"+h.RandString(10),
-				filepath.Join("testdata", "analyzer", "app-image"),
-				"--build-arg", "fromImage="+variables.ContainerBaseImage,
-				"--build-arg", "metadata="+metadata,
-			)
-		})
-
-		it.After(func() {
-			h.DockerImageRemove(t, appImage)
-		})
-
 		it("writes analyzed.toml", func() {
 			h.DockerRunAndCopy(t,
 				containerName,
@@ -506,112 +491,42 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("app image exists", func() {
-			when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
-				it("restores app metadata", func() {
-					output := h.DockerRunAndCopy(t,
-						containerName,
-						copyDir,
-						analyzeImage,
-						"/layers",
-						h.WithFlags(
-							"--network", "host",
-							"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
-						),
-						h.WithArgs(analyzerPath, appImage),
-					)
-
-					assertLogsAndRestoresAppMetadata(t, copyDir, output)
-				})
-			})
-
-			when("registry creds are provided in the docker config.json", func() {
-				it("restores app metadata", func() {
-					output := h.DockerRunAndCopy(t,
-						containerName,
-						copyDir,
-						analyzeImage,
-						"/layers",
-						h.WithFlags(
-							"--env", "DOCKER_CONFIG=/docker-config",
-							"--network", "host",
-						),
-						h.WithArgs(
-							analyzerPath,
-							appImage,
-						),
-					)
-
-					assertLogsAndRestoresAppMetadata(t, copyDir, output)
-				})
-			})
-
-			when("skip layers is provided", func() {
-				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-					output := h.DockerRunAndCopy(t,
-						containerName,
-						copyDir,
-						analyzeImage,
-						"/layers",
-						h.WithFlags(
-							"--network", "host",
-							"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
-						),
-						h.WithArgs(
-							analyzerPath,
-							"-skip-layers",
-							appImage,
-						),
-					)
-
-					assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
-					assertWritesStoreTomlOnly(t, copyDir, output)
-				})
-			})
-		})
-
-		when("cache is provided", func() {
-			when("cache image case", func() {
-				var cacheImage, cacheAuthConfig string
-
+			when("auth registry", func() {
 				it.Before(func() {
-					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
-					cacheImage, cacheAuthConfig = buildRegistryImage(
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
+					appImage, appAuthConfig = buildRegistryImage(
 						t,
-						"some-cache-image-"+h.RandString(10),
-						filepath.Join("testdata", "analyzer", "cache-image"),
+						"some-app-image-"+h.RandString(10),
+						filepath.Join("testdata", "analyzer", "app-image"),
 						"--build-arg", "fromImage="+variables.ContainerBaseImage,
 						"--build-arg", "metadata="+metadata,
 					)
 				})
 
 				it.After(func() {
-					h.DockerImageRemove(t, cacheImage)
+					h.DockerImageRemove(t, appImage)
 				})
 
 				when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
-					it("restores cache metadata", func() {
+					it("restores app metadata", func() {
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
 							analyzeImage,
 							"/layers",
 							h.WithFlags(
-								"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
 								"--network", "host",
+								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
 							),
-							h.WithArgs(
-								analyzerPath,
-								"-cache-image", cacheImage,
-								"some-image",
-							),
+							h.WithArgs(analyzerPath, appImage),
 						)
 
-						assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+						assertLogsAndRestoresAppMetadata(t, copyDir, output)
 					})
 				})
 
 				when("registry creds are provided in the docker config.json", func() {
-					it("restores cache metadata", func() {
+					it("restores app metadata", func() {
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
@@ -623,9 +538,186 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							),
 							h.WithArgs(
 								analyzerPath,
-								"-cache-image",
-								cacheImage,
 								appImage,
+							),
+						)
+
+						assertLogsAndRestoresAppMetadata(t, copyDir, output)
+					})
+				})
+
+				when("skip layers is provided", func() {
+					it("writes analyzed.toml and does not write buildpack layer metadata", func() {
+						output := h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							analyzeImage,
+							"/layers",
+							h.WithFlags(
+								"--network", "host",
+								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+							),
+							h.WithArgs(
+								analyzerPath,
+								"-skip-layers",
+								appImage,
+							),
+						)
+
+						assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
+						assertWritesStoreTomlOnly(t, copyDir, output)
+					})
+				})
+			})
+
+			when("no auth registry", func() {
+				it.Before(func() {
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
+					appImage, appAuthConfig = buildNoAuthRegistryImage(
+						t,
+						"some-app-image-"+h.RandString(10),
+						filepath.Join("testdata", "analyzer", "app-image"),
+						"--build-arg", "fromImage="+variables.ContainerBaseImage,
+						"--build-arg", "metadata="+metadata,
+					)
+				})
+
+				it.After(func() {
+					h.DockerImageRemove(t, appImage)
+				})
+
+				it("restores app metadata", func() {
+					output := h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						analyzeImage,
+						"/layers",
+						h.WithFlags("--network", "host"),
+						h.WithArgs(
+							analyzerPath,
+							appImage,
+						),
+					)
+
+					assertLogsAndRestoresAppMetadata(t, copyDir, output)
+				})
+
+				when("skip layers is provided", func() {
+					it("writes analyzed.toml and does not write buildpack layer metadata", func() {
+						output := h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							analyzeImage,
+							"/layers",
+							h.WithFlags("--network", "host"),
+							h.WithArgs(
+								analyzerPath,
+								"-skip-layers",
+								appImage,
+							),
+						)
+
+						assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
+						assertWritesStoreTomlOnly(t, copyDir, output)
+					})
+				})
+			})
+
+		})
+
+		when("cache is provided", func() {
+			when("cache image case", func() {
+				var cacheImage, cacheAuthConfig string
+
+				when("auth registry", func() {
+					it.Before(func() {
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+						cacheImage, cacheAuthConfig = buildRegistryImage(
+							t,
+							"some-cache-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "cache-image"),
+							"--build-arg", "fromImage="+variables.ContainerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
+					})
+
+					it.After(func() {
+						h.DockerImageRemove(t, cacheImage)
+					})
+
+					when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
+						it("restores cache metadata", func() {
+							output := h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								analyzeImage,
+								"/layers",
+								h.WithFlags(
+									"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
+									"--network", "host",
+								),
+								h.WithArgs(
+									analyzerPath,
+									"-cache-image", cacheImage,
+									"some-image",
+								),
+							)
+
+							assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+						})
+					})
+
+					when("registry creds are provided in the docker config.json", func() {
+						it("restores cache metadata", func() {
+							output := h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								analyzeImage,
+								"/layers",
+								h.WithFlags(
+									"--env", "DOCKER_CONFIG=/docker-config",
+									"--network", "host",
+								),
+								h.WithArgs(
+									analyzerPath,
+									"-cache-image",
+									cacheImage,
+									"some-image",
+								),
+							)
+
+							assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+						})
+					})
+				})
+
+				when("no auth registry", func() {
+					it.Before(func() {
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+						cacheImage, cacheAuthConfig = buildNoAuthRegistryImage(
+							t,
+							"some-cache-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "cache-image"),
+							"--build-arg", "fromImage="+variables.ContainerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
+					})
+
+					it.After(func() {
+						h.DockerImageRemove(t, cacheImage)
+					})
+
+					it("restores cache metadata", func() {
+						output := h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							analyzeImage,
+							"/layers",
+							h.WithFlags("--network", "host"),
+							h.WithArgs(
+								analyzerPath,
+								"-cache-image", cacheImage,
+								"some-image",
 							),
 						)
 
