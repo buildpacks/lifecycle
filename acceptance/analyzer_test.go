@@ -622,7 +622,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
-
 		})
 
 		when("cache is provided", func() {
