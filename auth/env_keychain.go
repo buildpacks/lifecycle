@@ -103,7 +103,7 @@ func buildAuthMap(keychain authn.Keychain, images ...string) map[string]string {
 	registryAuths := map[string]string{}
 
 	for _, image := range images {
-		reference, authenticator, err := referenceForRepoName(keychain, image)
+		reference, authenticator, err := ReferenceForRepoName(keychain, image)
 		if err != nil {
 			continue
 		}
@@ -178,7 +178,7 @@ func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
 	return nil, errors.Errorf("unknown auth type from header: %s", header)
 }
 
-func referenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
+func ReferenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
 	var auth authn.Authenticator
 	r, err := name.ParseReference(ref, name.WeakValidation)
 	if err != nil {
