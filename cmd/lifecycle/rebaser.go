@@ -96,13 +96,13 @@ func (r *rebaseCmd) Exec() error {
 	var newBaseImage imgutil.Image
 	if r.useDaemon {
 		newBaseImage, err = local.NewImage(
-			r.imageNames[0],
+			r.runImageRef,
 			r.docker,
 			local.FromBaseImage(r.runImageRef),
 		)
 	} else {
 		newBaseImage, err = remote.NewImage(
-			r.imageNames[0],
+			r.runImageRef,
 			r.keychain,
 			remote.FromBaseImage(r.runImageRef),
 		)
