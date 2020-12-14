@@ -24,6 +24,10 @@ if [[ -f build-plan-out-${bp_id}-${bp_version}.toml ]]; then
   cat "build-plan-out-${bp_id}-${bp_version}.toml" > "$plan_path"
 fi
 
+if [[ -f build-${bp_id}-${bp_version}.toml ]]; then
+  cat "build-${bp_id}-${bp_version}.toml" > "$layers_dir/build.toml"
+fi
+
 if [[ -f launch-${bp_id}-${bp_version}.toml ]]; then
   cat "launch-${bp_id}-${bp_version}.toml" > "$layers_dir/launch.toml"
 fi

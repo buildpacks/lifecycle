@@ -59,7 +59,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			logHandler = memory.New()
 
 			exporter = &lifecycle.Exporter{
-				Buildpacks: []lifecycle.Buildpack{
+				Buildpacks: []lifecycle.GroupBuildpack{
 					{ID: "buildpack.id"},
 					{ID: "other.buildpack.id"},
 				},

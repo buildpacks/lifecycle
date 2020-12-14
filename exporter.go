@@ -29,7 +29,7 @@ type Cache interface {
 }
 
 type Exporter struct {
-	Buildpacks   []Buildpack
+	Buildpacks   []GroupBuildpack
 	LayerFactory LayerFactory
 	Logger       Logger
 	PlatformAPI  *api.Version
@@ -62,7 +62,12 @@ type ExportOptions struct {
 }
 
 type ExportReport struct {
+	Build BuildReport `toml:"build"`
 	Image ImageReport `toml:"image"`
+}
+
+type BuildReport struct {
+	BOM []BOMEntry `toml:"bom"`
 }
 
 type ImageReport struct {
@@ -135,6 +140,10 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	}
 
 	report := ExportReport{}
+	report.Build, err = e.makeBuildReport(opts.LayersDir)
+	if err != nil {
+		return ExportReport{}, err
+	}
 	report.Image, err = saveImage(opts.WorkingImage, opts.AdditionalNames, e.Logger)
 	if err != nil {
 		return ExportReport{}, err
@@ -421,4 +430,23 @@ func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, prev
 	e.Logger.Infof("Adding layer '%s'\n", layer.ID)
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 	return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
+}
+
+func (e *Exporter) makeBuildReport(layersDir string) (BuildReport, error) {
+	if e.PlatformAPI.Compare(api.MustParse("0.5")) < 0 { // platform API < 0.5
+		return BuildReport{}, nil
+	}
+	var out []BOMEntry
+	for _, bp := range e.Buildpacks {
+		if api.MustParse(bp.API).Compare(api.MustParse("0.5")) < 0 { // buildpack API < 0.5
+			continue
+		}
+		var bpBuildReport BuildReport
+		bpBuildTOML := filepath.Join(layersDir, launch.EscapeID(bp.ID), "build.toml")
+		if _, err := toml.DecodeFile(bpBuildTOML, &bpBuildReport); err != nil && !os.IsNotExist(err) {
+			return BuildReport{}, err
+		}
+		out = append(out, withBuildpack(bp, bpBuildReport.BOM)...)
+	}
+	return BuildReport{BOM: out}, nil
 }

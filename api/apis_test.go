@@ -74,5 +74,13 @@ func testAPIs(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		})
+
+		when("Latest", func() {
+			it("returns the latest supported API", func() {
+				latest := apis.Latest()
+				h.AssertNotNil(t, latest)
+				h.AssertEq(t, latest.String(), "2.1")
+			})
+		})
 	})
 }

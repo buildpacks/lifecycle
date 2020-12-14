@@ -9,7 +9,7 @@ import (
 
 type Restorer struct {
 	LayersDir  string
-	Buildpacks []Buildpack
+	Buildpacks []GroupBuildpack
 	Logger     Logger
 }
 

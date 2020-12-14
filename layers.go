@@ -18,11 +18,11 @@ type bpLayersDir struct {
 	path      string
 	layers    []bpLayer
 	name      string
-	buildpack Buildpack
-	store     *BuildpackStore
+	buildpack GroupBuildpack
+	store     *StoreTOML
 }
 
-func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir, error) {
+func readBuildpackLayersDir(layersDir string, buildpack GroupBuildpack) (bpLayersDir, error) {
 	path := filepath.Join(layersDir, launch.EscapeID(buildpack.ID))
 	bpDir := bpLayersDir{
 		name:      buildpack.ID,
@@ -52,7 +52,7 @@ func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir,
 	for _, tf := range tomls {
 		name := strings.TrimSuffix(filepath.Base(tf), ".toml")
 		if name == "store" {
-			var bpStore BuildpackStore
+			var bpStore StoreTOML
 			_, err := toml.DecodeFile(tf, &bpStore)
 			if err != nil {
 				return bpLayersDir{}, errors.Wrapf(err, "failed decoding store.toml for buildpack %q", buildpack.ID)

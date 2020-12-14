@@ -74,3 +74,14 @@ func (a APIs) IsDeprecated(target *Version) bool {
 	}
 	return false
 }
+
+// Latest returns the latest API that is supported
+func (a APIs) Latest() *Version {
+	latest := a.Supported[0]
+	for _, sAPI := range a.Supported {
+		if sAPI.Compare(latest) > 0 {
+			latest = sAPI
+		}
+	}
+	return latest
+}
