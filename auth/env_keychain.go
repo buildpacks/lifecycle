@@ -12,27 +12,49 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewKeychain returns either a EnvKeychain or a authn.DefaultKeychain depending on whether the provided environment variable is set
-func NewKeychain(envVar string) authn.Keychain {
-	_, ok := os.LookupEnv(envVar)
-	if !ok {
-		return authn.DefaultKeychain
+const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
+
+// DefaultKeychain returns a keychain containing authentication configuration for the given images
+// from the following sources, if they exist, in order of precedence:
+// the provided environment variable and the docker config.json file.
+func DefaultKeychain(images ...string) (authn.Keychain, error) {
+	envKeychain, err := EnvKeychain(EnvRegistryAuth)
+	if err != nil {
+		return nil, err
 	}
-	return &EnvKeychain{EnvVar: envVar}
+
+	return authn.NewMultiKeychain(
+		envKeychain,
+		InMemoryKeychain(authn.DefaultKeychain, images...),
+	), nil
 }
 
-// EnvKeychain uses the contents of an environment variable to resolve auth for a registry
-type EnvKeychain struct {
-	EnvVar string
+// ResolvedKeychain is an implementation of authn.Keychain that stores credentials in memory.
+type ResolvedKeychain struct {
+	Auths map[string]string
 }
 
-func (k *EnvKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
-	authHeaders, err := ReadEnvVar(k.EnvVar)
+// EnvKeychain returns an authn.Keychain that uses the provided environment variable as a source of credentials.
+// The value of the environment variable should be a JSON object that maps OCI registry hostnames to Authorization headers.
+func EnvKeychain(envVar string) (authn.Keychain, error) {
+	authHeaders, err := ReadEnvVar(envVar)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading auth env var")
 	}
+	return &ResolvedKeychain{Auths: authHeaders}, nil
+}
 
-	header, ok := authHeaders[resource.RegistryStr()]
+// InMemoryKeychain resolves credentials for the given images from the given keychain and returns a new keychain
+// that stores the pre-resolved credentials in memory and returns them on demand. This is useful in cases where the
+// backing credential store may become inaccessible in the the future.
+func InMemoryKeychain(keychain authn.Keychain, images ...string) authn.Keychain {
+	return &ResolvedKeychain{
+		Auths: buildAuthMap(keychain, images...),
+	}
+}
+
+func (k *ResolvedKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+	header, ok := k.Auths[resource.RegistryStr()]
 	if ok {
 		authConfig, err := authHeaderToConfig(header)
 		if err != nil {
@@ -77,31 +99,38 @@ func ReadEnvVar(envVar string) (map[string]string, error) {
 	return authMap, nil
 }
 
-// BuildEnvVar creates the contents to use for authentication environment variable.
-//
-// Complementary to `ReadEnvVar`.
-func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
+func buildAuthMap(keychain authn.Keychain, images ...string) map[string]string {
 	registryAuths := map[string]string{}
 
 	for _, image := range images {
 		reference, authenticator, err := ReferenceForRepoName(keychain, image)
 		if err != nil {
-			return "", nil
+			continue
 		}
+
 		if authenticator == authn.Anonymous {
 			continue
 		}
 
 		authConfig, err := authenticator.Authorization()
 		if err != nil {
-			return "", nil
+			continue
 		}
 
 		registryAuths[reference.Context().Registry.Name()], err = authConfigToHeader(authConfig)
 		if err != nil {
-			return "", nil
+			continue
 		}
 	}
+
+	return registryAuths
+}
+
+// BuildEnvVar creates the contents to use for authentication environment variable.
+//
+// Complementary to `ReadEnvVar`.
+func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
+	registryAuths := buildAuthMap(keychain, images...)
 
 	authData, err := json.Marshal(registryAuths)
 	if err != nil {
@@ -149,6 +178,7 @@ func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
 	return nil, errors.Errorf("unknown auth type from header: %s", header)
 }
 
+// ReferenceForRepoName returns a reference and an authenticator for a given image name and keychain.
 func ReferenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
 	var auth authn.Authenticator
 	r, err := name.ParseReference(ref, name.WeakValidation)

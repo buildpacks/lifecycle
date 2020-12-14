@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -18,6 +19,7 @@ import (
 )
 
 type rebaseCmd struct {
+	appImage imgutil.Image
 	//flags: inputs
 	imageNames            []string
 	reportPath            string
@@ -28,7 +30,8 @@ type rebaseCmd struct {
 	uid, gid              int
 
 	//set if necessary before dropping privileges
-	docker client.CommonAPIClient
+	docker   client.CommonAPIClient
+	keychain authn.Keychain
 }
 
 func (r *rebaseCmd) DefineFlags() {
@@ -61,10 +64,20 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 		r.reportPath = cmd.DefaultReportPath(r.platformAPI, "")
 	}
 
+	if err := r.setAppImage(); err != nil {
+		return cmd.FailErrCode(errors.New(err.Error()), cmd.CodeRebaseError, "set app image")
+	}
+
 	return nil
 }
 
 func (r *rebaseCmd) Privileges() error {
+	var err error
+	r.keychain, err = auth.DefaultKeychain(r.registryImages()...)
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+
 	if r.useDaemon {
 		var err error
 		r.docker, err = priv.DockerClient()
@@ -79,32 +92,77 @@ func (r *rebaseCmd) Privileges() error {
 }
 
 func (r *rebaseCmd) Exec() error {
+	var err error
+	var newBaseImage imgutil.Image
+	if r.useDaemon {
+		newBaseImage, err = local.NewImage(
+			r.runImageRef,
+			r.docker,
+			local.FromBaseImage(r.runImageRef),
+		)
+	} else {
+		newBaseImage, err = remote.NewImage(
+			r.runImageRef,
+			r.keychain,
+			remote.FromBaseImage(r.runImageRef),
+		)
+	}
+	if err != nil || !newBaseImage.Found() {
+		return cmd.FailErr(err, "access run image")
+	}
+
+	rebaser := &lifecycle.Rebaser{
+		Logger: cmd.DefaultLogger,
+	}
+	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
+	}
+	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeRebaseError, "write rebase report")
+	}
+	return nil
+}
+
+func (r *rebaseCmd) registryImages() []string {
+	registryImages := r.imageNames
+	if r.runImageRef != "" {
+		registryImages = append(registryImages, r.runImageRef)
+	}
+	return registryImages
+}
+
+func (r *rebaseCmd) setAppImage() error {
 	ref, err := name.ParseReference(r.imageNames[0], name.WeakValidation)
 	if err != nil {
 		return err
 	}
 	registry := ref.Context().RegistryStr()
 
-	var appImage imgutil.Image
 	if r.useDaemon {
-		appImage, err = local.NewImage(
+		r.appImage, err = local.NewImage(
 			r.imageNames[0],
 			r.docker,
 			local.FromBaseImage(r.imageNames[0]),
 		)
 	} else {
-		appImage, err = remote.NewImage(
+		var keychain authn.Keychain
+		keychain, err = auth.DefaultKeychain(r.imageNames[0])
+		if err != nil {
+			return err
+		}
+		r.appImage, err = remote.NewImage(
 			r.imageNames[0],
-			auth.NewKeychain(cmd.EnvRegistryAuth),
+			keychain,
 			remote.FromBaseImage(r.imageNames[0]),
 		)
 	}
-	if err != nil || !appImage.Found() {
+	if err != nil || !r.appImage.Found() {
 		return cmd.FailErr(err, "access image to rebase")
 	}
 
 	var md lifecycle.LayersMetadata
-	if err := lifecycle.DecodeLabel(appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
+	if err := lifecycle.DecodeLabel(r.appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 
@@ -118,33 +176,5 @@ func (r *rebaseCmd) Exec() error {
 		}
 	}
 
-	var newBaseImage imgutil.Image
-	if r.useDaemon {
-		newBaseImage, err = local.NewImage(
-			r.imageNames[0],
-			r.docker,
-			local.FromBaseImage(r.runImageRef),
-		)
-	} else {
-		newBaseImage, err = remote.NewImage(
-			r.imageNames[0],
-			auth.NewKeychain(cmd.EnvRegistryAuth),
-			remote.FromBaseImage(r.runImageRef),
-		)
-	}
-	if err != nil || !newBaseImage.Found() {
-		return cmd.FailErr(err, "access run image")
-	}
-
-	rebaser := &lifecycle.Rebaser{
-		Logger: cmd.DefaultLogger,
-	}
-	report, err := rebaser.Rebase(appImage, newBaseImage, r.imageNames[1:])
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
-	}
-	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeRebaseError, "write rebase report")
-	}
 	return nil
 }

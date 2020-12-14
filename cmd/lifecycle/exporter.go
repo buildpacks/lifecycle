@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -24,6 +25,8 @@ import (
 )
 
 type exportCmd struct {
+	analyzedMD lifecycle.AnalyzedMetadata
+
 	//flags: inputs
 	cacheDir              string
 	cacheImageTag         string
@@ -45,14 +48,17 @@ type exportArgs struct {
 	platformAPI         string
 	processType         string
 	projectMetadataPath string
+	registry            string
 	reportPath          string
 	runImageRef         string
+	stackMD             lifecycle.StackMetadata
 	stackPath           string
 	useDaemon           bool
 	uid, gid            int
 
 	//construct if necessary before dropping privileges
-	docker client.CommonAPIClient
+	docker   client.CommonAPIClient
+	keychain authn.Keychain
 }
 
 func (e *exportCmd) DefineFlags() {
@@ -119,10 +125,27 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		e.runImageRef = e.deprecatedRunImageRef
 	}
 
+	var err error
+	e.stackMD, e.runImageRef, e.registry, err = resolveStack(e.imageNames[0], e.stackPath, e.runImageRef)
+	if err != nil {
+		return err
+	}
+
+	e.analyzedMD, err = parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+	}
+
 	return nil
 }
 
 func (e *exportCmd) Privileges() error {
+	var err error
+	e.keychain, err = auth.DefaultKeychain(e.registryImages()...)
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+
 	if e.useDaemon {
 		var err error
 		e.docker, err = priv.DockerClient()
@@ -148,31 +171,27 @@ func (e *exportCmd) Exec() error {
 		return err
 	}
 
-	analyzedMD, err := parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
-	}
-
-	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir)
+	cacheStore, err := initCache(e.cacheImageTag, e.cacheDir, e.keychain)
 	if err != nil {
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", e.stackPath)
 	}
 
-	return e.export(group, cacheStore, analyzedMD)
+	return e.export(group, cacheStore, e.analyzedMD)
+}
+
+func (e *exportCmd) registryImages() []string {
+	var registryImages []string
+	if e.cacheImageTag != "" {
+		registryImages = append(registryImages, e.cacheImageTag)
+	}
+	if !e.useDaemon {
+		registryImages = append(registryImages, e.imageNames...)
+		registryImages = append(registryImages, e.runImageRef, e.analyzedMD.Image.Reference)
+	}
+	return registryImages
 }
 
 func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
-	ref, err := name.ParseReference(ea.imageNames[0], name.WeakValidation)
-	if err != nil {
-		return cmd.FailErr(err, "failed to parse registry")
-	}
-	registry := ref.Context().RegistryStr()
-
-	stackMD, runImageRef, err := resolveStack(ea.stackPath, ea.runImageRef, registry)
-	if err != nil {
-		return err
-	}
-
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
@@ -203,20 +222,9 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	var appImage imgutil.Image
 	var runImageID string
 	if ea.useDaemon {
-		appImage, runImageID, err = initDaemonImage(
-			ea.imageNames[0],
-			runImageRef,
-			analyzedMD,
-			ea.launchCacheDir,
-			ea.docker,
-		)
+		appImage, runImageID, err = ea.initDaemonAppImage(analyzedMD)
 	} else {
-		appImage, runImageID, err = initRemoteImage(
-			ea.imageNames[0],
-			runImageRef,
-			analyzedMD,
-			registry,
-		)
+		appImage, runImageID, err = ea.initRemoteAppImage(analyzedMD)
 	}
 	if err != nil {
 		return err
@@ -231,7 +239,7 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 		OrigMetadata:       analyzedMD.Metadata,
 		Project:            projectMD,
 		RunImageRef:        runImageID,
-		Stack:              stackMD,
+		Stack:              ea.stackMD,
 		WorkingImage:       appImage,
 	})
 	if err != nil {
@@ -249,9 +257,9 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	return nil
 }
 
-func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, launchCacheDir string, docker client.CommonAPIClient) (imgutil.Image, string, error) {
+func (ea exportArgs) initDaemonAppImage(analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
-		local.FromBaseImage(runImageRef),
+		local.FromBaseImage(ea.runImageRef),
 	}
 
 	if analyzedMD.Image != nil {
@@ -261,8 +269,8 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 
 	var appImage imgutil.Image
 	appImage, err := local.NewImage(
-		imagName,
-		docker,
+		ea.imageNames[0],
+		ea.docker,
 		opts...,
 	)
 	if err != nil {
@@ -274,8 +282,8 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 		return nil, "", cmd.FailErr(err, "get run image ID")
 	}
 
-	if launchCacheDir != "" {
-		volumeCache, err := cache.NewVolumeCache(launchCacheDir)
+	if ea.launchCacheDir != "" {
+		volumeCache, err := cache.NewVolumeCache(ea.launchCacheDir)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "create launch cache")
 		}
@@ -284,9 +292,9 @@ func initDaemonImage(imagName string, runImageRef string, analyzedMD lifecycle.A
 	return appImage, runImageID.String(), nil
 }
 
-func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, registry string) (imgutil.Image, string, error) {
+func (ea exportArgs) initRemoteAppImage(analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
-		remote.FromBaseImage(runImageRef),
+		remote.FromBaseImage(ea.runImageRef),
 	}
 
 	if analyzedMD.Image != nil {
@@ -296,22 +304,22 @@ func initRemoteImage(imageName string, runImageRef string, analyzedMD lifecycle.
 			return nil, "", cmd.FailErr(err, "parse analyzed registry")
 		}
 		analyzedRegistry := ref.Context().RegistryStr()
-		if analyzedRegistry != registry {
-			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, registry)
+		if analyzedRegistry != ea.registry {
+			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, ea.registry)
 		}
 		opts = append(opts, remote.WithPreviousImage(analyzedMD.Image.Reference))
 	}
 
 	appImage, err := remote.NewImage(
-		imageName,
-		auth.NewKeychain(cmd.EnvRegistryAuth),
+		ea.imageNames[0],
+		ea.keychain,
 		opts...,
 	)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
-	runImage, err := remote.NewImage(runImageRef, auth.NewKeychain(cmd.EnvRegistryAuth), remote.FromBaseImage(runImageRef))
+	runImage, err := remote.NewImage(ea.runImageRef, ea.keychain, remote.FromBaseImage(ea.runImageRef))
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}
@@ -353,20 +361,36 @@ func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (lifecycle.An
 	return analyzedMD, nil
 }
 
-func resolveStack(stackPath, runImageRef, registry string) (lifecycle.StackMetadata, string, error) {
+func resolveStack(imageName, stackPath, runImageRefOrig string) (lifecycle.StackMetadata, string, string, error) {
+	ref, err := name.ParseReference(imageName, name.WeakValidation)
+	if err != nil {
+		return lifecycle.StackMetadata{}, "", "", cmd.FailErr(err, "failed to parse registry")
+	}
+
+	registry := ref.Context().RegistryStr()
+
 	var stackMD lifecycle.StackMetadata
-	_, err := toml.DecodeFile(stackPath, &stackMD)
+	_, err = toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
 	}
-	if runImageRef == "" {
+
+	var runImageRef string
+	if runImageRefOrig == "" {
 		if stackMD.RunImage.Image == "" {
-			return lifecycle.StackMetadata{}, "", cmd.FailErrCode(errors.New("-run-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
+			return lifecycle.StackMetadata{}, "", "", cmd.FailErrCode(
+				errors.New("-run-image is required when there is no stack metadata available"),
+				cmd.CodeInvalidArgs,
+				"parse arguments",
+			)
 		}
 		runImageRef, err = stackMD.BestRunImageMirror(registry)
 		if err != nil {
-			return lifecycle.StackMetadata{}, "", err
+			return lifecycle.StackMetadata{}, "", "", err
 		}
+	} else {
+		runImageRef = runImageRefOrig
 	}
-	return stackMD, runImageRef, nil
+
+	return stackMD, runImageRef, registry, nil
 }

@@ -14,3 +14,5 @@ RUN chown -R $CNB_USER_ID:$CNB_GROUP_ID /some-dir
 
 RUN chown -R $CNB_USER_ID:$CNB_GROUP_ID /layers
 
+# ensure docker config directory is root owned and NOT world readable
+RUN chown -R root /docker-config; chmod -R 700 /docker-config

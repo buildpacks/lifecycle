@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -36,7 +37,8 @@ type analyzeArgs struct {
 	useDaemon   bool
 
 	//construct if necessary before dropping privileges
-	docker client.CommonAPIClient
+	docker   client.CommonAPIClient
+	keychain authn.Keychain
 }
 
 func (a *analyzeCmd) DefineFlags() {
@@ -75,6 +77,12 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 }
 
 func (a *analyzeCmd) Privileges() error {
+	var err error
+	a.keychain, err = auth.DefaultKeychain(a.registryImages()...)
+	if err != nil {
+		return cmd.FailErr(err, "resolve keychain")
+	}
+
 	if a.useDaemon {
 		var err error
 		a.docker, err = priv.DockerClient()
@@ -100,7 +108,7 @@ func (a *analyzeCmd) Exec() error {
 		return err
 	}
 
-	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir)
+	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir, a.keychain)
 	if err != nil {
 		return cmd.FailErr(err, "initialize cache")
 	}
@@ -131,7 +139,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 	} else {
 		img, err = remote.NewImage(
 			aa.imageName,
-			auth.NewKeychain(cmd.EnvRegistryAuth),
+			aa.keychain,
 			remote.FromBaseImage(aa.imageName),
 		)
 	}
@@ -149,4 +157,15 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 		return lifecycle.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")
 	}
 	return analyzedMD, nil
+}
+
+func (a *analyzeCmd) registryImages() []string {
+	var registryImages []string
+	if a.cacheImageTag != "" {
+		registryImages = append(registryImages, a.cacheImageTag)
+	}
+	if !a.useDaemon {
+		registryImages = append(registryImages, a.analyzeArgs.imageName)
+	}
+	return registryImages
 }

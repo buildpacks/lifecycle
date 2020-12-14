@@ -19,6 +19,7 @@ import (
 )
 
 type Cache interface {
+	Exists() bool
 	Name() string
 	SetMetadata(metadata CacheMetadata) error
 	RetrieveMetadata() (CacheMetadata, error)
