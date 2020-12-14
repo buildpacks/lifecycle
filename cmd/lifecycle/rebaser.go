@@ -73,7 +73,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 
 func (r *rebaseCmd) Privileges() error {
 	var err error
-	r.keychain, err = auth.DefaultKeychain(cmd.EnvRegistryAuth, r.registryImages()...)
+	r.keychain, err = auth.DefaultKeychain(r.registryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}

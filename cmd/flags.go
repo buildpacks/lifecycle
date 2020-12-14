@@ -56,7 +56,6 @@ const (
 	EnvPreviousImage       = "CNB_PREVIOUS_IMAGE"
 	EnvProcessType         = "CNB_PROCESS_TYPE"
 	EnvProjectMetadataPath = "CNB_PROJECT_METADATA_PATH"
-	EnvRegistryAuth        = "CNB_REGISTRY_AUTH"
 	EnvReportPath          = "CNB_REPORT_PATH"
 	EnvRunImage            = "CNB_RUN_IMAGE"
 	EnvSkipLayers          = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false

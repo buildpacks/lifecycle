@@ -134,7 +134,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 
 func (e *exportCmd) Privileges() error {
 	var err error
-	e.keychain, err = auth.DefaultKeychain(cmd.EnvRegistryAuth, e.registryImages()...)
+	e.keychain, err = auth.DefaultKeychain(e.registryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}

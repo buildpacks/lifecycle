@@ -57,7 +57,7 @@ func (a *Analyzer) analyzeLayers(appMeta LayersMetadata, cache Cache) error {
 	if cache != nil {
 		var err error
 		if !cache.Exists() {
-			a.Logger.Info("cache does not exist")
+			a.Logger.Info("Layer cache not found")
 		}
 		cacheMeta, err = cache.RetrieveMetadata()
 		if err != nil {

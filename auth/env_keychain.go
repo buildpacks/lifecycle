@@ -12,11 +12,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
+
 // DefaultKeychain returns a keychain containing authentication configuration for the given images
 // from the following sources, if they exist, in order of precedence:
 // the provided environment variable and the docker config.json file.
-func DefaultKeychain(envVar string, images ...string) (authn.Keychain, error) {
-	envKeychain, err := EnvKeychain(envVar)
+func DefaultKeychain(images ...string) (authn.Keychain, error) {
+	envKeychain, err := EnvKeychain(EnvRegistryAuth)
 	if err != nil {
 		return nil, err
 	}
@@ -27,10 +29,13 @@ func DefaultKeychain(envVar string, images ...string) (authn.Keychain, error) {
 	), nil
 }
 
+// ResolvedKeychain is an implementation of authn.Keychain that stores credentials in memory.
 type ResolvedKeychain struct {
 	Auths map[string]string
 }
 
+// EnvKeychain returns an authn.Keychain that uses the provided environment variable as a source of credentials.
+// The value of the environment variable should be a JSON object that maps OCI registry hostnames to Authorization headers.
 func EnvKeychain(envVar string) (authn.Keychain, error) {
 	authHeaders, err := ReadEnvVar(envVar)
 	if err != nil {
@@ -39,16 +44,12 @@ func EnvKeychain(envVar string) (authn.Keychain, error) {
 	return &ResolvedKeychain{Auths: authHeaders}, nil
 }
 
+// InMemoryKeychain resolves credentials for the given images from the given keychain and returns a new keychain
+// that stores the pre-resolved credentials in memory and returns them on demand. This is useful in cases where the
+// backing credential store may become inaccessible in the the future.
 func InMemoryKeychain(keychain authn.Keychain, images ...string) authn.Keychain {
-	var nonEmpty []string
-	for _, image := range images {
-		if image != "" {
-			nonEmpty = append(nonEmpty, image)
-		}
-	}
-
 	return &ResolvedKeychain{
-		Auths: buildAuthMap(keychain, nonEmpty...),
+		Auths: buildAuthMap(keychain, images...),
 	}
 }
 
@@ -102,22 +103,23 @@ func buildAuthMap(keychain authn.Keychain, images ...string) map[string]string {
 	registryAuths := map[string]string{}
 
 	for _, image := range images {
-		reference, authenticator, err := ReferenceForRepoName(keychain, image)
+		reference, authenticator, err := referenceForRepoName(keychain, image)
 		if err != nil {
-			return map[string]string{}
+			continue
 		}
+
 		if authenticator == authn.Anonymous {
 			continue
 		}
 
 		authConfig, err := authenticator.Authorization()
 		if err != nil {
-			return map[string]string{}
+			continue
 		}
 
 		registryAuths[reference.Context().Registry.Name()], err = authConfigToHeader(authConfig)
 		if err != nil {
-			return map[string]string{}
+			continue
 		}
 	}
 
@@ -176,7 +178,7 @@ func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
 	return nil, errors.Errorf("unknown auth type from header: %s", header)
 }
 
-func ReferenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
+func referenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
 	var auth authn.Authenticator
 	r, err := name.ParseReference(ref, name.WeakValidation)
 	if err != nil {

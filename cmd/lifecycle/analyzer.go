@@ -78,7 +78,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 func (a *analyzeCmd) Privileges() error {
 	var err error
-	a.keychain, err = auth.DefaultKeychain(cmd.EnvRegistryAuth, a.registryImages()...)
+	a.keychain, err = auth.DefaultKeychain(a.registryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}

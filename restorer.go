@@ -21,7 +21,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	if cache != nil {
 		var err error
 		if !cache.Exists() {
-			r.Logger.Info("cache does not exist")
+			r.Logger.Info("Layer cache not found")
 		}
 		meta, err = cache.RetrieveMetadata()
 		if err != nil {

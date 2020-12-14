@@ -7,7 +7,7 @@ import (
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	var err error
 	if !cacheStore.Exists() {
-		e.Logger.Info("cache does not exist")
+		e.Logger.Info("Layer cache not found")
 	}
 	origMeta, err := cacheStore.RetrieveMetadata()
 	if err != nil {

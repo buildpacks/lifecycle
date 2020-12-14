@@ -109,7 +109,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 
 func (c *createCmd) Privileges() error {
 	var err error
-	c.keychain, err = auth.DefaultKeychain(cmd.EnvRegistryAuth, c.registryImages()...)
+	c.keychain, err = auth.DefaultKeychain(c.registryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
