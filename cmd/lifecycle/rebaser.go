@@ -64,8 +64,8 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 		r.reportPath = cmd.DefaultReportPath(r.platformAPI, "")
 	}
 
-	if err := r.readLabel(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), cmd.CodeRebaseError, "read label on image")
+	if err := r.setAppImage(); err != nil {
+		return cmd.FailErrCode(errors.New(err.Error()), cmd.CodeRebaseError, "set app image")
 	}
 
 	return nil
@@ -132,7 +132,7 @@ func (r *rebaseCmd) registryImages() []string {
 	return registryImages
 }
 
-func (r *rebaseCmd) readLabel() error {
+func (r *rebaseCmd) setAppImage() error {
 	ref, err := name.ParseReference(r.imageNames[0], name.WeakValidation)
 	if err != nil {
 		return err

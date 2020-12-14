@@ -220,16 +220,9 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	var appImage imgutil.Image
 	var runImageID string
 	if ea.useDaemon {
-		appImage, runImageID, err = ea.initDaemonAppImage(
-			ea.runImageRef,
-			analyzedMD,
-		)
+		appImage, runImageID, err = ea.initDaemonAppImage(analyzedMD)
 	} else {
-		appImage, runImageID, err = ea.initRemoteAppImage(
-			ea.runImageRef,
-			analyzedMD,
-			ea.registry,
-		)
+		appImage, runImageID, err = ea.initRemoteAppImage(analyzedMD)
 	}
 	if err != nil {
 		return err
@@ -262,9 +255,9 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	return nil
 }
 
-func (ea exportArgs) initDaemonAppImage(runImageRef string, analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initDaemonAppImage(analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
-		local.FromBaseImage(runImageRef),
+		local.FromBaseImage(ea.runImageRef),
 	}
 
 	if analyzedMD.Image != nil {
@@ -296,9 +289,9 @@ func (ea exportArgs) initDaemonAppImage(runImageRef string, analyzedMD lifecycle
 	return appImage, runImageID.String(), nil
 }
 
-func (ea exportArgs) initRemoteAppImage(runImageRef string, analyzedMD lifecycle.AnalyzedMetadata, registry string) (imgutil.Image, string, error) {
+func (ea exportArgs) initRemoteAppImage(analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
-		remote.FromBaseImage(runImageRef),
+		remote.FromBaseImage(ea.runImageRef),
 	}
 
 	if analyzedMD.Image != nil {
@@ -308,8 +301,8 @@ func (ea exportArgs) initRemoteAppImage(runImageRef string, analyzedMD lifecycle
 			return nil, "", cmd.FailErr(err, "parse analyzed registry")
 		}
 		analyzedRegistry := ref.Context().RegistryStr()
-		if analyzedRegistry != registry {
-			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, registry)
+		if analyzedRegistry != ea.registry {
+			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, ea.registry)
 		}
 		opts = append(opts, remote.WithPreviousImage(analyzedMD.Image.Reference))
 	}
@@ -323,7 +316,7 @@ func (ea exportArgs) initRemoteAppImage(runImageRef string, analyzedMD lifecycle
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
-	runImage, err := remote.NewImage(runImageRef, ea.keychain, remote.FromBaseImage(runImageRef))
+	runImage, err := remote.NewImage(ea.runImageRef, ea.keychain, remote.FromBaseImage(ea.runImageRef))
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}

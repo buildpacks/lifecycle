@@ -39,7 +39,7 @@ type ResolvedKeychain struct {
 func EnvKeychain(envVar string) (authn.Keychain, error) {
 	authHeaders, err := ReadEnvVar(envVar)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading auth env var")
 	}
 	return &ResolvedKeychain{Auths: authHeaders}, nil
 }
