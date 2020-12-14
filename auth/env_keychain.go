@@ -178,6 +178,7 @@ func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
 	return nil, errors.Errorf("unknown auth type from header: %s", header)
 }
 
+// ReferenceForRepoName returns a reference and an authenticator for a given image name and keychain.
 func ReferenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
 	var auth authn.Authenticator
 	r, err := name.ParseReference(ref, name.WeakValidation)
