@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 )
 
@@ -58,6 +59,14 @@ func readBuildpackLayersDir(layersDir string, buildpack GroupBuildpack) (bpLayer
 				return bpLayersDir{}, errors.Wrapf(err, "failed decoding store.toml for buildpack %q", buildpack.ID)
 			}
 			bpDir.store = &bpStore
+			continue
+		}
+		if name == "launch" {
+			// don't treat launch.toml as a layer
+			continue
+		}
+		if name == "build" && api.MustParse(buildpack.API).Compare(api.MustParse("0.5")) >= 0 {
+			// if the buildpack API supports build.toml don't treat it as a layer
 			continue
 		}
 		if _, ok := names[name]; !ok {
