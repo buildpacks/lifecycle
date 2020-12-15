@@ -1,0 +1,5 @@
+[[build.bom]]
+name = "dep1"
+
+[bom.metadata]
+version = "v1"

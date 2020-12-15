@@ -1114,15 +1114,20 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
 			})
+		})
 
-			when("build.toml", func() {
-				when("platform api >= 0.5", func() {
+		when("build.toml", func() {
+			when("platform api >= 0.5", func() {
+				it.Before(func() {
+					exporter.PlatformAPI = api.MustParse("0.5")
+					exporter.Buildpacks = []lifecycle.GroupBuildpack{
+						{ID: "buildpack.id", Version: "1.2.3", API: "0.5"},                        // set buildpack API to 0.5
+						{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.5"}, // set buildpack API to 0.5
+					}
+				})
+
+				when("valid", func() {
 					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.5")
-						exporter.Buildpacks = []lifecycle.GroupBuildpack{
-							{ID: "buildpack.id", Version: "1.2.3", API: "0.5"},
-							{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.5"},
-						}
 						opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "layers")
 					})
 
@@ -1146,6 +1151,17 @@ version = "4.5.6"
 								Buildpack: lifecycle.GroupBuildpack{ID: "other.buildpack.id", Version: "4.5.6"},
 							},
 						})
+					})
+				})
+
+				when("invalid", func() {
+					it.Before(func() {
+						opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "bad-layers")
+					})
+
+					it("returns an error", func() {
+						_, err := exporter.Export(opts)
+						h.AssertError(t, err, "toml")
 					})
 				})
 			})
