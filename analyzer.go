@@ -11,10 +11,10 @@ import (
 )
 
 type Analyzer struct {
-	Buildpacks []GroupBuildpack
-	LayersDir  string
-	Logger     Logger
-	SkipLayers bool
+	BuildpacksDir string
+	LayersDir     string
+	Logger        Logger
+	SkipLayers    bool
 }
 
 // Analyze restores metadata for launch and cache layers into the layers directory.
@@ -31,8 +31,14 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (AnalyzedMetadata, 
 		appMeta = LayersMetadata{}
 	}
 
-	for _, bp := range a.Buildpacks {
-		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
+	var buildMeta BuildMetadata
+	// continue even if the label cannot be decoded
+	if err := DecodeLabel(image, BuildMetadataLabel, &buildMeta); err != nil {
+		buildMeta = BuildMetadata{}
+	}
+
+	for _, bp := range appMeta.Buildpacks {
+		if store := bp.Store; store != nil {
 			if err := WriteTOML(filepath.Join(a.LayersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
 				return AnalyzedMetadata{}, err
 			}
@@ -41,7 +47,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (AnalyzedMetadata, 
 
 	if a.SkipLayers {
 		a.Logger.Infof("Skipping buildpack layer analysis")
-	} else if err := a.analyzeLayers(appMeta, cache); err != nil {
+	} else if err := a.analyzeLayers(appMeta, buildMeta, cache); err != nil {
 		return AnalyzedMetadata{}, err
 	}
 
@@ -51,7 +57,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (AnalyzedMetadata, 
 	}, nil
 }
 
-func (a *Analyzer) analyzeLayers(appMeta LayersMetadata, cache Cache) error {
+func (a *Analyzer) analyzeLayers(appMeta LayersMetadata, buildMeta BuildMetadata, cache Cache) error {
 	// Create empty cache metadata in case a usable cache is not provided.
 	var cacheMeta CacheMetadata
 	if cache != nil {
@@ -67,15 +73,24 @@ func (a *Analyzer) analyzeLayers(appMeta LayersMetadata, cache Cache) error {
 		a.Logger.Debug("Usable cache not provided, using empty cache metadata.")
 	}
 
-	for _, buildpack := range a.Buildpacks {
-		buildpackDir, err := readBuildpackLayersDir(a.LayersDir, buildpack)
+	for _, buildpack := range appMeta.Buildpacks {
+		groupBuildpack, err := a.getGroupBuildpack(buildpack, buildMeta)
+		if err != nil {
+			return err
+		}
+		if groupBuildpack == nil {
+			// a buildpack used in the previous build is not available in this build, so we'll skip its layers
+			continue
+		}
+
+		buildpackDir, err := readBuildpackLayersDir(a.LayersDir, *groupBuildpack)
 		if err != nil {
 			return errors.Wrap(err, "reading buildpack layer directory")
 		}
 
 		// Restore metadata for launch=true layers.
 		// The restorer step will restore the layer data for cache=true layers if possible or delete the layer.
-		appLayers := appMeta.MetadataForBuildpack(buildpack.ID).Layers
+		appLayers := buildpack.Layers
 		for name, layer := range appLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
 			if !layer.Launch {
@@ -91,10 +106,22 @@ func (a *Analyzer) analyzeLayers(appMeta LayersMetadata, cache Cache) error {
 				return err
 			}
 		}
+	}
+
+	for _, buildpack := range cacheMeta.Buildpacks {
+		groupBuildpack := GroupBuildpack{
+			ID:      buildpack.ID,
+			Version: buildpack.Version,
+		}
+
+		buildpackDir, err := readBuildpackLayersDir(a.LayersDir, groupBuildpack)
+		if err != nil {
+			return errors.Wrap(err, "reading buildpack layer directory")
+		}
 
 		// Restore metadata for cache=true layers.
 		// The restorer step will restore the layer data if possible or delete the layer.
-		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
+		cachedLayers := buildpack.Layers
 		for name, layer := range cachedLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
 			if !layer.Cache {
@@ -113,6 +140,25 @@ func (a *Analyzer) analyzeLayers(appMeta LayersMetadata, cache Cache) error {
 		}
 	}
 	return nil
+}
+
+func (a *Analyzer) getGroupBuildpack(buildpack BuildpackLayersMetadata, buildMeta BuildMetadata) (*GroupBuildpack, error) {
+	for _, buildBuildpack := range buildMeta.Buildpacks {
+		if buildBuildpack.ID == buildpack.ID {
+			info, err := buildBuildpack.Lookup(a.BuildpacksDir)
+			if err != nil {
+				a.Logger.Warnf("Error reading buildpack directory for %s@%s", buildBuildpack.ID, buildBuildpack.Version)
+				return &buildBuildpack, errors.Wrap(err, "reading buildpack directory")
+			}
+			buildBuildpack.API = info.API
+
+			a.Logger.Warnf("Read buildpack directory for %s", buildBuildpack.ID)
+			return &buildBuildpack, nil
+		}
+	}
+
+	a.Logger.Warnf("Couldn't find buildpack directory for %s in %s", buildpack.ID, buildMeta.Buildpacks)
+	return nil, nil
 }
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*ImageIdentifier, error) {

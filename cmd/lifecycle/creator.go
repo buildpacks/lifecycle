@@ -161,7 +161,7 @@ func (c *createCmd) Exec() error {
 		skipLayers:  c.skipRestore,
 		useDaemon:   c.useDaemon,
 		docker:      c.docker,
-	}.analyze(group, cacheStore)
+	}.analyze(cacheStore)
 	if err != nil {
 		return err
 	}

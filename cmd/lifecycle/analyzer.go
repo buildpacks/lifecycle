@@ -30,11 +30,12 @@ type analyzeCmd struct {
 
 type analyzeArgs struct {
 	//inputs needed when run by creator
-	imageName   string
-	layersDir   string
-	platformAPI string
-	skipLayers  bool
-	useDaemon   bool
+	buildpacksDir string
+	imageName     string
+	layersDir     string
+	platformAPI   string
+	skipLayers    bool
+	useDaemon     bool
 
 	//construct if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -42,10 +43,11 @@ type analyzeArgs struct {
 }
 
 func (a *analyzeCmd) DefineFlags() {
+	cmd.FlagBuildpacksDir(&a.buildpacksDir)
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheDir(&a.cacheDir)
 	cmd.FlagCacheImage(&a.cacheImageTag)
-	cmd.FlagGroupPath(&a.groupPath)
+	cmd.DeprecatedFlagGroupPath(&a.groupPath)
 	cmd.FlagLayersDir(&a.layersDir)
 	cmd.FlagSkipLayers(&a.skipLayers)
 	cmd.FlagUseDaemon(&a.useDaemon)
@@ -68,8 +70,8 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platformAPI, a.layersDir)
 	}
 
-	if a.groupPath == cmd.PlaceholderGroupPath {
-		a.groupPath = cmd.DefaultGroupPath(a.platformAPI, a.layersDir)
+	if len(a.groupPath) == 0 {
+		cmd.DefaultLogger.Warn("The --group flag is deprecated and it's value will be ignored")
 	}
 
 	a.imageName = args[0]
@@ -100,20 +102,12 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(a.groupPath)
-	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
-	}
-	if err := verifyBuildpackApis(group); err != nil {
-		return err
-	}
-
 	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir, a.keychain)
 	if err != nil {
 		return cmd.FailErr(err, "initialize cache")
 	}
 
-	analyzedMD, err := a.analyze(group, cacheStore)
+	analyzedMD, err := a.analyze(cacheStore)
 	if err != nil {
 		return err
 	}
@@ -125,7 +119,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze(cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -148,10 +142,10 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  aa.layersDir,
-		Logger:     cmd.DefaultLogger,
-		SkipLayers: aa.skipLayers,
+		BuildpacksDir: aa.buildpacksDir,
+		LayersDir:     aa.layersDir,
+		Logger:        cmd.DefaultLogger,
+		SkipLayers:    aa.skipLayers,
 	}).Analyze(img, cacheStore)
 	if err != nil {
 		return lifecycle.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")

@@ -195,6 +195,10 @@ func FlagProcessType(processType *string) {
 	flagSet.StringVar(processType, "process-type", os.Getenv(EnvProcessType), "default process type")
 }
 
+func DeprecatedFlagGroupPath(group *string) {
+	flagSet.StringVar(group, "group", "", "path to group.toml")
+}
+
 func DeprecatedFlagRunImage(image *string) {
 	flagSet.StringVar(image, "image", "", "reference to run image")
 }

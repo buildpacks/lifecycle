@@ -8,28 +8,27 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/api"
+
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 )
 
 type bpLayersDir struct {
-	path      string
-	layers    []bpLayer
-	name      string
-	buildpack GroupBuildpack
-	store     *StoreTOML
+	path   string
+	layers []bpLayer
+	id     string
+	store  *StoreTOML
 }
 
 func readBuildpackLayersDir(layersDir string, buildpack GroupBuildpack) (bpLayersDir, error) {
 	path := filepath.Join(layersDir, launch.EscapeID(buildpack.ID))
 	bpDir := bpLayersDir{
-		name:      buildpack.ID,
-		path:      path,
-		layers:    []bpLayer{},
-		buildpack: buildpack,
+		id:     buildpack.ID,
+		path:   path,
+		layers: []bpLayer{},
 	}
 
 	fis, err := ioutil.ReadDir(path)
@@ -108,7 +107,7 @@ func (bd *bpLayersDir) newBPLayer(name string) *bpLayer {
 	return &bpLayer{
 		layer{
 			path:       filepath.Join(bd.path, name),
-			identifier: fmt.Sprintf("%s:%s", bd.buildpack.ID, name),
+			identifier: fmt.Sprintf("%s:%s", bd.id, name),
 		},
 	}
 }
