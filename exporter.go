@@ -63,7 +63,7 @@ type ExportOptions struct {
 }
 
 type ExportReport struct {
-	Build BuildReport `toml:"build"`
+	Build BuildReport `toml:"build,omitempty"`
 	Image ImageReport `toml:"image"`
 }
 

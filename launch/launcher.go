@@ -125,7 +125,7 @@ func (l *Launcher) eachBuildpack(fn bpAction) error {
 	for _, bp := range l.Buildpacks {
 		dir := filepath.Join(l.LayersDir, EscapeID(bp.ID))
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			return nil
+			continue
 		} else if err != nil {
 			return errors.Wrap(err, "find buildpack directory")
 		}

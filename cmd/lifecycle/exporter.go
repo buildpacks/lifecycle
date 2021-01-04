@@ -186,7 +186,10 @@ func (e *exportCmd) registryImages() []string {
 	}
 	if !e.useDaemon {
 		registryImages = append(registryImages, e.imageNames...)
-		registryImages = append(registryImages, e.runImageRef, e.analyzedMD.Image.Reference)
+		registryImages = append(registryImages, e.runImageRef)
+		if e.analyzedMD.Image != nil {
+			registryImages = append(registryImages, e.analyzedMD.Image.Reference)
+		}
 	}
 	return registryImages
 }

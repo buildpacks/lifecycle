@@ -78,6 +78,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:          filepath.Join(tmpDir, "launch"),
 			AppDir:             filepath.Join(tmpDir, "launch", "app"),
 			Buildpacks: []launch.Buildpack{
+				{API: "0.3", ID: "no-layers/buildpack"},
 				{API: "0.3", ID: "0.3/buildpack"},
 				{API: "0.4", ID: "0.4/buildpack"},
 				{API: "0.5", ID: "0.5/buildpack"},
