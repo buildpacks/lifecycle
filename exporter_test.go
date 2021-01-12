@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -636,6 +637,45 @@ version = "4.5.6"
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, report.Image.Digest, fakeRemoteDigest)
+				})
+			})
+
+			when("checking the image manifest", func() {
+				var fakeRemoteManifestSize int64
+
+				when("image has a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 12345
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+					})
+
+					it("outputs the manifest size", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						assertLogEntry(t, logHandler, `*** Manifest Size: `+strconv.FormatInt(fakeRemoteManifestSize, 10))
+					})
+
+					it("add the manifest size to the report", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, strconv.FormatInt(fakeRemoteManifestSize, 10))
+					})
+				})
+
+				when("image doesn't have a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 0
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+					})
+
+					it("doesn't set the manifest size in the report.toml", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, "")
+					})
 				})
 			})
 

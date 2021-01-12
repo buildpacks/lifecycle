@@ -2,6 +2,7 @@ package lifecycle_test
 
 import (
 	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 
@@ -170,6 +171,38 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, report.Image.Digest, fakeRemoteDigest)
+				})
+			})
+
+			when("checking the image manifest", func() {
+				var fakeRemoteManifestSize int64
+
+				when("image has a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 12345
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+					})
+
+					it("add the manifest size to the report", func() {
+						report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, strconv.FormatInt(fakeRemoteManifestSize, 10))
+					})
+				})
+
+				when("image doesn't have a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 0
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+					})
+
+					it("doesn't set the manifest size in the report.toml", func() {
+						report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, "")
+					})
 				})
 			})
 

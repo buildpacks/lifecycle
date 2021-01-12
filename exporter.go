@@ -72,9 +72,10 @@ type BuildReport struct {
 }
 
 type ImageReport struct {
-	Tags    []string `toml:"tags"`
-	ImageID string   `toml:"image-id,omitempty"`
-	Digest  string   `toml:"digest,omitempty"`
+	Tags         []string `toml:"tags"`
+	ImageID      string   `toml:"image-id,omitempty"`
+	Digest       string   `toml:"digest,omitempty"`
+	ManifestSize string   `toml:",manifest-size,omitempty"`
 }
 
 func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
