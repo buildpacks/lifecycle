@@ -1,0 +1,6 @@
+api = "0.3"
+
+[buildpack]
+id = "escaped/buildpack/id"
+name = "Escaped ID Buildpack"
+version = "v1"

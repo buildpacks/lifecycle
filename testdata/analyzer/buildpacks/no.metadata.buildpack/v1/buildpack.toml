@@ -1,0 +1,6 @@
+api = "0.3"
+
+[buildpack]
+id = "no.metadata.buildpack"
+name = "No Metadata Buildpack"
+version = "v1"

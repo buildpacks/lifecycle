@@ -1,0 +1,20 @@
+{
+  "buildpacks": [
+    {
+      "id": "escaped/buildpack/id",
+      "version": "v1"
+    },
+    {
+      "id": "metadata.buildpack",
+      "version": "v1"
+    },
+    {
+      "id": "no.cache.buildpack",
+      "version": "v1"
+    },
+    {
+      "id": "no.metadata.buildpack",
+      "version": "v1"
+    }
+  ]
+}

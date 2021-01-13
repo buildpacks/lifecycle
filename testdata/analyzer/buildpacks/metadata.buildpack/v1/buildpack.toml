@@ -1,0 +1,7 @@
+api = "0.3"
+
+[buildpack]
+id = "metadata.buildpack"
+name = "Metadata Buildpack"
+version = "v1"
+homepage = "Metadata Buildpack Homepage"
