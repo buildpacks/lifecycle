@@ -365,17 +365,17 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, testCache.Commit())
 				})
 
-				//it("restores cache=true layer metadata", func() {
-				//	_, err := analyzer.Analyze(image, testCache)
-				//	h.AssertNil(t, err)
-				//
-				//	for _, data := range []struct{ name, want string }{
-				//		{"metadata.buildpack/cache.toml", "[metadata]\n  cache-key = \"cache-value\""},
-				//	} {
-				//		got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
-				//		h.AssertStringContains(t, string(got), data.want)
-				//	}
-				//})
+				it("restores cache=true layer metadata", func() {
+					_, err := analyzer.Analyze(image, testCache)
+					h.AssertNil(t, err)
+
+					for _, data := range []struct{ name, want string }{
+						{"metadata.buildpack/cache.toml", "[metadata]\n  cache-key = \"cache-value\""},
+					} {
+						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+						h.AssertStringContains(t, string(got), data.want)
+					}
+				})
 
 				it("does not restore launch=true layer metadata", func() {
 					_, err := analyzer.Analyze(image, testCache)
