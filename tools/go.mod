@@ -12,6 +12,7 @@ require (
 	github.com/google/go-containerregistry v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/yj v0.0.0-20190506050358-d9a48607cc5c
+	github.com/spf13/afero v1.2.2 // indirect
 	golang.org/x/tools v0.0.0-20200916195026-c9a70fc28ce3
 )
 

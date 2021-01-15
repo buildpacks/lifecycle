@@ -7,13 +7,14 @@ import (
 	"strings"
 
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/api"
 )
 
 type Rebaser struct {
-	Logger 		 Logger
-	PlatformAPI  *api.Version
+	Logger      Logger
+	PlatformAPI *api.Version
 }
 
 type RebaseReport struct {

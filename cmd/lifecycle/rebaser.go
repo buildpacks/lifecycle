@@ -113,7 +113,7 @@ func (r *rebaseCmd) Exec() error {
 	}
 
 	rebaser := &lifecycle.Rebaser{
-		Logger: cmd.DefaultLogger,
+		Logger:      cmd.DefaultLogger,
 		PlatformAPI: api.MustParse(r.platformAPI),
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
