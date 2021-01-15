@@ -73,6 +73,8 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	if a.groupPath == cmd.PlaceholderGroupPath {
 		a.groupPath = cmd.DefaultGroupPath(a.platformAPI, a.layersDir)
+	} else if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) >= 0 { // platform API >= 0.6
+		return cmd.FailErrCode(errors.New("group argument is not supported in Platform API 0.6"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	a.imageName = args[0]
@@ -103,12 +105,16 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(a.groupPath)
-	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
-	}
-	if err := verifyBuildpackApis(group); err != nil {
-		return err
+	var group buildpack.Group
+	var err error
+	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+		group, err = lifecycle.ReadGroup(a.groupPath)
+		if err != nil {
+			return cmd.FailErr(err, "read buildpack group")
+		}
+		if err := verifyBuildpackApis(group); err != nil {
+			return err
+		}
 	}
 
 	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir, a.keychain)

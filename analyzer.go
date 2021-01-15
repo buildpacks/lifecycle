@@ -1,14 +1,11 @@
 package lifecycle
 
 import (
-	"path/filepath"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -34,20 +31,16 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (platform.AnalyzedM
 		appMeta = platform.LayersMetadata{}
 	}
 
-	for _, bp := range a.Buildpacks {
-		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
-			if err := WriteTOML(filepath.Join(a.LayersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
-				return platform.AnalyzedMetadata{}, err
-			}
-		}
-	}
-
 	if a.PlatformAPI.Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
 		restorer := Restorer{
 			LayersDir:  a.LayersDir,
 			Buildpacks: a.Buildpacks,
 			Logger:     a.Logger,
 			SkipLayers: a.SkipLayers,
+		}
+
+		if err := restorer.restoreStoreTOML(appMeta); err != nil {
+			return platform.AnalyzedMetadata{}, err
 		}
 
 		if err := restorer.analyzeLayers(appMeta, cache); err != nil {

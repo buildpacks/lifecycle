@@ -2,11 +2,13 @@ package lifecycle
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -74,6 +76,17 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, "restoring data")
+	}
+	return nil
+}
+
+func (r *Restorer) restoreStoreTOML(appMeta platform.LayersMetadata) error {
+	for _, bp := range r.Buildpacks {
+		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
+			if err := WriteTOML(filepath.Join(r.LayersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

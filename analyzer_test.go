@@ -119,6 +119,18 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, paths))
 					}
 				})
+
+				it("does not restore each store metadata", func() {
+					_, err := analyzer.Analyze(image, testCache)
+					h.AssertNil(t, err)
+					for _, paths := range []string{
+						// store.toml files.
+						"metadata.buildpack/store.toml",
+						"no.cache.buildpack/store.toml",
+					} {
+						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, paths))
+					}
+				})
 			})
 
 			it("restores layer metadata", func() {
