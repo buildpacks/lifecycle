@@ -49,9 +49,9 @@ func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (Im
 
 	manifestSize, sizeErr := image.ManifestSize()
 	if sizeErr != nil {
-		return ImageReport{}, sizeErr
-	}
-	if manifestSize != 0 {
+		// ignore the manifest size if it's unavailable
+		logger.Infof("*** Manifest size is unavailable (%s):\n", sizeErr.Error())
+	} else if manifestSize != 0 {
 		imageReport.ManifestSize = strconv.FormatInt(manifestSize, 10)
 		logger.Debugf("\n*** Manifest Size: %d\n", manifestSize)
 	}

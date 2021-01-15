@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
 )
 
 type Rebaser struct {
-	Logger Logger
+	Logger 		 Logger
+	PlatformAPI  *api.Version
 }
 
 type RebaseReport struct {
@@ -84,6 +86,11 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 	if err != nil {
 		return RebaseReport{}, err
 	}
+	if !r.supportsManifestSize() {
+		// unset manifest size in report.toml for old platform API versions
+		report.Image.ManifestSize = ""
+	}
+
 	return report, err
 }
 
@@ -110,4 +117,8 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 	}
 
 	return nil
+}
+
+func (r *Rebaser) supportsManifestSize() bool {
+	return r.PlatformAPI.Compare(api.MustParse("0.6")) >= 0
 }

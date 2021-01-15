@@ -150,6 +150,10 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	if err != nil {
 		return ExportReport{}, err
 	}
+	if !e.supportsManifestSize() {
+		// unset manifest size in report.toml for old platform API versions
+		report.Image.ManifestSize = ""
+	}
 
 	return report, nil
 }
@@ -405,6 +409,10 @@ func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *BuildMetadata, me
 
 func (e *Exporter) supportsMulticallLauncher() bool {
 	return e.PlatformAPI.Compare(api.MustParse("0.4")) >= 0
+}
+
+func (e *Exporter) supportsManifestSize() bool {
+	return e.PlatformAPI.Compare(api.MustParse("0.6")) >= 0
 }
 
 func processTypeError(launchMD launch.Metadata, defaultProcessType string) error {
