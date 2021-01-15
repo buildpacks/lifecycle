@@ -48,9 +48,11 @@ func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheDir(&a.cacheDir)
 	cmd.FlagCacheImage(&a.cacheImageTag)
-	cmd.FlagGroupPath(&a.groupPath)
+	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+		cmd.FlagGroupPath(&a.groupPath)
+		cmd.FlagSkipLayers(&a.skipLayers)
+	}
 	cmd.FlagLayersDir(&a.layersDir)
-	cmd.FlagSkipLayers(&a.skipLayers)
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
@@ -73,8 +75,6 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	if a.groupPath == cmd.PlaceholderGroupPath {
 		a.groupPath = cmd.DefaultGroupPath(a.platformAPI, a.layersDir)
-	} else if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) >= 0 { // platform API >= 0.6
-		return cmd.FailErrCode(errors.New("group argument is not supported in Platform API 0.6"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	a.imageName = args[0]

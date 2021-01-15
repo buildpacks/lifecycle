@@ -112,6 +112,44 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("Platform API = 0.6", func() {
+		when("called with group", func() {
+			it("errors", func() {
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API=0.6",
+					analyzeImage,
+					analyzerPath,
+					"-group", "group.toml",
+					"some-image",
+				)
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "flag provided but not defined: -group"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+		when("called with skip layers", func() {
+			it("errors", func() {
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API=0.6",
+					analyzeImage,
+					analyzerPath,
+					"-skip-layers",
+					"some-image",
+				)
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "flag provided but not defined: -skip-layers"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+	})
+
 	when("cache image tag and cache directory are both blank", func() {
 		it("warns", func() {
 			output := h.DockerRun(t,
@@ -200,146 +238,240 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				appImage = "some-app-image-" + h.RandString(10)
-				metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 
-				cmd := exec.Command(
-					"docker",
-					"build",
-					"-t", appImage,
-					"--build-arg", "fromImage="+variables.ContainerBaseImage,
-					"--build-arg", "metadata="+metadata,
-					filepath.Join("testdata", "analyzer", "app-image"),
-				)
-				h.Run(t, cmd)
-			})
+				it.Before(func() {
+					appImage = "some-app-image-" + h.RandString(10)
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 
-			it.After(func() {
-				h.DockerImageRemove(t, appImage)
-			})
+					cmd := exec.Command(
+						"docker",
+						"build",
+						"-t", appImage,
+						"--build-arg", "fromImage="+variables.ContainerBaseImage,
+						"--build-arg", "metadata="+metadata,
+						filepath.Join("testdata", "analyzer", "app-image"),
+					)
+					h.Run(t, cmd)
+				})
 
-			it("restores app metadata", func() {
-				output := h.DockerRunAndCopy(t,
-					containerName,
-					copyDir,
-					analyzeImage,
-					"/layers",
-					h.WithFlags(variables.DockerSocketMount...),
-					h.WithArgs(analyzerPath, "-daemon", appImage),
-				)
+				it.After(func() {
+					h.DockerImageRemove(t, appImage)
+				})
 
-				assertLogsAndRestoresAppMetadata(t, copyDir, output)
-			})
-
-			when("skip layers is provided", func() {
-				it("writes analyzed.toml and does not write buildpack layer metadata", func() {
+				it("does not restore app metadata", func() {
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						analyzeImage,
 						"/layers",
-						h.WithFlags(variables.DockerSocketMount...),
-						h.WithArgs(
-							analyzerPath,
-							"-daemon",
-							"-skip-layers",
-							appImage,
-						),
+						h.WithFlags(append(
+							variables.DockerSocketMount,
+							"--env", "CNB_PLATFORM_API=0.6",
+						)...),
+						h.WithArgs(analyzerPath, "-daemon", appImage),
 					)
 
-					assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
-					assertWritesStoreTomlOnly(t, copyDir, output)
+					assertNoRestoreOfAppMetadata(t, copyDir, output)
 				})
 			})
 		})
 
-		when("cache is provided", func() {
-			when("cache image case", func() {
-				when("cache image is in a daemon", func() {
-					var cacheImage string
+		when("Platform API < 0.6", func() {
+			when("app image exists", func() {
+				var appImage string
 
-					it.Before(func() {
-						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-						cacheImage = "some-cache-image-" + h.RandString(10)
+				it.Before(func() {
+					appImage = "some-app-image-" + h.RandString(10)
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 
-						cmd := exec.Command(
-							"docker",
-							"build",
-							"-t", cacheImage,
-							"--build-arg", "fromImage="+variables.ContainerBaseImage,
-							"--build-arg", "metadata="+metadata,
-							filepath.Join("testdata", "analyzer", "cache-image"),
-						)
-						h.Run(t, cmd)
-					})
+					cmd := exec.Command(
+						"docker",
+						"build",
+						"-t", appImage,
+						"--build-arg", "fromImage="+variables.ContainerBaseImage,
+						"--build-arg", "metadata="+metadata,
+						filepath.Join("testdata", "analyzer", "app-image"),
+					)
+					h.Run(t, cmd)
+				})
 
-					it.After(func() {
-						h.DockerImageRemove(t, cacheImage)
-					})
+				it.After(func() {
+					h.DockerImageRemove(t, appImage)
+				})
 
-					it("ignores the cache", func() {
-						h.DockerRunAndCopy(t,
+				it("restores app metadata", func() {
+					output := h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						analyzeImage,
+						"/layers",
+						h.WithFlags(append(
+							variables.DockerSocketMount,
+							"--env", "CNB_PLATFORM_API=0.5",
+						)...),
+						h.WithArgs(analyzerPath, "-daemon", appImage),
+					)
+
+					assertLogsAndRestoresAppMetadata(t, copyDir, output)
+				})
+
+				when("skip layers is provided", func() {
+					it("writes analyzed.toml and does not write buildpack layer metadata", func() {
+						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
 							analyzeImage,
 							"/layers",
-							h.WithFlags(variables.DockerSocketMount...),
+							h.WithFlags(append(
+								variables.DockerSocketMount,
+								"--env", "CNB_PLATFORM_API=0.5",
+							)...),
 							h.WithArgs(
 								analyzerPath,
 								"-daemon",
-								"-cache-image", cacheImage,
-								"some-image",
+								"-skip-layers",
+								appImage,
 							),
 						)
 
-						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
-						h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+						assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
+						assertWritesStoreTomlOnly(t, copyDir, output)
 					})
 				})
+			})
 
-				when("cache image is in a registry", func() {
-					var cacheImage, cacheAuthConfig string
+			when("cache is provided", func() {
+				when("cache image case", func() {
+					when("cache image is in a daemon", func() {
+						var cacheImage string
 
-					when("auth registry", func() {
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-							cacheImage, cacheAuthConfig = buildRegistryImage(
-								t,
-								"some-cache-image-"+h.RandString(10),
-								filepath.Join("testdata", "analyzer", "cache-image"),
+							cacheImage = "some-cache-image-" + h.RandString(10)
+
+							cmd := exec.Command(
+								"docker",
+								"build",
+								"-t", cacheImage,
 								"--build-arg", "fromImage="+variables.ContainerBaseImage,
 								"--build-arg", "metadata="+metadata,
+								filepath.Join("testdata", "analyzer", "cache-image"),
 							)
+							h.Run(t, cmd)
 						})
 
 						it.After(func() {
 							h.DockerImageRemove(t, cacheImage)
 						})
 
-						when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
-							it("restores cache metadata", func() {
-								output := h.DockerRunAndCopy(t,
-									containerName,
-									copyDir,
-									analyzeImage,
-									"/layers",
-									h.WithFlags(append(
-										variables.DockerSocketMount,
-										"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
-										"--network", "host",
-									)...),
-									h.WithArgs(
-										analyzerPath,
-										"-daemon",
-										"-cache-image", cacheImage,
-										"some-image",
-									),
-								)
+						it("ignores the cache", func() {
+							h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								analyzeImage,
+								"/layers",
+								h.WithFlags(append(
+									variables.DockerSocketMount,
+									"--env", "CNB_PLATFORM_API=0.5",
+								)...),
+								h.WithArgs(
+									analyzerPath,
+									"-daemon",
+									"-cache-image", cacheImage,
+									"some-image",
+								),
+							)
 
-								assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+							h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.sha"))
+							h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id", "some-layer.toml"))
+						})
+					})
+
+					when("cache image is in a registry", func() {
+						var cacheImage, cacheAuthConfig string
+
+						when("auth registry", func() {
+							it.Before(func() {
+								metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
+								cacheImage, cacheAuthConfig = buildRegistryImage(
+									t,
+									"some-cache-image-"+h.RandString(10),
+									filepath.Join("testdata", "analyzer", "cache-image"),
+									"--build-arg", "fromImage="+variables.ContainerBaseImage,
+									"--build-arg", "metadata="+metadata,
+								)
+							})
+
+							it.After(func() {
+								h.DockerImageRemove(t, cacheImage)
+							})
+
+							when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
+								it("restores cache metadata", func() {
+									output := h.DockerRunAndCopy(t,
+										containerName,
+										copyDir,
+										analyzeImage,
+										"/layers",
+										h.WithFlags(append(
+											variables.DockerSocketMount,
+											"--env", "CNB_PLATFORM_API=0.5",
+											"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
+											"--network", "host",
+										)...),
+										h.WithArgs(
+											analyzerPath,
+											"-daemon",
+											"-cache-image", cacheImage,
+											"some-image",
+										),
+									)
+
+									assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+								})
+							})
+
+							when("registry creds are provided in the docker config.json", func() {
+								it("restores cache metadata", func() {
+									output := h.DockerRunAndCopy(t,
+										containerName,
+										copyDir,
+										analyzeImage,
+										"/layers",
+										h.WithFlags(
+											"--env", "CNB_PLATFORM_API=0.5",
+											"--env", "DOCKER_CONFIG=/docker-config",
+											"--network", "host",
+										),
+										h.WithArgs(
+											analyzerPath,
+											"-cache-image",
+											cacheImage,
+											"some-image",
+										),
+									)
+
+									assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+								})
 							})
 						})
 
-						when("registry creds are provided in the docker config.json", func() {
+						when("no auth registry", func() {
+							it.Before(func() {
+								metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
+								cacheImage, cacheAuthConfig = buildNoAuthRegistryImage(
+									t,
+									"some-cache-image-"+h.RandString(10),
+									filepath.Join("testdata", "analyzer", "cache-image"),
+									"--build-arg", "fromImage="+variables.ContainerBaseImage,
+									"--build-arg", "metadata="+metadata,
+								)
+							})
+
+							it.After(func() {
+								h.DockerImageRemove(t, cacheImage)
+							})
+
 							it("restores cache metadata", func() {
 								output := h.DockerRunAndCopy(t,
 									containerName,
@@ -347,8 +479,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									analyzeImage,
 									"/layers",
 									h.WithFlags(
-										"--env", "DOCKER_CONFIG=/docker-config",
 										"--network", "host",
+										"--env", "CNB_PLATFORM_API=0.5",
 									),
 									h.WithArgs(
 										analyzerPath,
@@ -362,113 +494,81 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							})
 						})
 					})
+				})
 
-					when("no auth registry", func() {
-						it.Before(func() {
-							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-							cacheImage, cacheAuthConfig = buildNoAuthRegistryImage(
-								t,
-								"some-cache-image-"+h.RandString(10),
-								filepath.Join("testdata", "analyzer", "cache-image"),
-								"--build-arg", "fromImage="+variables.ContainerBaseImage,
-								"--build-arg", "metadata="+metadata,
-							)
-						})
+				when("cache directory case", func() {
+					it("restores cache metadata", func() {
+						cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
 
-						it.After(func() {
-							h.DockerImageRemove(t, cacheImage)
-						})
+						output := h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							analyzeImage,
+							"/layers",
+							h.WithFlags(append(
+								variables.DockerSocketMount,
+								"--volume", cacheVolume+":"+"/cache",
+								"--env", "CNB_PLATFORM_API=0.5",
+							)...),
+							h.WithArgs(
+								analyzerPath,
+								"-daemon",
+								"-cache-dir", "/cache",
+								"some-image",
+							),
+						)
 
-						it("restores cache metadata", func() {
-							output := h.DockerRunAndCopy(t,
-								containerName,
-								copyDir,
+						assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+					})
+
+					when("the provided cache directory isn't writeable by the CNB user's group", func() {
+						it("recursively chowns the directory", func() {
+							h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
+							cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
+							defer h.DockerVolumeRemove(t, cacheVolume)
+
+							output := h.DockerRun(t,
 								analyzeImage,
-								"/layers",
-								h.WithFlags("--network", "host"),
-								h.WithArgs(
-									analyzerPath,
-									"-cache-image",
-									cacheImage,
-									"some-image",
+								h.WithFlags(append(
+									variables.DockerSocketMount,
+									"--volume", cacheVolume+":/cache",
+									"--env", "CNB_PLATFORM_API=0.5",
+								)...),
+								h.WithBash(
+									fmt.Sprintf("chown -R 9999:9999 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
 								),
 							)
 
-							assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+							h.AssertMatch(t, output, "2222 3333 .+ \\.")
+							h.AssertMatch(t, output, "2222 3333 .+ committed")
+							h.AssertMatch(t, output, "2222 3333 .+ staging")
 						})
 					})
-				})
-			})
 
-			when("cache directory case", func() {
-				it("restores cache metadata", func() {
-					cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
+					when("the provided cache directory is writeable by the CNB user's group", func() {
+						it("doesn't chown the directory", func() {
+							h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
-					output := h.DockerRunAndCopy(t,
-						containerName,
-						copyDir,
-						analyzeImage,
-						"/layers",
-						h.WithFlags(append(
-							variables.DockerSocketMount,
-							"--volume", cacheVolume+":"+"/cache",
-						)...),
-						h.WithArgs(
-							analyzerPath,
-							"-daemon",
-							"-cache-dir", "/cache",
-							"some-image",
-						),
-					)
+							cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
+							defer h.DockerVolumeRemove(t, cacheVolume)
 
-					assertLogsAndRestoresCacheMetadata(t, copyDir, output)
-				})
+							output := h.DockerRun(t,
+								analyzeImage,
+								h.WithFlags(append(
+									variables.DockerSocketMount,
+									"--volume", cacheVolume+":/cache",
+									"--env", "CNB_PLATFORM_API=0.5",
+								)...),
+								h.WithBash(
+									fmt.Sprintf("chown -R 9999:3333 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
+								),
+							)
 
-				when("the provided cache directory isn't writeable by the CNB user's group", func() {
-					it("recursively chowns the directory", func() {
-						h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-
-						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
-						defer h.DockerVolumeRemove(t, cacheVolume)
-
-						output := h.DockerRun(t,
-							analyzeImage,
-							h.WithFlags(append(
-								variables.DockerSocketMount,
-								"--volume", cacheVolume+":/cache",
-							)...),
-							h.WithBash(
-								fmt.Sprintf("chown -R 9999:9999 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
-							),
-						)
-
-						h.AssertMatch(t, output, "2222 3333 .+ \\.")
-						h.AssertMatch(t, output, "2222 3333 .+ committed")
-						h.AssertMatch(t, output, "2222 3333 .+ staging")
-					})
-				})
-
-				when("the provided cache directory is writeable by the CNB user's group", func() {
-					it("doesn't chown the directory", func() {
-						h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-
-						cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
-						defer h.DockerVolumeRemove(t, cacheVolume)
-
-						output := h.DockerRun(t,
-							analyzeImage,
-							h.WithFlags(append(
-								variables.DockerSocketMount,
-								"--volume", cacheVolume+":/cache",
-							)...),
-							h.WithBash(
-								fmt.Sprintf("chown -R 9999:3333 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
-							),
-						)
-
-						h.AssertMatch(t, output, "9999 3333 .+ \\.")
-						h.AssertMatch(t, output, "9999 3333 .+ committed")
-						h.AssertMatch(t, output, "2222 3333 .+ staging")
+							h.AssertMatch(t, output, "9999 3333 .+ \\.")
+							h.AssertMatch(t, output, "9999 3333 .+ committed")
+							h.AssertMatch(t, output, "2222 3333 .+ staging")
+						})
 					})
 				})
 			})
@@ -880,6 +980,21 @@ func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {
 	}
 	for _, layerName := range layerNames {
 		h.AssertStringContains(t, output, fmt.Sprintf("Restoring metadata for \"some-buildpack-id:%s\"", layerName))
+	}
+}
+
+func assertNoRestoreOfAppMetadata(t *testing.T, dir, output string) {
+	layerFilenames := []string{
+		"launch-build-cache-layer.sha",
+		"launch-build-cache-layer.toml",
+		"launch-cache-layer.sha",
+		"launch-cache-layer.toml",
+		"launch-layer.sha",
+		"launch-layer.toml",
+		"store.toml",
+	}
+	for _, filename := range layerFilenames {
+		h.AssertPathDoesNotExist(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
 	}
 }
 
