@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -150,10 +151,11 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  aa.layersDir,
-		Logger:     cmd.DefaultLogger,
-		SkipLayers: aa.skipLayers,
+		Buildpacks:  group.Group,
+		LayersDir:   aa.layersDir,
+		Logger:      cmd.DefaultLogger,
+		SkipLayers:  aa.skipLayers,
+		PlatformAPI: api.MustParse(aa.platformAPI),
 	}).Analyze(img, cacheStore)
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")

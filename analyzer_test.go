@@ -17,6 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -55,9 +56,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks: []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
-			LayersDir:  layerDir,
-			Logger:     &log.Logger{Handler: &discard.Handler{}},
+			Buildpacks:  []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
+			LayersDir:   layerDir,
+			Logger:      &log.Logger{Handler: &discard.Handler{}},
+			PlatformAPI: api.MustParse("0.5"),
 		}
 		if testing.Verbose() {
 			analyzer.Logger = cmd.DefaultLogger
@@ -97,6 +99,26 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
 				h.AssertNil(t, json.Unmarshal(metadata, &appImageMetadata))
+			})
+
+			when("platform API >= 0.6", func() {
+				it.Before(func() {
+					analyzer.PlatformAPI = api.MustParse("0.6")
+				})
+
+				it("does not restore layer metadata", func() {
+					_, err := analyzer.Analyze(image, testCache)
+					h.AssertNil(t, err)
+
+					for _, paths := range []string{
+						"metadata.buildpack/launch.toml",
+						"metadata.buildpack/launch-build-cache.toml",
+						"metadata.buildpack/launch-cache.toml",
+						"no.cache.buildpack/some-layer.toml",
+					} {
+						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, paths))
+					}
+				})
 			})
 
 			it("restores layer metadata", func() {
