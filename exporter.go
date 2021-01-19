@@ -75,7 +75,7 @@ type ImageReport struct {
 	Tags         []string `toml:"tags"`
 	ImageID      string   `toml:"image-id,omitempty"`
 	Digest       string   `toml:"digest,omitempty"`
-	ManifestSize string   `toml:",manifest-size,omitempty"`
+	ManifestSize int64    `toml:",manifest-size,omitempty"`
 }
 
 func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
@@ -152,7 +152,7 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	}
 	if !e.supportsManifestSize() {
 		// unset manifest size in report.toml for old platform API versions
-		report.Image.ManifestSize = ""
+		report.Image.ManifestSize = 0
 	}
 
 	return report, nil

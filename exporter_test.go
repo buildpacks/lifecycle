@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -654,7 +653,7 @@ version = "4.5.6"
 							report, err := exporter.Export(opts)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, report.Image.ManifestSize, "")
+							h.AssertEq(t, report.Image.ManifestSize, int64(0))
 						})
 					})
 				})
@@ -678,14 +677,14 @@ version = "4.5.6"
 							_, err := exporter.Export(opts)
 							h.AssertNil(t, err)
 
-							assertLogEntry(t, logHandler, `*** Manifest Size: `+strconv.FormatInt(fakeRemoteManifestSize, 10))
+							assertLogEntry(t, logHandler, fmt.Sprintf("*** Manifest Size: %d", fakeRemoteManifestSize))
 						})
 
 						it("add the manifest size to the report", func() {
 							report, err := exporter.Export(opts)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, report.Image.ManifestSize, strconv.FormatInt(fakeRemoteManifestSize, 10))
+							h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
 						})
 					})
 
@@ -699,7 +698,7 @@ version = "4.5.6"
 							report, err := exporter.Export(opts)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, report.Image.ManifestSize, "")
+							h.AssertEq(t, report.Image.ManifestSize, int64(0))
 						})
 					})
 				})

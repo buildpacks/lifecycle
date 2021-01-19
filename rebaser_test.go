@@ -2,7 +2,6 @@ package lifecycle_test
 
 import (
 	"math/rand"
-	"strconv"
 	"testing"
 	"time"
 
@@ -194,7 +193,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, report.Image.ManifestSize, "")
+							h.AssertEq(t, report.Image.ManifestSize, int64(0))
 						})
 					})
 				})
@@ -214,7 +213,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, report.Image.ManifestSize, strconv.FormatInt(fakeRemoteManifestSize, 10))
+							h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
 						})
 					})
 
@@ -228,7 +227,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, report.Image.ManifestSize, "")
+							h.AssertEq(t, report.Image.ManifestSize, int64(0))
 						})
 					})
 				})

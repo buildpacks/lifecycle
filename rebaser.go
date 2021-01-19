@@ -89,7 +89,7 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 	}
 	if !r.supportsManifestSize() {
 		// unset manifest size in report.toml for old platform API versions
-		report.Image.ManifestSize = ""
+		report.Image.ManifestSize = 0
 	}
 
 	return report, err
