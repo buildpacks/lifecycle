@@ -75,7 +75,7 @@ type ImageReport struct {
 	Tags         []string `toml:"tags"`
 	ImageID      string   `toml:"image-id,omitempty"`
 	Digest       string   `toml:"digest,omitempty"`
-	ManifestSize int64    `toml:",manifest-size,omitempty"`
+	ManifestSize int64    `toml:"manifest-size,omitempty"`
 }
 
 func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
