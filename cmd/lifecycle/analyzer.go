@@ -46,9 +46,9 @@ type analyzeArgs struct {
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
-	cmd.FlagCacheDir(&a.cacheDir)
 	cmd.FlagCacheImage(&a.cacheImageTag)
 	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+		cmd.FlagCacheDir(&a.cacheDir)
 		cmd.FlagGroupPath(&a.groupPath)
 		cmd.FlagSkipLayers(&a.skipLayers)
 	}
@@ -65,8 +65,11 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if args[0] == "" {
 		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
-	if a.cacheImageTag == "" && a.cacheDir == "" {
-		cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+
+	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+		if a.cacheImageTag == "" && a.cacheDir == "" {
+			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+		}
 	}
 
 	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -105,8 +108,11 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	var group buildpack.Group
-	var err error
+	var (
+		group      buildpack.Group
+		err        error
+		cacheStore lifecycle.Cache
+	)
 	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
 		group, err = lifecycle.ReadGroup(a.groupPath)
 		if err != nil {
@@ -115,11 +121,10 @@ func (a *analyzeCmd) Exec() error {
 		if err := verifyBuildpackApis(group); err != nil {
 			return err
 		}
-	}
-
-	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir, a.keychain)
-	if err != nil {
-		return cmd.FailErr(err, "initialize cache")
+		cacheStore, err = initCache(a.cacheImageTag, a.cacheDir, a.keychain)
+		if err != nil {
+			return cmd.FailErr(err, "initialize cache")
+		}
 	}
 
 	analyzedMD, err := a.analyze(group, cacheStore)

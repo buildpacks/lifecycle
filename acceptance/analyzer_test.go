@@ -148,6 +148,24 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
+
+		when("called with cache dir", func() {
+			it("errors", func() {
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API=0.6",
+					analyzeImage,
+					analyzerPath,
+					"-cache-dir", "/cache",
+					"some-image",
+				)
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "flag provided but not defined: -cache-dir"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
 	})
 
 	when("cache image tag and cache directory are both blank", func() {
@@ -233,11 +251,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
 		})
 
-		when("app image exists", func() {
-			var appImage string
-
-			it.Before(func() {
-				appImage = "some-app-image-" + h.RandString(10)
+		when("Platform API > 0.5", func() {
+			when("app image exists", func() {
+				var appImage string
 
 				it.Before(func() {
 					appImage = "some-app-image-" + h.RandString(10)
