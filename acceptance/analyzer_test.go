@@ -112,7 +112,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("Platform API = 0.6", func() {
+	when("Platform API > 0.5", func() {
 		when("called with group", func() {
 			it("errors", func() {
 				cmd := exec.Command(
