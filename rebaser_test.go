@@ -56,7 +56,8 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
 		rebaser = &lifecycle.Rebaser{
-			Logger: &log.Logger{Handler: &discard.Handler{}},
+			Logger:      &log.Logger{Handler: &discard.Handler{}},
+			PlatformAPI: api.MustParse("0.4"),
 		}
 	})
 
