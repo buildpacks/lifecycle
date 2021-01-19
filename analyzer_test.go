@@ -96,7 +96,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("image exists", func() {
 			it.Before(func() {
-				metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
+				metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "app_metadata.json"))
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
 				h.AssertNil(t, json.Unmarshal(metadata, &appImageMetadata))
 			})
@@ -223,7 +223,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("cache exists", func() {
 				it.Before(func() {
-					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
+					metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "cache_metadata.json"))
 					var cacheMetadata platform.CacheMetadata
 					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
@@ -412,7 +412,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("cache exists", func() {
 				it.Before(func() {
-					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
+					metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "cache_metadata.json"))
 					var cacheMetadata platform.CacheMetadata
 					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))

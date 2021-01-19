@@ -25,7 +25,7 @@ func main() {
 	case "analyzer":
 		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platformAPI: platformAPI}}, false)
 	case "restorer":
-		cmd.Run(&restoreCmd{platformAPI: platformAPI}, false)
+		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platformAPI: platformAPI}}, false)
 	case "builder":
 		cmd.Run(&buildCmd{buildArgs: buildArgs{platformAPI: platformAPI}}, false)
 	case "exporter":

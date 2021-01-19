@@ -6,7 +6,9 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
@@ -139,36 +141,79 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	cmd.DefaultLogger.Phase("DETECTING")
-	group, plan, err := detectArgs{
-		buildpacksDir: c.buildpacksDir,
-		appDir:        c.appDir,
-		layersDir:     c.layersDir,
-		platformAPI:   c.platformAPI,
-		platformDir:   c.platformDir,
-		orderPath:     c.orderPath,
-	}.detect()
-	if err != nil {
-		return err
-	}
+	var (
+		analyzedMD platform.AnalyzedMetadata
+		group      buildpack.Group
+		plan       platform.BuildPlan
+	)
+	if api.MustParse(c.platformAPI).Compare(api.MustParse("0.6")) >= 0 {
+		cmd.DefaultLogger.Phase("ANALYZING")
+		analyzedMD, err = analyzeArgs{
+			imageName:   c.previousImage,
+			keychain:    c.keychain,
+			layersDir:   c.layersDir,
+			platformAPI: c.platformAPI,
+			skipLayers:  c.skipRestore,
+			useDaemon:   c.useDaemon,
+			docker:      c.docker,
+		}.analyze(buildpack.Group{}, cacheStore)
+		if err != nil {
+			return err
+		}
 
-	cmd.DefaultLogger.Phase("ANALYZING")
-	analyzedMD, err := analyzeArgs{
-		imageName:   c.previousImage,
-		keychain:    c.keychain,
-		layersDir:   c.layersDir,
-		platformAPI: c.platformAPI,
-		skipLayers:  c.skipRestore,
-		useDaemon:   c.useDaemon,
-		docker:      c.docker,
-	}.analyze(group, cacheStore)
-	if err != nil {
-		return err
+		cmd.DefaultLogger.Phase("DETECTING")
+		group, plan, err = detectArgs{
+			buildpacksDir: c.buildpacksDir,
+			appDir:        c.appDir,
+			layersDir:     c.layersDir,
+			platformAPI:   c.platformAPI,
+			platformDir:   c.platformDir,
+			orderPath:     c.orderPath,
+		}.detect()
+		if err != nil {
+			return err
+		}
+	} else {
+		cmd.DefaultLogger.Phase("DETECTING")
+		group, plan, err = detectArgs{
+			buildpacksDir: c.buildpacksDir,
+			appDir:        c.appDir,
+			layersDir:     c.layersDir,
+			platformAPI:   c.platformAPI,
+			platformDir:   c.platformDir,
+			orderPath:     c.orderPath,
+		}.detect()
+		if err != nil {
+			return err
+		}
+
+		cmd.DefaultLogger.Phase("ANALYZING")
+		analyzedMD, err = analyzeArgs{
+			imageName:   c.previousImage,
+			keychain:    c.keychain,
+			layersDir:   c.layersDir,
+			platformAPI: c.platformAPI,
+			skipLayers:  c.skipRestore,
+			useDaemon:   c.useDaemon,
+			docker:      c.docker,
+		}.analyze(group, cacheStore)
+		if err != nil {
+			return err
+		}
 	}
 
 	if !c.skipRestore {
 		cmd.DefaultLogger.Phase("RESTORING")
-		if err := restore(c.layersDir, group, cacheStore); err != nil {
+		err := restoreArgs{
+			imageName:   c.previousImage,
+			keychain:    c.keychain,
+			layersDir:   c.layersDir,
+			platformAPI: c.platformAPI,
+			skipLayers:  c.skipRestore,
+			useDaemon:   c.useDaemon,
+			docker:      c.docker,
+		}.restore(group, cacheStore)
+		if err != nil {
 			return err
 		}
 	}

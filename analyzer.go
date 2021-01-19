@@ -39,11 +39,16 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (platform.AnalyzedM
 			SkipLayers: a.SkipLayers,
 		}
 
+		meta, err := restorer.retrieveMetadataFrom(cache)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, err
+		}
+
 		if err := restorer.restoreStoreTOML(appMeta); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 
-		if err := restorer.analyzeLayers(appMeta, cache); err != nil {
+		if err := restorer.analyzeLayers(appMeta, meta); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}

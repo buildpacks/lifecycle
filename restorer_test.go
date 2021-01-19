@@ -13,7 +13,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/imgutil/local"
+
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -32,6 +36,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			cacheDir  string
 			testCache lifecycle.Cache
 			restorer  *lifecycle.Restorer
+			image     *fakes.Image
 		)
 
 		it.Before(func() {
@@ -47,7 +52,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			restorer = &lifecycle.Restorer{
-				LayersDir: layersDir,
+				PlatformAPI: api.MustParse("0.6"),
+				LayersDir:   layersDir,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "buildpack.id"},
 					{ID: "escaped/buildpack/id"},
@@ -58,11 +64,15 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				restorer.Logger = cmd.DefaultLogger
 				h.AssertNil(t, cmd.SetLogLevel("debug"))
 			}
+			image = fakes.NewImage("image-repo-name", "", local.IDIdentifier{
+				ImageID: "s0m3D1g3sT",
+			})
 		})
 
 		it.After(func() {
 			h.AssertNil(t, os.RemoveAll(layersDir))
 			h.AssertNil(t, os.RemoveAll(cacheDir))
+			h.AssertNil(t, image.Cleanup())
 		})
 
 		when("there is an no cache", func() {
@@ -70,7 +80,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
-					h.AssertNil(t, restorer.Restore(nil))
+					h.AssertNil(t, restorer.Restore(image, nil))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -85,7 +95,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=false"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("keeps metadata and sha file", func() {
@@ -103,7 +113,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -118,7 +128,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=false"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("keeps metadata and sha file", func() {
@@ -241,11 +251,12 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("there is a cache=true layer", func() {
 				var meta string
 				it.Before(func() {
+					restorer.PlatformAPI = api.MustParse("0.5")
 					meta = `cache=true
 [metadata]
   cache-only-key = "cache-only-val"`
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("keeps layer metadatata", func() {
@@ -270,7 +281,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 [metadata]
   cache-false-key = "cache-false-val"`
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, cacheFalseLayerSHA))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("keeps layer metadatata", func() {
@@ -290,7 +301,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "some-made-up-sha"))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -306,7 +317,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-layer-not-in-cache", meta, "some-made-up-sha"))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -321,11 +332,12 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("there is a cache=true escaped layer", func() {
 				var meta string
 				it.Before(func() {
+					restorer.PlatformAPI = api.MustParse("0.5")
 					meta = `cache=true
 [metadata]
   escaped-bp-key = "escaped-bp-val"`
 					h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("keeps layer metadatata", func() {
@@ -347,7 +359,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "nogroup.buildpack.id", "some-layer", meta, noGroupLayerSHA))
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 				it("does not restore layer data", func() {
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"))
@@ -356,7 +368,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				when("the buildpack is detected", func() {
 					it.Before(func() {
 						restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "nogroup.buildpack.id"}}
-						h.AssertNil(t, restorer.Restore(testCache))
+						h.AssertNil(t, restorer.Restore(image, testCache))
 					})
 
 					it("keeps metadata and sha file", func() {
@@ -373,6 +385,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there are multiple cache=true layers", func() {
 				it.Before(func() {
+					restorer.PlatformAPI = api.MustParse("0.5")
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
 					meta = "cache=true\nlaunch=true"
@@ -380,7 +393,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					meta = "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
 
-					h.AssertNil(t, restorer.Restore(testCache))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("keeps layer metadatata for all layers", func() {
@@ -410,6 +423,188 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					want = "echo text from escaped bp layer\n"
 					h.AssertEq(t, string(got), want)
 				})
+			})
+		})
+
+		when("image exists", func() {
+			it.Before(func() {
+				restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}}
+				metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "app_metadata.json"))
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
+			})
+
+			it("restores layer metadata for layers in cache", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				for _, data := range []struct{ name, want string }{
+					{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
+					{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
+				} {
+					got := h.MustReadFile(t, filepath.Join(layersDir, data.name))
+					h.AssertStringContains(t, string(got), data.want)
+				}
+			})
+
+			it("restores layer sha files in cache", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				for _, data := range []struct{ name, want string }{
+					{"metadata.buildpack/launch.sha", "launch-sha"},
+					{"no.cache.buildpack/some-layer.sha", "some-layer-sha"},
+				} {
+					got := h.MustReadFile(t, filepath.Join(layersDir, data.name))
+					h.AssertStringContains(t, string(got), data.want)
+				}
+			})
+
+			it("does not restore launch=false layer metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-false.toml"))
+				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-false.sha"))
+			})
+
+			it("does not restore build=true, cache=false layer metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-build.sha"))
+			})
+
+			it("does not restore cache=true layer metadata when not in cache", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-build-cache.toml"))
+				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-cache.toml"))
+			})
+
+			when("subset of buildpacks are detected", func() {
+				it.Before(func() {
+					restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack"}}
+				})
+				it("restores layers for detected buildpacks", func() {
+					err := restorer.Restore(image, testCache)
+					h.AssertNil(t, err)
+
+					path := filepath.Join(layersDir, "no.cache.buildpack", "some-layer.toml")
+					got := h.MustReadFile(t, path)
+					want := "[metadata]\n  some-layer-key = \"some-layer-value\""
+
+					h.AssertStringContains(t, string(got), want)
+				})
+				it("does not restore layers for undetected buildpacks", func() {
+					err := restorer.Restore(image, testCache)
+					h.AssertNil(t, err)
+
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack"))
+				})
+			})
+
+			it("restores each store metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+				for _, data := range []struct{ name, want string }{
+					// store.toml files.
+					{"metadata.buildpack/store.toml", "[metadata]\n  [metadata.metadata-buildpack-store-data]\n    store-key = \"store-val\""},
+					{"no.cache.buildpack/store.toml", "[metadata]\n  [metadata.no-cache-buildpack-store-data]\n    store-key = \"store-val\""},
+				} {
+					got := h.MustReadFile(t, filepath.Join(layersDir, data.name))
+					h.AssertStringContains(t, string(got), data.want)
+				}
+			})
+		})
+
+		when("image does not have metadata label", func() {
+			it.Before(func() {
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
+			})
+
+			it("does not restore any metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				files, err := ioutil.ReadDir(layersDir)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(files), 0)
+			})
+		})
+
+		when("image has incompatible metadata", func() {
+			it.Before(func() {
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
+			})
+
+			it("does not restore any metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				files, err := ioutil.ReadDir(layersDir)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(files), 0)
+			})
+		})
+
+		when("image does not exist", func() {
+			it("does not restore layer metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				for _, paths := range []string{
+					"metadata.buildpack/launch.toml",
+					"metadata.buildpack/launch-build-cache.toml",
+					"metadata.buildpack/launch-cache.toml",
+					"no.cache.buildpack/some-layer.toml",
+				} {
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
+				}
+			})
+
+			it("does not restore each store metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+				for _, paths := range []string{
+					// store.toml files.
+					"metadata.buildpack/store.toml",
+					"no.cache.buildpack/store.toml",
+				} {
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
+				}
+			})
+		})
+
+		when("platform API < 0.6", func() {
+			it.Before(func() {
+				restorer.PlatformAPI = api.MustParse("0.5")
+			})
+
+			it("does not restore layer metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+
+				for _, paths := range []string{
+					"metadata.buildpack/launch.toml",
+					"metadata.buildpack/launch-build-cache.toml",
+					"metadata.buildpack/launch-cache.toml",
+					"no.cache.buildpack/some-layer.toml",
+				} {
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
+				}
+			})
+
+			it("does not restore each store metadata", func() {
+				err := restorer.Restore(image, testCache)
+				h.AssertNil(t, err)
+				for _, paths := range []string{
+					// store.toml files.
+					"metadata.buildpack/store.toml",
+					"no.cache.buildpack/store.toml",
+				} {
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
+				}
 			})
 		})
 	})
