@@ -662,8 +662,9 @@ version = "4.5.6"
 					it.Before(func() {
 						exporter.PlatformAPI = api.MustParse("0.6")
 						exporter.Buildpacks = []lifecycle.GroupBuildpack{
-							{ID: "buildpack.id", Version: "1.2.3", API: "0.5"},                        // set buildpack API to 0.5
-							{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.5"}, // set buildpack API to 0.5
+							// when PlatformAPI is >= 0.5, we need to set Builpacks API
+							{ID: "buildpack.id", Version: "1.2.3", API: "0.1"},
+							{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.1"},
 						}
 					})
 
