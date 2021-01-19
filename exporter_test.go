@@ -134,8 +134,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		exporter = &lifecycle.Exporter{
 			Buildpacks: []lifecycle.GroupBuildpack{
-				{ID: "buildpack.id", Version: "1.2.3"},
-				{ID: "other.buildpack.id", Version: "4.5.6", Optional: false},
+				{ID: "buildpack.id", Version: "1.2.3", API: "0.1"},
+				{ID: "other.buildpack.id", Version: "4.5.6", API: "0.1", Optional: false},
 			},
 			LayerFactory: layerFactory,
 			Logger:       &log.Logger{Handler: logHandler},
@@ -613,114 +613,6 @@ version = "4.5.6"
 				h.AssertEq(t, fakeAppImage.IsSaved(), true)
 			})
 
-			when("image has a digest identifier", func() {
-				var fakeRemoteDigest = "sha256:c27a27006b74a056bed5d9edcebc394783880abe8691a8c87c78b7cffa6fa5ad"
-
-				it.Before(func() {
-					digestRef, err := name.NewDigest("some-repo/app-image@" + fakeRemoteDigest)
-					h.AssertNil(t, err)
-					fakeAppImage.SetIdentifier(remote.DigestIdentifier{
-						Digest: digestRef,
-					})
-				})
-
-				it("outputs the digest", func() {
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
-
-					assertLogEntry(t, logHandler, `*** Digest: `+fakeRemoteDigest)
-				})
-
-				it("add the digest to the report", func() {
-					report, err := exporter.Export(opts)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, report.Image.Digest, fakeRemoteDigest)
-				})
-			})
-
-			when("checking the image manifest", func() {
-				var fakeRemoteManifestSize int64
-
-				when("platform API is < 0.6", func() {
-					when("image has a manifest", func() {
-						it.Before(func() {
-							fakeRemoteManifestSize = 12345
-							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
-						})
-
-						it("doesn't set the manifest size in the report.toml", func() {
-							report, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, report.Image.ManifestSize, int64(0))
-						})
-					})
-				})
-
-				when("platform API is >= 0.6", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.6")
-						exporter.Buildpacks = []lifecycle.GroupBuildpack{
-							// when PlatformAPI is >= 0.5, we need to set Builpacks API
-							{ID: "buildpack.id", Version: "1.2.3", API: "0.1"},
-							{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.1"},
-						}
-					})
-
-					when("image has a manifest", func() {
-						it.Before(func() {
-							fakeRemoteManifestSize = 12345
-							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
-						})
-
-						it("outputs the manifest size", func() {
-							_, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							assertLogEntry(t, logHandler, fmt.Sprintf("*** Manifest Size: %d", fakeRemoteManifestSize))
-						})
-
-						it("add the manifest size to the report", func() {
-							report, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
-						})
-					})
-
-					when("image doesn't have a manifest", func() {
-						it.Before(func() {
-							fakeRemoteManifestSize = 0
-							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
-						})
-
-						it("doesn't set the manifest size in the report.toml", func() {
-							report, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, report.Image.ManifestSize, int64(0))
-						})
-					})
-				})
-			})
-
-			when("image has an ID identifier", func() {
-				it("outputs the imageID", func() {
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
-
-					assertLogEntry(t, logHandler, `*** Image ID: some-image-id`)
-				})
-
-				it("add the imageID to the report", func() {
-					report, err := exporter.Export(opts)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, report.Image.ImageID, "some-image-id")
-				})
-			})
-
 			it("outputs image names", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -1179,6 +1071,116 @@ version = "4.5.6"
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
+			})
+		})
+
+		when("checking the image manifest", func() {
+			var fakeRemoteManifestSize int64
+			it.Before(func() {
+				opts.LayersDir = filepath.Join("testdata", "exporter", "empty-metadata", "layers")
+			})
+
+			when("platform API is < 0.6", func() {
+				when("image has a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 12345
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+					})
+
+					it("doesn't set the manifest size in the report.toml", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, int64(0))
+					})
+				})
+			})
+
+			when("platform API is >= 0.6", func() {
+				it.Before(func() {
+					exporter.PlatformAPI = api.MustParse("0.6")
+				})
+
+				when("image has a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 12345
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+					})
+
+					it("outputs the manifest size", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						assertLogEntry(t, logHandler, fmt.Sprintf("*** Manifest Size: %d", fakeRemoteManifestSize))
+					})
+
+					it("add the manifest size to the report", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
+					})
+				})
+
+				when("image doesn't have a manifest", func() {
+					it.Before(func() {
+						fakeRemoteManifestSize = 0
+						fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+					})
+
+					it("doesn't set the manifest size in the report.toml", func() {
+						report, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, report.Image.ManifestSize, int64(0))
+					})
+				})
+			})
+		})
+
+		when("image has a digest identifier", func() {
+			var fakeRemoteDigest = "sha256:c27a27006b74a056bed5d9edcebc394783880abe8691a8c87c78b7cffa6fa5ad"
+
+			it.Before(func() {
+				opts.LayersDir = filepath.Join("testdata", "exporter", "empty-metadata", "layers")
+				digestRef, err := name.NewDigest("some-repo/app-image@" + fakeRemoteDigest)
+				h.AssertNil(t, err)
+				fakeAppImage.SetIdentifier(remote.DigestIdentifier{
+					Digest: digestRef,
+				})
+			})
+
+			it("outputs the digest", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				assertLogEntry(t, logHandler, `*** Digest: `+fakeRemoteDigest)
+			})
+
+			it("add the digest to the report", func() {
+				report, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, report.Image.Digest, fakeRemoteDigest)
+			})
+		})
+
+		when("image has an ID identifier", func() {
+			it.Before(func() {
+				opts.LayersDir = filepath.Join("testdata", "exporter", "empty-metadata", "layers")
+			})
+			it("outputs the imageID", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				assertLogEntry(t, logHandler, `*** Image ID: some-image-id`)
+			})
+
+			it("add the imageID to the report", func() {
+				report, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, report.Image.ImageID, "some-image-id")
 			})
 		})
 
