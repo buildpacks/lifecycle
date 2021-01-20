@@ -56,7 +56,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 		rebaser = &lifecycle.Rebaser{
 			Logger:      &log.Logger{Handler: &discard.Handler{}},
-			PlatformAPI: api.MustParse("0.4"),
+			PlatformAPI: api.Platform.Latest(),
 		}
 	})
 
@@ -199,10 +199,6 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("platform API is >= 0.6", func() {
-					it.Before(func() {
-						rebaser.PlatformAPI = api.MustParse("0.6")
-					})
-
 					when("image has a manifest", func() {
 						it.Before(func() {
 							fakeRemoteManifestSize = 12345
