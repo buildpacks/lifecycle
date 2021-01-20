@@ -19,8 +19,6 @@ require (
 	gotest.tools/v3 v3.0.2 // indirect
 )
 
-replace (
-    golang.org/x/sys => golang.org/x/sys v0.0.0-20200523222454-059865788121
-)
+replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200523222454-059865788121
 
 go 1.15
