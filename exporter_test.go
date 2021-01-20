@@ -134,8 +134,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		exporter = &lifecycle.Exporter{
 			Buildpacks: []lifecycle.GroupBuildpack{
-				{ID: "buildpack.id", Version: "1.2.3", API: "0.1"},
-				{ID: "other.buildpack.id", Version: "4.5.6", API: "0.1", Optional: false},
+				{ID: "buildpack.id", Version: "1.2.3", API: api.Buildpack.Latest().String()},
+				{ID: "other.buildpack.id", Version: "4.5.6", API: api.Buildpack.Latest().String(), Optional: false},
 			},
 			LayerFactory: layerFactory,
 			Logger:       &log.Logger{Handler: logHandler},
@@ -1175,13 +1175,6 @@ version = "4.5.6"
 
 		when("build.toml", func() {
 			when("platform api >= 0.5", func() {
-				it.Before(func() {
-					exporter.Buildpacks = []lifecycle.GroupBuildpack{
-						{ID: "buildpack.id", Version: "1.2.3", API: "0.5"},                        // set buildpack API to 0.5
-						{ID: "other.buildpack.id", Version: "4.5.6", Optional: false, API: "0.5"}, // set buildpack API to 0.5
-					}
-				})
-
 				when("valid", func() {
 					it.Before(func() {
 						opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "layers")
