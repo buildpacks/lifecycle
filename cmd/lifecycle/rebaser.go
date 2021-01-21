@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
@@ -112,7 +113,8 @@ func (r *rebaseCmd) Exec() error {
 	}
 
 	rebaser := &lifecycle.Rebaser{
-		Logger: cmd.DefaultLogger,
+		Logger:      cmd.DefaultLogger,
+		PlatformAPI: api.MustParse(r.platformAPI),
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
