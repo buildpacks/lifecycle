@@ -2,6 +2,9 @@ FROM ubuntu:bionic
 
 ARG cnb_uid=1234
 ARG cnb_gid=1000
+ARG cnb_platform_api
+
+ENV CNB_PLATFORM_API=${cnb_platform_api}
 
 COPY ./container/ /
 

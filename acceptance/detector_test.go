@@ -3,6 +3,7 @@
 package acceptance
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
@@ -35,7 +37,11 @@ func TestDetector(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	h.MakeAndCopyLifecycle(t, "linux", detectorBinaryDir)
-	h.DockerBuild(t, detectImage, detectDockerContext)
+	h.DockerBuild(t,
+		detectImage,
+		detectDockerContext,
+		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
+	)
 	defer h.DockerImageRemove(t, detectImage)
 
 	spec.Run(t, "acceptance-detector", testDetector, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -64,7 +70,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("read buildpack order file failed", func() {
 		it("errors", func() {
-			// no order.toml file in the default directory
+			// no order.toml file in the default search locations
 			command := exec.Command("docker", "run", "--rm", detectImage)
 			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
@@ -192,6 +198,206 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			expectedAppDir := "app_dir: /custom_workspace"
 			h.AssertStringContains(t, logs, expectedPlatformPath)
 			h.AssertStringContains(t, logs, expectedAppDir)
+		})
+	})
+
+	when("-order is provided", func() {
+		var copyDir, containerName, expectedOrderTOMLPath string
+
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+
+			simpleOrderTOML := filepath.Join("testdata", "detector", "container", "cnb", "orders", "simple_order.toml")
+			expectedOrderTOMLPath, err = filepath.Abs(simpleOrderTOML)
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
+		when("the order.toml exists", func() {
+			it("processes the provided order.toml", func() {
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					detectImage,
+					"/layers",
+					h.WithFlags("--user", userID,
+						"--volume", expectedOrderTOMLPath+":/custom/order.toml"),
+					h.WithArgs(
+						"-log-level=debug",
+						"-order=/custom/order.toml",
+					),
+				)
+
+				// check group.toml
+				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
+				var buildpackGroup lifecycle.BuildpackGroup
+				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
+				h.AssertNil(t, err)
+				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
+				h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+			})
+		})
+
+		when("the order.toml does not exist", func() {
+			it("errors", func() {
+				command := exec.Command("docker", "run",
+					"--user", userID,
+					"--rm",
+					detectImage,
+					"-order=/custom/order.toml")
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to read buildpack order file: open /custom/order.toml: no such file or directory"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+	})
+
+	when("-order is not provided", func() {
+		var copyDir, containerName, expectedOrderTOMLPath, otherOrderTOMLPath string
+
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+
+			simpleOrderTOML := filepath.Join("testdata", "detector", "container", "cnb", "orders", "simple_order.toml")
+			expectedOrderTOMLPath, err = filepath.Abs(simpleOrderTOML)
+			h.AssertNil(t, err)
+
+			alwaysDetectOrderTOML := filepath.Join("testdata", "detector", "container", "cnb", "orders", "always_detect_order.toml")
+			otherOrderTOMLPath, err = filepath.Abs(alwaysDetectOrderTOML)
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
+		when("/cnb/order.toml and /layers/order.toml are present", func() {
+			it("prefers /layers/order.toml", func() {
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					detectImage,
+					"/layers",
+					h.WithFlags("--user", userID,
+						"--volume", expectedOrderTOMLPath+":/layers/order.toml",
+						"--volume", otherOrderTOMLPath+":/cnb/order.toml",
+						"--env", "CNB_ORDER_PATH="),
+					h.WithArgs("-log-level=debug"),
+				)
+
+				// check group.toml
+				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
+				var buildpackGroup lifecycle.BuildpackGroup
+				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
+				h.AssertNil(t, err)
+				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
+				h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+			})
+		})
+
+		when("only /cnb/order.toml is present", func() {
+			it("processes /cnb/order.toml", func() {
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					detectImage,
+					"/layers",
+					h.WithFlags("--user", userID,
+						"--volume", expectedOrderTOMLPath+":/cnb/order.toml",
+						"--env", "CNB_ORDER_PATH="),
+					h.WithArgs("-log-level=debug"),
+				)
+
+				// check group.toml
+				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
+				var buildpackGroup lifecycle.BuildpackGroup
+				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
+				h.AssertNil(t, err)
+				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
+				h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+			})
+		})
+
+		when("only /layers/order.toml is present", func() {
+			it("processes /layers/order.toml", func() {
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					detectImage,
+					"/layers",
+					h.WithFlags("--user", userID,
+						"--volume", expectedOrderTOMLPath+":/layers/order.toml",
+						"--env", "CNB_ORDER_PATH="),
+					h.WithArgs("-log-level=debug"),
+				)
+
+				// check group.toml
+				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
+				var buildpackGroup lifecycle.BuildpackGroup
+				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
+				h.AssertNil(t, err)
+				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
+				h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+			})
+		})
+
+		when("platform api < 0.6", func() {
+			when("/cnb/order.toml and /layers/order.toml are present", func() {
+				it("only processes /cnb/order.toml", func() {
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						detectImage,
+						"/layers",
+						h.WithFlags("--user", userID,
+							"--volume", expectedOrderTOMLPath+":/cnb/order.toml",
+							"--volume", otherOrderTOMLPath+":/layers/order.toml",
+							"--env", "CNB_PLATFORM_API=0.5",
+							"--env", "CNB_ORDER_PATH="),
+						h.WithArgs("-log-level=debug"),
+					)
+
+					// check group.toml
+					tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
+					var buildpackGroup lifecycle.BuildpackGroup
+					_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
+					h.AssertNil(t, err)
+					h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
+					h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+				})
+			})
+
+			when("only /layers/order.toml is present", func() {
+				it("errors", func() {
+					command := exec.Command("docker", "run",
+						"--user", userID,
+						"--volume", otherOrderTOMLPath+":/layers/order.toml",
+						"--env", "CNB_PLATFORM_API=0.5",
+						"--env", "CNB_ORDER_PATH=",
+						"--rm", detectImage)
+					output, err := command.CombinedOutput()
+					h.AssertNotNil(t, err)
+					expected := "failed to read buildpack order file: open /cnb/order.toml: no such file or directory"
+					h.AssertStringContains(t, string(output), expected)
+				})
+			})
 		})
 	})
 }
