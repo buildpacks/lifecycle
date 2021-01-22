@@ -17,9 +17,12 @@ Lifecycle Version | Platform APIs                            | Buildpack APIs |
 [b/0.2]: https://github.com/buildpacks/spec/blob/buildpack/v0.2/buildpack.md
 [b/0.3]: https://github.com/buildpacks/spec/tree/buildpack/v0.3/buildpack.md
 [b/0.4]: https://github.com/buildpacks/spec/tree/buildpack/v0.4/buildpack.md
+[b/0.5]: https://github.com/buildpacks/spec/tree/buildpack/v0.5/buildpack.md
 [p/0.2]: https://github.com/buildpacks/spec/blob/platform/v0.2/platform.md
 [p/0.3]: https://github.com/buildpacks/spec/blob/platform/v0.3/platform.md
 [p/0.4]: https://github.com/buildpacks/spec/blob/platform/v0.4/platform.md
+[p/0.5]: https://github.com/buildpacks/spec/blob/platform/v0.5/platform.md
+
 ## Commands
 
 ### Build
