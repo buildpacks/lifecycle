@@ -271,9 +271,9 @@ func (b *BuildpackTOML) Detect(c *DetectConfig) DetectRun {
 	cmd.Dir = appDir
 	cmd.Stdout = out
 	cmd.Stderr = out
-	cmd.Env = c.FullEnv
+	cmd.Env = append([]string{}, c.FullEnv...)
 	if b.Buildpack.ClearEnv {
-		cmd.Env = c.ClearEnv
+		cmd.Env = append([]string{}, c.ClearEnv...)
 	}
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
 
@@ -351,12 +351,12 @@ func (bg BuildpackGroup) detect(done []GroupBuildpack, wg *sync.WaitGroup, c *De
 		}
 		done = append(done, bp)
 		wg.Add(1)
-		go func() {
+		go func(key string, info *BuildpackTOML) {
 			if _, ok := c.runs.Load(key); !ok {
 				c.runs.Store(key, info.Detect(c))
 			}
 			wg.Done()
-		}()
+		}(key, info)
 	}
 
 	wg.Wait()
