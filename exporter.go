@@ -383,16 +383,22 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType strin
 	if !e.supportsMulticallLauncher() {
 		return launch.LauncherPath, nil
 	}
-	if defaultProcessType == "" {
-		if len(launchMD.Processes) == 1 {
-			e.Logger.Infof("Setting default process type '%s'", launchMD.Processes[0].Type)
-			return launch.ProcessPath(launchMD.Processes[0].Type), nil
+
+	if defaultProcessType != "" {
+		defaultProcess, ok := launchMD.FindProcessType(defaultProcessType)
+		if !ok {
+			if e.PlatformAPI.Compare(api.MustParse("0.6")) < 0 {
+				e.Logger.Warn(processTypeWarning(launchMD, defaultProcessType))
+				return launch.LauncherPath, nil
+			}
+			return "", fmt.Errorf("tried to set %s to default but it doesn't exist", defaultProcessType)
 		}
-		return launch.LauncherPath, nil
+		e.Logger.Infof("Setting default process type '%s'", defaultProcess.Type)
+		return launch.ProcessPath(defaultProcess.Type), nil
 	}
-	defaultProcess, ok := launchMD.FindProcessType(defaultProcessType)
+	defaultProcess, ok := launchMD.FindLastDefaultProcessType()
 	if !ok {
-		e.Logger.Warn(processTypeWarning(launchMD, defaultProcessType))
+		e.Logger.Info("no default process type")
 		return launch.LauncherPath, nil
 	}
 	e.Logger.Infof("Setting default process type '%s'", defaultProcess.Type)

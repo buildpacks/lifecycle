@@ -11,6 +11,7 @@ type Process struct {
 	Command     string   `toml:"command" json:"command"`
 	Args        []string `toml:"args" json:"args"`
 	Direct      bool     `toml:"direct" json:"direct"`
+	Default     bool     `toml:"default, omitzero" json:"default"`
 	BuildpackID string   `toml:"buildpack-id" json:"buildpackID"`
 }
 
@@ -31,6 +32,18 @@ func (m Metadata) FindProcessType(pType string) (Process, bool) {
 		}
 	}
 	return Process{}, false
+}
+
+func (m Metadata) FindLastDefaultProcessType() (Process, bool) {
+	defaultFound := false
+	var lastDefaultProcess Process
+	for _, p := range m.Processes {
+		if p.Default {
+			lastDefaultProcess = p
+			defaultFound = true
+		}
+	}
+	return lastDefaultProcess, defaultFound
 }
 
 type Buildpack struct {

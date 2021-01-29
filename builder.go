@@ -1,10 +1,11 @@
 package lifecycle
 
 import (
+	"container/list"
 	"fmt"
 	"io"
 	"path/filepath"
-	"sort"
+	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/env"
@@ -31,6 +32,7 @@ type BuildConfig struct {
 	Env         BuildEnv
 	AppDir      string
 	PlatformDir string
+	PlatformAPI string
 	LayersDir   string
 	Out         io.Writer
 	Err         io.Writer
@@ -76,7 +78,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		return nil, err
 	}
 
-	procMap := processMap{}
+	procStruct := newProcessStruct()
 	plan := b.Plan
 	var bom []BOMEntry
 	var slices []layers.Slice
@@ -97,7 +99,17 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
 		plan = plan.filter(br.MetRequires)
-		procMap.add(br.Processes)
+		replacedDefaults, err := procStruct.add(br.Processes)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(replacedDefaults) > 0 {
+			warning := fmt.Sprintf("Warning: redefining the following default process types with processes not marked as default: [%s]", strings.Join(replacedDefaults, ", "))
+			if _, err := b.Out.Write([]byte(warning)); err != nil {
+				return nil, err
+			}
+		}
 		slices = append(slices, br.Slices...)
 	}
 
@@ -106,12 +118,16 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			bom[i].convertMetadataToVersion()
 		}
 	}
+	procList, err := procStruct.list()
+	if err != nil {
+		return nil, err
+	}
 
 	return &BuildMetadata{
 		BOM:        bom,
 		Buildpacks: b.Group.Group,
 		Labels:     labels,
-		Processes:  procMap.list(),
+		Processes:  procList,
 		Slices:     slices,
 	}, nil
 }
@@ -134,6 +150,7 @@ func (b *Builder) BuildConfig() (BuildConfig, error) {
 		Env:         b.Env,
 		AppDir:      appDir,
 		PlatformDir: platformDir,
+		PlatformAPI: b.PlatformAPI.String(),
 		LayersDir:   layersDir,
 		Out:         b.Out,
 		Err:         b.Err,
@@ -175,25 +192,54 @@ func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
 	return false
 }
 
-type processMap map[string]launch.Process
+// orderedProcesses is a mapping from process types to Processes, it will preserve ordering.
+// processList is the ordered list
+// wwe keep typeToPtr map in order to delete elements when others are overriding them
+type orderedProcesses struct {
+	typeToProcess map[string]*list.Element
+	processList   *list.List
+}
 
-func (m processMap) add(l []launch.Process) {
-	for _, proc := range l {
-		m[proc.Type] = proc
+func newProcessStruct() orderedProcesses {
+	return orderedProcesses{
+		typeToProcess: make(map[string]*list.Element),
+		processList:   list.New(),
 	}
 }
 
-func (m processMap) list() []launch.Process {
-	var keys []string
-	for key := range m {
-		keys = append(keys, key)
+func (m orderedProcesses) add(listToAdd []launch.Process) ([]string, error) {
+	result := []string{}
+	for _, proc := range listToAdd {
+		// when we replace a default process type with a non-default process type, add to result
+		if p, ok := m.typeToProcess[proc.Type]; ok {
+			cast, success := (p.Value).(launch.Process)
+			if !success {
+				return []string{}, fmt.Errorf("can't cast an element from the list to a process")
+			}
+			if cast.Default && !proc.Default {
+				result = append(result, proc.Type)
+			}
+			m.processList.Remove(p)
+		}
+		m.processList.PushBack(proc)
+		m.typeToProcess[proc.Type] = m.processList.Back()
 	}
-	sort.Strings(keys)
-	procs := []launch.Process{}
-	for _, key := range keys {
-		procs = append(procs, m[key])
+
+	return result, nil
+}
+
+// list returns an ordered array of process types. The ordering is based on the
+// order that the processes were added to this struct.
+func (m orderedProcesses) list() ([]launch.Process, error) {
+	result := []launch.Process{}
+	for e := m.processList.Front(); e != nil; e = e.Next() {
+		cast, success := (e.Value).(launch.Process)
+		if !success {
+			return []launch.Process{}, fmt.Errorf("can't cast an element from the list to a process")
+		}
+		result = append(result, cast)
 	}
-	return procs
+	return result, nil
 }
 
 func (bom *BOMEntry) convertMetadataToVersion() {
