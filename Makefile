@@ -203,6 +203,10 @@ format: install-goimports
 	@echo "> Formating code..."
 	$(if $(shell goimports -l -w -local github.com/buildpacks/lifecycle .), @echo Fixed formatting errors. Re-run && exit 1)
 
+tidy:
+	$(GOCMD) mod tidy
+	cd tools && $(GOCMD) mod tidy
+
 test: unit acceptance
 
 unit: UNIT_PACKAGES=$(shell $(GOCMD) list ./... | grep -v acceptance)

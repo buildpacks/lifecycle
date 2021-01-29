@@ -15,4 +15,6 @@ require (
 	golang.org/x/tools v0.0.0-20200916195026-c9a70fc28ce3
 )
 
+replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200523222454-059865788121
+
 replace github.com/buildpacks/lifecycle v0.9.2 => ../
