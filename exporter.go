@@ -128,6 +128,14 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 		return ExportReport{}, err
 	}
 
+	// platform API > 0.5
+	if e.PlatformAPI.Compare(api.MustParse("0.5")) > 0 {
+		e.Logger.Debugf("Setting WORKDIR: '%s'", opts.AppDir)
+		if err := e.setWorkingDir(opts); err != nil {
+			return ExportReport{}, errors.Wrap(err, "setting workdir")
+		}
+	}
+
 	entrypoint, err := e.entrypoint(buildMD.toLaunchMD(), opts.DefaultProcessType)
 	if err != nil {
 		return ExportReport{}, errors.Wrap(err, "determining entrypoint")
@@ -365,6 +373,10 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		}
 	}
 	return nil
+}
+
+func (e *Exporter) setWorkingDir(opts ExportOptions) error {
+	return opts.WorkingImage.SetWorkingDir(opts.AppDir)
 }
 
 func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType string) (string, error) {

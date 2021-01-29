@@ -593,6 +593,14 @@ version = "4.5.6"
 				})
 			})
 
+			it("sets WorkingDir", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				val := fakeAppImage.WorkingDir()
+				h.AssertEq(t, val, opts.AppDir)
+			})
+
 			it("sets empty CMD", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
