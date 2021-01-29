@@ -15,6 +15,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -54,7 +55,8 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
 		rebaser = &lifecycle.Rebaser{
-			Logger: &log.Logger{Handler: &discard.Handler{}},
+			Logger:      &log.Logger{Handler: &discard.Handler{}},
+			PlatformAPI: api.Platform.Latest(),
 		}
 	})
 
@@ -170,6 +172,60 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, report.Image.Digest, fakeRemoteDigest)
+				})
+			})
+
+			when("checking the image manifest", func() {
+				var fakeRemoteManifestSize int64
+
+				when("platform API is < 0.6", func() {
+					it.Before(func() {
+						rebaser.PlatformAPI = api.MustParse("0.5")
+					})
+
+					when("image has a manifest", func() {
+						it.Before(func() {
+							fakeRemoteManifestSize = 12345
+							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+						})
+
+						it("doesn't set the manifest size in the report.toml", func() {
+							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, report.Image.ManifestSize, int64(0))
+						})
+					})
+				})
+
+				when("platform API is >= 0.6", func() {
+					when("image has a manifest", func() {
+						it.Before(func() {
+							fakeRemoteManifestSize = 12345
+							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+						})
+
+						it("add the manifest size to the report", func() {
+							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
+						})
+					})
+
+					when("image doesn't have a manifest", func() {
+						it.Before(func() {
+							fakeRemoteManifestSize = 0
+							fakeAppImage.SetManifestSize(fakeRemoteManifestSize)
+						})
+
+						it("doesn't set the manifest size in the report.toml", func() {
+							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, report.Image.ManifestSize, int64(0))
+						})
+					})
 				})
 			})
 

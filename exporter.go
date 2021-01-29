@@ -72,9 +72,10 @@ type BuildReport struct {
 }
 
 type ImageReport struct {
-	Tags    []string `toml:"tags"`
-	ImageID string   `toml:"image-id,omitempty"`
-	Digest  string   `toml:"digest,omitempty"`
+	Tags         []string `toml:"tags"`
+	ImageID      string   `toml:"image-id,omitempty"`
+	Digest       string   `toml:"digest,omitempty"`
+	ManifestSize int64    `toml:"manifest-size,omitzero"`
 }
 
 func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
@@ -148,6 +149,10 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 	report.Image, err = saveImage(opts.WorkingImage, opts.AdditionalNames, e.Logger)
 	if err != nil {
 		return ExportReport{}, err
+	}
+	if !e.supportsManifestSize() {
+		// unset manifest size in report.toml for old platform API versions
+		report.Image.ManifestSize = 0
 	}
 
 	return report, nil
@@ -404,6 +409,10 @@ func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *BuildMetadata, me
 
 func (e *Exporter) supportsMulticallLauncher() bool {
 	return e.PlatformAPI.Compare(api.MustParse("0.4")) >= 0
+}
+
+func (e *Exporter) supportsManifestSize() bool {
+	return e.PlatformAPI.Compare(api.MustParse("0.6")) >= 0
 }
 
 func processTypeError(launchMD launch.Metadata, defaultProcessType string) error {
