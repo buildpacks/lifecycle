@@ -68,8 +68,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			Env:         mockEnv,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.GroupBuildpack{
-					{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-					{ID: "B", Version: "v2", API: "0.2"},
+					{ID: "A", Version: "v1", API: latestBuildpackAPI.String(), Homepage: "Buildpack A Homepage"},
+					{ID: "B", Version: "v2", API: "0.5"},
 				},
 			},
 			Out:            stdout,
@@ -121,8 +121,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				bpA := testmock.NewMockBuildpack(mockCtrl)
-				bpB := testmock.NewMockBuildpack(mockCtrl)
+				bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
+				bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 				buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 				expectedPlanA := lifecycle.BuildpackPlan{Entries: []lifecycle.Require{
 					{Name: "some-dep", Version: "v1"},
@@ -152,7 +152,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{ID: "B", Version: "v2", API: "0.2"},
 						}
 
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							BOM: []lifecycle.BOMEntry{
@@ -165,7 +165,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							BOM: []lifecycle.BOMEntry{
@@ -208,10 +208,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("buildpacks", func() {
 					it("should include builder buildpacks", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config)
 
@@ -220,8 +220,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
 						if s := cmp.Diff(metadata.Buildpacks, []lifecycle.GroupBuildpack{
-							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-							{ID: "B", Version: "v2", API: "0.2"},
+							{ID: "A", Version: "v1", API: latestBuildpackAPI.String(), Homepage: "Buildpack A Homepage"},
+							{ID: "B", Version: "v2", API: "0.5"},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
@@ -230,7 +230,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("labels", func() {
 					it("should aggregate labels from each buildpack", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Labels: []lifecycle.Label{
@@ -238,7 +238,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{Key: "some-other-bpA-key", Value: "some-other-bpA-value"},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Labels: []lifecycle.Label{
@@ -264,7 +264,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("processes", func() {
 					it("should override identical processes from earlier buildpacks", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
@@ -284,7 +284,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
@@ -337,7 +337,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("should warn when overriding default process type, with non-default process type", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
@@ -359,7 +359,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
@@ -411,7 +411,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("should preserve ordering of processes", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
@@ -433,7 +433,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Processes: []launch.Process{
@@ -496,11 +496,100 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
 					})
+
+					when("builpack API < 0.6", func() {
+						it("set web processes as default", func() {
+							bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
+							buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+							bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "some-type",
+										Command:     "some-cmd",
+										Args:        []string{"some-arg"},
+										Direct:      true,
+										BuildpackID: "A",
+										Default:     false,
+									},
+									{
+										Type:        "another-type",
+										Command:     "another-cmd",
+										Args:        []string{"another-arg"},
+										Direct:      true,
+										BuildpackID: "A",
+										Default:     false,
+									},
+								},
+							}, nil)
+							bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
+							buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
+							bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "web",
+										Command:     "web-command",
+										Args:        []string{"web-arg"},
+										Direct:      false,
+										BuildpackID: "B",
+									},
+									{
+										Type:        "other",
+										Command:     "other-cmd",
+										Args:        []string{"other-arg"},
+										Direct:      true,
+										BuildpackID: "B",
+									},
+								},
+							}, nil)
+
+							metadata, err := builder.Build()
+							if err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							if s := cmp.Diff(metadata.Processes, []launch.Process{
+								{
+									Type:        "some-type",
+									Command:     "some-cmd",
+									Args:        []string{"some-arg"},
+									Direct:      true,
+									BuildpackID: "A",
+									Default:     false,
+								},
+								{
+									Type:        "another-type",
+									Command:     "another-cmd",
+									Args:        []string{"another-arg"},
+									Direct:      true,
+									BuildpackID: "A",
+									Default:     false,
+								},
+								{
+									Type:        "web",
+									Command:     "web-command",
+									Args:        []string{"web-arg"},
+									Direct:      false,
+									BuildpackID: "B",
+									Default:     true,
+								},
+								{
+									Type:        "other",
+									Command:     "other-cmd",
+									Args:        []string{"other-arg"},
+									Direct:      true,
+									BuildpackID: "B",
+									Default:     false,
+								},
+							}); s != "" {
+								t.Fatalf("Unexpected:\n%s\n", s)
+							}
+						})
+					})
 				})
 
 				when("slices", func() {
 					it("should aggregate slices from each buildpack", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Slices: []layers.Slice{
@@ -509,7 +598,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{Paths: []string{"extra-path"}},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							Slices: []layers.Slice{
@@ -539,7 +628,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("building fails", func() {
 			when("first buildpack build fails", func() {
 				it("should error", func() {
-					bpA := testmock.NewMockBuildpack(mockCtrl)
+					bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 					buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, errors.New("some error"))
 
@@ -553,10 +642,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("later buildpack build fails", func() {
 				it("should error", func() {
-					bpA := testmock.NewMockBuildpack(mockCtrl)
+					bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 					buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, nil)
-					bpB := testmock.NewMockBuildpack(mockCtrl)
+					bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 					buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 					bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{}, errors.New("some error"))
 
@@ -572,13 +661,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("platform api < 0.4", func() {
 			it.Before(func() {
 				builder.PlatformAPI = api.MustParse("0.3")
-				config.PlatformAPI = "0.3"
 			})
 
 			when("build metadata", func() {
 				when("bom", func() {
 					it("should convert metadata.version to top level version", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[0].API)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
 							BOM: []lifecycle.BOMEntry{
@@ -591,7 +679,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildpack(mockCtrl, builder.Group.Group[1].API)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config)
 

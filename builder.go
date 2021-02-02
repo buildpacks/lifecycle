@@ -26,13 +26,13 @@ type BuildpackStore interface {
 
 type Buildpack interface {
 	Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error)
+	BuilpackAPI() string
 }
 
 type BuildConfig struct {
 	Env         BuildEnv
 	AppDir      string
 	PlatformDir string
-	PlatformAPI string
 	LayersDir   string
 	Out         io.Writer
 	Err         io.Writer
@@ -96,6 +96,8 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 
+		updateDefaultProcesses(br.Processes, api.MustParse(bpTOML.BuilpackAPI()), b.PlatformAPI)
+
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
 		plan = plan.filter(br.MetRequires)
@@ -132,6 +134,19 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	}, nil
 }
 
+// we set default = true for web processes when platformAPI >= 0.6 and buildpackAPI < 0.6
+func updateDefaultProcesses(processes []launch.Process, buildpackAPI *api.Version, platformAPI *api.Version) {
+	if platformAPI.Compare(api.MustParse("0.6")) < 0 || buildpackAPI.Compare(api.MustParse("0.6")) >= 0 {
+		return
+	}
+
+	for i := range processes {
+		if processes[i].Type == "web" {
+			processes[i].Default = true
+		}
+	}
+}
+
 func (b *Builder) BuildConfig() (BuildConfig, error) {
 	appDir, err := filepath.Abs(b.AppDir)
 	if err != nil {
@@ -150,7 +165,6 @@ func (b *Builder) BuildConfig() (BuildConfig, error) {
 		Env:         b.Env,
 		AppDir:      appDir,
 		PlatformDir: platformDir,
-		PlatformAPI: b.PlatformAPI.String(),
 		LayersDir:   layersDir,
 		Out:         b.Out,
 		Err:         b.Err,

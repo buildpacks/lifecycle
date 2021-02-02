@@ -58,6 +58,10 @@ func (b *BuildpackTOML) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }
 
+func (b *BuildpackTOML) BuilpackAPI() string {
+	return b.API
+}
+
 func (b *BuildpackTOML) Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error) {
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
 		for i := range bpPlan.Entries {
@@ -84,7 +88,7 @@ func (b *BuildpackTOML) Build(bpPlan BuildpackPlan, config BuildConfig) (BuildRe
 		return BuildResult{}, err
 	}
 
-	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.PlatformAPI)
+	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan)
 }
 
 func preparePaths(bpID string, bpPlan BuildpackPlan, layersDir, planDir string) (string, string, error) {
@@ -181,7 +185,7 @@ func isBuild(path string) bool {
 	return err == nil && layerTOML.Build
 }
 
-func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn BuildpackPlan, platformAPI string) (BuildResult, error) {
+func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn BuildpackPlan) (BuildResult, error) {
 	br := BuildResult{}
 	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
@@ -247,8 +251,6 @@ func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn
 		return BuildResult{}, err
 	}
 
-	updateDefaultProcesses(launchTOML.Processes, b.API, platformAPI)
-
 	// set data from launch.toml
 	br.Labels = append([]Label{}, launchTOML.Labels...)
 	for i := range launchTOML.Processes {
@@ -258,19 +260,6 @@ func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn
 	br.Slices = append([]layers.Slice{}, launchTOML.Slices...)
 
 	return br, nil
-}
-
-// we set default = true for web processes when platformAPI >= 0.6 and buildpackAPI < 0.6
-func updateDefaultProcesses(processes []launch.Process, bpAPI string, platformAPI string) {
-	if api.MustParse(platformAPI).Compare(api.MustParse("0.6")) < 0 || api.MustParse(bpAPI).Compare(api.MustParse("0.6")) >= 0 {
-		return
-	}
-
-	for i := range processes {
-		if processes[i].Type == "web" {
-			processes[i].Default = true
-		}
-	}
 }
 
 // check that there are not multiple default processes in a buildpack with different process types

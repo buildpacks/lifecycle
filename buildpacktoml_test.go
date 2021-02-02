@@ -27,7 +27,6 @@ import (
 )
 
 var latestBuildpackAPI = api.Buildpack.Latest()
-var latestPlatformAPI = api.Platform.Latest()
 
 func TestBuildpackTOML(t *testing.T) {
 	spec.Run(t, "BuildpackTOML", testBuildpackTOML, spec.Report(report.Terminal{}))
@@ -73,7 +72,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 			Env:         mockEnv,
 			AppDir:      appDir,
 			PlatformDir: platformDir,
-			PlatformAPI: latestPlatformAPI.String(),
 			LayersDir:   layersDir,
 			Out:         stdout,
 			Err:         stderr,
@@ -289,41 +287,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("processes", func() {
-					when("platform API < 0.6", func() {
-						it.Before(func() {
-							config.PlatformAPI = "0.5"
-						})
-						it("should include processes and use the default value that is set", func() {
-							h.Mkfile(t,
-								`[[processes]]`+"\n"+
-									`type = "some-type"`+"\n"+
-									`command = "some-cmd"`+"\n"+
-									`default = true`+"\n"+
-									`[[processes]]`+"\n"+
-									`type = "web"`+"\n"+
-									`command = "other-cmd"`+"\n",
-								// default is false and therefore doesn't appear
-								filepath.Join(appDir, "launch-A-v1.toml"),
-							)
-							br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
-							if err != nil {
-								t.Fatalf("Unexpected error:\n%s\n", err)
-							}
-							if s := cmp.Diff(br, lifecycle.BuildResult{
-								BOM:         nil,
-								Labels:      []lifecycle.Label{},
-								MetRequires: nil,
-								Processes: []launch.Process{
-									{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true},
-									{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false},
-								},
-								Slices: []layers.Slice{},
-							}); s != "" {
-								t.Fatalf("Unexpected metadata:\n%s\n", s)
-							}
-						})
-					})
-
 					it("should include processes and use the default value that is set", func() {
 						h.Mkfile(t,
 							`[[processes]]`+"\n"+
@@ -876,69 +839,33 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 			})
 
-			when("platform API < 0.6", func() {
-				it.Before(func() {
-					config.PlatformAPI = "0.5"
-				})
-				it("should include processes and set their default value to false", func() {
-					h.Mkfile(t,
+			it("should include processes and set their default value to false", func() {
+				h.Mkfile(t,
+					`[[processes]]`+"\n"+
+						`type = "some-type"`+"\n"+
+						`command = "some-cmd"`+"\n"+
 						`[[processes]]`+"\n"+
-							`type = "some-type"`+"\n"+
-							`command = "some-cmd"`+"\n"+
-							`[[processes]]`+"\n"+
-							`type = "web"`+"\n"+
-							`command = "other-cmd"`+"\n",
-						// default is false and therefore doesn't appear
-						filepath.Join(appDir, "launch-A-v1.toml"),
-					)
-					br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-					if s := cmp.Diff(br, lifecycle.BuildResult{
-						BOM:         nil,
-						Labels:      []lifecycle.Label{},
-						MetRequires: nil,
-						Processes: []launch.Process{
-							{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: false},
-							{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false},
-						},
-						Slices: []layers.Slice{},
-					}); s != "" {
-						t.Fatalf("Unexpected metadata:\n%s\n", s)
-					}
-				})
-			})
-
-			when("platform API >= 0.6", func() {
-				it("should include processes, all default values should be false, except for the web processes types", func() {
-					h.Mkfile(t,
-						`[[processes]]`+"\n"+
-							`type = "some-type"`+"\n"+
-							`command = "some-cmd"`+"\n"+
-							`[[processes]]`+"\n"+
-							`type = "web"`+"\n"+
-							`command = "other-cmd"`+"\n",
-						// default is false and therefore doesn't appear
-						filepath.Join(appDir, "launch-A-v1.toml"),
-					)
-					br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-					if s := cmp.Diff(br, lifecycle.BuildResult{
-						BOM:         nil,
-						Labels:      []lifecycle.Label{},
-						MetRequires: nil,
-						Processes: []launch.Process{
-							{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: false},
-							{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: true},
-						},
-						Slices: []layers.Slice{},
-					}); s != "" {
-						t.Fatalf("Unexpected metadata:\n%s\n", s)
-					}
-				})
+						`type = "web"`+"\n"+
+						`command = "other-cmd"`+"\n",
+					// default is false and therefore doesn't appear
+					filepath.Join(appDir, "launch-A-v1.toml"),
+				)
+				br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(br, lifecycle.BuildResult{
+					BOM:         nil,
+					Labels:      []lifecycle.Label{},
+					MetRequires: nil,
+					Processes: []launch.Process{
+						{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: false},
+						{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false},
+					},
+					Slices: []layers.Slice{},
+				}); s != "" {
+					t.Fatalf("Unexpected metadata:\n%s\n", s)
+				}
 			})
 		})
 	})
