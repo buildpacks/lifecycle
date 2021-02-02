@@ -16,7 +16,6 @@ import (
 type MockBuildpack struct {
 	ctrl     *gomock.Controller
 	recorder *MockBuildpackMockRecorder
-	api      string
 }
 
 // MockBuildpackMockRecorder is the mock recorder for MockBuildpack
@@ -25,10 +24,9 @@ type MockBuildpackMockRecorder struct {
 }
 
 // NewMockBuildpack creates a new mock instance
-func NewMockBuildpack(ctrl *gomock.Controller, api string) *MockBuildpack {
+func NewMockBuildpack(ctrl *gomock.Controller) *MockBuildpack {
 	mock := &MockBuildpack{ctrl: ctrl}
 	mock.recorder = &MockBuildpackMockRecorder{mock}
-	mock.api = api
 	return mock
 }
 
@@ -44,10 +42,6 @@ func (m *MockBuildpack) Build(arg0 lifecycle.BuildpackPlan, arg1 lifecycle.Build
 	ret0, _ := ret[0].(lifecycle.BuildResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
-}
-
-func (m *MockBuildpack) BuilpackAPI() string {
-	return m.api
 }
 
 // Build indicates an expected call of Build

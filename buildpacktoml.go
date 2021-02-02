@@ -58,10 +58,6 @@ func (b *BuildpackTOML) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }
 
-func (b *BuildpackTOML) BuilpackAPI() string {
-	return b.API
-}
-
 func (b *BuildpackTOML) Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error) {
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
 		for i := range bpPlan.Entries {

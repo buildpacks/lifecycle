@@ -26,7 +26,6 @@ type BuildpackStore interface {
 
 type Buildpack interface {
 	Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error)
-	BuilpackAPI() string
 }
 
 type BuildConfig struct {
@@ -78,7 +77,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		return nil, err
 	}
 
-	procStruct := newProcessStruct()
+	orderedProcessList := newOrderedProcessList()
 	plan := b.Plan
 	var bom []BOMEntry
 	var slices []layers.Slice
@@ -96,12 +95,12 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 
-		updateDefaultProcesses(br.Processes, api.MustParse(bpTOML.BuilpackAPI()), b.PlatformAPI)
+		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.PlatformAPI)
 
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
 		plan = plan.filter(br.MetRequires)
-		replacedDefaults, err := procStruct.add(br.Processes)
+		replacedDefaults, err := orderedProcessList.add(br.Processes)
 		if err != nil {
 			return nil, err
 		}
@@ -120,7 +119,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			bom[i].convertMetadataToVersion()
 		}
 	}
-	procList, err := procStruct.list()
+	procList, err := orderedProcessList.list()
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +213,7 @@ type orderedProcesses struct {
 	processList   *list.List
 }
 
-func newProcessStruct() orderedProcesses {
+func newOrderedProcessList() orderedProcesses {
 	return orderedProcesses{
 		typeToProcess: make(map[string]*list.Element),
 		processList:   list.New(),
@@ -226,11 +225,11 @@ func (m orderedProcesses) add(listToAdd []launch.Process) ([]string, error) {
 	for _, proc := range listToAdd {
 		// when we replace a default process type with a non-default process type, add to result
 		if p, ok := m.typeToProcess[proc.Type]; ok {
-			cast, success := (p.Value).(launch.Process)
+			existingProcess, success := (p.Value).(launch.Process)
 			if !success {
 				return []string{}, fmt.Errorf("can't cast an element from the list to a process")
 			}
-			if cast.Default && !proc.Default {
+			if existingProcess.Default && !proc.Default {
 				result = append(result, proc.Type)
 			}
 			m.processList.Remove(p)
@@ -247,11 +246,11 @@ func (m orderedProcesses) add(listToAdd []launch.Process) ([]string, error) {
 func (m orderedProcesses) list() ([]launch.Process, error) {
 	result := []launch.Process{}
 	for e := m.processList.Front(); e != nil; e = e.Next() {
-		cast, success := (e.Value).(launch.Process)
+		currentProcess, success := (e.Value).(launch.Process)
 		if !success {
 			return []launch.Process{}, fmt.Errorf("can't cast an element from the list to a process")
 		}
-		result = append(result, cast)
+		result = append(result, currentProcess)
 	}
 	return result, nil
 }

@@ -316,7 +316,10 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected metadata:\n%s\n", s)
 						}
 					})
-					when("when there are multiple default=true processes but they are all of the same type", func() {
+
+					// The following test isn't something that buildpacks should do.
+					// We might change the spec so we'll fail in such case.
+					when("there are multiple default=true processes but they are all of the same type", func() {
 						it("should succeed", func() {
 							h.Mkfile(t,
 								`[[processes]]`+"\n"+
@@ -563,7 +566,7 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("when there is more than one default=true process", func() {
+			when("there is more than one default=true process", func() {
 				it.Before(func() {
 					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				})
