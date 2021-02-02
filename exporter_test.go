@@ -1026,21 +1026,41 @@ version = "4.5.6"
 						h.AssertNil(t, err)
 						checkEntrypoint(t, fakeAppImage, "process", "some-second-default-process-type")
 					})
+
+					it("doesn't set CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "")
+					})
 				})
 			})
 
 			when("platform API < 0.6", func() {
+				it.Before(func() {
+					exporter.PlatformAPI = api.MustParse("0.5")
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "one-non-default-process", "layers"), opts.LayersDir)
+				})
+
 				when("-process-type is set to a process type that doesn't exist", func() {
 					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.5")
 						opts.DefaultProcessType = "some-non-existing-process-type"
-						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "one-non-default-process", "layers"), opts.LayersDir)
 					})
 					it("warns the process type doesn't exist, and sets the ENTRYPOINT to the launcher", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						assertLogEntry(t, logHandler, "default process type 'some-non-existing-process-type' not present in list [some-process-type]")
 						checkEntrypoint(t, fakeAppImage, "lifecycle", "launcher")
+					})
+				})
+
+				when("-process-type is not set and there is exactly one process", func() {
+					it("sets the ENTRYPOINT to the only process", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+						checkEntrypoint(t, fakeAppImage, "process", "some-process-type")
 					})
 				})
 			})

@@ -330,7 +330,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 									`type = "some-type"`+"\n"+
 									`command = "some-other-cmd"`+"\n"+
 									`default = true`+"\n",
-								// default is false and therefore doesn't appear
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
 							br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
@@ -579,7 +578,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 							`type = "other-type"`+"\n"+
 							`command = "other-cmd"`+"\n"+
 							`default = true`+"\n",
-						// default is false and therefore doesn't appear
 						filepath.Join(appDir, "launch-A-v1.toml"),
 					)
 					_, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)

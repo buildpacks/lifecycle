@@ -207,8 +207,8 @@ func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
 }
 
 // orderedProcesses is a mapping from process types to Processes, it will preserve ordering.
-// processList is the ordered list
-// wwe keep typeToPtr map in order to delete elements when others are overriding them
+// processList is the ordered list.
+// we keep typeToProcess map in order to delete elements when others are overriding them.
 type orderedProcesses struct {
 	typeToProcess map[string]*list.Element
 	processList   *list.List

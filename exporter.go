@@ -384,6 +384,12 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType strin
 		return launch.LauncherPath, nil
 	}
 
+	if defaultProcessType == "" && e.PlatformAPI.Compare(api.MustParse("0.6")) < 0 && len(launchMD.Processes) == 1 {
+		// if there is only one process, we set it to the default for platform API < 0.6
+		e.Logger.Infof("Setting default process type '%s'", launchMD.Processes[0].Type)
+		return launch.ProcessPath(launchMD.Processes[0].Type), nil
+	}
+
 	if defaultProcessType != "" {
 		defaultProcess, ok := launchMD.FindProcessType(defaultProcessType)
 		if !ok {
