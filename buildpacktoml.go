@@ -3,10 +3,12 @@ package lifecycle
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 
@@ -84,7 +86,7 @@ func (b *BuildpackTOML) Build(bpPlan BuildpackPlan, config BuildConfig) (BuildRe
 		return BuildResult{}, err
 	}
 
-	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan)
+	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Out)
 }
 
 func preparePaths(bpID string, bpPlan BuildpackPlan, layersDir, planDir string) (string, string, error) {
@@ -181,7 +183,7 @@ func isBuild(path string) bool {
 	return err == nil && layerTOML.Build
 }
 
-func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn BuildpackPlan) (BuildResult, error) {
+func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn BuildpackPlan, out io.Writer) (BuildResult, error) {
 	br := BuildResult{}
 	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
@@ -243,7 +245,11 @@ func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn
 		br.BOM = withBuildpack(bpFromBpInfo, launchTOML.BOM)
 	}
 
-	if err := validateProcesses(launchTOML.Processes); err != nil {
+	if err := overrideDefaultForOldBuildpacks(launchTOML.Processes, b.API, out); err != nil {
+		return BuildResult{}, err
+	}
+
+	if err := validateNoMultipleDefaults(launchTOML.Processes); err != nil {
 		return BuildResult{}, err
 	}
 
@@ -258,8 +264,28 @@ func (b *BuildpackTOML) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn
 	return br, nil
 }
 
+func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, out io.Writer) error {
+	if api.MustParse(bpAPI).Compare(api.MustParse("0.6")) >= 0 {
+		return nil
+	}
+	replacedDefaults := []string{}
+	for i := range processes {
+		if processes[i].Default {
+			replacedDefaults = append(replacedDefaults, processes[i].Type)
+		}
+		processes[i].Default = false
+	}
+	if len(replacedDefaults) > 0 {
+		warning := fmt.Sprintf("Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [%s]", strings.Join(replacedDefaults, ", "))
+		if _, err := out.Write([]byte(warning)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // check that there are not multiple default processes in a buildpack with different process types
-func validateProcesses(processes []launch.Process) error {
+func validateNoMultipleDefaults(processes []launch.Process) error {
 	defaultType := ""
 	for _, process := range processes {
 		if process.Default && defaultType != "" && defaultType != process.Type {

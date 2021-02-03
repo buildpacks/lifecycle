@@ -840,15 +840,15 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 			})
 
-			it("should include processes and set their default value to false", func() {
+			it("should include processes and set/override their default value to false", func() {
 				h.Mkfile(t,
 					`[[processes]]`+"\n"+
-						`type = "some-type"`+"\n"+
+						`type = "type-with-no-default"`+"\n"+
 						`command = "some-cmd"`+"\n"+
 						`[[processes]]`+"\n"+
-						`type = "web"`+"\n"+
-						`command = "other-cmd"`+"\n",
-					// default is false and therefore doesn't appear
+						`type = "type-with-default"`+"\n"+
+						`command = "other-cmd"`+"\n"+
+						`default = true`+"\n",
 					filepath.Join(appDir, "launch-A-v1.toml"),
 				)
 				br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
@@ -860,13 +860,15 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 					Labels:      []lifecycle.Label{},
 					MetRequires: nil,
 					Processes: []launch.Process{
-						{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: false},
-						{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false},
+						{Type: "type-with-no-default", Command: "some-cmd", BuildpackID: "A", Default: false},
+						{Type: "type-with-default", Command: "other-cmd", BuildpackID: "A", Default: false},
 					},
 					Slices: []layers.Slice{},
 				}); s != "" {
 					t.Fatalf("Unexpected metadata:\n%s\n", s)
 				}
+				expected := "Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [type-with-default]"
+				h.AssertStringContains(t, stdout.String(), expected)
 			})
 		})
 	})
