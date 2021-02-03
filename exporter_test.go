@@ -947,7 +947,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						checkEntrypoint(t, fakeAppImage, "process", "some-process-type")
+						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
 					})
 
 					it("doesn't set CNB_PROCESS_TYPE", func() {
@@ -981,7 +981,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						assertLogEntry(t, logHandler, "no default process type")
-						checkEntrypoint(t, fakeAppImage, "lifecycle", "launcher")
+						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
 					})
 				})
 
@@ -1024,7 +1024,7 @@ version = "4.5.6"
 					it("sets the last default=true process to be the default", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						checkEntrypoint(t, fakeAppImage, "process", "some-second-default-process-type")
+						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-second-default-process-type"+execExt))
 					})
 
 					it("doesn't set CNB_PROCESS_TYPE", func() {
@@ -1052,7 +1052,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						assertLogEntry(t, logHandler, "default process type 'some-non-existing-process-type' not present in list [some-process-type]")
-						checkEntrypoint(t, fakeAppImage, "lifecycle", "launcher")
+						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
 					})
 				})
 
@@ -1060,7 +1060,7 @@ version = "4.5.6"
 					it("sets the ENTRYPOINT to the only process", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						checkEntrypoint(t, fakeAppImage, "process", "some-process-type")
+						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
 					})
 				})
 			})
@@ -1335,15 +1335,11 @@ version = "4.5.6"
 	})
 }
 
-func checkEntrypoint(t *testing.T, image *fakes.Image, expectedDir string, expectedFile string) {
+func checkEntrypoint(t *testing.T, image *fakes.Image, entrypointPath string) {
 	ep, err := image.Entrypoint()
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(ep), 1)
-	if runtime.GOOS == "windows" {
-		h.AssertEq(t, ep[0], fmt.Sprintf(`c:\cnb\%s\%s.exe`, expectedDir, expectedFile))
-	} else {
-		h.AssertEq(t, ep[0], fmt.Sprintf(`/cnb/%s/%s`, expectedDir, expectedFile))
-	}
+	h.AssertEq(t, ep[0], entrypointPath)
 }
 
 func createTestLayer(id string, tmpDir string) (layers.Layer, error) {
