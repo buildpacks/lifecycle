@@ -316,44 +316,6 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected metadata:\n%s\n", s)
 						}
 					})
-
-					// The following test isn't something that buildpacks should do.
-					// We might change the spec so we'll fail in such case.
-					when("there are multiple default=true processes but they are all of the same type", func() {
-						it("should succeed", func() {
-							h.Mkfile(t,
-								`[[processes]]`+"\n"+
-									`type = "some-type"`+"\n"+
-									`command = "some-cmd"`+"\n"+
-									`default = true`+"\n"+
-									`[[processes]]`+"\n"+
-									`type = "other-type"`+"\n"+
-									`command = "other-cmd"`+"\n"+
-									`[[processes]]`+"\n"+
-									`type = "some-type"`+"\n"+
-									`command = "some-other-cmd"`+"\n"+
-									`default = true`+"\n",
-								filepath.Join(appDir, "launch-A-v1.toml"),
-							)
-							br, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
-							if err != nil {
-								t.Fatalf("Unexpected error:\n%s\n", err)
-							}
-							if s := cmp.Diff(br, lifecycle.BuildResult{
-								BOM:         nil,
-								Labels:      []lifecycle.Label{},
-								MetRequires: nil,
-								Processes: []launch.Process{
-									{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true},
-									{Type: "other-type", Command: "other-cmd", BuildpackID: "A", Default: false},
-									{Type: "some-type", Command: "some-other-cmd", BuildpackID: "A", Default: true},
-								},
-								Slices: []layers.Slice{},
-							}); s != "" {
-								t.Fatalf("Unexpected metadata:\n%s\n", s)
-							}
-						})
-					})
 				})
 
 				it("should include slices", func() {
@@ -571,22 +533,44 @@ func testBuildpackTOML(t *testing.T, when spec.G, it spec.S) {
 					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				})
 
-				it("should error", func() {
-					h.Mkfile(t,
-						`[[processes]]`+"\n"+
-							`type = "some-type"`+"\n"+
-							`command = "some-cmd"`+"\n"+
-							`default = true`+"\n"+
+				when("the processes are with the same type", func() {
+					it("should error", func() {
+						h.Mkfile(t,
 							`[[processes]]`+"\n"+
-							`type = "other-type"`+"\n"+
-							`command = "other-cmd"`+"\n"+
-							`default = true`+"\n",
-						filepath.Join(appDir, "launch-A-v1.toml"),
-					)
-					_, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
-					h.AssertNotNil(t, err)
-					expected := "multiple default process types aren't allowed"
-					h.AssertStringContains(t, err.Error(), expected)
+								`type = "some-type"`+"\n"+
+								`command = "some-cmd"`+"\n"+
+								`default = true`+"\n"+
+								`[[processes]]`+"\n"+
+								`type = "some-type"`+"\n"+
+								`command = "some-other-cmd"`+"\n"+
+								`default = true`+"\n",
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+						_, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
+						h.AssertNotNil(t, err)
+						expected := "multiple default process types aren't allowed"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
+				})
+
+				when("the processes are with different types", func() {
+					it("should error", func() {
+						h.Mkfile(t,
+							`[[processes]]`+"\n"+
+								`type = "some-type"`+"\n"+
+								`command = "some-cmd"`+"\n"+
+								`default = true`+"\n"+
+								`[[processes]]`+"\n"+
+								`type = "other-type"`+"\n"+
+								`command = "other-cmd"`+"\n"+
+								`default = true`+"\n",
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+						_, err := bpTOML.Build(lifecycle.BuildpackPlan{}, config)
+						h.AssertNotNil(t, err)
+						expected := "multiple default process types aren't allowed"
+						h.AssertStringContains(t, err.Error(), expected)
+					})
 				})
 			})
 		})

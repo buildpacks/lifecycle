@@ -284,11 +284,10 @@ func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, o
 	return nil
 }
 
-// check that there are not multiple default processes in a buildpack with different process types
 func validateNoMultipleDefaults(processes []launch.Process) error {
 	defaultType := ""
 	for _, process := range processes {
-		if process.Default && defaultType != "" && defaultType != process.Type {
+		if process.Default && defaultType != "" {
 			return fmt.Errorf("multiple default process types aren't allowed")
 		}
 		if process.Default {
