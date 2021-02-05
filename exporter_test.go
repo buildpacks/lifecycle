@@ -400,6 +400,7 @@ version = "4.5.6"
 					expectedJSON := `
 {
   "bom": null,
+  "buildpack-default-process-type": "",
   "buildpacks": [
     {
       "id": "buildpack.id",
@@ -457,6 +458,7 @@ version = "4.5.6"
       }
     }
   ],
+  "buildpack-default-process-type": "",
   "buildpacks": [
     {
       "id": "buildpack.id",
@@ -940,7 +942,7 @@ version = "4.5.6"
 				when("it is set to an existing type", func() {
 					it.Before(func() {
 						opts.DefaultProcessType = "some-process-type"
-						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "one-non-default-process", "layers"), opts.LayersDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
 					})
 
 					it("sets the ENTRYPOINT to this process type", func() {
@@ -963,7 +965,7 @@ version = "4.5.6"
 				when("it is set to a process type that doesn't exist", func() {
 					it.Before(func() {
 						opts.DefaultProcessType = "some-non-existing-process-type"
-						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "one-non-default-process", "layers"), opts.LayersDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
 					})
 					it("fails", func() {
 						_, err := exporter.Export(opts)
@@ -973,10 +975,11 @@ version = "4.5.6"
 			})
 
 			when("-process-type is not set", func() {
-				when("there are no default=true processes in metadata.toml", func() {
+				when("buildpack-default-process-type is not set in metadata.toml", func() {
 					it.Before(func() {
-						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "one-non-default-process", "layers"), opts.LayersDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
 					})
+
 					it("send an info message that there is no default process, and sets the ENTRYPOINT to the launcher", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
@@ -985,35 +988,18 @@ version = "4.5.6"
 					})
 				})
 
-				when("there is a default=true process in metadata.toml", func() {
+				when("buildpack-default-process-type is set in metadata.toml", func() {
 					it.Before(func() {
-						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "multiple-processes-with-default", "layers"), opts.LayersDir)
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-default", "layers"), opts.LayersDir)
 						layerFactory.EXPECT().
 							ProcessTypesLayer(launch.Metadata{
 								Processes: []launch.Process{
-									{
-										Type:        "some-default-process-type",
-										Command:     "/some/command",
-										Args:        []string{"some", "command", "args"},
-										Direct:      true,
-										BuildpackID: "buildpack1.id",
-										Default:     true,
-									},
-									{
-										Type:        "some-second-default-process-type",
-										Command:     "/some/command",
-										Args:        []string{"some", "command", "args"},
-										Direct:      true,
-										BuildpackID: "buildpack2.id",
-										Default:     true,
-									},
 									{
 										Type:        "some-process-type",
 										Command:     "/some/command",
 										Args:        []string{"some", "command", "args"},
 										Direct:      true,
-										BuildpackID: "buildpack3.id",
-										Default:     false,
+										BuildpackID: "buildpack.id",
 									}},
 							}).
 							DoAndReturn(func(_ launch.Metadata) (layers.Layer, error) {
@@ -1021,10 +1007,11 @@ version = "4.5.6"
 							}).
 							AnyTimes()
 					})
-					it("sets the last default=true process to be the default", func() {
+
+					it("sets the ENTRYPOINT to this process type", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-second-default-process-type"+execExt))
+						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
 					})
 
 					it("doesn't set CNB_PROCESS_TYPE", func() {
@@ -1041,7 +1028,7 @@ version = "4.5.6"
 			when("platform API < 0.6", func() {
 				it.Before(func() {
 					exporter.PlatformAPI = api.MustParse("0.5")
-					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "one-non-default-process", "layers"), opts.LayersDir)
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
 				})
 
 				when("-process-type is set to a process type that doesn't exist", func() {
@@ -1068,8 +1055,9 @@ version = "4.5.6"
 			when("platform API < 0.4", func() {
 				it.Before(func() {
 					exporter.PlatformAPI = api.MustParse("0.3")
-					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "one-non-default-process", "layers"), opts.LayersDir)
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
 				})
+
 				when("-process-type is set to an existing process type", func() {
 					it.Before(func() {
 						opts.DefaultProcessType = "some-process-type"

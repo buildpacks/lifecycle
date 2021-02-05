@@ -16,12 +16,13 @@ const (
 )
 
 type BuildMetadata struct {
-	BOM        []BOMEntry       `toml:"bom" json:"bom"`
-	Buildpacks []GroupBuildpack `toml:"buildpacks" json:"buildpacks"`
-	Labels     []Label          `toml:"labels" json:"-"`
-	Launcher   LauncherMetadata `toml:"-" json:"launcher"`
-	Processes  []launch.Process `toml:"processes" json:"processes"`
-	Slices     []layers.Slice   `toml:"slices" json:"-"`
+	BOM                         []BOMEntry       `toml:"bom" json:"bom"`
+	Buildpacks                  []GroupBuildpack `toml:"buildpacks" json:"buildpacks"`
+	Labels                      []Label          `toml:"labels" json:"-"`
+	Launcher                    LauncherMetadata `toml:"-" json:"launcher"`
+	Processes                   []launch.Process `toml:"processes" json:"processes"`
+	Slices                      []layers.Slice   `toml:"slices" json:"-"`
+	BuildpackDefaultProcessType string           `toml:"buildpack-default-process-type, omitempty" json:"buildpack-default-process-type"`
 }
 
 type LauncherMetadata struct {

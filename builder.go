@@ -1,11 +1,10 @@
 package lifecycle
 
 import (
-	"container/list"
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
+	"sort"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/env"
@@ -77,7 +76,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		return nil, err
 	}
 
-	orderedProcessList := newOrderedProcessList()
+	processMap := newProcessMap()
 	plan := b.Plan
 	var bom []BOMEntry
 	var slices []layers.Slice
@@ -100,13 +99,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
 		plan = plan.filter(br.MetRequires)
-		replacedDefaults, err := orderedProcessList.add(br.Processes)
+
+		replacedDefault := processMap.add(br.Processes)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(replacedDefaults) > 0 {
-			warning := fmt.Sprintf("Warning: redefining the following default process types with processes not marked as default: [%s]", strings.Join(replacedDefaults, ", "))
+		if replacedDefault != "" {
+			warning := fmt.Sprintf("Warning: redefining the following default process type with a process not marked as default: %s", replacedDefault)
 			if _, err := b.Out.Write([]byte(warning)); err != nil {
 				return nil, err
 			}
@@ -119,17 +119,15 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			bom[i].convertMetadataToVersion()
 		}
 	}
-	procList, err := orderedProcessList.list()
-	if err != nil {
-		return nil, err
-	}
+	procList := processMap.list()
 
 	return &BuildMetadata{
-		BOM:        bom,
-		Buildpacks: b.Group.Group,
-		Labels:     labels,
-		Processes:  procList,
-		Slices:     slices,
+		BOM:                         bom,
+		Buildpacks:                  b.Group.Group,
+		Labels:                      labels,
+		Processes:                   procList,
+		Slices:                      slices,
+		BuildpackDefaultProcessType: processMap.defaultType,
 	}, nil
 }
 
@@ -205,54 +203,57 @@ func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
 	return false
 }
 
-// orderedProcesses is a mapping from process types to Processes, it will preserve ordering.
-// processList is the ordered list.
-// we keep typeToProcess map in order to delete elements when others are overriding them.
-type orderedProcesses struct {
-	typeToProcess map[string]*list.Element
-	processList   *list.List
+type processMap struct {
+	typeToProcess map[string]launch.Process
+	defaultType   string
 }
 
-func newOrderedProcessList() orderedProcesses {
-	return orderedProcesses{
-		typeToProcess: make(map[string]*list.Element),
-		processList:   list.New(),
+func newProcessMap() processMap {
+	return processMap{
+		typeToProcess: make(map[string]launch.Process),
+		defaultType:   "",
 	}
 }
 
-func (m orderedProcesses) add(listToAdd []launch.Process) ([]string, error) {
-	result := []string{}
-	for _, proc := range listToAdd {
-		// when we replace a default process type with a non-default process type, add to result
-		if p, ok := m.typeToProcess[proc.Type]; ok {
-			existingProcess, success := (p.Value).(launch.Process)
-			if !success {
-				return []string{}, fmt.Errorf("can't cast an element from the list to a process")
+// This function adds the processes from listToAdd to processMap
+// it sets m.defaultType to the last default process
+// if a non-default process overrides a default process, it returns its type and unset m.defaultType
+func (m *processMap) add(listToAdd []launch.Process) string {
+	result := ""
+	for _, procToAdd := range listToAdd {
+		if procToAdd.Default {
+			m.defaultType = procToAdd.Type
+			result = ""
+		} else {
+			existingProc, ok := m.typeToProcess[procToAdd.Type]
+			if ok && existingProc.Type == m.defaultType { // existingProc.Default = true
+				// non-default process overrides a default process
+				m.defaultType = ""
+				result = procToAdd.Type
 			}
-			if existingProcess.Default && !proc.Default {
-				result = append(result, proc.Type)
-			}
-			m.processList.Remove(p)
 		}
-		m.processList.PushBack(proc)
-		m.typeToProcess[proc.Type] = m.processList.Back()
+		m.typeToProcess[procToAdd.Type] = procToAdd
 	}
 
-	return result, nil
+	return result
 }
 
-// list returns an ordered array of process types. The ordering is based on the
-// order that the processes were added to this struct.
-func (m orderedProcesses) list() ([]launch.Process, error) {
+// list returns a sorted array of processes.
+// The array is sorted based on the process types.
+// The list is sorted for reproducibility.
+func (m processMap) list() []launch.Process {
+	var keys []string
+	for proc := range m.typeToProcess {
+		keys = append(keys, proc)
+	}
+	sort.Strings(keys)
 	result := []launch.Process{}
-	for e := m.processList.Front(); e != nil; e = e.Next() {
-		currentProcess, success := (e.Value).(launch.Process)
-		if !success {
-			return []launch.Process{}, fmt.Errorf("can't cast an element from the list to a process")
-		}
-		result = append(result, currentProcess)
+	for _, key := range keys {
+		processWithNoDefault := m.typeToProcess[key]
+		processWithNoDefault.Default = false // we set the default to false so it won't be part of metadata.toml
+		result = append(result, processWithNoDefault)
 	}
-	return result, nil
+	return result
 }
 
 func (bom *BOMEntry) convertMetadataToVersion() {

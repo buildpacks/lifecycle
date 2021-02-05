@@ -136,7 +136,7 @@ func (e *Exporter) Export(opts ExportOptions) (ExportReport, error) {
 		}
 	}
 
-	entrypoint, err := e.entrypoint(buildMD.toLaunchMD(), opts.DefaultProcessType)
+	entrypoint, err := e.entrypoint(buildMD.toLaunchMD(), opts.DefaultProcessType, buildMD.BuildpackDefaultProcessType)
 	if err != nil {
 		return ExportReport{}, errors.Wrap(err, "determining entrypoint")
 	}
@@ -379,36 +379,35 @@ func (e *Exporter) setWorkingDir(opts ExportOptions) error {
 	return opts.WorkingImage.SetWorkingDir(opts.AppDir)
 }
 
-func (e *Exporter) entrypoint(launchMD launch.Metadata, defaultProcessType string) (string, error) {
+func (e *Exporter) entrypoint(launchMD launch.Metadata, userDefaultProcessType, buildpackDefaultProcessType string) (string, error) {
 	if !e.supportsMulticallLauncher() {
 		return launch.LauncherPath, nil
 	}
 
-	if defaultProcessType == "" && e.PlatformAPI.Compare(api.MustParse("0.6")) < 0 && len(launchMD.Processes) == 1 {
+	if userDefaultProcessType == "" && e.PlatformAPI.Compare(api.MustParse("0.6")) < 0 && len(launchMD.Processes) == 1 {
 		// if there is only one process, we set it to the default for platform API < 0.6
 		e.Logger.Infof("Setting default process type '%s'", launchMD.Processes[0].Type)
 		return launch.ProcessPath(launchMD.Processes[0].Type), nil
 	}
 
-	if defaultProcessType != "" {
-		defaultProcess, ok := launchMD.FindProcessType(defaultProcessType)
+	if userDefaultProcessType != "" {
+		defaultProcess, ok := launchMD.FindProcessType(userDefaultProcessType)
 		if !ok {
 			if e.PlatformAPI.Compare(api.MustParse("0.6")) < 0 {
-				e.Logger.Warn(processTypeWarning(launchMD, defaultProcessType))
+				e.Logger.Warn(processTypeWarning(launchMD, userDefaultProcessType))
 				return launch.LauncherPath, nil
 			}
-			return "", fmt.Errorf("tried to set %s to default but it doesn't exist", defaultProcessType)
+			return "", fmt.Errorf("tried to set %s to default but it doesn't exist", userDefaultProcessType)
 		}
 		e.Logger.Infof("Setting default process type '%s'", defaultProcess.Type)
 		return launch.ProcessPath(defaultProcess.Type), nil
 	}
-	defaultProcess, ok := launchMD.FindLastDefaultProcessType()
-	if !ok {
+	if buildpackDefaultProcessType == "" {
 		e.Logger.Info("no default process type")
 		return launch.LauncherPath, nil
 	}
-	e.Logger.Infof("Setting default process type '%s'", defaultProcess.Type)
-	return launch.ProcessPath(defaultProcess.Type), nil
+	e.Logger.Infof("Setting default process type '%s'", buildpackDefaultProcessType)
+	return launch.ProcessPath(buildpackDefaultProcessType), nil
 }
 
 // processTypes adds
