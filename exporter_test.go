@@ -400,7 +400,6 @@ version = "4.5.6"
 					expectedJSON := `
 {
   "bom": null,
-  "buildpack-default-process-type": "",
   "buildpacks": [
     {
       "id": "buildpack.id",
@@ -458,7 +457,6 @@ version = "4.5.6"
       }
     }
   ],
-  "buildpack-default-process-type": "",
   "buildpacks": [
     {
       "id": "buildpack.id",
@@ -486,8 +484,7 @@ version = "4.5.6"
       "direct": true,
       "command": "/some/command",
       "args": ["some", "command", "args"],
-      "buildpackID": "buildpack.id",
-      "default": false
+      "buildpackID": "buildpack.id"
     }
   ]
 }
@@ -949,7 +946,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
 					})
 
 					it("doesn't set CNB_PROCESS_TYPE", func() {
@@ -984,7 +981,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						assertLogEntry(t, logHandler, "no default process type")
-						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
 					})
 				})
 
@@ -1011,7 +1008,7 @@ version = "4.5.6"
 					it("sets the ENTRYPOINT to this process type", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
 					})
 
 					it("doesn't set CNB_PROCESS_TYPE", func() {
@@ -1039,7 +1036,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						assertLogEntry(t, logHandler, "default process type 'some-non-existing-process-type' not present in list [some-process-type]")
-						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
 					})
 				})
 
@@ -1047,7 +1044,7 @@ version = "4.5.6"
 					it("sets the ENTRYPOINT to the only process", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						checkEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
 					})
 				})
 			})
@@ -1323,7 +1320,7 @@ version = "4.5.6"
 	})
 }
 
-func checkEntrypoint(t *testing.T, image *fakes.Image, entrypointPath string) {
+func assertHasEntrypoint(t *testing.T, image *fakes.Image, entrypointPath string) {
 	ep, err := image.Entrypoint()
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(ep), 1)

@@ -22,7 +22,7 @@ type BuildMetadata struct {
 	Launcher                    LauncherMetadata `toml:"-" json:"launcher"`
 	Processes                   []launch.Process `toml:"processes" json:"processes"`
 	Slices                      []layers.Slice   `toml:"slices" json:"-"`
-	BuildpackDefaultProcessType string           `toml:"buildpack-default-process-type, omitempty" json:"buildpack-default-process-type"`
+	BuildpackDefaultProcessType string           `toml:"buildpack-default-process-type,omitempty" json:"buildpack-default-process-type,omitempty"`
 }
 
 type LauncherMetadata struct {

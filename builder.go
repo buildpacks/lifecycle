@@ -100,13 +100,9 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		labels = append(labels, br.Labels...)
 		plan = plan.filter(br.MetRequires)
 
-		replacedDefault := processMap.add(br.Processes)
-		if err != nil {
-			return nil, err
-		}
+		warning := processMap.add(br.Processes)
 
-		if replacedDefault != "" {
-			warning := fmt.Sprintf("Warning: redefining the following default process type with a process not marked as default: %s", replacedDefault)
+		if warning != "" {
 			if _, err := b.Out.Write([]byte(warning)); err != nil {
 				return nil, err
 			}
@@ -217,25 +213,21 @@ func newProcessMap() processMap {
 
 // This function adds the processes from listToAdd to processMap
 // it sets m.defaultType to the last default process
-// if a non-default process overrides a default process, it returns its type and unset m.defaultType
+// if a non-default process overrides a default process, it returns a warning and unset m.defaultType
 func (m *processMap) add(listToAdd []launch.Process) string {
-	result := ""
+	warning := ""
 	for _, procToAdd := range listToAdd {
 		if procToAdd.Default {
 			m.defaultType = procToAdd.Type
-			result = ""
-		} else {
-			existingProc, ok := m.typeToProcess[procToAdd.Type]
-			if ok && existingProc.Type == m.defaultType { // existingProc.Default = true
-				// non-default process overrides a default process
-				m.defaultType = ""
-				result = procToAdd.Type
-			}
+			warning = ""
+		} else if procToAdd.Type == m.defaultType {
+			// non-default process overrides a default process
+			m.defaultType = ""
+			warning = fmt.Sprintf("Warning: redefining the following default process type with a process not marked as default: %s\n", procToAdd.Type)
 		}
 		m.typeToProcess[procToAdd.Type] = procToAdd
 	}
-
-	return result
+	return warning
 }
 
 // list returns a sorted array of processes.
@@ -249,9 +241,7 @@ func (m processMap) list() []launch.Process {
 	sort.Strings(keys)
 	result := []launch.Process{}
 	for _, key := range keys {
-		processWithNoDefault := m.typeToProcess[key]
-		processWithNoDefault.Default = false // we set the default to false so it won't be part of metadata.toml
-		result = append(result, processWithNoDefault)
+		result = append(result, m.typeToProcess[key].NoDefault()) // we set the default to false so it won't be part of metadata.toml
 	}
 	return result
 }

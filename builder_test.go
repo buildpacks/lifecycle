@@ -721,5 +721,100 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("platform api < 0.6", func() {
+			it.Before(func() {
+				builder.PlatformAPI = api.MustParse("0.5")
+			})
+
+			when("there is a web process", func() {
+				when("buildpack API >= 0.6", func() {
+					it.Before(func() {
+						builder.Group.Group = []lifecycle.GroupBuildpack{
+							{ID: "A", Version: "v1", API: latestBuildpackAPI.String()},
+						}
+					})
+					it("shouldn't set it as a default process", func() {
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Processes: []launch.Process{
+								{
+									Type:        "web",
+									Command:     "web-cmd",
+									Args:        []string{"web-arg"},
+									Direct:      false,
+									BuildpackID: "A",
+									Default:     false,
+								},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+
+						if s := cmp.Diff(metadata.Processes, []launch.Process{
+							{
+								Type:        "web",
+								Command:     "web-cmd",
+								Args:        []string{"web-arg"},
+								Direct:      false,
+								BuildpackID: "A",
+								Default:     false,
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
+					})
+				})
+
+				when("buildpack api < 0.6", func() {
+					it.Before(func() {
+						builder.Group.Group = []lifecycle.GroupBuildpack{
+							{ID: "A", Version: "v1", API: "0.5"},
+						}
+					})
+
+					it("shouldn't set it as a default process", func() {
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Processes: []launch.Process{
+								{
+									Type:        "web",
+									Command:     "web-cmd",
+									Args:        []string{"web-arg"},
+									Direct:      false,
+									BuildpackID: "A",
+									Default:     false,
+								},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+
+						if s := cmp.Diff(metadata.Processes, []launch.Process{
+							{
+								Type:        "web",
+								Command:     "web-cmd",
+								Args:        []string{"web-arg"},
+								Direct:      false,
+								BuildpackID: "A",
+								Default:     false,
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
+					})
+				})
+			})
+		})
 	})
 }
