@@ -918,142 +918,6 @@ version = "4.5.6"
 				h.AssertEq(t, val, opts.AppDir)
 			})
 
-			when("default process type is set", func() {
-				it.Before(func() {
-					opts.DefaultProcessType = "some-process-type"
-				})
-
-				when("platform API is < 0.4", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.3")
-					})
-
-					it("sets CNB_PROCESS_TYPE", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "some-process-type")
-					})
-
-					it("sets ENTRYPOINT to launcher", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						ep, err := fakeAppImage.Entrypoint()
-						h.AssertNil(t, err)
-						h.AssertEq(t, len(ep), 1)
-						if runtime.GOOS == "windows" {
-							h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
-						} else {
-							h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
-						}
-					})
-
-					when("default process type is not in metadata.toml", func() {
-						it("returns an error", func() {
-							opts.DefaultProcessType = "some-missing-process"
-							_, err := exporter.Export(opts)
-							h.AssertError(t, err, "default process type 'some-missing-process' not present in list [some-process-type]")
-						})
-					})
-				})
-
-				when("platform API is >= 0.4", func() {
-					it("sets the ENTRYPOINT to the default process", func() {
-						opts.DefaultProcessType = "some-process-type"
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						ep, err := fakeAppImage.Entrypoint()
-						h.AssertNil(t, err)
-						h.AssertEq(t, len(ep), 1)
-						if runtime.GOOS == "windows" {
-							h.AssertEq(t, ep[0], `c:\cnb\process\some-process-type.exe`)
-						} else {
-							h.AssertEq(t, ep[0], `/cnb/process/some-process-type`)
-						}
-					})
-
-					it("does not set CNB_PROCESS_TYPE", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "")
-					})
-
-					when("default process type is not in metadata.toml", func() {
-						it("warns and sets the ENTRYPOINT to launcher", func() {
-							opts.DefaultProcessType = "some-missing-process"
-							_, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							assertLogEntry(t, logHandler, "default process type 'some-missing-process' not present in list [some-process-type]")
-							ep, err := fakeAppImage.Entrypoint()
-							h.AssertNil(t, err)
-							h.AssertEq(t, len(ep), 1)
-							if runtime.GOOS == "windows" {
-								h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
-							} else {
-								h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
-							}
-						})
-					})
-				})
-			})
-
-			when("default process type is empty", func() {
-				when("platform API is >= 0.4", func() {
-					when("there is exactly one process", func() {
-						it("sets the ENTRYPOINT to the only process", func() {
-							_, err := exporter.Export(opts)
-							h.AssertNil(t, err)
-
-							ep, err := fakeAppImage.Entrypoint()
-							h.AssertNil(t, err)
-							h.AssertEq(t, len(ep), 1)
-							if runtime.GOOS == "windows" {
-								h.AssertEq(t, ep[0], `c:\cnb\process\some-process-type.exe`)
-							} else {
-								h.AssertEq(t, ep[0], `/cnb/process/some-process-type`)
-							}
-						})
-					})
-				})
-
-				when("platform API is < 0.4", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.3")
-					})
-
-					it("does not set CNB_PROCESS_TYPE", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
-						h.AssertNil(t, err)
-						h.AssertEq(t, val, "")
-					})
-
-					it("sets ENTRYPOINT to launcher", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
-
-						ep, err := fakeAppImage.Entrypoint()
-						h.AssertNil(t, err)
-						h.AssertEq(t, len(ep), 1)
-						if runtime.GOOS == "windows" {
-							h.AssertEq(t, ep[0], `c:\cnb\lifecycle\launcher.exe`)
-						} else {
-							h.AssertEq(t, ep[0], `/cnb/lifecycle/launcher`)
-						}
-					})
-				})
-			})
-
 			it("sets empty CMD", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -1067,6 +931,155 @@ version = "4.5.6"
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
+			})
+		})
+
+		when("default process", func() {
+			when("-process-type is set", func() {
+				when("it is set to an existing type", func() {
+					it.Before(func() {
+						opts.DefaultProcessType = "some-process-type"
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
+					})
+
+					it("sets the ENTRYPOINT to this process type", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+					})
+
+					it("doesn't set CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "")
+					})
+				})
+
+				when("it is set to a process type that doesn't exist", func() {
+					it.Before(func() {
+						opts.DefaultProcessType = "some-non-existing-process-type"
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
+					})
+					it("fails", func() {
+						_, err := exporter.Export(opts)
+						h.AssertError(t, err, "tried to set some-non-existing-process-type to default but it doesn't exist")
+					})
+				})
+			})
+
+			when("-process-type is not set", func() {
+				when("buildpack-default-process-type is not set in metadata.toml", func() {
+					it.Before(func() {
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
+					})
+
+					it("send an info message that there is no default process, and sets the ENTRYPOINT to the launcher", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+						assertLogEntry(t, logHandler, "no default process type")
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
+					})
+				})
+
+				when("buildpack-default-process-type is set in metadata.toml", func() {
+					it.Before(func() {
+						h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-default", "layers"), opts.LayersDir)
+						layerFactory.EXPECT().
+							ProcessTypesLayer(launch.Metadata{
+								Processes: []launch.Process{
+									{
+										Type:        "some-process-type",
+										Command:     "/some/command",
+										Args:        []string{"some", "command", "args"},
+										Direct:      true,
+										BuildpackID: "buildpack.id",
+									}},
+							}).
+							DoAndReturn(func(_ launch.Metadata) (layers.Layer, error) {
+								return createTestLayer("process-types", tmpDir)
+							}).
+							AnyTimes()
+					})
+
+					it("sets the ENTRYPOINT to this process type", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+					})
+
+					it("doesn't set CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "")
+					})
+				})
+			})
+
+			when("platform API < 0.6", func() {
+				it.Before(func() {
+					exporter.PlatformAPI = api.MustParse("0.5")
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
+				})
+
+				when("-process-type is set to a process type that doesn't exist", func() {
+					it.Before(func() {
+						opts.DefaultProcessType = "some-non-existing-process-type"
+					})
+					it("warns the process type doesn't exist, and sets the ENTRYPOINT to the launcher", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+						assertLogEntry(t, logHandler, "default process type 'some-non-existing-process-type' not present in list [some-process-type]")
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
+					})
+				})
+
+				when("-process-type is not set and there is exactly one process", func() {
+					it("sets the ENTRYPOINT to the only process", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+					})
+				})
+			})
+
+			when("platform API < 0.4", func() {
+				it.Before(func() {
+					exporter.PlatformAPI = api.MustParse("0.3")
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
+				})
+
+				when("-process-type is set to an existing process type", func() {
+					it.Before(func() {
+						opts.DefaultProcessType = "some-process-type"
+					})
+
+					it("sets CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "some-process-type")
+					})
+				})
+
+				when("-process-type is not set", func() {
+					it("doesn't set CNB_PROCESS_TYPE", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val, err := fakeAppImage.Env("CNB_PROCESS_TYPE")
+						h.AssertNil(t, err)
+						h.AssertEq(t, val, "")
+					})
+				})
 			})
 		})
 
@@ -1305,6 +1318,13 @@ version = "4.5.6"
 			})
 		})
 	})
+}
+
+func assertHasEntrypoint(t *testing.T, image *fakes.Image, entrypointPath string) {
+	ep, err := image.Entrypoint()
+	h.AssertNil(t, err)
+	h.AssertEq(t, len(ep), 1)
+	h.AssertEq(t, ep[0], entrypointPath)
 }
 
 func createTestLayer(id string, tmpDir string) (layers.Layer, error) {

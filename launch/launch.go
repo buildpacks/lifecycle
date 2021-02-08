@@ -11,7 +11,13 @@ type Process struct {
 	Command     string   `toml:"command" json:"command"`
 	Args        []string `toml:"args" json:"args"`
 	Direct      bool     `toml:"direct" json:"direct"`
+	Default     bool     `toml:"default,omitempty" json:"default,omitempty"`
 	BuildpackID string   `toml:"buildpack-id" json:"buildpackID"`
+}
+
+func (p Process) NoDefault() Process {
+	p.Default = false
+	return p
 }
 
 // ProcessPath returns the absolute path to the symlink for a given process type

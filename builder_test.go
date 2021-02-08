@@ -68,8 +68,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			Env:         mockEnv,
 			Group: lifecycle.BuildpackGroup{
 				Group: []lifecycle.GroupBuildpack{
-					{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-					{ID: "B", Version: "v2", API: "0.2"},
+					{ID: "A", Version: "v1", API: latestBuildpackAPI.String(), Homepage: "Buildpack A Homepage"},
+					{ID: "B", Version: "v2", API: latestBuildpackAPI.String()},
 				},
 			},
 			Out:            stdout,
@@ -220,8 +220,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
 						if s := cmp.Diff(metadata.Buildpacks, []lifecycle.GroupBuildpack{
-							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
-							{ID: "B", Version: "v2", API: "0.2"},
+							{ID: "A", Version: "v1", API: latestBuildpackAPI.String(), Homepage: "Buildpack A Homepage"},
+							{ID: "B", Version: "v2", API: latestBuildpackAPI.String()},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
@@ -334,6 +334,273 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
+						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
+					})
+
+					when("multiple default process types", func() {
+						it.Before(func() {
+							builder.Group.Group = []lifecycle.GroupBuildpack{
+								{ID: "A", Version: "v1", API: latestBuildpackAPI.String()},
+								{ID: "B", Version: "v2", API: latestBuildpackAPI.String()},
+								{ID: "C", Version: "v3", API: latestBuildpackAPI.String()},
+							}
+						})
+
+						it("last default process type wins", func() {
+							bpA := testmock.NewMockBuildpack(mockCtrl)
+							buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+							bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "override-type",
+										Command:     "bpA-command",
+										Args:        []string{"bpA-arg"},
+										Direct:      true,
+										BuildpackID: "A",
+										Default:     true,
+									},
+								},
+							}, nil)
+							bpB := testmock.NewMockBuildpack(mockCtrl)
+							buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
+							bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "some-type",
+										Command:     "bpB-command",
+										Args:        []string{"bpB-arg"},
+										Direct:      false,
+										BuildpackID: "B",
+										Default:     true,
+									},
+								},
+							}, nil)
+
+							bpC := testmock.NewMockBuildpack(mockCtrl)
+							buildpackStore.EXPECT().Lookup("C", "v3").Return(bpC, nil)
+							bpC.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "override-type",
+										Command:     "bpC-command",
+										Args:        []string{"bpC-arg"},
+										Direct:      false,
+										BuildpackID: "C",
+									},
+								},
+							}, nil)
+
+							metadata, err := builder.Build()
+							if err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							if s := cmp.Diff(metadata.Processes, []launch.Process{
+								{
+									Type:        "override-type",
+									Command:     "bpC-command",
+									Args:        []string{"bpC-arg"},
+									Direct:      false,
+									BuildpackID: "C",
+								},
+								{
+									Type:        "some-type",
+									Command:     "bpB-command",
+									Args:        []string{"bpB-arg"},
+									Direct:      false,
+									BuildpackID: "B",
+								},
+							}); s != "" {
+								t.Fatalf("Unexpected:\n%s\n", s)
+							}
+							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "some-type")
+						})
+					})
+
+					when("overriding default process type, with a non-default process type", func() {
+						it.Before(func() {
+							builder.Group.Group = []lifecycle.GroupBuildpack{
+								{ID: "A", Version: "v1", API: latestBuildpackAPI.String()},
+								{ID: "B", Version: "v2", API: latestBuildpackAPI.String()},
+								{ID: "C", Version: "v3", API: latestBuildpackAPI.String()},
+							}
+						})
+
+						it("should warn and not set any default process", func() {
+							bpB := testmock.NewMockBuildpack(mockCtrl)
+							buildpackStore.EXPECT().Lookup("A", "v1").Return(bpB, nil)
+							bpB.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "some-type",
+										Command:     "bpA-command",
+										Args:        []string{"bpA-arg"},
+										Direct:      false,
+										BuildpackID: "A",
+										Default:     true,
+									},
+								},
+							}, nil)
+
+							bpA := testmock.NewMockBuildpack(mockCtrl)
+							buildpackStore.EXPECT().Lookup("B", "v2").Return(bpA, nil)
+							bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "override-type",
+										Command:     "bpB-command",
+										Args:        []string{"bpB-arg"},
+										Direct:      true,
+										BuildpackID: "B",
+										Default:     true,
+									},
+								},
+							}, nil)
+
+							bpC := testmock.NewMockBuildpack(mockCtrl)
+							buildpackStore.EXPECT().Lookup("C", "v3").Return(bpC, nil)
+							bpC.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+								Processes: []launch.Process{
+									{
+										Type:        "override-type",
+										Command:     "bpC-command",
+										Args:        []string{"bpC-arg"},
+										Direct:      false,
+										BuildpackID: "C",
+									},
+								},
+							}, nil)
+
+							metadata, err := builder.Build()
+							if err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+							if s := cmp.Diff(metadata.Processes, []launch.Process{
+								{
+									Type:        "override-type",
+									Command:     "bpC-command",
+									Args:        []string{"bpC-arg"},
+									Direct:      false,
+									BuildpackID: "C",
+								},
+								{
+									Type:        "some-type",
+									Command:     "bpA-command",
+									Args:        []string{"bpA-arg"},
+									Direct:      false,
+									BuildpackID: "A",
+								},
+							}); s != "" {
+								t.Fatalf("Unexpected:\n%s\n", s)
+							}
+
+							expected := "Warning: redefining the following default process type with a process not marked as default: override-type"
+							h.AssertStringContains(t, stdout.String(), expected)
+
+							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
+						})
+					})
+
+					when("there is a web process", func() {
+						when("buildpack API >= 0.6", func() {
+							it.Before(func() {
+								builder.Group.Group = []lifecycle.GroupBuildpack{
+									{ID: "A", Version: "v1", API: latestBuildpackAPI.String()},
+								}
+							})
+							it("shouldn't set it as a default process", func() {
+								bpA := testmock.NewMockBuildpack(mockCtrl)
+								buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+								bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+									Processes: []launch.Process{
+										{
+											Type:        "web",
+											Command:     "web-cmd",
+											Args:        []string{"web-arg"},
+											Direct:      false,
+											BuildpackID: "A",
+											Default:     false,
+										},
+									},
+								}, nil)
+
+								metadata, err := builder.Build()
+								if err != nil {
+									t.Fatalf("Unexpected error:\n%s\n", err)
+								}
+
+								if s := cmp.Diff(metadata.Processes, []launch.Process{
+									{
+										Type:        "web",
+										Command:     "web-cmd",
+										Args:        []string{"web-arg"},
+										Direct:      false,
+										BuildpackID: "A",
+										Default:     false,
+									},
+								}); s != "" {
+									t.Fatalf("Unexpected:\n%s\n", s)
+								}
+								h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
+							})
+						})
+
+						when("buildpack api < 0.6", func() {
+							it.Before(func() {
+								builder.Group.Group = []lifecycle.GroupBuildpack{
+									{ID: "A", Version: "v1", API: "0.5"},
+								}
+							})
+							it("should set it as a default process", func() {
+								bpA := testmock.NewMockBuildpack(mockCtrl)
+								buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+								bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+									Processes: []launch.Process{
+										{
+											Type:        "web",
+											Command:     "web-cmd",
+											Args:        []string{"web-arg"},
+											Direct:      false,
+											BuildpackID: "A",
+											Default:     false,
+										},
+										{
+											Type:        "not-web",
+											Command:     "not-web-cmd",
+											Args:        []string{"not-web-arg"},
+											Direct:      true,
+											BuildpackID: "A",
+											Default:     false,
+										},
+									},
+								}, nil)
+
+								metadata, err := builder.Build()
+								if err != nil {
+									t.Fatalf("Unexpected error:\n%s\n", err)
+								}
+
+								if s := cmp.Diff(metadata.Processes, []launch.Process{
+									{
+										Type:        "not-web",
+										Command:     "not-web-cmd",
+										Args:        []string{"not-web-arg"},
+										Direct:      true,
+										BuildpackID: "A",
+									},
+									{
+										Type:        "web",
+										Command:     "web-cmd",
+										Args:        []string{"web-arg"},
+										Direct:      false,
+										BuildpackID: "A",
+									},
+								}); s != "" {
+									t.Fatalf("Unexpected:\n%s\n", s)
+								}
+								h.AssertEq(t, metadata.BuildpackDefaultProcessType, "web")
+							})
+						})
 					})
 				})
 
@@ -450,6 +717,101 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
+					})
+				})
+			})
+		})
+
+		when("platform api < 0.6", func() {
+			it.Before(func() {
+				builder.PlatformAPI = api.MustParse("0.5")
+			})
+
+			when("there is a web process", func() {
+				when("buildpack API >= 0.6", func() {
+					it.Before(func() {
+						builder.Group.Group = []lifecycle.GroupBuildpack{
+							{ID: "A", Version: "v1", API: latestBuildpackAPI.String()},
+						}
+					})
+					it("shouldn't set it as a default process", func() {
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Processes: []launch.Process{
+								{
+									Type:        "web",
+									Command:     "web-cmd",
+									Args:        []string{"web-arg"},
+									Direct:      false,
+									BuildpackID: "A",
+									Default:     false,
+								},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+
+						if s := cmp.Diff(metadata.Processes, []launch.Process{
+							{
+								Type:        "web",
+								Command:     "web-cmd",
+								Args:        []string{"web-arg"},
+								Direct:      false,
+								BuildpackID: "A",
+								Default:     false,
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
+					})
+				})
+
+				when("buildpack api < 0.6", func() {
+					it.Before(func() {
+						builder.Group.Group = []lifecycle.GroupBuildpack{
+							{ID: "A", Version: "v1", API: "0.5"},
+						}
+					})
+
+					it("shouldn't set it as a default process", func() {
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config).Return(lifecycle.BuildResult{
+							Processes: []launch.Process{
+								{
+									Type:        "web",
+									Command:     "web-cmd",
+									Args:        []string{"web-arg"},
+									Direct:      false,
+									BuildpackID: "A",
+									Default:     false,
+								},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+
+						if s := cmp.Diff(metadata.Processes, []launch.Process{
+							{
+								Type:        "web",
+								Command:     "web-cmd",
+								Args:        []string{"web-arg"},
+								Direct:      false,
+								BuildpackID: "A",
+								Default:     false,
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
 					})
 				})
 			})

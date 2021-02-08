@@ -76,7 +76,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 		return nil, err
 	}
 
-	procMap := processMap{}
+	processMap := newProcessMap()
 	plan := b.Plan
 	var bom []BOMEntry
 	var slices []layers.Slice
@@ -94,10 +94,19 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 
+		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.PlatformAPI)
+
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
 		plan = plan.filter(br.MetRequires)
-		procMap.add(br.Processes)
+
+		warning := processMap.add(br.Processes)
+
+		if warning != "" {
+			if _, err := b.Out.Write([]byte(warning)); err != nil {
+				return nil, err
+			}
+		}
 		slices = append(slices, br.Slices...)
 	}
 
@@ -106,14 +115,29 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			bom[i].convertMetadataToVersion()
 		}
 	}
+	procList := processMap.list()
 
 	return &BuildMetadata{
-		BOM:        bom,
-		Buildpacks: b.Group.Group,
-		Labels:     labels,
-		Processes:  procMap.list(),
-		Slices:     slices,
+		BOM:                         bom,
+		Buildpacks:                  b.Group.Group,
+		Labels:                      labels,
+		Processes:                   procList,
+		Slices:                      slices,
+		BuildpackDefaultProcessType: processMap.defaultType,
 	}, nil
+}
+
+// we set default = true for web processes when platformAPI >= 0.6 and buildpackAPI < 0.6
+func updateDefaultProcesses(processes []launch.Process, buildpackAPI *api.Version, platformAPI *api.Version) {
+	if platformAPI.Compare(api.MustParse("0.6")) < 0 || buildpackAPI.Compare(api.MustParse("0.6")) >= 0 {
+		return
+	}
+
+	for i := range processes {
+		if processes[i].Type == "web" {
+			processes[i].Default = true
+		}
+	}
 }
 
 func (b *Builder) BuildConfig() (BuildConfig, error) {
@@ -175,25 +199,51 @@ func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
 	return false
 }
 
-type processMap map[string]launch.Process
+type processMap struct {
+	typeToProcess map[string]launch.Process
+	defaultType   string
+}
 
-func (m processMap) add(l []launch.Process) {
-	for _, proc := range l {
-		m[proc.Type] = proc
+func newProcessMap() processMap {
+	return processMap{
+		typeToProcess: make(map[string]launch.Process),
+		defaultType:   "",
 	}
 }
 
+// This function adds the processes from listToAdd to processMap
+// it sets m.defaultType to the last default process
+// if a non-default process overrides a default process, it returns a warning and unset m.defaultType
+func (m *processMap) add(listToAdd []launch.Process) string {
+	warning := ""
+	for _, procToAdd := range listToAdd {
+		if procToAdd.Default {
+			m.defaultType = procToAdd.Type
+			warning = ""
+		} else if procToAdd.Type == m.defaultType {
+			// non-default process overrides a default process
+			m.defaultType = ""
+			warning = fmt.Sprintf("Warning: redefining the following default process type with a process not marked as default: %s\n", procToAdd.Type)
+		}
+		m.typeToProcess[procToAdd.Type] = procToAdd
+	}
+	return warning
+}
+
+// list returns a sorted array of processes.
+// The array is sorted based on the process types.
+// The list is sorted for reproducibility.
 func (m processMap) list() []launch.Process {
 	var keys []string
-	for key := range m {
-		keys = append(keys, key)
+	for proc := range m.typeToProcess {
+		keys = append(keys, proc)
 	}
 	sort.Strings(keys)
-	procs := []launch.Process{}
+	result := []launch.Process{}
 	for _, key := range keys {
-		procs = append(procs, m[key])
+		result = append(result, m.typeToProcess[key].NoDefault()) // we set the default to false so it won't be part of metadata.toml
 	}
-	return procs
+	return result
 }
 
 func (bom *BOMEntry) convertMetadataToVersion() {
