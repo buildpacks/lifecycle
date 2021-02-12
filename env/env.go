@@ -164,6 +164,19 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 		if f.IsDir() {
 			continue
 		}
+		if f.Mode()&os.ModeSymlink != 0 {
+			lnPath, err := filepath.EvalSymlinks(filepath.Join(dir, f.Name()))
+			if err != nil {
+				return err
+			}
+			lnFile, err := os.Stat(lnPath)
+			if err != nil {
+				return err
+			}
+			if lnFile.IsDir() {
+				continue
+			}
+		}
 		value, err := ioutil.ReadFile(filepath.Join(dir, f.Name()))
 		if err != nil {
 			return err
