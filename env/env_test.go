@@ -233,6 +233,8 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 			mkfile(t, "value-library-path", filepath.Join(tmpDir, "env", "LIBRARY_PATH"))
 			mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
 			mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
+			mksymlink(t, filepath.Join(tmpDir, "env", "some-dir"), filepath.Join(tmpDir, "env", "some-sym-dir"))
+			mksymlink(t, filepath.Join(tmpDir, "env", "VAR_NORMAL"), filepath.Join(tmpDir, "env", "VAR_SYM"))
 
 			envv.Vars = env.NewVars(map[string]string{
 				"VAR_EMPTY":       "",
@@ -253,6 +255,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 				formEnv("VAR_EMPTY", ""),
 				formEnv("VAR_NORMAL", "value-normal"),
 				formEnv("VAR_OVERRIDE", "value-override"),
+				formEnv("VAR_SYM", "value-normal"),
 			}
 			if s := cmp.Diff(out, expected); s != "" {
 				t.Fatalf("Unexpected env:\n%s\n", s)
@@ -297,6 +300,15 @@ func mkfile(t *testing.T, data string, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
 		if err := ioutil.WriteFile(p, []byte(data), 0777); err != nil {
+			t.Fatalf("Error: %s\n", err)
+		}
+	}
+}
+
+func mksymlink(t *testing.T, target string, paths ...string) {
+	t.Helper()
+	for _, p := range paths {
+		if err := os.Symlink(target, p); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}
