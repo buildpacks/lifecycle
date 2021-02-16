@@ -17,8 +17,10 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -53,7 +55,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks: []lifecycle.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
+			Buildpacks: []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
 			LayersDir:  layerDir,
 			Logger:     &log.Logger{Handler: &discard.Handler{}},
 		}
@@ -74,7 +76,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	when("#Analyze", func() {
 		var (
 			image            *fakes.Image
-			appImageMetadata lifecycle.LayersMetadata
+			appImageMetadata platform.LayersMetadata
 			ref              *testmock.MockReference
 		)
 
@@ -144,7 +146,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("subset of buildpacks are detected", func() {
 				it.Before(func() {
-					analyzer.Buildpacks = []lifecycle.GroupBuildpack{{ID: "no.cache.buildpack"}}
+					analyzer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack"}}
 				})
 				it("restores layers for detected buildpacks", func() {
 					_, err := analyzer.Analyze(image, testCache)
@@ -188,12 +190,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			when("cache exists", func() {
 				it.Before(func() {
 					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
-					var cacheMetadata lifecycle.CacheMetadata
+					var cacheMetadata platform.CacheMetadata
 					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
 					h.AssertNil(t, testCache.Commit())
 
-					analyzer.Buildpacks = append(analyzer.Buildpacks, lifecycle.GroupBuildpack{ID: "escaped/buildpack/id"})
+					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id"})
 				})
 
 				it("restores app and cache layer metadata", func() {
@@ -299,7 +301,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("subset of buildpacks are detected", func() {
 					it.Before(func() {
-						analyzer.Buildpacks = []lifecycle.GroupBuildpack{{ID: "no.group.buildpack"}}
+						analyzer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.group.buildpack"}}
 					})
 
 					it("restores layers for detected buildpacks", func() {
@@ -377,12 +379,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			when("cache exists", func() {
 				it.Before(func() {
 					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
-					var cacheMetadata lifecycle.CacheMetadata
+					var cacheMetadata platform.CacheMetadata
 					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
 					h.AssertNil(t, testCache.Commit())
 
-					analyzer.Buildpacks = append(analyzer.Buildpacks, lifecycle.GroupBuildpack{ID: "escaped/buildpack/id"})
+					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id"})
 				})
 
 				it("restores cache=true layer metadata", func() {
@@ -418,7 +420,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)
-					h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 			when("cache is empty", func() {
@@ -435,7 +437,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)
-					h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 			when("cache is not provided", func() {
@@ -452,7 +454,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)
-					h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 		})
@@ -472,7 +474,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("returns empty analyzed metadata", func() {
 				md, err := analyzer.Analyze(image, testCache)
 				h.AssertNil(t, err)
-				h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
+				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 			})
 		})
 
@@ -491,7 +493,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			it("returns empty analyzed metadata", func() {
 				md, err := analyzer.Analyze(image, testCache)
 				h.AssertNil(t, err)
-				h.AssertEq(t, md.Metadata, lifecycle.LayersMetadata{})
+				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 			})
 		})
 	})

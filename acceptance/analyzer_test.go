@@ -19,9 +19,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/acceptance/variables"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -200,7 +200,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				appImage = "some-app-image-" + h.RandString(10)
-				metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
+				metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 
 				cmd := exec.Command(
 					"docker",
@@ -258,7 +258,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					var cacheImage string
 
 					it.Before(func() {
-						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 						cacheImage = "some-cache-image-" + h.RandString(10)
 
 						cmd := exec.Command(
@@ -301,7 +301,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					when("auth registry", func() {
 						it.Before(func() {
-							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 							cacheImage, cacheAuthConfig = buildRegistryImage(
 								t,
 								"some-cache-image-"+h.RandString(10),
@@ -365,7 +365,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					when("no auth registry", func() {
 						it.Before(func() {
-							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 							cacheImage, cacheAuthConfig = buildNoAuthRegistryImage(
 								t,
 								"some-cache-image-"+h.RandString(10),
@@ -493,7 +493,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("app image exists", func() {
 			when("auth registry", func() {
 				it.Before(func() {
-					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 					appImage, appAuthConfig = buildRegistryImage(
 						t,
 						"some-app-image-"+h.RandString(10),
@@ -572,7 +572,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("no auth registry", func() {
 				it.Before(func() {
-					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), lifecycle.LayersMetadata{})
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 					appImage, appAuthConfig = buildNoAuthRegistryImage(
 						t,
 						"some-app-image-"+h.RandString(10),
@@ -630,7 +630,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("auth registry", func() {
 					it.Before(func() {
-						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 						cacheImage, cacheAuthConfig = buildRegistryImage(
 							t,
 							"some-cache-image-"+h.RandString(10),
@@ -692,7 +692,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				when("no auth registry", func() {
 					it.Before(func() {
-						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), lifecycle.CacheMetadata{})
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 						cacheImage, cacheAuthConfig = buildNoAuthRegistryImage(
 							t,
 							"some-cache-image-"+h.RandString(10),
@@ -855,7 +855,7 @@ func assertAnalyzedMetadata(t *testing.T, path string) {
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var analyzedMd lifecycle.AnalyzedMetadata
+	var analyzedMd platform.AnalyzedMetadata
 	_, err := toml.Decode(string(contents), &analyzedMd)
 	h.AssertNil(t, err)
 }

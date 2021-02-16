@@ -7,9 +7,11 @@ import (
 	"sort"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type BuildEnv interface {
@@ -20,42 +22,13 @@ type BuildEnv interface {
 }
 
 type BuildpackStore interface {
-	Lookup(bpID, bpVersion string) (Buildpack, error)
+	Lookup(bpID, bpVersion string) (buildpack.Buildpack, error)
 }
 
 type Buildpack interface {
-	Build(bpPlan BuildpackPlan, config BuildConfig) (BuildResult, error)
-}
-
-type BuildConfig struct {
-	Env         BuildEnv
-	AppDir      string
-	PlatformDir string
-	LayersDir   string
-	Out         io.Writer
-	Err         io.Writer
-}
-
-type BuildResult struct {
-	BOM         []BOMEntry
-	Labels      []Label
-	MetRequires []string
-	Processes   []launch.Process
-	Slices      []layers.Slice
-}
-
-type BOMEntry struct {
-	Require
-	Buildpack GroupBuildpack `toml:"buildpack" json:"buildpack"`
-}
-
-type Label struct {
-	Key   string `toml:"key"`
-	Value string `toml:"value"`
-}
-
-type BuildpackPlan struct {
-	Entries []Require `toml:"entries"`
+	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig) (buildpack.BuildResult, error)
+	ConfigFile() *buildpack.Descriptor
+	Detect(config *buildpack.DetectConfig) buildpack.DetectRun
 }
 
 type Builder struct {
@@ -64,13 +37,13 @@ type Builder struct {
 	PlatformDir    string
 	PlatformAPI    *api.Version
 	Env            BuildEnv
-	Group          BuildpackGroup
-	Plan           BuildPlan
+	Group          buildpack.Group
+	Plan           platform.BuildPlan
 	Out, Err       io.Writer
 	BuildpackStore BuildpackStore
 }
 
-func (b *Builder) Build() (*BuildMetadata, error) {
+func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	config, err := b.BuildConfig()
 	if err != nil {
 		return nil, err
@@ -78,9 +51,9 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 
 	processMap := newProcessMap()
 	plan := b.Plan
-	var bom []BOMEntry
+	var bom []buildpack.BOMEntry
 	var slices []layers.Slice
-	var labels []Label
+	var labels []buildpack.Label
 
 	for _, bp := range b.Group.Group {
 		bpTOML, err := b.BuildpackStore.Lookup(bp.ID, bp.Version)
@@ -88,7 +61,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 
-		bpPlan := plan.find(bp.ID)
+		bpPlan := plan.Find(bp.ID)
 		br, err := bpTOML.Build(bpPlan, config)
 		if err != nil {
 			return nil, err
@@ -98,7 +71,7 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
-		plan = plan.filter(br.MetRequires)
+		plan = plan.Filter(br.MetRequires)
 
 		warning := processMap.add(br.Processes)
 
@@ -112,12 +85,12 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 
 	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 { // PlatformAPI <= 0.3
 		for i := range bom {
-			bom[i].convertMetadataToVersion()
+			bom[i].ConvertMetadataToVersion()
 		}
 	}
 	procList := processMap.list()
 
-	return &BuildMetadata{
+	return &platform.BuildMetadata{
 		BOM:                         bom,
 		Buildpacks:                  b.Group.Group,
 		Labels:                      labels,
@@ -140,21 +113,21 @@ func updateDefaultProcesses(processes []launch.Process, buildpackAPI *api.Versio
 	}
 }
 
-func (b *Builder) BuildConfig() (BuildConfig, error) {
+func (b *Builder) BuildConfig() (buildpack.BuildConfig, error) {
 	appDir, err := filepath.Abs(b.AppDir)
 	if err != nil {
-		return BuildConfig{}, err
+		return buildpack.BuildConfig{}, err
 	}
 	platformDir, err := filepath.Abs(b.PlatformDir)
 	if err != nil {
-		return BuildConfig{}, err
+		return buildpack.BuildConfig{}, err
 	}
 	layersDir, err := filepath.Abs(b.LayersDir)
 	if err != nil {
-		return BuildConfig{}, err
+		return buildpack.BuildConfig{}, err
 	}
 
-	return BuildConfig{
+	return buildpack.BuildConfig{
 		Env:         b.Env,
 		AppDir:      appDir,
 		PlatformDir: platformDir,
@@ -162,41 +135,6 @@ func (b *Builder) BuildConfig() (BuildConfig, error) {
 		Out:         b.Out,
 		Err:         b.Err,
 	}, nil
-}
-
-func (p BuildPlan) find(bpID string) BuildpackPlan {
-	var out []Require
-	for _, entry := range p.Entries {
-		for _, provider := range entry.Providers {
-			if provider.ID == bpID {
-				out = append(out, entry.Requires...)
-				break
-			}
-		}
-	}
-	return BuildpackPlan{Entries: out}
-}
-
-// TODO: ensure at least one claimed entry of each name is provided by the BP
-func (p BuildPlan) filter(metRequires []string) BuildPlan {
-	var out []BuildPlanEntry
-	for _, planEntry := range p.Entries {
-		if !containsEntry(metRequires, planEntry) {
-			out = append(out, planEntry)
-		}
-	}
-	return BuildPlan{Entries: out}
-}
-
-func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
-	for _, met := range metRequires {
-		for _, planReq := range entry.Requires {
-			if met == planReq.Name {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 type processMap struct {
@@ -244,21 +182,4 @@ func (m processMap) list() []launch.Process {
 		result = append(result, m.typeToProcess[key].NoDefault()) // we set the default to false so it won't be part of metadata.toml
 	}
 	return result
-}
-
-func (bom *BOMEntry) convertMetadataToVersion() {
-	if version, ok := bom.Metadata["version"]; ok {
-		metadataVersion := fmt.Sprintf("%v", version)
-		bom.Version = metadataVersion
-	}
-}
-
-func (bom *BOMEntry) convertVersionToMetadata() {
-	if bom.Version != "" {
-		if bom.Metadata == nil {
-			bom.Metadata = make(map[string]interface{})
-		}
-		bom.Metadata["version"] = bom.Version
-		bom.Version = ""
-	}
 }

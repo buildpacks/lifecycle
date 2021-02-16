@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -euo pipefail
+
+layers_dir=$1
+platform_dir=$2
+plan_path=$3
+
+bp_dir=$(cd $(dirname "$0")/.. && pwd)
+bp_id=$(cat "$bp_dir/buildpack.toml"|yj -t|jq -r .buildpack.id)
+bp_version=$(cat "$bp_dir/buildpack.toml"|yj -t|jq -r .buildpack.version)
+
+echo "build out: ${bp_id}@${bp_version}"
+>&2 echo "build err: ${bp_id}@${bp_version}"
+
+echo "TEST_ENV: ${TEST_ENV}" > "build-info-${bp_id}-${bp_version}"
+echo -n "${CNB_BUILDPACK_DIR:-unset}" > "build-env-cnb-buildpack-dir-${bp_id}-${bp_version}"
+
+cp -a "$platform_dir/env" "build-env-${bp_id}-${bp_version}"
+
+cat "$plan_path" > "build-plan-in-${bp_id}-${bp_version}.toml"
+
+if [[ -f build-plan-out-${bp_id}-${bp_version}.toml ]]; then
+  cat "build-plan-out-${bp_id}-${bp_version}.toml" > "$plan_path"
+fi
+
+if [[ -f build-${bp_id}-${bp_version}.toml ]]; then
+  cat "build-${bp_id}-${bp_version}.toml" > "$layers_dir/build.toml"
+fi
+
+if [[ -f launch-${bp_id}-${bp_version}.toml ]]; then
+  cat "launch-${bp_id}-${bp_version}.toml" > "$layers_dir/launch.toml"
+fi
+
+if [[ -d layers-${bp_id}-${bp_version} ]]; then
+  cp -a "layers-${bp_id}-${bp_version}/." "$layers_dir"
+fi
+
+if [[ -f build-status-${bp_id}-${bp_version} ]]; then
+  exit "$(cat "build-status-${bp_id}-${bp_version}")"
+fi
+if [[ -f build-status ]]; then
+  exit "$(cat build-status)"
+fi
+
+exit 0

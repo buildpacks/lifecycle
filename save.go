@@ -3,28 +3,31 @@ package lifecycle
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/platform"
 )
 
-func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (ImageReport, error) {
+func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (platform.ImageReport, error) {
 	var saveErr error
-	imageReport := ImageReport{}
+	imageReport := platform.ImageReport{}
 	if err := image.Save(additionalNames...); err != nil {
 		var ok bool
 		if saveErr, ok = err.(imgutil.SaveError); !ok {
-			return ImageReport{}, errors.Wrap(err, "saving image")
+			return platform.ImageReport{}, errors.Wrap(err, "saving image")
 		}
 	}
 
 	id, idErr := image.Identifier()
 	if idErr != nil {
 		if saveErr != nil {
-			return ImageReport{}, &MultiError{Errors: []error{idErr, saveErr}}
+			return platform.ImageReport{}, &MultiError{Errors: []error{idErr, saveErr}}
 		}
-		return ImageReport{}, idErr
+		return platform.ImageReport{}, idErr
 	}
 
 	logger.Infof("*** Images (%s):\n", shortID(id))

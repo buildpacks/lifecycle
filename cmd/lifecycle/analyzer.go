@@ -12,7 +12,9 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -125,7 +127,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) (lifecycle.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache) (platform.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -144,7 +146,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 		)
 	}
 	if err != nil {
-		return lifecycle.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
@@ -154,7 +156,7 @@ func (aa analyzeArgs) analyze(group lifecycle.BuildpackGroup, cacheStore lifecyc
 		SkipLayers: aa.skipLayers,
 	}).Analyze(img, cacheStore)
 	if err != nil {
-		return lifecycle.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")
+		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")
 	}
 	return analyzedMD, nil
 }

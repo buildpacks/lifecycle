@@ -1,6 +1,0 @@
-api = "0.2"
-
-[buildpack]
-id = "C"
-name = "Buildpack C"
-version = "v2"

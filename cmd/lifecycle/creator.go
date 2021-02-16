@@ -6,10 +6,10 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -32,7 +32,7 @@ type createCmd struct {
 	registry            string
 	reportPath          string
 	runImageRef         string
-	stackMD             lifecycle.StackMetadata
+	stackMD             platform.StackMetadata
 	stackPath           string
 	uid, gid            int
 	additionalTags      cmd.StringSlice

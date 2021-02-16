@@ -24,8 +24,10 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -62,10 +64,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		opts.LauncherConfig = lifecycle.LauncherConfig{
 			Path: launcherPath,
-			Metadata: lifecycle.LauncherMetadata{
+			Metadata: platform.LauncherMetadata{
 				Version: "1.2.3",
-				Source: lifecycle.SourceMetadata{
-					Git: lifecycle.GitMetadata{
+				Source: platform.SourceMetadata{
+					Git: platform.GitMetadata{
 						Repository: "github.com/buildpacks/lifecycle",
 						Commit:     "asdf1234",
 					},
@@ -133,7 +135,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}).AnyTimes()
 
 		exporter = &lifecycle.Exporter{
-			Buildpacks: []lifecycle.GroupBuildpack{
+			Buildpacks: []buildpack.GroupBuildpack{
 				{ID: "buildpack.id", Version: "1.2.3", API: api.Buildpack.Latest().String()},
 				{ID: "other.buildpack.id", Version: "4.5.6", API: api.Buildpack.Latest().String(), Optional: false},
 			},
@@ -213,7 +215,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 							{ID: "slice-3", Digest: "slice-3-digest"},
 						}, nil)
 					fakeAppImage.AddPreviousLayer("slice-1-digest", "")
-					opts.OrigMetadata.App = append(opts.OrigMetadata.App, lifecycle.LayerMetadata{SHA: "slice-1-digest"})
+					opts.OrigMetadata.App = append(opts.OrigMetadata.App, platform.LayerMetadata{SHA: "slice-1-digest"})
 				})
 
 				it("reuses slice layer if the sha matches the sha in the archive metadata", func() {
@@ -316,7 +318,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta lifecycle.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -351,8 +353,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("saves run image metadata to the resulting image", func() {
-				opts.Stack = lifecycle.StackMetadata{
-					RunImage: lifecycle.StackRunImageMetadata{
+				opts.Stack = platform.StackMetadata{
+					RunImage: platform.StackRunImageMetadata{
 						Image:   "some/run",
 						Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
 					},
@@ -363,7 +365,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta lifecycle.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -494,8 +496,8 @@ version = "4.5.6"
 
 			when("there is project metadata", func() {
 				it("saves metadata with project info", func() {
-					opts.Project = lifecycle.ProjectMetadata{
-						Source: &lifecycle.ProjectSource{
+					opts.Project = platform.ProjectMetadata{
+						Source: &platform.ProjectSource{
 							Type: "git",
 							Version: map[string]interface{}{
 								"commit": "abcd1234",
@@ -511,7 +513,7 @@ version = "4.5.6"
 					projectJSON, err := fakeAppImage.Label("io.buildpacks.project.metadata")
 					h.AssertNil(t, err)
 
-					var projectMD lifecycle.ProjectMetadata
+					var projectMD platform.ProjectMetadata
 					if err := json.Unmarshal([]byte(projectJSON), &projectMD); err != nil {
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
@@ -645,8 +647,8 @@ version = "4.5.6"
 
 			when("previous image metadata is missing buildpack for reused layer", func() {
 				it.Before(func() {
-					opts.OrigMetadata = lifecycle.LayersMetadata{
-						Buildpacks: []lifecycle.BuildpackLayersMetadata{{}},
+					opts.OrigMetadata = platform.LayersMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{}},
 					}
 				})
 
@@ -662,10 +664,10 @@ version = "4.5.6"
 
 			when("previous image metadata is missing reused layer", func() {
 				it.Before(func() {
-					opts.OrigMetadata = lifecycle.LayersMetadata{
-						Buildpacks: []lifecycle.BuildpackLayersMetadata{{
+					opts.OrigMetadata = platform.LayersMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{
 							ID:     "buildpack.id",
-							Layers: map[string]lifecycle.BuildpackLayerMetadata{},
+							Layers: map[string]platform.BuildpackLayerMetadata{},
 						}},
 					}
 				})
@@ -821,7 +823,7 @@ version = "4.5.6"
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta lifecycle.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -860,12 +862,12 @@ version = "4.5.6"
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 					h.AssertNil(t, err)
 
-					var meta lifecycle.LayersMetadata
+					var meta platform.LayersMetadata
 					if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
 
-					h.AssertEq(t, meta.Buildpacks[0].Store, &lifecycle.StoreTOML{Data: map[string]interface{}{
+					h.AssertEq(t, meta.Buildpacks[0].Store, &buildpack.StoreTOML{Data: map[string]interface{}{
 						"key": "val",
 					}})
 				})
@@ -873,8 +875,8 @@ version = "4.5.6"
 
 			when("there is project metadata", func() {
 				it("saves metadata with project info", func() {
-					opts.Project = lifecycle.ProjectMetadata{
-						Source: &lifecycle.ProjectSource{
+					opts.Project = platform.ProjectMetadata{
+						Source: &platform.ProjectSource{
 							Type: "git",
 							Version: map[string]interface{}{
 								"commit": "abcd1234",
@@ -890,7 +892,7 @@ version = "4.5.6"
 					projectJSON, err := fakeAppImage.Label("io.buildpacks.project.metadata")
 					h.AssertNil(t, err)
 
-					var projectMD lifecycle.ProjectMetadata
+					var projectMD platform.ProjectMetadata
 					if err := json.Unmarshal([]byte(projectJSON), &projectMD); err != nil {
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
@@ -1205,20 +1207,20 @@ version = "4.5.6"
 						report, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						h.AssertEq(t, report.Build.BOM, []lifecycle.BOMEntry{
+						h.AssertEq(t, report.Build.BOM, []buildpack.BOMEntry{
 							{
-								Require: lifecycle.Require{
+								Require: buildpack.Require{
 									Name:     "dep1",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: lifecycle.GroupBuildpack{ID: "buildpack.id", Version: "1.2.3"},
+								Buildpack: buildpack.GroupBuildpack{ID: "buildpack.id", Version: "1.2.3"},
 							},
 							{
-								Require: lifecycle.Require{
+								Require: buildpack.Require{
 									Name:     "dep2",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: lifecycle.GroupBuildpack{ID: "other.buildpack.id", Version: "4.5.6"},
+								Buildpack: buildpack.GroupBuildpack{ID: "other.buildpack.id", Version: "4.5.6"},
 							},
 						})
 					})
@@ -1239,7 +1241,7 @@ version = "4.5.6"
 
 		when("buildpack requires an escaped id", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []lifecycle.GroupBuildpack{{ID: "some/escaped/bp/id", API: "0.1"}}
+				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: "0.1"}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), opts.LayersDir)
 			})
@@ -1259,7 +1261,7 @@ version = "4.5.6"
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta lifecycle.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}

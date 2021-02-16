@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apex/log/handlers/memory"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -351,4 +352,12 @@ func Rdfile(t *testing.T, path string) string {
 		t.Fatalf("Error: %s\n", err)
 	}
 	return CleanEndings(string(out))
+}
+
+func AllLogs(logHandler *memory.Handler) string {
+	var out string
+	for _, le := range logHandler.Entries {
+		out = out + le.Message + "\n"
+	}
+	return CleanEndings(out)
 }

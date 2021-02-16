@@ -12,24 +12,26 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type bpLayersDir struct {
 	path      string
 	layers    []bpLayer
 	name      string
-	buildpack GroupBuildpack
-	store     *StoreTOML
+	buildpack buildpack.GroupBuildpack
+	store     *buildpack.StoreTOML
 }
 
-func readBuildpackLayersDir(layersDir string, buildpack GroupBuildpack) (bpLayersDir, error) {
-	path := filepath.Join(layersDir, launch.EscapeID(buildpack.ID))
+func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack) (bpLayersDir, error) {
+	path := filepath.Join(layersDir, launch.EscapeID(bp.ID))
 	bpDir := bpLayersDir{
-		name:      buildpack.ID,
+		name:      bp.ID,
 		path:      path,
 		layers:    []bpLayer{},
-		buildpack: buildpack,
+		buildpack: bp,
 	}
 
 	fis, err := ioutil.ReadDir(path)
@@ -53,10 +55,10 @@ func readBuildpackLayersDir(layersDir string, buildpack GroupBuildpack) (bpLayer
 	for _, tf := range tomls {
 		name := strings.TrimSuffix(filepath.Base(tf), ".toml")
 		if name == "store" {
-			var bpStore StoreTOML
+			var bpStore buildpack.StoreTOML
 			_, err := toml.DecodeFile(tf, &bpStore)
 			if err != nil {
-				return bpLayersDir{}, errors.Wrapf(err, "failed decoding store.toml for buildpack %q", buildpack.ID)
+				return bpLayersDir{}, errors.Wrapf(err, "failed decoding store.toml for buildpack %q", bp.ID)
 			}
 			bpDir.store = &bpStore
 			continue
@@ -65,7 +67,7 @@ func readBuildpackLayersDir(layersDir string, buildpack GroupBuildpack) (bpLayer
 			// don't treat launch.toml as a layer
 			continue
 		}
-		if name == "build" && api.MustParse(buildpack.API).Compare(api.MustParse("0.5")) >= 0 {
+		if name == "build" && api.MustParse(bp.API).Compare(api.MustParse("0.5")) >= 0 {
 			// if the buildpack API supports build.toml don't treat it as a layer
 			continue
 		}
@@ -117,25 +119,25 @@ type bpLayer struct {
 	layer
 }
 
-func (bp *bpLayer) read() (BuildpackLayerMetadata, error) {
-	var data BuildpackLayerMetadata
+func (bp *bpLayer) read() (platform.BuildpackLayerMetadata, error) {
+	var data platform.BuildpackLayerMetadata
 	tomlPath := bp.path + ".toml"
 	fh, err := os.Open(tomlPath)
 	if os.IsNotExist(err) {
-		return BuildpackLayerMetadata{}, nil
+		return platform.BuildpackLayerMetadata{}, nil
 	} else if err != nil {
-		return BuildpackLayerMetadata{}, err
+		return platform.BuildpackLayerMetadata{}, err
 	}
 	defer fh.Close()
 	if _, err := toml.DecodeFile(tomlPath, &data); err != nil {
-		return BuildpackLayerMetadata{}, err
+		return platform.BuildpackLayerMetadata{}, err
 	}
 	sha, err := ioutil.ReadFile(bp.path + ".sha")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return data, nil
 		}
-		return BuildpackLayerMetadata{}, err
+		return platform.BuildpackLayerMetadata{}, err
 	}
 	data.SHA = string(sha)
 	return data, nil
@@ -154,7 +156,7 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadata(metadata BuildpackLayerMetadata) error {
+func (bp *bpLayer) writeMetadata(metadata platform.BuildpackLayerMetadata) error {
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
@@ -164,7 +166,7 @@ func (bp *bpLayer) writeMetadata(metadata BuildpackLayerMetadata) error {
 		return err
 	}
 	defer fh.Close()
-	return toml.NewEncoder(fh).Encode(metadata.BuildpackLayerMetadataFile)
+	return toml.NewEncoder(fh).Encode(metadata.LayerMetadataFile)
 }
 
 func (bp *bpLayer) hasLocalContents() bool {
