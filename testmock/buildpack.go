@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	lifecycle "github.com/buildpacks/lifecycle"
+	buildpack "github.com/buildpacks/lifecycle/buildpack"
 )
 
 // MockBuildpack is a mock of Buildpack interface
@@ -36,10 +36,10 @@ func (m *MockBuildpack) EXPECT() *MockBuildpackMockRecorder {
 }
 
 // Build mocks base method
-func (m *MockBuildpack) Build(arg0 lifecycle.BuildpackPlan, arg1 lifecycle.BuildConfig) (lifecycle.BuildResult, error) {
+func (m *MockBuildpack) Build(arg0 buildpack.Plan, arg1 buildpack.BuildConfig) (buildpack.BuildResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Build", arg0, arg1)
-	ret0, _ := ret[0].(lifecycle.BuildResult)
+	ret0, _ := ret[0].(buildpack.BuildResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -48,4 +48,32 @@ func (m *MockBuildpack) Build(arg0 lifecycle.BuildpackPlan, arg1 lifecycle.Build
 func (mr *MockBuildpackMockRecorder) Build(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockBuildpack)(nil).Build), arg0, arg1)
+}
+
+// ConfigFile mocks base method
+func (m *MockBuildpack) ConfigFile() *buildpack.Descriptor {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfigFile")
+	ret0, _ := ret[0].(*buildpack.Descriptor)
+	return ret0
+}
+
+// ConfigFile indicates an expected call of ConfigFile
+func (mr *MockBuildpackMockRecorder) ConfigFile() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFile", reflect.TypeOf((*MockBuildpack)(nil).ConfigFile))
+}
+
+// Detect mocks base method
+func (m *MockBuildpack) Detect(arg0 *buildpack.DetectConfig) buildpack.DetectRun {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Detect", arg0)
+	ret0, _ := ret[0].(buildpack.DetectRun)
+	return ret0
+}
+
+// Detect indicates an expected call of Detect
+func (mr *MockBuildpackMockRecorder) Detect(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detect", reflect.TypeOf((*MockBuildpack)(nil).Detect), arg0)
 }

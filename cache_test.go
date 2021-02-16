@@ -18,6 +18,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -59,7 +60,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			logHandler = memory.New()
 
 			exporter = &lifecycle.Exporter{
-				Buildpacks: []lifecycle.GroupBuildpack{
+				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "buildpack.id"},
 					{ID: "other.buildpack.id"},
 				},

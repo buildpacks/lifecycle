@@ -7,11 +7,11 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-
-	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
@@ -57,7 +57,7 @@ func (c *ImageCache) Name() string {
 	return c.origImage.Name()
 }
 
-func (c *ImageCache) SetMetadata(metadata lifecycle.CacheMetadata) error {
+func (c *ImageCache) SetMetadata(metadata platform.CacheMetadata) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -68,10 +68,10 @@ func (c *ImageCache) SetMetadata(metadata lifecycle.CacheMetadata) error {
 	return c.newImage.SetLabel(MetadataLabel, string(data))
 }
 
-func (c *ImageCache) RetrieveMetadata() (lifecycle.CacheMetadata, error) {
-	var meta lifecycle.CacheMetadata
+func (c *ImageCache) RetrieveMetadata() (platform.CacheMetadata, error) {
+	var meta platform.CacheMetadata
 	if err := lifecycle.DecodeLabel(c.origImage, MetadataLabel, &meta); err != nil {
-		return lifecycle.CacheMetadata{}, nil
+		return platform.CacheMetadata{}, nil
 	}
 	return meta, nil
 }

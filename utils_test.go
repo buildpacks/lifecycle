@@ -11,6 +11,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -46,9 +47,9 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
-			if s := cmp.Diff(actual, lifecycle.BuildpackOrder{
-				{Group: []lifecycle.GroupBuildpack{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
-				{Group: []lifecycle.GroupBuildpack{{ID: "C"}, {}}},
+			if s := cmp.Diff(actual, buildpack.Order{
+				{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
+				{Group: []buildpack.GroupBuildpack{{ID: "C"}, {}}},
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
@@ -78,8 +79,8 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
-			if s := cmp.Diff(actual, lifecycle.BuildpackGroup{
-				Group: []lifecycle.GroupBuildpack{
+			if s := cmp.Diff(actual, buildpack.Group{
+				Group: []buildpack.GroupBuildpack{
 					{ID: "A", Version: "v1"},
 					{ID: "B", Optional: true},
 				},
@@ -105,7 +106,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should write TOML", func() {
-			group := lifecycle.BuildpackGroup{Group: []lifecycle.GroupBuildpack{{ID: "A", Version: "v1"}}}
+			group := buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}}
 			if err := lifecycle.WriteTOML(filepath.Join(tmpDir, "subdir", "group.toml"), group); err != nil {
 				t.Fatal(err)
 			}

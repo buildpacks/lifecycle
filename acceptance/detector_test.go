@@ -16,8 +16,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -118,7 +119,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check group.toml
 			tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-			var buildpackGroup lifecycle.BuildpackGroup
+			var buildpackGroup buildpack.Group
 			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
@@ -126,7 +127,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check plan.toml
 			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
-			var buildPlan lifecycle.BuildPlan
+			var buildPlan platform.BuildPlan
 			_, err = toml.DecodeFile(tempPlanToml, &buildPlan)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "simple_buildpack")
@@ -173,7 +174,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check group.toml
 			tempGroupToml := filepath.Join(copyDir, "layers", "custom_group.toml")
-			var buildpackGroup lifecycle.BuildpackGroup
+			var buildpackGroup buildpack.Group
 			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildpackGroup.Group[0].ID, "always_detect_buildpack")

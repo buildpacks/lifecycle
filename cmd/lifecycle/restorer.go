@@ -8,6 +8,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -87,7 +88,7 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func restore(layersDir string, group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache) error {
+func restore(layersDir string, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
 		Buildpacks: group.Group,

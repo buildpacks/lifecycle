@@ -4,12 +4,14 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Restorer struct {
 	LayersDir  string
-	Buildpacks []GroupBuildpack
+	Buildpacks []buildpack.GroupBuildpack
 	Logger     Logger
 }
 
@@ -17,7 +19,7 @@ type Restorer struct {
 // If a usable cache is not provided, Restore will remove all cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
 	// Create empty cache metadata in case a usable cache is not provided.
-	var meta CacheMetadata
+	var meta platform.CacheMetadata
 	if cache != nil {
 		var err error
 		if !cache.Exists() {

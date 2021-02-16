@@ -2,6 +2,8 @@ package lifecycle
 
 import (
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
@@ -13,7 +15,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous cache")
 	}
-	meta := CacheMetadata{}
+	meta := platform.CacheMetadata{}
 
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(layersDir, bp)
@@ -21,10 +23,10 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
 
-		bpMD := BuildpackLayersMetadata{
+		bpMD := platform.BuildpackLayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]BuildpackLayerMetadata{},
+			Layers:  map[string]platform.BuildpackLayerMetadata{},
 		}
 		for _, layer := range bpDir.findLayers(forCached) {
 			layer := layer

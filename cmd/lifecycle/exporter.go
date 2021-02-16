@@ -17,15 +17,17 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type exportCmd struct {
-	analyzedMD lifecycle.AnalyzedMetadata
+	analyzedMD platform.AnalyzedMetadata
 
 	//flags: inputs
 	cacheDir              string
@@ -51,7 +53,7 @@ type exportArgs struct {
 	registry            string
 	reportPath          string
 	runImageRef         string
-	stackMD             lifecycle.StackMetadata
+	stackMD             platform.StackMetadata
 	stackPath           string
 	useDaemon           bool
 	uid, gid            int
@@ -194,14 +196,14 @@ func (e *exportCmd) registryImages() []string {
 	return registryImages
 }
 
-func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle.Cache, analyzedMD lifecycle.AnalyzedMetadata) error {
+func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	var projectMD lifecycle.ProjectMetadata
+	var projectMD platform.ProjectMetadata
 	_, err = toml.DecodeFile(ea.projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -260,7 +262,7 @@ func (ea exportArgs) export(group lifecycle.BuildpackGroup, cacheStore lifecycle
 	return nil
 }
 
-func (ea exportArgs) initDaemonAppImage(analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
 		local.FromBaseImage(ea.runImageRef),
 	}
@@ -295,7 +297,7 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD lifecycle.AnalyzedMetadata) (
 	return appImage, runImageID.String(), nil
 }
 
-func (ea exportArgs) initRemoteAppImage(analyzedMD lifecycle.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(ea.runImageRef),
 	}
@@ -336,10 +338,10 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD lifecycle.AnalyzedMetadata) (
 func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	return lifecycle.LauncherConfig{
 		Path: launcherPath,
-		Metadata: lifecycle.LauncherMetadata{
+		Metadata: platform.LauncherMetadata{
 			Version: cmd.Version,
-			Source: lifecycle.SourceMetadata{
-				Git: lifecycle.GitMetadata{
+			Source: platform.SourceMetadata{
+				Git: platform.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},
@@ -348,31 +350,31 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	}
 }
 
-func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (lifecycle.AnalyzedMetadata, error) {
-	var analyzedMD lifecycle.AnalyzedMetadata
+func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
+	var analyzedMD platform.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)
-			return lifecycle.AnalyzedMetadata{}, nil
+			return platform.AnalyzedMetadata{}, nil
 		}
 
-		return lifecycle.AnalyzedMetadata{}, err
+		return platform.AnalyzedMetadata{}, err
 	}
 
 	return analyzedMD, nil
 }
 
-func resolveStack(imageName, stackPath, runImageRefOrig string) (lifecycle.StackMetadata, string, string, error) {
+func resolveStack(imageName, stackPath, runImageRefOrig string) (platform.StackMetadata, string, string, error) {
 	ref, err := name.ParseReference(imageName, name.WeakValidation)
 	if err != nil {
-		return lifecycle.StackMetadata{}, "", "", cmd.FailErr(err, "failed to parse registry")
+		return platform.StackMetadata{}, "", "", cmd.FailErr(err, "failed to parse registry")
 	}
 
 	registry := ref.Context().RegistryStr()
 
-	var stackMD lifecycle.StackMetadata
+	var stackMD platform.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
@@ -381,7 +383,7 @@ func resolveStack(imageName, stackPath, runImageRefOrig string) (lifecycle.Stack
 	var runImageRef string
 	if runImageRefOrig == "" {
 		if stackMD.RunImage.Image == "" {
-			return lifecycle.StackMetadata{}, "", "", cmd.FailErrCode(
+			return platform.StackMetadata{}, "", "", cmd.FailErrCode(
 				errors.New("-run-image is required when there is no stack metadata available"),
 				cmd.CodeInvalidArgs,
 				"parse arguments",
@@ -389,7 +391,7 @@ func resolveStack(imageName, stackPath, runImageRefOrig string) (lifecycle.Stack
 		}
 		runImageRef, err = stackMD.BestRunImageMirror(registry)
 		if err != nil {
-			return lifecycle.StackMetadata{}, "", "", err
+			return platform.StackMetadata{}, "", "", err
 		}
 	} else {
 		runImageRef = runImageRefOrig
