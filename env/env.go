@@ -165,11 +165,7 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 			continue
 		}
 		if f.Mode()&os.ModeSymlink != 0 {
-			lnPath, err := filepath.EvalSymlinks(filepath.Join(dir, f.Name()))
-			if err != nil {
-				return err
-			}
-			lnFile, err := os.Stat(lnPath)
+			lnFile, err := os.Stat(filepath.Join(dir, f.Name()))
 			if err != nil {
 				return err
 			}
