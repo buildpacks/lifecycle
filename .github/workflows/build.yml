@@ -42,6 +42,23 @@ jobs:
           go-version: '1.15'
       - name: Install jq
         run: choco install jq
+      - name: Add runner IP to daemon insecure-registries
+        shell: powershell
+        run: |
+          # Get IP from default gateway interface
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+
+          # create or update daemon config
+          $config=@{}
+          if (Test-Path C:\ProgramData\docker\config\daemon.json) {
+            $config=(Get-Content C:\ProgramData\docker\config\daemon.json | ConvertFrom-json)
+          }
+          $config["insecure-registries"] = @("$IPAddress/32")
+          ConvertTo-json $config | Out-File -Encoding ASCII C:\ProgramData\docker\config\daemon.json
+
+          Restart-Service docker
+
+          docker info
       - name: Test
         run: make test
   build:

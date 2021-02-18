@@ -79,8 +79,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
-					restorerImage,
 					"/layers",
+					restorerImage,
 					h.WithArgs("-cache-dir", "/cache"),
 				)
 
@@ -98,8 +98,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
-					restorerImage,
 					"/layers",
+					restorerImage,
 					h.WithArgs("-cache-dir", "/cache"),
 				)
 
@@ -115,8 +115,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
-					restorerImage,
 					"/layers",
+					restorerImage,
 					h.WithArgs("-cache-dir", "/cache"),
 				)
 

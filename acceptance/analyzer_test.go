@@ -33,15 +33,18 @@ var (
 	daemonOS             string
 	noAuthRegistry       *ih.DockerRegistry
 	registry             *ih.DockerRegistry
+	registryNetwork      string
+	vh                   VariableHelper
 )
 
 func TestAnalyzer(t *testing.T) {
-	h.SkipIf(t, runtime.GOOS == "windows", "These tests need to be adapted to work on Windows")
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	info, err := h.DockerCli(t).Info(context.TODO())
 	h.AssertNil(t, err)
 	daemonOS = info.OSType
+
+	vh = VariableHelper{OS: daemonOS}
 
 	// Setup registry
 
@@ -58,6 +61,12 @@ func TestAnalyzer(t *testing.T) {
 	noAuthRegistry.Start(t)
 	defer noAuthRegistry.Stop(t)
 
+	// if registry is listening on localhost, use host networking to allow containers to reach it
+	registryNetwork = "default"
+	if registry.Host == "localhost" {
+		registryNetwork = "host"
+	}
+
 	os.Setenv("DOCKER_CONFIG", registry.DockerDirectory)
 	// Copy docker config directory to analyze-image container
 	targetDockerConfig := filepath.Join("testdata", "analyzer", "analyze-image", "container", "docker-config")
@@ -70,7 +79,7 @@ func TestAnalyzer(t *testing.T) {
 	h.DockerBuild(t,
 		analyzeImage,
 		analyzeDockerContext,
-		h.WithFlags("-f", filepath.Join(analyzeDockerContext, dockerfileName)),
+		h.WithFlags("-f", filepath.Join(analyzeDockerContext, vh.Dockerfilename())),
 	)
 	defer h.DockerImageRemove(t, analyzeImage)
 
@@ -102,7 +111,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			cmd := exec.Command(
 				"docker", "run", "--rm",
 				analyzeImage,
-				analyzerPath,
+				vh.CtrPath(analyzerPath),
 			)
 			output, err := cmd.CombinedOutput()
 
@@ -116,7 +125,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("warns", func() {
 			output := h.DockerRun(t,
 				analyzeImage,
-				h.WithArgs(analyzerPath, "some-image"),
+				h.WithArgs(vh.CtrPath(analyzerPath), "some-image"),
 			)
 
 			expected := "Not restoring cached layer metadata, no cache flag specified."
@@ -140,20 +149,15 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 	when("group path is provided", func() {
 		it("uses the provided group path", func() {
-			cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
-
-			h.DockerRunAndCopy(t,
+			h.DockerSeedRunAndCopy(t,
 				containerName,
-				copyDir,
+				cacheFixtureDir, vh.CtrPath("/cache"),
+				copyDir, vh.CtrPath("/layers"),
 				analyzeImage,
-				"/layers",
-				h.WithFlags(
-					"--volume", cacheVolume+":"+"/cache", // use a cache so that we can observe the effect of other-group.toml on /layers
-				),
 				h.WithArgs(
-					analyzerPath,
-					"-cache-dir", "/cache",
-					"-group", "/layers/other-group.toml",
+					vh.CtrPath(analyzerPath),
+					"-cache-dir", vh.CtrPath("/cache"),
+					"-group", vh.CtrPath("/layers/other-group.toml"),
 					"some-image",
 				),
 			)
@@ -168,11 +172,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
+				vh.CtrPath("/some-dir/some-analyzed.toml"),
 				analyzeImage,
-				"/some-dir/some-analyzed.toml",
 				h.WithArgs(
-					analyzerPath,
-					"-analyzed", "/some-dir/some-analyzed.toml",
+					vh.CtrPath(analyzerPath),
+					"-analyzed", vh.CtrPath("/some-dir/some-analyzed.toml"),
 					"some-image",
 				),
 			)
@@ -186,10 +190,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
+				vh.CtrPath("/layers/analyzed.toml"),
 				analyzeImage,
-				"/layers/analyzed.toml",
-				h.WithFlags(dockerSocketMount...),
-				h.WithArgs(analyzerPath, "-daemon", "some-image"),
+				h.WithFlags(vh.DockerSocketMount()...),
+				h.WithArgs(vh.CtrPath(analyzerPath), "-daemon", "some-image"),
 			)
 
 			assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -220,10 +224,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
+					vh.CtrPath("/layers"),
 					analyzeImage,
-					"/layers",
-					h.WithFlags(dockerSocketMount...),
-					h.WithArgs(analyzerPath, "-daemon", appImage),
+					h.WithFlags(vh.DockerSocketMount()...),
+					h.WithArgs(
+						vh.CtrPath(analyzerPath),
+						"-daemon",
+						appImage,
+					),
 				)
 
 				assertLogsAndRestoresAppMetadata(t, copyDir, output)
@@ -234,11 +242,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
+						vh.CtrPath("/layers"),
 						analyzeImage,
-						"/layers",
-						h.WithFlags(dockerSocketMount...),
+						h.WithFlags(vh.DockerSocketMount()...),
 						h.WithArgs(
-							analyzerPath,
+							vh.CtrPath(analyzerPath),
 							"-daemon",
 							"-skip-layers",
 							appImage,
@@ -264,6 +272,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							"docker",
 							"build",
 							"-t", cacheImage,
+							"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 							"--build-arg", "metadata="+metadata,
 							filepath.Join("testdata", "analyzer", "cache-image"),
 						)
@@ -278,11 +287,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
+							vh.CtrPath("/layers"),
 							analyzeImage,
-							"/layers",
-							h.WithFlags(dockerSocketMount...),
+							h.WithFlags(vh.DockerSocketMount()...),
 							h.WithArgs(
-								analyzerPath,
+								vh.CtrPath(analyzerPath),
 								"-daemon",
 								"-cache-image", cacheImage,
 								"some-image",
@@ -304,6 +313,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								t,
 								"some-cache-image-"+h.RandString(10),
 								filepath.Join("testdata", "analyzer", "cache-image"),
+								"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 								"--build-arg", "metadata="+metadata,
 							)
 						})
@@ -317,15 +327,15 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
-									analyzeImage,
 									"/layers",
+									analyzeImage,
 									h.WithFlags(append(
-										dockerSocketMount,
+										vh.DockerSocketMount(),
 										"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
-										"--network", "host",
+										"--network", registryNetwork,
 									)...),
 									h.WithArgs(
-										analyzerPath,
+										vh.CtrPath(analyzerPath),
 										"-daemon",
 										"-cache-image", authRegCacheImage,
 										"some-image",
@@ -341,14 +351,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
+									vh.CtrPath("/layers"),
 									analyzeImage,
-									"/layers",
 									h.WithFlags(
 										"--env", "DOCKER_CONFIG=/docker-config",
-										"--network", "host",
+										"--network", registryNetwork,
 									),
 									h.WithArgs(
-										analyzerPath,
+										vh.CtrPath(analyzerPath),
 										"-cache-image",
 										authRegCacheImage,
 										"some-image",
@@ -374,7 +384,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								"--build-arg", "metadata="+metadata,
 							)
 
-							noAuthRegCacheImage, _ = getNoAuthRegistryImage(t, imageName)
+							noAuthRegCacheImage = noAuthRegistry.RepoName(appImageName)
 						})
 
 						it.After(func() {
@@ -385,11 +395,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
+								vh.CtrPath("/layers"),
 								analyzeImage,
-								"/layers",
-								h.WithFlags("--network", "host"),
+								h.WithFlags("--network", registryNetwork),
 								h.WithArgs(
-									analyzerPath,
+									vh.CtrPath(analyzerPath),
 									"-cache-image",
 									noAuthRegCacheImage,
 									"some-image",
@@ -404,21 +414,16 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("cache directory case", func() {
 				it("restores cache metadata", func() {
-					cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
-
-					output := h.DockerRunAndCopy(t,
+					output := h.DockerSeedRunAndCopy(t,
 						containerName,
-						copyDir,
+						cacheFixtureDir, vh.CtrPath("/cache"),
+						copyDir, vh.CtrPath("/layers"),
 						analyzeImage,
-						"/layers",
-						h.WithFlags(append(
-							dockerSocketMount,
-							"--volume", cacheVolume+":"+"/cache",
-						)...),
+						h.WithFlags(vh.DockerSocketMount()...),
 						h.WithArgs(
-							analyzerPath,
+							vh.CtrPath(analyzerPath),
 							"-daemon",
-							"-cache-dir", "/cache",
+							"-cache-dir", vh.CtrPath("/cache"),
 							"some-image",
 						),
 					)
@@ -436,7 +441,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRun(t,
 							analyzeImage,
 							h.WithFlags(append(
-								dockerSocketMount,
+								vh.DockerSocketMount(),
 								"--volume", cacheVolume+":/cache",
 							)...),
 							h.WithBash(
@@ -460,7 +465,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRun(t,
 							analyzeImage,
 							h.WithFlags(append(
-								dockerSocketMount,
+								vh.DockerSocketMount(),
 								"--volume", cacheVolume+":/cache",
 							)...),
 							h.WithBash(
@@ -482,9 +487,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
+				vh.CtrPath("/layers/analyzed.toml"),
 				analyzeImage,
-				"/layers/analyzed.toml",
-				h.WithArgs(analyzerPath, "some-image"),
+				h.WithArgs(vh.CtrPath(analyzerPath), "some-image"),
 			)
 
 			assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -513,13 +518,16 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
+							vh.CtrPath("/layers"),
 							analyzeImage,
-							"/layers",
 							h.WithFlags(
-								"--network", "host",
 								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+								"--network", registryNetwork,
 							),
-							h.WithArgs(analyzerPath, authRegAppImage),
+							h.WithArgs(
+								vh.CtrPath(analyzerPath),
+								authRegAppImage,
+							),
 						)
 
 						assertLogsAndRestoresAppMetadata(t, copyDir, output)
@@ -531,14 +539,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
+							vh.CtrPath("/layers"),
 							analyzeImage,
-							"/layers",
 							h.WithFlags(
 								"--env", "DOCKER_CONFIG=/docker-config",
-								"--network", "host",
+								"--network", registryNetwork,
 							),
 							h.WithArgs(
-								analyzerPath,
+								vh.CtrPath(analyzerPath),
 								authRegAppImage,
 							),
 						)
@@ -552,14 +560,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
+							vh.CtrPath("/layers"),
 							analyzeImage,
-							"/layers",
 							h.WithFlags(
-								"--network", "host",
+								"--network", registryNetwork,
 								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
 							),
 							h.WithArgs(
-								analyzerPath,
+								vh.CtrPath(analyzerPath),
 								"-skip-layers",
 								authRegAppImage,
 							),
@@ -584,7 +592,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join("testdata", "analyzer", "app-image"),
 						"--build-arg", "metadata="+metadata,
 					)
-					noAuthRegAppImage, _ = getNoAuthRegistryImage(t, imageName)
+
+					noAuthRegAppImage = noAuthRegistry.RepoName(appImageName)
 				})
 
 				it.After(func() {
@@ -595,11 +604,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
+						vh.CtrPath("/layers"),
 						analyzeImage,
-						"/layers",
-						h.WithFlags("--network", "host"),
+						h.WithFlags("--network", registryNetwork),
 						h.WithArgs(
-							analyzerPath,
+							vh.CtrPath(analyzerPath),
 							noAuthRegAppImage,
 						),
 					)
@@ -612,11 +621,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
+							vh.CtrPath("/layers"),
 							analyzeImage,
-							"/layers",
-							h.WithFlags("--network", "host"),
+							h.WithFlags("--network", registryNetwork),
 							h.WithArgs(
-								analyzerPath,
+								vh.CtrPath(analyzerPath),
 								"-skip-layers",
 								noAuthRegAppImage,
 							),
@@ -631,7 +640,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("cache is provided", func() {
 			when("cache image case", func() {
-				var cacheImage, cacheAuthConfig string
+				var authRegCacheImage, cacheAuthConfig string
 
 				when("auth registry", func() {
 					it.Before(func() {
@@ -645,7 +654,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it.After(func() {
-						h.DockerImageRemove(t, cacheImage)
+						h.DockerImageRemove(t, authRegCacheImage)
 					})
 
 					when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
@@ -653,15 +662,15 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
+								vh.CtrPath("/layers"),
 								analyzeImage,
-								"/layers",
 								h.WithFlags(
 									"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
-									"--network", "host",
+									"--network", registryNetwork,
 								),
 								h.WithArgs(
-									analyzerPath,
-									"-cache-image", cacheImage,
+									vh.CtrPath(analyzerPath),
+									"-cache-image", authRegCacheImage,
 									"some-image",
 								),
 							)
@@ -675,16 +684,16 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
+								vh.CtrPath("/layers"),
 								analyzeImage,
-								"/layers",
 								h.WithFlags(
 									"--env", "DOCKER_CONFIG=/docker-config",
-									"--network", "host",
+									"--network", registryNetwork,
 								),
 								h.WithArgs(
-									analyzerPath,
+									vh.CtrPath(analyzerPath),
 									"-cache-image",
-									cacheImage,
+									authRegCacheImage,
 									"some-image",
 								),
 							)
@@ -695,7 +704,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("no auth registry", func() {
-					var authRegCacheImage string
+					var authRegCacheImage, noAuthRegCacheImage string
 
 					it.Before(func() {
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
@@ -708,7 +717,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							"--build-arg", "metadata="+metadata,
 						)
 
-						cacheImage, cacheAuthConfig = getNoAuthRegistryImage(t, imageName)
+						noAuthRegCacheImage = noAuthRegistry.RepoName(cacheImageName)
 					})
 
 					it.After(func() {
@@ -719,12 +728,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
+							vh.CtrPath("/layers"),
 							analyzeImage,
-							"/layers",
-							h.WithFlags("--network", "host"),
+							h.WithFlags("--network", registryNetwork),
 							h.WithArgs(
-								analyzerPath,
-								"-cache-image", cacheImage,
+								vh.CtrPath(analyzerPath),
+								"-cache-image", noAuthRegCacheImage,
 								"some-image",
 							),
 						)
@@ -736,19 +745,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("cache directory case", func() {
 				it("restores cache metadata", func() {
-					cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
-
-					output := h.DockerRunAndCopy(t,
+					output := h.DockerSeedRunAndCopy(t,
 						containerName,
-						copyDir,
+						cacheFixtureDir, vh.CtrPath("/cache"),
+						copyDir, vh.CtrPath("/layers"),
 						analyzeImage,
-						"/layers",
-						h.WithFlags(
-							"--volume", cacheVolume+":"+"/cache",
-						),
 						h.WithArgs(
-							analyzerPath,
-							"-cache-dir", "/cache",
+							vh.CtrPath(analyzerPath),
+							"-cache-dir", vh.CtrPath("/cache"),
 							"some-image",
 						),
 					)
@@ -762,29 +766,29 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	when("Platform API < 0.5", func() {
 		when("layers path is provided", func() {
 			it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
+				otherLayersDir := filepath.Join(copyDir, "other-layers")
+				layersDir := filepath.Join(copyDir, "layers")
+
 				// The working directory is set to /layers in the Dockerfile
-
-				cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
-
-				h.DockerRunAndCopy(t,
+				h.DockerSeedRunAndCopy(t,
 					containerName,
-					copyDir,
+					cacheFixtureDir, vh.CtrPath("/cache"),
+					otherLayersDir, vh.CtrPath("/other-layers"),
 					analyzeImage,
-					"/",
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API=0.4",
-						"--volume", cacheVolume+":"+"/cache",
 					),
 					h.WithArgs(
-						analyzerPath,
-						"-layers", "/other-layers",
-						"-cache-dir", "/cache", // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
+						vh.CtrPath(analyzerPath),
+						"-layers", vh.CtrPath("/other-layers"),
+						"-cache-dir", vh.CtrPath("/cache"), // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
 						"some-image",
 					),
 				)
+				h.AssertPathExists(t, filepath.Join(otherLayersDir, "some-buildpack-id"))
 
-				assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
-				h.AssertPathExists(t, filepath.Join(copyDir, "other-layers", "some-buildpack-id"))
+				h.DockerCopyOut(t, containerName, vh.CtrPath("/layers"), layersDir)
+				assertAnalyzedMetadata(t, filepath.Join(layersDir, "analyzed.toml"))
 			})
 		})
 	})
@@ -792,21 +796,18 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	when("Platform API = 0.5", func() {
 		when("layers path is provided", func() {
 			it("uses the group path at the layers path and writes analyzed.toml at the layers path", func() {
-				cacheVolume = h.SeedDockerVolume(t, cacheFixtureDir)
-
-				h.DockerRunAndCopy(t,
+				h.DockerSeedRunAndCopy(t,
 					containerName,
-					copyDir,
+					cacheFixtureDir, vh.CtrPath("/cache"),
+					copyDir, vh.CtrPath("/some-other-layers"),
 					analyzeImage,
-					"/some-other-layers",
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API=0.5",
-						"--volume", cacheVolume+":"+"/cache",
 					),
 					h.WithArgs(
-						analyzerPath,
-						"-layers", "/some-other-layers",
-						"-cache-dir", "/cache", // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
+						vh.CtrPath(analyzerPath),
+						"-layers", vh.CtrPath("/some-other-layers"),
+						"-cache-dir", vh.CtrPath("/cache"), // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
 						"some-image",
 					),
 				)
@@ -843,15 +844,6 @@ func buildAuthRegistryImage(t *testing.T, repoName, context string, buildArgs ..
 	h.AssertNil(t, err)
 
 	return regRepoName, authConfig
-}
-
-func getNoAuthRegistryImage(t *testing.T, repoName string) (string, string) {
-	// Get matching repo name for read-only registry
-	noAuthRegRepoName := noAuthRegistry.RepoName(repoName)
-	noAuthRegAuthConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, noAuthRegRepoName)
-	h.AssertNil(t, err)
-
-	return noAuthRegRepoName, noAuthRegAuthConfig
 }
 
 func assertAnalyzedMetadata(t *testing.T, path string) {
