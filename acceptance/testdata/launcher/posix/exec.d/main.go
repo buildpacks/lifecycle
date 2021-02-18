@@ -14,7 +14,13 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("Exec.d Working Dir:", wd)
-	f := os.NewFile(3, "fd3")
+
+	f, err := outputFile()
+	if err != nil {
+		fmt.Println("ERROR: failed to get handle:", err)
+		os.Exit(1)
+	}
+	defer f.Close()
 
 	parent := filepath.Base(filepath.Dir(os.Args[0]))
 	val := "val-from-exec.d"
@@ -24,9 +30,8 @@ func main() {
 	if orig := os.Getenv("VAR_FROM_EXEC_D"); orig != "" {
 		val = orig + ":" + val
 	}
-	defer f.Close()
 	if _, err := f.WriteString(fmt.Sprintf(`VAR_FROM_EXEC_D = "%s"`, val)); err != nil {
-		fmt.Println("ERROR: failed to write to FD 3:", err)
+		fmt.Println("ERROR: failed to write to output file:", err)
 		os.Exit(1)
 	}
 	os.Exit(0)

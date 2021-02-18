@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"runtime"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -27,9 +26,6 @@ func NewExecDRunner() *ExecDRunner {
 // ExecD executes the executable file at path and sets the returned variables in env. The executable at path
 // should implement the ExecD interface in the buildpack specification https://github.com/buildpacks/spec/blob/main/buildpack.md#execd
 func (e *ExecDRunner) ExecD(path string, env Env) error {
-	if runtime.GOOS == "windows" {
-		return errors.New("exec.d is not currently supported on windows")
-	}
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return errors.Wrap(err, "failed to create pipe")
