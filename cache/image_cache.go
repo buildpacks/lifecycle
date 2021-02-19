@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
 	"runtime"
 
 	"github.com/buildpacks/imgutil"
@@ -18,16 +20,23 @@ import (
 const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
 
 type ImageCache struct {
-	committed bool
-	origImage imgutil.Image
-	newImage  imgutil.Image
+	committed         bool
+	origImage         imgutil.Image
+	newImage          imgutil.Image
+	generatedLayerDir string
 }
 
-func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) *ImageCache {
-	return &ImageCache{
-		origImage: origImage,
-		newImage:  newImage,
+func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) (*ImageCache, error) {
+	generatedLayerDir, err := ioutil.TempDir("", "imace-cache-generated-layers")
+	if err != nil {
+		return nil, fmt.Errorf("creating temp dir: %w", err)
 	}
+
+	return &ImageCache{
+		origImage:         origImage,
+		newImage:          newImage,
+		generatedLayerDir: generatedLayerDir,
+	}, nil
 }
 
 func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, error) {
@@ -35,6 +44,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		name,
 		keychain,
 		remote.FromBaseImage(name),
+		remote.WithPlatform(imgutil.Platform{OS: runtime.GOOS}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("accessing cache image %q: %v", name, err)
@@ -43,15 +53,13 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		name,
 		keychain,
 		remote.WithPreviousImage(name),
+		remote.WithPlatform(imgutil.Platform{OS: runtime.GOOS}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
 	}
-	if err := emptyImage.SetOS(runtime.GOOS); err != nil {
-		return nil, fmt.Errorf("setting OS new cache image %q: %w", name, err)
-	}
 
-	return NewImageCache(origImage, emptyImage), nil
+	return NewImageCache(origImage, emptyImage)
 }
 
 func (c *ImageCache) Exists() bool {
@@ -119,6 +127,14 @@ func (c *ImageCache) Commit() error {
 		}
 	}
 	c.origImage = c.newImage
+
+	// Deleting generated layers is for cleanup only and should not fail the commit.
+	if _, err := os.Stat(c.generatedLayerDir); !os.IsNotExist(err) {
+		if err != os.RemoveAll(c.generatedLayerDir) {
+			fmt.Printf("Unable to delete generated layer: %v", err)
+		}
+	}
+
 	return nil
 }
 
