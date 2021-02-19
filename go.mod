@@ -1,5 +1,7 @@
 module github.com/buildpacks/lifecycle
 
+replace github.com/buildpacks/imgutil => github.com/micahyoung/buildpacks-imgutil v0.0.0-20210226115357-f4113f07ae14
+
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5 // indirect
