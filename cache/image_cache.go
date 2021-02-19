@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
@@ -46,6 +47,10 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 	if err != nil {
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
 	}
+	if err := emptyImage.SetOS(runtime.GOOS); err != nil {
+		return nil, fmt.Errorf("setting OS new cache image %q: %w", name, err)
+	}
+
 	return NewImageCache(origImage, emptyImage), nil
 }
 
