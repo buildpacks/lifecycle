@@ -81,11 +81,45 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 		return BuildResult{}, err
 	}
 
+	if err := b.checkTypesFormat(bpLayersDir, config.Out); err != nil {
+		return BuildResult{}, err
+	}
+
 	if err := b.setupEnv(config.Env, bpLayersDir); err != nil {
 		return BuildResult{}, err
 	}
 
 	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Out)
+}
+
+func renameLayerDirIfNeeded(layerDir, buildpackAPI string) error {
+	// rename <layers>/<layer> to <layers>/<layer>.ignore if buildpack API >= 0.6 and all of the types flags are set to false
+	if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0 && areTypesFalse(layerDir+".toml", buildpackAPI) {
+		if err := os.Rename(layerDir, layerDir+".ignore"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *Descriptor) checkTypesFormat(layersDir string, out io.Writer) error {
+	return eachDir(layersDir, b.API, func(path, buildpackAPI string) error {
+		ok := typesInRightFormat(path+".toml", buildpackAPI)
+		if !ok {
+			if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
+				warning := "Warning: types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
+				if _, err := out.Write([]byte(warning)); err != nil {
+					return err
+				}
+				return nil
+			}
+			return fmt.Errorf("the launch, cache and build flags should be in the types table of %s.toml", path)
+		}
+		if err := renameLayerDirIfNeeded(path, buildpackAPI); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func preparePaths(bpID string, bpPlan Plan, layersDir, planDir string) (string, string, error) {
@@ -147,8 +181,8 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 }
 
 func (b *Descriptor) setupEnv(buildEnv BuildEnv, layersDir string) error {
-	if err := eachDir(layersDir, func(path string) error {
-		if !isBuild(path + ".toml") {
+	if err := eachDir(layersDir, b.API, func(path, buildpackAPI string) error {
+		if !isBuild(path+".toml", buildpackAPI) {
 			return nil
 		}
 		return buildEnv.AddRootDir(path)
@@ -156,8 +190,8 @@ func (b *Descriptor) setupEnv(buildEnv BuildEnv, layersDir string) error {
 		return err
 	}
 
-	return eachDir(layersDir, func(path string) error {
-		if !isBuild(path + ".toml") {
+	return eachDir(layersDir, b.API, func(path, buildpackAPI string) error {
+		if !isBuild(path+".toml", buildpackAPI) {
 			return nil
 		}
 		bpAPI := api.MustParse(b.API)
@@ -168,7 +202,7 @@ func (b *Descriptor) setupEnv(buildEnv BuildEnv, layersDir string) error {
 	})
 }
 
-func eachDir(dir string, fn func(path string) error) error {
+func eachDir(dir, buildpackAPI string, fn func(path, api string) error) error {
 	files, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
@@ -179,19 +213,11 @@ func eachDir(dir string, fn func(path string) error) error {
 		if !f.IsDir() {
 			continue
 		}
-		if err := fn(filepath.Join(dir, f.Name())); err != nil {
+		if err := fn(filepath.Join(dir, f.Name()), buildpackAPI); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func isBuild(path string) bool {
-	var layerTOML struct {
-		Build bool `toml:"build"`
-	}
-	_, err := toml.DecodeFile(path, &layerTOML)
-	return err == nil && layerTOML.Build
 }
 
 func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, out io.Writer) (BuildResult, error) {

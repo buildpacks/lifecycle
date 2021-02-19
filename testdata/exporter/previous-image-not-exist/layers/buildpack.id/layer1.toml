@@ -1,4 +1,5 @@
-cache = false
-launch = true
+[types]
+  cache = false
+  launch = true
 [metadata]
   mykey = "new val"

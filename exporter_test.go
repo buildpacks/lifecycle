@@ -273,6 +273,25 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				assertReuseLayerLog(t, logHandler, "other.buildpack.id:local-reusable-layer")
 			})
 
+			when("the launch flag is in the top level table", func() {
+				it.Before(func() {
+					exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "other.buildpack.id", API: api.Buildpack.Latest().String()}}
+					fakeAppImage.AddPreviousLayer("local-non-reusable-layer-digest", "")
+					opts.OrigMetadata = platform.LayersMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{
+							ID:     "other.buildpack.id",
+							Layers: map[string]platform.BuildpackLayerMetadata{"local-non-reusable-layer": {LayerMetadata: platform.LayerMetadata{SHA: "local-non-reusable-layer-digest"}}},
+						}},
+					}
+				})
+				it("ignores the flag and doesn't reuse cached launch layers even if the local sha matches the sha in the metadata", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
+				})
+			})
+
 			it("adds new launch layers", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -1241,7 +1260,7 @@ version = "4.5.6"
 
 		when("buildpack requires an escaped id", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: "0.1"}}
+				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: api.Buildpack.Latest().String()}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), opts.LayersDir)
 			})
@@ -1317,6 +1336,55 @@ version = "4.5.6"
 					err,
 					"layer 'buildpack.id:cache-layer-no-contents' is cache=true but has no contents",
 				)
+			})
+		})
+
+		when("buildpack API < 0.6", func() {
+			it.Before(func() {
+				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "old.buildpack.id", API: "0.5"}}
+			})
+
+			when("previous image exists", func() {
+				it.Before(func() {
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "previous-image-exists", "layers"), opts.LayersDir)
+				})
+
+				when("the launch flag is in the top level", func() {
+					it.Before(func() {
+						fakeAppImage.AddPreviousLayer("launch-layer-no-local-dir-digest", "")
+						opts.OrigMetadata = platform.LayersMetadata{
+							Buildpacks: []platform.BuildpackLayersMetadata{{
+								ID:     "old.buildpack.id",
+								Layers: map[string]platform.BuildpackLayerMetadata{"launch-layer": {LayerMetadata: platform.LayerMetadata{SHA: "launch-layer"}}},
+							}},
+						}
+					})
+					it("creates app layer on Run image", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						assertHasLayer(t, fakeAppImage, "app")
+						assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
+					})
+				})
+
+				when("the launch flag is in the types table", func() {
+					it.Before(func() {
+						fakeAppImage.AddPreviousLayer("local-non-reusable-layer-digest", "")
+						opts.OrigMetadata = platform.LayersMetadata{
+							Buildpacks: []platform.BuildpackLayersMetadata{{
+								ID:     "old.buildpack.id",
+								Layers: map[string]platform.BuildpackLayerMetadata{"local-non-reusable-layer": {LayerMetadata: platform.LayerMetadata{SHA: "local-non-reusable-layer-digest"}}},
+							}},
+						}
+					})
+					it("ignores the flag and doesn't reuse cached launch layers even if the local sha matches the sha in the metadata", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
+					})
+				})
 			})
 		})
 	})

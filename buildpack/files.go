@@ -4,7 +4,11 @@ package buildpack
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/BurntSushi/toml"
+
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -197,4 +201,112 @@ type LayerMetadataFile struct {
 	Build  bool        `json:"build" toml:"build"`
 	Launch bool        `json:"launch" toml:"launch"`
 	Cache  bool        `json:"cache" toml:"cache"`
+}
+
+type typesTable struct {
+	Build  bool `toml:"build"`
+	Launch bool `toml:"launch"`
+	Cache  bool `toml:"cache"`
+}
+type layerMetadataTomlFile struct {
+	Data  interface{} `toml:"metadata"`
+	Types typesTable  `toml:"types"`
+}
+
+func (lmf *LayerMetadataFile) Encode(path, buildpackAPI string) error {
+	fh, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	if supportsTypesTable(buildpackAPI) {
+		types := typesTable{Build: lmf.Build, Launch: lmf.Launch, Cache: lmf.Cache}
+		lmtf := layerMetadataTomlFile{Data: lmf.Data, Types: types}
+		return toml.NewEncoder(fh).Encode(lmtf)
+	}
+	return toml.NewEncoder(fh).Encode(lmf)
+}
+
+func DecodeLayerMetadataFile(path, buildpackAPI string) (LayerMetadataFile, error) {
+	fh, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return LayerMetadataFile{}, nil
+	} else if err != nil {
+		return LayerMetadataFile{}, err
+	}
+	defer fh.Close()
+
+	if supportsTypesTable(buildpackAPI) {
+		var lmtf layerMetadataTomlFile
+		if _, err = toml.DecodeFile(path, &lmtf); err != nil {
+			return LayerMetadataFile{}, err
+		}
+		return LayerMetadataFile{Data: lmtf.Data, Build: lmtf.Types.Build, Launch: lmtf.Types.Launch, Cache: lmtf.Types.Cache}, nil
+	}
+	var lmf LayerMetadataFile
+	if _, err := toml.DecodeFile(path, &lmf); err != nil {
+		return LayerMetadataFile{}, err
+	}
+	return lmf, nil
+}
+
+func typesInTopLevel(path string) (bool, error) {
+	fh, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	defer fh.Close()
+
+	var lmf LayerMetadataFile
+	if _, err := toml.DecodeFile(path, &lmf); err != nil {
+		return false, err
+	}
+	return lmf.Cache || lmf.Launch || lmf.Build, nil
+}
+
+func typesInTypesTable(path string) (bool, error) {
+	fh, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	defer fh.Close()
+
+	var lmtf layerMetadataTomlFile
+	if _, err = toml.DecodeFile(path, &lmtf); err != nil {
+		return false, err
+	}
+	return lmtf.Types.Build || lmtf.Types.Launch || lmtf.Types.Cache, nil
+}
+
+func typesInRightFormat(path, buildpackAPI string) bool {
+	if supportsTypesTable(buildpackAPI) {
+		topLevel, err := typesInTopLevel(path)
+		return err == nil && !topLevel
+	}
+	typesTable, err := typesInTypesTable(path)
+	return err == nil && !typesTable
+}
+
+func areTypesFalse(path, buildpackAPI string) bool {
+	layerMetadataFile, err := DecodeLayerMetadataFile(path, buildpackAPI)
+	return err == nil && !layerMetadataFile.Build && !layerMetadataFile.Cache && !layerMetadataFile.Launch
+}
+
+func isBuild(path, buildpackAPI string) bool {
+	layerMetadataFile, err := DecodeLayerMetadataFile(path, buildpackAPI)
+	return err == nil && layerMetadataFile.Build
+}
+
+func supportsTypesTable(buildpackAPI string) bool {
+	return api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0
+}
+
+func (lmf *LayerMetadataFile) UnsetFlags() {
+	lmf.Launch = false
+	lmf.Cache = false
+	lmf.Build = false
 }

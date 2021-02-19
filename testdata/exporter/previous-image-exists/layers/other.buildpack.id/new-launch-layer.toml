@@ -1,1 +1,2 @@
-launch = true
+[types]
+  launch = true

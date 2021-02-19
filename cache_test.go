@@ -18,6 +18,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
@@ -61,8 +62,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 			exporter = &lifecycle.Exporter{
 				Buildpacks: []buildpack.GroupBuildpack{
-					{ID: "buildpack.id"},
-					{ID: "other.buildpack.id"},
+					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
+					{ID: "other.buildpack.id", API: api.Buildpack.Latest().String()},
 				},
 				Logger:       &log.Logger{Handler: logHandler},
 				LayerFactory: layerFactory,
@@ -150,20 +151,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("the SHAs match", func() {
 					it.Before(func() {
-						previousCache, err := cache.NewVolumeCache(cacheDir)
-						h.AssertNil(t, err)
-
-						err = exporter.Cache(layersDir, previousCache)
-						h.AssertNil(t, err)
-
-						testCache, err = cache.NewVolumeCache(cacheDir)
-						h.AssertNil(t, err)
-
-						h.AssertNil(t, ioutil.WriteFile(
-							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
-							[]byte(fmt.Sprintf(metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer")),
-							0666,
-						))
+						initializeCache(t, exporter, &testCache, cacheDir, layersDir, metadataTemplate)
 					})
 
 					it("reuses layers when the calculated sha matches previous metadata", func() {
@@ -280,6 +268,61 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				assertCacheHasLayer(t, testCache, "buildpack.id:layer-2")
 			})
 		})
+
+		when("buildpack API < 0.6", func() {
+			it.Before(func() {
+				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "old.buildpack.id", API: "0.5"}}
+			})
+			when("the layers are valid", func() {
+				it.Before(func() {
+					layerFactory.EXPECT().
+						DirLayer(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+							return createTestLayer(id, tmpDir)
+						}).AnyTimes()
+
+					layersDir = filepath.Join("testdata", "cacher", "layers")
+				})
+
+				when("there are previously cached layers", func() {
+					when("the SHAs match", func() {
+						it.Before(func() {
+							metadataTemplate := `{
+					"buildpacks": [
+					 {
+					   "key": "old.buildpack.id",
+					   "layers": {
+					     "cache-true-layer": {
+					       "cache": true,
+					       "sha": "%s",
+					       "data": {"old":"data"}
+					     }
+					   }
+					 }
+					]
+					}`
+							initializeCache(t, exporter, &testCache, cacheDir, layersDir, metadataTemplate)
+						})
+						it("sets cache metadata", func() {
+							err := exporter.Cache(layersDir, testCache)
+							h.AssertNil(t, err)
+
+							metadata, err := testCache.RetrieveMetadata()
+							h.AssertNil(t, err)
+
+							t.Log("adds layer shas to metadata")
+							h.AssertEq(t, metadata.Buildpacks[0].ID, "old.buildpack.id")
+							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
+							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
+							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)
+							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Data, map[string]interface{}{
+								"cache-true-key": "cache-true-val",
+							})
+						})
+					})
+				})
+			})
+		})
 	})
 }
 
@@ -292,4 +335,21 @@ func assertCacheHasLayer(t *testing.T, cache lifecycle.Cache, id string) {
 	contents, err := ioutil.ReadAll(rc)
 	h.AssertNil(t, err)
 	h.AssertEq(t, string(contents), testLayerContents(id))
+}
+
+func initializeCache(t *testing.T, exporter *lifecycle.Exporter, testCache *lifecycle.Cache, cacheDir, layersDir, metadataTemplate string) {
+	previousCache, err := cache.NewVolumeCache(cacheDir)
+	h.AssertNil(t, err)
+
+	err = exporter.Cache(layersDir, previousCache)
+	h.AssertNil(t, err)
+
+	*testCache, err = cache.NewVolumeCache(cacheDir)
+	h.AssertNil(t, err)
+
+	h.AssertNil(t, ioutil.WriteFile(
+		filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
+		[]byte(fmt.Sprintf(metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer")),
+		0666,
+	))
 }

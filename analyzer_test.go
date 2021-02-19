@@ -17,6 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -55,9 +56,13 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		analyzer = &lifecycle.Analyzer{
-			Buildpacks: []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
-			LayersDir:  layerDir,
-			Logger:     &log.Logger{Handler: &discard.Handler{}},
+			Buildpacks: []buildpack.GroupBuildpack{
+				{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
+				{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
+				{ID: "no.metadata.buildpack", API: api.Buildpack.Latest().String()},
+			},
+			LayersDir: layerDir,
+			Logger:    &log.Logger{Handler: &discard.Handler{}},
 		}
 		if testing.Verbose() {
 			analyzer.Logger = cmd.DefaultLogger
@@ -99,10 +104,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, json.Unmarshal(metadata, &appImageMetadata))
 			})
 
-			it("restores layer metadata", func() {
+			it("restores layer metadata and unset the launch, build and cache flags", func() {
 				_, err := analyzer.Analyze(image, testCache)
 				h.AssertNil(t, err)
 
+				unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
 				for _, data := range []struct{ name, want string }{
 					{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
 					{"metadata.buildpack/launch-build-cache.toml", "[metadata]\n  launch-build-cache-key = \"launch-build-cache-value\""},
@@ -111,7 +117,33 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				} {
 					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 					h.AssertStringContains(t, string(got), data.want)
+					h.AssertStringContains(t, string(got), unsetFlags)
 				}
+			})
+
+			when("buildpack API < 0.6", func() {
+				it.Before(func() {
+					analyzer.Buildpacks = []buildpack.GroupBuildpack{
+						{ID: "metadata.buildpack", API: "0.5"},
+						{ID: "no.cache.buildpack", API: "0.5"},
+					}
+				})
+				it("restores layer metadata and unset the launch, build and cache flags in top level", func() {
+					_, err := analyzer.Analyze(image, testCache)
+					h.AssertNil(t, err)
+
+					unsetFlags := "build = false\nlaunch = false\ncache = false"
+					for _, data := range []struct{ name, want string }{
+						{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
+						{"metadata.buildpack/launch-build-cache.toml", "[metadata]\n  launch-build-cache-key = \"launch-build-cache-value\""},
+						{"metadata.buildpack/launch-cache.toml", "[metadata]\n  launch-cache-key = \"launch-cache-value\""},
+						{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
+					} {
+						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+						h.AssertStringContains(t, string(got), data.want)
+						h.AssertStringContains(t, string(got), unsetFlags)
+					}
+				})
 			})
 
 			it("restores layer sha files", func() {
@@ -146,7 +178,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			when("subset of buildpacks are detected", func() {
 				it.Before(func() {
-					analyzer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack"}}
+					analyzer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()}}
 				})
 				it("restores layers for detected buildpacks", func() {
 					_, err := analyzer.Analyze(image, testCache)
@@ -195,13 +227,14 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
 					h.AssertNil(t, testCache.Commit())
 
-					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id"})
+					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
 				})
 
-				it("restores app and cache layer metadata", func() {
+				it("restores app and cache layer metadata and unset the launch, build and cache flags", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
+					unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
 					for _, data := range []struct{ name, want string }{
 						// App layers.
 						{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
@@ -213,6 +246,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					} {
 						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 						h.AssertStringContains(t, string(got), data.want)
+						h.AssertStringContains(t, string(got), unsetFlags)
 					}
 				})
 
@@ -288,20 +322,22 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache-false.sha"))
 				})
 
-				it("restores escaped buildpack layer metadata", func() {
+				it("restores escaped buildpack layer metadata and unset the launch, build and cache flags", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
 					path := filepath.Join(layerDir, "escaped_buildpack_id", "escaped-bp-layer.toml")
 					got := h.MustReadFile(t, path)
 					want := "[metadata]\n  escaped-bp-layer-key = \"escaped-bp-layer-value\""
+					unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
 
 					h.AssertStringContains(t, string(got), want)
+					h.AssertStringContains(t, string(got), unsetFlags)
 				})
 
 				when("subset of buildpacks are detected", func() {
 					it.Before(func() {
-						analyzer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.group.buildpack"}}
+						analyzer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.group.buildpack", API: api.Buildpack.Latest().String()}}
 					})
 
 					it("restores layers for detected buildpacks", func() {
@@ -384,19 +420,20 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
 					h.AssertNil(t, testCache.Commit())
 
-					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id"})
+					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
 				})
 
-				it("restores cache=true layer metadata", func() {
+				it("restores cache=true layer metadata and unset the launch, build and cache flags", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
-					for _, data := range []struct{ name, want string }{
-						{"metadata.buildpack/cache.toml", "[metadata]\n  cache-key = \"cache-value\""},
-					} {
-						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
-						h.AssertStringContains(t, string(got), data.want)
-					}
+					path := filepath.Join(layerDir, "metadata.buildpack/cache.toml")
+					got := h.MustReadFile(t, path)
+					want := "[metadata]\n  cache-key = \"cache-value\""
+					unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
+
+					h.AssertStringContains(t, string(got), want)
+					h.AssertStringContains(t, string(got), unsetFlags)
 				})
 
 				it("does not restore launch=true layer metadata", func() {

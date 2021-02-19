@@ -107,10 +107,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(appDir, "layers-A-v1", "layer2"),
 					filepath.Join(appDir, "layers-A-v1", "layer3"),
 				)
-				h.Mkfile(t, "build = true",
+				h.Mkfile(t, "[types]\n  build = true",
 					filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
 					filepath.Join(appDir, "layers-A-v1", "layer3.toml"),
 				)
+				// the testdata/buildpack/bin/build script copies the content of the appDir into the layersDir
 				gomock.InOrder(
 					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
 					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
@@ -340,6 +341,23 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 			})
+
+			when("the launch, cache and build flags are false", func() {
+				it("rename <layers>/<layer> to <layers>/<layer>.ignore", func() {
+					h.Mkdir(t,
+						filepath.Join(layersDir, "A", "layer"),
+					)
+					h.Mkfile(t,
+						"[types]\n  build=false\n  cache=false\n  launch=false",
+						filepath.Join(layersDir, "A", "layer.toml"),
+					)
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					h.AssertNil(t, err)
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
+					h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
+				})
+			})
 		})
 
 		when("building succeeds with a clear env", func() {
@@ -450,7 +468,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "layers-A-v1", "layer1"),
 						filepath.Join(appDir, "layers-A-v1", "layer2"),
 					)
-					h.Mkfile(t, "build = true",
+					h.Mkfile(t, "[types]\n  build = true",
 						filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
 						filepath.Join(appDir, "layers-A-v1", "layer2.toml"),
 					)
@@ -460,7 +478,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("should error when launch.toml is not writable", func() {
+			it.Pend("should error when launch.toml is not writable", func() { // TODO: ask Natalie - do we need this test?
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				h.Mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
 				if _, err := bpTOML.Build(buildpack.Plan{}, config); err == nil {
@@ -570,6 +588,25 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						expected := "multiple default process types aren't allowed"
 						h.AssertStringContains(t, err.Error(), expected)
 					})
+				})
+			})
+
+			when("the launch, cache and build flags are in the top level", func() {
+				it("should error", func() {
+					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+					h.Mkdir(t,
+						filepath.Join(layersDir, "A"),
+						filepath.Join(appDir, "layers-A-v1", "layer"),
+					)
+					h.Mkfile(t,
+						"build=true\ncache=true\nlaunch=true",
+						filepath.Join(appDir, "layers-A-v1", "layer.toml"),
+					)
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					h.AssertNotNil(t, err)
+					expected := "the launch, cache and build flags should be in the types table"
+					h.AssertStringContains(t, err.Error(), expected)
 				})
 			})
 		})
@@ -852,6 +889,24 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				}
 				expected := "Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [type-with-default]"
 				h.AssertStringContains(t, stdout.String(), expected)
+			})
+
+			when("the launch, cache and build flags are in the types table", func() {
+				it("should warn", func() {
+					h.Mkdir(t,
+						filepath.Join(layersDir, "A"),
+						filepath.Join(appDir, "layers-A-v1", "layer"),
+					)
+					h.Mkfile(t,
+						"[types]\n  build=true\n  cache=true\n  launch=true",
+						filepath.Join(appDir, "layers-A-v1", "layer.toml"),
+					)
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					h.AssertNil(t, err)
+					expected := "Warning: types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
+					h.AssertStringContains(t, stdout.String(), expected)
+				})
 			})
 		})
 	})
