@@ -1,9 +1,6 @@
 package lifecycle
 
 import (
-	"fmt"
-	"path/filepath"
-
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -12,24 +9,24 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Restorer struct {
-	LayersDir   string
-	Buildpacks  []buildpack.GroupBuildpack
-	Logger      Logger
-	SkipLayers  bool
-	PlatformAPI *api.Version
+	LayersDir     string
+	Buildpacks    []buildpack.GroupBuildpack
+	Logger        Logger
+	SkipLayers    bool
+	LayerAnalyzer LayerAnalyzer
+	PlatformAPI   *api.Version
 }
 
 // Restore attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will remove all cache=true layer metadata.
 func (r *Restorer) Restore(img imgutil.Image, cache Cache) error {
 	// Create empty cache metadata in case a usable cache is not provided.
-	meta, err := r.retrieveMetadataFrom(cache)
+	meta, err := r.LayerAnalyzer.RetrieveMetadataFrom(cache)
 	if err != nil {
 		return err
 	}
@@ -41,11 +38,7 @@ func (r *Restorer) Restore(img imgutil.Image, cache Cache) error {
 			appMeta = platform.LayersMetadata{}
 		}
 
-		if err := r.restoreStoreTOML(appMeta); err != nil {
-			return err
-		}
-
-		if err := r.analyzeLayers(appMeta, meta); err != nil {
+		if err := r.LayerAnalyzer.Analyze(r.Buildpacks, r.SkipLayers, appMeta, meta); err != nil {
 			return err
 		}
 	}
@@ -92,17 +85,6 @@ func (r *Restorer) Restore(img imgutil.Image, cache Cache) error {
 	return nil
 }
 
-func (r *Restorer) restoreStoreTOML(appMeta platform.LayersMetadata) error {
-	for _, bp := range r.Buildpacks {
-		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
-			if err := WriteTOML(filepath.Join(r.LayersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	// Sanity check to prevent panic.
 	if cache == nil {
@@ -116,88 +98,6 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	defer rc.Close()
 
 	return layers.Extract(rc, "")
-}
-
-func (r *Restorer) analyzeLayers(appMeta platform.LayersMetadata, meta platform.CacheMetadata) error {
-	if r.SkipLayers {
-		r.Logger.Infof("Skipping buildpack layer analysis")
-		return nil
-	}
-
-	for _, buildpack := range r.Buildpacks {
-		buildpackDir, err := readBuildpackLayersDir(r.LayersDir, buildpack)
-		if err != nil {
-			return errors.Wrap(err, "reading buildpack layer directory")
-		}
-
-		// Restore metadata for launch=true layers.
-		// The restorer step will restore the layer data for cache=true layers if possible or delete the layer.
-		appLayers := appMeta.MetadataForBuildpack(buildpack.ID).Layers
-		for name, layer := range appLayers {
-			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
-			if !layer.Launch {
-				r.Logger.Debugf("Not restoring metadata for %q, marked as launch=false", identifier)
-				continue
-			}
-			if layer.Build && !layer.Cache {
-				r.Logger.Debugf("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
-				continue
-			}
-			r.Logger.Infof("Restoring metadata for %q from app image", identifier)
-			if err := r.writeLayerMetadata(buildpackDir, name, layer); err != nil {
-				return err
-			}
-		}
-
-		// Restore metadata for cache=true layers.
-		// The restorer step will restore the layer data if possible or delete the layer.
-		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
-		for name, layer := range cachedLayers {
-			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
-			if !layer.Cache {
-				r.Logger.Debugf("Not restoring %q from cache, marked as cache=false", identifier)
-				continue
-			}
-			// If launch=true, the metadata was restored from the app image or the layer is stale.
-			if layer.Launch {
-				r.Logger.Debugf("Not restoring %q from cache, marked as launch=true", identifier)
-				continue
-			}
-			r.Logger.Infof("Restoring metadata for %q from cache", identifier)
-			if err := r.writeLayerMetadata(buildpackDir, name, layer); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (r *Restorer) writeLayerMetadata(buildpackDir bpLayersDir, name string, metadata platform.BuildpackLayerMetadata) error {
-	layer := buildpackDir.newBPLayer(name)
-	r.Logger.Debugf("Writing layer metadata for %q", layer.Identifier())
-	if err := layer.writeMetadata(metadata); err != nil {
-		return err
-	}
-	return layer.writeSha(metadata.SHA)
-}
-
-func (r *Restorer) retrieveMetadataFrom(cache Cache) (platform.CacheMetadata, error) {
-	// Create empty cache metadata in case a usable cache is not provided.
-	var cacheMeta platform.CacheMetadata
-	if cache != nil {
-		var err error
-		if !cache.Exists() {
-			r.Logger.Info("Layer cache not found")
-		}
-		cacheMeta, err = cache.RetrieveMetadata()
-		if err != nil {
-			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
-		}
-	} else {
-		r.Logger.Debug("Usable cache not provided, using empty cache metadata.")
-	}
-
-	return cacheMeta, nil
 }
 
 func (r *Restorer) analyzesLayers() bool {

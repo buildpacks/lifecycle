@@ -1,14 +1,17 @@
 package lifecycle_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
+	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -22,7 +25,9 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestRestorer(t *testing.T) {
@@ -32,11 +37,13 @@ func TestRestorer(t *testing.T) {
 func testRestorer(t *testing.T, when spec.G, it spec.S) {
 	when("#Restore", func() {
 		var (
-			layersDir string
-			cacheDir  string
-			testCache lifecycle.Cache
-			restorer  *lifecycle.Restorer
-			image     *fakes.Image
+			layersDir         string
+			cacheDir          string
+			testCache         lifecycle.Cache
+			restorer          *lifecycle.Restorer
+			image             *fakes.Image
+			mockCtrl          *gomock.Controller
+			mockLayerAnalyzer *testmock.MockLayerAnalyzer
 		)
 
 		it.Before(func() {
@@ -51,6 +58,9 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
 
+			mockCtrl = gomock.NewController(t)
+			mockLayerAnalyzer = testmock.NewMockLayerAnalyzer(mockCtrl)
+
 			restorer = &lifecycle.Restorer{
 				PlatformAPI: api.Platform.Latest(),
 				LayersDir:   layersDir,
@@ -58,7 +68,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					{ID: "buildpack.id"},
 					{ID: "escaped/buildpack/id"},
 				},
-				Logger: &log.Logger{Handler: &discard.Handler{}},
+				Logger:        &log.Logger{Handler: &discard.Handler{}},
+				LayerAnalyzer: mockLayerAnalyzer,
 			}
 			if testing.Verbose() {
 				restorer.Logger = cmd.DefaultLogger
@@ -73,14 +84,20 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(layersDir))
 			h.AssertNil(t, os.RemoveAll(cacheDir))
 			h.AssertNil(t, image.Cleanup())
+			mockCtrl.Finish()
 		})
 
 		when("there is an no cache", func() {
+			it.Before(func() {
+				testCache = nil
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+			})
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
-					h.AssertNil(t, restorer.Restore(image, nil))
+					h.AssertNil(t, restorer.Restore(image, testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -109,6 +126,10 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("there is an empty cache", func() {
+			it.Before(func() {
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+			})
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
 					meta := "cache=true"
@@ -236,12 +257,17 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 }
 `, cacheFalseLayerSHA, cacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
 
+				metadataFile := filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata")
 				err = ioutil.WriteFile(
-					filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
+					metadataFile,
 					[]byte(contents),
 					0666,
 				)
 				h.AssertNil(t, err)
+
+				metadata := platform.CacheMetadata{}
+				h.AssertNil(t, json.NewDecoder(strings.NewReader(contents)).Decode(&metadata))
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache).Return(metadata, nil)
 			})
 
 			it.After(func() {
@@ -282,6 +308,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("there is a cache=false layer", func() {
 				var meta string
 				it.Before(func() {
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+
 					meta = `cache=false
 [metadata]
   cache-false-key = "cache-false-val"`
@@ -304,6 +332,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a cache=true layer with wrong sha", func() {
 				it.Before(func() {
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "some-made-up-sha"))
 					h.AssertNil(t, restorer.Restore(image, testCache))
@@ -320,6 +349,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a cache=true layer not in cache", func() {
 				it.Before(func() {
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-layer-not-in-cache", meta, "some-made-up-sha"))
 					h.AssertNil(t, restorer.Restore(image, testCache))
@@ -366,30 +396,11 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("there is a cache=true layer in cache but not in group", func() {
-				it.Before(func() {
+				it("analyzes the layers with the provided buildpacks", func() {
 					meta := "cache=true"
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
 					h.AssertNil(t, writeLayer(layersDir, "nogroup.buildpack.id", "some-layer", meta, noGroupLayerSHA))
 					h.AssertNil(t, restorer.Restore(image, testCache))
-				})
-				it("does not restore layer data", func() {
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer"))
-				})
-
-				when("the buildpack is detected", func() {
-					it.Before(func() {
-						restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "nogroup.buildpack.id"}}
-						h.AssertNil(t, restorer.Restore(image, testCache))
-					})
-
-					it("keeps metadata and sha file", func() {
-						h.AssertPathExists(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer.toml"))
-						h.AssertPathExists(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer.sha"))
-					})
-					it("restores data", func() {
-						got := h.MustReadFile(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer", "file-from-some-layer"))
-						want := "echo text from some layer\n"
-						h.AssertEq(t, string(got), want)
-					})
 				})
 			})
 
@@ -446,180 +457,64 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}}
 				metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "app_metadata.json"))
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
-			it("restores layer metadata for layers in cache", func() {
+			it("executes the layer analyzer", func() {
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
 				err := restorer.Restore(image, testCache)
 				h.AssertNil(t, err)
-
-				for _, data := range []struct{ name, want string }{
-					{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
-					{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
-				} {
-					got := h.MustReadFile(t, filepath.Join(layersDir, data.name))
-					h.AssertStringContains(t, string(got), data.want)
-				}
-			})
-
-			it("restores layer sha files in cache", func() {
-				err := restorer.Restore(image, testCache)
-				h.AssertNil(t, err)
-
-				for _, data := range []struct{ name, want string }{
-					{"metadata.buildpack/launch.sha", "launch-sha"},
-					{"no.cache.buildpack/some-layer.sha", "some-layer-sha"},
-				} {
-					got := h.MustReadFile(t, filepath.Join(layersDir, data.name))
-					h.AssertStringContains(t, string(got), data.want)
-				}
-			})
-
-			it("does not restore launch=false layer metadata", func() {
-				err := restorer.Restore(image, testCache)
-				h.AssertNil(t, err)
-
-				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-false.toml"))
-				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-false.sha"))
-			})
-
-			it("does not restore build=true, cache=false layer metadata", func() {
-				err := restorer.Restore(image, testCache)
-				h.AssertNil(t, err)
-
-				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-build.sha"))
-			})
-
-			it("does not restore cache=true layer metadata when not in cache", func() {
-				err := restorer.Restore(image, testCache)
-				h.AssertNil(t, err)
-
-				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-build-cache.toml"))
-				h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack", "launch-cache.toml"))
-			})
-
-			when("subset of buildpacks are detected", func() {
-				it.Before(func() {
-					restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack"}}
-				})
-				it("restores layers for detected buildpacks", func() {
-					err := restorer.Restore(image, testCache)
-					h.AssertNil(t, err)
-
-					path := filepath.Join(layersDir, "no.cache.buildpack", "some-layer.toml")
-					got := h.MustReadFile(t, path)
-					want := "[metadata]\n  some-layer-key = \"some-layer-value\""
-
-					h.AssertStringContains(t, string(got), want)
-				})
-				it("does not restore layers for undetected buildpacks", func() {
-					err := restorer.Restore(image, testCache)
-					h.AssertNil(t, err)
-
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "metadata.buildpack"))
-				})
-			})
-
-			it("restores each store metadata", func() {
-				err := restorer.Restore(image, testCache)
-				h.AssertNil(t, err)
-				for _, data := range []struct{ name, want string }{
-					// store.toml files.
-					{"metadata.buildpack/store.toml", "[metadata]\n  [metadata.metadata-buildpack-store-data]\n    store-key = \"store-val\""},
-					{"no.cache.buildpack/store.toml", "[metadata]\n  [metadata.no-cache-buildpack-store-data]\n    store-key = \"store-val\""},
-				} {
-					got := h.MustReadFile(t, filepath.Join(layersDir, data.name))
-					h.AssertStringContains(t, string(got), data.want)
-				}
 			})
 		})
 
 		when("image does not have metadata label", func() {
 			it.Before(func() {
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
-			it("does not restore any metadata", func() {
+			it("analyzes with no layer metadata", func() {
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, platform.LayersMetadata{}, gomock.Any())
 				err := restorer.Restore(image, testCache)
 				h.AssertNil(t, err)
-
-				files, err := ioutil.ReadDir(layersDir)
-				h.AssertNil(t, err)
-				h.AssertEq(t, len(files), 0)
 			})
 		})
 
 		when("image has incompatible metadata", func() {
 			it.Before(func() {
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
-			it("does not restore any metadata", func() {
+			it("analyzes with no layer metadata", func() {
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, platform.LayersMetadata{}, gomock.Any())
 				err := restorer.Restore(image, testCache)
 				h.AssertNil(t, err)
-
-				files, err := ioutil.ReadDir(layersDir)
-				h.AssertNil(t, err)
-				h.AssertEq(t, len(files), 0)
 			})
 		})
 
 		when("image does not exist", func() {
-			it("does not restore layer metadata", func() {
-				err := restorer.Restore(image, testCache)
-				h.AssertNil(t, err)
-
-				for _, paths := range []string{
-					"metadata.buildpack/launch.toml",
-					"metadata.buildpack/launch-build-cache.toml",
-					"metadata.buildpack/launch-cache.toml",
-					"no.cache.buildpack/some-layer.toml",
-				} {
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
-				}
+			it.Before(func() {
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
-			it("does not restore each store metadata", func() {
+			it("analyzes with no layer metadata", func() {
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, platform.LayersMetadata{}, gomock.Any())
 				err := restorer.Restore(image, testCache)
 				h.AssertNil(t, err)
-				for _, paths := range []string{
-					// store.toml files.
-					"metadata.buildpack/store.toml",
-					"no.cache.buildpack/store.toml",
-				} {
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
-				}
 			})
 		})
 
 		when("platform API < 0.6", func() {
 			it.Before(func() {
 				restorer.PlatformAPI = api.MustParse("0.5")
+				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
 			it("does not restore layer metadata", func() {
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any()).Times(0)
 				err := restorer.Restore(image, testCache)
 				h.AssertNil(t, err)
-
-				for _, paths := range []string{
-					"metadata.buildpack/launch.toml",
-					"metadata.buildpack/launch-build-cache.toml",
-					"metadata.buildpack/launch-cache.toml",
-					"no.cache.buildpack/some-layer.toml",
-				} {
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
-				}
-			})
-
-			it("does not restore each store metadata", func() {
-				err := restorer.Restore(image, testCache)
-				h.AssertNil(t, err)
-				for _, paths := range []string{
-					// store.toml files.
-					"metadata.buildpack/store.toml",
-					"no.cache.buildpack/store.toml",
-				} {
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, paths))
-				}
 			})
 		})
 	})

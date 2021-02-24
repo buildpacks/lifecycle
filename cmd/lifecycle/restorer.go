@@ -155,10 +155,11 @@ func (r restoreArgs) restore(group buildpack.Group, cacheStore lifecycle.Cache) 
 	}
 
 	restorer := &lifecycle.Restorer{
-		LayersDir:   r.layersDir,
-		Buildpacks:  group.Group,
-		Logger:      cmd.DefaultLogger,
-		PlatformAPI: api.MustParse(r.platformAPI),
+		LayersDir:     r.layersDir,
+		Buildpacks:    group.Group,
+		Logger:        cmd.DefaultLogger,
+		PlatformAPI:   api.MustParse(r.platformAPI),
+		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, r.layersDir),
 	}
 
 	if err := restorer.Restore(img, cacheStore); err != nil {

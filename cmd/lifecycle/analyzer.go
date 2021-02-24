@@ -162,11 +162,12 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks:  group.Group,
-		LayersDir:   aa.layersDir,
-		Logger:      cmd.DefaultLogger,
-		SkipLayers:  aa.skipLayers,
-		PlatformAPI: api.MustParse(aa.platformAPI),
+		Buildpacks:    group.Group,
+		LayersDir:     aa.layersDir,
+		Logger:        cmd.DefaultLogger,
+		SkipLayers:    aa.skipLayers,
+		PlatformAPI:   api.MustParse(aa.platformAPI),
+		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, aa.layersDir),
 	}).Analyze(img, cacheStore)
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")

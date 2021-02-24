@@ -10,11 +10,12 @@ import (
 )
 
 type Analyzer struct {
-	Buildpacks  []buildpack.GroupBuildpack
-	LayersDir   string
-	Logger      Logger
-	SkipLayers  bool
-	PlatformAPI *api.Version
+	Buildpacks    []buildpack.GroupBuildpack
+	LayersDir     string
+	Logger        Logger
+	SkipLayers    bool
+	LayerAnalyzer LayerAnalyzer
+	PlatformAPI   *api.Version
 }
 
 // Analyze restores metadata for launch and cache layers into the layers directory.
@@ -32,23 +33,12 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (platform.AnalyzedM
 	}
 
 	if a.analyzeLayers() {
-		restorer := Restorer{
-			LayersDir:  a.LayersDir,
-			Buildpacks: a.Buildpacks,
-			Logger:     a.Logger,
-			SkipLayers: a.SkipLayers,
-		}
-
-		meta, err := restorer.retrieveMetadataFrom(cache)
+		meta, err := a.LayerAnalyzer.RetrieveMetadataFrom(cache)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 
-		if err := restorer.restoreStoreTOML(appMeta); err != nil {
-			return platform.AnalyzedMetadata{}, err
-		}
-
-		if err := restorer.analyzeLayers(appMeta, meta); err != nil {
+		if err := a.LayerAnalyzer.Analyze(a.Buildpacks, a.SkipLayers, appMeta, meta); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}
