@@ -154,12 +154,15 @@ func (r restoreArgs) restore(group buildpack.Group, cacheStore lifecycle.Cache) 
 		}
 	}
 
+	mdRetriever := lifecycle.NewMetadataRetriever(cmd.DefaultLogger)
+
 	restorer := &lifecycle.Restorer{
-		LayersDir:     r.layersDir,
-		Buildpacks:    group.Group,
-		Logger:        cmd.DefaultLogger,
-		PlatformAPI:   api.MustParse(r.platformAPI),
-		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, r.layersDir),
+		LayersDir:         r.layersDir,
+		Buildpacks:        group.Group,
+		Logger:            cmd.DefaultLogger,
+		PlatformAPI:       api.MustParse(r.platformAPI),
+		LayerAnalyzer:     lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, mdRetriever, r.layersDir),
+		MetadataRetriever: mdRetriever,
 	}
 
 	if err := restorer.Restore(img, cacheStore); err != nil {

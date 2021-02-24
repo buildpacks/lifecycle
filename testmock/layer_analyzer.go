@@ -38,30 +38,16 @@ func (m *MockLayerAnalyzer) EXPECT() *MockLayerAnalyzerMockRecorder {
 }
 
 // Analyze mocks base method.
-func (m *MockLayerAnalyzer) Analyze(arg0 []buildpack.GroupBuildpack, arg1 bool, arg2 platform.LayersMetadata, arg3 platform.CacheMetadata) error {
+func (m *MockLayerAnalyzer) Analyze(arg0 []buildpack.GroupBuildpack, arg1 bool, arg2 platform.LayersMetadata, arg3 lifecycle.Cache) (platform.CacheMetadata, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Analyze", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(platform.CacheMetadata)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Analyze indicates an expected call of Analyze.
 func (mr *MockLayerAnalyzerMockRecorder) Analyze(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Analyze", reflect.TypeOf((*MockLayerAnalyzer)(nil).Analyze), arg0, arg1, arg2, arg3)
-}
-
-// RetrieveMetadataFrom mocks base method.
-func (m *MockLayerAnalyzer) RetrieveMetadataFrom(arg0 lifecycle.Cache) (platform.CacheMetadata, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetrieveMetadataFrom", arg0)
-	ret0, _ := ret[0].(platform.CacheMetadata)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// RetrieveMetadataFrom indicates an expected call of RetrieveMetadataFrom.
-func (mr *MockLayerAnalyzerMockRecorder) RetrieveMetadataFrom(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetrieveMetadataFrom", reflect.TypeOf((*MockLayerAnalyzer)(nil).RetrieveMetadataFrom), arg0)
 }

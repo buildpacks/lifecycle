@@ -23,6 +23,14 @@ func TestLayerAnalyzer(t *testing.T) {
 	spec.Run(t, "LayerAnalyzer", testLayerAnalyzer, spec.Report(report.Terminal{}))
 }
 
+type fakeMetadataRetriever struct {
+	f func() (platform.CacheMetadata, error)
+}
+
+func (f fakeMetadataRetriever) RetrieveFrom(cache lifecycle.Cache) (platform.CacheMetadata, error) {
+	return f.f()
+}
+
 func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	var (
 		layerDir       string
@@ -39,7 +47,8 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
 		h.AssertNil(t, err)
 		logger := &log.Logger{Handler: &discard.Handler{}}
-		layerAnalyzer = lifecycle.NewLayerAnalyzer(logger, layerDir)
+		fakeRetriever := fakeMetadataRetriever{f: func() (platform.CacheMetadata, error) { return cacheMetadata, nil }}
+		layerAnalyzer = lifecycle.NewLayerAnalyzer(logger, fakeRetriever, layerDir)
 	})
 
 	it.After(func() {
@@ -53,7 +62,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("app and cache metadata are not present", func() {
 			it("does not restore any metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				files, err := ioutil.ReadDir(layerDir)
@@ -69,7 +78,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores each store metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 				for _, data := range []struct{ name, want string }{
 					// store.toml files.
@@ -89,7 +98,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore each store metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 				for _, file := range []string{
 					// store.toml files.
@@ -111,7 +120,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores app and cache layer metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				for _, data := range []struct{ name, want string }{
@@ -129,7 +138,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores app and cache layer sha files, prefers app sha", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				for _, data := range []struct{ name, want string }{
@@ -146,7 +155,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not overwrite metadata from app image", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				for _, name := range []string{
@@ -162,7 +171,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not overwrite sha from app image", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				for _, name := range []string{
@@ -178,14 +187,14 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore cache=true layers for non-selected groups", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "no.group.buildpack"))
 			})
 
 			it("does not restore launch=true layer metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache-not-in-app.toml"))
@@ -193,15 +202,30 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore cache=false layer metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache-false.toml"))
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache-false.sha"))
 			})
 
+			it("does not restore launch=false layer metadata", func() {
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
+				h.AssertNil(t, err)
+
+				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-false.toml"))
+				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-false.sha"))
+			})
+
+			it("does not restore build=true, cache=false layer metadata", func() {
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
+				h.AssertNil(t, err)
+
+				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-build.sha"))
+			})
+
 			it("restores escaped buildpack layer metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 
 				path := filepath.Join(layerDir, "escaped_buildpack_id", "escaped-bp-layer.toml")
@@ -212,7 +236,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores each store metadata", func() {
-				err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+				_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 				h.AssertNil(t, err)
 				for _, data := range []struct{ name, want string }{
 					// store.toml files.
@@ -230,7 +254,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("restores layers for detected buildpacks", func() {
-					err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+					_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 					h.AssertNil(t, err)
 
 					path := filepath.Join(layerDir, "no.cache.buildpack", "some-layer.toml")
@@ -241,7 +265,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not restore layers for undetected buildpacks", func() {
-					err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+					_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 					h.AssertNil(t, err)
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack"))
@@ -254,7 +278,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not restore layers for any buildpacks", func() {
-					err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+					_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 					h.AssertNil(t, err)
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack"))
@@ -267,7 +291,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not write buildpack layer metadata", func() {
-					err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+					_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 					h.AssertNil(t, err)
 
 					files, err := ioutil.ReadDir(layerDir)
@@ -286,7 +310,7 @@ func testLayerAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("restores each store metadata", func() {
-					err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, cacheMetadata)
+					_, err := layerAnalyzer.Analyze(buildpacks, skipLayers, layersMetadata, nil)
 					h.AssertNil(t, err)
 					for _, data := range []struct{ name, want string }{
 						// store.toml files.

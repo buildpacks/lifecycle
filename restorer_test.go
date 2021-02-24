@@ -37,13 +37,14 @@ func TestRestorer(t *testing.T) {
 func testRestorer(t *testing.T, when spec.G, it spec.S) {
 	when("#Restore", func() {
 		var (
-			layersDir         string
-			cacheDir          string
-			testCache         lifecycle.Cache
-			restorer          *lifecycle.Restorer
-			image             *fakes.Image
-			mockCtrl          *gomock.Controller
-			mockLayerAnalyzer *testmock.MockLayerAnalyzer
+			layersDir             string
+			cacheDir              string
+			testCache             lifecycle.Cache
+			restorer              *lifecycle.Restorer
+			image                 *fakes.Image
+			mockCtrl              *gomock.Controller
+			mockLayerAnalyzer     *testmock.MockLayerAnalyzer
+			mockMetadataRetriever *testmock.MockMetadataRetriever
 		)
 
 		it.Before(func() {
@@ -60,6 +61,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			mockCtrl = gomock.NewController(t)
 			mockLayerAnalyzer = testmock.NewMockLayerAnalyzer(mockCtrl)
+			mockMetadataRetriever = testmock.NewMockMetadataRetriever(mockCtrl)
 
 			restorer = &lifecycle.Restorer{
 				PlatformAPI: api.Platform.Latest(),
@@ -68,8 +70,9 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					{ID: "buildpack.id"},
 					{ID: "escaped/buildpack/id"},
 				},
-				Logger:        &log.Logger{Handler: &discard.Handler{}},
-				LayerAnalyzer: mockLayerAnalyzer,
+				Logger:            &log.Logger{Handler: &discard.Handler{}},
+				LayerAnalyzer:     mockLayerAnalyzer,
+				MetadataRetriever: mockMetadataRetriever,
 			}
 			if testing.Verbose() {
 				restorer.Logger = cmd.DefaultLogger
@@ -90,8 +93,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		when("there is an no cache", func() {
 			it.Before(func() {
 				testCache = nil
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), testCache)
 			})
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
@@ -127,8 +129,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is an empty cache", func() {
 			it.Before(func() {
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), testCache)
 			})
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
@@ -170,6 +171,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				noGroupLayerSHA     string
 				cacheFalseLayerSHA  string
 				escapedLayerSHA     string
+				metadata            platform.CacheMetadata
 			)
 
 			it.Before(func() {
@@ -265,9 +267,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertNil(t, err)
 
-				metadata := platform.CacheMetadata{}
+				metadata = platform.CacheMetadata{}
 				h.AssertNil(t, json.NewDecoder(strings.NewReader(contents)).Decode(&metadata))
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache).Return(metadata, nil)
 			})
 
 			it.After(func() {
@@ -277,6 +278,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("platform API < 0.6", func() {
 				it.Before(func() {
 					restorer.PlatformAPI = api.MustParse("0.5")
+					mockMetadataRetriever.EXPECT().RetrieveFrom(testCache).Return(metadata, nil)
 				})
 
 				when("there is a cache=true layer", func() {
@@ -367,6 +369,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("platform API < 0.6", func() {
 				it.Before(func() {
 					restorer.PlatformAPI = api.MustParse("0.5")
+					mockMetadataRetriever.EXPECT().RetrieveFrom(testCache).Return(metadata, nil)
 				})
 
 				when("there is a cache=true escaped layer", func() {
@@ -407,6 +410,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("platform API < 0.6", func() {
 				it.Before(func() {
 					restorer.PlatformAPI = api.MustParse("0.5")
+					mockMetadataRetriever.EXPECT().RetrieveFrom(testCache).Return(metadata, nil)
 				})
 
 				when("there are multiple cache=true layers", func() {
@@ -457,7 +461,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}}
 				metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "app_metadata.json"))
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
+				// mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
 			it("executes the layer analyzer", func() {
@@ -470,7 +474,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		when("image does not have metadata label", func() {
 			it.Before(func() {
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
 			it("analyzes with no layer metadata", func() {
@@ -483,7 +486,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		when("image has incompatible metadata", func() {
 			it.Before(func() {
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
 			it("analyzes with no layer metadata", func() {
@@ -494,10 +496,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("image does not exist", func() {
-			it.Before(func() {
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-			})
-
 			it("analyzes with no layer metadata", func() {
 				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, platform.LayersMetadata{}, gomock.Any())
 				err := restorer.Restore(image, testCache)
@@ -508,11 +506,10 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		when("platform API < 0.6", func() {
 			it.Before(func() {
 				restorer.PlatformAPI = api.MustParse("0.5")
-				mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
+				mockMetadataRetriever.EXPECT().RetrieveFrom(testCache)
 			})
 
 			it("does not restore layer metadata", func() {
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any()).Times(0)
 				err := restorer.Restore(image, testCache)
 				h.AssertNil(t, err)
 			})

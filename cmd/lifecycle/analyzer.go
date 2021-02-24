@@ -161,13 +161,15 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
 
+	mdRetriever := lifecycle.NewMetadataRetriever(cmd.DefaultLogger)
+
 	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks:    group.Group,
 		LayersDir:     aa.layersDir,
 		Logger:        cmd.DefaultLogger,
 		SkipLayers:    aa.skipLayers,
 		PlatformAPI:   api.MustParse(aa.platformAPI),
-		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, aa.layersDir),
+		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, mdRetriever, aa.layersDir),
 	}).Analyze(img, cacheStore)
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")

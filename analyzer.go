@@ -33,12 +33,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (platform.AnalyzedM
 	}
 
 	if a.analyzeLayers() {
-		cacheMeta, err := a.LayerAnalyzer.RetrieveMetadataFrom(cache)
-		if err != nil {
-			return platform.AnalyzedMetadata{}, err
-		}
-
-		if err := a.LayerAnalyzer.Analyze(a.Buildpacks, a.SkipLayers, appMeta, cacheMeta); err != nil {
+		if _, err := a.LayerAnalyzer.Analyze(a.Buildpacks, a.SkipLayers, appMeta, cache); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}

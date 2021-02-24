@@ -128,8 +128,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("analyzes layers", func() {
-						mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), gomock.Any())
+						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 
 						_, err := analyzer.Analyze(image, testCache)
 						h.AssertNil(t, err)
@@ -138,8 +137,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					when("skip-layers is true", func() {
 						it.Before(func() {
 							analyzer.SkipLayers = true
-							mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-							mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), gomock.Any())
+							mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 						})
 
 						it("should return the analyzed metadata", func() {
@@ -173,8 +171,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, testCache.Commit())
 
 						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id"})
-						mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), gomock.Any())
+						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 					})
 
 					it("returns a nil image in the analyzed metadata", func() {
@@ -187,8 +184,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 				when("cache is empty", func() {
 					it.Before(func() {
-						mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), gomock.Any())
+						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 					})
 					it("does not restore any metadata", func() {
 						_, err := analyzer.Analyze(image, testCache)
@@ -209,8 +205,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("cache is not provided", func() {
 					it.Before(func() {
 						testCache = nil
-						mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
-						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), gomock.Any())
+						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 					})
 					it("does not restore any metadata", func() {
 						_, err := analyzer.Analyze(image, testCache)

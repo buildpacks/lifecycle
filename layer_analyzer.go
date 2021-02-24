@@ -12,51 +12,38 @@ import (
 )
 
 type LayerAnalyzer interface {
-	RetrieveMetadataFrom(cache Cache) (platform.CacheMetadata, error)
-	Analyze(buildpacks []buildpack.GroupBuildpack, skipLayers bool, appMeta platform.LayersMetadata, meta platform.CacheMetadata) error
+	Analyze(buildpacks []buildpack.GroupBuildpack, skipLayers bool, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error)
 }
 
 type DefaultLayerAnalyzer struct {
-	Logger    Logger
-	LayersDir string
+	Logger            Logger
+	LayersDir         string
+	MetadataRetriever MetadataRetriever
 }
 
-func NewLayerAnalyzer(logger Logger, layersDir string) LayerAnalyzer {
+func NewLayerAnalyzer(logger Logger, metadataRetriever MetadataRetriever, layersDir string) LayerAnalyzer {
 	return &DefaultLayerAnalyzer{
-		LayersDir: layersDir,
-		Logger:    logger,
+		LayersDir:         layersDir,
+		Logger:            logger,
+		MetadataRetriever: metadataRetriever,
 	}
 }
 
-func (la *DefaultLayerAnalyzer) RetrieveMetadataFrom(cache Cache) (platform.CacheMetadata, error) {
-	// Create empty cache metadata in case a usable cache is not provided.
-	var cacheMeta platform.CacheMetadata
-	if cache != nil {
-		var err error
-		if !cache.Exists() {
-			la.Logger.Info("Layer cache not found")
-		}
-		cacheMeta, err = cache.RetrieveMetadata()
-		if err != nil {
-			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
-		}
-	} else {
-		la.Logger.Debug("Usable cache not provided, using empty cache metadata.")
+func (la *DefaultLayerAnalyzer) Analyze(buildpacks []buildpack.GroupBuildpack, skipLayers bool, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error) {
+	cacheMeta, err := la.MetadataRetriever.RetrieveFrom(cache)
+	if err != nil {
+		return platform.CacheMetadata{}, err
+	}
+
+	if err := la.restoreStoreTOML(appMeta, buildpacks); err != nil {
+		return platform.CacheMetadata{}, err
+	}
+
+	if err := la.analyzeLayers(appMeta, cacheMeta, skipLayers, buildpacks); err != nil {
+		return platform.CacheMetadata{}, err
 	}
 
 	return cacheMeta, nil
-}
-
-func (la *DefaultLayerAnalyzer) Analyze(buildpacks []buildpack.GroupBuildpack, skipLayers bool, appMeta platform.LayersMetadata, meta platform.CacheMetadata) error {
-	if err := la.restoreStoreTOML(appMeta, buildpacks); err != nil {
-		return err
-	}
-
-	if err := la.analyzeLayers(appMeta, meta, skipLayers, buildpacks); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (la *DefaultLayerAnalyzer) restoreStoreTOML(appMeta platform.LayersMetadata, buildpacks []buildpack.GroupBuildpack) error {
