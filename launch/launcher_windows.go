@@ -7,7 +7,7 @@ import (
 
 const (
 	CNBDir     = `c:\cnb`
-	exe        = ".exe"
+	Exe        = ".exe"
 	appProfile = ".profile.bat"
 )
 

@@ -2,6 +2,8 @@ package acceptance
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -28,6 +30,7 @@ func TestLauncher(t *testing.T) {
 	if daemonOS == "windows" {
 		launchDockerContext = filepath.Join("testdata", "launcher", "windows")
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
+		copyPosixFixture(t)
 	} else {
 		launchDockerContext = filepath.Join("testdata", "launcher", "posix")
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "posix", "container", "cnb", "lifecycle")
@@ -44,21 +47,28 @@ func TestLauncher(t *testing.T) {
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	when("Buildpack API >= 0.5", func() {
 		when("exec.d", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "exec.d is not yet supported on windows")
-			})
-
 			it("executes the binaries and modifies env before running profiles", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--env=VAR_FROM_EXEC_D=orig-val",
 					launchImage, "exec.d-checker")
-				expected := "/layers/0.5_buildpack/some_layer/exec.d/helper was executed\n"
-				expected += "Exec.d Working Dir: /workspace\n"
-				expected += "/layers/0.5_buildpack/some_layer/exec.d/exec.d-checker/helper was executed\n"
-				expected += "Exec.d Working Dir: /workspace\n"
+
+				helper := "helper" + exe
+				execDHelper := filepath.Join(rootDir, "layers", "0.5_buildpack", "some_layer", "exec.d", helper)
+				execDCheckerHelper := filepath.Join(rootDir, "layers", "0.5_buildpack", "some_layer", "exec.d", "exec.d-checker", helper)
+				workDir := filepath.Join(rootDir, "workspace")
+
+				expected := fmt.Sprintf("%s was executed\n", execDHelper)
+				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
+				expected += fmt.Sprintf("%s was executed\n", execDCheckerHelper)
+				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
 				expected += "sourced bp profile\n"
 				expected += "sourced app profile\n"
-				expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
+				if runtime.GOOS == "windows" {
+					expected += `"VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"`
+				} else {
+					expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
+				}
+
 				assertOutput(t, cmd, expected)
 			})
 		})
@@ -352,4 +362,15 @@ func assertOutput(t *testing.T, cmd *exec.Cmd, expected ...string) {
 			t.Fatalf("failed:\n\t output: %s\n\t should include: %s", output, ex)
 		}
 	}
+}
+
+func copyPosixFixture(t *testing.T) {
+	windowsContext := filepath.Join("testdata", "launcher", "windows")
+	h.AssertNil(t, os.MkdirAll(filepath.Join(windowsContext, "exec.d"), 0755))
+	h.RecursiveCopy(
+		t,
+		filepath.Join("testdata", "launcher", "posix", "exec.d"),
+		filepath.Join(windowsContext, "exec.d"),
+	)
+	os.RemoveAll(filepath.Join(windowsContext, "container", "layers", "0.5_buildpack", "some_layer", "exec.d", "exec.d-checker", ".gitkeep"))
 }

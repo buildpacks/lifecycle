@@ -15,7 +15,7 @@ import (
 var (
 	LifecycleDir = filepath.Join(CNBDir, "lifecycle")
 	ProcessDir   = filepath.Join(CNBDir, "process")
-	LauncherPath = filepath.Join(LifecycleDir, "launcher"+exe)
+	LauncherPath = filepath.Join(LifecycleDir, "launcher"+Exe)
 )
 
 type Launcher struct {

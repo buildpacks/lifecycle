@@ -1,4 +1,9 @@
 [[buildpacks]]
+  id = "0.5/buildpack"
+  version = "0.0.1"
+  api = "0.5"
+
+[[buildpacks]]
   id = "some/buildpack"
   version = "0.0.1"
   api = "0.4"
@@ -37,3 +42,10 @@
   args = ["%WORKER_VAR%"]
   direct = false
   buildpack-id = "some/buildpack"
+
+[[processes]]
+  type = "exec.d-checker"
+  command = "echo"
+  args = ["VAR_FROM_EXEC_D: %VAR_FROM_EXEC_D%"]
+  direct = false
+  buildpack-id = "0.5/buildpack"
