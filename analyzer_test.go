@@ -59,7 +59,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			Buildpacks:  []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}},
 			LayersDir:   layerDir,
 			Logger:      &log.Logger{Handler: &discard.Handler{}},
-			PlatformAPI: api.MustParse("0.6"),
+			PlatformAPI: api.Platform.Latest(),
 		}
 		if testing.Verbose() {
 			analyzer.Logger = cmd.DefaultLogger
@@ -75,7 +75,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		mockCtrl.Finish()
 	})
 
-	when.Focus("#Analyze", func() {
+	when("#Analyze", func() {
 		var (
 			image            *fakes.Image
 			appImageMetadata platform.LayersMetadata
@@ -504,6 +504,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
 		when("image does not have metadata label", func() {
 			it.Before(func() {
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))

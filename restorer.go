@@ -34,7 +34,7 @@ func (r *Restorer) Restore(img imgutil.Image, cache Cache) error {
 		return err
 	}
 
-	if r.PlatformAPI.Compare(api.MustParse("0.6")) >= 0 { // platform API >= 0.6
+	if r.analyzesLayers() {
 		var appMeta platform.LayersMetadata
 		// continue even if the label cannot be decoded
 		if err := DecodeLabel(img, platform.LayerMetadataLabel, &appMeta); err != nil {
@@ -198,4 +198,8 @@ func (r *Restorer) retrieveMetadataFrom(cache Cache) (platform.CacheMetadata, er
 	}
 
 	return cacheMeta, nil
+}
+
+func (r *Restorer) analyzesLayers() bool {
+	return r.PlatformAPI.Compare(api.MustParse("0.6")) >= 0
 }

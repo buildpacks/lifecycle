@@ -52,7 +52,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			restorer = &lifecycle.Restorer{
-				PlatformAPI: api.MustParse("0.6"),
+				PlatformAPI: api.Platform.Latest(),
 				LayersDir:   layersDir,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "buildpack.id"},

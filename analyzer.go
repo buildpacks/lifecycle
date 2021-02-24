@@ -31,7 +31,7 @@ func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (platform.AnalyzedM
 		appMeta = platform.LayersMetadata{}
 	}
 
-	if a.PlatformAPI.Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+	if a.analyzeLayers() {
 		restorer := Restorer{
 			LayersDir:  a.LayersDir,
 			Buildpacks: a.Buildpacks,
@@ -72,4 +72,8 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
+}
+
+func (a *Analyzer) analyzeLayers() bool {
+	return a.PlatformAPI.Compare(api.MustParse("0.6")) < 0
 }

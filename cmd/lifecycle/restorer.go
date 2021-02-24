@@ -48,14 +48,14 @@ func (r *restoreCmd) DefineFlags() {
 	cmd.FlagLayersDir(&r.layersDir)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
-	if api.MustParse(r.platformAPI).Compare(api.MustParse("0.6")) >= 0 { // platform API >= 0.6
+	if r.analyzeLayers() {
 		cmd.FlagUseDaemon(&r.useDaemon)
 		cmd.FlagSkipLayers(&r.skipLayers)
 	}
 }
 
 func (r *restoreCmd) Args(nargs int, args []string) error {
-	if api.MustParse(r.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+	if !r.analyzeLayers() {
 		if nargs > 0 {
 			return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
 		}
@@ -87,7 +87,7 @@ func (r *restoreCmd) Privileges() error {
 		return cmd.FailErr(err, "resolve keychain")
 	}
 
-	if api.MustParse(r.platformAPI).Compare(api.MustParse("0.6")) >= 0 { // platform API >= 0.6
+	if r.analyzeLayers() {
 		if r.useDaemon {
 			var err error
 			r.docker, err = priv.DockerClient()
@@ -134,7 +134,7 @@ func (r restoreArgs) restore(group buildpack.Group, cacheStore lifecycle.Cache) 
 		err error
 	)
 
-	if api.MustParse(r.platformAPI).Compare(api.MustParse("0.6")) >= 0 { // platform API >= 0.6
+	if r.analyzeLayers() {
 		if r.useDaemon {
 			img, err = local.NewImage(
 				r.imageName,
@@ -165,4 +165,8 @@ func (r restoreArgs) restore(group buildpack.Group, cacheStore lifecycle.Cache) 
 		return cmd.FailErrCode(err, cmd.CodeRestoreError, "restore")
 	}
 	return nil
+}
+
+func (r *restoreArgs) analyzeLayers() bool {
+	return api.MustParse(r.platformAPI).Compare(api.MustParse("0.6")) >= 0
 }

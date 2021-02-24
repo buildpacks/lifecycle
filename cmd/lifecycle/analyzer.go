@@ -47,7 +47,7 @@ type analyzeArgs struct {
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheImage(&a.cacheImageTag)
-	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+	if a.analyzeLayers() {
 		cmd.FlagCacheDir(&a.cacheDir)
 		cmd.FlagGroupPath(&a.groupPath)
 		cmd.FlagSkipLayers(&a.skipLayers)
@@ -66,7 +66,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+	if a.analyzeLayers() {
 		if a.cacheImageTag == "" && a.cacheDir == "" {
 			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 		}
@@ -113,7 +113,7 @@ func (a *analyzeCmd) Exec() error {
 		err        error
 		cacheStore lifecycle.Cache
 	)
-	if api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+	if a.analyzeLayers() {
 		group, err = lifecycle.ReadGroup(a.groupPath)
 		if err != nil {
 			return cmd.FailErr(err, "read buildpack group")
@@ -183,4 +183,8 @@ func (a *analyzeCmd) registryImages() []string {
 		registryImages = append(registryImages, a.analyzeArgs.imageName)
 	}
 	return registryImages
+}
+
+func (a *analyzeCmd) analyzeLayers() bool {
+	return api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0
 }
