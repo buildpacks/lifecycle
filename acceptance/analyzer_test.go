@@ -97,22 +97,23 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		os.RemoveAll(copyDir)
 	})
 
-	when("called without an app image", func() {
-		it("errors", func() {
-			cmd := exec.Command(
-				"docker", "run", "--rm",
-				analyzeImage,
-				analyzerPath,
-			)
-			output, err := cmd.CombinedOutput()
-
-			h.AssertNotNil(t, err)
-			expected := "failed to parse arguments: received 0 arguments, but expected 1"
-			h.AssertStringContains(t, string(output), expected)
-		})
-	})
-
 	when("Platform API > 0.5", func() {
+		when("called without a previous image", func() {
+			it("errors", func() {
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API=0.5",
+					analyzeImage,
+					analyzerPath,
+				)
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "previous-image argument is required"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
 		when("called with group", func() {
 			it("errors", func() {
 				cmd := exec.Command(
@@ -121,7 +122,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzeImage,
 					analyzerPath,
 					"-group", "group.toml",
-					"some-image",
+					"-previous-image", "some-image",
 				)
 				output, err := cmd.CombinedOutput()
 
@@ -139,7 +140,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzeImage,
 					analyzerPath,
 					"-skip-layers",
-					"some-image",
+					"-previous-image", "some-image",
 				)
 				output, err := cmd.CombinedOutput()
 
@@ -157,7 +158,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzeImage,
 					analyzerPath,
 					"-cache-dir", "/cache",
-					"some-image",
+					"-previous-image", "some-image",
 				)
 				output, err := cmd.CombinedOutput()
 
@@ -172,7 +173,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("warns", func() {
 			output := h.DockerRun(t,
 				analyzeImage,
-				h.WithArgs(analyzerPath, "some-image"),
+				h.WithArgs(analyzerPath, "-previous-image", "some-image"),
 			)
 
 			expected := "Not restoring cached layer metadata, no cache flag specified."
@@ -186,7 +187,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				analyzeImage,
-				h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s some-image; ls -al /layers", analyzerPath)),
+				h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s -previous-image some-image; ls -al /layers", analyzerPath)),
 			)
 
 			h.AssertMatch(t, output, "2222 3333 .+ \\.")
@@ -210,7 +211,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzerPath,
 					"-cache-dir", "/cache",
 					"-group", "/layers/other-group.toml",
-					"some-image",
+					"-previous-image", "some-image",
 				),
 			)
 
@@ -229,7 +230,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.WithArgs(
 					analyzerPath,
 					"-analyzed", "/some-dir/some-analyzed.toml",
-					"some-image",
+					"-previous-image", "some-image",
 				),
 			)
 
@@ -245,7 +246,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				analyzeImage,
 				"/layers/analyzed.toml",
 				h.WithFlags(variables.DockerSocketMount...),
-				h.WithArgs(analyzerPath, "-daemon", "some-image"),
+				h.WithArgs(analyzerPath, "-daemon", "-previous-image", "some-image"),
 			)
 
 			assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -284,7 +285,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							variables.DockerSocketMount,
 							"--env", "CNB_PLATFORM_API=0.6",
 						)...),
-						h.WithArgs(analyzerPath, "-daemon", appImage),
+						h.WithArgs(analyzerPath, "-daemon", "-previous-image", appImage),
 					)
 
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
@@ -325,7 +326,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							variables.DockerSocketMount,
 							"--env", "CNB_PLATFORM_API=0.5",
 						)...),
-						h.WithArgs(analyzerPath, "-daemon", appImage),
+						h.WithArgs(analyzerPath, "-daemon", "-previous-image", appImage),
 					)
 
 					assertLogsAndRestoresAppMetadata(t, copyDir, output)
@@ -346,7 +347,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								analyzerPath,
 								"-daemon",
 								"-skip-layers",
-								appImage,
+								"-previous-image", appImage,
 							),
 						)
 
@@ -394,7 +395,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									analyzerPath,
 									"-daemon",
 									"-cache-image", cacheImage,
-									"some-image",
+									"-previous-image", "some-image",
 								),
 							)
 
@@ -439,7 +440,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 											analyzerPath,
 											"-daemon",
 											"-cache-image", cacheImage,
-											"some-image",
+											"-previous-image", "some-image",
 										),
 									)
 
@@ -463,7 +464,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 											analyzerPath,
 											"-cache-image",
 											cacheImage,
-											"some-image",
+											"-previous-image", "some-image",
 										),
 									)
 
@@ -502,7 +503,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 										analyzerPath,
 										"-cache-image",
 										cacheImage,
-										"some-image",
+										"-previous-image", "some-image",
 									),
 								)
 
@@ -530,7 +531,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								analyzerPath,
 								"-daemon",
 								"-cache-dir", "/cache",
-								"some-image",
+								"-previous-image", "some-image",
 							),
 						)
 
@@ -552,7 +553,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									"--env", "CNB_PLATFORM_API=0.5",
 								)...),
 								h.WithBash(
-									fmt.Sprintf("chown -R 9999:9999 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
+									fmt.Sprintf("chown -R 9999:9999 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache -previous-image some-image; ls -alR /cache", analyzerPath),
 								),
 							)
 
@@ -577,7 +578,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									"--env", "CNB_PLATFORM_API=0.5",
 								)...),
 								h.WithBash(
-									fmt.Sprintf("chown -R 9999:3333 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
+									fmt.Sprintf("chown -R 9999:3333 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache -previous-image some-image; ls -alR /cache", analyzerPath),
 								),
 							)
 
@@ -600,7 +601,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				copyDir,
 				analyzeImage,
 				"/layers/analyzed.toml",
-				h.WithArgs(analyzerPath, "some-image"),
+				h.WithArgs(analyzerPath, "-previous-image", "some-image"),
 			)
 
 			assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -634,7 +635,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								"--network", "host",
 								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
 							),
-							h.WithArgs(analyzerPath, appImage),
+							h.WithArgs(analyzerPath, "-previous-image", appImage),
 						)
 
 						assertLogsAndRestoresAppMetadata(t, copyDir, output)
@@ -654,7 +655,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							),
 							h.WithArgs(
 								analyzerPath,
-								appImage,
+								"-previous-image", appImage,
 							),
 						)
 
@@ -676,7 +677,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithArgs(
 								analyzerPath,
 								"-skip-layers",
-								appImage,
+								"-previous-image", appImage,
 							),
 						)
 
@@ -711,7 +712,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.WithFlags("--network", "host"),
 						h.WithArgs(
 							analyzerPath,
-							appImage,
+							"-previous-image", appImage,
 						),
 					)
 
@@ -729,7 +730,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithArgs(
 								analyzerPath,
 								"-skip-layers",
-								appImage,
+								"-previous-image", appImage,
 							),
 						)
 
@@ -774,7 +775,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								h.WithArgs(
 									analyzerPath,
 									"-cache-image", cacheImage,
-									"some-image",
+									"-previous-image", "some-image",
 								),
 							)
 
@@ -797,7 +798,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									analyzerPath,
 									"-cache-image",
 									cacheImage,
-									"some-image",
+									"-previous-image", "some-image",
 								),
 							)
 
@@ -832,7 +833,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithArgs(
 								analyzerPath,
 								"-cache-image", cacheImage,
-								"some-image",
+								"-previous-image", "some-image",
 							),
 						)
 
@@ -856,7 +857,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.WithArgs(
 							analyzerPath,
 							"-cache-dir", "/cache",
-							"some-image",
+							"-previous-image", "some-image",
 						),
 					)
 
@@ -886,7 +887,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						analyzerPath,
 						"-layers", "/other-layers",
 						"-cache-dir", "/cache", // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
-						"some-image",
+						"-previous-image", "some-image",
 					),
 				)
 
@@ -914,7 +915,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						analyzerPath,
 						"-layers", "/some-other-layers",
 						"-cache-dir", "/cache", // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
-						"some-image",
+						"-previous-image", "some-image",
 					),
 				)
 

@@ -53,20 +53,17 @@ func (a *analyzeCmd) DefineFlags() {
 		cmd.FlagSkipLayers(&a.skipLayers)
 	}
 	cmd.FlagLayersDir(&a.layersDir)
+	cmd.FlagPreviousImage(&a.imageName)
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
-	}
-	if args[0] == "" {
-		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
-	}
-
 	if a.analyzeLayers() {
+		if a.imageName == "" {
+			return cmd.FailErrCode(errors.New("previous-image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		}
 		if a.cacheImageTag == "" && a.cacheDir == "" {
 			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 		}
@@ -79,8 +76,6 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if a.groupPath == cmd.PlaceholderGroupPath {
 		a.groupPath = cmd.DefaultGroupPath(a.platformAPI, a.layersDir)
 	}
-
-	a.imageName = args[0]
 	return nil
 }
 
@@ -144,21 +139,23 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 		img imgutil.Image
 		err error
 	)
-	if aa.useDaemon {
-		img, err = local.NewImage(
-			aa.imageName,
-			aa.docker,
-			local.FromBaseImage(aa.imageName),
-		)
-	} else {
-		img, err = remote.NewImage(
-			aa.imageName,
-			aa.keychain,
-			remote.FromBaseImage(aa.imageName),
-		)
-	}
-	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+	if aa.imageName != "" {
+		if aa.useDaemon {
+			img, err = local.NewImage(
+				aa.imageName,
+				aa.docker,
+				local.FromBaseImage(aa.imageName),
+			)
+		} else {
+			img, err = remote.NewImage(
+				aa.imageName,
+				aa.keychain,
+				remote.FromBaseImage(aa.imageName),
+			)
+		}
+		if err != nil {
+			return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+		}
 	}
 
 	mdRetriever := lifecycle.NewMetadataRetriever(cmd.DefaultLogger)
@@ -169,8 +166,9 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 		Logger:        cmd.DefaultLogger,
 		SkipLayers:    aa.skipLayers,
 		PlatformAPI:   api.MustParse(aa.platformAPI),
+		Image:         img,
 		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, mdRetriever, aa.layersDir),
-	}).Analyze(img, cacheStore)
+	}).Analyze(cacheStore)
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")
 	}

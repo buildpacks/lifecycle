@@ -11,6 +11,7 @@ import (
 
 type Analyzer struct {
 	Buildpacks    []buildpack.GroupBuildpack
+	Image         imgutil.Image
 	LayersDir     string
 	Logger        Logger
 	SkipLayers    bool
@@ -20,15 +21,23 @@ type Analyzer struct {
 
 // Analyze restores metadata for launch and cache layers into the layers directory.
 // If a usable cache is not provided, Analyze will not restore any cache=true layer metadata.
-func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (platform.AnalyzedMetadata, error) {
-	imageID, err := a.getImageIdentifier(image)
-	if err != nil {
-		return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
-	}
+func (a *Analyzer) Analyze(cache Cache) (platform.AnalyzedMetadata, error) {
+	var (
+		appMeta platform.LayersMetadata
+		imageID *platform.ImageIdentifier
+		err     error
+	)
+	if a.Image != nil {
+		imageID, err = a.getImageIdentifier(a.Image)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
+		}
 
-	var appMeta platform.LayersMetadata
-	// continue even if the label cannot be decoded
-	if err := DecodeLabel(image, platform.LayerMetadataLabel, &appMeta); err != nil {
+		// continue even if the label cannot be decoded
+		if err := DecodeLabel(a.Image, platform.LayerMetadataLabel, &appMeta); err != nil {
+			appMeta = platform.LayersMetadata{}
+		}
+	} else {
 		appMeta = platform.LayersMetadata{}
 	}
 
