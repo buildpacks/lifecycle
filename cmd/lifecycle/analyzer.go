@@ -53,17 +53,26 @@ func (a *analyzeCmd) DefineFlags() {
 		cmd.FlagSkipLayers(&a.skipLayers)
 	}
 	cmd.FlagLayersDir(&a.layersDir)
-	cmd.FlagPreviousImage(&a.imageName)
+	if a.supportsPreviousImageFlag() {
+		cmd.FlagPreviousImage(&a.imageName)
+	}
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if a.analyzeLayers() {
-		if a.imageName == "" {
-			return cmd.FailErrCode(errors.New("previous-image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+	if !a.supportsPreviousImageFlag() {
+		if nargs != 1 {
+			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 		}
+		if args[0] == "" {
+			return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		}
+		a.imageName = args[0]
+	}
+
+	if a.analyzeLayers() {
 		if a.cacheImageTag == "" && a.cacheDir == "" {
 			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 		}
@@ -188,4 +197,8 @@ func (a *analyzeCmd) registryImages() []string {
 
 func (a *analyzeCmd) analyzeLayers() bool {
 	return api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) < 0
+}
+
+func (a *analyzeCmd) supportsPreviousImageFlag() bool {
+	return api.MustParse(a.platformAPI).Compare(api.MustParse("0.6")) >= 0
 }
