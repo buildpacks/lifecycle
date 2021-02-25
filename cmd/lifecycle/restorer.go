@@ -4,23 +4,21 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/docker/docker/client"
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
-
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type restoreCmd struct {
 	// flags: inputs
+	analyzedPath  string
 	cacheDir      string
 	cacheImageTag string
 	groupPath     string
@@ -30,14 +28,11 @@ type restoreCmd struct {
 
 type restoreArgs struct {
 	//inputs needed when run by creator
-	imageName   string
 	layersDir   string
 	platformAPI string
 	skipLayers  bool
-	useDaemon   bool
 
 	//construct if necessary before dropping privileges
-	docker   client.CommonAPIClient
 	keychain authn.Keychain
 }
 
@@ -49,24 +44,14 @@ func (r *restoreCmd) DefineFlags() {
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
 	if r.analyzeLayers() {
-		cmd.FlagUseDaemon(&r.useDaemon)
+		cmd.FlagAnalyzedPath(&r.analyzedPath)
 		cmd.FlagSkipLayers(&r.skipLayers)
 	}
 }
 
 func (r *restoreCmd) Args(nargs int, args []string) error {
-	if !r.analyzeLayers() {
-		if nargs > 0 {
-			return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
-		}
-	} else {
-		if nargs != 1 {
-			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
-		}
-		if args[0] == "" {
-			return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
-		}
-		r.imageName = args[0]
+	if nargs > 0 {
+		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	if r.cacheImageTag == "" && r.cacheDir == "" {
@@ -77,6 +62,10 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 		r.groupPath = cmd.DefaultGroupPath(r.platformAPI, r.layersDir)
 	}
 
+	if r.analyzedPath == cmd.PlaceholderAnalyzedPath {
+		r.analyzedPath = cmd.DefaultAnalyzedPath(r.platformAPI, r.layersDir)
+	}
+
 	return nil
 }
 
@@ -85,16 +74,6 @@ func (r *restoreCmd) Privileges() error {
 	r.keychain, err = auth.DefaultKeychain(r.registryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
-	}
-
-	if r.analyzeLayers() {
-		if r.useDaemon {
-			var err error
-			r.docker, err = priv.DockerClient()
-			if err != nil {
-				return cmd.FailErr(err, "initialize docker client")
-			}
-		}
 	}
 
 	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
@@ -118,7 +97,16 @@ func (r *restoreCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	return r.restore(group, cacheStore)
+
+	var layerMetadata platform.LayersMetadata
+	if r.analyzeLayers() {
+		if _, err := toml.DecodeFile(r.analyzedPath, layerMetadata); err != nil {
+			// continue even if the analyzed.toml cannot be decoded
+			layerMetadata = platform.LayersMetadata{}
+		}
+	}
+
+	return r.restore(layerMetadata, group, cacheStore)
 }
 
 func (r *restoreCmd) registryImages() []string {
@@ -128,32 +116,7 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func (r restoreArgs) restore(group buildpack.Group, cacheStore lifecycle.Cache) error {
-	var (
-		img imgutil.Image
-		err error
-	)
-
-	if r.analyzeLayers() {
-		if r.useDaemon {
-			img, err = local.NewImage(
-				r.imageName,
-				r.docker,
-				local.FromBaseImage(r.imageName),
-			)
-		} else {
-			img, err = remote.NewImage(
-				r.imageName,
-				r.keychain,
-				remote.FromBaseImage(r.imageName),
-			)
-		}
-
-		if err != nil {
-			return cmd.FailErr(err, "get previous image")
-		}
-	}
-
+func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	mdRetriever := lifecycle.NewMetadataRetriever(cmd.DefaultLogger)
 
 	restorer := &lifecycle.Restorer{
@@ -162,10 +125,12 @@ func (r restoreArgs) restore(group buildpack.Group, cacheStore lifecycle.Cache) 
 		Logger:            cmd.DefaultLogger,
 		PlatformAPI:       api.MustParse(r.platformAPI),
 		LayerAnalyzer:     lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, mdRetriever, r.layersDir),
+		LayersMetadata:    layerMetadata,
 		MetadataRetriever: mdRetriever,
+		SkipLayers:        r.skipLayers,
 	}
 
-	if err := restorer.Restore(img, cacheStore); err != nil {
+	if err := restorer.Restore(cacheStore); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeRestoreError, "restore")
 	}
 	return nil

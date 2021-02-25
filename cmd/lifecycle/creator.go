@@ -207,14 +207,11 @@ func (c *createCmd) Exec() error {
 	if !c.skipRestore {
 		cmd.DefaultLogger.Phase("RESTORING")
 		err := restoreArgs{
-			imageName:   c.previousImage,
 			keychain:    c.keychain,
 			layersDir:   c.layersDir,
 			platformAPI: c.platformAPI,
 			skipLayers:  c.skipRestore,
-			useDaemon:   c.useDaemon,
-			docker:      c.docker,
-		}.restore(group, cacheStore)
+		}.restore(analyzedMD.Metadata, group, cacheStore)
 		if err != nil {
 			return err
 		}

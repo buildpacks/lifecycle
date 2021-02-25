@@ -94,13 +94,13 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		when("there is an no cache", func() {
 			it.Before(func() {
 				testCache = nil
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
 			})
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -115,7 +115,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=false"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 
 				it("keeps metadata and sha file", func() {
@@ -130,13 +130,13 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is an empty cache", func() {
 			it.Before(func() {
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
 			})
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -151,7 +151,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					meta := "cache=false"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 
 				it("keeps metadata and sha file", func() {
@@ -289,7 +289,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 [metadata]
   cache-only-key = "cache-only-val"`
 						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
-						h.AssertNil(t, restorer.Restore(image, testCache))
+						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
 					it("keeps layer metadatata", func() {
@@ -311,13 +311,13 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("there is a cache=false layer", func() {
 				var meta string
 				it.Before(func() {
-					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
 
 					meta = `cache=false
 [metadata]
   cache-false-key = "cache-false-val"`
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, cacheFalseLayerSHA))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 
 				it("keeps layer metadatata", func() {
@@ -335,10 +335,10 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a cache=true layer with wrong sha", func() {
 				it.Before(func() {
-					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "some-made-up-sha"))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -352,10 +352,10 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a cache=true layer not in cache", func() {
 				it.Before(func() {
-					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
 					meta := "cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-layer-not-in-cache", meta, "some-made-up-sha"))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 
 				it("removes metadata and sha file", func() {
@@ -380,7 +380,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 [metadata]
   escaped-bp-key = "escaped-bp-val"`
 						h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
-						h.AssertNil(t, restorer.Restore(image, testCache))
+						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
 					it("keeps layer metadatata", func() {
@@ -402,9 +402,9 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("there is a cache=true layer in cache but not in group", func() {
 				it("analyzes the layers with the provided buildpacks", func() {
 					meta := "cache=true"
-					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
+					mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
 					h.AssertNil(t, writeLayer(layersDir, "nogroup.buildpack.id", "some-layer", meta, noGroupLayerSHA))
-					h.AssertNil(t, restorer.Restore(image, testCache))
+					h.AssertNil(t, restorer.Restore(testCache))
 				})
 			})
 
@@ -423,7 +423,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 						meta = "cache=true"
 						h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
 
-						h.AssertNil(t, restorer.Restore(image, testCache))
+						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
 					it("keeps layer metadatata for all layers", func() {
@@ -465,8 +465,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("executes the layer analyzer", func() {
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, gomock.Any(), gomock.Any())
-				err := restorer.Restore(image, testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
+				err := restorer.Restore(testCache)
 				h.AssertNil(t, err)
 			})
 		})
@@ -477,8 +477,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("analyzes with no layer metadata", func() {
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, platform.LayersMetadata{}, gomock.Any())
-				err := restorer.Restore(image, testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
+				err := restorer.Restore(testCache)
 				h.AssertNil(t, err)
 			})
 		})
@@ -489,16 +489,16 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("analyzes with no layer metadata", func() {
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, platform.LayersMetadata{}, gomock.Any())
-				err := restorer.Restore(image, testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
+				err := restorer.Restore(testCache)
 				h.AssertNil(t, err)
 			})
 		})
 
 		when("image does not exist", func() {
 			it("analyzes with no layer metadata", func() {
-				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, platform.LayersMetadata{}, gomock.Any())
-				err := restorer.Restore(image, testCache)
+				mockLayerAnalyzer.EXPECT().Analyze(restorer.Buildpacks, restorer.SkipLayers, restorer.LayersMetadata, testCache)
+				err := restorer.Restore(testCache)
 				h.AssertNil(t, err)
 			})
 		})
@@ -510,7 +510,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore layer metadata", func() {
-				err := restorer.Restore(image, testCache)
+				err := restorer.Restore(testCache)
 				h.AssertNil(t, err)
 			})
 		})

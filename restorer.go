@@ -4,8 +4,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/buildpacks/imgutil"
-
 	"github.com/buildpacks/lifecycle/buildpack"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -21,24 +19,19 @@ type Restorer struct {
 	LayerAnalyzer     LayerAnalyzer
 	MetadataRetriever MetadataRetriever
 	PlatformAPI       *api.Version
+	LayersMetadata    platform.LayersMetadata
 }
 
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
-func (r *Restorer) Restore(img imgutil.Image, cache Cache) error {
+func (r *Restorer) Restore(cache Cache) error {
 	var (
 		cacheMetadata platform.CacheMetadata
 		err           error
 	)
 
 	if r.analyzesLayers() {
-		var appMeta platform.LayersMetadata
-		// continue even if the label cannot be decoded
-		if err := DecodeLabel(img, platform.LayerMetadataLabel, &appMeta); err != nil {
-			appMeta = platform.LayersMetadata{}
-		}
-
-		if cacheMetadata, err = r.LayerAnalyzer.Analyze(r.Buildpacks, r.SkipLayers, appMeta, cache); err != nil {
+		if cacheMetadata, err = r.LayerAnalyzer.Analyze(r.Buildpacks, r.SkipLayers, r.LayersMetadata, cache); err != nil {
 			return err
 		}
 	} else {
