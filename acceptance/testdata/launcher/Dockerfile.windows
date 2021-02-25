@@ -5,7 +5,7 @@ RUN go build -o helper.exe exec.d
 
 COPY windows/container /
 
-RUN del /F c:\layers\0.5_buildpack\some_layer\exec.d\exec.d-checker\.gitkeep
+RUN mkdir c:\layers\0.5_buildpack\some_layer\exec.d\exec.d-checker
 RUN copy c:\gopath\helper.exe c:\layers\0.5_buildpack\some_layer\exec.d\helper.exe
 RUN copy c:\gopath\helper.exe c:\layers\0.5_buildpack\some_layer\exec.d\exec.d-checker\helper.exe
 
