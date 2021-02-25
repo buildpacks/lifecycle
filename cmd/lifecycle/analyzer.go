@@ -171,7 +171,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
-	mdRetriever := lifecycle.NewMetadataRetriever(cmd.DefaultLogger)
+	cacheMetaRetriever := lifecycle.NewCacheMetadataRetriever(cmd.DefaultLogger)
 
 	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks:    aa.group.Group,
@@ -181,7 +181,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		SkipLayers:    aa.skipLayers,
 		PlatformAPI:   api.MustParse(aa.platformAPI),
 		Image:         img,
-		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, mdRetriever, aa.layersDir),
+		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, aa.layersDir),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")

@@ -6,21 +6,21 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
-type MetadataRetriever interface {
+type CacheMetadataRetriever interface {
 	RetrieveFrom(cache Cache) (platform.CacheMetadata, error)
 }
 
-type DefaultMetadataRetriever struct {
+type DefaultCacheMetadataRetriever struct {
 	Logger Logger
 }
 
-func NewMetadataRetriever(logger Logger) MetadataRetriever {
-	return &DefaultMetadataRetriever{
+func NewCacheMetadataRetriever(logger Logger) CacheMetadataRetriever {
+	return &DefaultCacheMetadataRetriever{
 		Logger: logger,
 	}
 }
 
-func (mr *DefaultMetadataRetriever) RetrieveFrom(cache Cache) (platform.CacheMetadata, error) {
+func (mr *DefaultCacheMetadataRetriever) RetrieveFrom(cache Cache) (platform.CacheMetadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
 	var cacheMeta platform.CacheMetadata
 	if cache != nil {

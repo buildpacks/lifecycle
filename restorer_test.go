@@ -71,9 +71,9 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					{ID: "buildpack.id"},
 					{ID: "escaped/buildpack/id"},
 				},
-				Logger:            &log.Logger{Handler: &discard.Handler{}},
-				LayerAnalyzer:     mockLayerAnalyzer,
-				MetadataRetriever: mockMetadataRetriever,
+				Logger:                 &log.Logger{Handler: &discard.Handler{}},
+				LayerAnalyzer:          mockLayerAnalyzer,
+				CacheMetadataRetriever: mockMetadataRetriever,
 			}
 			if testing.Verbose() {
 				restorer.Logger = cmd.DefaultLogger

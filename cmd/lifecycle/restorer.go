@@ -117,17 +117,17 @@ func (r *restoreCmd) registryImages() []string {
 }
 
 func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
-	mdRetriever := lifecycle.NewMetadataRetriever(cmd.DefaultLogger)
+	cacheMetaRetriever := lifecycle.NewCacheMetadataRetriever(cmd.DefaultLogger)
 
 	restorer := &lifecycle.Restorer{
-		LayersDir:         r.layersDir,
-		Buildpacks:        group.Group,
-		Logger:            cmd.DefaultLogger,
-		PlatformAPI:       api.MustParse(r.platformAPI),
-		LayerAnalyzer:     lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, mdRetriever, r.layersDir),
-		LayersMetadata:    layerMetadata,
-		MetadataRetriever: mdRetriever,
-		SkipLayers:        r.skipLayers,
+		LayersDir:              r.layersDir,
+		Buildpacks:             group.Group,
+		Logger:                 cmd.DefaultLogger,
+		PlatformAPI:            api.MustParse(r.platformAPI),
+		LayerAnalyzer:          lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, r.layersDir),
+		LayersMetadata:         layerMetadata,
+		CacheMetadataRetriever: cacheMetaRetriever,
+		SkipLayers:             r.skipLayers,
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

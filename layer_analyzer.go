@@ -18,10 +18,10 @@ type LayerAnalyzer interface {
 type DefaultLayerAnalyzer struct {
 	Logger            Logger
 	LayersDir         string
-	MetadataRetriever MetadataRetriever
+	MetadataRetriever CacheMetadataRetriever
 }
 
-func NewLayerAnalyzer(logger Logger, metadataRetriever MetadataRetriever, layersDir string) LayerAnalyzer {
+func NewLayerAnalyzer(logger Logger, metadataRetriever CacheMetadataRetriever, layersDir string) LayerAnalyzer {
 	return &DefaultLayerAnalyzer{
 		LayersDir:         layersDir,
 		Logger:            logger,
