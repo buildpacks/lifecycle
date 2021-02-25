@@ -25,6 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
+//go:generate mockgen -package testmock -destination testmock/metadata_retriever.go github.com/buildpacks/lifecycle MetadataRetriever
 func TestAnalyzer(t *testing.T) {
 	spec.Run(t, "Analyzer", testAnalyzer, spec.Report(report.Terminal{}))
 }
@@ -123,34 +124,46 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id"})
 				})
+			})
+		})
 
-				when("platform API < 0.6", func() {
-					it.Before(func() {
-						analyzer.PlatformAPI = api.MustParse("0.5")
-					})
+		when("image does not have metadata label", func() {
+			it.Before(func() {
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
+				analyzer.Cache = testCache
+			})
+			it("does not restore any metadata", func() {
+				_, err := analyzer.Analyze()
+				h.AssertNil(t, err)
 
-					it("analyzes layers", func() {
-						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
+				files, err := ioutil.ReadDir(layerDir)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(files), 0)
+			})
+			it("returns empty analyzed metadata", func() {
+				md, err := analyzer.Analyze()
+				h.AssertNil(t, err)
+				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+			})
+		})
 
-						_, err := analyzer.Analyze()
-						h.AssertNil(t, err)
-					})
+		when("image has incompatible metadata", func() {
+			it.Before(func() {
+				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
+				analyzer.Cache = testCache
+			})
+			it("does not restore any metadata", func() {
+				_, err := analyzer.Analyze()
+				h.AssertNil(t, err)
 
-					when("skip-layers is true", func() {
-						it.Before(func() {
-							analyzer.SkipLayers = true
-							mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
-						})
-
-						it("should return the analyzed metadata", func() {
-							md, err := analyzer.Analyze()
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
-							h.AssertEq(t, md.Metadata, appImageMetadata)
-						})
-					})
-				})
+				files, err := ioutil.ReadDir(layerDir)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(files), 0)
+			})
+			it("returns empty analyzed metadata", func() {
+				md, err := analyzer.Analyze()
+				h.AssertNil(t, err)
+				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 			})
 		})
 
@@ -228,45 +241,39 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
-		})
 
-		when("image does not have metadata label", func() {
-			it.Before(func() {
-				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
-				analyzer.Cache = testCache
-			})
-			it("does not restore any metadata", func() {
-				_, err := analyzer.Analyze()
-				h.AssertNil(t, err)
+			when("cache exists", func() {
+				it.Before(func() {
+					metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "cache_metadata.json"))
+					var cacheMetadata platform.CacheMetadata
+					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
+					h.AssertNil(t, testCache.SetMetadata(cacheMetadata))
+					h.AssertNil(t, testCache.Commit())
 
-				files, err := ioutil.ReadDir(layerDir)
-				h.AssertNil(t, err)
-				h.AssertEq(t, len(files), 0)
-			})
-			it("returns empty analyzed metadata", func() {
-				md, err := analyzer.Analyze()
-				h.AssertNil(t, err)
-				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
-			})
-		})
+					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id"})
+				})
 
-		when("image has incompatible metadata", func() {
-			it.Before(func() {
-				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
-				analyzer.Cache = testCache
-			})
-			it("does not restore any metadata", func() {
-				_, err := analyzer.Analyze()
-				h.AssertNil(t, err)
+				it("analyzes layers", func() {
+					mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 
-				files, err := ioutil.ReadDir(layerDir)
-				h.AssertNil(t, err)
-				h.AssertEq(t, len(files), 0)
-			})
-			it("returns empty analyzed metadata", func() {
-				md, err := analyzer.Analyze()
-				h.AssertNil(t, err)
-				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					_, err := analyzer.Analyze()
+					h.AssertNil(t, err)
+				})
+
+				when("skip-layers is true", func() {
+					it.Before(func() {
+						analyzer.SkipLayers = true
+						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
+					})
+
+					it("should return the analyzed metadata", func() {
+						md, err := analyzer.Analyze()
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
+						h.AssertEq(t, md.Metadata, appImageMetadata)
+					})
+				})
 			})
 		})
 	})

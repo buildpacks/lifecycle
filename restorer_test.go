@@ -30,6 +30,7 @@ import (
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
+//go:generate mockgen -package testmock -destination testmock/layer_analyzer.go github.com/buildpacks/lifecycle LayerAnalyzer
 func TestRestorer(t *testing.T) {
 	spec.Run(t, "Restorer", testRestorer, spec.Report(report.Terminal{}))
 }

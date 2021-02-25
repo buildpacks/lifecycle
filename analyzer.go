@@ -10,14 +10,16 @@ import (
 )
 
 type Analyzer struct {
-	Buildpacks    []buildpack.GroupBuildpack
-	Cache         Cache
 	Image         imgutil.Image
 	LayersDir     string
 	Logger        Logger
-	SkipLayers    bool
 	LayerAnalyzer LayerAnalyzer
 	PlatformAPI   *api.Version
+
+	// Platform API < 0.6
+	Cache      Cache
+	Buildpacks []buildpack.GroupBuildpack
+	SkipLayers bool
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml

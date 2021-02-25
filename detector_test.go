@@ -22,8 +22,6 @@ import (
 )
 
 //go:generate mockgen -package testmock -destination testmock/resolver.go github.com/buildpacks/lifecycle Resolver
-//go:generate mockgen -package testmock -destination testmock/layer_analyzer.go github.com/buildpacks/lifecycle LayerAnalyzer
-//go:generate mockgen -package testmock -destination testmock/metadata_retriever.go github.com/buildpacks/lifecycle MetadataRetriever
 
 func TestDetector(t *testing.T) {
 	spec.Run(t, "Detector", testDetector, spec.Report(report.Terminal{}))
