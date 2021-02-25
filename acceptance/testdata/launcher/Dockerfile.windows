@@ -1,0 +1,14 @@
+FROM golang:1.15-nanoserver-1809
+
+COPY exec.d/ /go/src/exec.d
+RUN go build -o helper.exe exec.d
+
+COPY windows/container /
+
+RUN del /F c:\layers\0.5_buildpack\some_layer\exec.d\exec.d-checker\.gitkeep
+RUN copy c:\gopath\helper.exe c:\layers\0.5_buildpack\some_layer\exec.d\helper.exe
+RUN copy c:\gopath\helper.exe c:\layers\0.5_buildpack\some_layer\exec.d\exec.d-checker\helper.exe
+
+ENV PATH="c:\cnb\process;c:\cnb\lifecycle;C:\Windows\system32;C:\Windows;"
+
+ENTRYPOINT ["c:\\cnb\\lifecycle\\launcher"]

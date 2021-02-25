@@ -3,7 +3,6 @@ package acceptance
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -27,18 +26,16 @@ func TestLauncher(t *testing.T) {
 	h.AssertNil(t, err)
 	daemonOS = info.OSType
 
+	launchDockerContext = filepath.Join("testdata", "launcher")
 	if daemonOS == "windows" {
-		launchDockerContext = filepath.Join("testdata", "launcher", "windows")
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
-		copyPosixFixture(t)
 	} else {
-		launchDockerContext = filepath.Join("testdata", "launcher", "posix")
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "posix", "container", "cnb", "lifecycle")
 	}
 
 	h.MakeAndCopyLauncher(t, daemonOS, launcherBinaryDir)
 
-	h.DockerBuild(t, launchImage, launchDockerContext)
+	h.DockerBuild(t, launchImage, launchDockerContext, h.WithFlags("-f", filepath.Join(launchDockerContext, dockerfileName)))
 	defer h.DockerImageRemove(t, launchImage)
 
 	spec.Run(t, "acceptance", testLauncher, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -63,11 +60,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
 				expected += "sourced bp profile\n"
 				expected += "sourced app profile\n"
-				if runtime.GOOS == "windows" {
-					expected += `"VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"`
-				} else {
-					expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
-				}
+				expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
 
 				assertOutput(t, cmd, expected)
 			})
@@ -362,15 +355,4 @@ func assertOutput(t *testing.T, cmd *exec.Cmd, expected ...string) {
 			t.Fatalf("failed:\n\t output: %s\n\t should include: %s", output, ex)
 		}
 	}
-}
-
-func copyPosixFixture(t *testing.T) {
-	windowsContext := filepath.Join("testdata", "launcher", "windows")
-	h.AssertNil(t, os.MkdirAll(filepath.Join(windowsContext, "exec.d"), 0755))
-	h.RecursiveCopy(
-		t,
-		filepath.Join("testdata", "launcher", "posix", "exec.d"),
-		filepath.Join(windowsContext, "exec.d"),
-	)
-	os.RemoveAll(filepath.Join(windowsContext, "container", "layers", "0.5_buildpack", "some_layer", "exec.d", "exec.d-checker", ".gitkeep"))
 }

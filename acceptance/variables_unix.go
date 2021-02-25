@@ -3,10 +3,9 @@
 package acceptance
 
 const (
-	containerBaseImage = "ubuntu:bionic"
-	dockerfileName     = "Dockerfile"
-	exe                = ""
-	rootDir            = "/"
+	dockerfileName = "Dockerfile"
+	exe            = ""
+	rootDir        = "/"
 )
 
 var dockerSocketMount = []string{

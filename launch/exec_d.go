@@ -39,8 +39,9 @@ func (e *ExecDRunner) ExecD(path string, env Env) error {
 		cmd.Env = env.List()
 		if err := setHandle(cmd, pw); err != nil {
 			errChan <- err
+		} else {
+			errChan <- cmd.Run()
 		}
-		errChan <- cmd.Run()
 	}()
 
 	out, err := ioutil.ReadAll(pr)

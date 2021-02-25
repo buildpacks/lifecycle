@@ -6,7 +6,7 @@ import "syscall"
 
 const (
 	CNBDir     = `/cnb`
-	Exe        = ""
+	exe        = ""
 	appProfile = ".profile"
 )
 

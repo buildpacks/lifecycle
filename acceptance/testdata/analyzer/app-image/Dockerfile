@@ -1,6 +1,4 @@
-ARG fromImage
-
-FROM $fromImage
+FROM ubuntu:bionic
 
 ARG metadata
 

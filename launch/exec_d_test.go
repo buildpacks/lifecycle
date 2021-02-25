@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -44,7 +45,13 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			wd, err := os.Getwd()
 			h.AssertNil(t, err)
-			path = filepath.Join(tmpDir, "execd"+launch.Exe)
+
+			exe := ""
+			if runtime.GOOS == "windows" {
+				exe = ".exe"
+			}
+			path = filepath.Join(tmpDir, "execd"+exe)
+
 			cmd := exec.Command("go", "build",
 				"-o", path,
 				filepath.Join(wd, "testdata", "cmd", "execd"),

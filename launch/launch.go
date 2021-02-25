@@ -22,7 +22,7 @@ func (p Process) NoDefault() Process {
 
 // ProcessPath returns the absolute path to the symlink for a given process type
 func ProcessPath(pType string) string {
-	return filepath.Join(ProcessDir, pType+Exe)
+	return filepath.Join(ProcessDir, pType+exe)
 }
 
 type Metadata struct {

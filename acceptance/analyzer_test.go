@@ -205,7 +205,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"docker",
 					"build",
 					"-t", appImage,
-					"--build-arg", "fromImage="+containerBaseImage,
 					"--build-arg", "metadata="+metadata,
 					filepath.Join("testdata", "analyzer", "app-image"),
 				)
@@ -264,7 +263,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							"docker",
 							"build",
 							"-t", cacheImage,
-							"--build-arg", "fromImage="+containerBaseImage,
 							"--build-arg", "metadata="+metadata,
 							filepath.Join("testdata", "analyzer", "cache-image"),
 						)
@@ -305,7 +303,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								t,
 								"some-cache-image-"+h.RandString(10),
 								filepath.Join("testdata", "analyzer", "cache-image"),
-								"--build-arg", "fromImage="+containerBaseImage,
 								"--build-arg", "metadata="+metadata,
 							)
 						})
@@ -369,7 +366,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								t,
 								"some-cache-image-"+h.RandString(10),
 								filepath.Join("testdata", "analyzer", "cache-image"),
-								"--build-arg", "fromImage="+containerBaseImage,
 								"--build-arg", "metadata="+metadata,
 							)
 						})
@@ -497,7 +493,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t,
 						"some-app-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "app-image"),
-						"--build-arg", "fromImage="+containerBaseImage,
 						"--build-arg", "metadata="+metadata,
 					)
 				})
@@ -576,7 +571,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t,
 						"some-app-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "app-image"),
-						"--build-arg", "fromImage="+containerBaseImage,
 						"--build-arg", "metadata="+metadata,
 					)
 				})
@@ -634,7 +628,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t,
 							"some-cache-image-"+h.RandString(10),
 							filepath.Join("testdata", "analyzer", "cache-image"),
-							"--build-arg", "fromImage="+containerBaseImage,
 							"--build-arg", "metadata="+metadata,
 						)
 					})
@@ -696,7 +689,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t,
 							"some-cache-image-"+h.RandString(10),
 							filepath.Join("testdata", "analyzer", "cache-image"),
-							"--build-arg", "fromImage="+containerBaseImage,
 							"--build-arg", "metadata="+metadata,
 						)
 					})
