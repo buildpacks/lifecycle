@@ -33,7 +33,7 @@ func (mr *DefaultMetadataRetriever) RetrieveFrom(cache Cache) (platform.CacheMet
 			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
 		}
 	} else {
-		mr.Logger.Debug("Usable cache not provided, using empty cache metadata.")
+		mr.Logger.Debug("Usable cache not provided, using empty cache metadata")
 	}
 
 	return cacheMeta, nil
