@@ -461,7 +461,6 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "metadata.buildpack"}, {ID: "no.cache.buildpack"}, {ID: "no.metadata.buildpack"}}
 				metadata := h.MustReadFile(t, filepath.Join("testdata", "restorer", "app_metadata.json"))
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
-				// mockLayerAnalyzer.EXPECT().RetrieveMetadataFrom(testCache)
 			})
 
 			it("executes the layer analyzer", func() {

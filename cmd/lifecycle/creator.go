@@ -156,7 +156,7 @@ func (c *createCmd) Exec() error {
 			skipLayers:  c.skipRestore,
 			useDaemon:   c.useDaemon,
 			docker:      c.docker,
-		}.analyze(buildpack.Group{}, nil)
+		}.analyze()
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,9 @@ func (c *createCmd) Exec() error {
 			skipLayers:  c.skipRestore,
 			useDaemon:   c.useDaemon,
 			docker:      c.docker,
-		}.analyze(group, cacheStore)
+			group:       group,
+			cache:       cacheStore,
+		}.analyze()
 		if err != nil {
 			return err
 		}

@@ -23,8 +23,8 @@ type Restorer struct {
 	PlatformAPI       *api.Version
 }
 
-// Restore attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
-// If a usable cache is not provided, Restore will remove all cache=true layer metadata.
+// Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
+// If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
 func (r *Restorer) Restore(img imgutil.Image, cache Cache) error {
 	var (
 		cacheMetadata platform.CacheMetadata

@@ -11,6 +11,7 @@ import (
 
 type Analyzer struct {
 	Buildpacks    []buildpack.GroupBuildpack
+	Cache         Cache
 	Image         imgutil.Image
 	LayersDir     string
 	Logger        Logger
@@ -19,9 +20,8 @@ type Analyzer struct {
 	PlatformAPI   *api.Version
 }
 
-// Analyze restores metadata for launch and cache layers into the layers directory.
-// If a usable cache is not provided, Analyze will not restore any cache=true layer metadata.
-func (a *Analyzer) Analyze(cache Cache) (platform.AnalyzedMetadata, error) {
+// Analyze fetches the layers metadata from the previous image and writes analyzed.toml
+func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
 		appMeta platform.LayersMetadata
 		imageID *platform.ImageIdentifier
@@ -42,7 +42,7 @@ func (a *Analyzer) Analyze(cache Cache) (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.analyzeLayers() {
-		if _, err := a.LayerAnalyzer.Analyze(a.Buildpacks, a.SkipLayers, appMeta, cache); err != nil {
+		if _, err := a.LayerAnalyzer.Analyze(a.Buildpacks, a.SkipLayers, appMeta, a.Cache); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}

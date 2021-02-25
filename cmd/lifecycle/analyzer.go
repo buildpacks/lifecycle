@@ -38,6 +38,8 @@ type analyzeArgs struct {
 	platformAPI string
 	skipLayers  bool
 	useDaemon   bool
+	group       buildpack.Group
+	cache       lifecycle.Cache
 
 	//construct if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -129,9 +131,11 @@ func (a *analyzeCmd) Exec() error {
 		if err != nil {
 			return cmd.FailErr(err, "initialize cache")
 		}
+		a.group = group
+		a.cache = cacheStore
 	}
 
-	analyzedMD, err := a.analyze(group, cacheStore)
+	analyzedMD, err := a.analyze()
 	if err != nil {
 		return err
 	}
@@ -143,7 +147,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache) (platform.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -170,14 +174,15 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 	mdRetriever := lifecycle.NewMetadataRetriever(cmd.DefaultLogger)
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks:    group.Group,
+		Buildpacks:    aa.group.Group,
+		Cache:         aa.cache,
 		LayersDir:     aa.layersDir,
 		Logger:        cmd.DefaultLogger,
 		SkipLayers:    aa.skipLayers,
 		PlatformAPI:   api.MustParse(aa.platformAPI),
 		Image:         img,
 		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, mdRetriever, aa.layersDir),
-	}).Analyze(cacheStore)
+	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, cmd.CodeAnalyzeError, "analyzer")
 	}

@@ -89,6 +89,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				ImageID: "s0m3D1g3sT",
 			})
 			analyzer.Image = image
+			analyzer.Cache = testCache
 			ref = testmock.NewMockReference(mockCtrl)
 			ref.EXPECT().Name().AnyTimes()
 		})
@@ -105,7 +106,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the analyzed metadata", func() {
-				md, err := analyzer.Analyze(testCache)
+				md, err := analyzer.Analyze()
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
@@ -131,7 +132,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					it("analyzes layers", func() {
 						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 
-						_, err := analyzer.Analyze(testCache)
+						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 					})
 
@@ -142,7 +143,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("should return the analyzed metadata", func() {
-							md, err := analyzer.Analyze(testCache)
+							md, err := analyzer.Analyze()
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
@@ -156,6 +157,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("platform API < 0.6", func() {
 			it.Before(func() {
 				analyzer.PlatformAPI = api.MustParse("0.5")
+				analyzer.Cache = testCache
 			})
 
 			when("image is not found", func() {
@@ -176,7 +178,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns a nil image in the analyzed metadata", func() {
-						md, err := analyzer.Analyze(testCache)
+						md, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 
 						h.AssertNil(t, md.Image)
@@ -188,7 +190,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 					})
 					it("does not restore any metadata", func() {
-						_, err := analyzer.Analyze(testCache)
+						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 
 						files, err := ioutil.ReadDir(layerDir)
@@ -196,7 +198,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, len(files), 0)
 					})
 					it("returns a nil image in the analyzed metadata", func() {
-						md, err := analyzer.Analyze(testCache)
+						md, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 
 						h.AssertNil(t, md.Image)
@@ -206,10 +208,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("cache is not provided", func() {
 					it.Before(func() {
 						testCache = nil
+						analyzer.Cache = testCache
 						mockLayerAnalyzer.EXPECT().Analyze(analyzer.Buildpacks, analyzer.SkipLayers, gomock.Any(), testCache)
 					})
 					it("does not restore any metadata", func() {
-						_, err := analyzer.Analyze(testCache)
+						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 
 						files, err := ioutil.ReadDir(layerDir)
@@ -217,7 +220,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, len(files), 0)
 					})
 					it("returns a nil image in the analyzed metadata", func() {
-						md, err := analyzer.Analyze(testCache)
+						md, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 
 						h.AssertNil(t, md.Image)
@@ -230,9 +233,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("image does not have metadata label", func() {
 			it.Before(func() {
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
+				analyzer.Cache = testCache
 			})
 			it("does not restore any metadata", func() {
-				_, err := analyzer.Analyze(testCache)
+				_, err := analyzer.Analyze()
 				h.AssertNil(t, err)
 
 				files, err := ioutil.ReadDir(layerDir)
@@ -240,7 +244,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(files), 0)
 			})
 			it("returns empty analyzed metadata", func() {
-				md, err := analyzer.Analyze(testCache)
+				md, err := analyzer.Analyze()
 				h.AssertNil(t, err)
 				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 			})
@@ -249,9 +253,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		when("image has incompatible metadata", func() {
 			it.Before(func() {
 				h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
+				analyzer.Cache = testCache
 			})
 			it("does not restore any metadata", func() {
-				_, err := analyzer.Analyze(testCache)
+				_, err := analyzer.Analyze()
 				h.AssertNil(t, err)
 
 				files, err := ioutil.ReadDir(layerDir)
@@ -259,7 +264,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(files), 0)
 			})
 			it("returns empty analyzed metadata", func() {
-				md, err := analyzer.Analyze(testCache)
+				md, err := analyzer.Analyze()
 				h.AssertNil(t, err)
 				h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 			})
