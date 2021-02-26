@@ -7,7 +7,7 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20210119193758-3436c122b313
 	github.com/buildpacks/lifecycle v0.9.2
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
-	github.com/golang/mock v1.4.4
+	github.com/golang/mock v1.5.0
 	github.com/golangci/golangci-lint v1.30.0
 	github.com/google/go-containerregistry v0.4.0
 	github.com/pkg/errors v0.9.1
