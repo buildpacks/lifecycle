@@ -6,7 +6,7 @@ RUN go build -o helper ./src/exec.d
 
 FROM ubuntu:bionic
 
-COPY posix/container /
+COPY linux/container /
 
 RUN rm /layers/0.5_buildpack/some_layer/exec.d/exec.d-checker/.gitkeep
 COPY --from=builder /go/helper /layers/0.5_buildpack/some_layer/exec.d/helper

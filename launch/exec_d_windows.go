@@ -10,8 +10,8 @@ import (
 
 const EnvExecDHandle = "CNB_EXEC_D_HANDLE"
 
-func setHandle(cmd *exec.Cmd, pw *os.File) error {
-	handle := pw.Fd()
+func setHandle(cmd *exec.Cmd, f *os.File) error {
+	handle := f.Fd()
 	if err := windows.SetHandleInformation(windows.Handle(handle), windows.HANDLE_FLAG_INHERIT, windows.HANDLE_FLAG_INHERIT); err != nil {
 		return err
 	}

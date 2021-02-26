@@ -30,7 +30,7 @@ func TestLauncher(t *testing.T) {
 	if daemonOS == "windows" {
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
 	} else {
-		launcherBinaryDir = filepath.Join("testdata", "launcher", "posix", "container", "cnb", "lifecycle")
+		launcherBinaryDir = filepath.Join("testdata", "launcher", "linux", "container", "cnb", "lifecycle")
 	}
 
 	h.MakeAndCopyLauncher(t, daemonOS, launcherBinaryDir)
