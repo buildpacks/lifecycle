@@ -27,7 +27,7 @@ type ImageCache struct {
 }
 
 func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) (*ImageCache, error) {
-	generatedLayerDir, err := ioutil.TempDir("", "imace-cache-generated-layers")
+	generatedLayerDir, err := ioutil.TempDir("", "image-cache-generated-layers")
 	if err != nil {
 		return nil, fmt.Errorf("creating temp dir: %w", err)
 	}
