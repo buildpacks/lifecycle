@@ -49,13 +49,14 @@ func TestAnalyzer(t *testing.T) {
 	h.AssertNil(t, err)
 	defer os.RemoveAll(dockerConfigDir)
 
-	noAuthRegistry = ih.NewDockerRegistry()
-	noAuthRegistry.Start(t)
-	defer noAuthRegistry.Stop(t)
-
-	registry = ih.NewDockerRegistryWithAuth(dockerConfigDir)
+	regVolumeID := "test-registry-volume-" + h.RandString(10)
+	registry = ih.NewDockerRegistry(ih.WithAuth(dockerConfigDir), ih.WithSharedStorageVolume(regVolumeID))
 	registry.Start(t)
 	defer registry.Stop(t)
+
+	noAuthRegistry = ih.NewDockerRegistry(ih.WithSharedStorageVolume(regVolumeID))
+	noAuthRegistry.Start(t)
+	defer noAuthRegistry.Stop(t)
 
 	os.Setenv("DOCKER_CONFIG", registry.DockerDirectory)
 	// Copy docker config directory to analyze-image container
@@ -299,7 +300,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					when("auth registry", func() {
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-							cacheImage, cacheAuthConfig = buildRegistryImage(
+							cacheImage, cacheAuthConfig = buildAuthRegistryImage(
 								t,
 								"some-cache-image-"+h.RandString(10),
 								filepath.Join("testdata", "analyzer", "cache-image"),
@@ -360,18 +361,24 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("no auth registry", func() {
+						var authRegCacheImage string
+
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-							cacheImage, cacheAuthConfig = buildNoAuthRegistryImage(
+
+							imageName := "some-cache-image-" + h.RandString(10)
+							authRegCacheImage, _ = buildAuthRegistryImage(
 								t,
-								"some-cache-image-"+h.RandString(10),
+								imageName,
 								filepath.Join("testdata", "analyzer", "cache-image"),
 								"--build-arg", "metadata="+metadata,
 							)
+
+							cacheImage, cacheAuthConfig = getNoAuthRegistryImage(t, imageName)
 						})
 
 						it.After(func() {
-							h.DockerImageRemove(t, cacheImage)
+							h.DockerImageRemove(t, authRegCacheImage)
 						})
 
 						it("restores cache metadata", func() {
@@ -489,7 +496,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			when("auth registry", func() {
 				it.Before(func() {
 					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
-					appImage, appAuthConfig = buildRegistryImage(
+					appImage, appAuthConfig = buildAuthRegistryImage(
 						t,
 						"some-app-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "app-image"),
@@ -565,18 +572,23 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("no auth registry", func() {
+				var authRegAppImage string
+
 				it.Before(func() {
 					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
-					appImage, appAuthConfig = buildNoAuthRegistryImage(
+
+					imageName := "some-app-image-" + h.RandString(10)
+					authRegAppImage, _ = buildAuthRegistryImage(
 						t,
-						"some-app-image-"+h.RandString(10),
+						imageName,
 						filepath.Join("testdata", "analyzer", "app-image"),
 						"--build-arg", "metadata="+metadata,
 					)
+					appImage, appAuthConfig = getNoAuthRegistryImage(t, imageName)
 				})
 
 				it.After(func() {
-					h.DockerImageRemove(t, appImage)
+					h.DockerImageRemove(t, authRegAppImage)
 				})
 
 				it("restores app metadata", func() {
@@ -624,7 +636,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				when("auth registry", func() {
 					it.Before(func() {
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-						cacheImage, cacheAuthConfig = buildRegistryImage(
+						cacheImage, cacheAuthConfig = buildAuthRegistryImage(
 							t,
 							"some-cache-image-"+h.RandString(10),
 							filepath.Join("testdata", "analyzer", "cache-image"),
@@ -683,18 +695,24 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("no auth registry", func() {
+					var authRegCacheImage string
+
 					it.Before(func() {
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-						cacheImage, cacheAuthConfig = buildNoAuthRegistryImage(
+
+						imageName := "some-cache-image-" + h.RandString(10)
+						authRegCacheImage, _ = buildAuthRegistryImage(
 							t,
-							"some-cache-image-"+h.RandString(10),
+							imageName,
 							filepath.Join("testdata", "analyzer", "cache-image"),
 							"--build-arg", "metadata="+metadata,
 						)
+
+						cacheImage, cacheAuthConfig = getNoAuthRegistryImage(t, imageName)
 					})
 
 					it.After(func() {
-						h.DockerImageRemove(t, cacheImage)
+						h.DockerImageRemove(t, authRegCacheImage)
 					})
 
 					it("restores cache metadata", func() {
@@ -812,7 +830,7 @@ func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) strin
 	return string(flatMetadata)
 }
 
-func buildRegistryImage(t *testing.T, repoName, context string, buildArgs ...string) (string, string) {
+func buildAuthRegistryImage(t *testing.T, repoName, context string, buildArgs ...string) (string, string) {
 	// Build image
 	regRepoName := registry.RepoName(repoName)
 	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
@@ -827,19 +845,13 @@ func buildRegistryImage(t *testing.T, repoName, context string, buildArgs ...str
 	return regRepoName, authConfig
 }
 
-func buildNoAuthRegistryImage(t *testing.T, repoName, context string, buildArgs ...string) (string, string) {
-	// Build image
-	regRepoName := noAuthRegistry.RepoName(repoName)
-	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
-
-	// Push image
-	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, noAuthRegistry.EncodedLabeledAuth()))
-
-	// Setup auth
-	authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, regRepoName)
+func getNoAuthRegistryImage(t *testing.T, repoName string) (string, string) {
+	// Get matching repo name for read-only registry
+	noAuthRegRepoName := noAuthRegistry.RepoName(repoName)
+	noAuthRegAuthConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, noAuthRegRepoName)
 	h.AssertNil(t, err)
 
-	return regRepoName, authConfig
+	return noAuthRegRepoName, noAuthRegAuthConfig
 }
 
 func assertAnalyzedMetadata(t *testing.T, path string) {

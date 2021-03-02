@@ -44,7 +44,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		name,
 		keychain,
 		remote.FromBaseImage(name),
-		remote.WithPlatform(imgutil.Platform{OS: runtime.GOOS}),
+		remote.WithDefaultPlatform(imgutil.Platform{OS: runtime.GOOS}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("accessing cache image %q: %v", name, err)
@@ -53,7 +53,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		name,
 		keychain,
 		remote.WithPreviousImage(name),
-		remote.WithPlatform(imgutil.Platform{OS: runtime.GOOS}),
+		remote.WithDefaultPlatform(imgutil.Platform{OS: runtime.GOOS}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
