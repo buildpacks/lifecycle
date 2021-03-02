@@ -263,7 +263,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 }
 
 func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
-	var opts = []interface{}{
+	var opts = []local.ImageOption{
 		local.FromBaseImage(ea.runImageRef),
 	}
 
@@ -298,7 +298,7 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (i
 }
 
 func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
-	var opts = []interface{}{
+	var opts = []remote.ImageOption{
 		remote.FromBaseImage(ea.runImageRef),
 	}
 
