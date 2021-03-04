@@ -229,20 +229,12 @@ func (lmf *LayerMetadataFile) EncodeFalseFlags(path, buildpackAPI string) error 
 	return toml.NewEncoder(fh).Encode(lmf)
 }
 
-type layerMetadataFileAllFormats struct {
-	Data   interface{} `toml:"metadata"`
-	Types  typesTable  `toml:"types"`
-	Build  bool        `toml:"build"`
-	Launch bool        `toml:"launch"`
-	Cache  bool        `toml:"cache"`
+func typesInTopLevel(md toml.MetaData) bool {
+	return md.IsDefined("build") || md.IsDefined("launch") || md.IsDefined("cache")
 }
 
-func typesInTopLevel(lmfaf layerMetadataFileAllFormats) bool {
-	return lmfaf.Build || lmfaf.Cache || lmfaf.Launch
-}
-
-func typesInTypesTable(lmfaf layerMetadataFileAllFormats) bool {
-	return lmfaf.Types.Build || lmfaf.Types.Cache || lmfaf.Types.Launch
+func typesInTypesTable(md toml.MetaData) bool {
+	return md.IsDefined("types")
 }
 
 func DecodeLayerMetadataFile(path, buildpackAPI string) (LayerMetadataFile, bool /*are types in the right format*/, error) {
@@ -254,16 +246,22 @@ func DecodeLayerMetadataFile(path, buildpackAPI string) (LayerMetadataFile, bool
 	}
 	defer fh.Close()
 
-	var lmfaf layerMetadataFileAllFormats
-	if _, err = toml.DecodeFile(path, &lmfaf); err != nil {
+	if supportsTypesTable(buildpackAPI) {
+		var lmtf layerMetadataTomlFile
+		md, err := toml.DecodeFile(path, &lmtf)
+		if err != nil {
+			return LayerMetadataFile{}, true, err
+		}
+		isWrongFormat := typesInTopLevel(md)
+		return LayerMetadataFile{Data: lmtf.Data, Build: lmtf.Types.Build, Launch: lmtf.Types.Launch, Cache: lmtf.Types.Cache}, !isWrongFormat, nil
+	}
+	var lmf LayerMetadataFile
+	md, err := toml.DecodeFile(path, &lmf)
+	if err != nil {
 		return LayerMetadataFile{}, true, err
 	}
-	if supportsTypesTable(buildpackAPI) {
-		isWrongFormat := typesInTopLevel(lmfaf)
-		return LayerMetadataFile{Data: lmfaf.Data, Build: lmfaf.Types.Build, Launch: lmfaf.Types.Launch, Cache: lmfaf.Types.Cache}, !isWrongFormat, nil
-	}
-	isWrongFormat := typesInTypesTable(lmfaf)
-	return LayerMetadataFile{Data: lmfaf.Data, Build: lmfaf.Build, Launch: lmfaf.Launch, Cache: lmfaf.Cache}, !isWrongFormat, nil
+	isWrongFormat := typesInTypesTable(md)
+	return lmf, !isWrongFormat, nil
 }
 
 func isBuild(path, buildpackAPI string) bool {
