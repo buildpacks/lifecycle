@@ -3,12 +3,13 @@
 package buildpack
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/BurntSushi/toml"
-
-	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack/layertypes"
+	v05 "github.com/buildpacks/lifecycle/buildpack/v05"
+	v06 "github.com/buildpacks/lifecycle/buildpack/v06"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -196,85 +197,57 @@ func containsName(unmet []Unmet, name string) bool {
 
 // layer content metadata
 
-type LayerMetadataFile struct {
-	Data   interface{} `json:"data" toml:"metadata"`
-	Build  bool        `json:"build" toml:"build"`
-	Launch bool        `json:"launch" toml:"launch"`
-	Cache  bool        `json:"cache" toml:"cache"`
+type EncoderDecoder interface {
+	IsSupported(buildpackAPI string) bool
+	Encode(file *os.File, lmf layertypes.LayerMetadataFile) error
+	Decode(path string) (layertypes.LayerMetadataFile, string, error)
 }
 
-type typesTable struct {
-	Build  bool `toml:"build"`
-	Launch bool `toml:"launch"`
-	Cache  bool `toml:"cache"`
-}
-type layerMetadataTomlFile struct {
-	Data  interface{} `toml:"metadata"`
-	Types typesTable  `toml:"types"`
-}
-
-func (lmf *LayerMetadataFile) EncodeFalseFlags(path, buildpackAPI string) error {
+func EncodeFalseFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) error {
 	fh, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer fh.Close()
 
-	lmf.unsetFlags()
-	if supportsTypesTable(buildpackAPI) {
-		types := typesTable{Build: lmf.Build, Launch: lmf.Launch, Cache: lmf.Cache}
-		lmtf := layerMetadataTomlFile{Data: lmf.Data, Types: types}
-		return toml.NewEncoder(fh).Encode(lmtf)
+	lmf.UnsetFlags()
+
+	encoders := []EncoderDecoder{
+		v05.NewEncoderDecoder(),
+		v06.NewEncoderDecoder(),
 	}
-	return toml.NewEncoder(fh).Encode(lmf)
+
+	for _, encoder := range encoders {
+		if encoder.IsSupported(buildpackAPI) {
+			return encoder.Encode(fh, lmf)
+		}
+	}
+	return errors.New("couldn't find an encoder")
 }
 
-func typesInTopLevel(md toml.MetaData) bool {
-	return md.IsDefined("build") || md.IsDefined("launch") || md.IsDefined("cache")
-}
-
-func typesInTypesTable(md toml.MetaData) bool {
-	return md.IsDefined("types")
-}
-
-func DecodeLayerMetadataFile(path, buildpackAPI string) (LayerMetadataFile, bool /*are types in the right format*/, error) {
+func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadataFile, string /*warning/error*/, error) {
 	fh, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return LayerMetadataFile{}, true, nil
+		return layertypes.LayerMetadataFile{}, "", nil
 	} else if err != nil {
-		return LayerMetadataFile{}, true, err
+		return layertypes.LayerMetadataFile{}, "", err
 	}
 	defer fh.Close()
 
-	if supportsTypesTable(buildpackAPI) {
-		var lmtf layerMetadataTomlFile
-		md, err := toml.DecodeFile(path, &lmtf)
-		if err != nil {
-			return LayerMetadataFile{}, true, err
+	decoders := []EncoderDecoder{
+		v05.NewEncoderDecoder(),
+		v06.NewEncoderDecoder(),
+	}
+
+	for _, decoder := range decoders {
+		if decoder.IsSupported(buildpackAPI) {
+			return decoder.Decode(path)
 		}
-		isWrongFormat := typesInTopLevel(md)
-		return LayerMetadataFile{Data: lmtf.Data, Build: lmtf.Types.Build, Launch: lmtf.Types.Launch, Cache: lmtf.Types.Cache}, !isWrongFormat, nil
 	}
-	var lmf LayerMetadataFile
-	md, err := toml.DecodeFile(path, &lmf)
-	if err != nil {
-		return LayerMetadataFile{}, true, err
-	}
-	isWrongFormat := typesInTypesTable(md)
-	return lmf, !isWrongFormat, nil
+	return layertypes.LayerMetadataFile{}, "", errors.New("couldn't find a decoder")
 }
 
 func isBuild(path, buildpackAPI string) bool {
 	layerMetadataFile, _, err := DecodeLayerMetadataFile(path, buildpackAPI)
 	return err == nil && layerMetadataFile.Build
-}
-
-func supportsTypesTable(buildpackAPI string) bool {
-	return api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0
-}
-
-func (lmf *LayerMetadataFile) unsetFlags() {
-	lmf.Launch = false
-	lmf.Cache = false
-	lmf.Build = false
 }

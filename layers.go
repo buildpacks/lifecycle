@@ -13,6 +13,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -150,12 +151,12 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadataFalseFlags(metadata buildpack.LayerMetadataFile) error {
+func (bp *bpLayer) writeMetadataFalseFlags(metadata layertypes.LayerMetadataFile) error {
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
-	return metadata.EncodeFalseFlags(path, bp.API)
+	return buildpack.EncodeFalseFlags(metadata, path, bp.API)
 }
 
 func (bp *bpLayer) hasLocalContents() bool {
