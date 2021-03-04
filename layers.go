@@ -123,7 +123,7 @@ type bpLayer struct {
 
 func (bp *bpLayer) read() (platform.BuildpackLayerMetadata, error) {
 	tomlPath := bp.path + ".toml"
-	layerMetadataFile, err := buildpack.DecodeLayerMetadataFile(tomlPath, bp.API)
+	layerMetadataFile, _, err := buildpack.DecodeLayerMetadataFile(tomlPath, bp.API)
 	if err != nil {
 		return platform.BuildpackLayerMetadata{}, err
 	}
@@ -150,12 +150,12 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadata(metadata buildpack.LayerMetadataFile) error {
+func (bp *bpLayer) writeMetadataFalseFlags(metadata buildpack.LayerMetadataFile) error {
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
-	return metadata.Encode(path, bp.API)
+	return metadata.EncodeFalseFlags(path, bp.API)
 }
 
 func (bp *bpLayer) hasLocalContents() bool {

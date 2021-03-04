@@ -92,9 +92,9 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Out)
 }
 
-func renameLayerDirIfNeeded(layerDir, buildpackAPI string) error {
+func renameLayerDirIfNeeded(layerMetadataFile LayerMetadataFile, layerDir string) error {
 	// rename <layers>/<layer> to <layers>/<layer>.ignore if buildpack API >= 0.6 and all of the types flags are set to false
-	if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0 && areTypesFalse(layerDir+".toml", buildpackAPI) {
+	if !layerMetadataFile.Launch && !layerMetadataFile.Cache && !layerMetadataFile.Build {
 		if err := os.Rename(layerDir, layerDir+".ignore"); err != nil {
 			return err
 		}
@@ -103,19 +103,30 @@ func renameLayerDirIfNeeded(layerDir, buildpackAPI string) error {
 }
 
 func (b *Descriptor) checkTypesFormat(layersDir string, out io.Writer) error {
-	return eachDir(layersDir, b.API, func(path, buildpackAPI string) error {
-		ok := typesInRightFormat(path+".toml", buildpackAPI)
-		if !ok {
-			if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
+	if api.MustParse(b.API).Compare(api.MustParse("0.6")) < 0 {
+		return eachDir(layersDir, b.API, func(path, buildpackAPI string) error {
+			_, rightFormat, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
+			if err != nil {
+				return err
+			}
+			if !rightFormat {
 				warning := "Warning: types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
-				if _, err := out.Write([]byte(warning)); err != nil {
+				if _, err = out.Write([]byte(warning)); err != nil {
 					return err
 				}
-				return nil
 			}
+			return nil
+		})
+	}
+	return eachDir(layersDir, b.API, func(path, buildpackAPI string) error {
+		layerMetadataFile, rightFormat, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
+		if err != nil {
+			return err
+		}
+		if !rightFormat {
 			return fmt.Errorf("the launch, cache and build flags should be in the types table of %s.toml", path)
 		}
-		if err := renameLayerDirIfNeeded(path, buildpackAPI); err != nil {
+		if err := renameLayerDirIfNeeded(layerMetadataFile, path); err != nil {
 			return err
 		}
 		return nil

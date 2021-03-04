@@ -89,8 +89,7 @@ func (a *Analyzer) analyzeLayers(appMeta platform.LayersMetadata, cache Cache) e
 				continue
 			}
 			a.Logger.Infof("Restoring metadata for %q from app image", identifier)
-			layer.UnsetFlags()
-			if err := a.writeLayerMetadata(buildpackDir, name, layer); err != nil {
+			if err := a.writeLayerMetadataFalseFlags(buildpackDir, name, layer); err != nil {
 				return err
 			}
 		}
@@ -110,8 +109,7 @@ func (a *Analyzer) analyzeLayers(appMeta platform.LayersMetadata, cache Cache) e
 				continue
 			}
 			a.Logger.Infof("Restoring metadata for %q from cache", identifier)
-			layer.UnsetFlags()
-			if err := a.writeLayerMetadata(buildpackDir, name, layer); err != nil {
+			if err := a.writeLayerMetadataFalseFlags(buildpackDir, name, layer); err != nil {
 				return err
 			}
 		}
@@ -134,10 +132,10 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	}, nil
 }
 
-func (a *Analyzer) writeLayerMetadata(buildpackDir bpLayersDir, name string, metadata platform.BuildpackLayerMetadata) error {
+func (a *Analyzer) writeLayerMetadataFalseFlags(buildpackDir bpLayersDir, name string, metadata platform.BuildpackLayerMetadata) error {
 	layer := buildpackDir.newBPLayer(name, buildpackDir.buildpack.API)
 	a.Logger.Debugf("Writing layer metadata for %q", layer.Identifier())
-	if err := layer.writeMetadata(metadata.LayerMetadataFile); err != nil {
+	if err := layer.writeMetadataFalseFlags(metadata.LayerMetadataFile); err != nil {
 		return err
 	}
 	return layer.writeSha(metadata.SHA)
