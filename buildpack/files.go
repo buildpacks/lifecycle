@@ -9,6 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/api"
+	v06 "github.com/buildpacks/lifecycle/buildpack/v06"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -237,6 +238,11 @@ func typesInTypesTable(md toml.MetaData) bool {
 	return md.IsDefined("types")
 }
 
+type Decoder interface {
+	CanDecode(buildpackAPI string) bool
+	Decode(path string) (LayerMetadataFile, bool, error)
+}
+
 func DecodeLayerMetadataFile(path, buildpackAPI string) (LayerMetadataFile, bool /*are types in the right format*/, error) {
 	fh, err := os.Open(path)
 	if os.IsNotExist(err) {
@@ -246,7 +252,20 @@ func DecodeLayerMetadataFile(path, buildpackAPI string) (LayerMetadataFile, bool
 	}
 	defer fh.Close()
 
-	if supportsTypesTable(buildpackAPI) {
+	decoders := []Decoder{}
+
+	v06Decoder := v06.NewDecoder()
+	v06Decoder.Decode("")
+
+	decoders = append(decoders)
+
+	for _, decoder := range decoders {
+		if decoder.CanDecode(buildpackAPI) {
+			return decoder.Decode(path)
+		}
+	}
+
+	if supportsTypesTable(buildpackAPI) { // condition
 		var lmtf layerMetadataTomlFile
 		md, err := toml.DecodeFile(path, &lmtf)
 		if err != nil {
