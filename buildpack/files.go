@@ -203,6 +203,13 @@ type EncoderDecoder interface {
 	Decode(path string) (layertypes.LayerMetadataFile, string, error)
 }
 
+func DefaultEncodersDecoders() []EncoderDecoder {
+	return []EncoderDecoder{
+		v05.NewEncoderDecoder(),
+		v06.NewEncoderDecoder(),
+	}
+}
+
 func EncodeFalseFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) error {
 	fh, err := os.Create(path)
 	if err != nil {
@@ -212,10 +219,7 @@ func EncodeFalseFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI strin
 
 	lmf.UnsetFlags()
 
-	encoders := []EncoderDecoder{
-		v05.NewEncoderDecoder(),
-		v06.NewEncoderDecoder(),
-	}
+	encoders := DefaultEncodersDecoders()
 
 	for _, encoder := range encoders {
 		if encoder.IsSupported(buildpackAPI) {
@@ -234,10 +238,7 @@ func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadat
 	}
 	defer fh.Close()
 
-	decoders := []EncoderDecoder{
-		v05.NewEncoderDecoder(),
-		v06.NewEncoderDecoder(),
-	}
+	decoders := DefaultEncodersDecoders()
 
 	for _, decoder := range decoders {
 		if decoder.IsSupported(buildpackAPI) {
