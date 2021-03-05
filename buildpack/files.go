@@ -197,14 +197,8 @@ func containsName(unmet []Unmet, name string) bool {
 
 // layer content metadata
 
-type EncoderDecoder interface {
-	IsSupported(buildpackAPI string) bool
-	Encode(file *os.File, lmf layertypes.LayerMetadataFile) error
-	Decode(path string) (layertypes.LayerMetadataFile, string, error)
-}
-
-func DefaultEncodersDecoders() []EncoderDecoder {
-	return []EncoderDecoder{
+func DefaultEncodersDecoders() []layertypes.EncoderDecoder {
+	return []layertypes.EncoderDecoder{
 		v05.NewEncoderDecoder(),
 		v06.NewEncoderDecoder(),
 	}
