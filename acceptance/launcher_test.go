@@ -2,6 +2,7 @@ package acceptance
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -25,17 +26,16 @@ func TestLauncher(t *testing.T) {
 	h.AssertNil(t, err)
 	daemonOS = info.OSType
 
+	launchDockerContext = filepath.Join("testdata", "launcher")
 	if daemonOS == "windows" {
-		launchDockerContext = filepath.Join("testdata", "launcher", "windows")
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
 	} else {
-		launchDockerContext = filepath.Join("testdata", "launcher", "posix")
-		launcherBinaryDir = filepath.Join("testdata", "launcher", "posix", "container", "cnb", "lifecycle")
+		launcherBinaryDir = filepath.Join("testdata", "launcher", "linux", "container", "cnb", "lifecycle")
 	}
 
 	h.MakeAndCopyLauncher(t, daemonOS, launcherBinaryDir)
 
-	h.DockerBuild(t, launchImage, launchDockerContext)
+	h.DockerBuild(t, launchImage, launchDockerContext, h.WithFlags("-f", filepath.Join(launchDockerContext, dockerfileName)))
 	defer h.DockerImageRemove(t, launchImage)
 
 	spec.Run(t, "acceptance", testLauncher, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -44,21 +44,24 @@ func TestLauncher(t *testing.T) {
 func testLauncher(t *testing.T, when spec.G, it spec.S) {
 	when("Buildpack API >= 0.5", func() {
 		when("exec.d", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "exec.d is not yet supported on windows")
-			})
-
 			it("executes the binaries and modifies env before running profiles", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--env=VAR_FROM_EXEC_D=orig-val",
 					launchImage, "exec.d-checker")
-				expected := "/layers/0.5_buildpack/some_layer/exec.d/helper was executed\n"
-				expected += "Exec.d Working Dir: /workspace\n"
-				expected += "/layers/0.5_buildpack/some_layer/exec.d/exec.d-checker/helper was executed\n"
-				expected += "Exec.d Working Dir: /workspace\n"
+
+				helper := "helper" + exe
+				execDHelper := filepath.Join(rootDir, "layers", execDBpDir, "some_layer", "exec.d", helper)
+				execDCheckerHelper := filepath.Join(rootDir, "layers", execDBpDir, "some_layer", "exec.d", "exec.d-checker", helper)
+				workDir := filepath.Join(rootDir, "workspace")
+
+				expected := fmt.Sprintf("%s was executed\n", execDHelper)
+				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
+				expected += fmt.Sprintf("%s was executed\n", execDCheckerHelper)
+				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
 				expected += "sourced bp profile\n"
 				expected += "sourced app profile\n"
 				expected += "VAR_FROM_EXEC_D: orig-val:val-from-exec.d:val-from-exec.d-for-process-type-exec.d-checker"
+
 				assertOutput(t, cmd, expected)
 			})
 		})

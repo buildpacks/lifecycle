@@ -16,12 +16,17 @@ import (
 	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/lifecycle/acceptance/variables"
 )
 
-var dockerCliVal dockercli.CommonAPIClient
-var dockerCliOnce sync.Once
+const (
+	volumeHelperImage = "busybox"
+)
+
+var (
+	dockerCliOnce sync.Once
+	dockerCliVal  dockercli.CommonAPIClient
+	dummyCommand  = []string{"true"}
+)
 
 func DockerCli(t *testing.T) dockercli.CommonAPIClient {
 	dockerCliOnce.Do(func() {
@@ -95,13 +100,13 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 	volumeName := "test-volume-" + RandString(10)
 	containerName := "test-volume-helper-" + RandString(10)
 
-	Run(t, exec.Command("docker", "pull", variables.VolumeHelperImage))
+	Run(t, exec.Command("docker", "pull", volumeHelperImage))
 	Run(t, exec.Command("docker", append([]string{
 		"run",
 		"--volume", volumeName + ":" + "/target", // create a new empty volume
 		"--name", containerName,
-		variables.VolumeHelperImage},
-		variables.DummyCommand...)...))
+		volumeHelperImage},
+		dummyCommand...)...))
 	defer Run(t, exec.Command("docker", "rm", containerName))
 
 	fis, err := ioutil.ReadDir(srcPath)

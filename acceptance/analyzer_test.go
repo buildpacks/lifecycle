@@ -19,7 +19,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/acceptance/variables"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -70,7 +69,7 @@ func TestAnalyzer(t *testing.T) {
 	h.DockerBuild(t,
 		analyzeImage,
 		analyzeDockerContext,
-		h.WithFlags("-f", filepath.Join(analyzeDockerContext, variables.DockerfileName)),
+		h.WithFlags("-f", filepath.Join(analyzeDockerContext, dockerfileName)),
 	)
 	defer h.DockerImageRemove(t, analyzeImage)
 
@@ -188,7 +187,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				copyDir,
 				analyzeImage,
 				"/layers/analyzed.toml",
-				h.WithFlags(variables.DockerSocketMount...),
+				h.WithFlags(dockerSocketMount...),
 				h.WithArgs(analyzerPath, "-daemon", "some-image"),
 			)
 
@@ -206,7 +205,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"docker",
 					"build",
 					"-t", appImage,
-					"--build-arg", "fromImage="+variables.ContainerBaseImage,
 					"--build-arg", "metadata="+metadata,
 					filepath.Join("testdata", "analyzer", "app-image"),
 				)
@@ -223,7 +221,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					copyDir,
 					analyzeImage,
 					"/layers",
-					h.WithFlags(variables.DockerSocketMount...),
+					h.WithFlags(dockerSocketMount...),
 					h.WithArgs(analyzerPath, "-daemon", appImage),
 				)
 
@@ -237,7 +235,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						copyDir,
 						analyzeImage,
 						"/layers",
-						h.WithFlags(variables.DockerSocketMount...),
+						h.WithFlags(dockerSocketMount...),
 						h.WithArgs(
 							analyzerPath,
 							"-daemon",
@@ -265,7 +263,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							"docker",
 							"build",
 							"-t", cacheImage,
-							"--build-arg", "fromImage="+variables.ContainerBaseImage,
 							"--build-arg", "metadata="+metadata,
 							filepath.Join("testdata", "analyzer", "cache-image"),
 						)
@@ -282,7 +279,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							copyDir,
 							analyzeImage,
 							"/layers",
-							h.WithFlags(variables.DockerSocketMount...),
+							h.WithFlags(dockerSocketMount...),
 							h.WithArgs(
 								analyzerPath,
 								"-daemon",
@@ -306,7 +303,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								t,
 								"some-cache-image-"+h.RandString(10),
 								filepath.Join("testdata", "analyzer", "cache-image"),
-								"--build-arg", "fromImage="+variables.ContainerBaseImage,
 								"--build-arg", "metadata="+metadata,
 							)
 						})
@@ -323,7 +319,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									analyzeImage,
 									"/layers",
 									h.WithFlags(append(
-										variables.DockerSocketMount,
+										dockerSocketMount,
 										"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
 										"--network", "host",
 									)...),
@@ -370,7 +366,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								t,
 								"some-cache-image-"+h.RandString(10),
 								filepath.Join("testdata", "analyzer", "cache-image"),
-								"--build-arg", "fromImage="+variables.ContainerBaseImage,
 								"--build-arg", "metadata="+metadata,
 							)
 						})
@@ -410,7 +405,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						analyzeImage,
 						"/layers",
 						h.WithFlags(append(
-							variables.DockerSocketMount,
+							dockerSocketMount,
 							"--volume", cacheVolume+":"+"/cache",
 						)...),
 						h.WithArgs(
@@ -434,7 +429,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRun(t,
 							analyzeImage,
 							h.WithFlags(append(
-								variables.DockerSocketMount,
+								dockerSocketMount,
 								"--volume", cacheVolume+":/cache",
 							)...),
 							h.WithBash(
@@ -458,7 +453,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						output := h.DockerRun(t,
 							analyzeImage,
 							h.WithFlags(append(
-								variables.DockerSocketMount,
+								dockerSocketMount,
 								"--volume", cacheVolume+":/cache",
 							)...),
 							h.WithBash(
@@ -498,7 +493,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t,
 						"some-app-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "app-image"),
-						"--build-arg", "fromImage="+variables.ContainerBaseImage,
 						"--build-arg", "metadata="+metadata,
 					)
 				})
@@ -577,7 +571,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t,
 						"some-app-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "app-image"),
-						"--build-arg", "fromImage="+variables.ContainerBaseImage,
 						"--build-arg", "metadata="+metadata,
 					)
 				})
@@ -635,7 +628,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t,
 							"some-cache-image-"+h.RandString(10),
 							filepath.Join("testdata", "analyzer", "cache-image"),
-							"--build-arg", "fromImage="+variables.ContainerBaseImage,
 							"--build-arg", "metadata="+metadata,
 						)
 					})
@@ -697,7 +689,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t,
 							"some-cache-image-"+h.RandString(10),
 							filepath.Join("testdata", "analyzer", "cache-image"),
-							"--build-arg", "fromImage="+variables.ContainerBaseImage,
 							"--build-arg", "metadata="+metadata,
 						)
 					})

@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"runtime"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -27,9 +26,6 @@ func NewExecDRunner() *ExecDRunner {
 // ExecD executes the executable file at path and sets the returned variables in env. The executable at path
 // should implement the ExecD interface in the buildpack specification https://github.com/buildpacks/spec/blob/main/buildpack.md#execd
 func (e *ExecDRunner) ExecD(path string, env Env) error {
-	if runtime.GOOS == "windows" {
-		return errors.New("exec.d is not currently supported on windows")
-	}
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return errors.Wrap(err, "failed to create pipe")
@@ -40,9 +36,12 @@ func (e *ExecDRunner) ExecD(path string, env Env) error {
 		cmd := exec.Command(path)
 		cmd.Stdout = e.Out
 		cmd.Stderr = e.Err
-		cmd.ExtraFiles = []*os.File{pw}
 		cmd.Env = env.List()
-		errChan <- cmd.Run()
+		if err := setHandle(cmd, pw); err != nil {
+			errChan <- err
+		} else {
+			errChan <- cmd.Run()
+		}
 	}()
 
 	out, err := ioutil.ReadAll(pr)
@@ -51,7 +50,7 @@ func (e *ExecDRunner) ExecD(path string, env Env) error {
 		return errors.Wrapf(cmdErr, "failed to execute exec.d file at path '%s'", path)
 	} else if err != nil {
 		// return the read error only if the command succeeded
-		return errors.Wrapf(err, "failed to read output from  exec.d file at path '%s'", path)
+		return errors.Wrapf(err, "failed to read output from exec.d file at path '%s'", path)
 	}
 
 	envVars := map[string]string{}

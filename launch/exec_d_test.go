@@ -45,7 +45,13 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			wd, err := os.Getwd()
 			h.AssertNil(t, err)
-			path = filepath.Join(tmpDir, "execd")
+
+			exe := ""
+			if runtime.GOOS == "windows" {
+				exe = ".exe"
+			}
+			path = filepath.Join(tmpDir, "execd"+exe)
+
 			cmd := exec.Command("go", "build",
 				"-o", path,
 				filepath.Join(wd, "testdata", "cmd", "execd"),
@@ -65,50 +71,32 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			mockCtrl.Finish()
 		})
 
-		when("unix", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "exec.d is not yet supported on windows")
-			})
-
-			it("modifies the env", func() {
-				env.EXPECT().List().Return([]string{})
-				env.EXPECT().Set("APPEND_VAR", "SOME_VAL")
-				env.EXPECT().Set("OTHER_VAR", "OTHER_VAL")
-				h.AssertNil(t, runner.ExecD(path, env))
-			})
-
-			it("receives the env", func() {
-				env.EXPECT().List().Return([]string{
-					"APPEND_VAR=ORIG_VAL",
-				})
-				env.EXPECT().Set("APPEND_VAR", "ORIG_VAL|SOME_VAL")
-				env.EXPECT().Set("OTHER_VAR", "OTHER_VAL")
-				h.AssertNil(t, runner.ExecD(path, env))
-			})
-
-			it("sets stdout to out", func() {
-				env.EXPECT().List().Return([]string{})
-				env.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
-				h.AssertNil(t, runner.ExecD(path, env))
-				h.AssertEq(t, out.String(), "stdout from execd\n")
-			})
-
-			it("sets stderr to err", func() {
-				env.EXPECT().List().Return([]string{})
-				env.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
-				h.AssertNil(t, runner.ExecD(path, env))
-				h.AssertEq(t, errOut.String(), "stderr from execd\n")
-			})
+		it("modifies the env", func() {
+			env.EXPECT().List().Return([]string{})
+			env.EXPECT().Set("APPEND_VAR", "SOME_VAL")
+			env.EXPECT().Set("OTHER_VAR", "OTHER_VAL")
+			h.AssertNil(t, runner.ExecD(path, env))
 		})
 
-		when("windows", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS != "windows", "windows test")
-			})
+		it("receives the env", func() {
+			env.EXPECT().List().Return([]string{"APPEND_VAR=ORIG_VAL"})
+			env.EXPECT().Set("APPEND_VAR", "ORIG_VAL|SOME_VAL")
+			env.EXPECT().Set("OTHER_VAR", "OTHER_VAL")
+			h.AssertNil(t, runner.ExecD(path, env))
+		})
 
-			it("errors", func() {
-				h.AssertError(t, runner.ExecD(path, env), "exec.d is not currently supported on windows")
-			})
+		it("sets stdout to out", func() {
+			env.EXPECT().List().Return([]string{})
+			env.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
+			h.AssertNil(t, runner.ExecD(path, env))
+			h.AssertEq(t, out.String(), "stdout from execd\n")
+		})
+
+		it("sets stderr to err", func() {
+			env.EXPECT().List().Return([]string{})
+			env.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
+			h.AssertNil(t, runner.ExecD(path, env))
+			h.AssertEq(t, errOut.String(), "stderr from execd\n")
 		})
 	})
 }
