@@ -312,6 +312,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 							t.Log("adds layer shas to metadata")
 							h.AssertEq(t, metadata.Buildpacks[0].ID, "old.buildpack.id")
+							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].SHA, testLayerDigest("buildpack.id:cache-true-layer"))
 							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Launch, true)
 							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Build, false)
 							h.AssertEq(t, metadata.Buildpacks[0].Layers["cache-true-layer"].Cache, true)

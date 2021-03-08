@@ -104,7 +104,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, json.Unmarshal(metadata, &appImageMetadata))
 			})
 
-			it("restores layer metadata and unset the launch, build and cache flags", func() {
+			it("restores layer metadata and unsets the launch, build and cache flags", func() {
 				_, err := analyzer.Analyze(image, testCache)
 				h.AssertNil(t, err)
 
@@ -128,7 +128,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						{ID: "no.cache.buildpack", API: "0.5"},
 					}
 				})
-				it("restores layer metadata and unset the launch, build and cache flags in top level", func() {
+				it("restores layer metadata and unsets the launch, build and cache flags in top level", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
@@ -230,7 +230,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
 				})
 
-				it("restores app and cache layer metadata and unset the launch, build and cache flags", func() {
+				it("restores app and cache layer metadata and unsets the launch, build and cache flags", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
@@ -322,7 +322,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache-false.sha"))
 				})
 
-				it("restores escaped buildpack layer metadata and unset the launch, build and cache flags", func() {
+				it("restores escaped buildpack layer metadata and unsets the launch, build and cache flags", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
@@ -423,7 +423,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
 				})
 
-				it("restores cache=true layer metadata and unset the launch, build and cache flags", func() {
+				it("restores cache=true layer metadata and unsets the launch, build and cache flags", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 

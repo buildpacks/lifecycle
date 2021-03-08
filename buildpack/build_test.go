@@ -343,7 +343,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("the launch, cache and build flags are false", func() {
-				it("rename <layers>/<layer> to <layers>/<layer>.ignore", func() {
+				it("renames <layers>/<layer> to <layers>/<layer>.ignore", func() {
 					h.Mkdir(t,
 						filepath.Join(layersDir, "A", "layer"),
 					)
