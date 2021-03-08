@@ -5,6 +5,7 @@ package acceptance
 const (
 	dockerfileName = "Dockerfile"
 	exe            = ""
+	execDBpDir     = "0.5_buildpack"
 	rootDir        = "/"
 )
 
