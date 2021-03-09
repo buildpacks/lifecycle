@@ -197,8 +197,14 @@ func containsName(unmet []Unmet, name string) bool {
 
 // layer content metadata
 
-func DefaultEncodersDecoders() []layertypes.EncoderDecoder {
-	return []layertypes.EncoderDecoder{
+type EncoderDecoder interface {
+	IsSupported(buildpackAPI string) bool
+	Encode(file *os.File, lmf layertypes.LayerMetadataFile) error
+	Decode(path string) (layertypes.LayerMetadataFile, string, error)
+}
+
+func defaultEncodersDecoders() []EncoderDecoder {
+	return []EncoderDecoder{
 		v05.NewEncoderDecoder(),
 		v06.NewEncoderDecoder(),
 	}
@@ -211,7 +217,7 @@ func EncodeFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) er
 	}
 	defer fh.Close()
 
-	encoders := DefaultEncodersDecoders()
+	encoders := defaultEncodersDecoders()
 
 	for _, encoder := range encoders {
 		if encoder.IsSupported(buildpackAPI) {
@@ -230,7 +236,7 @@ func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadat
 	}
 	defer fh.Close()
 
-	decoders := DefaultEncodersDecoders()
+	decoders := defaultEncodersDecoders()
 
 	for _, decoder := range decoders {
 		if decoder.IsSupported(buildpackAPI) {

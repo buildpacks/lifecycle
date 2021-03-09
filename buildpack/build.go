@@ -82,7 +82,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 		return BuildResult{}, err
 	}
 
-	if err := b.checkTypesFormat(bpLayersDir, config.Out); err != nil {
+	if err := b.processLayerTypes(bpLayersDir, config.Out); err != nil {
 		return BuildResult{}, err
 	}
 
@@ -103,7 +103,7 @@ func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, laye
 	return nil
 }
 
-func (b *Descriptor) checkTypesFormat(layersDir string, out io.Writer) error {
+func (b *Descriptor) processLayerTypes(layersDir string, out io.Writer) error {
 	if api.MustParse(b.API).Compare(api.MustParse("0.6")) < 0 {
 		return eachDir(layersDir, b.API, func(path, buildpackAPI string) error {
 			_, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)

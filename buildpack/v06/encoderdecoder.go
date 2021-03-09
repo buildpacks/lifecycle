@@ -21,14 +21,14 @@ type layerMetadataTomlFile struct {
 	Types typesTable  `toml:"types"`
 }
 
-type encoderDecoder06 struct {
+type EncoderDecoder06 struct {
 }
 
-func NewEncoderDecoder() layertypes.EncoderDecoder {
-	return &encoderDecoder06{}
+func NewEncoderDecoder() *EncoderDecoder06 {
+	return &EncoderDecoder06{}
 }
 
-func (d *encoderDecoder06) IsSupported(buildpackAPI string) bool {
+func (d *EncoderDecoder06) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0
 }
 
@@ -38,14 +38,14 @@ func unsetFlags(lmf *layertypes.LayerMetadataFile) {
 	lmf.Launch = false
 }
 
-func (d *encoderDecoder06) Encode(file *os.File, lmf layertypes.LayerMetadataFile) error {
+func (d *EncoderDecoder06) Encode(file *os.File, lmf layertypes.LayerMetadataFile) error {
 	unsetFlags(&lmf)
 	types := typesTable{Build: lmf.Build, Launch: lmf.Launch, Cache: lmf.Cache}
 	lmtf := layerMetadataTomlFile{Data: lmf.Data, Types: types}
 	return toml.NewEncoder(file).Encode(lmtf)
 }
 
-func (d *encoderDecoder06) Decode(path string) (layertypes.LayerMetadataFile, string, error) {
+func (d *EncoderDecoder06) Decode(path string) (layertypes.LayerMetadataFile, string, error) {
 	var lmtf layerMetadataTomlFile
 	md, err := toml.DecodeFile(path, &lmtf)
 	if err != nil {

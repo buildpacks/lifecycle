@@ -9,22 +9,22 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 )
 
-type encoderDecoder05 struct {
+type EncoderDecoder05 struct {
 }
 
-func NewEncoderDecoder() layertypes.EncoderDecoder {
-	return &encoderDecoder05{}
+func NewEncoderDecoder() *EncoderDecoder05 {
+	return &EncoderDecoder05{}
 }
 
-func (d *encoderDecoder05) IsSupported(buildpackAPI string) bool {
+func (d *EncoderDecoder05) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0
 }
 
-func (d *encoderDecoder05) Encode(file *os.File, lmf layertypes.LayerMetadataFile) error {
+func (d *EncoderDecoder05) Encode(file *os.File, lmf layertypes.LayerMetadataFile) error {
 	return toml.NewEncoder(file).Encode(lmf)
 }
 
-func (d *encoderDecoder05) Decode(path string) (layertypes.LayerMetadataFile, string, error) {
+func (d *EncoderDecoder05) Decode(path string) (layertypes.LayerMetadataFile, string, error) {
 	var lmf layertypes.LayerMetadataFile
 	md, err := toml.DecodeFile(path, &lmf)
 	if err != nil {
