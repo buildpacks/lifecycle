@@ -619,6 +619,13 @@ version = "4.5.6"
 				h.AssertEq(t, fakeAppImage.IsSaved(), true)
 			})
 
+			it("outputs publish message", func() {
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				assertLogEntry(t, logHandler, fmt.Sprintf("Publishing %s", fakeAppImage.Name()))
+			})
+
 			it("outputs image names", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
