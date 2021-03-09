@@ -32,7 +32,14 @@ func (d *encoderDecoder06) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0
 }
 
+func unsetFlags(lmf *layertypes.LayerMetadataFile) {
+	lmf.Build = false
+	lmf.Cache = false
+	lmf.Launch = false
+}
+
 func (d *encoderDecoder06) Encode(file *os.File, lmf layertypes.LayerMetadataFile) error {
+	unsetFlags(&lmf)
 	types := typesTable{Build: lmf.Build, Launch: lmf.Launch, Cache: lmf.Cache}
 	lmtf := layerMetadataTomlFile{Data: lmf.Data, Types: types}
 	return toml.NewEncoder(file).Encode(lmtf)

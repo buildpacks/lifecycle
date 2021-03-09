@@ -14,9 +14,3 @@ type LayerMetadataFile struct {
 	Launch bool        `json:"launch" toml:"launch"`
 	Cache  bool        `json:"cache" toml:"cache"`
 }
-
-func (lmf *LayerMetadataFile) UnsetFlags() {
-	lmf.Launch = false
-	lmf.Cache = false
-	lmf.Build = false
-}

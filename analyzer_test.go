@@ -128,20 +128,18 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						{ID: "no.cache.buildpack", API: "0.5"},
 					}
 				})
-				it("restores layer metadata and unsets the launch, build and cache flags in top level", func() {
+				it("restores layer metadata and doesn't change the values of the launch, build and cache flags in top level", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
-					unsetFlags := "build = false\nlaunch = false\ncache = false"
 					for _, data := range []struct{ name, want string }{
-						{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
-						{"metadata.buildpack/launch-build-cache.toml", "[metadata]\n  launch-build-cache-key = \"launch-build-cache-value\""},
-						{"metadata.buildpack/launch-cache.toml", "[metadata]\n  launch-cache-key = \"launch-cache-value\""},
-						{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
+						{"metadata.buildpack/launch.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  launch-key = \"launch-value\""},
+						{"metadata.buildpack/launch-build-cache.toml", "build = true\nlaunch = true\ncache = true\n\n[metadata]\n  launch-build-cache-key = \"launch-build-cache-value\""},
+						{"metadata.buildpack/launch-cache.toml", "build = false\nlaunch = true\ncache = true\n\n[metadata]\n  launch-cache-key = \"launch-cache-value\""},
+						{"no.cache.buildpack/some-layer.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  some-layer-key = \"some-layer-value\""},
 					} {
 						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 						h.AssertStringContains(t, string(got), data.want)
-						h.AssertStringContains(t, string(got), unsetFlags)
 					}
 				})
 			})
@@ -356,6 +354,33 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack"))
 						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "escaped_buildpack_id"))
+					})
+				})
+
+				when("buildpack API < 0.6", func() {
+					it.Before(func() {
+						analyzer.Buildpacks = []buildpack.GroupBuildpack{
+							{ID: "metadata.buildpack", API: "0.5"},
+							{ID: "no.cache.buildpack", API: "0.5"},
+						}
+					})
+
+					it("restores app and cache layer metadata and doesn't change the values of the launch, build and cache flags", func() {
+						_, err := analyzer.Analyze(image, testCache)
+						h.AssertNil(t, err)
+
+						for _, data := range []struct{ name, want string }{
+							// App layers.
+							{"metadata.buildpack/launch.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  launch-key = \"launch-value\""},
+							{"metadata.buildpack/launch-build-cache.toml", "build = true\nlaunch = true\ncache = true\n\n[metadata]\n  launch-build-cache-key = \"launch-build-cache-value\""},
+							{"metadata.buildpack/launch-cache.toml", "build = false\nlaunch = true\ncache = true\n\n[metadata]\n  launch-cache-key = \"launch-cache-value\""},
+							{"no.cache.buildpack/some-layer.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  some-layer-key = \"some-layer-value\""},
+							// Cache-image-only layers.
+							{"metadata.buildpack/cache.toml", "build = false\nlaunch = false\ncache = true\n\n[metadata]\n  cache-key = \"cache-value\""},
+						} {
+							got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+							h.AssertStringContains(t, string(got), data.want)
+						}
 					})
 				})
 			})

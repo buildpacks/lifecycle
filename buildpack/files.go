@@ -204,14 +204,12 @@ func DefaultEncodersDecoders() []layertypes.EncoderDecoder {
 	}
 }
 
-func EncodeFalseFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) error {
+func EncodeFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) error {
 	fh, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer fh.Close()
-
-	lmf.UnsetFlags()
 
 	encoders := DefaultEncodersDecoders()
 
