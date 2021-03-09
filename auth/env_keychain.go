@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 )
@@ -23,9 +25,17 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 		return nil, err
 	}
 
+	// note: context is not used in the NewNoClient path
+	// this adds a credential provider-like keychain for public cloud providers
+	clusterNodeChain, err := k8schain.NewNoClient(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
 	return authn.NewMultiKeychain(
 		envKeychain,
 		InMemoryKeychain(authn.DefaultKeychain, images...),
+		clusterNodeChain,
 	), nil
 }
 

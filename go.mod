@@ -11,12 +11,12 @@ require (
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.5
 	github.com/google/go-containerregistry v0.4.1
+	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210212124016-e96aca218801
 	github.com/heroku/color v0.0.6
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
-	gotest.tools/v3 v3.0.2 // indirect
+	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
 )
 
 replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200523222454-059865788121
