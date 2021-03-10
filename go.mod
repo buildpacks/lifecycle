@@ -8,6 +8,7 @@ require (
 	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/docker/cli v0.0.0-20200312141509-ef2f64abbd37 // indirect
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
+	github.com/go-logr/logr v0.4.0
 	github.com/golang/mock v1.5.0
 	github.com/google/go-cmp v0.5.5
 	github.com/google/go-containerregistry v0.4.1
@@ -17,6 +18,7 @@ require (
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
+	k8s.io/klog/v2 v2.5.0
 )
 
 replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200523222454-059865788121
