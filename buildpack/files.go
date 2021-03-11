@@ -227,7 +227,7 @@ func EncodeFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) er
 	return errors.New("couldn't find an encoder")
 }
 
-func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadataFile, string /*warning/error*/, error) {
+func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadataFile, string, error) {
 	fh, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return layertypes.LayerMetadataFile{}, "", nil
