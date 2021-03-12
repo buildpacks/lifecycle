@@ -27,10 +27,9 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 		return nil, err
 	}
 
-	// note: context is not used in the NewNoClient path
-	// this adds a credential provider-like keychain for public cloud providers
 	klog.SetLogger(logr.Discard())
-	clusterNodeChain, err := k8schain.NewNoClient(context.TODO())
+	// this adds a credential provider-like keychain for public cloud providers
+	clusterNodeChain, err := k8schain.NewNoClient(context.TODO()) // note: context is not used in the NewNoClient path
 	if err != nil {
 		return nil, err
 	}
