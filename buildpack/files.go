@@ -245,8 +245,3 @@ func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadat
 	}
 	return layertypes.LayerMetadataFile{}, "", errors.New("couldn't find a decoder")
 }
-
-func isBuild(path, buildpackAPI string) bool {
-	layerMetadataFile, _, err := DecodeLayerMetadataFile(path, buildpackAPI)
-	return err == nil && layerMetadataFile.Build
-}

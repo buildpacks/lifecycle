@@ -114,9 +114,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				// the testdata/buildpack/bin/build script copies the content of the appDir into the layersDir
 				gomock.InOrder(
 					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
-					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env"), env.ActionTypeOverride),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build"), env.ActionTypeOverride),
+				)
+				gomock.InOrder(
+					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypeOverride),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypeOverride),
 				)
@@ -449,15 +451,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					},
 					func() {
 						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
-					},
-					func() {
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
 					},
 					func() {
 						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
+					},
+					func() {
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
@@ -476,14 +481,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
 				})
-			})
-
-			it.Pend("should error when launch.toml is not writable", func() { // TODO: ask Natalie - do we need this test?
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				h.Mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err == nil {
-					t.Fatal("Expected error")
-				}
 			})
 
 			it("should error when the launch bom has a top level version", func() {
@@ -668,9 +665,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					)
 					gomock.InOrder(
 						mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
-						mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env"), env.ActionTypePrependPath),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build"), env.ActionTypePrependPath),
+					)
+					gomock.InOrder(
+						mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypePrependPath),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypePrependPath),
 					)
