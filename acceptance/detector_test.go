@@ -239,7 +239,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// check group.toml
 				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-				var buildpackGroup lifecycle.BuildpackGroup
+				var buildpackGroup buildpack.Group
 				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 				h.AssertNil(t, err)
 				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
@@ -304,7 +304,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// check group.toml
 				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-				var buildpackGroup lifecycle.BuildpackGroup
+				var buildpackGroup buildpack.Group
 				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 				h.AssertNil(t, err)
 				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
@@ -327,7 +327,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// check group.toml
 				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-				var buildpackGroup lifecycle.BuildpackGroup
+				var buildpackGroup buildpack.Group
 				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 				h.AssertNil(t, err)
 				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
@@ -350,7 +350,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// check group.toml
 				tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-				var buildpackGroup lifecycle.BuildpackGroup
+				var buildpackGroup buildpack.Group
 				_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 				h.AssertNil(t, err)
 				h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
@@ -376,7 +376,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 					// check group.toml
 					tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-					var buildpackGroup lifecycle.BuildpackGroup
+					var buildpackGroup buildpack.Group
 					_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 					h.AssertNil(t, err)
 					h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
