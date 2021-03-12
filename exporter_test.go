@@ -623,7 +623,7 @@ version = "4.5.6"
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
-				assertLogEntry(t, logHandler, fmt.Sprintf("Publishing %s", fakeAppImage.Name()))
+				assertLogEntry(t, logHandler, fmt.Sprintf("Saving %s", fakeAppImage.Name()))
 			})
 
 			it("outputs image names", func() {
