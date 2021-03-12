@@ -284,6 +284,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						}},
 					}
 				})
+
 				it("ignores the flag and doesn't reuse cached launch layers even if the local sha matches the sha in the metadata", func() {
 					_, err := exporter.Export(opts)
 					h.AssertNil(t, err)

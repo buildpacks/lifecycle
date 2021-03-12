@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
-	v05 "github.com/buildpacks/lifecycle/buildpack/v05"
-	v06 "github.com/buildpacks/lifecycle/buildpack/v06"
+	api05 "github.com/buildpacks/lifecycle/buildpack/v05"
+	api06 "github.com/buildpacks/lifecycle/buildpack/v06"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -205,12 +205,12 @@ type EncoderDecoder interface {
 
 func defaultEncodersDecoders() []EncoderDecoder {
 	return []EncoderDecoder{
-		v05.NewEncoderDecoder(),
-		v06.NewEncoderDecoder(),
+		api05.NewEncoderDecoder(),
+		api06.NewEncoderDecoder(),
 	}
 }
 
-func EncodeFlags(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) error {
+func EncodeLayerMetadataFile(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) error {
 	fh, err := os.Create(path)
 	if err != nil {
 		return err

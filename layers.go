@@ -151,12 +151,12 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadataFlags(metadata layertypes.LayerMetadataFile) error {
+func (bp *bpLayer) writeMetadata(metadata layertypes.LayerMetadataFile) error {
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
-	return buildpack.EncodeFlags(metadata, path, bp.API)
+	return buildpack.EncodeLayerMetadataFile(metadata, path, bp.API)
 }
 
 func (bp *bpLayer) hasLocalContents() bool {

@@ -303,6 +303,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					}`
 							initializeCache(t, exporter, &testCache, cacheDir, layersDir, metadataTemplate)
 						})
+
 						it("sets cache metadata", func() {
 							err := exporter.Cache(layersDir, testCache)
 							h.AssertNil(t, err)
