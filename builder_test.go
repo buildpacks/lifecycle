@@ -1,13 +1,14 @@
 package lifecycle_test
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
@@ -38,12 +39,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockCtrl       *gomock.Controller
 		mockEnv        *testmock.MockBuildEnv
 		buildpackStore *testmock.MockBuildpackStore
-		stdout, stderr *bytes.Buffer
 		tmpDir         string
 		platformDir    string
 		appDir         string
 		layersDir      string
 		config         buildpack.BuildConfig
+		logHandler     = memory.New()
 	)
 
 	it.Before(func() {
@@ -56,7 +57,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
-		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		platformDir = filepath.Join(tmpDir, "platform")
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
@@ -74,8 +74,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 				},
 			},
-			Out:            stdout,
-			Err:            stderr,
+			Logger:         &log.Logger{Handler: logHandler},
 			BuildpackStore: buildpackStore,
 		}
 
@@ -497,7 +496,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							}
 
 							expected := "Warning: redefining the following default process type with a process not marked as default: override-type"
-							h.AssertStringContains(t, stdout.String(), expected)
+							assertLogEntry(t, logHandler, expected)
 
 							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
 						})

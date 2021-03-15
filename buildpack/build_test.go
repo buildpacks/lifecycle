@@ -1,7 +1,6 @@
 package buildpack_test
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -35,16 +36,16 @@ func TestBuild(t *testing.T) {
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
-		bpTOML         buildpack.Descriptor
-		mockCtrl       *gomock.Controller
-		mockEnv        *testmock.MockBuildEnv
-		stdout, stderr *bytes.Buffer
-		tmpDir         string
-		platformDir    string
-		appDir         string
-		layersDir      string
-		buildpacksDir  string
-		config         buildpack.BuildConfig
+		bpTOML        buildpack.Descriptor
+		mockCtrl      *gomock.Controller
+		mockEnv       *testmock.MockBuildEnv
+		tmpDir        string
+		platformDir   string
+		appDir        string
+		layersDir     string
+		buildpacksDir string
+		config        buildpack.BuildConfig
+		logHandler    = memory.New()
 	)
 
 	it.Before(func() {
@@ -56,7 +57,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
-		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		platformDir = filepath.Join(tmpDir, "platform")
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
@@ -72,8 +72,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			AppDir:      appDir,
 			PlatformDir: platformDir,
 			LayersDir:   layersDir,
-			Out:         stdout,
-			Err:         stderr,
+			Logger:      &log.Logger{Handler: logHandler},
 		}
 
 		bpTOML = buildpack.Descriptor{
@@ -161,18 +160,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(bpTOML.Dir),
 				); s != "" {
 					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
-				}
-			})
-
-			it("should connect stdout and stdin to the terminal", func() {
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(h.CleanEndings(stdout.String()), "build out: A@v1\n"); s != "" {
-					t.Fatalf("Unexpected stdout:\n%s\n", s)
-				}
-				if s := cmp.Diff(h.CleanEndings(stderr.String()), "build err: A@v1\n"); s != "" {
-					t.Fatalf("Unexpected stderr:\n%s\n", s)
 				}
 			})
 
@@ -887,7 +874,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected metadata:\n%s\n", s)
 				}
 				expected := "Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [type-with-default]"
-				h.AssertStringContains(t, stdout.String(), expected)
+				assertLogEntry(t, logHandler, expected)
 			})
 
 			when("the launch, cache and build flags are in the types table", func() {
@@ -904,7 +891,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					_, err := bpTOML.Build(buildpack.Plan{}, config)
 					h.AssertNil(t, err)
 					expected := "Warning: types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
-					h.AssertStringContains(t, stdout.String(), expected)
+					assertLogEntry(t, logHandler, expected)
 				})
 			})
 		})
@@ -940,4 +927,16 @@ func each(it spec.S, befores []func(), text string, f func()) {
 		before := befores[i]
 		it(fmt.Sprintf("%s #%d", text, i), func() { before(); f() })
 	}
+}
+
+func assertLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
+	t.Helper()
+	var messages []string
+	for _, le := range logHandler.Entries {
+		messages = append(messages, le.Message)
+		if strings.Contains(le.Message, expected) {
+			return
+		}
+	}
+	t.Fatalf("Expected log entries %+v to contain %s", messages, expected)
 }

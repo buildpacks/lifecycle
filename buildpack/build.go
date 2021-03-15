@@ -3,7 +3,6 @@ package buildpack
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -31,8 +30,7 @@ type BuildConfig struct {
 	AppDir      string
 	PlatformDir string
 	LayersDir   string
-	Out         io.Writer
-	Err         io.Writer
+	Logger      Logger
 }
 
 type BuildResult struct {
@@ -82,7 +80,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 		return BuildResult{}, err
 	}
 
-	pathToLayerMetadataFile, err := b.processLayers(bpLayersDir, config.Out)
+	pathToLayerMetadataFile, err := b.processLayers(bpLayersDir, config.Logger)
 	if err != nil {
 		return BuildResult{}, err
 	}
@@ -91,7 +89,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 		return BuildResult{}, err
 	}
 
-	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Out)
+	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Logger)
 }
 
 func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, layerDir string) error {
@@ -104,7 +102,7 @@ func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, laye
 	return nil
 }
 
-func (b *Descriptor) processLayers(layersDir string, out io.Writer) (map[string]layertypes.LayerMetadataFile, error) {
+func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]layertypes.LayerMetadataFile, error) {
 	if api.MustParse(b.API).Compare(api.MustParse("0.6")) < 0 {
 		return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layertypes.LayerMetadataFile, error) {
 			layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
@@ -112,9 +110,7 @@ func (b *Descriptor) processLayers(layersDir string, out io.Writer) (map[string]
 				return layertypes.LayerMetadataFile{}, err
 			}
 			if msg != "" {
-				if _, err = out.Write([]byte(msg)); err != nil {
-					return layertypes.LayerMetadataFile{}, err
-				}
+				logger.Warn(msg)
 			}
 			return layerMetadataFile, nil
 		})
@@ -172,8 +168,6 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 		bpPlanPath,
 	)
 	cmd.Dir = config.AppDir
-	cmd.Stdout = config.Out
-	cmd.Stderr = config.Err
 
 	var err error
 	if b.Buildpack.ClearEnv {
@@ -233,7 +227,7 @@ func eachDir(dir, buildpackAPI string, fn func(path, api string) (layertypes.Lay
 	return pathToLayerMetadataFile, nil
 }
 
-func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, out io.Writer) (BuildResult, error) {
+func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, logger Logger) (BuildResult, error) {
 	br := BuildResult{}
 	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
@@ -295,7 +289,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		br.BOM = WithBuildpack(bpFromBpInfo, launchTOML.BOM)
 	}
 
-	if err := overrideDefaultForOldBuildpacks(launchTOML.Processes, b.API, out); err != nil {
+	if err := overrideDefaultForOldBuildpacks(launchTOML.Processes, b.API, logger); err != nil {
 		return BuildResult{}, err
 	}
 
@@ -314,7 +308,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	return br, nil
 }
 
-func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, out io.Writer) error {
+func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, logger Logger) error {
 	if api.MustParse(bpAPI).Compare(api.MustParse("0.6")) >= 0 {
 		return nil
 	}
@@ -326,10 +320,7 @@ func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, o
 		processes[i].Default = false
 	}
 	if len(replacedDefaults) > 0 {
-		warning := fmt.Sprintf("Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [%s]", strings.Join(replacedDefaults, ", "))
-		if _, err := out.Write([]byte(warning)); err != nil {
-			return err
-		}
+		logger.Warn(fmt.Sprintf("Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [%s]", strings.Join(replacedDefaults, ", ")))
 	}
 	return nil
 }
