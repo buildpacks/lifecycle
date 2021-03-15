@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
 	"runtime"
 
 	"github.com/buildpacks/imgutil"
@@ -20,22 +18,15 @@ import (
 const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
 
 type ImageCache struct {
-	committed         bool
-	origImage         imgutil.Image
-	newImage          imgutil.Image
-	generatedLayerDir string
+	committed bool
+	origImage imgutil.Image
+	newImage  imgutil.Image
 }
 
 func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) (*ImageCache, error) {
-	generatedLayerDir, err := ioutil.TempDir("", "image-cache-generated-layers")
-	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
-	}
-
 	return &ImageCache{
-		origImage:         origImage,
-		newImage:          newImage,
-		generatedLayerDir: generatedLayerDir,
+		origImage: origImage,
+		newImage:  newImage,
 	}, nil
 }
 
@@ -127,13 +118,6 @@ func (c *ImageCache) Commit() error {
 		}
 	}
 	c.origImage = c.newImage
-
-	// Deleting generated layers is for cleanup only and should not fail the commit.
-	if _, err := os.Stat(c.generatedLayerDir); !os.IsNotExist(err) {
-		if err != os.RemoveAll(c.generatedLayerDir) {
-			fmt.Printf("Unable to delete generated layer: %v", err)
-		}
-	}
 
 	return nil
 }
