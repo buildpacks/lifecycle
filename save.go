@@ -15,6 +15,7 @@ import (
 func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (platform.ImageReport, error) {
 	var saveErr error
 	imageReport := platform.ImageReport{}
+	logger.Infof("Saving %s...\n", image.Name())
 	if err := image.Save(additionalNames...); err != nil {
 		var ok bool
 		if saveErr, ok = err.(imgutil.SaveError); !ok {
