@@ -205,6 +205,7 @@ type EncoderDecoder interface {
 
 func defaultEncodersDecoders() []EncoderDecoder {
 	return []EncoderDecoder{
+		// TODO: it's weird that api05 is relevant for buildpack APIs 0.2-0.5 and api06 is relevant for buildpack API 0.6 and up. We should work on it.
 		api05.NewEncoderDecoder(),
 		api06.NewEncoderDecoder(),
 	}

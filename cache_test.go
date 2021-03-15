@@ -288,19 +288,19 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					when("the SHAs match", func() {
 						it.Before(func() {
 							metadataTemplate := `{
-					"buildpacks": [
-					 {
-					   "key": "old.buildpack.id",
-					   "layers": {
-					     "cache-true-layer": {
-					       "cache": true,
-					       "sha": "%s",
-					       "data": {"old":"data"}
-					     }
-					   }
-					 }
-					]
-					}`
+							"buildpacks": [
+							 {
+							   "key": "old.buildpack.id",
+							   "layers": {
+								 "cache-true-layer": {
+								   "cache": true,
+								   "sha": "%s",
+								   "data": {"old":"data"}
+								 }
+							   }
+							 }
+							]
+							}`
 							initializeCache(t, exporter, &testCache, cacheDir, layersDir, metadataTemplate)
 						})
 

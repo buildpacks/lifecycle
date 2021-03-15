@@ -320,7 +320,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache-false.sha"))
 				})
 
-				it("restores escaped buildpack layer metadata and unsets the launch, build and cache flags", func() {
+				it("restores escaped buildpack layer metadata", func() {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
