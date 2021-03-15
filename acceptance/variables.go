@@ -1,5 +1,10 @@
 package acceptance
 
+import (
+	"path"
+	"strings"
+)
+
 type VariableHelper struct {
 	OS string
 }
@@ -38,9 +43,14 @@ func (h *VariableHelper) VolumeHelperImage() string {
 	return "busybox"
 }
 
-func (h *VariableHelper) CtrPath(unixPath string) string {
+func (h *VariableHelper) CtrPath(unixPathParts ...string) string {
+	unixPath := path.Join(unixPathParts...)
 	if h.OS == "windows" {
-		return "c:" + unixPath
+		windowsPath := strings.ReplaceAll(unixPath, "/", `\`)
+		if strings.HasPrefix(windowsPath, `\`) {
+			return "c:" + windowsPath
+		}
+		return windowsPath
 	}
 	return unixPath
 }

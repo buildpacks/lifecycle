@@ -210,6 +210,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					"docker",
 					"build",
 					"-t", appImage,
+					"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 					"--build-arg", "metadata="+metadata,
 					filepath.Join("testdata", "analyzer", "app-image"),
 				)
@@ -381,10 +382,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								t,
 								imageName,
 								filepath.Join("testdata", "analyzer", "cache-image"),
+								"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 								"--build-arg", "metadata="+metadata,
 							)
 
-							noAuthRegCacheImage = noAuthRegistry.RepoName(appImageName)
+							noAuthRegCacheImage = noAuthRegistry.RepoName(imageName)
 						})
 
 						it.After(func() {
@@ -505,6 +507,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t,
 						"some-app-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "app-image"),
+						"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 						"--build-arg", "metadata="+metadata,
 					)
 				})
@@ -590,10 +593,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						t,
 						imageName,
 						filepath.Join("testdata", "analyzer", "app-image"),
+						"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 						"--build-arg", "metadata="+metadata,
 					)
 
-					noAuthRegAppImage = noAuthRegistry.RepoName(appImageName)
+					noAuthRegAppImage = noAuthRegistry.RepoName(imageName)
 				})
 
 				it.After(func() {
@@ -640,15 +644,16 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("cache is provided", func() {
 			when("cache image case", func() {
-				var authRegCacheImage, cacheAuthConfig string
-
 				when("auth registry", func() {
+					var authRegCacheImage, cacheAuthConfig string
+
 					it.Before(func() {
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-						cacheImage, cacheAuthConfig = buildAuthRegistryImage(
+						authRegCacheImage, cacheAuthConfig = buildAuthRegistryImage(
 							t,
 							"some-cache-image-"+h.RandString(10),
 							filepath.Join("testdata", "analyzer", "cache-image"),
+							"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 							"--build-arg", "metadata="+metadata,
 						)
 					})
@@ -714,10 +719,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							t,
 							imageName,
 							filepath.Join("testdata", "analyzer", "cache-image"),
+							"--build-arg", "fromImage="+vh.ContainerBaseImage(),
 							"--build-arg", "metadata="+metadata,
 						)
 
-						noAuthRegCacheImage = noAuthRegistry.RepoName(cacheImageName)
+						noAuthRegCacheImage = noAuthRegistry.RepoName(imageName)
 					})
 
 					it.After(func() {

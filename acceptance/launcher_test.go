@@ -26,6 +26,8 @@ func TestLauncher(t *testing.T) {
 	h.AssertNil(t, err)
 	daemonOS = info.OSType
 
+	vh = VariableHelper{OS: daemonOS}
+
 	launchDockerContext = filepath.Join("testdata", "launcher")
 	if daemonOS == "windows" {
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
@@ -35,7 +37,7 @@ func TestLauncher(t *testing.T) {
 
 	h.MakeAndCopyLauncher(t, daemonOS, launcherBinaryDir)
 
-	h.DockerBuild(t, launchImage, launchDockerContext, h.WithFlags("-f", filepath.Join(launchDockerContext, dockerfileName)))
+	h.DockerBuild(t, launchImage, launchDockerContext, h.WithFlags("-f", filepath.Join(launchDockerContext, vh.Dockerfilename())))
 	defer h.DockerImageRemove(t, launchImage)
 
 	spec.Run(t, "acceptance", testLauncher, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -49,10 +51,10 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					"--env=VAR_FROM_EXEC_D=orig-val",
 					launchImage, "exec.d-checker")
 
-				helper := "helper" + exe
-				execDHelper := filepath.Join(rootDir, "layers", execDBpDir, "some_layer", "exec.d", helper)
-				execDCheckerHelper := filepath.Join(rootDir, "layers", execDBpDir, "some_layer", "exec.d", "exec.d-checker", helper)
-				workDir := filepath.Join(rootDir, "workspace")
+				helper := "helper" + vh.Exe()
+				execDHelper := vh.CtrPath("/", "layers", vh.ExecDBpDir(), "some_layer", "exec.d", helper)
+				execDCheckerHelper := vh.CtrPath("/", "layers", vh.ExecDBpDir(), "some_layer", "exec.d", "exec.d-checker", helper)
+				workDir := vh.CtrPath("/", "workspace")
 
 				expected := fmt.Sprintf("%s was executed\n", execDHelper)
 				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
