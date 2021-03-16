@@ -295,12 +295,12 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("cache image is in a registry", func() {
-					var cacheImage, cacheAuthConfig string
-
 					when("auth registry", func() {
+						var authRegCacheImage, cacheAuthConfig string
+
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
-							cacheImage, cacheAuthConfig = buildAuthRegistryImage(
+							authRegCacheImage, cacheAuthConfig = buildAuthRegistryImage(
 								t,
 								"some-cache-image-"+h.RandString(10),
 								filepath.Join("testdata", "analyzer", "cache-image"),
@@ -309,7 +309,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it.After(func() {
-							h.DockerImageRemove(t, cacheImage)
+							h.DockerImageRemove(t, authRegCacheImage)
 						})
 
 						when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
@@ -327,7 +327,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									h.WithArgs(
 										analyzerPath,
 										"-daemon",
-										"-cache-image", cacheImage,
+										"-cache-image", authRegCacheImage,
 										"some-image",
 									),
 								)
@@ -350,7 +350,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									h.WithArgs(
 										analyzerPath,
 										"-cache-image",
-										cacheImage,
+										authRegCacheImage,
 										"some-image",
 									),
 								)
@@ -361,7 +361,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("no auth registry", func() {
-						var authRegCacheImage string
+						var authRegCacheImage, noAuthRegCacheImage string
 
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
@@ -374,7 +374,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								"--build-arg", "metadata="+metadata,
 							)
 
-							cacheImage, cacheAuthConfig = getNoAuthRegistryImage(t, imageName)
+							noAuthRegCacheImage, _ = getNoAuthRegistryImage(t, imageName)
 						})
 
 						it.After(func() {
@@ -391,7 +391,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								h.WithArgs(
 									analyzerPath,
 									"-cache-image",
-									cacheImage,
+									noAuthRegCacheImage,
 									"some-image",
 								),
 							)
@@ -478,8 +478,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("registry case", func() {
-		var appImage, appAuthConfig string
-
 		it("writes analyzed.toml", func() {
 			h.DockerRunAndCopy(t,
 				containerName,
@@ -494,9 +492,11 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 		when("app image exists", func() {
 			when("auth registry", func() {
+				var authRegAppImage, appAuthConfig string
+
 				it.Before(func() {
 					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
-					appImage, appAuthConfig = buildAuthRegistryImage(
+					authRegAppImage, appAuthConfig = buildAuthRegistryImage(
 						t,
 						"some-app-image-"+h.RandString(10),
 						filepath.Join("testdata", "analyzer", "app-image"),
@@ -505,7 +505,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					h.DockerImageRemove(t, appImage)
+					h.DockerImageRemove(t, authRegAppImage)
 				})
 
 				when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
@@ -519,7 +519,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								"--network", "host",
 								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
 							),
-							h.WithArgs(analyzerPath, appImage),
+							h.WithArgs(analyzerPath, authRegAppImage),
 						)
 
 						assertLogsAndRestoresAppMetadata(t, copyDir, output)
@@ -539,7 +539,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							),
 							h.WithArgs(
 								analyzerPath,
-								appImage,
+								authRegAppImage,
 							),
 						)
 
@@ -561,7 +561,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithArgs(
 								analyzerPath,
 								"-skip-layers",
-								appImage,
+								authRegAppImage,
 							),
 						)
 
@@ -572,7 +572,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("no auth registry", func() {
-				var authRegAppImage string
+				var authRegAppImage, noAuthRegAppImage string
 
 				it.Before(func() {
 					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
@@ -584,7 +584,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join("testdata", "analyzer", "app-image"),
 						"--build-arg", "metadata="+metadata,
 					)
-					appImage, appAuthConfig = getNoAuthRegistryImage(t, imageName)
+					noAuthRegAppImage, _ = getNoAuthRegistryImage(t, imageName)
 				})
 
 				it.After(func() {
@@ -600,7 +600,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.WithFlags("--network", "host"),
 						h.WithArgs(
 							analyzerPath,
-							appImage,
+							noAuthRegAppImage,
 						),
 					)
 
@@ -618,7 +618,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithArgs(
 								analyzerPath,
 								"-skip-layers",
-								appImage,
+								noAuthRegAppImage,
 							),
 						)
 
