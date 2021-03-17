@@ -3,6 +3,7 @@ package buildpack
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -30,6 +31,8 @@ type BuildConfig struct {
 	AppDir      string
 	PlatformDir string
 	LayersDir   string
+	Out         io.Writer
+	Err         io.Writer
 	Logger      Logger
 }
 
@@ -168,6 +171,8 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 		bpPlanPath,
 	)
 	cmd.Dir = config.AppDir
+	cmd.Stdout = config.Out
+	cmd.Stderr = config.Err
 
 	var err error
 	if b.Buildpack.ClearEnv {

@@ -1,6 +1,7 @@
 package lifecycle_test
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -39,6 +40,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockCtrl       *gomock.Controller
 		mockEnv        *testmock.MockBuildEnv
 		buildpackStore *testmock.MockBuildpackStore
+		stdout, stderr *bytes.Buffer
 		tmpDir         string
 		platformDir    string
 		appDir         string
@@ -57,6 +59,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
+		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		platformDir = filepath.Join(tmpDir, "platform")
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
@@ -74,6 +77,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 				},
 			},
+			Out:            stdout,
+			Err:            stderr,
 			Logger:         &log.Logger{Handler: logHandler},
 			BuildpackStore: buildpackStore,
 		}

@@ -1,6 +1,7 @@
 package buildpack_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -36,16 +37,17 @@ func TestBuild(t *testing.T) {
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
-		bpTOML        buildpack.Descriptor
-		mockCtrl      *gomock.Controller
-		mockEnv       *testmock.MockBuildEnv
-		tmpDir        string
-		platformDir   string
-		appDir        string
-		layersDir     string
-		buildpacksDir string
-		config        buildpack.BuildConfig
-		logHandler    = memory.New()
+		bpTOML         buildpack.Descriptor
+		mockCtrl       *gomock.Controller
+		mockEnv        *testmock.MockBuildEnv
+		stdout, stderr *bytes.Buffer
+		tmpDir         string
+		platformDir    string
+		appDir         string
+		layersDir      string
+		buildpacksDir  string
+		config         buildpack.BuildConfig
+		logHandler     = memory.New()
 	)
 
 	it.Before(func() {
@@ -57,6 +59,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
+		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		platformDir = filepath.Join(tmpDir, "platform")
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
@@ -72,6 +75,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			AppDir:      appDir,
 			PlatformDir: platformDir,
 			LayersDir:   layersDir,
+			Out:         stdout,
+			Err:         stderr,
 			Logger:      &log.Logger{Handler: logHandler},
 		}
 
@@ -160,6 +165,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(bpTOML.Dir),
 				); s != "" {
 					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
+				}
+			})
+
+			it("should connect stdout and stdin to the terminal", func() {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(h.CleanEndings(stdout.String()), "build out: A@v1\n"); s != "" {
+					t.Fatalf("Unexpected stdout:\n%s\n", s)
+				}
+				if s := cmp.Diff(h.CleanEndings(stderr.String()), "build err: A@v1\n"); s != "" {
+					t.Fatalf("Unexpected stderr:\n%s\n", s)
 				}
 			})
 
