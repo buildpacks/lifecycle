@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
@@ -34,6 +35,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		name,
 		keychain,
 		remote.FromBaseImage(name),
+		remote.WithDefaultPlatform(imgutil.Platform{OS: runtime.GOOS}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("accessing cache image %q: %v", name, err)
@@ -42,10 +44,12 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		name,
 		keychain,
 		remote.WithPreviousImage(name),
+		remote.WithDefaultPlatform(imgutil.Platform{OS: runtime.GOOS}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
 	}
+
 	return NewImageCache(origImage, emptyImage), nil
 }
 
@@ -114,6 +118,7 @@ func (c *ImageCache) Commit() error {
 		}
 	}
 	c.origImage = c.newImage
+
 	return nil
 }
 
