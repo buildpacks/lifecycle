@@ -44,7 +44,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 		fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
 
-		subject, err = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 		h.AssertNil(t, err)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
@@ -296,11 +296,9 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		when("with #DeleteOrigImage", func() {
 			when("original and new image are different", func() {
 				it.Before(func() {
-					var err error
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-					subject, err = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
-					h.AssertNil(t, err)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 				})
 				it("should delete original image", func() {
 					err := subject.DeleteOrigImage()
@@ -311,11 +309,9 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("original and new image are the same", func() {
 				it.Before(func() {
-					var err error
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-					subject, err = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
-					h.AssertNil(t, err)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 				})
 				it("should not delete original image", func() {
 					err := subject.DeleteOrigImage()
