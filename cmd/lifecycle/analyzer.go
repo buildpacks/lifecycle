@@ -48,8 +48,8 @@ type analyzeArgs struct {
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
-	cmd.FlagCacheImage(&a.cacheImageTag)
 	if a.analyzeLayers() {
+		cmd.FlagCacheImage(&a.cacheImageTag)
 		cmd.FlagCacheDir(&a.cacheDir)
 		cmd.FlagGroupPath(&a.groupPath)
 		cmd.FlagSkipLayers(&a.skipLayers)
