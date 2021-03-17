@@ -20,7 +20,9 @@ const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
 
 // DefaultKeychain returns a keychain containing authentication configuration for the given images
 // from the following sources, if they exist, in order of precedence:
-// the provided environment variable and the docker config.json file.
+// the provided environment variable
+// the docker config.json file
+// a credential provider for all of the major public clouds via k8schain
 func DefaultKeychain(images ...string) (authn.Keychain, error) {
 	envKeychain, err := EnvKeychain(EnvRegistryAuth)
 	if err != nil {
