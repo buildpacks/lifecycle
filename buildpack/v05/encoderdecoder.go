@@ -32,7 +32,7 @@ func (d *EncoderDecoder05) Decode(path string) (layertypes.LayerMetadataFile, st
 	}
 	msg := ""
 	if isWrongFormat := typesInTypesTable(md); isWrongFormat {
-		msg = "Warning: types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
+		msg = "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
 	}
 	return lmf, msg, nil
 }

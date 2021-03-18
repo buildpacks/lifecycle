@@ -1365,7 +1365,7 @@ version = "4.5.6"
 					it("should warn", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						expected := "Warning: types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
+						expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
 						assertLogEntry(t, logHandler, expected)
 						h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
 					})

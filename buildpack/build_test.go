@@ -907,7 +907,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					_, err := bpTOML.Build(buildpack.Plan{}, config)
 					h.AssertNil(t, err)
-					expected := "Warning: types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
+					expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
 					assertLogEntry(t, logHandler, expected)
 				})
 			})
