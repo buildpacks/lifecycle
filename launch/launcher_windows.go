@@ -16,7 +16,7 @@ var (
 )
 
 func OSExecFunc(argv0 string, argv []string, envv []string) error {
-	c := exec.Command(argv[0], argv[1:]...)
+	c := exec.Command(argv[0], argv[1:]...) //nolint:gosec
 	c.Env = envv
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
