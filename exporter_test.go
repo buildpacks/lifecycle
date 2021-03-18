@@ -273,6 +273,27 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				assertReuseLayerLog(t, logHandler, "other.buildpack.id:local-reusable-layer")
 			})
 
+			when("the launch flag is in the top level table", func() {
+				it.Before(func() {
+					exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "bad.buildpack.id", API: api.Buildpack.Latest().String()}}
+					fakeAppImage.AddPreviousLayer("bad-layer", "")
+					opts.OrigMetadata = platform.LayersMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{
+							ID:     "bad.buildpack.id",
+							Layers: map[string]platform.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: platform.LayerMetadata{SHA: "bad-layer"}}},
+						}},
+					}
+				})
+
+				it("should error", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNotNil(t, err)
+					expected := "failed to parse metadata for layers '[bad.buildpack.id:bad-layer]'"
+					h.AssertStringContains(t, err.Error(), expected)
+					h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
+				})
+			})
+
 			it("adds new launch layers", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -1248,7 +1269,7 @@ version = "4.5.6"
 
 		when("buildpack requires an escaped id", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: "0.1"}}
+				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: api.Buildpack.Latest().String()}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), opts.LayersDir)
 			})
@@ -1324,6 +1345,46 @@ version = "4.5.6"
 					err,
 					"layer 'buildpack.id:cache-layer-no-contents' is cache=true but has no contents",
 				)
+			})
+		})
+
+		when("buildpack API < 0.6", func() {
+			it.Before(func() {
+				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "old.buildpack.id", API: "0.5"}}
+			})
+
+			when("previous image exists", func() {
+				it.Before(func() {
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "previous-image-exists", "layers"), opts.LayersDir)
+				})
+
+				when("the launch flag is in the types table", func() {
+					it.Before(func() {
+						fakeAppImage.AddPreviousLayer("bad-layer-digest", "")
+						opts.OrigMetadata = platform.LayersMetadata{
+							Buildpacks: []platform.BuildpackLayersMetadata{{
+								ID:     "old.buildpack.id",
+								Layers: map[string]platform.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: platform.LayerMetadata{SHA: "bad-layer-digest"}}},
+							}},
+						}
+					})
+
+					it("should warn", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+						expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
+						assertLogEntry(t, logHandler, expected)
+						h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
+					})
+
+					it("creates app layer on Run image", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						assertHasLayer(t, fakeAppImage, "app")
+						assertLogEntry(t, logHandler, "Adding 1/1 app layer(s)")
+					})
+				})
 			})
 		})
 	})

@@ -70,7 +70,7 @@ func (a *Analyzer) analyzeLayers(appMeta platform.LayersMetadata, cache Cache) e
 	}
 
 	for _, buildpack := range a.Buildpacks {
-		buildpackDir, err := readBuildpackLayersDir(a.LayersDir, buildpack)
+		buildpackDir, err := readBuildpackLayersDir(a.LayersDir, buildpack, a.Logger)
 		if err != nil {
 			return errors.Wrap(err, "reading buildpack layer directory")
 		}
@@ -133,9 +133,9 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 }
 
 func (a *Analyzer) writeLayerMetadata(buildpackDir bpLayersDir, name string, metadata platform.BuildpackLayerMetadata) error {
-	layer := buildpackDir.newBPLayer(name)
+	layer := buildpackDir.newBPLayer(name, buildpackDir.buildpack.API, a.Logger)
 	a.Logger.Debugf("Writing layer metadata for %q", layer.Identifier())
-	if err := layer.writeMetadata(metadata); err != nil {
+	if err := layer.writeMetadata(metadata.LayerMetadataFile); err != nil {
 		return err
 	}
 	return layer.writeSha(metadata.SHA)

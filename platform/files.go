@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -69,7 +70,7 @@ type BuildpackLayersMetadata struct {
 
 type BuildpackLayerMetadata struct {
 	LayerMetadata
-	buildpack.LayerMetadataFile
+	layertypes.LayerMetadataFile
 }
 
 type RunImageMetadata struct {

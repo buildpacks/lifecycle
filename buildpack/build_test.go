@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -45,6 +47,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		layersDir      string
 		buildpacksDir  string
 		config         buildpack.BuildConfig
+		logHandler     = memory.New()
 	)
 
 	it.Before(func() {
@@ -74,6 +77,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			LayersDir:   layersDir,
 			Out:         stdout,
 			Err:         stderr,
+			Logger:      &log.Logger{Handler: logHandler},
 		}
 
 		bpTOML = buildpack.Descriptor{
@@ -107,15 +111,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(appDir, "layers-A-v1", "layer2"),
 					filepath.Join(appDir, "layers-A-v1", "layer3"),
 				)
-				h.Mkfile(t, "build = true",
+				h.Mkfile(t, "[types]\n  build = true",
 					filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
 					filepath.Join(appDir, "layers-A-v1", "layer3.toml"),
 				)
+				// the testdata/buildpack/bin/build script copies the content of the appDir into the layersDir
 				gomock.InOrder(
 					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
-					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env"), env.ActionTypeOverride),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build"), env.ActionTypeOverride),
+				)
+				gomock.InOrder(
+					mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypeOverride),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypeOverride),
 				)
@@ -340,6 +347,23 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 			})
+
+			when("the launch, cache and build flags are false", func() {
+				it("renames <layers>/<layer> to <layers>/<layer>.ignore", func() {
+					h.Mkdir(t,
+						filepath.Join(layersDir, "A", "layer"),
+					)
+					h.Mkfile(t,
+						"[types]\n  build=false\n  cache=false\n  launch=false",
+						filepath.Join(layersDir, "A", "layer.toml"),
+					)
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					h.AssertNil(t, err)
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
+					h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
+				})
+			})
 		})
 
 		when("building succeeds with a clear env", func() {
@@ -431,15 +455,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					},
 					func() {
 						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
-					},
-					func() {
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
-						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
 					},
 					func() {
 						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(appendErr)
+					},
+					func() {
+						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
+						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddRootDir(gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(nil)
 						mockEnv.EXPECT().AddEnvDir(gomock.Any(), gomock.Any()).Return(appendErr)
@@ -450,7 +477,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "layers-A-v1", "layer1"),
 						filepath.Join(appDir, "layers-A-v1", "layer2"),
 					)
-					h.Mkfile(t, "build = true",
+					h.Mkfile(t, "[types]\n  build = true",
 						filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
 						filepath.Join(appDir, "layers-A-v1", "layer2.toml"),
 					)
@@ -458,14 +485,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
 				})
-			})
-
-			it("should error when launch.toml is not writable", func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
-				h.Mkdir(t, filepath.Join(layersDir, "A", "launch.toml"))
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err == nil {
-					t.Fatal("Expected error")
-				}
 			})
 
 			it("should error when the launch bom has a top level version", func() {
@@ -572,6 +591,25 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+
+			when("the launch, cache and build flags are in the top level", func() {
+				it("should error", func() {
+					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+					h.Mkdir(t,
+						filepath.Join(layersDir, "A"),
+						filepath.Join(appDir, "layers-A-v1", "layer"),
+					)
+					h.Mkfile(t,
+						"build=true\ncache=true\nlaunch=true",
+						filepath.Join(appDir, "layers-A-v1", "layer.toml"),
+					)
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					h.AssertNotNil(t, err)
+					expected := "the launch, cache and build flags should be in the types table"
+					h.AssertStringContains(t, err.Error(), expected)
+				})
+			})
 		})
 
 		when("buildpack api = 0.2", func() {
@@ -631,9 +669,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					)
 					gomock.InOrder(
 						mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer1")),
-						mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env"), env.ActionTypePrependPath),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer1", "env.build"), env.ActionTypePrependPath),
+					)
+					gomock.InOrder(
+						mockEnv.EXPECT().AddRootDir(filepath.Join(layersDir, "A", "layer3")),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypePrependPath),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypePrependPath),
 					)
@@ -851,7 +891,25 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected metadata:\n%s\n", s)
 				}
 				expected := "Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [type-with-default]"
-				h.AssertStringContains(t, stdout.String(), expected)
+				assertLogEntry(t, logHandler, expected)
+			})
+
+			when("the launch, cache and build flags are in the types table", func() {
+				it("should warn", func() {
+					h.Mkdir(t,
+						filepath.Join(layersDir, "A"),
+						filepath.Join(appDir, "layers-A-v1", "layer"),
+					)
+					h.Mkfile(t,
+						"[types]\n  build=true\n  cache=true\n  launch=true",
+						filepath.Join(appDir, "layers-A-v1", "layer.toml"),
+					)
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					h.AssertNil(t, err)
+					expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
+					assertLogEntry(t, logHandler, expected)
+				})
 			})
 		})
 	})
@@ -886,4 +944,16 @@ func each(it spec.S, befores []func(), text string, f func()) {
 		before := befores[i]
 		it(fmt.Sprintf("%s #%d", text, i), func() { before(); f() })
 	}
+}
+
+func assertLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
+	t.Helper()
+	var messages []string
+	for _, le := range logHandler.Entries {
+		messages = append(messages, le.Message)
+		if strings.Contains(le.Message, expected) {
+			return
+		}
+	}
+	t.Fatalf("Expected log entries %+v to contain %s", messages, expected)
 }

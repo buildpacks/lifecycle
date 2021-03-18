@@ -18,7 +18,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	meta := platform.CacheMetadata{}
 
 	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(layersDir, bp)
+		bpDir, err := readBuildpackLayersDir(layersDir, bp, e.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}

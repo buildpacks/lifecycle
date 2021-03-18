@@ -92,6 +92,7 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		Plan:           plan,
 		Out:            cmd.Stdout,
 		Err:            cmd.Stderr,
+		Logger:         cmd.DefaultLogger,
 		BuildpackStore: buildpackStore,
 	}
 	md, err := builder.Build()
