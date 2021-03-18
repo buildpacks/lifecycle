@@ -190,7 +190,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						} else {
 							val2 = "val with space"
 						}
-						cmd := exec.Command("docker", "run", "--rm",
+						cmd := exec.Command("docker", "run", "--rm", //nolint:gosec
 							"--env", "VAR1=val1",
 							"--env", "VAR2="+val2,
 							launchImage, "indirect-process-with-args",
@@ -256,7 +256,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS == "windows" {
 					args = []string{"echo", "%SOME_USER_VAR%, %CNB_APP_DIR%, %OTHER_VAR%"}
 				}
-				cmd := exec.Command("docker",
+				cmd := exec.Command("docker", //nolint:gosec
 					append(
 						[]string{
 							"run", "--rm",

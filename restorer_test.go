@@ -229,7 +229,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				err = ioutil.WriteFile(
 					filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
 					[]byte(contents),
-					0666,
+					0600,
 				)
 				h.AssertNil(t, err)
 			})
@@ -421,11 +421,11 @@ func writeLayer(layersDir, buildpack, name, metadata, sha string) error {
 		return errors.Wrapf(err, "creating buildpack layer directory")
 	}
 	metadataPath := filepath.Join(buildpackDir, name+".toml")
-	if err := ioutil.WriteFile(metadataPath, []byte(metadata), 0755); err != nil {
+	if err := ioutil.WriteFile(metadataPath, []byte(metadata), 0600); err != nil {
 		return errors.Wrapf(err, "writing metadata file")
 	}
 	shaPath := filepath.Join(buildpackDir, name+".sha")
-	if err := ioutil.WriteFile(shaPath, []byte(sha), 0755); err != nil {
+	if err := ioutil.WriteFile(shaPath, []byte(sha), 0600); err != nil {
 		return errors.Wrapf(err, "writing sha file")
 	}
 	return nil
