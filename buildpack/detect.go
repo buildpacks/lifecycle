@@ -54,7 +54,7 @@ func (b *Descriptor) Detect(config *DetectConfig) DetectRun {
 	defer os.RemoveAll(planDir)
 
 	planPath := filepath.Join(planDir, "plan.toml")
-	if err := ioutil.WriteFile(planPath, nil, 0777); err != nil {
+	if err := ioutil.WriteFile(planPath, nil, 0600); err != nil {
 		return DetectRun{Code: -1, Err: err}
 	}
 
