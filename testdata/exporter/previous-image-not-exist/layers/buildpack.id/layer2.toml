@@ -1,4 +1,5 @@
-cache = true
-launch = true
+[types]
+  cache = true
+  launch = true
 [metadata]
  layer2key = "layer2val"

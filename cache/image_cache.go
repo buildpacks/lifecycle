@@ -23,11 +23,11 @@ type ImageCache struct {
 	newImage  imgutil.Image
 }
 
-func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) (*ImageCache, error) {
+func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) *ImageCache {
 	return &ImageCache{
 		origImage: origImage,
 		newImage:  newImage,
-	}, nil
+	}
 }
 
 func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, error) {
@@ -50,7 +50,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
 	}
 
-	return NewImageCache(origImage, emptyImage)
+	return NewImageCache(origImage, emptyImage), nil
 }
 
 func (c *ImageCache) Exists() bool {

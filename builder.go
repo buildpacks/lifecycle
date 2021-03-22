@@ -40,6 +40,7 @@ type Builder struct {
 	Group          buildpack.Group
 	Plan           platform.BuildPlan
 	Out, Err       io.Writer
+	Logger         Logger
 	BuildpackStore BuildpackStore
 }
 
@@ -76,9 +77,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		warning := processMap.add(br.Processes)
 
 		if warning != "" {
-			if _, err := b.Out.Write([]byte(warning)); err != nil {
-				return nil, err
-			}
+			b.Logger.Warn(warning)
 		}
 		slices = append(slices, br.Slices...)
 	}
@@ -134,6 +133,7 @@ func (b *Builder) BuildConfig() (buildpack.BuildConfig, error) {
 		LayersDir:   layersDir,
 		Out:         b.Out,
 		Err:         b.Err,
+		Logger:      b.Logger,
 	}, nil
 }
 

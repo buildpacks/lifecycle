@@ -55,6 +55,10 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 		d.planPath = cmd.DefaultPlanPath(d.platformAPI, d.layersDir)
 	}
 
+	if d.orderPath == cmd.PlaceholderOrderPath {
+		d.orderPath = cmd.DefaultOrderPath(d.platformAPI, d.layersDir)
+	}
+
 	return nil
 }
 

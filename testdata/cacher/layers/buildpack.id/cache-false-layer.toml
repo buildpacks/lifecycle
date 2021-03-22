@@ -1,3 +1,4 @@
-cache = false
+[types]
+  cache = false
 [metadata]
   mykey = "new val"

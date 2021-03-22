@@ -14,7 +14,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -44,8 +44,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 		fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
 
-		subject, err = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
-		h.AssertNil(t, err)
+		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
 		h.AssertNil(t, ioutil.WriteFile(testLayerTarPath, []byte("dummy data"), 0666))
@@ -83,7 +82,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 								LayerMetadata: platform.LayerMetadata{
 									SHA: "some-sha",
 								},
-								LayerMetadataFile: buildpack.LayerMetadataFile{
+								LayerMetadataFile: layertypes.LayerMetadataFile{
 									Data:   "some-data",
 									Build:  true,
 									Launch: false,
@@ -296,11 +295,9 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		when("with #DeleteOrigImage", func() {
 			when("original and new image are different", func() {
 				it.Before(func() {
-					var err error
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-					subject, err = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
-					h.AssertNil(t, err)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 				})
 				it("should delete original image", func() {
 					err := subject.DeleteOrigImage()
@@ -311,11 +308,9 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("original and new image are the same", func() {
 				it.Before(func() {
-					var err error
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-					subject, err = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
-					h.AssertNil(t, err)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 				})
 				it("should not delete original image", func() {
 					err := subject.DeleteOrigImage()
