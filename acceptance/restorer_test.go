@@ -49,7 +49,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 	when("called without any cache flag", func() {
 		it("outputs it will not restore cache layer data", func() {
-			command := exec.Command("docker", "run", "--rm", restorerImage)
+			command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+latestPlatformAPI, restorerImage)
 			output, err := command.CombinedOutput()
 			h.AssertNil(t, err)
 			expected := "Not restoring cached layer data, no cache flag specified"
@@ -81,6 +81,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					copyDir,
 					restorerImage,
 					"/layers",
+					h.WithFlags("--env", "CNB_PLATFORM_API="+latestPlatformAPI),
 					h.WithArgs("-cache-dir", "/cache"),
 				)
 
@@ -100,6 +101,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					copyDir,
 					restorerImage,
 					"/layers",
+					h.WithFlags("--env", "CNB_PLATFORM_API="+latestPlatformAPI),
 					h.WithArgs("-cache-dir", "/cache"),
 				)
 
@@ -117,6 +119,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					copyDir,
 					restorerImage,
 					"/layers",
+					h.WithFlags("--env", "CNB_PLATFORM_API="+latestPlatformAPI),
 					h.WithArgs("-cache-dir", "/cache"),
 				)
 

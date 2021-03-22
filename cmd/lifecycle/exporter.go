@@ -47,7 +47,6 @@ type exportArgs struct {
 	launchCacheDir      string
 	launcherPath        string
 	layersDir           string
-	platformAPI         string
 	processType         string
 	projectMetadataPath string
 	registry            string
@@ -57,6 +56,8 @@ type exportArgs struct {
 	stackPath           string
 	useDaemon           bool
 	uid, gid            int
+
+	platform cmd.Platform
 
 	//construct if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -108,19 +109,19 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
-		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platformAPI, e.layersDir)
+		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platform.API(), e.layersDir)
 	}
 
 	if e.groupPath == cmd.PlaceholderGroupPath {
-		e.groupPath = cmd.DefaultGroupPath(e.platformAPI, e.layersDir)
+		e.groupPath = cmd.DefaultGroupPath(e.platform.API(), e.layersDir)
 	}
 
 	if e.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
-		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platformAPI, e.layersDir)
+		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platform.API(), e.layersDir)
 	}
 
 	if e.reportPath == cmd.PlaceholderReportPath {
-		e.reportPath = cmd.DefaultReportPath(e.platformAPI, e.layersDir)
+		e.reportPath = cmd.DefaultReportPath(e.platform.API(), e.layersDir)
 	}
 
 	if e.deprecatedRunImageRef != "" {
@@ -221,7 +222,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 			Logger:       cmd.DefaultLogger,
 		},
 		Logger:      cmd.DefaultLogger,
-		PlatformAPI: api.MustParse(ea.platformAPI),
+		PlatformAPI: api.MustParse(ea.platform.API()),
 	}
 
 	var appImage imgutil.Image
@@ -248,10 +249,10 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeExportError, "export")
+		return cmd.FailErrCode(err, ea.platform.CodeFor("ExportError"), "export")
 	}
 	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeExportError, "write export report")
+		return cmd.FailErrCode(err, ea.platform.CodeFor("ExportError"), "write export report")
 	}
 
 	if cacheStore != nil {

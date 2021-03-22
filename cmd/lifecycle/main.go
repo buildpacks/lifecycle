@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	lplatform "github.com/buildpacks/lifecycle/platform"
 )
 
 func main() {
@@ -19,21 +20,22 @@ func main() {
 		cmd.Exit(err)
 	}
 
+	var platform cmd.Platform = lplatform.NewPlatform(platformAPI)
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cmd.Run(&detectCmd{detectArgs: detectArgs{platformAPI: platformAPI}}, false)
+		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platformAPI: platformAPI}}, false)
+		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: platform}}, false)
 	case "restorer":
-		cmd.Run(&restoreCmd{platformAPI: platformAPI}, false)
+		cmd.Run(&restoreCmd{platform: platform}, false)
 	case "builder":
-		cmd.Run(&buildCmd{buildArgs: buildArgs{platformAPI: platformAPI}}, false)
+		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: platform}}, false)
 	case "exporter":
-		cmd.Run(&exportCmd{exportArgs: exportArgs{platformAPI: platformAPI}}, false)
+		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: platform}}, false)
 	case "rebaser":
-		cmd.Run(&rebaseCmd{platformAPI: platformAPI}, false)
+		cmd.Run(&rebaseCmd{platform: platform}, false)
 	case "creator":
-		cmd.Run(&createCmd{platformAPI: platformAPI}, false)
+		cmd.Run(&createCmd{platform: platform}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))

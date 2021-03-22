@@ -27,9 +27,10 @@ type rebaseCmd struct {
 	reportPath            string
 	runImageRef           string
 	deprecatedRunImageRef string
-	platformAPI           string
 	useDaemon             bool
 	uid, gid              int
+
+	platform cmd.Platform
 
 	//set if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -63,11 +64,11 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 
 	if r.reportPath == cmd.PlaceholderReportPath {
-		r.reportPath = cmd.DefaultReportPath(r.platformAPI, "")
+		r.reportPath = cmd.DefaultReportPath(r.platform.API(), "")
 	}
 
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), cmd.CodeRebaseError, "set app image")
+		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor("RebaseError"), "set app image")
 	}
 
 	return nil
@@ -115,14 +116,14 @@ func (r *rebaseCmd) Exec() error {
 
 	rebaser := &lifecycle.Rebaser{
 		Logger:      cmd.DefaultLogger,
-		PlatformAPI: api.MustParse(r.platformAPI),
+		PlatformAPI: api.MustParse(r.platform.API()),
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeRebaseError, "rebase")
+		return cmd.FailErrCode(err, r.platform.CodeFor("RebaseError"), "rebase")
 	}
 	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeRebaseError, "write rebase report")
+		return cmd.FailErrCode(err, r.platform.CodeFor("RebaseError"), "write rebase report")
 	}
 	return nil
 }
