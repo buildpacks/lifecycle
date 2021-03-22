@@ -42,6 +42,16 @@ jobs:
           go-version: '1.15'
       - name: Install jq
         run: choco install jq
+      - name: BUGFIX - Downgrade Docker CLI if 20.10.0
+        shell: powershell
+        run: |
+          $dockerVersion=(docker version -f '{{.Client.Version}}')
+          if ($dockerVersion -ne "20.10.0") {
+            echo Newer docker version has been released: $dockerVersion
+            echo Remove this step if greater than: 20.10.5
+          }
+
+          curl.exe -o "$env:USERPROFILE\go\bin\docker.exe" -L https://github.com/StefanScherer/docker-cli-builder/releases/download/19.03.14/docker.exe
       - name: Add runner IP to daemon insecure-registries
         shell: powershell
         run: |
@@ -58,6 +68,7 @@ jobs:
 
           Restart-Service docker
 
+          docker version
           docker info
       - name: Test
         run: make test
