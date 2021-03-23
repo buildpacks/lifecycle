@@ -27,7 +27,7 @@ func runLaunch() error {
 		cmd.Exit(err)
 	}
 
-	var platform cmd.Platform = lplatform.NewPlatform(platformAPI)
+	platform := lplatform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
 	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir)), &md); err != nil {
