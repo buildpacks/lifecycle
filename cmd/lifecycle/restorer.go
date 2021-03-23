@@ -19,8 +19,9 @@ type restoreCmd struct {
 	cacheImageTag string
 	groupPath     string
 	layersDir     string
-	platformAPI   string
 	uid, gid      int
+
+	platform cmd.Platform
 
 	//set before dropping privileges
 	keychain authn.Keychain
@@ -44,7 +45,7 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 	}
 
 	if r.groupPath == cmd.PlaceholderGroupPath {
-		r.groupPath = cmd.DefaultGroupPath(r.platformAPI, r.layersDir)
+		r.groupPath = cmd.DefaultGroupPath(r.platform.API(), r.layersDir)
 	}
 
 	return nil
@@ -78,7 +79,7 @@ func (r *restoreCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	return restore(r.layersDir, group, cacheStore)
+	return restore(r.platform, r.layersDir, group, cacheStore)
 }
 
 func (r *restoreCmd) registryImages() []string {
@@ -88,7 +89,7 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func restore(layersDir string, group buildpack.Group, cacheStore lifecycle.Cache) error {
+func restore(p cmd.Platform, layersDir string, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:  layersDir,
 		Buildpacks: group.Group,
@@ -96,7 +97,7 @@ func restore(layersDir string, group buildpack.Group, cacheStore lifecycle.Cache
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeRestoreError, "restore")
+		return cmd.FailErrCode(err, p.CodeFor(cmd.RestoreError), "restore")
 	}
 	return nil
 }

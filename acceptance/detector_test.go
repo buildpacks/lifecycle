@@ -19,7 +19,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -50,7 +49,14 @@ func TestDetector(t *testing.T) {
 func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("called with arguments", func() {
 		it("errors", func() {
-			command := exec.Command("docker", "run", "--rm", detectImage, "some-arg")
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				detectImage,
+				"some-arg",
+			)
 			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to parse arguments: received unexpected arguments"
@@ -60,7 +66,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("running as a root", func() {
 		it("errors", func() {
-			command := exec.Command("docker", "run", "--rm", "--user", "root", detectImage)
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--user",
+				"root",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				detectImage,
+			)
 			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to build: refusing to run as root"
@@ -71,7 +85,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("read buildpack order file failed", func() {
 		it("errors", func() {
 			// no order.toml file in the default search locations
-			command := exec.Command("docker", "run", "--rm", detectImage)
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				detectImage,
+			)
 			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
 			expected := "failed to read buildpack order file"
@@ -81,14 +101,21 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("no buildpack group passed detection", func() {
 		it("errors", func() {
-			command := exec.Command("docker", "run", "--rm", "--env", "CNB_ORDER_PATH=/cnb/orders/empty_order.toml", detectImage)
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_ORDER_PATH=/cnb/orders/empty_order.toml",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				detectImage,
+			)
 			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
 			failErr, ok := err.(*exec.ExitError)
 			if !ok {
 				t.Fatalf("expected an error of type exec.ExitError")
 			}
-			h.AssertEq(t, failErr.ExitCode(), cmd.CodeFailedDetect)
+			h.AssertEq(t, failErr.ExitCode(), 20) // platform code for cmd.FailedDetect
 			expected := "No buildpack groups passed detection."
 			h.AssertStringContains(t, string(output), expected)
 		})
@@ -119,6 +146,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				"/layers",
 				h.WithFlags("--user", userID,
 					"--env", "CNB_ORDER_PATH=/cnb/orders/simple_order.toml",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				),
 				h.WithArgs(),
 			)
@@ -174,6 +202,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"--env", "CNB_GROUP_PATH=./custom_group.toml",
 					"--env", "CNB_PLAN_PATH=./custom_plan.toml",
 					"--env", "CNB_PLATFORM_DIR=/custom_platform",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				),
 				h.WithArgs("-log-level=debug"),
 			)
@@ -230,7 +259,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					detectImage,
 					"/layers",
 					h.WithFlags("--user", userID,
-						"--volume", expectedOrderTOMLPath+":/custom/order.toml"),
+						"--volume", expectedOrderTOMLPath+":/custom/order.toml",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					),
 					h.WithArgs(
 						"-log-level=debug",
 						"-order=/custom/order.toml",
@@ -252,6 +283,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				command := exec.Command("docker", "run",
 					"--user", userID,
 					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					detectImage,
 					"-order=/custom/order.toml")
 				output, err := command.CombinedOutput()
@@ -298,7 +330,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					h.WithFlags("--user", userID,
 						"--volume", expectedOrderTOMLPath+":/layers/order.toml",
 						"--volume", otherOrderTOMLPath+":/cnb/order.toml",
-						"--env", "CNB_ORDER_PATH="),
+						"--env", "CNB_ORDER_PATH=",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					),
 					h.WithArgs("-log-level=debug"),
 				)
 
@@ -321,7 +355,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"/layers",
 					h.WithFlags("--user", userID,
 						"--volume", expectedOrderTOMLPath+":/cnb/order.toml",
-						"--env", "CNB_ORDER_PATH="),
+						"--env", "CNB_ORDER_PATH=",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					),
 					h.WithArgs("-log-level=debug"),
 				)
 
@@ -344,7 +380,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"/layers",
 					h.WithFlags("--user", userID,
 						"--volume", expectedOrderTOMLPath+":/layers/order.toml",
-						"--env", "CNB_ORDER_PATH="),
+						"--env", "CNB_ORDER_PATH=",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					),
 					h.WithArgs("-log-level=debug"),
 				)
 
@@ -370,7 +408,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							"--volume", expectedOrderTOMLPath+":/cnb/order.toml",
 							"--volume", otherOrderTOMLPath+":/layers/order.toml",
 							"--env", "CNB_PLATFORM_API=0.5",
-							"--env", "CNB_ORDER_PATH="),
+							"--env", "CNB_ORDER_PATH=",
+						),
 						h.WithArgs("-log-level=debug"),
 					)
 
@@ -397,6 +436,30 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					expected := "failed to read buildpack order file: open /cnb/order.toml: no such file or directory"
 					h.AssertStringContains(t, string(output), expected)
 				})
+			})
+		})
+	})
+
+	when("platform api < 0.6", func() {
+		when("no buildpack group passed detection", func() {
+			it("errors", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_ORDER_PATH=/cnb/orders/empty_order.toml",
+					"--env", "CNB_PLATFORM_API=0.5",
+					detectImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				failErr, ok := err.(*exec.ExitError)
+				if !ok {
+					t.Fatalf("expected an error of type exec.ExitError")
+				}
+				h.AssertEq(t, failErr.ExitCode(), 100) // platform code for cmd.FailedDetect
+				expected := "No buildpack groups passed detection."
+				h.AssertStringContains(t, string(output), expected)
 			})
 		})
 	})

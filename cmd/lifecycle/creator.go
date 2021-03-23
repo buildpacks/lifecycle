@@ -24,7 +24,6 @@ type createCmd struct {
 	launcherPath        string
 	layersDir           string
 	orderPath           string
-	platformAPI         string
 	platformDir         string
 	previousImage       string
 	processType         string
@@ -38,6 +37,8 @@ type createCmd struct {
 	additionalTags      cmd.StringSlice
 	skipRestore         bool
 	useDaemon           bool
+
+	platform cmd.Platform
 
 	//set if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -91,11 +92,11 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if c.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
-		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platformAPI, c.layersDir)
+		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platform.API(), c.layersDir)
 	}
 
 	if c.reportPath == cmd.PlaceholderReportPath {
-		c.reportPath = cmd.DefaultReportPath(c.platformAPI, c.layersDir)
+		c.reportPath = cmd.DefaultReportPath(c.platform.API(), c.layersDir)
 	}
 
 	var err error
@@ -144,7 +145,7 @@ func (c *createCmd) Exec() error {
 		buildpacksDir: c.buildpacksDir,
 		appDir:        c.appDir,
 		layersDir:     c.layersDir,
-		platformAPI:   c.platformAPI,
+		platform:      c.platform,
 		platformDir:   c.platformDir,
 		orderPath:     c.orderPath,
 	}.detect()
@@ -154,13 +155,13 @@ func (c *createCmd) Exec() error {
 
 	cmd.DefaultLogger.Phase("ANALYZING")
 	analyzedMD, err := analyzeArgs{
-		imageName:   c.previousImage,
-		keychain:    c.keychain,
-		layersDir:   c.layersDir,
-		platformAPI: c.platformAPI,
-		skipLayers:  c.skipRestore,
-		useDaemon:   c.useDaemon,
-		docker:      c.docker,
+		imageName:  c.previousImage,
+		keychain:   c.keychain,
+		layersDir:  c.layersDir,
+		platform:   c.platform,
+		skipLayers: c.skipRestore,
+		useDaemon:  c.useDaemon,
+		docker:     c.docker,
 	}.analyze(group, cacheStore)
 	if err != nil {
 		return err
@@ -168,7 +169,7 @@ func (c *createCmd) Exec() error {
 
 	if !c.skipRestore {
 		cmd.DefaultLogger.Phase("RESTORING")
-		if err := restore(c.layersDir, group, cacheStore); err != nil {
+		if err := restore(c.platform, c.layersDir, group, cacheStore); err != nil {
 			return err
 		}
 	}
@@ -178,7 +179,7 @@ func (c *createCmd) Exec() error {
 		buildpacksDir: c.buildpacksDir,
 		layersDir:     c.layersDir,
 		appDir:        c.appDir,
-		platformAPI:   c.platformAPI,
+		platform:      c.platform,
 		platformDir:   c.platformDir,
 	}.build(group, plan)
 	if err != nil {
@@ -195,7 +196,7 @@ func (c *createCmd) Exec() error {
 		launchCacheDir:      c.launchCacheDir,
 		launcherPath:        c.launcherPath,
 		layersDir:           c.layersDir,
-		platformAPI:         c.platformAPI,
+		platform:            c.platform,
 		processType:         c.processType,
 		projectMetadataPath: c.projectMetadataPath,
 		registry:            c.registry,

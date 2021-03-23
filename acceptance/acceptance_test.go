@@ -11,6 +11,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/api"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -19,7 +20,10 @@ const (
 	expectedCommit  = "asdf123"
 )
 
-var buildDir string
+var (
+	latestPlatformAPI = api.Platform.Latest().String()
+	buildDir          string
+)
 
 func TestVersion(t *testing.T) {
 	var err error
