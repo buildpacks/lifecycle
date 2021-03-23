@@ -13,12 +13,9 @@ type Platform interface {
 }
 
 func NewPlatform(apiStr string) Platform {
-	var platform Platform
 	platformAPI := api.MustParse(apiStr)
-	if platformAPI.Compare(api.MustParse("0.5")) > 0 { // platform API > 0.5
-		platform = v06.NewPlatform(apiStr)
-	} else {
-		platform = v05.NewPlatform(apiStr)
+	if platformAPI.Compare(api.MustParse("0.6")) < 0 { // platform API < 0.6
+		return v05.NewPlatform(apiStr)
 	}
-	return platform
+	return v06.NewPlatform(apiStr)
 }
