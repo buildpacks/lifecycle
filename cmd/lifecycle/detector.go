@@ -114,15 +114,15 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 			case buildpack.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor("FailedDetect"), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.FailedDetect), "detect")
 			case buildpack.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor("FailedDetectWithErrors"), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.FailedDetectWithErrors), "detect")
 			default:
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor("DetectError"), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.DetectError), "detect")
 			}
 		default:
-			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor("DetectError"), "detect")
+			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.DetectError), "detect")
 		}
 	}
 

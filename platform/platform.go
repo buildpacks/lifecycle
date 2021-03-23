@@ -2,13 +2,14 @@ package platform
 
 import (
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd"
 	v05 "github.com/buildpacks/lifecycle/platform/v05"
 	v06 "github.com/buildpacks/lifecycle/platform/v06"
 )
 
 type Platform interface {
 	API() string
-	CodeFor(errType string) int
+	CodeFor(errType cmd.LifecycleExitError) int
 }
 
 func NewPlatform(apiStr string) Platform {

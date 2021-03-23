@@ -97,7 +97,7 @@ func restore(p cmd.Platform, layersDir string, group buildpack.Group, cacheStore
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, p.CodeFor("RestoreError"), "restore")
+		return cmd.FailErrCode(err, p.CodeFor(cmd.RestoreError), "restore")
 	}
 	return nil
 }

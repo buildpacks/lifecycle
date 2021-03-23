@@ -157,7 +157,7 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 		SkipLayers: aa.skipLayers,
 	}).Analyze(img, cacheStore)
 	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor("AnalyzeError"), "analyzer")
+		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
 	}
 	return analyzedMD, nil
 }

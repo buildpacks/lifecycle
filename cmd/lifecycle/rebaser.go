@@ -68,7 +68,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor("RebaseError"), "set app image")
+		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(cmd.RebaseError), "set app image")
 	}
 
 	return nil
@@ -120,10 +120,10 @@ func (r *rebaseCmd) Exec() error {
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor("RebaseError"), "rebase")
+		return cmd.FailErrCode(err, r.platform.CodeFor(cmd.RebaseError), "rebase")
 	}
 	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor("RebaseError"), "write rebase report")
+		return cmd.FailErrCode(err, r.platform.CodeFor(cmd.RebaseError), "write rebase report")
 	}
 	return nil
 }

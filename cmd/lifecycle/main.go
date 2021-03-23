@@ -20,7 +20,7 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	var platform cmd.Platform = lplatform.NewPlatform(platformAPI)
+	platform := lplatform.NewPlatform(platformAPI)
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
 		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, false)

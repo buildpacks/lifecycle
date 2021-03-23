@@ -249,10 +249,10 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor("ExportError"), "export")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(cmd.ExportError), "export")
 	}
 	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor("ExportError"), "write export report")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(cmd.ExportError), "write export report")
 	}
 
 	if cacheStore != nil {

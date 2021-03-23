@@ -80,7 +80,7 @@ func (b *buildCmd) Exec() error {
 func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
-		return cmd.FailErrCode(err, ba.platform.CodeFor("BuildError"), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(cmd.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
@@ -101,10 +101,10 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	if err != nil {
 		if err, ok := err.(*buildpack.Error); ok {
 			if err.Type == buildpack.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor("FailedBuildWithErrors"), "build")
+				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(cmd.FailedBuildWithErrors), "build")
 			}
 		}
-		return cmd.FailErrCode(err, ba.platform.CodeFor("BuildError"), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(cmd.BuildError), "build")
 	}
 
 	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
