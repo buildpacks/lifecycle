@@ -29,5 +29,8 @@ var exitCodes = map[cmd.LifecycleExitError]int{
 }
 
 func (p *Platform) CodeFor(errType cmd.LifecycleExitError) int {
-	return exitCodes[errType]
+	if code, ok := exitCodes[errType]; ok {
+		return code
+	}
+	return cmd.CodeFailed
 }
