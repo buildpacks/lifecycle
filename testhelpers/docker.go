@@ -60,7 +60,7 @@ func DockerRunAndCopy(t *testing.T, containerName, outputDir, outputCtrPath, ima
 }
 
 //DockerSeedRunAndCopy copies srcDir to container's srcCtrPath before container is started. Once stopped, outputCtrPath is copied to outputDir
-//Only works for WCOW when seeding to container directory (not a mounted volume)
+//On WCOW, only works when seeding to container directory (not a mounted volume)
 func DockerSeedRunAndCopy(t *testing.T, containerName, srcDir, srcCtrPath, outputDir, outputCtrPath, image string, ops ...DockerCmdOp) string {
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
