@@ -18,7 +18,7 @@ require (
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
-	k8s.io/klog/v2 v2.5.0
+	k8s.io/klog/v2 v2.8.0
 )
 
 replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200523222454-059865788121
