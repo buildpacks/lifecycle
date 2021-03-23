@@ -457,7 +457,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if !ok {
 					t.Fatalf("expected an error of type exec.ExitError")
 				}
-				h.AssertEq(t, failErr.ExitCode(), 100)  // platform code for cmd.FailedDetect
+				h.AssertEq(t, failErr.ExitCode(), 100) // platform code for cmd.FailedDetect
 				expected := "No buildpack groups passed detection."
 				h.AssertStringContains(t, string(output), expected)
 			})
