@@ -149,5 +149,5 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 }
 
 func lifecycleCmd(phase string, args ...string) *exec.Cmd {
-	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", phase), args...) //nolint:gosec
+	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", phase), args...) // #nosec G204
 }

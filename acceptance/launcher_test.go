@@ -190,11 +190,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						} else {
 							val2 = "val with space"
 						}
-						cmd := exec.Command("docker", "run", "--rm", //nolint:gosec
+						cmd := exec.Command("docker", "run", "--rm",
 							"--env", "VAR1=val1",
 							"--env", "VAR2="+val2,
 							launchImage, "indirect-process-with-args",
-						)
+						) // #nosec G204
 						assertOutput(t, cmd, "'val1' 'val with space'")
 					})
 				})
@@ -256,7 +256,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS == "windows" {
 					args = []string{"echo", "%SOME_USER_VAR%, %CNB_APP_DIR%, %OTHER_VAR%"}
 				}
-				cmd := exec.Command("docker", //nolint:gosec
+				cmd := exec.Command("docker",
 					append(
 						[]string{
 							"run", "--rm",
@@ -266,7 +266,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 							launchImage,
 						},
 						args...)...,
-				)
+				) // #nosec G204
 
 				if runtime.GOOS == "windows" {
 					// windows values with spaces will contain quotes

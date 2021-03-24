@@ -33,7 +33,7 @@ func SyscallExecWithStdout(t *testing.T, tmpDir string) launch.ExecFunc {
 		defer fstdin.Close()
 		defer fstdout.Close()
 		defer fstderr.Close()
-		c := exec.Command(argv[0], argv[1:]...) //nolint:gosec
+		c := exec.Command(argv[0], argv[1:]...) // #nosec G204
 		c.Env = envv
 		c.Stdin = fstdin
 		c.Stdout = fstdout

@@ -63,7 +63,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		when("staging already exists", func() {
 			it.Before(func() {
 				stagingPath := filepath.Join(volumeDir, "staging")
-				h.AssertNil(t, os.MkdirAll(stagingPath, 0777)) //nolint:gosec
+				h.AssertNil(t, os.MkdirAll(stagingPath, 0777))
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(stagingPath, "some-layer.tar"), []byte("some data"), 0600))
 			})
 

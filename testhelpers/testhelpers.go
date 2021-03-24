@@ -27,7 +27,7 @@ import (
 func RandString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26)) //nolint:gosec
+		b[i] = 'a' + byte(rand.Intn(26)) // #nosec: G404
 	}
 	return string(b)
 }

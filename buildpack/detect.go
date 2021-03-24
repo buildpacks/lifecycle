@@ -59,11 +59,11 @@ func (b *Descriptor) Detect(config *DetectConfig) DetectRun {
 	}
 
 	out := &bytes.Buffer{}
-	cmd := exec.Command( //nolint:gosec
+	cmd := exec.Command(
 		filepath.Join(b.Dir, "bin", "detect"),
 		platformDir,
 		planPath,
-	)
+	) // #nosec G204
 	cmd.Dir = appDir
 	cmd.Stdout = out
 	cmd.Stderr = out

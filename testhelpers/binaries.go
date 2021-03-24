@@ -14,7 +14,7 @@ func MakeAndCopyLauncher(t *testing.T, goos, destDir string) {
 	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
 
-	cmd := exec.Command("make", fmt.Sprintf("build-%s-launcher", goos)) //nolint:gosec
+	cmd := exec.Command("make", fmt.Sprintf("build-%s-launcher", goos)) // #nosec G204
 
 	wd, err := os.Getwd()
 	AssertNil(t, err)
@@ -36,7 +36,7 @@ func MakeAndCopyLifecycle(t *testing.T, goos, destDir string, envs ...string) {
 	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
 
-	cmd := exec.Command("make", "build-"+goos) //nolint:gosec
+	cmd := exec.Command("make", "build-"+goos) // #nosec G204
 
 	wd, err := os.Getwd()
 	AssertNil(t, err)

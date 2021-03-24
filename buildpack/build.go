@@ -119,12 +119,12 @@ func WriteTOML(path string, data interface{}) error {
 }
 
 func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig) error {
-	cmd := exec.Command( //nolint:gosec
+	cmd := exec.Command(
 		filepath.Join(b.Dir, "bin", "build"),
 		bpLayersDir,
 		config.PlatformDir,
 		bpPlanPath,
-	)
+	) // #nosec G204
 	cmd.Dir = config.AppDir
 	cmd.Stdout = config.Out
 	cmd.Stderr = config.Err
