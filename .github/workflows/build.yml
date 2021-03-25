@@ -40,8 +40,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.15'
-      - name: Install jq
-        run: choco install jq
       - name: BUGFIX - Upgrade Docker CLI if 20.10.0
         shell: powershell
         env:
