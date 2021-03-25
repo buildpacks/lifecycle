@@ -77,7 +77,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		opts.LayersDir = filepath.Join(tmpDir, "layers")
 		h.AssertNil(t, os.Mkdir(opts.LayersDir, 0777))
-		h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0777))
+		h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0600))
 		opts.AppDir = filepath.Join(tmpDir, "app")
 
 		fakeAppImage = fakes.NewImage(
@@ -880,7 +880,7 @@ version = "4.5.6"
 			when("there are store.toml files", func() {
 				it.Before(func() {
 					path := filepath.Join(opts.LayersDir, "buildpack.id", "store.toml")
-					h.AssertNil(t, ioutil.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0777))
+					h.AssertNil(t, ioutil.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0600))
 				})
 
 				it("saves store metadata", func() {

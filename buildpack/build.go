@@ -169,7 +169,7 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 		bpLayersDir,
 		config.PlatformDir,
 		bpPlanPath,
-	)
+	) // #nosec G204
 	cmd.Dir = config.AppDir
 	cmd.Stdout = config.Out
 	cmd.Stderr = config.Err

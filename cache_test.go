@@ -209,14 +209,14 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						err := ioutil.WriteFile(
 							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
 							[]byte(fmt.Sprintf(metadataTemplate, "different-sha", "not-the-sha-you-want")),
-							0666,
+							0600,
 						)
 						h.AssertNil(t, err)
 
 						err = ioutil.WriteFile(
 							filepath.Join(cacheDir, "committed", "some-layer.tar"),
 							[]byte("some data"),
-							0666,
+							0600,
 						)
 						h.AssertNil(t, err)
 					})
@@ -352,6 +352,6 @@ func initializeCache(t *testing.T, exporter *lifecycle.Exporter, testCache *life
 	h.AssertNil(t, ioutil.WriteFile(
 		filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
 		[]byte(fmt.Sprintf(metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer")),
-		0666,
+		0600,
 	))
 }

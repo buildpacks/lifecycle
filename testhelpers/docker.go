@@ -40,7 +40,7 @@ func DockerCli(t *testing.T) dockercli.CommonAPIClient {
 func DockerBuild(t *testing.T, name, context string, ops ...DockerCmdOp) {
 	t.Helper()
 	args := formatArgs([]string{"-t", name, context}, ops...)
-	Run(t, exec.Command("docker", append([]string{"build"}, args...)...))
+	Run(t, exec.Command("docker", append([]string{"build"}, args...)...)) // #nosec G204
 }
 
 func DockerImageRemove(t *testing.T, name string) {
@@ -51,15 +51,15 @@ func DockerImageRemove(t *testing.T, name string) {
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	t.Helper()
 	args := formatArgs([]string{image}, ops...)
-	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...))
+	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
 }
 
 func DockerRunAndCopy(t *testing.T, containerName, copyDir, image, path string, ops ...DockerCmdOp) string {
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
-	Run(t, exec.Command("docker", "cp", containerName+":"+path, copyDir))
+	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...)) // #nosec G204
+	Run(t, exec.Command("docker", "cp", containerName+":"+path, copyDir))         // #nosec G204
 	return output
 }
 
@@ -106,7 +106,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 		"--volume", volumeName + ":" + "/target", // create a new empty volume
 		"--name", containerName,
 		volumeHelperImage},
-		dummyCommand...)...))
+		dummyCommand...)...)) // #nosec G204
 	defer Run(t, exec.Command("docker", "rm", containerName))
 
 	fis, err := ioutil.ReadDir(srcPath)
@@ -116,7 +116,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 			"docker", "cp",
 			filepath.Join(srcPath, fi.Name()),
 			containerName+":"+"/target",
-		))
+		)) // #nosec G204
 	}
 
 	return volumeName
