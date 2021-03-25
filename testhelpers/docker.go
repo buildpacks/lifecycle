@@ -54,8 +54,8 @@ func DockerRunAndCopy(t *testing.T, containerName, outputDir, outputCtrPath, ima
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))     // #nosec G204
-	Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir))  // #nosec G204
+	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))    // #nosec G204
+	Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir)) // #nosec G204
 	return output
 }
 
@@ -65,16 +65,16 @@ func DockerSeedRunAndCopy(t *testing.T, containerName, srcDir, srcCtrPath, outpu
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", append([]string{"create"}, args...)...))
-	output += Run(t, exec.Command("docker", "cp", srcDir, containerName+":"+srcCtrPath))
-	output += Run(t, exec.Command("docker", "start", "--attach", containerName))
-	output += Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir))
+	output := Run(t, exec.Command("docker", append([]string{"create"}, args...)...))           // #nosec G204
+	output += Run(t, exec.Command("docker", "cp", srcDir, containerName+":"+srcCtrPath))       // #nosec G204
+	output += Run(t, exec.Command("docker", "start", "--attach", containerName))               // #nosec G204
+	output += Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir)) // #nosec G204
 
 	return output
 }
 
 func DockerCopyOut(t *testing.T, containerName, srcCtrPath, outputDir string) string {
-	return Run(t, exec.Command("docker", "cp", containerName+":"+srcCtrPath, outputDir))
+	return Run(t, exec.Command("docker", "cp", containerName+":"+srcCtrPath, outputDir)) // #nosec G204
 }
 
 func DockerContainerExists(t *testing.T, containerName string) bool {

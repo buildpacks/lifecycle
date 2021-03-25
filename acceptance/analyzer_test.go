@@ -110,7 +110,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				analyzeImage,
 				ctrPath(analyzerPath),
-			)
+			) // #nosec G204
 			output, err := cmd.CombinedOutput()
 
 			h.AssertNotNil(t, err)
