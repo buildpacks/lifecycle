@@ -299,7 +299,7 @@ func mkdir(t *testing.T, dirs ...string) {
 func mkfile(t *testing.T, data string, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		if err := ioutil.WriteFile(p, []byte(data), 0777); err != nil {
+		if err := ioutil.WriteFile(p, []byte(data), 0600); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}

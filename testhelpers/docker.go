@@ -35,7 +35,7 @@ func DockerCli(t *testing.T) dockercli.CommonAPIClient {
 func DockerBuild(t *testing.T, name, context string, ops ...DockerCmdOp) {
 	t.Helper()
 	args := formatArgs([]string{"-t", name, context}, ops...)
-	Run(t, exec.Command("docker", append([]string{"build"}, args...)...))
+	Run(t, exec.Command("docker", append([]string{"build"}, args...)...)) // #nosec G204
 }
 
 func DockerImageRemove(t *testing.T, name string) {
@@ -46,7 +46,7 @@ func DockerImageRemove(t *testing.T, name string) {
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	t.Helper()
 	args := formatArgs([]string{image}, ops...)
-	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...))
+	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
 }
 
 //DockerRunAndCopy runs a container and once stopped, outputCtrPath is copied to outputDir
@@ -54,8 +54,8 @@ func DockerRunAndCopy(t *testing.T, containerName, outputDir, outputCtrPath, ima
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))
-	Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir))
+	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))     // #nosec G204
+	Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir))  // #nosec G204
 	return output
 }
 
@@ -122,7 +122,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 		"--volume", volumeName + ":" + "/target", // create a new empty volume
 		"--name", containerName,
 		volumeHelperImage},
-		"true")...))
+		"true")...)) // #nosec G204
 	defer Run(t, exec.Command("docker", "rm", containerName))
 
 	fis, err := ioutil.ReadDir(srcPath)
@@ -132,7 +132,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 			"docker", "cp",
 			filepath.Join(srcPath, fi.Name()),
 			containerName+":"+"/target",
-		))
+		)) // #nosec G204
 	}
 
 	return volumeName

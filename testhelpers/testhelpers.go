@@ -27,7 +27,7 @@ import (
 func RandString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26))
+		b[i] = 'a' + byte(rand.Intn(26)) // #nosec: G404
 	}
 	return string(b)
 }
@@ -335,7 +335,7 @@ func Mkdir(t *testing.T, dirs ...string) {
 func Mkfile(t *testing.T, data string, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		if err := ioutil.WriteFile(p, []byte(data), 0777); err != nil {
+		if err := ioutil.WriteFile(p, []byte(data), 0600); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}

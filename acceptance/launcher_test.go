@@ -194,7 +194,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 							"--env", "VAR1=val1",
 							"--env", "VAR2="+val2,
 							launchImage, "indirect-process-with-args",
-						)
+						) // #nosec G204
 						assertOutput(t, cmd, "'val1' 'val with space'")
 					})
 				})
@@ -266,7 +266,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 							launchImage,
 						},
 						args...)...,
-				)
+				) // #nosec G204
 
 				if runtime.GOOS == "windows" {
 					// windows values with spaces will contain quotes

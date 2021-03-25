@@ -47,7 +47,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
-		h.AssertNil(t, ioutil.WriteFile(testLayerTarPath, []byte("dummy data"), 0666))
+		h.AssertNil(t, ioutil.WriteFile(testLayerTarPath, []byte("dummy data"), 0600))
 		testLayerSHA = "sha256:" + h.ComputeSHA256ForFile(t, testLayerTarPath)
 	})
 
