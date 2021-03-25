@@ -27,9 +27,10 @@ type detectArgs struct {
 	buildpacksDir string
 	appDir        string
 	layersDir     string
-	platformAPI   string
 	platformDir   string
 	orderPath     string
+
+	platform cmd.Platform
 }
 
 func (d *detectCmd) DefineFlags() {
@@ -48,15 +49,15 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 	}
 
 	if d.groupPath == cmd.PlaceholderGroupPath {
-		d.groupPath = cmd.DefaultGroupPath(d.platformAPI, d.layersDir)
+		d.groupPath = cmd.DefaultGroupPath(d.platform.API(), d.layersDir)
 	}
 
 	if d.planPath == cmd.PlaceholderPlanPath {
-		d.planPath = cmd.DefaultPlanPath(d.platformAPI, d.layersDir)
+		d.planPath = cmd.DefaultPlanPath(d.platform.API(), d.layersDir)
 	}
 
 	if d.orderPath == cmd.PlaceholderOrderPath {
-		d.orderPath = cmd.DefaultOrderPath(d.platformAPI, d.layersDir)
+		d.orderPath = cmd.DefaultOrderPath(d.platform.API(), d.layersDir)
 	}
 
 	return nil
@@ -113,15 +114,15 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 			case buildpack.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetect, "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.FailedDetect), "detect")
 			case buildpack.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeFailedDetectWithErrors, "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.FailedDetectWithErrors), "detect")
 			default:
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.DetectError), "detect")
 			}
 		default:
-			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, cmd.CodeDetectError, "detect")
+			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(cmd.DetectError), "detect")
 		}
 	}
 

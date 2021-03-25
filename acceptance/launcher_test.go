@@ -72,7 +72,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			it("launches that process", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--entrypoint=web",
-					"--env=CNB_PLATFORM_API=0.4",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 					launchImage)
 				assertOutput(t, cmd, "Executing web process-type")
 			})
@@ -80,7 +80,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			it("appends any args to the process args", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--entrypoint=web",
-					"--env=CNB_PLATFORM_API=0.4",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 					launchImage, "with user provided args")
 				if runtime.GOOS == "windows" {
 					assertOutput(t, cmd, `Executing web process-type "with user provided args"`)
@@ -94,7 +94,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			it("builds a process from the arguments", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--entrypoint=launcher",
-					"--env=CNB_PLATFORM_API=0.4",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 					launchImage, "--", "env")
 				if runtime.GOOS == "windows" {
 					cmd = exec.Command("docker", "run", "--rm",
@@ -115,13 +115,13 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			it("should warn", func() {
 				cmd := exec.Command("docker", "run", "--rm",
 					"--env=CNB_PROCESS_TYPE=direct-process",
-					"--env=CNB_PLATFORM_API=0.4",
+					"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env=CNB_NO_COLOR=true",
 					launchImage,
 				)
 				out, err := cmd.CombinedOutput()
 				h.AssertNotNil(t, err)
-				h.AssertStringContains(t, string(out), "Warning: CNB_PROCESS_TYPE is not supported in Platform API 0.4")
+				h.AssertStringContains(t, string(out), "Warning: CNB_PROCESS_TYPE is not supported in Platform API "+latestPlatformAPI)
 				h.AssertStringContains(t, string(out), `Warning: Run with ENTRYPOINT 'direct-process' to invoke the 'direct-process' process type`)
 				h.AssertStringContains(t, string(out), "ERROR: failed to launch: determine start command: when there is no default process a command is required")
 			})
