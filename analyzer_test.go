@@ -108,7 +108,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				_, err := analyzer.Analyze(image, testCache)
 				h.AssertNil(t, err)
 
-				unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
+				unsetFlags := "[types]"
 				for _, data := range []struct{ name, want string }{
 					{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
 					{"metadata.buildpack/launch-build-cache.toml", "[metadata]\n  launch-build-cache-key = \"launch-build-cache-value\""},
@@ -117,7 +117,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				} {
 					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 					h.AssertStringContains(t, string(got), data.want)
-					h.AssertStringContains(t, string(got), unsetFlags)
+					h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
 				}
 			})
 
@@ -232,7 +232,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					_, err := analyzer.Analyze(image, testCache)
 					h.AssertNil(t, err)
 
-					unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
+					unsetFlags := "[types]"
 					for _, data := range []struct{ name, want string }{
 						// App layers.
 						{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
@@ -244,7 +244,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					} {
 						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 						h.AssertStringContains(t, string(got), data.want)
-						h.AssertStringContains(t, string(got), unsetFlags)
+						h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
 					}
 				})
 
@@ -327,10 +327,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					path := filepath.Join(layerDir, "escaped_buildpack_id", "escaped-bp-layer.toml")
 					got := h.MustReadFile(t, path)
 					want := "[metadata]\n  escaped-bp-layer-key = \"escaped-bp-layer-value\""
-					unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
+					unsetFlags := "[types]"
 
 					h.AssertStringContains(t, string(got), want)
-					h.AssertStringContains(t, string(got), unsetFlags)
+					h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
 				})
 
 				when("subset of buildpacks are detected", func() {
@@ -455,10 +455,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					path := filepath.Join(layerDir, "metadata.buildpack/cache.toml")
 					got := h.MustReadFile(t, path)
 					want := "[metadata]\n  cache-key = \"cache-value\""
-					unsetFlags := "[types]\n  build = false\n  launch = false\n  cache = false"
+					unsetFlags := "[types]"
 
 					h.AssertStringContains(t, string(got), want)
-					h.AssertStringContains(t, string(got), unsetFlags)
+					h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
 				})
 
 				it("does not restore launch=true layer metadata", func() {
