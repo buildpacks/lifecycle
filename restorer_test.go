@@ -14,6 +14,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -49,8 +50,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			restorer = &lifecycle.Restorer{
 				LayersDir: layersDir,
 				Buildpacks: []buildpack.GroupBuildpack{
-					{ID: "buildpack.id"},
-					{ID: "escaped/buildpack/id"},
+					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
+					{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()},
 				},
 				Logger: &log.Logger{Handler: &discard.Handler{}},
 			}
@@ -68,7 +69,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		when("there is an no cache", func() {
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
-					meta := "cache=true"
+					meta := "[types]\n  cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
 					h.AssertNil(t, restorer.Restore(nil))
 				})
@@ -83,7 +84,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("there is a cache=false layer", func() {
 				it.Before(func() {
-					meta := "cache=false"
+					meta := "[types]\n  cache=false"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -101,7 +102,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 		when("there is an empty cache", func() {
 			when("there is a cache=true layer", func() {
 				it.Before(func() {
-					meta := "cache=true"
+					meta := "[types]\n  cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -116,7 +117,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("there is a cache=false layer", func() {
 				it.Before(func() {
-					meta := "cache=false"
+					meta := "[types]\n  cache=false"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -241,9 +242,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("there is a cache=true layer", func() {
 				var meta string
 				it.Before(func() {
-					meta = `cache=true
-[metadata]
-  cache-only-key = "cache-only-val"`
+					meta = "[types]\n  cache=true\n[metadata]\n  cache-only-key = \"cache-only-val\""
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -261,14 +260,35 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					want := "echo text from cache-only layer\n"
 					h.AssertEq(t, string(got), want)
 				})
+
+				when("buildpack API < 0.6", func() {
+					it.Before(func() {
+						restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "buildpack.id", API: "0.5"}}
+						meta = "cache=true\n[metadata]\n  cache-only-key = \"cache-only-val\""
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
+						h.AssertNil(t, restorer.Restore(testCache))
+					})
+
+					it("keeps layer metadatata", func() {
+						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.toml"))
+						h.AssertEq(t, string(got), meta)
+					})
+					it("keeps layer sha", func() {
+						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.sha"))
+						h.AssertEq(t, string(got), cacheOnlyLayerSHA)
+					})
+					it("restores data", func() {
+						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only", "file-from-cache-only-layer"))
+						want := "echo text from cache-only layer\n"
+						h.AssertEq(t, string(got), want)
+					})
+				})
 			})
 
 			when("there is a cache=false layer", func() {
 				var meta string
 				it.Before(func() {
-					meta = `cache=false
-[metadata]
-  cache-false-key = "cache-false-val"`
+					meta = "[types]\n  cache=false\n[metadata]\n  cache-false-key = \"cache-false-val\""
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, cacheFalseLayerSHA))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -288,7 +308,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a cache=true layer with wrong sha", func() {
 				it.Before(func() {
-					meta := "cache=true"
+					meta := "[types]\n  cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "some-made-up-sha"))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -304,7 +324,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a cache=true layer not in cache", func() {
 				it.Before(func() {
-					meta := "cache=true"
+					meta := "[types]\n  cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-layer-not-in-cache", meta, "some-made-up-sha"))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -321,9 +341,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("there is a cache=true escaped layer", func() {
 				var meta string
 				it.Before(func() {
-					meta = `cache=true
-[metadata]
-  escaped-bp-key = "escaped-bp-val"`
+					meta = "[types]\n  cache=true\n[metadata]\n  escaped-bp-key = \"escaped-bp-val\""
 					h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -345,7 +363,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there is a cache=true layer in cache but not in group", func() {
 				it.Before(func() {
-					meta := "cache=true"
+					meta := "[types]\n  cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "nogroup.buildpack.id", "some-layer", meta, noGroupLayerSHA))
 					h.AssertNil(t, restorer.Restore(testCache))
 				})
@@ -355,7 +373,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 				when("the buildpack is detected", func() {
 					it.Before(func() {
-						restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "nogroup.buildpack.id"}}
+						restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "nogroup.buildpack.id", API: api.Buildpack.Latest().String()}}
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
@@ -373,11 +391,11 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there are multiple cache=true layers", func() {
 				it.Before(func() {
-					meta := "cache=true"
+					meta := "[types]\n  cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
-					meta = "cache=true\nlaunch=true"
+					meta = "[types]\n  cache=true\n  launch=true"
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, cacheLaunchLayerSHA))
-					meta = "cache=true"
+					meta = "[types]\n  cache=true"
 					h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
 
 					h.AssertNil(t, restorer.Restore(testCache))
@@ -385,11 +403,11 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 				it("keeps layer metadatata for all layers", func() {
 					got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.toml"))
-					h.AssertEq(t, string(got), "cache=true")
+					h.AssertEq(t, string(got), "[types]\n  cache=true")
 					got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-launch.toml"))
-					h.AssertEq(t, string(got), "cache=true\nlaunch=true")
+					h.AssertEq(t, string(got), "[types]\n  cache=true\n  launch=true")
 					got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer.toml"))
-					h.AssertEq(t, string(got), "cache=true")
+					h.AssertEq(t, string(got), "[types]\n  cache=true")
 				})
 				it("keeps layer sha for all layers", func() {
 					got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.sha"))

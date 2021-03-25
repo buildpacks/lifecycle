@@ -154,7 +154,7 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 
 func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
 	for _, bp := range e.Buildpacks {
-		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp)
+		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp, e.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}

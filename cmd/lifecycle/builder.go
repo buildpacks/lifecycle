@@ -29,7 +29,8 @@ type buildArgs struct {
 	layersDir     string
 	appDir        string
 	platformDir   string
-	platformAPI   string
+
+	platform cmd.Platform
 }
 
 func (b *buildCmd) DefineFlags() {
@@ -47,11 +48,11 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 	}
 
 	if b.groupPath == cmd.PlaceholderGroupPath {
-		b.groupPath = cmd.DefaultGroupPath(b.platformAPI, b.layersDir)
+		b.groupPath = cmd.DefaultGroupPath(b.platform.API(), b.layersDir)
 	}
 
 	if b.planPath == cmd.PlaceholderPlanPath {
-		b.planPath = cmd.DefaultPlanPath(b.platformAPI, b.layersDir)
+		b.planPath = cmd.DefaultPlanPath(b.platform.API(), b.layersDir)
 	}
 
 	return nil
@@ -79,19 +80,20 @@ func (b *buildCmd) Exec() error {
 func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(cmd.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
 		AppDir:         ba.appDir,
 		LayersDir:      ba.layersDir,
 		PlatformDir:    ba.platformDir,
-		PlatformAPI:    api.MustParse(ba.platformAPI),
+		PlatformAPI:    api.MustParse(ba.platform.API()),
 		Env:            env.NewBuildEnv(os.Environ()),
 		Group:          group,
 		Plan:           plan,
 		Out:            cmd.Stdout,
 		Err:            cmd.Stderr,
+		Logger:         cmd.DefaultLogger,
 		BuildpackStore: buildpackStore,
 	}
 	md, err := builder.Build()
@@ -99,10 +101,10 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	if err != nil {
 		if err, ok := err.(*buildpack.Error); ok {
 			if err.Type == buildpack.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), cmd.CodeFailedBuildWithErrors, "build")
+				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(cmd.FailedBuildWithErrors), "build")
 			}
 		}
-		return cmd.FailErrCode(err, cmd.CodeBuildError, "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(cmd.BuildError), "build")
 	}
 
 	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {

@@ -35,7 +35,7 @@ func (r *Restorer) Restore(cache Cache) error {
 
 	var g errgroup.Group
 	for _, buildpack := range r.Buildpacks {
-		buildpackDir, err := readBuildpackLayersDir(r.LayersDir, buildpack)
+		buildpackDir, err := readBuildpackLayersDir(r.LayersDir, buildpack, r.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading buildpack layer directory")
 		}

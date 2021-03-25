@@ -101,6 +101,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("errors", func() {
 			cmd := exec.Command(
 				"docker", "run", "--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				analyzeImage,
 				analyzerPath,
 			)
@@ -116,6 +117,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		it("warns", func() {
 			output := h.DockerRun(t,
 				analyzeImage,
+				h.WithFlags("--env", "CNB_PLATFORM_API="+latestPlatformAPI),
 				h.WithArgs(analyzerPath, "some-image"),
 			)
 
@@ -130,6 +132,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 			output := h.DockerRun(t,
 				analyzeImage,
+				h.WithFlags("--env", "CNB_PLATFORM_API="+latestPlatformAPI),
 				h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s some-image; ls -al /layers", analyzerPath)),
 			)
 
@@ -149,6 +152,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				"/layers",
 				h.WithFlags(
 					"--volume", cacheVolume+":"+"/cache", // use a cache so that we can observe the effect of other-group.toml on /layers
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				),
 				h.WithArgs(
 					analyzerPath,
@@ -170,6 +174,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				copyDir,
 				analyzeImage,
 				"/some-dir/some-analyzed.toml",
+				h.WithFlags("--env", "CNB_PLATFORM_API="+latestPlatformAPI),
 				h.WithArgs(
 					analyzerPath,
 					"-analyzed", "/some-dir/some-analyzed.toml",
@@ -188,7 +193,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				copyDir,
 				analyzeImage,
 				"/layers/analyzed.toml",
-				h.WithFlags(dockerSocketMount...),
+				h.WithFlags(append(
+					dockerSocketMount,
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				)...),
 				h.WithArgs(analyzerPath, "-daemon", "some-image"),
 			)
 
@@ -222,7 +230,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					copyDir,
 					analyzeImage,
 					"/layers",
-					h.WithFlags(dockerSocketMount...),
+					h.WithFlags(append(
+						dockerSocketMount,
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					)...),
 					h.WithArgs(analyzerPath, "-daemon", appImage),
 				)
 
@@ -236,7 +247,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						copyDir,
 						analyzeImage,
 						"/layers",
-						h.WithFlags(dockerSocketMount...),
+						h.WithFlags(append(
+							dockerSocketMount,
+							"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						)...),
 						h.WithArgs(
 							analyzerPath,
 							"-daemon",
@@ -280,7 +294,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							copyDir,
 							analyzeImage,
 							"/layers",
-							h.WithFlags(dockerSocketMount...),
+							h.WithFlags(append(
+								dockerSocketMount,
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+							)...),
 							h.WithArgs(
 								analyzerPath,
 								"-daemon",
@@ -321,8 +338,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									"/layers",
 									h.WithFlags(append(
 										dockerSocketMount,
-										"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
 										"--network", "host",
+										"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
+										"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 									)...),
 									h.WithArgs(
 										analyzerPath,
@@ -344,8 +362,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 									analyzeImage,
 									"/layers",
 									h.WithFlags(
-										"--env", "DOCKER_CONFIG=/docker-config",
 										"--network", "host",
+										"--env", "DOCKER_CONFIG=/docker-config",
+										"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 									),
 									h.WithArgs(
 										analyzerPath,
@@ -387,7 +406,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								copyDir,
 								analyzeImage,
 								"/layers",
-								h.WithFlags("--network", "host"),
+								h.WithFlags(
+									"--network", "host",
+									"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+								),
 								h.WithArgs(
 									analyzerPath,
 									"-cache-image",
@@ -414,6 +436,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						h.WithFlags(append(
 							dockerSocketMount,
 							"--volume", cacheVolume+":"+"/cache",
+							"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 						)...),
 						h.WithArgs(
 							analyzerPath,
@@ -438,6 +461,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithFlags(append(
 								dockerSocketMount,
 								"--volume", cacheVolume+":/cache",
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 							)...),
 							h.WithBash(
 								fmt.Sprintf("chown -R 9999:9999 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
@@ -462,6 +486,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithFlags(append(
 								dockerSocketMount,
 								"--volume", cacheVolume+":/cache",
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 							)...),
 							h.WithBash(
 								fmt.Sprintf("chown -R 9999:3333 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
@@ -518,6 +543,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithFlags(
 								"--network", "host",
 								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 							),
 							h.WithArgs(analyzerPath, authRegAppImage),
 						)
@@ -534,8 +560,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							analyzeImage,
 							"/layers",
 							h.WithFlags(
-								"--env", "DOCKER_CONFIG=/docker-config",
 								"--network", "host",
+								"--env", "DOCKER_CONFIG=/docker-config",
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 							),
 							h.WithArgs(
 								analyzerPath,
@@ -557,6 +584,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							h.WithFlags(
 								"--network", "host",
 								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 							),
 							h.WithArgs(
 								analyzerPath,
@@ -597,7 +625,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						copyDir,
 						analyzeImage,
 						"/layers",
-						h.WithFlags("--network", "host"),
+						h.WithFlags(
+							"--network", "host",
+							"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						),
 						h.WithArgs(
 							analyzerPath,
 							noAuthRegAppImage,
@@ -614,7 +645,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							copyDir,
 							analyzeImage,
 							"/layers",
-							h.WithFlags("--network", "host"),
+							h.WithFlags(
+								"--network", "host",
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+							),
 							h.WithArgs(
 								analyzerPath,
 								"-skip-layers",
@@ -656,8 +690,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								analyzeImage,
 								"/layers",
 								h.WithFlags(
-									"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
 									"--network", "host",
+									"--env", "CNB_REGISTRY_AUTH="+cacheAuthConfig,
+									"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 								),
 								h.WithArgs(
 									analyzerPath,
@@ -678,8 +713,9 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								analyzeImage,
 								"/layers",
 								h.WithFlags(
-									"--env", "DOCKER_CONFIG=/docker-config",
 									"--network", "host",
+									"--env", "DOCKER_CONFIG=/docker-config",
+									"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 								),
 								h.WithArgs(
 									analyzerPath,
@@ -721,7 +757,10 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 							copyDir,
 							analyzeImage,
 							"/layers",
-							h.WithFlags("--network", "host"),
+							h.WithFlags(
+								"--network", "host",
+								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+							),
 							h.WithArgs(
 								analyzerPath,
 								"-cache-image", cacheImage,
@@ -745,6 +784,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 						"/layers",
 						h.WithFlags(
 							"--volume", cacheVolume+":"+"/cache",
+							"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 						),
 						h.WithArgs(
 							analyzerPath,
@@ -772,8 +812,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzeImage,
 					"/",
 					h.WithFlags(
-						"--env", "CNB_PLATFORM_API=0.4",
 						"--volume", cacheVolume+":"+"/cache",
+						"--env", "CNB_PLATFORM_API=0.4",
 					),
 					h.WithArgs(
 						analyzerPath,
@@ -800,8 +840,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					analyzeImage,
 					"/some-other-layers",
 					h.WithFlags(
-						"--env", "CNB_PLATFORM_API=0.5",
 						"--volume", cacheVolume+":"+"/cache",
+						"--env", "CNB_PLATFORM_API=0.5",
 					),
 					h.WithArgs(
 						analyzerPath,

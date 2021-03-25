@@ -17,7 +17,6 @@ var (
 	DefaultLauncherPath    = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
 	DefaultLayersDir       = filepath.Join(rootDir, "layers")
 	DefaultLogLevel        = "info"
-	DefaultOrderPath       = filepath.Join(rootDir, "cnb", "order.toml")
 	DefaultPlatformAPI     = "0.3"
 	DefaultPlatformDir     = filepath.Join(rootDir, "platform")
 	DefaultProcessType     = "web"
@@ -25,6 +24,7 @@ var (
 
 	DefaultAnalyzedFile        = "analyzed.toml"
 	DefaultGroupFile           = "group.toml"
+	DefaultOrderFile           = "order.toml"
 	DefaultPlanFile            = "plan.toml"
 	DefaultProjectMetadataFile = "project-metadata.toml"
 	DefaultReportFile          = "report.toml"
@@ -34,6 +34,7 @@ var (
 	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
 	PlaceholderProjectMetadataPath = filepath.Join("<layers>", DefaultProjectMetadataFile)
 	PlaceholderReportPath          = filepath.Join("<layers>", DefaultReportFile)
+	PlaceholderOrderPath           = filepath.Join("<layers>", DefaultOrderFile)
 )
 
 const (
@@ -120,7 +121,23 @@ func FlagNoColor(skip *bool) {
 }
 
 func FlagOrderPath(orderPath *string) {
-	flagSet.StringVar(orderPath, "order", EnvOrDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
+	flagSet.StringVar(orderPath, "order", EnvOrDefault(EnvOrderPath, PlaceholderOrderPath), "path to order.toml")
+}
+
+func DefaultOrderPath(platformAPI, layersDir string) string {
+	cnbOrderPath := filepath.Join(rootDir, "cnb", "order.toml")
+
+	// prior to Platform API 0.6, the default is /cnb/order.toml
+	if api.MustParse(platformAPI).Compare(api.MustParse("0.6")) < 0 {
+		return cnbOrderPath
+	}
+
+	// the default is /<layers>/order.toml or /cnb/order.toml if not present
+	layersOrderPath := filepath.Join(layersDir, "order.toml")
+	if _, err := os.Stat(layersOrderPath); os.IsNotExist(err) {
+		return cnbOrderPath
+	}
+	return layersOrderPath
 }
 
 func FlagPlanPath(planPath *string) {
