@@ -206,7 +206,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				h.WithArgs(
 					ctrPath(analyzerPath),
 					"-daemon",
-          "some-image",
+					"some-image",
 				),
 			)
 
@@ -248,7 +248,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					h.WithArgs(
 						ctrPath(analyzerPath),
 						"-daemon",
-            appImage,
+						appImage,
 					),
 				)
 
@@ -740,7 +740,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 								h.WithFlags(
 									"--env", "DOCKER_CONFIG=/docker-config",
 									"--network", registryNetwork,
-								"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+									"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 								),
 								h.WithArgs(
 									ctrPath(analyzerPath),
