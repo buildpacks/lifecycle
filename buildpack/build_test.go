@@ -349,19 +349,37 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("the launch, cache and build flags are false", func() {
-				it("renames <layers>/<layer> to <layers>/<layer>.ignore", func() {
-					h.Mkdir(t,
-						filepath.Join(layersDir, "A", "layer"),
-					)
-					h.Mkfile(t,
-						"[types]\n  build=false\n  cache=false\n  launch=false",
-						filepath.Join(layersDir, "A", "layer.toml"),
-					)
+				when("the flags are specified in <layer>.toml", func() {
+					it("renames <layers>/<layer> to <layers>/<layer>.ignore", func() {
+						h.Mkdir(t,
+							filepath.Join(layersDir, "A", "layer"),
+						)
+						h.Mkfile(t,
+							"[types]\n  build=false\n  cache=false\n  launch=false",
+							filepath.Join(layersDir, "A", "layer.toml"),
+						)
 
-					_, err := bpTOML.Build(buildpack.Plan{}, config)
-					h.AssertNil(t, err)
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
-					h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
+						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						h.AssertNil(t, err)
+						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
+						h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
+					})
+				})
+
+				when("the flags aren't specified in <layer>.toml", func() {
+					it("renames <layers>/<layer> to <layers>/<layer>.ignore", func() {
+						h.Mkdir(t,
+							filepath.Join(layersDir, "A", "layer"),
+						)
+						h.Mkfile(t,
+							filepath.Join(layersDir, "A", "layer.toml"),
+						)
+
+						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						h.AssertNil(t, err)
+						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
+						h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
+					})
 				})
 			})
 		})
