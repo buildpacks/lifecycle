@@ -372,6 +372,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(layersDir, "A", "layer"),
 						)
 						h.Mkfile(t,
+							"",
 							filepath.Join(layersDir, "A", "layer.toml"),
 						)
 
