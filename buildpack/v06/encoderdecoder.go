@@ -10,17 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 )
 
-type typesTable struct {
-	Build  bool `toml:"build"`
-	Launch bool `toml:"launch"`
-	Cache  bool `toml:"cache"`
-}
-
-type layerMetadataTomlFile struct {
-	Data  interface{} `toml:"metadata"`
-	Types typesTable  `toml:"types"`
-}
-
 type EncoderDecoder06 struct {
 }
 
@@ -32,20 +21,26 @@ func (d *EncoderDecoder06) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0
 }
 
-func unsetFlags(lmf *layertypes.LayerMetadataFile) {
-	lmf.Build = false
-	lmf.Cache = false
-	lmf.Launch = false
-}
-
 func (d *EncoderDecoder06) Encode(file *os.File, lmf layertypes.LayerMetadataFile) error {
-	unsetFlags(&lmf)
-	types := typesTable{Build: lmf.Build, Launch: lmf.Launch, Cache: lmf.Cache}
-	lmtf := layerMetadataTomlFile{Data: lmf.Data, Types: types}
-	return toml.NewEncoder(file).Encode(lmtf)
+	// omit the types table - all the flags are set to false
+	type dataTomlFile struct {
+		Data interface{} `toml:"metadata"`
+	}
+	dtf := dataTomlFile{Data: lmf.Data}
+	return toml.NewEncoder(file).Encode(dtf)
 }
 
 func (d *EncoderDecoder06) Decode(path string) (layertypes.LayerMetadataFile, string, error) {
+	type typesTable struct {
+		Build  bool `toml:"build"`
+		Launch bool `toml:"launch"`
+		Cache  bool `toml:"cache"`
+	}
+	type layerMetadataTomlFile struct {
+		Data  interface{} `toml:"metadata"`
+		Types typesTable  `toml:"types"`
+	}
+
 	var lmtf layerMetadataTomlFile
 	md, err := toml.DecodeFile(path, &lmtf)
 	if err != nil {

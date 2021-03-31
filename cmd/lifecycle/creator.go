@@ -99,6 +99,10 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		c.reportPath = cmd.DefaultReportPath(c.platform.API(), c.layersDir)
 	}
 
+	if c.orderPath == cmd.PlaceholderOrderPath {
+		c.orderPath = cmd.DefaultOrderPath(c.platform.API(), c.layersDir)
+	}
+
 	var err error
 	c.stackMD, c.runImageRef, c.registry, err = resolveStack(c.imageName, c.stackPath, c.runImageRef)
 	if err != nil {
