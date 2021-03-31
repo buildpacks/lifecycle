@@ -35,7 +35,6 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 	}
 	fmt.Println("************* created k8schain")
 
-
 	return authn.NewMultiKeychain(
 		envKeychain,
 		InMemoryKeychain(authn.DefaultKeychain, images...),
