@@ -1,19 +1,15 @@
 package auth
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
 
-	"github.com/go-logr/logr"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 )
 
 const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
@@ -22,16 +18,8 @@ const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
 // from the following sources, if they exist, in order of precedence:
 // the provided environment variable
 // the docker config.json file
-// a credential provider for all of the major public clouds via k8schain
 func DefaultKeychain(images ...string) (authn.Keychain, error) {
 	envKeychain, err := EnvKeychain(EnvRegistryAuth)
-	if err != nil {
-		return nil, err
-	}
-
-	klog.SetLogger(logr.Discard())
-	// this adds a credential provider-like keychain for public cloud providers
-	clusterNodeChain, err := k8schain.NewNoClient(context.TODO()) // note: context is not used in the NewNoClient path
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +27,6 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 	return authn.NewMultiKeychain(
 		envKeychain,
 		InMemoryKeychain(authn.DefaultKeychain, images...),
-		clusterNodeChain,
 	), nil
 }
 
