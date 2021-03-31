@@ -8,12 +8,10 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/go-logr/logr"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-	"k8s.io/klog/v2"
 )
 
 const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
@@ -29,12 +27,14 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 		return nil, err
 	}
 
-	klog.SetLogger(logr.Discard())
+	fmt.Println("************* creating k8schain")
 	// this adds a credential provider-like keychain for public cloud providers
 	clusterNodeChain, err := k8schain.NewNoClient(context.TODO()) // note: context is not used in the NewNoClient path
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("************* created k8schain")
+
 
 	return authn.NewMultiKeychain(
 		envKeychain,

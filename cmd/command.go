@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -32,7 +33,9 @@ func Run(c Command, asSubcommand bool) {
 	FlagVersion(&printVersion)
 	FlagLogLevel(&logLevel)
 	FlagNoColor(&noColor)
+	fmt.Println("************* defining flags")
 	c.DefineFlags()
+	fmt.Println("************* parsing flags")
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
 			//flagSet exits on error, we shouldn't get here
@@ -49,12 +52,15 @@ func Run(c Command, asSubcommand bool) {
 	if printVersion {
 		ExitWithVersion()
 	}
+	fmt.Println("************* setting log level")
 	if err := SetLogLevel(logLevel); err != nil {
 		Exit(err)
 	}
+	fmt.Println("************* parsing args")
 	if err := c.Args(flagSet.NArg(), flagSet.Args()); err != nil {
 		Exit(err)
 	}
+	fmt.Println("************* privileges")
 	if err := c.Privileges(); err != nil {
 		Exit(err)
 	}
