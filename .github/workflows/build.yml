@@ -52,7 +52,10 @@ jobs:
       - name: Install jq
         run: choco install jq
       - name: Test
-        run: make test
+        env:
+          TEST_COVERAGE: 1
+        run: |
+          make test
       - name: Prepare Codecov
         uses: crazy-max/ghaction-chocolatey@v1
         with:
@@ -60,13 +63,6 @@ jobs:
       - name: Run Codecov
         run: |
           codecov.exe -f .\out\tests\coverage-unit.txt -v --flag os_windows
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v1
-        with:
-          file: .\out\tests\coverage-unit.txt
-          flags: unit,os_windows
-          fail_ci_if_error: true
-          verbose: true
   build:
     needs:
       - test-linux
