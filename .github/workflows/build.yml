@@ -26,7 +26,16 @@ jobs:
           chmod +x deps/bin/jq
           echo "${PWD}/deps/bin" >> $GITHUB_PATH
       - name: Test
+        env:
+          TEST_COVERAGE: 1
         run: make test
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./out/tests/coverage-unit.txt
+          flags: unit,os_linux
+          fail_ci_if_error: true
+          verbose: true
   test-windows:
     runs-on: windows-latest
     steps:
@@ -44,6 +53,20 @@ jobs:
         run: choco install jq
       - name: Test
         run: make test
+      - name: Prepare Codecov
+        uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: install codecov -y
+      - name: Run Codecov
+        run: |
+          codecov.exe -f .\out\tests\coverage-unit.txt -v --flag os_windows
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v1
+        with:
+          file: .\out\tests\coverage-unit.txt
+          flags: unit,os_windows
+          fail_ci_if_error: true
+          verbose: true
   build:
     needs:
       - test-linux
