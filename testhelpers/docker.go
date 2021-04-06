@@ -18,14 +18,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	volumeHelperImage = "busybox"
-)
-
 var (
 	dockerCliOnce sync.Once
 	dockerCliVal  dockercli.CommonAPIClient
-	dummyCommand  = []string{"true"}
 )
 
 func DockerCli(t *testing.T) dockercli.CommonAPIClient {
@@ -54,13 +49,32 @@ func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
 }
 
-func DockerRunAndCopy(t *testing.T, containerName, copyDir, image, path string, ops ...DockerCmdOp) string {
+//DockerRunAndCopy runs a container and once stopped, outputCtrPath is copied to outputDir
+func DockerRunAndCopy(t *testing.T, containerName, outputDir, outputCtrPath, image string, ops ...DockerCmdOp) string {
 	ops = append(ops, WithFlags("--name", containerName))
 	args := formatArgs([]string{image}, ops...)
 
-	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...)) // #nosec G204
-	Run(t, exec.Command("docker", "cp", containerName+":"+path, copyDir))         // #nosec G204
+	output := Run(t, exec.Command("docker", append([]string{"run"}, args...)...))    // #nosec G204
+	Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir)) // #nosec G204
 	return output
+}
+
+//DockerSeedRunAndCopy copies srcDir to container's srcCtrPath before container is started. Once stopped, outputCtrPath is copied to outputDir
+//On WCOW, only works when seeding to container directory (not a mounted volume)
+func DockerSeedRunAndCopy(t *testing.T, containerName, srcDir, srcCtrPath, outputDir, outputCtrPath, image string, ops ...DockerCmdOp) string {
+	ops = append(ops, WithFlags("--name", containerName))
+	args := formatArgs([]string{image}, ops...)
+
+	output := Run(t, exec.Command("docker", append([]string{"create"}, args...)...))           // #nosec G204
+	output += Run(t, exec.Command("docker", "cp", srcDir, containerName+":"+srcCtrPath))       // #nosec G204
+	output += Run(t, exec.Command("docker", "start", "--attach", containerName))               // #nosec G204
+	output += Run(t, exec.Command("docker", "cp", containerName+":"+outputCtrPath, outputDir)) // #nosec G204
+
+	return output
+}
+
+func DockerCopyOut(t *testing.T, containerName, srcCtrPath, outputDir string) string {
+	return Run(t, exec.Command("docker", "cp", containerName+":"+srcCtrPath, outputDir)) // #nosec G204
 }
 
 func DockerContainerExists(t *testing.T, containerName string) bool {
@@ -96,9 +110,11 @@ func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) err
 	return nil
 }
 
+//SeedDockerVolume only works with Linux daemons as Windows only mounts volumes for started containers
 func SeedDockerVolume(t *testing.T, srcPath string) string {
 	volumeName := "test-volume-" + RandString(10)
 	containerName := "test-volume-helper-" + RandString(10)
+	volumeHelperImage := "alpine"
 
 	Run(t, exec.Command("docker", "pull", volumeHelperImage))
 	Run(t, exec.Command("docker", append([]string{
@@ -106,7 +122,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 		"--volume", volumeName + ":" + "/target", // create a new empty volume
 		"--name", containerName,
 		volumeHelperImage},
-		dummyCommand...)...)) // #nosec G204
+		"true")...)) // #nosec G204
 	defer Run(t, exec.Command("docker", "rm", containerName))
 
 	fis, err := ioutil.ReadDir(srcPath)

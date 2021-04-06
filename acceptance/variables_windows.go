@@ -1,10 +1,29 @@
 package acceptance
 
-const (
-	dockerfileName = "Dockerfile.windows"
-	exe            = ".exe"
-	execDBpDir     = "0.6_buildpack"
-	rootDir        = `c:\`
+import (
+	"path"
+	"path/filepath"
+	"strings"
 )
 
-var dockerSocketMount = []string{} // Not used in Windows tests
+const (
+	dockerfileName     = "Dockerfile.windows"
+	exe                = ".exe"
+	execDBpDir         = "0.6_buildpack"
+	containerBaseImage = "mcr.microsoft.com/windows/nanoserver:1809"
+)
+
+var dockerSocketMount = []string{
+	"--mount", `type=npipe,source=\\.\pipe\docker_engine,target=\\.\pipe\docker_engine`,
+	"--user", "ContainerAdministrator",
+}
+
+//ctrPath equivalent to path.Join but converts to Windows slashes and drive prefix when needed
+func ctrPath(unixPathParts ...string) string {
+	unixPath := path.Join(unixPathParts...)
+	windowsPath := filepath.FromSlash(unixPath)
+	if strings.HasPrefix(windowsPath, `\`) {
+		return "c:" + windowsPath
+	}
+	return windowsPath
+}

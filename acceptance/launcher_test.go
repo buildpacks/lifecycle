@@ -50,9 +50,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					launchImage, "exec.d-checker")
 
 				helper := "helper" + exe
-				execDHelper := filepath.Join(rootDir, "layers", execDBpDir, "some_layer", "exec.d", helper)
-				execDCheckerHelper := filepath.Join(rootDir, "layers", execDBpDir, "some_layer", "exec.d", "exec.d-checker", helper)
-				workDir := filepath.Join(rootDir, "workspace")
+				execDHelper := ctrPath("/layers", execDBpDir, "some_layer/exec.d", helper)
+				execDCheckerHelper := ctrPath("/layers", execDBpDir, "some_layer/exec.d/exec.d-checker", helper)
+				workDir := ctrPath("/workspace")
 
 				expected := fmt.Sprintf("%s was executed\n", execDHelper)
 				expected += fmt.Sprintf("Exec.d Working Dir: %s\n", workDir)
