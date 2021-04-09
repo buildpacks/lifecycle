@@ -1,6 +1,6 @@
 codecov:
   notify:
-    after_n_builds: 4
+    after_n_builds: 2
 
 coverage:
   round: up
@@ -15,4 +15,4 @@ coverage:
 comment:
   layout: "reach,diff,flags"
   require_changes: yes
-  after_n_builds: 4
+  after_n_builds: 2
