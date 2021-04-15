@@ -4,33 +4,42 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Restorer struct {
-	LayersDir  string
-	Buildpacks []buildpack.GroupBuildpack
-	Logger     Logger
+	LayersDir              string
+	Buildpacks             []buildpack.GroupBuildpack
+	Logger                 Logger
+	SkipLayers             bool
+	LayerAnalyzer          LayerAnalyzer
+	CacheMetadataRetriever CacheMetadataRetriever
+	Platform               cmd.Platform
+	LayersMetadata         platform.LayersMetadata
 }
 
-// Restore attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
-// If a usable cache is not provided, Restore will remove all cache=true layer metadata.
+// Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
+// If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
-	// Create empty cache metadata in case a usable cache is not provided.
-	var meta platform.CacheMetadata
-	if cache != nil {
-		var err error
-		if !cache.Exists() {
-			r.Logger.Info("Layer cache not found")
-		}
-		meta, err = cache.RetrieveMetadata()
-		if err != nil {
-			return errors.Wrapf(err, "retrieving cache metadata")
+	var (
+		cacheMetadata platform.CacheMetadata
+		err           error
+	)
+
+	if r.restoresAnalyzedLayers() {
+		if cacheMetadata, err = r.LayerAnalyzer.Analyze(r.Buildpacks, r.SkipLayers, r.LayersMetadata, cache); err != nil {
+			return err
 		}
 	} else {
-		r.Logger.Debug("Usable cache not provided, using empty cache metadata.")
+		// Create empty cache metadata in case a usable cache is not provided.
+		cacheMetadata, err = r.CacheMetadataRetriever.RetrieveFrom(cache)
+		if err != nil {
+			return err
+		}
 	}
 
 	var g errgroup.Group
@@ -40,7 +49,7 @@ func (r *Restorer) Restore(cache Cache) error {
 			return errors.Wrapf(err, "reading buildpack layer directory")
 		}
 
-		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
+		cachedLayers := cacheMetadata.MetadataForBuildpack(buildpack.ID).Layers
 		for _, bpLayer := range buildpackDir.findLayers(forCached) {
 			name := bpLayer.name()
 			cachedLayer, exists := cachedLayers[name]
@@ -73,6 +82,10 @@ func (r *Restorer) Restore(cache Cache) error {
 		return errors.Wrap(err, "restoring data")
 	}
 	return nil
+}
+
+func (r *Restorer) restoresAnalyzedLayers() bool {
+	return api.MustParse(r.Platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
 
 func (r *Restorer) restoreLayer(cache Cache, sha string) error {

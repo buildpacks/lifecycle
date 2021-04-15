@@ -4,26 +4,36 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type restoreCmd struct {
 	// flags: inputs
+	analyzedPath  string
 	cacheDir      string
 	cacheImageTag string
 	groupPath     string
-	layersDir     string
 	uid, gid      int
 
-	platform cmd.Platform
+	restoreArgs
+}
 
-	//set before dropping privileges
+type restoreArgs struct {
+	//inputs needed when run by creator
+	layersDir  string
+	platform   cmd.Platform
+	skipLayers bool
+
+	//construct if necessary before dropping privileges
 	keychain authn.Keychain
 }
 
@@ -34,6 +44,10 @@ func (r *restoreCmd) DefineFlags() {
 	cmd.FlagLayersDir(&r.layersDir)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
+	if r.restoresAnalyzedLayers() {
+		cmd.FlagAnalyzedPath(&r.analyzedPath)
+		cmd.FlagSkipLayers(&r.skipLayers)
+	}
 }
 
 func (r *restoreCmd) Args(nargs int, args []string) error {
@@ -46,6 +60,10 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 
 	if r.groupPath == cmd.PlaceholderGroupPath {
 		r.groupPath = cmd.DefaultGroupPath(r.platform.API(), r.layersDir)
+	}
+
+	if r.analyzedPath == cmd.PlaceholderAnalyzedPath {
+		r.analyzedPath = cmd.DefaultAnalyzedPath(r.platform.API(), r.layersDir)
 	}
 
 	return nil
@@ -79,7 +97,16 @@ func (r *restoreCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	return restore(r.platform, r.layersDir, group, cacheStore)
+
+	var layerMetadata platform.LayersMetadata
+	if r.restoresAnalyzedLayers() {
+		if _, err := toml.DecodeFile(r.analyzedPath, layerMetadata); err != nil {
+			// continue even if the analyzed.toml cannot be decoded
+			layerMetadata = platform.LayersMetadata{}
+		}
+	}
+
+	return r.restore(layerMetadata, group, cacheStore)
 }
 
 func (r *restoreCmd) registryImages() []string {
@@ -89,15 +116,26 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func restore(p cmd.Platform, layersDir string, group buildpack.Group, cacheStore lifecycle.Cache) error {
+func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
+	cacheMetaRetriever := lifecycle.NewCacheMetadataRetriever(cmd.DefaultLogger)
+
 	restorer := &lifecycle.Restorer{
-		LayersDir:  layersDir,
-		Buildpacks: group.Group,
-		Logger:     cmd.DefaultLogger,
+		LayersDir:              r.layersDir,
+		Buildpacks:             group.Group,
+		Logger:                 cmd.DefaultLogger,
+		Platform:               r.platform,
+		LayerAnalyzer:          lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, r.layersDir, r.platform),
+		LayersMetadata:         layerMetadata,
+		CacheMetadataRetriever: cacheMetaRetriever,
+		SkipLayers:             r.skipLayers,
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, p.CodeFor(cmd.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(cmd.RestoreError), "restore")
 	}
 	return nil
+}
+
+func (r *restoreArgs) restoresAnalyzedLayers() bool {
+	return api.MustParse(r.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }

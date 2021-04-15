@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -36,6 +37,8 @@ type analyzeArgs struct {
 	layersDir  string
 	skipLayers bool
 	useDaemon  bool
+	group      buildpack.Group
+	cache      lifecycle.Cache
 
 	platform cmd.Platform
 
@@ -46,25 +49,36 @@ type analyzeArgs struct {
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
-	cmd.FlagCacheDir(&a.cacheDir)
-	cmd.FlagCacheImage(&a.cacheImageTag)
-	cmd.FlagGroupPath(&a.groupPath)
+	if a.restoresAnalyzedLayers() {
+		cmd.FlagCacheImage(&a.cacheImageTag)
+		cmd.FlagCacheDir(&a.cacheDir)
+		cmd.FlagGroupPath(&a.groupPath)
+		cmd.FlagSkipLayers(&a.skipLayers)
+	}
 	cmd.FlagLayersDir(&a.layersDir)
-	cmd.FlagSkipLayers(&a.skipLayers)
+	if a.supportsPreviousImageFlag() {
+		cmd.FlagPreviousImage(&a.imageName)
+	}
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+	if !a.supportsPreviousImageFlag() {
+		if nargs != 1 {
+			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+		}
+		if args[0] == "" {
+			return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		}
+		a.imageName = args[0]
 	}
-	if args[0] == "" {
-		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
-	}
-	if a.cacheImageTag == "" && a.cacheDir == "" {
-		cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+
+	if a.restoresAnalyzedLayers() {
+		if a.cacheImageTag == "" && a.cacheDir == "" {
+			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+		}
 	}
 
 	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -75,7 +89,6 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		a.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
 	}
 
-	a.imageName = args[0]
 	return nil
 }
 
@@ -103,20 +116,28 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(a.groupPath)
-	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
-	}
-	if err := verifyBuildpackApis(group); err != nil {
-		return err
+	var (
+		group      buildpack.Group
+		err        error
+		cacheStore lifecycle.Cache
+	)
+	if a.restoresAnalyzedLayers() {
+		group, err = lifecycle.ReadGroup(a.groupPath)
+		if err != nil {
+			return cmd.FailErr(err, "read buildpack group")
+		}
+		if err := verifyBuildpackApis(group); err != nil {
+			return err
+		}
+		cacheStore, err = initCache(a.cacheImageTag, a.cacheDir, a.keychain)
+		if err != nil {
+			return cmd.FailErr(err, "initialize cache")
+		}
+		a.group = group
+		a.cache = cacheStore
 	}
 
-	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir, a.keychain)
-	if err != nil {
-		return cmd.FailErr(err, "initialize cache")
-	}
-
-	analyzedMD, err := a.analyze(group, cacheStore)
+	analyzedMD, err := a.analyze()
 	if err != nil {
 		return err
 	}
@@ -128,34 +149,42 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache) (platform.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
 	)
-	if aa.useDaemon {
-		img, err = local.NewImage(
-			aa.imageName,
-			aa.docker,
-			local.FromBaseImage(aa.imageName),
-		)
-	} else {
-		img, err = remote.NewImage(
-			aa.imageName,
-			aa.keychain,
-			remote.FromBaseImage(aa.imageName),
-		)
-	}
-	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+	if aa.imageName != "" {
+		if aa.useDaemon {
+			img, err = local.NewImage(
+				aa.imageName,
+				aa.docker,
+				local.FromBaseImage(aa.imageName),
+			)
+		} else {
+			img, err = remote.NewImage(
+				aa.imageName,
+				aa.keychain,
+				remote.FromBaseImage(aa.imageName),
+			)
+		}
+		if err != nil {
+			return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+		}
 	}
 
+	cacheMetaRetriever := lifecycle.NewCacheMetadataRetriever(cmd.DefaultLogger)
+
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  aa.layersDir,
-		Logger:     cmd.DefaultLogger,
-		SkipLayers: aa.skipLayers,
-	}).Analyze(img, cacheStore)
+		Buildpacks:    aa.group.Group,
+		Cache:         aa.cache,
+		LayersDir:     aa.layersDir,
+		Logger:        cmd.DefaultLogger,
+		SkipLayers:    aa.skipLayers,
+		Platform:      aa.platform,
+		Image:         img,
+		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, aa.layersDir, aa.platform),
+	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
 	}
@@ -171,4 +200,12 @@ func (a *analyzeCmd) registryImages() []string {
 		registryImages = append(registryImages, a.analyzeArgs.imageName)
 	}
 	return registryImages
+}
+
+func (a *analyzeCmd) restoresAnalyzedLayers() bool {
+	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) < 0
+}
+
+func (a *analyzeCmd) supportsPreviousImageFlag() bool {
+	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
