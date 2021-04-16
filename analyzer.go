@@ -11,19 +11,18 @@ import (
 )
 
 type Analyzer struct {
-	Image         imgutil.Image
-	LayersDir     string
-	Logger        Logger
-	LayerAnalyzer LayerAnalyzer
-	Platform      cmd.Platform
-	Buildpacks    []buildpack.GroupBuildpack
-	SkipLayers    bool
+	Image    imgutil.Image
+	Logger   Logger
+	Platform cmd.Platform
 
 	// Platform API < 0.7
-	Cache Cache
+	Buildpacks    []buildpack.GroupBuildpack
+	Cache         Cache
+	LayerAnalyzer LayerAnalyzer
+	SkipLayers    bool
 }
 
-// Analyze fetches the layers metadata from the previous image and writes analyzed.toml
+// Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
 		appMeta platform.LayersMetadata
@@ -45,7 +44,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		appMeta = platform.LayersMetadata{}
 	}
 
-	if a.restoresAnalyzedLayers() {
+	if a.analyzesLayers() {
 		if _, err := a.LayerAnalyzer.Analyze(a.Buildpacks, a.SkipLayers, appMeta, a.Cache); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
@@ -57,7 +56,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}, nil
 }
 
-func (a *Analyzer) restoresAnalyzedLayers() bool {
+func (a *Analyzer) analyzesLayers() bool {
 	return api.MustParse(a.Platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 

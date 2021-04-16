@@ -19,7 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
-	v06 "github.com/buildpacks/lifecycle/platform/v06"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -48,9 +48,10 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
 
-			platform := v06.NewPlatform("0.6")
+			platform := platform.NewPlatform("0.6")
+			discardLogger := log.Logger{Handler: &discard.Handler{}}
 			cacheMetadataRetriever := &lifecycle.DefaultCacheMetadataRetriever{
-				Logger: &log.Logger{Handler: &discard.Handler{}},
+				Logger: &discardLogger,
 			}
 			restorer = &lifecycle.Restorer{
 				LayersDir: layersDir,
@@ -58,9 +59,9 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
 					{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()},
 				},
-				Logger: &log.Logger{Handler: &discard.Handler{}},
+				Logger: &discardLogger,
 				LayerAnalyzer: lifecycle.NewLayerAnalyzer(
-					&log.Logger{Handler: &discard.Handler{}},
+					&discardLogger,
 					cacheMetadataRetriever,
 					layersDir,
 					platform),

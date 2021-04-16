@@ -12,14 +12,15 @@ import (
 )
 
 type Restorer struct {
-	LayersDir              string
+	LayersDir  string
+	Logger     Logger
+	SkipLayers bool // Platform API > 0.7
+
 	Buildpacks             []buildpack.GroupBuildpack
-	Logger                 Logger
-	SkipLayers             bool
-	LayerAnalyzer          LayerAnalyzer
 	CacheMetadataRetriever CacheMetadataRetriever
+	LayerAnalyzer          LayerAnalyzer           // Platform API > 0.7
+	LayersMetadata         platform.LayersMetadata // Platform API > 0.7
 	Platform               cmd.Platform
-	LayersMetadata         platform.LayersMetadata
 }
 
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
@@ -30,7 +31,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		err           error
 	)
 
-	if r.restoresAnalyzedLayers() {
+	if r.analyzesLayers() {
 		if cacheMetadata, err = r.LayerAnalyzer.Analyze(r.Buildpacks, r.SkipLayers, r.LayersMetadata, cache); err != nil {
 			return err
 		}
@@ -84,7 +85,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	return nil
 }
 
-func (r *Restorer) restoresAnalyzedLayers() bool {
+func (r *Restorer) analyzesLayers() bool {
 	return api.MustParse(r.Platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
 

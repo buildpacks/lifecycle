@@ -22,7 +22,6 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
-	v06 "github.com/buildpacks/lifecycle/platform/v06"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -56,19 +55,20 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 		testCache, err = cache.NewVolumeCache(cacheDir)
 		h.AssertNil(t, err)
 
-		platform := v06.NewPlatform("0.6")
+		platform := platform.NewPlatform("0.6")
+
+		discardLogger := log.Logger{Handler: &discard.Handler{}}
 		analyzer = &lifecycle.Analyzer{
 			Buildpacks: []buildpack.GroupBuildpack{
 				{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 				{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 				{ID: "no.metadata.buildpack", API: api.Buildpack.Latest().String()},
 			},
-			LayersDir: layerDir,
-			Logger:    &log.Logger{Handler: &discard.Handler{}},
+			Logger: &discardLogger,
 			LayerAnalyzer: lifecycle.NewLayerAnalyzer(
-				&log.Logger{Handler: &discard.Handler{}},
+				&discardLogger,
 				&lifecycle.DefaultCacheMetadataRetriever{
-					Logger: &log.Logger{Handler: &discard.Handler{}},
+					Logger: &discardLogger,
 				},
 				layerDir,
 				platform),

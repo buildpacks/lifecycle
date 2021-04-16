@@ -21,11 +21,12 @@ import (
 
 type analyzeCmd struct {
 	//flags: inputs
-	cacheDir      string
-	cacheImageTag string
-	groupPath     string
-	uid, gid      int
 	analyzeArgs
+	uid, gid int
+
+	cacheDir      string // Platform API < 0.7
+	cacheImageTag string // Platform API < 0.7
+	groupPath     string // Platform API < 0.7
 
 	//flags: paths to write data
 	analyzedPath string
@@ -35,21 +36,19 @@ type analyzeArgs struct {
 	//inputs needed when run by creator
 	imageName  string
 	layersDir  string
-	skipLayers bool
+	skipLayers bool // Platform API < 0.7
 	useDaemon  bool
-	group      buildpack.Group
-	cache      lifecycle.Cache
 
-	platform cmd.Platform
-
-	//construct if necessary before dropping privileges
-	docker   client.CommonAPIClient
+	cache    lifecycle.Cache        // Platform API < 0.7
+	docker   client.CommonAPIClient //construct if necessary before dropping privileges
+	group    buildpack.Group        // Platform API < 0.7
 	keychain authn.Keychain
+	platform cmd.Platform
 }
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
-	if a.restoresAnalyzedLayers() {
+	if a.analyzesLayers() {
 		cmd.FlagCacheImage(&a.cacheImageTag)
 		cmd.FlagCacheDir(&a.cacheDir)
 		cmd.FlagGroupPath(&a.groupPath)
@@ -75,7 +74,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		a.imageName = args[0]
 	}
 
-	if a.restoresAnalyzedLayers() {
+	if a.analyzesLayers() {
 		if a.cacheImageTag == "" && a.cacheDir == "" {
 			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 		}
@@ -121,7 +120,7 @@ func (a *analyzeCmd) Exec() error {
 		err        error
 		cacheStore lifecycle.Cache
 	)
-	if a.restoresAnalyzedLayers() {
+	if a.analyzesLayers() {
 		group, err = lifecycle.ReadGroup(a.groupPath)
 		if err != nil {
 			return cmd.FailErr(err, "read buildpack group")
@@ -178,7 +177,6 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks:    aa.group.Group,
 		Cache:         aa.cache,
-		LayersDir:     aa.layersDir,
 		Logger:        cmd.DefaultLogger,
 		SkipLayers:    aa.skipLayers,
 		Platform:      aa.platform,
@@ -202,7 +200,7 @@ func (a *analyzeCmd) registryImages() []string {
 	return registryImages
 }
 
-func (a *analyzeCmd) restoresAnalyzedLayers() bool {
+func (a *analyzeCmd) analyzesLayers() bool {
 	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 

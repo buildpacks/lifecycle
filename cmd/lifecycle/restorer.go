@@ -44,7 +44,7 @@ func (r *restoreCmd) DefineFlags() {
 	cmd.FlagLayersDir(&r.layersDir)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
-	if r.restoresAnalyzedLayers() {
+	if r.analyzesLayers() {
 		cmd.FlagAnalyzedPath(&r.analyzedPath)
 		cmd.FlagSkipLayers(&r.skipLayers)
 	}
@@ -98,15 +98,15 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var layerMetadata platform.LayersMetadata
-	if r.restoresAnalyzedLayers() {
-		if _, err := toml.DecodeFile(r.analyzedPath, layerMetadata); err != nil {
+	var appMeta platform.LayersMetadata
+	if r.analyzesLayers() {
+		if _, err := toml.DecodeFile(r.analyzedPath, appMeta); err != nil {
 			// continue even if the analyzed.toml cannot be decoded
-			layerMetadata = platform.LayersMetadata{}
+			appMeta = platform.LayersMetadata{}
 		}
 	}
 
-	return r.restore(layerMetadata, group, cacheStore)
+	return r.restore(appMeta, group, cacheStore)
 }
 
 func (r *restoreCmd) registryImages() []string {
@@ -136,6 +136,6 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 	return nil
 }
 
-func (r *restoreArgs) restoresAnalyzedLayers() bool {
+func (r *restoreArgs) analyzesLayers() bool {
 	return api.MustParse(r.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
