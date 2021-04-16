@@ -34,16 +34,20 @@ type analyzeCmd struct {
 
 type analyzeArgs struct {
 	//inputs needed when run by creator
-	imageName  string
-	layersDir  string
-	skipLayers bool // Platform API < 0.7
-	useDaemon  bool
+	imageName   string
+	layersDir   string
+	orderPath   string //nolint - Platform API >= 0.7
+	runImageRef string //nolint - Platform API >= 0.7
+	stackPath   string //nolint - Platform API >= 0.7
+	skipLayers  bool   // Platform API < 0.7
+	useDaemon   bool
 
-	cache    lifecycle.Cache        // Platform API < 0.7
-	docker   client.CommonAPIClient //construct if necessary before dropping privileges
-	group    buildpack.Group        // Platform API < 0.7
-	keychain authn.Keychain
-	platform cmd.Platform
+	additionalTags cmd.StringSlice        //nolint Platform API >= 0.7
+	cache          lifecycle.Cache        // Platform API < 0.7
+	docker         client.CommonAPIClient //construct if necessary before dropping privileges
+	group          buildpack.Group        // Platform API < 0.7
+	keychain       authn.Keychain
+	platform       cmd.Platform
 }
 
 func (a *analyzeCmd) DefineFlags() {
@@ -55,8 +59,12 @@ func (a *analyzeCmd) DefineFlags() {
 		cmd.FlagSkipLayers(&a.skipLayers)
 	}
 	cmd.FlagLayersDir(&a.layersDir)
-	if a.supportsPreviousImageFlag() {
+	if a.platformAPIVersionGreaterThan6() {
+		cmd.FlagOrderPath(&a.orderPath)
 		cmd.FlagPreviousImage(&a.imageName)
+		cmd.FlagRunImage(&a.runImageRef)
+		cmd.FlagStackPath(&a.stackPath)
+		cmd.FlagTags(&a.additionalTags)
 	}
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
@@ -64,7 +72,7 @@ func (a *analyzeCmd) DefineFlags() {
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if !a.supportsPreviousImageFlag() {
+	if !a.platformAPIVersionGreaterThan6() {
 		if nargs != 1 {
 			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 		}
@@ -86,6 +94,10 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	if a.groupPath == cmd.PlaceholderGroupPath {
 		a.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
+	}
+
+	if a.orderPath == cmd.PlaceholderOrderPath {
+		a.orderPath = cmd.DefaultOrderPath(a.platform.API(), a.layersDir)
 	}
 
 	return nil
@@ -134,6 +146,13 @@ func (a *analyzeCmd) Exec() error {
 		}
 		a.group = group
 		a.cache = cacheStore
+	}
+
+	if a.orderPath != "" {
+		_, err := lifecycle.ReadOrder(a.orderPath)
+		if err != nil {
+			return cmd.FailErr(err, "read buildpack order file")
+		}
 	}
 
 	analyzedMD, err := a.analyze()
@@ -204,6 +223,6 @@ func (a *analyzeCmd) analyzesLayers() bool {
 	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 
-func (a *analyzeCmd) supportsPreviousImageFlag() bool {
+func (a *analyzeCmd) platformAPIVersionGreaterThan6() bool {
 	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
