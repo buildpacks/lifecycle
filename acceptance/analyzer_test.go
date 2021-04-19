@@ -132,8 +132,9 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+apiString,
 					analyzeImage,
-					analyzerPath,
+					ctrPath(analyzerPath),
 					"-group", "group.toml",
 					"-previous-image", "some-image",
 				)
@@ -150,8 +151,9 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+apiString,
 					analyzeImage,
-					analyzerPath,
+					ctrPath(analyzerPath),
 					"-skip-layers",
 					"-previous-image", "some-image",
 				)
@@ -168,8 +170,9 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+apiString,
 					analyzeImage,
-					analyzerPath,
+					ctrPath(analyzerPath),
 					"-cache-dir", "/cache",
 					"-previous-image", "some-image",
 				)
