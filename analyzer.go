@@ -24,9 +24,10 @@ type Analyzer struct {
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
-		appMeta platform.LayersMetadata
-		imageID *platform.ImageIdentifier
-		err     error
+		appMeta   platform.LayersMetadata
+		cacheMeta platform.CacheMetadata
+		imageID   *platform.ImageIdentifier
+		err       error
 	)
 
 	if a.Image != nil {
@@ -43,8 +44,13 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		appMeta = platform.LayersMetadata{}
 	}
 
+	cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
+	if err != nil {
+		return platform.AnalyzedMetadata{}, err
+	}
+
 	if a.restoresLayerMetadata() {
-		if _, err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, a.Cache); err != nil {
+		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}
@@ -53,6 +59,25 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		Image:    imageID,
 		Metadata: appMeta,
 	}, nil
+}
+
+func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta platform.CacheMetadata
+	if cache != nil {
+		var err error
+		if !cache.Exists() {
+			logger.Info("Layer cache not found")
+		}
+		cacheMeta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
+		}
+	} else {
+		logger.Debug("Usable cache not provided, using empty cache metadata")
+	}
+
+	return cacheMeta, nil
 }
 
 func (a *Analyzer) restoresLayerMetadata() bool {

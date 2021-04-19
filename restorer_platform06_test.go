@@ -45,24 +45,15 @@ func testRestorer06(t *testing.T, when spec.G, it spec.S) {
 
 			platform := platform.NewPlatform("0.6")
 			discardLogger := log.Logger{Handler: &discard.Handler{}}
-			cacheMetadataRetriever := &lifecycle.DefaultCacheMetadataRetriever{
-				Logger: &discardLogger,
-			}
 			restorer = &lifecycle.Restorer{
 				LayersDir: layersDir,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
 					{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()},
 				},
-				Logger: &discardLogger,
-				LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(
-					&discardLogger,
-					cacheMetadataRetriever,
-					layersDir,
-					platform,
-					skipLayers),
-				CacheMetadataRetriever: cacheMetadataRetriever,
-				Platform:               platform,
+				Logger:                &discardLogger,
+				LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&discardLogger, layersDir, platform, skipLayers),
+				Platform:              platform,
 			}
 			if testing.Verbose() {
 				restorer.Logger = cmd.DefaultLogger

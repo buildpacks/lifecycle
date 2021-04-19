@@ -15,29 +15,22 @@ type Restorer struct {
 	LayersDir string
 	Logger    Logger
 
-	Buildpacks             []buildpack.GroupBuildpack
-	CacheMetadataRetriever CacheMetadataRetriever
-	LayerMetadataRestorer  LayerMetadataRestorer   // Platform API > 0.7
-	LayersMetadata         platform.LayersMetadata // Platform API > 0.7
-	Platform               cmd.Platform
+	Buildpacks            []buildpack.GroupBuildpack
+	LayerMetadataRestorer LayerMetadataRestorer   // Platform API > 0.7
+	LayersMetadata        platform.LayersMetadata // Platform API > 0.7
+	Platform              cmd.Platform
 }
 
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
-	var (
-		cacheMetadata platform.CacheMetadata
-		err           error
-	)
+	cacheMetadata, err := retrieveCacheMetadata(cache, r.Logger)
+	if err != nil {
+		return err
+	}
 
 	if r.restoresLayerMetadata() {
-		if cacheMetadata, err = r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cache); err != nil {
-			return err
-		}
-	} else {
-		// Create empty cache metadata in case a usable cache is not provided.
-		cacheMetadata, err = r.CacheMetadataRetriever.RetrieveFrom(cache)
-		if err != nil {
+		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMetadata); err != nil {
 			return err
 		}
 	}

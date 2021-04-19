@@ -190,15 +190,13 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
-	cacheMetaRetriever := lifecycle.NewCacheMetadataRetriever(cmd.DefaultLogger)
-
 	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks:            aa.group.Group,
 		Cache:                 aa.cache,
 		Logger:                cmd.DefaultLogger,
 		Platform:              aa.platform,
 		Image:                 img,
-		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, cacheMetaRetriever, aa.layersDir, aa.platform, aa.skipLayers),
+		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform, aa.skipLayers),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
