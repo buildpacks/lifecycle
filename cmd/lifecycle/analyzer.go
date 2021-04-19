@@ -59,7 +59,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cmd.FlagSkipLayers(&a.skipLayers)
 	}
 	cmd.FlagLayersDir(&a.layersDir)
-	if a.platformAPIVersionGreaterThan6() {
+	if a.platformAPIVersionGreaterThan06() {
 		cmd.FlagOrderPath(&a.orderPath)
 		cmd.FlagPreviousImage(&a.imageName)
 		cmd.FlagRunImage(&a.runImageRef)
@@ -72,7 +72,7 @@ func (a *analyzeCmd) DefineFlags() {
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if !a.platformAPIVersionGreaterThan6() {
+	if !a.platformAPIVersionGreaterThan06() {
 		if nargs != 1 {
 			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 		}
@@ -223,6 +223,6 @@ func (a *analyzeCmd) analyzesLayers() bool {
 	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 
-func (a *analyzeCmd) platformAPIVersionGreaterThan6() bool {
+func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
 	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
