@@ -55,7 +55,7 @@ func testAnalyzer07(t *testing.T, when spec.G, it spec.S) {
 				{ID: "no.metadata.buildpack", API: api.Buildpack.Latest().String()},
 			},
 			Logger: &discardLogger,
-			LayerAnalyzer: lifecycle.NewLayerAnalyzer(
+			LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(
 				&discardLogger,
 				&lifecycle.DefaultCacheMetadataRetriever{
 					Logger: &discardLogger,

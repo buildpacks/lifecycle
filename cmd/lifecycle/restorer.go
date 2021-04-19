@@ -43,7 +43,7 @@ func (r *restoreCmd) DefineFlags() {
 	cmd.FlagLayersDir(&r.layersDir)
 	cmd.FlagUID(&r.uid)
 	cmd.FlagGID(&r.gid)
-	if r.analyzesLayers() {
+	if r.restoresLayerMetadata() {
 		cmd.FlagAnalyzedPath(&r.analyzedPath)
 		cmd.FlagSkipLayers(&r.skipLayers)
 	}
@@ -98,7 +98,7 @@ func (r *restoreCmd) Exec() error {
 	}
 
 	var appMeta platform.LayersMetadata
-	if r.analyzesLayers() {
+	if r.restoresLayerMetadata() {
 		if _, err := toml.DecodeFile(r.analyzedPath, appMeta); err != nil {
 			// continue even if the analyzed.toml cannot be decoded
 			appMeta = platform.LayersMetadata{}
@@ -123,7 +123,7 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		Buildpacks:             group.Group,
 		Logger:                 cmd.DefaultLogger,
 		Platform:               r.platform,
-		LayerAnalyzer:          lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, r.layersDir, r.platform, r.skipLayers),
+		LayerMetadataRestorer:  lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, cacheMetaRetriever, r.layersDir, r.platform, r.skipLayers),
 		LayersMetadata:         layerMetadata,
 		CacheMetadataRetriever: cacheMetaRetriever,
 	}
@@ -134,6 +134,6 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 	return nil
 }
 
-func (r *restoreArgs) analyzesLayers() bool {
+func (r *restoreArgs) restoresLayerMetadata() bool {
 	return api.MustParse(r.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }

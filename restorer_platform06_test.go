@@ -55,7 +55,7 @@ func testRestorer06(t *testing.T, when spec.G, it spec.S) {
 					{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()},
 				},
 				Logger: &discardLogger,
-				LayerAnalyzer: lifecycle.NewLayerAnalyzer(
+				LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(
 					&discardLogger,
 					cacheMetadataRetriever,
 					layersDir,

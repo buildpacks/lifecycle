@@ -17,7 +17,7 @@ type Restorer struct {
 
 	Buildpacks             []buildpack.GroupBuildpack
 	CacheMetadataRetriever CacheMetadataRetriever
-	LayerAnalyzer          LayerAnalyzer           // Platform API > 0.7
+	LayerMetadataRestorer  LayerMetadataRestorer   // Platform API > 0.7
 	LayersMetadata         platform.LayersMetadata // Platform API > 0.7
 	Platform               cmd.Platform
 }
@@ -30,8 +30,8 @@ func (r *Restorer) Restore(cache Cache) error {
 		err           error
 	)
 
-	if r.analyzesLayers() {
-		if cacheMetadata, err = r.LayerAnalyzer.Analyze(r.Buildpacks, r.LayersMetadata, cache); err != nil {
+	if r.restoresLayerMetadata() {
+		if cacheMetadata, err = r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cache); err != nil {
 			return err
 		}
 	} else {
@@ -84,7 +84,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	return nil
 }
 
-func (r *Restorer) analyzesLayers() bool {
+func (r *Restorer) restoresLayerMetadata() bool {
 	return api.MustParse(r.Platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
 

@@ -16,9 +16,9 @@ type Analyzer struct {
 	Platform cmd.Platform
 
 	// Platform API < 0.7
-	Buildpacks    []buildpack.GroupBuildpack
-	Cache         Cache
-	LayerAnalyzer LayerAnalyzer
+	Buildpacks            []buildpack.GroupBuildpack
+	Cache                 Cache
+	LayerMetadataRestorer LayerMetadataRestorer
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
@@ -43,8 +43,8 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		appMeta = platform.LayersMetadata{}
 	}
 
-	if a.analyzesLayers() {
-		if _, err := a.LayerAnalyzer.Analyze(a.Buildpacks, appMeta, a.Cache); err != nil {
+	if a.restoresLayerMetadata() {
+		if _, err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, a.Cache); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}
@@ -55,7 +55,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}, nil
 }
 
-func (a *Analyzer) analyzesLayers() bool {
+func (a *Analyzer) restoresLayerMetadata() bool {
 	return api.MustParse(a.Platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 

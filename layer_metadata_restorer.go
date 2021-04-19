@@ -12,11 +12,11 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
-type LayerAnalyzer interface {
-	Analyze(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error)
+type LayerMetadataRestorer interface {
+	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error)
 }
 
-type DefaultLayerAnalyzer struct {
+type DefaultLayerMetadataRestorer struct {
 	Logger            Logger
 	LayersDir         string
 	MetadataRetriever CacheMetadataRetriever
@@ -24,8 +24,8 @@ type DefaultLayerAnalyzer struct {
 	SkipLayers        bool
 }
 
-func NewLayerAnalyzer(logger Logger, metadataRetriever CacheMetadataRetriever, layersDir string, platform cmd.Platform, skipLayers bool) LayerAnalyzer {
-	return &DefaultLayerAnalyzer{
+func NewLayerMetadataRestorer(logger Logger, metadataRetriever CacheMetadataRetriever, layersDir string, platform cmd.Platform, skipLayers bool) LayerMetadataRestorer {
+	return &DefaultLayerMetadataRestorer{
 		LayersDir:         layersDir,
 		Logger:            logger,
 		MetadataRetriever: metadataRetriever,
@@ -34,7 +34,7 @@ func NewLayerAnalyzer(logger Logger, metadataRetriever CacheMetadataRetriever, l
 	}
 }
 
-func (la *DefaultLayerAnalyzer) Analyze(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error) {
+func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error) {
 	cacheMeta, err := la.MetadataRetriever.RetrieveFrom(cache)
 	if err != nil {
 		return platform.CacheMetadata{}, err
@@ -51,7 +51,7 @@ func (la *DefaultLayerAnalyzer) Analyze(buildpacks []buildpack.GroupBuildpack, a
 	return cacheMeta, nil
 }
 
-func (la *DefaultLayerAnalyzer) restoreStoreTOML(appMeta platform.LayersMetadata, buildpacks []buildpack.GroupBuildpack) error {
+func (la *DefaultLayerMetadataRestorer) restoreStoreTOML(appMeta platform.LayersMetadata, buildpacks []buildpack.GroupBuildpack) error {
 	for _, bp := range buildpacks {
 		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
 			if err := WriteTOML(filepath.Join(la.LayersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
@@ -62,7 +62,7 @@ func (la *DefaultLayerAnalyzer) restoreStoreTOML(appMeta platform.LayersMetadata
 	return nil
 }
 
-func (la *DefaultLayerAnalyzer) analyzeLayers(appMeta platform.LayersMetadata, meta platform.CacheMetadata, skipLayers bool, buildpacks []buildpack.GroupBuildpack) error {
+func (la *DefaultLayerMetadataRestorer) analyzeLayers(appMeta platform.LayersMetadata, meta platform.CacheMetadata, skipLayers bool, buildpacks []buildpack.GroupBuildpack) error {
 	if skipLayers {
 		la.Logger.Infof("Skipping buildpack layer analysis")
 		return nil
@@ -117,7 +117,7 @@ func (la *DefaultLayerAnalyzer) analyzeLayers(appMeta platform.LayersMetadata, m
 	return nil
 }
 
-func (la *DefaultLayerAnalyzer) writeLayerMetadata(buildpackDir bpLayersDir, name string, metadata platform.BuildpackLayerMetadata) error {
+func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(buildpackDir bpLayersDir, name string, metadata platform.BuildpackLayerMetadata) error {
 	layer := buildpackDir.newBPLayer(name, buildpackDir.buildpack.API, la.Logger)
 	la.Logger.Debugf("Writing layer metadata for %q", layer.Identifier())
 	if err := layer.writeMetadata(metadata.LayerMetadataFile); err != nil {

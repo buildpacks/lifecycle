@@ -51,7 +51,7 @@ type analyzeArgs struct {
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
-	if a.analyzesLayers() {
+	if a.restoresLayerMetadata() {
 		cmd.FlagCacheImage(&a.cacheImageTag)
 		cmd.FlagCacheDir(&a.cacheDir)
 		cmd.FlagGroupPath(&a.groupPath)
@@ -81,7 +81,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		a.imageName = args[0]
 	}
 
-	if a.analyzesLayers() {
+	if a.restoresLayerMetadata() {
 		if a.cacheImageTag == "" && a.cacheDir == "" {
 			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 		}
@@ -131,7 +131,7 @@ func (a *analyzeCmd) Exec() error {
 		err        error
 		cacheStore lifecycle.Cache
 	)
-	if a.analyzesLayers() {
+	if a.restoresLayerMetadata() {
 		group, err = lifecycle.ReadGroup(a.groupPath)
 		if err != nil {
 			return cmd.FailErr(err, "read buildpack group")
@@ -193,12 +193,12 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	cacheMetaRetriever := lifecycle.NewCacheMetadataRetriever(cmd.DefaultLogger)
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks:    aa.group.Group,
-		Cache:         aa.cache,
-		Logger:        cmd.DefaultLogger,
-		Platform:      aa.platform,
-		Image:         img,
-		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, aa.layersDir, aa.platform, aa.skipLayers),
+		Buildpacks:            aa.group.Group,
+		Cache:                 aa.cache,
+		Logger:                cmd.DefaultLogger,
+		Platform:              aa.platform,
+		Image:                 img,
+		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, cacheMetaRetriever, aa.layersDir, aa.platform, aa.skipLayers),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
@@ -217,7 +217,7 @@ func (a *analyzeCmd) registryImages() []string {
 	return registryImages
 }
 
-func (a *analyzeCmd) analyzesLayers() bool {
+func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 
