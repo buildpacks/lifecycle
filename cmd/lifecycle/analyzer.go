@@ -33,7 +33,6 @@ type analyzeCmd struct {
 }
 
 type analyzeArgs struct {
-	//inputs needed when run by creator
 	imageName   string
 	layersDir   string
 	orderPath   string //nolint - Platform API >= 0.7

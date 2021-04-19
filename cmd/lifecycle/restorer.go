@@ -28,7 +28,6 @@ type restoreCmd struct {
 }
 
 type restoreArgs struct {
-	//inputs needed when run by creator
 	layersDir  string
 	platform   cmd.Platform
 	skipLayers bool
