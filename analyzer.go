@@ -19,7 +19,6 @@ type Analyzer struct {
 	Buildpacks    []buildpack.GroupBuildpack
 	Cache         Cache
 	LayerAnalyzer LayerAnalyzer
-	SkipLayers    bool
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
@@ -45,7 +44,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.analyzesLayers() {
-		if _, err := a.LayerAnalyzer.Analyze(a.Buildpacks, a.SkipLayers, appMeta, a.Cache); err != nil {
+		if _, err := a.LayerAnalyzer.Analyze(a.Buildpacks, appMeta, a.Cache); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}

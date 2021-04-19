@@ -197,10 +197,9 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		Buildpacks:    aa.group.Group,
 		Cache:         aa.cache,
 		Logger:        cmd.DefaultLogger,
-		SkipLayers:    aa.skipLayers,
 		Platform:      aa.platform,
 		Image:         img,
-		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, aa.layersDir, aa.platform),
+		LayerAnalyzer: lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, aa.layersDir, aa.platform, aa.skipLayers),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")

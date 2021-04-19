@@ -32,12 +32,13 @@ func TestAnalyzer(t *testing.T) {
 
 func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 	var (
-		analyzer  *lifecycle.Analyzer
-		mockCtrl  *gomock.Controller
-		layerDir  string
-		tmpDir    string
-		cacheDir  string
-		testCache lifecycle.Cache
+		analyzer   *lifecycle.Analyzer
+		mockCtrl   *gomock.Controller
+		layerDir   string
+		tmpDir     string
+		cacheDir   string
+		skipLayers bool
+		testCache  lifecycle.Cache
 	)
 
 	it.Before(func() {
@@ -71,7 +72,8 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 					Logger: &discardLogger,
 				},
 				layerDir,
-				platform),
+				platform,
+				skipLayers),
 			Platform: platform,
 		}
 		if testing.Verbose() {
@@ -398,9 +400,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("skip-layers is true", func() {
-				it.Before(func() {
-					analyzer.SkipLayers = true
-				})
+				skipLayers = true
 
 				it("should return the analyzed metadata", func() {
 					md, err := analyzer.Analyze()

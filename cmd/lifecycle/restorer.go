@@ -124,10 +124,9 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		Buildpacks:             group.Group,
 		Logger:                 cmd.DefaultLogger,
 		Platform:               r.platform,
-		LayerAnalyzer:          lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, r.layersDir, r.platform),
+		LayerAnalyzer:          lifecycle.NewLayerAnalyzer(cmd.DefaultLogger, cacheMetaRetriever, r.layersDir, r.platform, r.skipLayers),
 		LayersMetadata:         layerMetadata,
 		CacheMetadataRetriever: cacheMetaRetriever,
-		SkipLayers:             r.skipLayers,
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

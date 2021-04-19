@@ -12,9 +12,8 @@ import (
 )
 
 type Restorer struct {
-	LayersDir  string
-	Logger     Logger
-	SkipLayers bool // Platform API > 0.7
+	LayersDir string
+	Logger    Logger
 
 	Buildpacks             []buildpack.GroupBuildpack
 	CacheMetadataRetriever CacheMetadataRetriever
@@ -32,7 +31,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	)
 
 	if r.analyzesLayers() {
-		if cacheMetadata, err = r.LayerAnalyzer.Analyze(r.Buildpacks, r.SkipLayers, r.LayersMetadata, cache); err != nil {
+		if cacheMetadata, err = r.LayerAnalyzer.Analyze(r.Buildpacks, r.LayersMetadata, cache); err != nil {
 			return err
 		}
 	} else {

@@ -30,10 +30,11 @@ func TestRestorer(t *testing.T) {
 func testRestorer(t *testing.T, when spec.G, it spec.S) {
 	when("#Restore", func() {
 		var (
-			layersDir string
-			cacheDir  string
-			testCache lifecycle.Cache
-			restorer  *lifecycle.Restorer
+			layersDir  string
+			cacheDir   string
+			skipLayers bool
+			testCache  lifecycle.Cache
+			restorer   *lifecycle.Restorer
 		)
 
 		it.Before(func() {
@@ -64,7 +65,8 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 					&discardLogger,
 					cacheMetadataRetriever,
 					layersDir,
-					platform),
+					platform,
+					skipLayers),
 				CacheMetadataRetriever: cacheMetadataRetriever,
 				Platform:               platform,
 			}

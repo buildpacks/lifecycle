@@ -13,7 +13,7 @@ import (
 )
 
 type LayerAnalyzer interface {
-	Analyze(buildpacks []buildpack.GroupBuildpack, skipLayers bool, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error)
+	Analyze(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error)
 }
 
 type DefaultLayerAnalyzer struct {
@@ -21,18 +21,20 @@ type DefaultLayerAnalyzer struct {
 	LayersDir         string
 	MetadataRetriever CacheMetadataRetriever
 	Platform          cmd.Platform
+	SkipLayers        bool
 }
 
-func NewLayerAnalyzer(logger Logger, metadataRetriever CacheMetadataRetriever, layersDir string, platform cmd.Platform) LayerAnalyzer {
+func NewLayerAnalyzer(logger Logger, metadataRetriever CacheMetadataRetriever, layersDir string, platform cmd.Platform, skipLayers bool) LayerAnalyzer {
 	return &DefaultLayerAnalyzer{
 		LayersDir:         layersDir,
 		Logger:            logger,
 		MetadataRetriever: metadataRetriever,
 		Platform:          platform,
+		SkipLayers:        skipLayers,
 	}
 }
 
-func (la *DefaultLayerAnalyzer) Analyze(buildpacks []buildpack.GroupBuildpack, skipLayers bool, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error) {
+func (la *DefaultLayerAnalyzer) Analyze(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error) {
 	cacheMeta, err := la.MetadataRetriever.RetrieveFrom(cache)
 	if err != nil {
 		return platform.CacheMetadata{}, err
@@ -42,7 +44,7 @@ func (la *DefaultLayerAnalyzer) Analyze(buildpacks []buildpack.GroupBuildpack, s
 		return platform.CacheMetadata{}, err
 	}
 
-	if err := la.analyzeLayers(appMeta, cacheMeta, skipLayers, buildpacks); err != nil {
+	if err := la.analyzeLayers(appMeta, cacheMeta, la.SkipLayers, buildpacks); err != nil {
 		return platform.CacheMetadata{}, err
 	}
 
