@@ -137,7 +137,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					ctrPath(analyzerPath),
 					"-group", "group.toml",
 					"-previous-image", "some-image",
-				)
+				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
 				h.AssertNotNil(t, err)
@@ -156,7 +156,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					ctrPath(analyzerPath),
 					"-skip-layers",
 					"-previous-image", "some-image",
-				)
+				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
 				h.AssertNotNil(t, err)
@@ -175,7 +175,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					ctrPath(analyzerPath),
 					"-cache-dir", "/cache",
 					"-previous-image", "some-image",
-				)
+				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
 				h.AssertNotNil(t, err)
