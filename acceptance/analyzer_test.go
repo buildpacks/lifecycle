@@ -345,10 +345,16 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
+						ctrPath("/layers"),
 						analyzeImage,
-						"/layers",
-						h.WithFlags(dockerSocketMount...),
-						h.WithArgs(analyzerPath, "-daemon", "-previous-image", appImage),
+						h.WithFlags(append(
+							dockerSocketMount,
+							"--env", "CNB_PLATFORM_API="+apiString,
+						)...),
+						h.WithArgs(
+							ctrPath(analyzerPath),
+							"-daemon",
+							"-previous-image", appImage),
 					)
 
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
@@ -686,6 +692,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 						it("restores app metadata", func() {
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -708,6 +715,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("registry creds are provided in the docker config.json", func() {
 						it("restores app metadata", func() {
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -777,6 +785,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores app metadata", func() {
+						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
@@ -797,6 +806,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("skip layers is provided", func() {
 						it("writes analyzed.toml and does not write buildpack layer metadata", func() {
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
