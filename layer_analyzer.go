@@ -77,6 +77,7 @@ func (la *DefaultLayerAnalyzer) analyzeLayers(appMeta platform.LayersMetadata, m
 		// Restore metadata for launch=true layers.
 		// The restorer step will restore the layer data for cache=true layers if possible or delete the layer.
 		appLayers := appMeta.MetadataForBuildpack(buildpack.ID).Layers
+
 		for name, layer := range appLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
 			if !layer.Launch {
