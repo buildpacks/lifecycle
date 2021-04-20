@@ -982,6 +982,9 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					cacheFixtureDir, ctrPath("/cache"),
 					otherLayersDir, ctrPath("/other-layers"),
 					analyzeImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+apiString,
+					),
 					h.WithArgs(
 						ctrPath(analyzerPath),
 						"-layers", ctrPath("/other-layers"),
@@ -1008,6 +1011,9 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					cacheFixtureDir, ctrPath("/cache"),
 					copyDir, ctrPath("/some-other-layers"),
 					analyzeImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+apiString,
+					),
 					h.WithArgs(
 						ctrPath(analyzerPath),
 						"-layers", ctrPath("/some-other-layers"),
