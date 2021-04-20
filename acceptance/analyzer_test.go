@@ -112,7 +112,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("called without an app image", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept an image argument")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+apiString,
@@ -129,7 +129,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("called with group", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts a -group flag")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+apiString,
@@ -148,7 +148,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("called with skip layers", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts a -skip-layers flag")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+apiString,
@@ -167,7 +167,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("called with cache dir", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts a -cache-dir flag")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+apiString,
@@ -186,7 +186,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("cache image tag and cache directory are both blank", func() {
 			it("warns", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not warn because it does not accept a -cache-dir flag")
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags("--env", "CNB_PLATFORM_API="+apiString),
@@ -218,7 +218,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("group path is provided", func() {
 			it("uses the provided group path", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -group flag")
 				h.DockerSeedRunAndCopy(t,
 					containerName,
 					cacheFixtureDir, ctrPath("/cache"),
@@ -242,7 +242,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("analyzed path is provided", func() {
 			it("writes analyzed.toml at the provided path", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 must be provided an image argument")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -260,7 +260,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 			})
 
 			it("writes analyzed.toml at the provided path", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept an image argument")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -280,7 +280,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("daemon case", func() {
 			it("writes analyzed.toml", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept an image argument")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -301,7 +301,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 			})
 
 			it("writes analyzed.toml", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts an image argument")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -344,7 +344,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("does not restore app metadata", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7")
+					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 restores app metadata")
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
@@ -364,7 +364,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("restores app metadata", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore app metadata")
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
@@ -386,7 +386,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 				when("skip layers is provided", func() {
 					it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -skip-layers flag")
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
@@ -435,7 +435,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						})
 
 						it("ignores the cache", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 
 							h.DockerRunAndCopy(t,
 								containerName,
@@ -480,7 +480,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 							when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 								it("restores cache metadata", func() {
-									h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+									h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 									output := h.DockerRunAndCopy(t,
 										containerName,
 										copyDir,
@@ -506,7 +506,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 							when("registry creds are provided in the docker config.json", func() {
 								it("restores cache metadata", func() {
-									h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+									h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 									output := h.DockerRunAndCopy(t,
 										containerName,
 										copyDir,
@@ -553,7 +553,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 							})
 
 							it("restores cache metadata", func() {
-								h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+								h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
@@ -579,7 +579,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 				when("cache directory case", func() {
 					it("restores cache metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 						output := h.DockerSeedRunAndCopy(t,
 							containerName,
 							cacheFixtureDir, ctrPath("/cache"),
@@ -602,7 +602,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("the provided cache directory isn't writeable by the CNB user's group", func() {
 						it("recursively chowns the directory", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 							h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
 							cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
@@ -629,7 +629,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					when("the provided cache directory is writeable by the CNB user's group", func() {
 						it("doesn't chown the directory", func() {
 							h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 
 							cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
 							defer h.DockerVolumeRemove(t, cacheVolume)
@@ -695,7 +695,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 						it("restores app metadata", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -718,7 +718,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("registry creds are provided in the docker config.json", func() {
 						it("restores app metadata", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -741,7 +741,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("skip layers is provided", func() {
 						it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -skip-layers flag")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -788,7 +788,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores app metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
@@ -809,7 +809,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 					when("skip layers is provided", func() {
 						it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -skip-layers flag")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -855,7 +855,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 						when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 							it("restores cache metadata", func() {
-								h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+								h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
@@ -879,7 +879,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 						when("registry creds are provided in the docker config.json", func() {
 							it("restores cache metadata", func() {
-								h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+								h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
@@ -926,7 +926,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						})
 
 						it("restores cache metadata", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -950,7 +950,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 				when("cache directory case", func() {
 					it("restores cache metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7")
+						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 						output := h.DockerSeedRunAndCopy(t,
 							containerName,
 							cacheFixtureDir, ctrPath("/cache"),

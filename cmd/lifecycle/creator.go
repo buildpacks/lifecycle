@@ -154,13 +154,12 @@ func (c *createCmd) Exec() error {
 	if api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0 {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzedMD, err = analyzeArgs{
-			imageName:  c.previousImage,
-			keychain:   c.keychain,
-			layersDir:  c.layersDir,
-			platform:   c.platform,
-			skipLayers: c.skipRestore,
-			useDaemon:  c.useDaemon,
-			docker:     c.docker,
+			imageName: c.previousImage,
+			keychain:  c.keychain,
+			layersDir: c.layersDir,
+			platform:  c.platform,
+			useDaemon: c.useDaemon,
+			docker:    c.docker,
 		}.analyze()
 		if err != nil {
 			return err
@@ -194,15 +193,17 @@ func (c *createCmd) Exec() error {
 
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzedMD, err = analyzeArgs{
-			imageName:  c.previousImage,
-			keychain:   c.keychain,
-			layersDir:  c.layersDir,
-			platform:   c.platform,
-			skipLayers: c.skipRestore,
-			useDaemon:  c.useDaemon,
-			docker:     c.docker,
-			group:      group,
-			cache:      cacheStore,
+			imageName: c.previousImage,
+			keychain:  c.keychain,
+			layersDir: c.layersDir,
+			platform:  c.platform,
+			useDaemon: c.useDaemon,
+			docker:    c.docker,
+			platform06: analyzeArgsPlatform06{
+				skipLayers: c.skipRestore,
+				group:      group,
+				cache:      cacheStore,
+			},
 		}.analyze()
 		if err != nil {
 			return err
