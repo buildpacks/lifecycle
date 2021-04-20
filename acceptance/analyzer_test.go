@@ -968,6 +968,11 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("layers path is provided", func() {
 			it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
+				h.SkipIf(t,
+					api.MustParse(apiString).Compare(api.MustParse("0.5")) >= 0,
+					"Platform API 0.5 and 0.6 read and write to the provided layers directory; Platform 0.7+ does not accept a -cache-dir flag",
+				)
+
 				otherLayersDir := filepath.Join(copyDir, "other-layers")
 				layersDir := filepath.Join(copyDir, "layers")
 
@@ -977,43 +982,42 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					cacheFixtureDir, ctrPath("/cache"),
 					otherLayersDir, ctrPath("/other-layers"),
 					analyzeImage,
-					h.WithFlags(
-						"--env", "CNB_PLATFORM_API=0.4",
-					),
 					h.WithArgs(
 						ctrPath(analyzerPath),
 						"-layers", ctrPath("/other-layers"),
-						"-cache-dir", ctrPath("/cache"), // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
+						"-cache-dir", ctrPath("/cache"), // use a cache so that we can observe the effect of group.toml (since we don't have a previous image)
 						"some-image",
 					),
 				)
-				h.AssertPathExists(t, filepath.Join(otherLayersDir, "some-buildpack-id"))
+				h.AssertPathExists(t, filepath.Join(otherLayersDir, "some-buildpack-id")) // some-buildpack-id is found in the working directory: /layers/group.toml
 
-				h.DockerCopyOut(t, containerName, ctrPath("/layers"), layersDir)
+				h.DockerCopyOut(t, containerName, ctrPath("/layers"), layersDir) // analyzed.toml is written at the working directory: /layers
 				assertAnalyzedMetadata(t, filepath.Join(layersDir, "analyzed.toml"))
 			})
 		})
 
 		when("layers path is provided", func() {
 			it("uses the group path at the layers path and writes analyzed.toml at the layers path", func() {
+				h.SkipIf(t,
+					api.MustParse(apiString).Compare(api.MustParse("0.5")) != 0 && api.MustParse(apiString).Compare(api.MustParse("0.6")) != 0,
+					"Platform API < 0.5 reads and writes to the working directory; Platform 0.7+ does not accept a -cache-dir flag",
+				)
+
 				h.DockerSeedRunAndCopy(t,
 					containerName,
 					cacheFixtureDir, ctrPath("/cache"),
 					copyDir, ctrPath("/some-other-layers"),
 					analyzeImage,
-					h.WithFlags(
-						"--env", "CNB_PLATFORM_API=0.5",
-					),
 					h.WithArgs(
 						ctrPath(analyzerPath),
 						"-layers", ctrPath("/some-other-layers"),
-						"-cache-dir", ctrPath("/cache"), // use a cache so that we can observe the effect of group.toml on /some-other-layers (since we don't have a previous image)
+						"-cache-dir", ctrPath("/cache"), // use a cache so that we can observe the effect of group.toml (since we don't have a previous image)
 						"some-image",
 					),
 				)
+				h.AssertPathExists(t, filepath.Join(copyDir, "some-other-layers", "another-buildpack-id")) // another-buildpack-id is found in the provided -layers directory: /some-other-layers/group.toml
 
-				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-other-layers", "analyzed.toml"))
-				h.AssertPathExists(t, filepath.Join(copyDir, "some-other-layers", "another-buildpack-id"))
+				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-other-layers", "analyzed.toml")) // analyzed.toml is written at the provided -layers directory: /some-other-layers
 			})
 		})
 	}
