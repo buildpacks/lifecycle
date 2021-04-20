@@ -13,42 +13,35 @@ import (
 )
 
 type LayerMetadataRestorer interface {
-	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error)
+	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata) error
 }
 
 type DefaultLayerMetadataRestorer struct {
-	Logger            Logger
-	LayersDir         string
-	MetadataRetriever CacheMetadataRetriever
-	Platform          cmd.Platform
-	SkipLayers        bool
+	Logger     Logger
+	LayersDir  string
+	Platform   cmd.Platform
+	SkipLayers bool
 }
 
-func NewLayerMetadataRestorer(logger Logger, metadataRetriever CacheMetadataRetriever, layersDir string, platform cmd.Platform, skipLayers bool) LayerMetadataRestorer {
+func NewLayerMetadataRestorer(logger Logger, layersDir string, platform cmd.Platform, skipLayers bool) LayerMetadataRestorer {
 	return &DefaultLayerMetadataRestorer{
-		LayersDir:         layersDir,
-		Logger:            logger,
-		MetadataRetriever: metadataRetriever,
-		Platform:          platform,
-		SkipLayers:        skipLayers,
+		LayersDir:  layersDir,
+		Logger:     logger,
+		Platform:   platform,
+		SkipLayers: skipLayers,
 	}
 }
 
-func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cache Cache) (platform.CacheMetadata, error) {
-	cacheMeta, err := la.MetadataRetriever.RetrieveFrom(cache)
-	if err != nil {
-		return platform.CacheMetadata{}, err
-	}
-
+func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata) error {
 	if err := la.restoreStoreTOML(appMeta, buildpacks); err != nil {
-		return platform.CacheMetadata{}, err
+		return err
 	}
 
 	if err := la.analyzeLayers(appMeta, cacheMeta, buildpacks); err != nil {
-		return platform.CacheMetadata{}, err
+		return err
 	}
 
-	return cacheMeta, nil
+	return nil
 }
 
 func (la *DefaultLayerMetadataRestorer) restoreStoreTOML(appMeta platform.LayersMetadata, buildpacks []buildpack.GroupBuildpack) error {
@@ -124,4 +117,23 @@ func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(buildpackDir bpLayers
 		return err
 	}
 	return layer.writeSha(metadata.SHA)
+}
+
+func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta platform.CacheMetadata
+	if cache != nil {
+		var err error
+		if !cache.Exists() {
+			logger.Info("Layer cache not found")
+		}
+		cacheMeta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
+		}
+	} else {
+		logger.Debug("Usable cache not provided, using empty cache metadata")
+	}
+
+	return cacheMeta, nil
 }

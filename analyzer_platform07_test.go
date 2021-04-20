@@ -54,16 +54,9 @@ func testAnalyzer07(t *testing.T, when spec.G, it spec.S) {
 				{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 				{ID: "no.metadata.buildpack", API: api.Buildpack.Latest().String()},
 			},
-			Logger: &discardLogger,
-			LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(
-				&discardLogger,
-				&lifecycle.DefaultCacheMetadataRetriever{
-					Logger: &discardLogger,
-				},
-				layerDir,
-				platform,
-				skipLayers),
-			Platform: platform,
+			Logger:                &discardLogger,
+			LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&discardLogger, layerDir, platform, skipLayers),
+			Platform:              platform,
 		}
 		if testing.Verbose() {
 			analyzer.Logger = cmd.DefaultLogger

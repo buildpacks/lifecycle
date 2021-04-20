@@ -27,9 +27,10 @@ type Analyzer struct {
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
-		appMeta platform.LayersMetadata
-		imageID *platform.ImageIdentifier
-		err     error
+		appMeta   platform.LayersMetadata
+		cacheMeta platform.CacheMetadata
+		imageID   *platform.ImageIdentifier
+		err       error
 	)
 
 	if a.Image != nil {
@@ -47,7 +48,12 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.restoresLayerMetadata() {
-		if _, err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, a.Cache); err != nil {
+		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, err
+		}
+
+		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}
