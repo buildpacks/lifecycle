@@ -48,7 +48,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.RemoveAll(layerDir))
 	})
 
-	when("#Analyze", func() {
+	when("#Restore", func() {
 		it.Before(func() {
 			buildpacks = []buildpack.GroupBuildpack{
 				{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
