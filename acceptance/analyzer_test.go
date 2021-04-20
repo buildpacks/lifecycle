@@ -242,7 +242,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("analyzed path is provided", func() {
 			it("writes analyzed.toml at the provided path", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 must be provided an image argument")
+				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts an image argument")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -474,9 +474,8 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 								)
 							})
 
-							it.After(func() {
-								h.DockerImageRemove(t, authRegCacheImage)
-							})
+							// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
+							// Attempting to remove the image sometimes produces `No such image` flakes.
 
 							when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 								it("restores cache metadata", func() {
@@ -531,13 +530,13 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						})
 
 						when("no auth registry", func() {
-							var authRegCacheImage, noAuthRegCacheImage string
+							var noAuthRegCacheImage string
 
 							it.Before(func() {
 								metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 								imageName := "some-cache-image-" + h.RandString(10)
-								authRegCacheImage, _ = buildAuthRegistryImage(
+								buildAuthRegistryImage(
 									t,
 									imageName,
 									filepath.Join("testdata", "analyzer", "cache-image"),
@@ -548,9 +547,8 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 								noAuthRegCacheImage = noAuthRegistry.RepoName(imageName)
 							})
 
-							it.After(func() {
-								h.DockerImageRemove(t, authRegCacheImage)
-							})
+							// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
+							// Attempting to remove the image sometimes produces `No such image` flakes.
 
 							it("restores cache metadata", func() {
 								h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
@@ -689,9 +687,8 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						)
 					})
 
-					it.After(func() {
-						h.DockerImageRemove(t, authRegAppImage)
-					})
+					// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
+					// Attempting to remove the image sometimes produces `No such image` flakes.
 
 					when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 						it("restores app metadata", func() {
@@ -766,13 +763,13 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				when("no auth registry", func() {
-					var authRegAppImage, noAuthRegAppImage string
+					var noAuthRegAppImage string
 
 					it.Before(func() {
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 
 						imageName := "some-app-image-" + h.RandString(10)
-						authRegAppImage, _ = buildAuthRegistryImage(
+						buildAuthRegistryImage(
 							t,
 							imageName,
 							filepath.Join("testdata", "analyzer", "app-image"),
@@ -783,9 +780,8 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						noAuthRegAppImage = noAuthRegistry.RepoName(imageName)
 					})
 
-					it.After(func() {
-						h.DockerImageRemove(t, authRegAppImage)
-					})
+					// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
+					// Attempting to remove the image sometimes produces `No such image` flakes.
 
 					it("restores app metadata", func() {
 						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
@@ -849,9 +845,8 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 							)
 						})
 
-						it.After(func() {
-							h.DockerImageRemove(t, authRegCacheImage)
-						})
+						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
+						// Attempting to remove the image sometimes produces `No such image` flakes.
 
 						when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 							it("restores cache metadata", func() {
@@ -904,13 +899,13 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					when("no auth registry", func() {
-						var authRegCacheImage, noAuthRegCacheImage string
+						var noAuthRegCacheImage string
 
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 							imageName := "some-cache-image-" + h.RandString(10)
-							authRegCacheImage, _ = buildAuthRegistryImage(
+							buildAuthRegistryImage(
 								t,
 								imageName,
 								filepath.Join("testdata", "analyzer", "cache-image"),
@@ -921,9 +916,8 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 							noAuthRegCacheImage = noAuthRegistry.RepoName(imageName)
 						})
 
-						it.After(func() {
-							h.DockerImageRemove(t, authRegCacheImage)
-						})
+						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
+						// Attempting to remove the image sometimes produces `No such image` flakes.
 
 						it("restores cache metadata", func() {
 							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
@@ -974,7 +968,6 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("layers path is provided", func() {
 			it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.6")) >= 0, "Platform API < 0.5")
 				otherLayersDir := filepath.Join(copyDir, "other-layers")
 				layersDir := filepath.Join(copyDir, "layers")
 
@@ -1003,7 +996,6 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("layers path is provided", func() {
 			it("uses the group path at the layers path and writes analyzed.toml at the layers path", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.5")) != 0, "Platform API != 0.5")
 				h.DockerSeedRunAndCopy(t,
 					containerName,
 					cacheFixtureDir, ctrPath("/cache"),
