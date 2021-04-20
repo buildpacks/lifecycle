@@ -51,12 +51,6 @@ type analyzeArgs struct {
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
-	if a.restoresLayerMetadata() {
-		cmd.FlagCacheImage(&a.cacheImageTag)
-		cmd.FlagCacheDir(&a.cacheDir)
-		cmd.FlagGroupPath(&a.groupPath)
-		cmd.FlagSkipLayers(&a.skipLayers)
-	}
 	cmd.FlagLayersDir(&a.layersDir)
 	if a.platformAPIVersionGreaterThan06() {
 		cmd.FlagOrderPath(&a.orderPath)
@@ -64,6 +58,11 @@ func (a *analyzeCmd) DefineFlags() {
 		cmd.FlagRunImage(&a.runImageRef)
 		cmd.FlagStackPath(&a.stackPath)
 		cmd.FlagTags(&a.additionalTags)
+	} else {
+		cmd.FlagCacheImage(&a.cacheImageTag)
+		cmd.FlagCacheDir(&a.cacheDir)
+		cmd.FlagGroupPath(&a.groupPath)
+		cmd.FlagSkipLayers(&a.skipLayers)
 	}
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
@@ -71,7 +70,7 @@ func (a *analyzeCmd) DefineFlags() {
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if !a.platformAPIVersionGreaterThan06() {
+	if a.supportsImageArgument() {
 		if nargs != 1 {
 			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 		}
@@ -218,7 +217,11 @@ func (a *analyzeCmd) registryImages() []string {
 }
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {
-	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) < 0
+	return !a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) supportsImageArgument() bool {
+	return !a.platformAPIVersionGreaterThan06()
 }
 
 func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {

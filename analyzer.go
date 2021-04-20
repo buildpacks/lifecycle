@@ -6,14 +6,17 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
 )
+
+type Platform interface {
+	API() string
+}
 
 type Analyzer struct {
 	Image    imgutil.Image
 	Logger   Logger
-	Platform cmd.Platform
+	Platform Platform
 
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
