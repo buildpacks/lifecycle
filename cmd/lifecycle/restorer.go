@@ -32,7 +32,7 @@ type restoreArgs struct {
 	platform   cmd.Platform
 	skipLayers bool
 
-	//construct if necessary before dropping privileges
+	// construct if necessary before dropping privileges
 	keychain authn.Keychain
 }
 

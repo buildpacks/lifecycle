@@ -43,7 +43,7 @@ type analyzeArgs struct {
 
 	additionalTags cmd.StringSlice        //nolint Platform API >= 0.7
 	cache          lifecycle.Cache        // Platform API < 0.7
-	docker         client.CommonAPIClient //construct if necessary before dropping privileges
+	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	group          buildpack.Group        // Platform API < 0.7
 	keychain       authn.Keychain
 	platform       cmd.Platform
