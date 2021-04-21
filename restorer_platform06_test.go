@@ -52,7 +52,7 @@ func testRestorer06(t *testing.T, when spec.G, it spec.S) {
 					{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()},
 				},
 				Logger:                &discardLogger,
-				LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&discardLogger, layersDir, platform, skipLayers),
+				LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&discardLogger, layersDir, skipLayers),
 				Platform:              platform,
 			}
 			if testing.Verbose() {

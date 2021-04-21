@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -19,15 +18,13 @@ type LayerMetadataRestorer interface {
 type DefaultLayerMetadataRestorer struct {
 	Logger     Logger
 	LayersDir  string
-	Platform   cmd.Platform
 	SkipLayers bool
 }
 
-func NewLayerMetadataRestorer(logger Logger, layersDir string, platform cmd.Platform, skipLayers bool) LayerMetadataRestorer {
+func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers bool) LayerMetadataRestorer {
 	return &DefaultLayerMetadataRestorer{
-		LayersDir:  layersDir,
 		Logger:     logger,
-		Platform:   platform,
+		LayersDir:  layersDir,
 		SkipLayers: skipLayers,
 	}
 }
