@@ -36,10 +36,12 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				"LIBRARY_PATH=some-library-path",
 				"CPATH=some-cpath",
 				"PKG_CONFIG_PATH=some-pkg-config-path",
+				"CNB_ASSETS=some-assets-path",
 			})
 			out := benv.List()
 			sort.Strings(out)
 			expectedVars := []string{
+				"CNB_ASSETS=some-assets-path",
 				"CNB_STACK_ID=some-stack-id",
 				"CPATH=some-cpath",
 				"HOME=some-home",

@@ -15,6 +15,7 @@ var BuildEnvIncludelist = []string{
 	"http_proxy",
 	"NO_PROXY",
 	"no_proxy",
+	"CNB_ASSETS",
 }
 
 var ignoreEnvVarCase = runtime.GOOS == "windows"
