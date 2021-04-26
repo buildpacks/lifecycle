@@ -78,7 +78,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("removes metadata and sha file", func() {
-					h.SkipIf(t, api.MustParse(latestBuildpackAPI).Compare(api.MustParse("0.6")) == 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
+					h.SkipIf(t, api.MustParse(latestBuildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.toml"))
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha"))
@@ -113,7 +113,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("removes metadata and sha file", func() {
-					h.SkipIf(t, api.MustParse(latestBuildpackAPI).Compare(api.MustParse("0.6")) == 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
+					h.SkipIf(t, api.MustParse(latestBuildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.toml"))
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha"))
@@ -337,7 +337,7 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("removes metadata and sha file", func() {
-					h.SkipIf(t, api.MustParse(latestBuildpackAPI).Compare(api.MustParse("0.6")) == 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
+					h.SkipIf(t, api.MustParse(latestBuildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-layer-not-in-cache.toml"))
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-layer-not-in-cache.sha"))
