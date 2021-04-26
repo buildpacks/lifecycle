@@ -400,9 +400,9 @@ func testRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there are multiple cache=true layers", func() {
 				it.Before(func() {
-					meta := "[metadata]\n  cache-only-key = \"cache-only-val\"" // TODO: make this accurate
+					meta := "[metadata]\n  cache-only-key = \"cache-only-val\""
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
-					meta = "[metadata]\n  cache-launch-key = \"cache-launch-val\"" // TODO: make this accurate
+					meta = "[metadata]\n  cache-launch-key = \"cache-launch-val\""
 					h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, cacheLaunchLayerSHA))
 					meta = "[metadata]\n  some-key = \"some-value\""
 					h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
