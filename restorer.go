@@ -1,10 +1,14 @@
 package lifecycle
 
 import (
+	"path/filepath"
+
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -35,13 +39,25 @@ func (r *Restorer) Restore(cache Cache) error {
 
 	var g errgroup.Group
 	for _, buildpack := range r.Buildpacks {
+		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
+
+		var cachedFn func(bpLayer) bool
+		if api.MustParse(buildpack.API).Compare(api.MustParse("0.6")) >= 0 {
+			cachedFn = func(l bpLayer) bool {
+				layer, ok := cachedLayers[launch.EscapeID(filepath.Base(l.path))]
+				return ok && layer.Cache
+			}
+		} else {
+			cachedFn = forCached
+		}
+
 		buildpackDir, err := readBuildpackLayersDir(r.LayersDir, buildpack, r.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading buildpack layer directory")
 		}
+		foundLayers := buildpackDir.findLayers(cachedFn)
 
-		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
-		for _, bpLayer := range buildpackDir.findLayers(forCached) {
+		for _, bpLayer := range foundLayers {
 			name := bpLayer.name()
 			cachedLayer, exists := cachedLayers[name]
 			if !exists {
