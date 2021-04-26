@@ -83,12 +83,13 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		return cmd.FailErrCode(err, ba.platform.CodeFor(cmd.BuildError), "build")
 	}
 
+	platformAPI := api.MustParse(ba.platform.API())
 	builder := &lifecycle.Builder{
 		AppDir:         ba.appDir,
 		LayersDir:      ba.layersDir,
 		PlatformDir:    ba.platformDir,
-		PlatformAPI:    api.MustParse(ba.platform.API()),
-		Env:            env.NewBuildEnv(os.Environ()),
+		PlatformAPI:    platformAPI,
+		Env:            env.NewBuildEnv(os.Environ(), platformAPI),
 		Group:          group,
 		Plan:           plan,
 		Out:            cmd.Stdout,

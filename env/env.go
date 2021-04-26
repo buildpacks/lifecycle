@@ -14,8 +14,9 @@ import (
 // Env is used to modify and return environment variables
 type Env struct {
 	// RootDirMap maps directories in a posix root filesystem to a slice of environment variables that
-	RootDirMap map[string][]string
-	Vars       *Vars
+	RootDirMap  map[string][]string
+	Vars        *Vars
+	PlatformAPI *api.Version
 }
 
 // AddRootDir modifies the environment given a root dir. If the root dir contains a directory that matches a key in
