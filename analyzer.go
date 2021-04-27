@@ -96,7 +96,7 @@ func (a *Analyzer) analyzeLayers(appMeta platform.LayersMetadata, cache Cache) e
 					// The layer is not cache=true in the cache metadata and will not be restored.
 					// Do not write the metadata file so that it is clear to the buildpack that it needs to recreate the layer.
 					// Although a launch=true (only) layer still needs a metadata file, the restorer will remove the file anyway when it does its cleanup (for buildpack apis < 0.6).
-					a.Logger.Debugf("Not restoring metadata for %q, marked as cache=true, not found in cache", identifier)
+					a.Logger.Debugf("Not restoring metadata for %q, marked as cache=true, but not found in cache", identifier)
 					continue
 				}
 			}
