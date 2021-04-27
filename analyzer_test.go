@@ -111,7 +111,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 				unsetFlags := "[types]"
 				for _, data := range []struct{ name, want string }{
 					{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
-					{"metadata.buildpack/launch-cache.toml", "[metadata]\n  launch-cache-key = \"launch-cache-value\""},
 					{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
 				} {
 					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
@@ -133,7 +132,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 					for _, data := range []struct{ name, want string }{
 						{"metadata.buildpack/launch.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  launch-key = \"launch-value\""},
-						{"metadata.buildpack/launch-cache.toml", "build = false\nlaunch = true\ncache = true\n\n[metadata]\n  launch-cache-key = \"launch-cache-value\""},
 						{"no.cache.buildpack/some-layer.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  some-layer-key = \"some-layer-value\""},
 					} {
 						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
@@ -148,7 +146,6 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 				for _, data := range []struct{ name, want string }{
 					{"metadata.buildpack/launch.sha", "launch-sha"},
-					{"metadata.buildpack/launch-cache.sha", "launch-cache-sha"},
 					{"no.cache.buildpack/some-layer.sha", "some-layer-sha"},
 				} {
 					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
@@ -398,7 +395,7 @@ func testAnalyzer(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache.toml"))
 						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-build-cache.toml"))
-						h.AssertPathExists(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache.toml")) // launch=true (only) still needs a metadata file
+						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache.toml"))
 					})
 				})
 			})
