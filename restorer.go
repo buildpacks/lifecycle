@@ -8,7 +8,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -44,7 +43,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		var cachedFn func(bpLayer) bool
 		if api.MustParse(buildpack.API).Compare(api.MustParse("0.6")) >= 0 {
 			cachedFn = func(l bpLayer) bool {
-				layer, ok := cachedLayers[launch.EscapeID(filepath.Base(l.path))]
+				layer, ok := cachedLayers[filepath.Base(l.path)]
 				return ok && layer.Cache
 			}
 		} else {

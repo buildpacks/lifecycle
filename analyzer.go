@@ -78,15 +78,28 @@ func (a *Analyzer) analyzeLayers(appMeta platform.LayersMetadata, cache Cache) e
 		// Restore metadata for launch=true layers.
 		// The restorer step will restore the layer data for cache=true layers if possible or delete the layer.
 		appLayers := appMeta.MetadataForBuildpack(buildpack.ID).Layers
+		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 		for name, layer := range appLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
 			if !layer.Launch {
 				a.Logger.Debugf("Not restoring metadata for %q, marked as launch=false", identifier)
 				continue
 			}
-			if layer.Build && !layer.Cache {
-				a.Logger.Debugf("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
-				continue
+			if layer.Build {
+				// layer is launch=true, build=true.
+				// Only restore the metadata file if the layer can be restored from the cache (cache=true and the layer is found in the cache metadata).
+				// Because build=true, the layer contents must be present in the build container.
+				if !layer.Cache {
+					// There is no reason to restore the metadata file, because the buildpack will always recreate the layer.
+					a.Logger.Debugf("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
+					continue
+				}
+				if cacheLayer, ok := cachedLayers[name]; !ok || !cacheLayer.Cache {
+					// The layer is not cache=true in the cache metadata and will not be restored.
+					// Do not write the metadata file so that it is clear to the buildpack that it needs to recreate the layer.
+					a.Logger.Debugf("Not restoring metadata for %q, marked as build=true, not found in cache", identifier)
+					continue
+				}
 			}
 			a.Logger.Infof("Restoring metadata for %q from app image", identifier)
 			if err := a.writeLayerMetadata(buildpackDir, name, layer); err != nil {
@@ -96,7 +109,6 @@ func (a *Analyzer) analyzeLayers(appMeta platform.LayersMetadata, cache Cache) e
 
 		// Restore metadata for cache=true layers.
 		// The restorer step will restore the layer data if possible or delete the layer.
-		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 		for name, layer := range cachedLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
 			if !layer.Cache {
