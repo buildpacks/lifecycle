@@ -32,10 +32,10 @@ func testRestorerBuilder(buildpackAPI string) func(t *testing.T, when spec.G, it
 	return func(t *testing.T, when spec.G, it spec.S) {
 		when("#Restore", func() {
 			var (
-				cacheDir     string
-				layersDir    string
-				testCache    lifecycle.Cache
-				restorer     *lifecycle.Restorer
+				cacheDir  string
+				layersDir string
+				testCache lifecycle.Cache
+				restorer  *lifecycle.Restorer
 			)
 
 			it.Before(func() {
@@ -448,11 +448,11 @@ func testRestorerBuilder(buildpackAPI string) func(t *testing.T, when spec.G, it
 							typesMeta = "cache=true\n"
 						}
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.toml"))
-						h.AssertEq(t, string(got), typesMeta + "[metadata]\n  cache-only-key = \"cache-only-val\"")
+						h.AssertEq(t, string(got), typesMeta+"[metadata]\n  cache-only-key = \"cache-only-val\"")
 						got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-launch.toml"))
-						h.AssertEq(t, string(got), typesMeta + "[metadata]\n  cache-launch-key = \"cache-launch-val\"")
+						h.AssertEq(t, string(got), typesMeta+"[metadata]\n  cache-launch-key = \"cache-launch-val\"")
 						got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer.toml"))
-						h.AssertEq(t, string(got), typesMeta + "[metadata]\n  some-key = \"some-value\"")
+						h.AssertEq(t, string(got), typesMeta+"[metadata]\n  some-key = \"some-value\"")
 					})
 					it("keeps layer sha for all layers", func() {
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.sha"))
