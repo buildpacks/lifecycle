@@ -1,9 +1,12 @@
 package lifecycle
 
 import (
+	"path/filepath"
+
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -35,13 +38,31 @@ func (r *Restorer) Restore(cache Cache) error {
 
 	var g errgroup.Group
 	for _, buildpack := range r.Buildpacks {
+		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
+
+		var cachedFn func(bpLayer) bool
+		if api.MustParse(buildpack.API).Compare(api.MustParse("0.6")) >= 0 {
+			// On Buildpack API 0.6+, the <layer>.toml file never contains layer types information.
+			// The cache metadata is the only way to identify cache=true layers.
+			cachedFn = func(l bpLayer) bool {
+				layer, ok := cachedLayers[filepath.Base(l.path)]
+				return ok && layer.Cache
+			}
+		} else {
+			// On Buildpack API < 0.6, the <layer>.toml file contains layer types information.
+			// Prefer <layer>.toml file to cache metadata in case the cache was cleared between builds and
+			// the analyzer that wrote the files is on a previous version of the lifecycle, that doesn't cross-reference the cache metadata when writing the files.
+			// This allows the restorer to cleanup <layer>.toml files for layers that are not actually in the cache.
+			cachedFn = forCached
+		}
+
 		buildpackDir, err := readBuildpackLayersDir(r.LayersDir, buildpack, r.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading buildpack layer directory")
 		}
+		foundLayers := buildpackDir.findLayers(cachedFn)
 
-		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
-		for _, bpLayer := range buildpackDir.findLayers(forCached) {
+		for _, bpLayer := range foundLayers {
 			name := bpLayer.name()
 			cachedLayer, exists := cachedLayers[name]
 			if !exists {

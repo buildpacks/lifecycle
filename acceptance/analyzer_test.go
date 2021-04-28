@@ -905,10 +905,6 @@ func assertAnalyzedMetadata(t *testing.T, path string) {
 
 func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {
 	layerFilenames := []string{
-		"launch-build-cache-layer.sha",
-		"launch-build-cache-layer.toml",
-		"launch-cache-layer.sha",
-		"launch-cache-layer.toml",
 		"launch-layer.sha",
 		"launch-layer.toml",
 		"store.toml",
@@ -917,8 +913,6 @@ func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {
 		h.AssertPathExists(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
 	}
 	layerNames := []string{
-		"launch-build-cache-layer",
-		"launch-cache-layer",
 		"launch-layer",
 	}
 	for _, layerName := range layerNames {
