@@ -283,29 +283,6 @@ func testRestorerBuilder(buildpackAPI string) func(t *testing.T, when spec.G, it
 						want := "echo text from cache-only layer\n"
 						h.AssertEq(t, string(got), want)
 					})
-
-					when("buildpack API < 0.6", func() {
-						it.Before(func() {
-							h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "buildpack API < 0.6 test")
-							meta = "cache=true\n[metadata]\n  cache-only-key = \"cache-only-val\""
-							h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
-							h.AssertNil(t, restorer.Restore(testCache))
-						})
-
-						it("keeps layer metadatata", func() {
-							got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.toml"))
-							h.AssertEq(t, string(got), meta)
-						})
-						it("keeps layer sha", func() {
-							got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.sha"))
-							h.AssertEq(t, string(got), cacheOnlyLayerSHA)
-						})
-						it("restores data", func() {
-							got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only", "file-from-cache-only-layer"))
-							want := "echo text from cache-only layer\n"
-							h.AssertEq(t, string(got), want)
-						})
-					})
 				})
 
 				when("there is a cache=false layer", func() {
