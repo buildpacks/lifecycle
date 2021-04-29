@@ -21,7 +21,7 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func testRestorer06(t *testing.T, when spec.G, it spec.S) {
+func testRestorer06(t *testing.T, when spec.G, it spec.S) { // nolint
 	when("#Restore", func() {
 		var (
 			layersDir  string
