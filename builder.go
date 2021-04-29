@@ -45,6 +45,8 @@ type Builder struct {
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
+	b.Logger.Debug("Starting build")
+
 	config, err := b.BuildConfig()
 	if err != nil {
 		return nil, err
@@ -57,38 +59,51 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	var labels []buildpack.Label
 
 	for _, bp := range b.Group.Group {
+		b.Logger.Debugf("Running build for buildpack %s", bp)
+
+		b.Logger.Debug("Looking up buildpack")
 		bpTOML, err := b.BuildpackStore.Lookup(bp.ID, bp.Version)
 		if err != nil {
 			return nil, err
 		}
 
+		b.Logger.Debug("Finding plan")
 		bpPlan := plan.Find(bp.ID)
+
 		br, err := bpTOML.Build(bpPlan, config)
 		if err != nil {
 			return nil, err
 		}
 
+		b.Logger.Debug("Updating buildpack processes")
 		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.PlatformAPI)
 
 		bom = append(bom, br.BOM...)
 		labels = append(labels, br.Labels...)
 		plan = plan.Filter(br.MetRequires)
 
+		b.Logger.Debug("Updating process list")
 		warning := processMap.add(br.Processes)
-
 		if warning != "" {
 			b.Logger.Warn(warning)
 		}
+
 		slices = append(slices, br.Slices...)
+
+		b.Logger.Debugf("Finished running build for buildpack %s", bp)
 	}
 
 	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 { // PlatformAPI <= 0.3
+		config.Logger.Debug("Updating BOM entries")
 		for i := range bom {
 			bom[i].ConvertMetadataToVersion()
 		}
 	}
+
+	b.Logger.Debug("Listing processes")
 	procList := processMap.list()
 
+	b.Logger.Debug("Finished build")
 	return &platform.BuildMetadata{
 		BOM:                         bom,
 		Buildpacks:                  b.Group.Group,
