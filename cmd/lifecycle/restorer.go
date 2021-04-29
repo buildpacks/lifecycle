@@ -99,9 +99,9 @@ func (r *restoreCmd) Exec() error {
 
 	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		if _, err := toml.DecodeFile(r.analyzedPath, appMeta); err != nil {
-			// continue even if the analyzed.toml cannot be decoded
-			appMeta = platform.LayersMetadata{}
+		var analyzedMd platform.AnalyzedMetadata
+		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMd); err == nil {
+			appMeta = analyzedMd.Metadata
 		}
 	}
 
