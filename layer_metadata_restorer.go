@@ -34,7 +34,7 @@ func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuil
 		return err
 	}
 
-	if err := la.analyzeLayers(appMeta, cacheMeta, buildpacks); err != nil {
+	if err := la.restoreLayerMetadata(appMeta, cacheMeta, buildpacks); err != nil {
 		return err
 	}
 
@@ -52,7 +52,7 @@ func (la *DefaultLayerMetadataRestorer) restoreStoreTOML(appMeta platform.Layers
 	return nil
 }
 
-func (la *DefaultLayerMetadataRestorer) analyzeLayers(appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, buildpacks []buildpack.GroupBuildpack) error {
+func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, buildpacks []buildpack.GroupBuildpack) error {
 	if la.SkipLayers {
 		la.Logger.Infof("Skipping buildpack layer analysis")
 		return nil

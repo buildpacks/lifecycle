@@ -35,15 +35,15 @@ func TestAnalyzer(t *testing.T) {
 func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
-			analyzer         *lifecycle.Analyzer
 			cacheDir         string
-			image            *fakes.Image
 			layersDir        string
+			tmpDir           string
+			skipLayers       bool
+			analyzer         *lifecycle.Analyzer
+			image            *fakes.Image
 			metadataRestorer *lifecycle.DefaultLayerMetadataRestorer
 			mockCtrl         *gomock.Controller
-			skipLayers       bool
 			testCache        lifecycle.Cache
-			tmpDir           string
 		)
 
 		it.Before(func() {
@@ -171,6 +171,22 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					} {
 						got := h.MustReadFile(t, filepath.Join(layersDir, data.name))
 						h.AssertStringContains(t, string(got), data.want)
+					}
+				})
+
+				it("does not restore layer sha files", func() {
+					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 restores layer metadata")
+
+					_, err := analyzer.Analyze()
+					h.AssertNil(t, err)
+
+					for _, data := range []struct{ name, want string }{
+						{"metadata.buildpack/launch.sha", ""},
+						{"metadata.buildpack/launch-build-cache.sha", ""},
+						{"metadata.buildpack/launch-cache.sha", ""},
+						{"no.cache.buildpack/some-layer.sha", ""},
+					} {
+						h.AssertPathDoesNotExist(t, data.name)
 					}
 				})
 
