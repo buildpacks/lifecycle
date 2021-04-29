@@ -115,8 +115,6 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				)
 
 				layerNames := []string{
-					"launch-build-cache-layer",
-					"launch-cache-layer",
 					"launch-layer",
 				}
 				for _, layerName := range layerNames {
