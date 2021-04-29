@@ -1,0 +1,35 @@
+{
+    "buildpacks": [
+        {
+            "key": "metadata.buildpack",
+            "layers": {
+                "cache": {
+                    "cache": false,
+                    "data": {
+                        "cache-key": "cache-value"
+                    },
+                    "sha": "cache-sha"
+                },
+                "launch-build-cache": {
+                    "build": true,
+                    "cache": false,
+                    "data": {
+                        "launch-build-cache-key": "cache-specific-value",
+                        "cache-only-key": "cache-only-value"
+                    },
+                    "launch": true,
+                    "sha": "launch-build-cache-old-sha"
+                },
+                "launch-cache": {
+                    "cache": false,
+                    "data": {
+                        "launch-cache-key": "cache-specific-value",
+                        "cache-only-key": "cache-only-value"
+                    },
+                    "launch": true,
+                    "sha": "launch-cache-old-sha"
+                }
+            }
+        }
+    ]
+}
