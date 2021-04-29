@@ -40,8 +40,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
 		h.AssertNil(t, err)
 		logger := &log.Logger{Handler: &discard.Handler{}}
-		platform := platform.NewPlatform("0.7")
-		layerAnalyzer = lifecycle.NewLayerMetadataRestorer(logger, layerDir, platform, skipLayers)
+		layerAnalyzer = lifecycle.NewLayerMetadataRestorer(logger, layerDir, skipLayers)
 	})
 
 	it.After(func() {
