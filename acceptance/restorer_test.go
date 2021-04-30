@@ -113,12 +113,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithArgs(),
 				)
 
-				layerNames := []string{
-					"launch-layer",
-				}
-				for _, layerName := range layerNames {
-					assertLogsAndRestoresCacheMetadata(t, copyDir, output)
-				}
+				assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 			})
 
 		})
