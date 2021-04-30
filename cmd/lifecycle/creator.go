@@ -6,7 +6,9 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
@@ -144,36 +146,79 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
-	cmd.DefaultLogger.Phase("DETECTING")
-	group, plan, err := detectArgs{
-		buildpacksDir: c.buildpacksDir,
-		appDir:        c.appDir,
-		layersDir:     c.layersDir,
-		platform:      c.platform,
-		platformDir:   c.platformDir,
-		orderPath:     c.orderPath,
-	}.detect()
-	if err != nil {
-		return err
-	}
+	var (
+		analyzedMD platform.AnalyzedMetadata
+		group      buildpack.Group
+		plan       platform.BuildPlan
+	)
+	if api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0 {
+		cmd.DefaultLogger.Phase("ANALYZING")
+		analyzedMD, err = analyzeArgs{
+			imageName: c.previousImage,
+			keychain:  c.keychain,
+			layersDir: c.layersDir,
+			platform:  c.platform,
+			useDaemon: c.useDaemon,
+			docker:    c.docker,
+		}.analyze()
+		if err != nil {
+			return err
+		}
 
-	cmd.DefaultLogger.Phase("ANALYZING")
-	analyzedMD, err := analyzeArgs{
-		imageName:  c.previousImage,
-		keychain:   c.keychain,
-		layersDir:  c.layersDir,
-		platform:   c.platform,
-		skipLayers: c.skipRestore,
-		useDaemon:  c.useDaemon,
-		docker:     c.docker,
-	}.analyze(group, cacheStore)
-	if err != nil {
-		return err
+		cmd.DefaultLogger.Phase("DETECTING")
+		group, plan, err = detectArgs{
+			buildpacksDir: c.buildpacksDir,
+			appDir:        c.appDir,
+			layersDir:     c.layersDir,
+			platform:      c.platform,
+			platformDir:   c.platformDir,
+			orderPath:     c.orderPath,
+		}.detect()
+		if err != nil {
+			return err
+		}
+	} else {
+		cmd.DefaultLogger.Phase("DETECTING")
+		group, plan, err = detectArgs{
+			buildpacksDir: c.buildpacksDir,
+			appDir:        c.appDir,
+			layersDir:     c.layersDir,
+			platform:      c.platform,
+			platformDir:   c.platformDir,
+			orderPath:     c.orderPath,
+		}.detect()
+		if err != nil {
+			return err
+		}
+
+		cmd.DefaultLogger.Phase("ANALYZING")
+		analyzedMD, err = analyzeArgs{
+			imageName: c.previousImage,
+			keychain:  c.keychain,
+			layersDir: c.layersDir,
+			platform:  c.platform,
+			useDaemon: c.useDaemon,
+			docker:    c.docker,
+			platform06: analyzeArgsPlatform06{
+				skipLayers: c.skipRestore,
+				group:      group,
+				cache:      cacheStore,
+			},
+		}.analyze()
+		if err != nil {
+			return err
+		}
 	}
 
 	if !c.skipRestore {
 		cmd.DefaultLogger.Phase("RESTORING")
-		if err := restore(c.platform, c.layersDir, group, cacheStore); err != nil {
+		err := restoreArgs{
+			keychain:   c.keychain,
+			layersDir:  c.layersDir,
+			platform:   c.platform,
+			skipLayers: c.skipRestore,
+		}.restore(analyzedMD.Metadata, group, cacheStore)
+		if err != nil {
 			return err
 		}
 	}

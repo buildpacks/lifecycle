@@ -8,37 +8,38 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Restorer struct {
-	LayersDir  string
-	Buildpacks []buildpack.GroupBuildpack
-	Logger     Logger
+	LayersDir string
+	Logger    Logger
+
+	Buildpacks            []buildpack.GroupBuildpack
+	LayerMetadataRestorer LayerMetadataRestorer   // Platform API > 0.7
+	LayersMetadata        platform.LayersMetadata // Platform API > 0.7
+	Platform              cmd.Platform
 }
 
-// Restore attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
-// If a usable cache is not provided, Restore will remove all cache=true layer metadata.
+// Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
+// If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
-	// Create empty cache metadata in case a usable cache is not provided.
-	var meta platform.CacheMetadata
-	if cache != nil {
-		var err error
-		if !cache.Exists() {
-			r.Logger.Info("Layer cache not found")
+	cacheMeta, err := retrieveCacheMetadata(cache, r.Logger)
+	if err != nil {
+		return err
+	}
+
+	if r.restoresLayerMetadata() {
+		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta); err != nil {
+			return err
 		}
-		meta, err = cache.RetrieveMetadata()
-		if err != nil {
-			return errors.Wrapf(err, "retrieving cache metadata")
-		}
-	} else {
-		r.Logger.Debug("Usable cache not provided, using empty cache metadata.")
 	}
 
 	var g errgroup.Group
 	for _, buildpack := range r.Buildpacks {
-		cachedLayers := meta.MetadataForBuildpack(buildpack.ID).Layers
+		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 
 		var cachedFn func(bpLayer) bool
 		if api.MustParse(buildpack.API).Compare(api.MustParse("0.6")) >= 0 {
@@ -94,6 +95,10 @@ func (r *Restorer) Restore(cache Cache) error {
 		return errors.Wrap(err, "restoring data")
 	}
 	return nil
+}
+
+func (r *Restorer) restoresLayerMetadata() bool {
+	return api.MustParse(r.Platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
 
 func (r *Restorer) restoreLayer(cache Cache, sha string) error {
