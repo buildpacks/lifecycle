@@ -113,7 +113,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithArgs(),
 				)
 
-				assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+				h.AssertStringContains(t, output, "Restoring metadata for \"some-buildpack-id:launch-layer\"")
 			})
 
 		})
