@@ -33,7 +33,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		err       error
 	)
 
-	if a.Image != nil {
+	if a.Image != nil { // Image is optional in Platform API >= 0.7
 		imageID, err = a.getImageIdentifier(a.Image)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
