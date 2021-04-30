@@ -205,10 +205,16 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
+				imgArg := "some-image"
+				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
+				if api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0 {
+					imgArg = ""
+				}
+
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags("--env", "CNB_PLATFORM_API="+apiString),
-					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s some-image; ls -al /layers", analyzerPath)),
+					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers", analyzerPath, imgArg)),
 				)
 
 				h.AssertMatch(t, output, "2222 3333 .+ \\.")
@@ -655,6 +661,12 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("registry case", func() {
 			it("writes analyzed.toml", func() {
+				execArgs := []string{ctrPath(analyzerPath)}
+				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
+				if api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0 {
+					execArgs = append(execArgs, "some-image")
+				}
+
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -663,10 +675,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+apiString,
 					),
-					h.WithArgs(
-						ctrPath(analyzerPath),
-						"some-image",
-					),
+					h.WithArgs(execArgs...),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))

@@ -81,6 +81,8 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 			return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 		}
 		a.imageName = args[0]
+	} else if nargs != 0 {
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	if a.restoresLayerMetadata() {
