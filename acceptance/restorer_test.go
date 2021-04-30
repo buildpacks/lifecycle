@@ -35,12 +35,12 @@ func TestRestorer(t *testing.T) {
 	h.DockerBuild(t, restorerImage, restoreDockerContext)
 	defer h.DockerImageRemove(t, restorerImage)
 
-	for _, api := range api.Platform.Supported {
-		spec.Run(t, "acceptance-restorer/"+api.String(), testRestorerBuilder(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
+	for _, platformAPI := range api.Platform.Supported {
+		spec.Run(t, "acceptance-restorer/"+platformAPI.String(), testRestorerFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
 
-func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it spec.S) {
+func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		when("called with arguments", func() {
 			it("errors", func() {
@@ -54,7 +54,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("called with -analyzed", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API < 0.7 does not support -analyzed flag")
+				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API < 0.7 does not support -analyzed flag")
 				command := exec.Command("docker", "run", "--rm", restorerImage, "-analyzed some-file-location")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
@@ -65,7 +65,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("called with -skip-layers", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API < 0.7 does not support -analyzed flag")
+				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API < 0.7 does not support -analyzed flag")
 				command := exec.Command("docker", "run", "--rm", restorerImage, "-skip-layers true")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
@@ -76,7 +76,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 		when("called without any cache flag", func() {
 			it("outputs it will not restore cache layer data", func() {
-				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+apiString, restorerImage)
+				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restorerImage)
 				output, err := command.CombinedOutput()
 				h.AssertNil(t, err)
 				expected := "Not restoring cached layer data, no cache flag specified"
@@ -101,7 +101,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 			})
 
 			it("restores app metadata", func() {
-				h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not restore app metadata")
+				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not restore app metadata")
 				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -109,7 +109,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					restorerImage,
 					h.WithFlags(append(
 						dockerSocketMount,
-						"--env", "CNB_PLATFORM_API="+apiString,
+						"--env", "CNB_PLATFORM_API="+platformAPI,
 					)...),
 					h.WithArgs(),
 				)
@@ -148,7 +148,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						copyDir,
 						"/layers",
 						restorerImage,
-						h.WithFlags("--env", "CNB_PLATFORM_API="+apiString),
+						h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
 						h.WithArgs("-cache-dir", "/cache"),
 					)
 
@@ -168,7 +168,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						copyDir,
 						"/layers",
 						restorerImage,
-						h.WithFlags("--env", "CNB_PLATFORM_API="+apiString),
+						h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
 						h.WithArgs("-cache-dir", "/cache"),
 					)
 
@@ -186,7 +186,7 @@ func testRestorerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						copyDir,
 						"/layers",
 						restorerImage,
-						h.WithFlags("--env", "CNB_PLATFORM_API="+apiString),
+						h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
 						h.WithArgs("-cache-dir", "/cache"),
 					)
 
