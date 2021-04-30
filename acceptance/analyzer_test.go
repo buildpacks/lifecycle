@@ -78,7 +78,6 @@ func TestAnalyzer(t *testing.T) {
 		analyzeImage,
 		analyzeDockerContext,
 		h.WithFlags(
-			"--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest()),
 			"-f", filepath.Join(analyzeDockerContext, dockerfileName),
 		),
 	)
