@@ -3,7 +3,6 @@
 package acceptance
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
