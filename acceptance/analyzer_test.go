@@ -248,36 +248,28 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("analyzed path is provided", func() {
 			it("writes analyzed.toml at the provided path", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts an image argument")
-				h.DockerRunAndCopy(t,
-					containerName,
-					copyDir,
-					ctrPath("/some-dir/some-analyzed.toml"),
-					analyzeImage,
-					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
-					h.WithArgs(
-						ctrPath(analyzerPath),
-						"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-						"-previous-image", "some-image",
-					),
-				)
+				execArgs := []string{
+					ctrPath(analyzerPath),
+					"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
+					"-previous-image", "some-image",
+				}
 
-				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-analyzed.toml"))
-			})
-
-			it("writes analyzed.toml at the provided path", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept an image argument")
-				h.DockerRunAndCopy(t,
-					containerName,
-					copyDir,
-					ctrPath("/some-dir/some-analyzed.toml"),
-					analyzeImage,
-					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
-					h.WithArgs(
+				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
+				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+					execArgs = []string{
 						ctrPath(analyzerPath),
 						"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
 						"some-image",
-					),
+					}
+				}
+
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					ctrPath("/some-dir/some-analyzed.toml"),
+					analyzeImage,
+					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
+					h.WithArgs(execArgs...),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-analyzed.toml"))
@@ -286,28 +278,21 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("daemon case", func() {
 			it("writes analyzed.toml", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept an image argument")
-				h.DockerRunAndCopy(t,
-					containerName,
-					copyDir,
-					ctrPath("/layers/analyzed.toml"),
-					analyzeImage,
-					h.WithFlags(append(
-						dockerSocketMount,
-						"--env", "CNB_PLATFORM_API="+platformAPI,
-					)...),
-					h.WithArgs(
+				execArgs := []string{
+					ctrPath(analyzerPath),
+					"-daemon",
+					"-previous-image", "some-image",
+				}
+
+				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
+				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+					execArgs = []string{
 						ctrPath(analyzerPath),
 						"-daemon",
 						"some-image",
-					),
-				)
+					}
+				}
 
-				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-			})
-
-			it("writes analyzed.toml", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts an image argument")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -317,11 +302,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						dockerSocketMount,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 					)...),
-					h.WithArgs(
-						ctrPath(analyzerPath),
-						"-daemon",
-						"-previous-image", "some-image",
-					),
+					h.WithArgs(execArgs...),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -1006,9 +987,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.DockerCopyOut(t, containerName, ctrPath("/layers"), layersDir) // analyzed.toml is written at the working directory: /layers
 				assertAnalyzedMetadata(t, filepath.Join(layersDir, "analyzed.toml"))
 			})
-		})
 
-		when("layers path is provided", func() {
 			it("uses the group path at the layers path and writes analyzed.toml at the layers path", func() {
 				h.SkipIf(t,
 					api.MustParse(platformAPI).Compare(api.MustParse("0.5")) != 0 && api.MustParse(platformAPI).Compare(api.MustParse("0.6")) != 0,
