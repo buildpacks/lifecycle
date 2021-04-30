@@ -118,7 +118,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					"launch-layer",
 				}
 				for _, layerName := range layerNames {
-					h.AssertStringContains(t, output, fmt.Sprintf("Restoring metadata for \"some-buildpack-id:%s\"", layerName))
+					assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 				}
 			})
 
