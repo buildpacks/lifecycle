@@ -32,7 +32,7 @@ func TestAnalyzer(t *testing.T) {
 	}
 }
 
-func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it spec.S) {
+func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
 			cacheDir         string
@@ -76,7 +76,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 			analyzer = &lifecycle.Analyzer{
 				Image:    image,
 				Logger:   &discardLogger,
-				Platform: platform.NewPlatform(apiString),
+				Platform: platform.NewPlatform(platformAPI),
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
@@ -119,7 +119,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("restores layer metadata without the launch, build and cache flags", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -144,7 +144,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores layer metadata and preserves the values of the launch, build and cache flags in top level", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -160,7 +160,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("restores layer sha files", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -175,7 +175,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("does not restore layer sha files", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 restores layer metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 restores layer metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -191,7 +191,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("does not restore launch=false layer metadata", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -201,7 +201,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("does not restore build=true, cache=false layer metadata", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -215,7 +215,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores layers for detected buildpacks", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -228,7 +228,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not restore layers for undetected buildpacks", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -246,7 +246,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("restores each store metadata", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore store metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore store metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -272,7 +272,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores app and cache layer metadata without the launch, build and cache flags", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -294,7 +294,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores app and cache layer sha files, prefers app sha", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -313,7 +313,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not overwrite metadata from app image", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -331,7 +331,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not overwrite sha from app image", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -349,7 +349,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not restore cache=true layers for non-selected groups", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -358,7 +358,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not restore launch=true layer metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -368,7 +368,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not restore cache=false layer metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -378,7 +378,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores escaped buildpack layer metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -398,7 +398,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						})
 
 						it("restores layers for detected buildpacks", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 							_, err := analyzer.Analyze()
 							h.AssertNil(t, err)
@@ -411,7 +411,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						})
 
 						it("does not restore layers for undetected buildpacks", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 							_, err := analyzer.Analyze()
 							h.AssertNil(t, err)
@@ -430,7 +430,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 						})
 
 						it("restores app and cache layer metadata and preserves the values of the launch, build and cache flags", func() {
-							h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 							_, err := analyzer.Analyze()
 							h.AssertNil(t, err)
@@ -486,7 +486,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not write buildpack layer metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -507,7 +507,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores each store metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore store metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore store metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -540,7 +540,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("restores cache=true layer metadata without the launch, build and cache flags", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -555,7 +555,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not restore launch=true layer metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -566,7 +566,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not restore cache=false layer metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -585,7 +585,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 
 				when("cache is empty", func() {
 					it("does not restore any metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -610,7 +610,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 					})
 
 					it("does not restore any metadata", func() {
-						h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
@@ -636,7 +636,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("does not restore any metadata", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -659,7 +659,7 @@ func testAnalyzerBuilder(apiString string) func(t *testing.T, when spec.G, it sp
 				})
 
 				it("does not restore any metadata", func() {
-					h.SkipIf(t, api.MustParse(apiString).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore layer metadata")
 
 					_, err := analyzer.Analyze()
 					h.AssertNil(t, err)
