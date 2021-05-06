@@ -268,7 +268,7 @@ func lifecycleLayer() string {
 			log.Fatal("Error writing tar header:", err)
 		}
 		if hdr.Typeflag == tar.TypeReg {
-			_, err := io.Copy(ntw, ntr)
+			_, err := io.CopyN(ntw, ntr)
 			if err != nil {
 				log.Fatalf("Error writing contents for entry '%s': %s", hdr.Name, err)
 			}
