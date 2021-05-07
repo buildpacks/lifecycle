@@ -1,6 +1,7 @@
 ## Release Finalization
 
 To cut a release:
+
 1. Ensure the relevant spec APIs have been released
 1. Ensure any [migration guides](https://github.com/buildpacks/docs/tree/main/content/docs/reference/spec/migration) have been created.
 1. If applicable, ensure the README is updated with the latest supported apis (example PR: https://github.com/buildpacks/lifecycle/pull/550)

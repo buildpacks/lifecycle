@@ -6,10 +6,10 @@ import (
 	"compress/gzip"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"text/template"
 
 	"github.com/pkg/errors"
 
