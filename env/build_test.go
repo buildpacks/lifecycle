@@ -5,7 +5,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/api"
+	"github.com/golang/mock/gomock"
+
+	"github.com/buildpacks/lifecycle/env/testmock"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -20,69 +22,72 @@ func TestBuildEnv(t *testing.T) {
 }
 
 func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
-	when("#NewBuildEnv", func() {
-		when("platform API >= 0.8", func() {
-			var platformAPI *api.Version
-			it.Before(func() {
-				platformAPI = api.MustParse("0.8")
+	var (
+		mockController *gomock.Controller
+		platform       *testmock.MockPlatform
+	)
+	it.Before(func() {
+		mockController = gomock.NewController(t)
+		platform = testmock.NewMockPlatform(mockController)
+	})
+
+	when("#NewDetectEnv", func() {
+		it("always excludes CNB_ASSETS", func() {
+			benv := env.NewDetectEnv([]string{
+				"CNB_STACK_ID=some-stack-id",
+				"HOSTNAME=some-hostname",
+				"HOME=some-home",
+				"HTTPS_PROXY=some-https-proxy",
+				"https_proxy=some-https-proxy",
+				"HTTP_PROXY=some-http-proxy",
+				"http_proxy=some-http-proxy",
+				"NO_PROXY=some-no-proxy",
+				"no_proxy=some-no-proxy",
+				"NOT_INCLUDED=not-included",
+				"PATH=some-path",
+				"LD_LIBRARY_PATH=some-ld-library-path",
+				"LIBRARY_PATH=some-library-path",
+				"CPATH=some-cpath",
+				"PKG_CONFIG_PATH=some-pkg-config-path",
+				"CNB_ASSETS=some-assets-path",
 			})
-			it("can include CNB_ASSETS env var", func() {
-				benv := env.NewBuildEnv([]string{
-					"CNB_STACK_ID=some-stack-id",
-					"HOSTNAME=some-hostname",
-					"HOME=some-home",
-					"HTTPS_PROXY=some-https-proxy",
-					"https_proxy=some-https-proxy",
-					"HTTP_PROXY=some-http-proxy",
+			out := benv.List()
+			sort.Strings(out)
+			expectedVars := []string{
+				"CNB_STACK_ID=some-stack-id",
+				"CPATH=some-cpath",
+				"HOME=some-home",
+				"HOSTNAME=some-hostname",
+				"HTTPS_PROXY=some-https-proxy",
+				"HTTP_PROXY=some-http-proxy",
+				"LD_LIBRARY_PATH=some-ld-library-path",
+				"LIBRARY_PATH=some-library-path",
+				"NO_PROXY=some-no-proxy",
+				"PATH=some-path",
+				"PKG_CONFIG_PATH=some-pkg-config-path",
+			}
+			// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
+			if runtime.GOOS != "windows" {
+				expectedVars = append(
+					expectedVars,
 					"http_proxy=some-http-proxy",
-					"NO_PROXY=some-no-proxy",
+					"https_proxy=some-https-proxy",
 					"no_proxy=some-no-proxy",
-					"NOT_INCLUDED=not-included",
-					"PATH=some-path",
-					"LD_LIBRARY_PATH=some-ld-library-path",
-					"LIBRARY_PATH=some-library-path",
-					"CPATH=some-cpath",
-					"PKG_CONFIG_PATH=some-pkg-config-path",
-					"CNB_ASSETS=some-assets-path",
-				}, platformAPI)
-				out := benv.List()
-				sort.Strings(out)
-				expectedVars := []string{
-					"CNB_ASSETS=some-assets-path",
-					"CNB_STACK_ID=some-stack-id",
-					"CPATH=some-cpath",
-					"HOME=some-home",
-					"HOSTNAME=some-hostname",
-					"HTTPS_PROXY=some-https-proxy",
-					"HTTP_PROXY=some-http-proxy",
-					"LD_LIBRARY_PATH=some-ld-library-path",
-					"LIBRARY_PATH=some-library-path",
-					"NO_PROXY=some-no-proxy",
-					"PATH=some-path",
-					"PKG_CONFIG_PATH=some-pkg-config-path",
-				}
-				// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
-				if runtime.GOOS != "windows" {
-					expectedVars = append(
-						expectedVars,
-						"http_proxy=some-http-proxy",
-						"https_proxy=some-https-proxy",
-						"no_proxy=some-no-proxy",
-					)
-				}
-				if s := cmp.Diff(out, expectedVars); s != "" {
-					t.Fatalf("Unexpected env\n%s\n", s)
-				}
-			})
+				)
+			}
+			if s := cmp.Diff(out, expectedVars); s != "" {
+				t.Fatalf("Unexpected env\n%s\n", s)
+			}
 		})
-		when("platform API <0.8", func() {
-			var platformAPI *api.Version
+	})
+
+	when("#NewBuildEnv", func() {
+		when("platform is latest", func() {
 			it.Before(func() {
-				platformAPI = api.MustParse("0.7")
+				platform.EXPECT().SupportsAssetPackages().Return(true)
 			})
 			it("includes expected vars", func() {
 				benv := env.NewBuildEnv([]string{
-					"CNB_ASSETS=some-assets-path",
 					"CNB_STACK_ID=some-stack-id",
 					"HOSTNAME=some-hostname",
 					"HOME=some-home",
@@ -98,10 +103,12 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 					"LIBRARY_PATH=some-library-path",
 					"CPATH=some-cpath",
 					"PKG_CONFIG_PATH=some-pkg-config-path",
-				}, platformAPI)
+					"CNB_ASSETS=some-assets-path",
+				}, platform)
 				out := benv.List()
 				sort.Strings(out)
 				expectedVars := []string{
+					"CNB_ASSETS=some-assets-path",
 					"CNB_STACK_ID=some-stack-id",
 					"CPATH=some-cpath",
 					"HOME=some-home",
@@ -128,6 +135,40 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("allows keys with '='", func() {
+				benv := env.NewBuildEnv([]string{
+					"CNB_STACK_ID=included=true",
+				}, platform)
+				if s := cmp.Diff(benv.List(), []string{
+					"CNB_STACK_ID=included=true",
+				}); s != "" {
+					t.Fatalf("Unexpected env\n%s\n", s)
+				}
+			})
+
+			it("assign the build time root dir map", func() {
+				benv := env.NewBuildEnv([]string{}, platform)
+				if s := cmp.Diff(benv.RootDirMap, env.POSIXBuildEnv); s != "" {
+					t.Fatalf("Unexpected root dir map\n%s\n", s)
+				}
+			})
+		})
+		when("platform does not support asset packages", func() {
+			it.Before(func() {
+				platform.EXPECT().SupportsAssetPackages().Return(false)
+			})
+			it("does not include CNB_ASSETS env var", func() {
+				benv := env.NewBuildEnv([]string{
+					"CNB_ASSETS=some-assets-path",
+				}, platform)
+				out := benv.List()
+				sort.Strings(out)
+				var expectedVars []string
+				// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
+				if s := cmp.Diff(out, expectedVars); s != "" {
+					t.Fatalf("Unexpected env\n%s\n", s)
+				}
+			})
 		})
 
 		when("building in Windows", func() {
@@ -136,33 +177,14 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 					t.Skip("This test only applies to Windows builds")
 				}
 			})
-
 			it("ignores case when initializing", func() {
 				benv := env.NewBuildEnv([]string{
 					"Path=some-path",
-				}, api.MustParse("0.0"))
+				}, platform)
 				out := benv.List()
 				h.AssertEq(t, len(out), 1)
 				h.AssertEq(t, out[0], "PATH=some-path")
 			})
-		})
-
-		it("allows keys with '='", func() {
-			benv := env.NewBuildEnv([]string{
-				"CNB_STACK_ID=included=true",
-			}, api.MustParse("0.0"))
-			if s := cmp.Diff(benv.List(), []string{
-				"CNB_STACK_ID=included=true",
-			}); s != "" {
-				t.Fatalf("Unexpected env\n%s\n", s)
-			}
-		})
-
-		it("assign the build time root dir map", func() {
-			benv := env.NewBuildEnv([]string{}, api.MustParse("0.0"))
-			if s := cmp.Diff(benv.RootDirMap, env.POSIXBuildEnv); s != "" {
-				t.Fatalf("Unexpected root dir map\n%s\n", s)
-			}
 		})
 	})
 }

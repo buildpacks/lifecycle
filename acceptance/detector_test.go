@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -118,6 +119,61 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, failErr.ExitCode(), 20) // platform code for cmd.FailedDetect
 			expected := "No buildpack groups passed detection."
 			h.AssertStringContains(t, string(output), expected)
+		})
+	})
+
+	when("assets env var is set on the builder", func() {
+		var copyDir, containerName string
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+		})
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
+		it.Focus("does not appear in the detection environment", func() {
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
+				"/layers",
+				detectImage,
+				h.WithFlags("--user", userID,
+					"--env", "CNB_ORDER_PATH=/cnb/orders/env_print_order.toml",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					// CNB_ASSETS provided through testdata/Dockerfile
+				),
+				h.WithArgs(),
+			)
+
+			// check group.toml
+			tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
+			var buildpackGroup buildpack.Group
+			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
+			h.AssertNil(t, err)
+			h.AssertEq(t, buildpackGroup.Group[0].ID, "env_print_buildpack")
+			h.AssertEq(t, buildpackGroup.Group[0].Version, "env_print_buildpack_version")
+
+			// check plan.toml
+			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
+			var buildPlan platform.BuildPlan
+			_, err = toml.DecodeFile(tempPlanToml, &buildPlan)
+			h.AssertNil(t, err)
+			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "env_print_buildpack")
+			h.AssertEq(t, buildPlan.Entries[0].Providers[0].Version, "env_print_buildpack_version")
+			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Name, "some_requirement")
+			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["version"], "some_version")
+			envString, ok := buildPlan.Entries[0].Requires[0].Metadata["env"].(string)
+			fmt.Println("Using detect env")
+			fmt.Printf("ENV string: \n%s\n", envString)
+			h.AssertEq(t, ok, true)
+			h.AssertEq(t, false, strings.Contains(envString, "CNB_ASSETS"))
+
 		})
 	})
 

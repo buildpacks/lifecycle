@@ -3,8 +3,6 @@ package env
 import (
 	"runtime"
 	"strings"
-
-	"github.com/buildpacks/lifecycle/api"
 )
 
 var BuildEnvIncludelist = []string{
@@ -19,10 +17,18 @@ var BuildEnvIncludelist = []string{
 	"no_proxy",
 }
 
-// List of environment variables to be included for
-// particular platform API versions
-var BuildEnvIncludeAssets = []string{
-	"CNB_ASSETS", // will be included in the build env when platform API > 0.8
+//go:generate mockgen -package testmock -destination testmock/platform.go github.com/buildpacks/lifecycle/env Platform
+
+// Platform represents capabilities supported by the platform, it may be used to alter the env
+// to fit supported features.
+type Platform interface {
+	SupportsAssetPackages() bool
+}
+
+// AssetsEnvVars is a list of environment variables to be included for
+// asset packages
+var AssetsEnvVars = []string{
+	"CNB_ASSETS", // will be included in the build env when platform API >= 0.7
 }
 
 var ignoreEnvVarCase = runtime.GOOS == "windows"
@@ -30,21 +36,27 @@ var ignoreEnvVarCase = runtime.GOOS == "windows"
 // NewBuildEnv returns an build-time Env from the given environment.
 //
 // Keys in the BuildEnvIncludelist will be added to the Environment.
-// if platformAPI >= 0.8 keys from BuildEnvIncludeAssets will be added to the environment
-func NewBuildEnv(environ []string, platformAPI *api.Version) *Env {
+// if the platform supoprts asset packages keys from AssetsEnvVars will be added to the environment
+func NewBuildEnv(environ []string, platform Platform) *Env {
+	envFilter := composeFilters(inMatchList(BuildEnvIncludelist), inMatchList(flattenMap(POSIXBuildEnv)))
+	if platform.SupportsAssetPackages() {
+		envFilter = composeFilters(envFilter, inMatchList(AssetsEnvVars))
+	}
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		Vars:       varsFromEnv(environ, ignoreEnvVarCase, isNotIncludedForAPI(platformAPI)),
+		Vars:       varsFromEnv(environ, ignoreEnvVarCase, envFilter),
 	}
 }
 
-// NewBuildEnv returns an detect-time Env from the given environment.
+// NewDetectEnv returns an detect-time Env from the given environment.
 //
 // only keys in the BuildEnvIncludelist will be added to the Environment.
 func NewDetectEnv(environ []string) *Env {
+	envFilter := composeFilters(inMatchList(BuildEnvIncludelist), inMatchList(flattenMap(POSIXBuildEnv)))
+
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
-		Vars:       varsFromEnv(environ, ignoreEnvVarCase, isNotIncluded),
+		Vars:       varsFromEnv(environ, ignoreEnvVarCase, envFilter),
 	}
 }
 
@@ -54,42 +66,6 @@ func matches(k1, k2 string) bool {
 		k2 = strings.ToUpper(k2)
 	}
 	return k1 == k2
-}
-
-func isNotIncludedForAPI(platformAPI *api.Version) func(k string) bool {
-	if platformAPI.Compare(api.MustParse("0.8")) < 0 {
-		return isNotIncluded
-	}
-
-	return func(k string) bool {
-		return isNotIncluded(k) && isNotIncludedForAssets(k)
-	}
-}
-
-func isNotIncludedForAssets(k string) bool {
-	for _, wk := range BuildEnvIncludeAssets {
-		if matches(wk, k) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func isNotIncluded(k string) bool {
-	for _, wk := range BuildEnvIncludelist {
-		if matches(wk, k) {
-			return false
-		}
-	}
-	for _, wks := range POSIXBuildEnv {
-		for _, wk := range wks {
-			if matches(wk, k) {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 var POSIXBuildEnv = map[string][]string{
@@ -106,4 +82,42 @@ var POSIXBuildEnv = map[string][]string{
 	"pkgconfig": {
 		"PKG_CONFIG_PATH",
 	},
+}
+
+// removeFilter is generic function used to filter env vars out of the environment
+// if removeFilter(key) returns true, then the env var will be removed from the respective environment
+type removeFilter func(key string) bool
+
+func composeFilters(filters ...removeFilter) removeFilter {
+	return func(key string) bool {
+		for _, filter := range filters {
+			if !filter(key) {
+				return false
+			}
+		}
+
+		return true
+	}
+}
+
+func inMatchList(list []string) removeFilter {
+	return func(key string) bool {
+		for _, wk := range list {
+			if matches(wk, key) {
+				// keep in env
+				return false
+			}
+		}
+		// remove from env
+		return true
+	}
+}
+
+func flattenMap(m map[string][]string) []string {
+	result := make([]string, 0)
+	for _, subList := range m {
+		result = append(result, subList...)
+	}
+
+	return result
 }

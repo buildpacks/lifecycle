@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+plan_path=$2
+
+cat >> "${plan_path}" <<EOL
+[[provides]]
+name = "some_requirement"
+
+[[requires]]
+name = "some_requirement"
+[requires.metadata]
+version = "some_version"     # Optional
+EOL
+
+cat >> "${plan_path}" <<EOL
+env = """$(env)"""
+EOL

@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/api"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -80,9 +78,9 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("ignores case when initializing", func() {
-				benv := env.NewBuildEnv([]string{
+				benv := env.NewLaunchEnv([]string{
 					"Path=some-path",
-				}, api.MustParse("0.7"))
+				}, "", "")
 				out := benv.List()
 				h.AssertEq(t, len(out), 1)
 				h.AssertEq(t, out[0], "PATH=some-path")

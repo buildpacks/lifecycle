@@ -2,7 +2,7 @@ package v05
 
 import "github.com/buildpacks/lifecycle/cmd"
 
-var exitCodes = map[cmd.LifecycleExitError]int{
+var ExitCodes = map[cmd.LifecycleExitError]int{
 	// detect phase errors: 100-199
 	cmd.FailedDetect:           100, // FailedDetect indicates that no buildpacks detected
 	cmd.FailedDetectWithErrors: 101, // FailedDetectWithErrors indicated that no buildpacks detected and at least one errored
@@ -29,7 +29,7 @@ var exitCodes = map[cmd.LifecycleExitError]int{
 }
 
 func (p *Platform) CodeFor(errType cmd.LifecycleExitError) int {
-	if code, ok := exitCodes[errType]; ok {
+	if code, ok := ExitCodes[errType]; ok {
 		return code
 	}
 	return cmd.CodeFailed

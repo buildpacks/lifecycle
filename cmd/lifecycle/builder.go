@@ -89,7 +89,7 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		LayersDir:      ba.layersDir,
 		PlatformDir:    ba.platformDir,
 		PlatformAPI:    platformAPI,
-		Env:            env.NewBuildEnv(os.Environ(), platformAPI),
+		Env:            env.NewBuildEnv(os.Environ(), ba.platform),
 		Group:          group,
 		Plan:           plan,
 		Out:            cmd.Stdout,

@@ -11,3 +11,7 @@ func NewPlatform(apiStr string) *Platform {
 func (p *Platform) API() string {
 	return p.api
 }
+
+func (p *Platform) SupportsAssetPackages() bool {
+	return false
+}

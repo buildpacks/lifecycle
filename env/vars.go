@@ -1,6 +1,8 @@
 package env
 
-import "strings"
+import (
+	"strings"
+)
 
 type Vars struct {
 	vals       map[string]string
@@ -10,6 +12,9 @@ type Vars struct {
 func varsFromEnv(env []string, ignoreCase bool, removeKey func(string) bool) *Vars {
 	vars := NewVars(nil, ignoreCase)
 	for _, kv := range env {
+		//if strings.Contains(kv, "CNB_ASSETS") {
+		//	panic(fmt.Sprintf("key found: %s\n", kv))
+		//}
 		parts := strings.SplitN(kv, "=", 2)
 		if len(parts) != 2 {
 			continue
