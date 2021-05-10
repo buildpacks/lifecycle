@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/buildpacks/imgutil v0.0.0-20210426134414-c5ab3dea4e00
+	github.com/buildpacks/imgutil v0.0.0-20210510154637-009f91f52918
 	github.com/buildpacks/lifecycle v0.9.2
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
 	github.com/golang/mock v1.5.0
