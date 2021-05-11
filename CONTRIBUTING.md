@@ -25,7 +25,7 @@ Here are some topics that might be helpful in further understanding the lifecycl
   * Example platforms: [pack CLI](https://github.com/buildpack/pack), [Tekton](https://github.com/tektoncd/catalog/blob/master/task/buildpacks/0.1/README.md)
 * Cloud Native Buildpacks buildpack api spec
   * Example buildpack providers: [Google](https://github.com/GoogleCloudPlatform/buildpacks), [Heroku](https://www.heroku.com/), [Paketo](https://paketo.io/)
-* The Open Container Initiative (OCI) and (OCI image spec](https://github.com/opencontainers/image-spec)
+* The Open Container Initiative (OCI) and [OCI image spec](https://github.com/opencontainers/image-spec)
 * Questions to deepen understanding:
   * What are the different [lifecycle phases](https://buildpacks.io/docs/concepts/components/lifecycle/)? What is the purpose of each phase?
   * What is a [builder](https://buildpacks.io/docs/concepts/components/builder/)? Is it required to run the lifecycle?
