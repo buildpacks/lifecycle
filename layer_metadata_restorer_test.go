@@ -140,22 +140,24 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("restores layer metadata and preserves the values of the launch, build and cache flags in top level", func() {
-				buildpacks = []buildpack.GroupBuildpack{
-					{ID: "metadata.buildpack", API: "0.5"},
-					{ID: "no.cache.buildpack", API: "0.5"},
-				}
+			when("buildpack api < 0.6", func() {
+				it("restores layer metadata and preserves the values of the launch, build and cache flags in top level", func() {
+					buildpacks = []buildpack.GroupBuildpack{
+						{ID: "metadata.buildpack", API: "0.5"},
+						{ID: "no.cache.buildpack", API: "0.5"},
+					}
 
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
-				h.AssertNil(t, err)
+					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					h.AssertNil(t, err)
 
-				for _, data := range []struct{ name, want string }{
-					{"metadata.buildpack/launch.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  launch-key = \"launch-value\""},
-					{"no.cache.buildpack/some-layer.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  some-layer-key = \"some-layer-value\""},
-				} {
-					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
-					h.AssertStringContains(t, string(got), data.want)
-				}
+					for _, data := range []struct{ name, want string }{
+						{"metadata.buildpack/launch.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  launch-key = \"launch-value\""},
+						{"no.cache.buildpack/some-layer.toml", "build = false\nlaunch = true\ncache = false\n\n[metadata]\n  some-layer-key = \"some-layer-value\""},
+					} {
+						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+						h.AssertStringContains(t, string(got), data.want)
+					}
+				})
 			})
 
 			it("restores app and cache layer sha files, prefers app sha", func() {
@@ -173,24 +175,6 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 					h.AssertStringContains(t, string(got), data.want)
 				}
-			})
-
-			when("app and cache metadata are inconsistent with each other", func() { // cache was manipulated or deleted
-				it.Before(func() {
-					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_inconsistent_metadata.json"))
-					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
-				})
-
-				when("app metadata cache=true, cache metadata cache=false", func() {
-					it("treats the layer as cache=false", func() {
-						err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
-						h.AssertNil(t, err)
-
-						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache.toml"))
-						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-build-cache.toml"))
-						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache.toml"))
-					})
-				})
 			})
 
 			it("does not overwrite metadata from app image", func() {
@@ -285,6 +269,24 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 					got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
 					h.AssertStringContains(t, string(got), data.want)
 				}
+			})
+
+			when("app and cache metadata are inconsistent with each other", func() { // cache was manipulated or deleted
+				it.Before(func() {
+					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_inconsistent_metadata.json"))
+					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
+				})
+
+				when("app metadata cache=true, cache metadata cache=false", func() {
+					it("treats the layer as cache=false", func() {
+						err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+						h.AssertNil(t, err)
+
+						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache.toml"))
+						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-build-cache.toml"))
+						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache.toml"))
+					})
+				})
 			})
 
 			when("subset of buildpacks are detected", func() {

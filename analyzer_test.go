@@ -102,7 +102,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				ref                   *testmock.MockReference
 			)
 
-			metadataRestorerExpectations := func() {
+			expectRestoresLayerMetadataIfSupported := func() {
 				if api.MustParse(analyzer.Platform.API()).Compare(api.MustParse("0.7")) < 0 {
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata)
 				}
@@ -121,7 +121,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 
 				it("returns the analyzed metadata", func() {
-					metadataRestorerExpectations()
+					expectRestoresLayerMetadataIfSupported()
 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
@@ -138,7 +138,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						h.AssertNil(t, testCache.Commit())
 
 						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
-						metadataRestorerExpectations()
+						expectRestoresLayerMetadataIfSupported()
 					})
 
 					it("returns the analyzed metadata", func() {
@@ -153,7 +153,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			when("image not found", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.Delete())
-					metadataRestorerExpectations()
+					expectRestoresLayerMetadataIfSupported()
 				})
 
 				it("returns a nil image in the analyzed metadata", func() {
@@ -168,7 +168,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			when("image does not have metadata label", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
-					metadataRestorerExpectations()
+					expectRestoresLayerMetadataIfSupported()
 				})
 
 				it("returns empty analyzed metadata", func() {
@@ -181,7 +181,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			when("image has incompatible metadata", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
-					metadataRestorerExpectations()
+					expectRestoresLayerMetadataIfSupported()
 				})
 
 				it("returns empty analyzed metadata", func() {
