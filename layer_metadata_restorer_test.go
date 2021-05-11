@@ -175,7 +175,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("cache with inconsistent metadata exists", func() { // cache was manipulated or deleted
+			when("app and cache metadata are inconsistent with each other", func() { // cache was manipulated or deleted
 				it.Before(func() {
 					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_inconsistent_metadata.json"))
 					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
