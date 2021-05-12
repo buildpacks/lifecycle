@@ -12,6 +12,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -143,6 +144,40 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 			if s := cmp.Diff(actual, "ed649d0a36b2"); s != "" {
 				t.Fatalf("Unexpected sha:\n%s\n", s)
 			}
+		})
+	})
+
+	when("ResolveRunImage", func() {
+		when("there are no mirrors", func() {
+			it("should return run-image", func() {
+				md := platform.StackMetadata{RunImage: platform.StackRunImageMetadata{Image: "company/run:focal"}}
+				dstImage := "someregistry/whatever"
+				res, err := lifecycle.ResolveRunImage(md, dstImage)
+				h.AssertNil(t, err)
+				h.AssertEq(t, res, md.RunImage.Image)
+			})
+		})
+
+		when("there are mirrors", func() {
+			it("should return a run-image from the mirror matching the destination image", func() {
+				md := platform.StackMetadata{RunImage: platform.StackRunImageMetadata{
+					Image:   "company/run:focal",
+					Mirrors: []string{"some.registry/_/run:focal"},
+				}}
+				dstImage := "some.registry/app/web"
+				res, err := lifecycle.ResolveRunImage(md, dstImage)
+				h.AssertNil(t, err)
+				h.AssertEq(t, res, "some.registry/_/run:focal")
+			})
+		})
+
+		when("there is no run image defined", func() {
+			it("should fail", func() {
+				md := platform.StackMetadata{}
+				dstImage := "someregistry/whatever"
+				_, err := lifecycle.ResolveRunImage(md, dstImage)
+				h.AssertError(t, err, "a run image must be specified when there is no stack metadata available")
+			})
 		})
 	})
 }

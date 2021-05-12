@@ -62,6 +62,7 @@ const (
 	EnvSkipLayers          = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
 	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
 	EnvStackPath           = "CNB_STACK_PATH"
+	EnvStackID             = "CNB_STACK_ID"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 )

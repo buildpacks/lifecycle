@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -159,6 +161,10 @@ func (a *analyzeCmd) Exec() error {
 		}
 	}
 
+	if err := a.validateStack(); err != nil {
+		return cmd.FailErr(err, "validate stack")
+	}
+
 	analyzedMD, err := a.analyze()
 	if err != nil {
 		return err
@@ -207,6 +213,51 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	return analyzedMD, nil
 }
 
+func (a *analyzeCmd) validateStack() error {
+	if !a.supportsStackValidation() {
+		return nil
+	}
+
+	var stackMD platform.StackMetadata
+	if _, err := toml.DecodeFile(a.stackPath, &stackMD); err != nil && !os.IsNotExist(err) {
+		return cmd.FailErr(err, "get stack metadata")
+	}
+
+	runImage, err := a.getRunImage(stackMD)
+	if err != nil {
+		return cmd.FailErr(err, "resolve run image")
+	}
+
+	return lifecycle.ValidateStack(stackMD, runImage)
+}
+
+func (a *analyzeCmd) getRunImage(stackMD platform.StackMetadata) (imgutil.Image, error) {
+	if a.runImageRef == "" {
+		runImageRef, err := lifecycle.ResolveRunImage(stackMD, a.imageName)
+		if err != nil {
+			return nil, err
+		}
+		a.runImageRef = runImageRef
+	}
+
+	var runImage imgutil.Image
+	var err error
+	if a.useDaemon {
+		runImage, err = local.NewImage(
+			a.runImageRef,
+			a.docker,
+			local.FromBaseImage(a.runImageRef),
+		)
+	} else {
+		runImage, err = remote.NewImage(
+			a.runImageRef,
+			a.keychain,
+			remote.FromBaseImage(a.runImageRef),
+		)
+	}
+	return runImage, err
+}
+
 func (a *analyzeCmd) registryImages() []string {
 	var registryImages []string
 	if a.platform06.cacheImageTag != "" {
@@ -220,6 +271,10 @@ func (a *analyzeCmd) registryImages() []string {
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return !a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) supportsStackValidation() bool {
+	return a.platformAPIVersionGreaterThan06()
 }
 
 func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
