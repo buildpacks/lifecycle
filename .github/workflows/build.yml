@@ -49,23 +49,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.15'
-      - name: BUGFIX - Upgrade Docker CLI if 20.10.0
-        shell: powershell
-        env:
-          DOCKER_VERSION: 20.10.5
-        run: |
-          $dockerVersion=(docker version -f '{{.Client.Version}}')
-          if ($dockerVersion -ne "20.10.0") {
-            echo Newer docker version has been released: $dockerVersion
-            echo Remove this step if greater than: 20.10.5
-          }
-
-          $env:GOPATH="$env:USERPROFILE\go"
-          git clone -q --branch=v${env:DOCKER_VERSION} --single-branch https://github.com/docker/cli.git ${env:GOPATH}\src\github.com\docker\cli
-
-          cd ${env:GOPATH}\src\github.com\docker\cli
-          powershell -File .\scripts\make.ps1 -Binary
-          move .\build\docker.exe ${env:GOPATH}\bin\docker.exe
       - name: Add runner IP to daemon insecure-registries
         shell: powershell
         run: |
