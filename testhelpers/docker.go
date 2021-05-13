@@ -40,7 +40,7 @@ func DockerBuild(t *testing.T, name, context string, ops ...DockerCmdOp) {
 
 func DockerImageRemove(t *testing.T, name string) {
 	t.Helper()
-	Run(t, exec.Command("docker", "rmi", name))
+	Run(t, exec.Command("docker", "rmi", name)) // #nosec G204
 }
 
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
@@ -83,7 +83,7 @@ func DockerContainerExists(t *testing.T, containerName string) bool {
 }
 
 func DockerVolumeRemove(t *testing.T, volume string) {
-	Run(t, exec.Command("docker", "volume", "rm", volume))
+	Run(t, exec.Command("docker", "volume", "rm", volume)) // #nosec G204
 }
 
 func DockerVolumeExists(t *testing.T, volumeName string) bool {
@@ -123,7 +123,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 		"--name", containerName,
 		volumeHelperImage},
 		"true")...)) // #nosec G204
-	defer Run(t, exec.Command("docker", "rm", containerName))
+	defer Run(t, exec.Command("docker", "rm", containerName)) // #nosec G204
 
 	fis, err := ioutil.ReadDir(srcPath)
 	AssertNil(t, err)
