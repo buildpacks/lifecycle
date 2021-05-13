@@ -62,36 +62,46 @@ func (bom *BOMEntry) convertVersionToMetadata() {
 }
 
 func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error) {
+	config.Logger.Debugf("Running build for buildpack %s", b)
+
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
+		config.Logger.Debug("Updating buildpack plan entries")
+
 		for i := range bpPlan.Entries {
 			bpPlan.Entries[i].convertMetadataToVersion()
 		}
 	}
 
+	config.Logger.Debug("Creating plan directory")
 	planDir, err := ioutil.TempDir("", launch.EscapeID(b.Buildpack.ID)+"-")
 	if err != nil {
 		return BuildResult{}, err
 	}
 	defer os.RemoveAll(planDir)
 
+	config.Logger.Debug("Preparing paths")
 	bpLayersDir, bpPlanPath, err := preparePaths(b.Buildpack.ID, bpPlan, config.LayersDir, planDir)
 	if err != nil {
 		return BuildResult{}, err
 	}
 
+	config.Logger.Debug("Running build command")
 	if err := b.runBuildCmd(bpLayersDir, bpPlanPath, config); err != nil {
 		return BuildResult{}, err
 	}
 
+	config.Logger.Debug("Processing layers")
 	pathToLayerMetadataFile, err := b.processLayers(bpLayersDir, config.Logger)
 	if err != nil {
 		return BuildResult{}, err
 	}
 
+	config.Logger.Debug("Updating environment")
 	if err := b.setupEnv(pathToLayerMetadataFile, config.Env); err != nil {
 		return BuildResult{}, err
 	}
 
+	config.Logger.Debug("Reading output files")
 	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Logger)
 }
 

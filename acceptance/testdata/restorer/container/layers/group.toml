@@ -1,4 +1,9 @@
 [[group]]
+  id = "some-buildpack-id"
+  version = "some-buildpack-version"
+  api = "0.2"
+
+[[group]]
   id = "cacher_buildpack"
   version = "cacher_v1"
   api = "0.3"

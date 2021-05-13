@@ -137,7 +137,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("does not appear in the detection environment", func() {
-			h.DockerRun(t,
+			h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
 				"/layers",
@@ -156,7 +156,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			logs := h.Run(t, exec.Command("docker", "logs", containerName))
 			h.AssertStringDoesNotContain(t, logs, "CNB_ASSETS")
-			h.AssertStringContains(t, logs, "NO ASSETSS")
+			h.AssertStringContains(t, logs, "NO ASSETS")
 		})
 	})
 

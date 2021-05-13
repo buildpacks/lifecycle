@@ -12,30 +12,30 @@ import (
 	launch "github.com/buildpacks/lifecycle/launch"
 )
 
-// MockExecD is a mock of ExecD interface
+// MockExecD is a mock of ExecD interface.
 type MockExecD struct {
 	ctrl     *gomock.Controller
 	recorder *MockExecDMockRecorder
 }
 
-// MockExecDMockRecorder is the mock recorder for MockExecD
+// MockExecDMockRecorder is the mock recorder for MockExecD.
 type MockExecDMockRecorder struct {
 	mock *MockExecD
 }
 
-// NewMockExecD creates a new mock instance
+// NewMockExecD creates a new mock instance.
 func NewMockExecD(ctrl *gomock.Controller) *MockExecD {
 	mock := &MockExecD{ctrl: ctrl}
 	mock.recorder = &MockExecDMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockExecD) EXPECT() *MockExecDMockRecorder {
 	return m.recorder
 }
 
-// ExecD mocks base method
+// ExecD mocks base method.
 func (m *MockExecD) ExecD(arg0 string, arg1 launch.Env) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecD", arg0, arg1)
@@ -43,7 +43,7 @@ func (m *MockExecD) ExecD(arg0 string, arg1 launch.Env) error {
 	return ret0
 }
 
-// ExecD indicates an expected call of ExecD
+// ExecD indicates an expected call of ExecD.
 func (mr *MockExecDMockRecorder) ExecD(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecD", reflect.TypeOf((*MockExecD)(nil).ExecD), arg0, arg1)

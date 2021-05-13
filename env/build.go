@@ -19,7 +19,7 @@ var BuildEnvIncludelist = []string{
 
 //go:generate mockgen -package testmock -destination testmock/platform.go github.com/buildpacks/lifecycle/env Platform
 
-// Platform represents capabilities supported by the platform, it may be used to alter the env
+// Platform represents capabilities supported by the platform and may be used to alter the env
 // to fit supported features.
 type Platform interface {
 	SupportsAssetPackages() bool
@@ -37,9 +37,9 @@ var ignoreEnvVarCase = runtime.GOOS == "windows"
 // Keys in the BuildEnvIncludelist will be added to the Environment.
 // if the platform supports asset packages, keys from AssetsEnvVars will be added to the environment.
 func NewBuildEnv(environ []string, platform Platform) *Env {
-	envFilter := inMatchList(BuildEnvIncludelist, flattenMap(POSIXBuildEnv))
+	envFilter := isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv))
 	if platform.SupportsAssetPackages() {
-		envFilter = inMatchList(BuildEnvIncludelist, flattenMap(POSIXBuildEnv), AssetsEnvVars)
+		envFilter = isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv), AssetsEnvVars)
 	}
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
@@ -51,7 +51,7 @@ func NewBuildEnv(environ []string, platform Platform) *Env {
 //
 // only keys in the BuildEnvIncludelist will be added to the Environment.
 func NewDetectEnv(environ []string) *Env {
-	envFilter := inMatchList(append(BuildEnvIncludelist, flattenMap(POSIXBuildEnv)...))
+	envFilter := isNotMember(append(BuildEnvIncludelist, flattenMap(POSIXBuildEnv)...))
 
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
@@ -87,7 +87,7 @@ var POSIXBuildEnv = map[string][]string{
 // if removeFilter(key) returns true, then the env var will be removed from the respective environment
 type removeFilter func(key string) bool
 
-func inMatchList(lists ...[]string) removeFilter {
+func isNotMember(lists ...[]string) removeFilter {
 	return func(key string) bool {
 		for _, list := range lists {
 			for _, wk := range list {

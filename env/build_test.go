@@ -5,16 +5,14 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/env/testmock"
-
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/env/testmock"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-
-	"github.com/golang/mock/gomock"
 )
 
 func TestBuildEnv(t *testing.T) {
@@ -141,6 +139,7 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS != "windows" {
 					t.Skip("This test only applies to Windows builds")
 				}
+				platform.EXPECT().SupportsAssetPackages().Return(true)
 			})
 			it("ignores case when initializing", func() {
 				benv := env.NewBuildEnv([]string{

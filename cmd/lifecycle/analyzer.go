@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -20,62 +21,88 @@ import (
 
 type analyzeCmd struct {
 	//flags: inputs
-	cacheDir      string
-	cacheImageTag string
-	groupPath     string
-	uid, gid      int
 	analyzeArgs
+	uid, gid int
 
 	//flags: paths to write data
 	analyzedPath string
 }
 
 type analyzeArgs struct {
-	//inputs needed when run by creator
-	imageName  string
-	layersDir  string
-	skipLayers bool
-	useDaemon  bool
+	imageName   string
+	layersDir   string
+	orderPath   string //nolint - Platform API >= 0.7
+	runImageRef string //nolint - Platform API >= 0.7
+	stackPath   string //nolint - Platform API >= 0.7
+	useDaemon   bool
 
-	platform cmd.Platform
+	platform06     analyzeArgsPlatform06
+	additionalTags cmd.StringSlice        //nolint Platform API >= 0.7
+	docker         client.CommonAPIClient // construct if necessary before dropping privileges
+	keychain       authn.Keychain
+	platform       cmd.Platform
+}
 
-	//construct if necessary before dropping privileges
-	docker   client.CommonAPIClient
-	keychain authn.Keychain
+type analyzeArgsPlatform06 struct {
+	cacheDir      string
+	cacheImageTag string
+	groupPath     string
+	skipLayers    bool
+	cache         lifecycle.Cache
+	group         buildpack.Group
 }
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
-	cmd.FlagCacheDir(&a.cacheDir)
-	cmd.FlagCacheImage(&a.cacheImageTag)
-	cmd.FlagGroupPath(&a.groupPath)
 	cmd.FlagLayersDir(&a.layersDir)
-	cmd.FlagSkipLayers(&a.skipLayers)
+	if a.platformAPIVersionGreaterThan06() {
+		cmd.FlagOrderPath(&a.orderPath)
+		cmd.FlagPreviousImage(&a.imageName)
+		cmd.FlagRunImage(&a.runImageRef)
+		cmd.FlagStackPath(&a.stackPath)
+		cmd.FlagTags(&a.additionalTags)
+	} else {
+		cmd.FlagCacheImage(&a.platform06.cacheImageTag)
+		cmd.FlagCacheDir(&a.platform06.cacheDir)
+		cmd.FlagGroupPath(&a.platform06.groupPath)
+		cmd.FlagSkipLayers(&a.platform06.skipLayers)
+	}
 	cmd.FlagUseDaemon(&a.useDaemon)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagGID(&a.gid)
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+	if a.supportsImageArgument() {
+		if nargs != 1 {
+			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+		}
+		if args[0] == "" {
+			return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		}
+		a.imageName = args[0]
+	} else if nargs != 0 {
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
-	if args[0] == "" {
-		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
-	}
-	if a.cacheImageTag == "" && a.cacheDir == "" {
-		cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+
+	if a.restoresLayerMetadata() {
+		if a.platform06.cacheImageTag == "" && a.platform06.cacheDir == "" {
+			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
+		}
 	}
 
 	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
 		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platform.API(), a.layersDir)
 	}
 
-	if a.groupPath == cmd.PlaceholderGroupPath {
-		a.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
+	if a.platform06.groupPath == cmd.PlaceholderGroupPath {
+		a.platform06.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
 	}
 
-	a.imageName = args[0]
+	if a.orderPath == cmd.PlaceholderOrderPath {
+		a.orderPath = cmd.DefaultOrderPath(a.platform.API(), a.layersDir)
+	}
+
 	return nil
 }
 
@@ -93,7 +120,7 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.cacheDir); err != nil {
+	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.platform06.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err := priv.RunAs(a.uid, a.gid); err != nil {
@@ -103,20 +130,35 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(a.groupPath)
-	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
-	}
-	if err := verifyBuildpackApis(group); err != nil {
-		return err
+	var (
+		group      buildpack.Group
+		err        error
+		cacheStore lifecycle.Cache
+	)
+	if a.restoresLayerMetadata() {
+		group, err = lifecycle.ReadGroup(a.platform06.groupPath)
+		if err != nil {
+			return cmd.FailErr(err, "read buildpack group")
+		}
+		if err := verifyBuildpackApis(group); err != nil {
+			return err
+		}
+		cacheStore, err = initCache(a.platform06.cacheImageTag, a.platform06.cacheDir, a.keychain)
+		if err != nil {
+			return cmd.FailErr(err, "initialize cache")
+		}
+		a.platform06.group = group
+		a.platform06.cache = cacheStore
 	}
 
-	cacheStore, err := initCache(a.cacheImageTag, a.cacheDir, a.keychain)
-	if err != nil {
-		return cmd.FailErr(err, "initialize cache")
+	if a.orderPath != "" {
+		_, err := lifecycle.ReadOrder(a.orderPath)
+		if err != nil {
+			return cmd.FailErr(err, "read buildpack order file")
+		}
 	}
 
-	analyzedMD, err := a.analyze(group, cacheStore)
+	analyzedMD, err := a.analyze()
 	if err != nil {
 		return err
 	}
@@ -128,34 +170,38 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache) (platform.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
 	)
-	if aa.useDaemon {
-		img, err = local.NewImage(
-			aa.imageName,
-			aa.docker,
-			local.FromBaseImage(aa.imageName),
-		)
-	} else {
-		img, err = remote.NewImage(
-			aa.imageName,
-			aa.keychain,
-			remote.FromBaseImage(aa.imageName),
-		)
-	}
-	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+	if aa.imageName != "" {
+		if aa.useDaemon {
+			img, err = local.NewImage(
+				aa.imageName,
+				aa.docker,
+				local.FromBaseImage(aa.imageName),
+			)
+		} else {
+			img, err = remote.NewImage(
+				aa.imageName,
+				aa.keychain,
+				remote.FromBaseImage(aa.imageName),
+			)
+		}
+		if err != nil {
+			return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+		}
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks: group.Group,
-		LayersDir:  aa.layersDir,
-		Logger:     cmd.DefaultLogger,
-		SkipLayers: aa.skipLayers,
-	}).Analyze(img, cacheStore)
+		Buildpacks:            aa.platform06.group.Group,
+		Cache:                 aa.platform06.cache,
+		Logger:                cmd.DefaultLogger,
+		Platform:              aa.platform,
+		Image:                 img,
+		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
+	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
 	}
@@ -164,11 +210,23 @@ func (aa analyzeArgs) analyze(group buildpack.Group, cacheStore lifecycle.Cache)
 
 func (a *analyzeCmd) registryImages() []string {
 	var registryImages []string
-	if a.cacheImageTag != "" {
-		registryImages = append(registryImages, a.cacheImageTag)
+	if a.platform06.cacheImageTag != "" {
+		registryImages = append(registryImages, a.platform06.cacheImageTag)
 	}
 	if !a.useDaemon {
 		registryImages = append(registryImages, a.analyzeArgs.imageName)
 	}
 	return registryImages
+}
+
+func (a *analyzeCmd) restoresLayerMetadata() bool {
+	return !a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) supportsImageArgument() bool {
+	return !a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
+	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
