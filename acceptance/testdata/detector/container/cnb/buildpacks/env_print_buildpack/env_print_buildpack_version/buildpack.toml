@@ -1,5 +1,0 @@
-api = "0.3"
-[buildpack]
-id = "env_print_buildpack"
-version = "env_print_buildpack_version"
-name = "Env Print Buildpack"

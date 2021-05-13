@@ -1,17 +1,13 @@
 package v06
 
+import v05 "github.com/buildpacks/lifecycle/platform/v05"
+
 type Platform struct {
-	api string
+	*v05.Platform
 }
 
 func NewPlatform(apiStr string) *Platform {
-	return &Platform{api: apiStr}
-}
-
-func (p *Platform) API() string {
-	return p.api
-}
-
-func (p *Platform) SupportsAssetPackages() bool {
-	return false
+	return &Platform{
+		Platform: v05.NewPlatform(apiStr),
+	}
 }

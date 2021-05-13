@@ -216,7 +216,7 @@ unit: GOTESTFLAGS:=$(GOTESTFLAGS) -coverprofile=./out/tests/coverage-unit.txt -c
 endif
 unit: out
 unit: UNIT_PACKAGES=$(shell $(GOCMD) list ./... | grep -v acceptance)
-unit: format lint tidy install-yj
+unit: format tidy install-yj
 	@echo "> Running unit tests..."
 	$(GOTEST) $(GOTESTFLAGS) -v -count=1 $(UNIT_PACKAGES)
 
@@ -224,7 +224,7 @@ out:
 	@mkdir out || (exit 0)
 	mkdir out$/tests || (exit 0)
 
-acceptance: format lint tidy
+acceptance: format tidy
 	@echo "> Running acceptance tests..."
 	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 

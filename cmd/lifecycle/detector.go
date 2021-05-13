@@ -90,6 +90,7 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 
 	envv := env.NewDetectEnv(os.Environ())
 	fullEnv, err := envv.WithPlatform(da.platformDir)
+	fmt.Println("cools")
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read full env")
 	}

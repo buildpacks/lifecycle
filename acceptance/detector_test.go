@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -137,43 +136,27 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			os.RemoveAll(copyDir)
 		})
 
-		it.Focus("does not appear in the detection environment", func() {
-			h.DockerRunAndCopy(t,
+		it("does not appear in the detection environment", func() {
+			h.DockerRun(t,
 				containerName,
 				copyDir,
 				"/layers",
 				detectImage,
 				h.WithFlags("--user", userID,
-					"--env", "CNB_ORDER_PATH=/cnb/orders/env_print_order.toml",
+					"--env", "CNB_ORDER_PATH=/cnb/orders/always_detect_order.toml",
+					"--env", "CNB_BUILDPACKS_DIR=/cnb/custom_buildpacks",
+					"--env", "CNB_APP_DIR=/custom_workspace",
+					"--env", "CNB_GROUP_PATH=./custom_group.toml",
+					"--env", "CNB_PLAN_PATH=./custom_plan.toml",
+					"--env", "CNB_PLATFORM_DIR=/custom_platform",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					// CNB_ASSETS provided through testdata/Dockerfile
 				),
-				h.WithArgs(),
+				h.WithArgs("-log-level=debug"),
 			)
 
-			// check group.toml
-			tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
-			var buildpackGroup buildpack.Group
-			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
-			h.AssertNil(t, err)
-			h.AssertEq(t, buildpackGroup.Group[0].ID, "env_print_buildpack")
-			h.AssertEq(t, buildpackGroup.Group[0].Version, "env_print_buildpack_version")
-
-			// check plan.toml
-			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
-			var buildPlan platform.BuildPlan
-			_, err = toml.DecodeFile(tempPlanToml, &buildPlan)
-			h.AssertNil(t, err)
-			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "env_print_buildpack")
-			h.AssertEq(t, buildPlan.Entries[0].Providers[0].Version, "env_print_buildpack_version")
-			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Name, "some_requirement")
-			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["version"], "some_version")
-			envString, ok := buildPlan.Entries[0].Requires[0].Metadata["env"].(string)
-			fmt.Println("Using detect env")
-			fmt.Printf("ENV string: \n%s\n", envString)
-			h.AssertEq(t, ok, true)
-			h.AssertEq(t, false, strings.Contains(envString, "CNB_ASSETS"))
-
+			logs := h.Run(t, exec.Command("docker", "logs", containerName))
+			h.AssertStringDoesNotContain(t, logs, "CNB_ASSETS")
+			h.AssertStringContains(t, logs, "NO ASSETSS")
 		})
 	})
 

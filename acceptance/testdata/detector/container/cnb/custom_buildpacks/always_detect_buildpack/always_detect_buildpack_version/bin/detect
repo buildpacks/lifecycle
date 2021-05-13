@@ -3,5 +3,13 @@
 ## always detect
 
 platform_path=$1
+if [ -z "${CNB_ASSETS}" ]; then
+  echo "NO ASSETS"
+else
+  echo "CNB_ASSETS=${CNB_ASSETS}"
+fi
+echo "ENV"
+env
+
 echo "platform_path: $platform_path"
 echo "app_dir: $(pwd)"

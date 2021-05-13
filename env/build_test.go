@@ -5,8 +5,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/golang/mock/gomock"
-
 	"github.com/buildpacks/lifecycle/env/testmock"
 
 	"github.com/google/go-cmp/cmp"
@@ -15,6 +13,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/env"
 	h "github.com/buildpacks/lifecycle/testhelpers"
+
+	"github.com/golang/mock/gomock"
 )
 
 func TestBuildEnv(t *testing.T) {
@@ -34,47 +34,12 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 	when("#NewDetectEnv", func() {
 		it("always excludes CNB_ASSETS", func() {
 			benv := env.NewDetectEnv([]string{
-				"CNB_STACK_ID=some-stack-id",
-				"HOSTNAME=some-hostname",
-				"HOME=some-home",
-				"HTTPS_PROXY=some-https-proxy",
-				"https_proxy=some-https-proxy",
-				"HTTP_PROXY=some-http-proxy",
-				"http_proxy=some-http-proxy",
-				"NO_PROXY=some-no-proxy",
-				"no_proxy=some-no-proxy",
-				"NOT_INCLUDED=not-included",
-				"PATH=some-path",
-				"LD_LIBRARY_PATH=some-ld-library-path",
-				"LIBRARY_PATH=some-library-path",
-				"CPATH=some-cpath",
-				"PKG_CONFIG_PATH=some-pkg-config-path",
 				"CNB_ASSETS=some-assets-path",
 			})
 			out := benv.List()
 			sort.Strings(out)
-			expectedVars := []string{
-				"CNB_STACK_ID=some-stack-id",
-				"CPATH=some-cpath",
-				"HOME=some-home",
-				"HOSTNAME=some-hostname",
-				"HTTPS_PROXY=some-https-proxy",
-				"HTTP_PROXY=some-http-proxy",
-				"LD_LIBRARY_PATH=some-ld-library-path",
-				"LIBRARY_PATH=some-library-path",
-				"NO_PROXY=some-no-proxy",
-				"PATH=some-path",
-				"PKG_CONFIG_PATH=some-pkg-config-path",
-			}
+			var expectedVars []string
 			// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
-			if runtime.GOOS != "windows" {
-				expectedVars = append(
-					expectedVars,
-					"http_proxy=some-http-proxy",
-					"https_proxy=some-https-proxy",
-					"no_proxy=some-no-proxy",
-				)
-			}
 			if s := cmp.Diff(out, expectedVars); s != "" {
 				t.Fatalf("Unexpected env\n%s\n", s)
 			}

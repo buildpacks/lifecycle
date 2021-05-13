@@ -25,8 +25,7 @@ type Platform interface {
 	SupportsAssetPackages() bool
 }
 
-// AssetsEnvVars is a list of environment variables to be included for
-// asset packages
+// AssetsEnvVars is a list of environment variables to be included in order to support asset packages.
 var AssetsEnvVars = []string{
 	"CNB_ASSETS", // will be included in the build env when platform API >= 0.7
 }
@@ -36,11 +35,11 @@ var ignoreEnvVarCase = runtime.GOOS == "windows"
 // NewBuildEnv returns an build-time Env from the given environment.
 //
 // Keys in the BuildEnvIncludelist will be added to the Environment.
-// if the platform supoprts asset packages keys from AssetsEnvVars will be added to the environment
+// if the platform supports asset packages, keys from AssetsEnvVars will be added to the environment.
 func NewBuildEnv(environ []string, platform Platform) *Env {
-	envFilter := composeFilters(inMatchList(BuildEnvIncludelist), inMatchList(flattenMap(POSIXBuildEnv)))
+	envFilter := inMatchList(BuildEnvIncludelist, flattenMap(POSIXBuildEnv))
 	if platform.SupportsAssetPackages() {
-		envFilter = composeFilters(envFilter, inMatchList(AssetsEnvVars))
+		envFilter = inMatchList(BuildEnvIncludelist, flattenMap(POSIXBuildEnv), AssetsEnvVars)
 	}
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
@@ -52,7 +51,7 @@ func NewBuildEnv(environ []string, platform Platform) *Env {
 //
 // only keys in the BuildEnvIncludelist will be added to the Environment.
 func NewDetectEnv(environ []string) *Env {
-	envFilter := composeFilters(inMatchList(BuildEnvIncludelist), inMatchList(flattenMap(POSIXBuildEnv)))
+	envFilter := inMatchList(append(BuildEnvIncludelist, flattenMap(POSIXBuildEnv)...))
 
 	return &Env{
 		RootDirMap: POSIXBuildEnv,
@@ -88,27 +87,16 @@ var POSIXBuildEnv = map[string][]string{
 // if removeFilter(key) returns true, then the env var will be removed from the respective environment
 type removeFilter func(key string) bool
 
-func composeFilters(filters ...removeFilter) removeFilter {
+func inMatchList(lists ...[]string) removeFilter {
 	return func(key string) bool {
-		for _, filter := range filters {
-			if !filter(key) {
-				return false
+		for _, list := range lists {
+			for _, wk := range list {
+				if matches(wk, key) {
+					// keep in env
+					return false
+				}
 			}
 		}
-
-		return true
-	}
-}
-
-func inMatchList(list []string) removeFilter {
-	return func(key string) bool {
-		for _, wk := range list {
-			if matches(wk, key) {
-				// keep in env
-				return false
-			}
-		}
-		// remove from env
 		return true
 	}
 }
