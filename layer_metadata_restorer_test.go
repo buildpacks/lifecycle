@@ -160,6 +160,28 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("buildpack api >= 0.6", func() {
+				it("restores layer metadata without the launch, build and cache flags", func() {
+					buildpacks = []buildpack.GroupBuildpack{
+						{ID: "metadata.buildpack", API: "0.6"},
+						{ID: "no.cache.buildpack", API: "0.6"},
+					}
+
+					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					h.AssertNil(t, err)
+
+					unsetFlags := "[types]"
+					for _, data := range []struct{ name, want string }{
+						{"metadata.buildpack/launch.toml", "[metadata]\n  launch-key = \"launch-value\""},
+						{"no.cache.buildpack/some-layer.toml", "[metadata]\n  some-layer-key = \"some-layer-value\""},
+					} {
+						got := h.MustReadFile(t, filepath.Join(layerDir, data.name))
+						h.AssertStringContains(t, string(got), data.want)
+						h.AssertStringDoesNotContain(t, string(got), unsetFlags) // The [types] table shouldn't exist. The build, cache and launch flags are set to false.
+					}
+				})
+			})
+
 			it("restores app and cache layer sha files, prefers app sha", func() {
 				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
 				h.AssertNil(t, err)
