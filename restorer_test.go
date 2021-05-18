@@ -63,6 +63,8 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 				discardLogger := log.Logger{Handler: &discard.Handler{}}
 
+				p, err := platform.NewPlatform(platformAPI)
+				h.AssertNil(t, err)
 				restorer = &lifecycle.Restorer{
 					LayersDir: layersDir,
 					Logger:    &discardLogger,
@@ -71,7 +73,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						{ID: "escaped/buildpack/id", API: buildpackAPI},
 					},
 					LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&discardLogger, layersDir, skipLayers),
-					Platform:              platform.NewPlatform(platformAPI),
+					Platform:              p,
 				}
 
 				if testing.Verbose() {

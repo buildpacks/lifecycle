@@ -1,13 +1,22 @@
 package v06
 
-import v05 "github.com/buildpacks/lifecycle/platform/v05"
+import (
+	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform/common"
+)
 
 type Platform struct {
-	*v05.Platform
+	api *api.Version
+	common.Platform
 }
 
-func NewPlatform(apiStr string) *Platform {
+func NewPlatform(prevPlatform common.Platform) *Platform {
 	return &Platform{
-		Platform: v05.NewPlatform(apiStr),
+		api: api.MustParse("0.6"),
+		Platform: prevPlatform,
 	}
+}
+
+func (p *Platform) API() string {
+	return p.api.String()
 }
