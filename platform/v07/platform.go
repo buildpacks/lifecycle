@@ -5,7 +5,6 @@ import (
 	"github.com/buildpacks/lifecycle/platform/common"
 )
 
-
 type Platform struct {
 	api *api.Version
 	common.Platform
@@ -13,7 +12,7 @@ type Platform struct {
 
 func NewPlatform(prevPlatform common.Platform) *Platform {
 	return &Platform{
-		api: api.MustParse("0.7"),
+		api:      api.MustParse("0.7"),
 		Platform: prevPlatform,
 	}
 }

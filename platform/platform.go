@@ -2,6 +2,7 @@ package platform
 
 import (
 	"fmt"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/common"
 	v05 "github.com/buildpacks/lifecycle/platform/v05"
@@ -13,7 +14,7 @@ var platform05 = v05.NewPlatform()
 var platform06 = v06.NewPlatform(platform05)
 var platform07 = v07.NewPlatform(platform06)
 
-var platformMap = map[string]common.Platform {
+var platformMap = map[string]common.Platform{
 	"0.5": platform05,
 	"0.6": platform06,
 	"0.7": platform07,

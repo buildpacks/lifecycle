@@ -12,7 +12,7 @@ type Platform struct {
 
 func NewPlatform(prevPlatform common.Platform) *Platform {
 	return &Platform{
-		api: api.MustParse("0.6"),
+		api:      api.MustParse("0.6"),
 		Platform: prevPlatform,
 	}
 }

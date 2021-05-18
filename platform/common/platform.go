@@ -9,4 +9,3 @@ type Platform interface {
 	CodeFor(errType cmd.LifecycleExitError) int
 	SupportsAssetPackages() bool
 }
-

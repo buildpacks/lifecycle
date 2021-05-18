@@ -20,7 +20,7 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	platform,err := lplatform.NewPlatform(platformAPI)
+	platform, err := lplatform.NewPlatform(platformAPI)
 	if err != nil {
 		cmd.Exit(err)
 	}
