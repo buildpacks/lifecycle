@@ -1,4 +1,4 @@
-package v05
+package pre06
 
 import "github.com/buildpacks/lifecycle/cmd"
 
