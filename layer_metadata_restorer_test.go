@@ -163,8 +163,8 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("buildpack api >= 0.6", func() {
 				it("restores layer metadata without the launch, build and cache flags", func() {
 					buildpacks = []buildpack.GroupBuildpack{
-						{ID: "metadata.buildpack", API: "0.6"},
-						{ID: "no.cache.buildpack", API: "0.6"},
+						{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
+						{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 					}
 
 					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
