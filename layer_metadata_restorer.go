@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
+//go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle LayerMetadataRestorer
 type LayerMetadataRestorer interface {
 	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata) error
 }
