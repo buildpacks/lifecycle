@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -16,6 +17,7 @@ import (
 	"github.com/BurntSushi/toml"
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -33,7 +35,7 @@ var (
 	cacheFixtureDir      = filepath.Join("testdata", "analyzer", "cache-dir")
 	daemonOS             string
 	noAuthRegistry       *ih.DockerRegistry
-	registry             *ih.DockerRegistry
+	authRegistry         *ih.DockerRegistry
 	registryNetwork      string
 )
 
@@ -50,26 +52,26 @@ func TestAnalyzer(t *testing.T) {
 	h.AssertNil(t, err)
 	defer os.RemoveAll(dockerConfigDir)
 
-	regVolumeID := "test-registry-volume-" + h.RandString(10)
-	registry = ih.NewDockerRegistry(ih.WithAuth(dockerConfigDir), ih.WithSharedStorageVolume(regVolumeID))
-	registry.Start(t)
-	defer registry.Stop(t)
+	sharedRegHandler := registry.New(registry.Logger(log.New(ioutil.Discard, "", log.Lshortfile)))
+	authRegistry = ih.NewDockerRegistry(ih.WithAuth(dockerConfigDir), ih.WithSharedHandler(sharedRegHandler))
+	authRegistry.Start(t)
+	defer authRegistry.Stop(t)
 
-	noAuthRegistry = ih.NewDockerRegistry(ih.WithSharedStorageVolume(regVolumeID))
+	noAuthRegistry = ih.NewDockerRegistry(ih.WithSharedHandler(sharedRegHandler))
 	noAuthRegistry.Start(t)
 	defer noAuthRegistry.Stop(t)
 
 	// if registry is listening on localhost, use host networking to allow containers to reach it
 	registryNetwork = "default"
-	if registry.Host == "localhost" {
+	if authRegistry.Host == "localhost" {
 		registryNetwork = "host"
 	}
 
-	os.Setenv("DOCKER_CONFIG", registry.DockerDirectory)
+	os.Setenv("DOCKER_CONFIG", authRegistry.DockerDirectory)
 	// Copy docker config directory to analyze-image container
 	targetDockerConfig := filepath.Join("testdata", "analyzer", "analyze-image", "container", "docker-config")
 	h.AssertNil(t, os.RemoveAll(filepath.Join(targetDockerConfig, "config.json")))
-	h.RecursiveCopy(t, registry.DockerDirectory, targetDockerConfig)
+	h.RecursiveCopy(t, authRegistry.DockerDirectory, targetDockerConfig)
 
 	// Setup test container
 
@@ -1030,11 +1032,11 @@ func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) strin
 
 func buildAuthRegistryImage(t *testing.T, repoName, context string, buildArgs ...string) (string, string) {
 	// Build image
-	regRepoName := registry.RepoName(repoName)
+	regRepoName := authRegistry.RepoName(repoName)
 	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
 
 	// Push image
-	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, registry.EncodedLabeledAuth()))
+	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, authRegistry.EncodedLabeledAuth()))
 
 	// Setup auth
 	authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, regRepoName)
