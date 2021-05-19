@@ -12,30 +12,30 @@ import (
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 )
 
-// MockBuildpack is a mock of Buildpack interface
+// MockBuildpack is a mock of Buildpack interface.
 type MockBuildpack struct {
 	ctrl     *gomock.Controller
 	recorder *MockBuildpackMockRecorder
 }
 
-// MockBuildpackMockRecorder is the mock recorder for MockBuildpack
+// MockBuildpackMockRecorder is the mock recorder for MockBuildpack.
 type MockBuildpackMockRecorder struct {
 	mock *MockBuildpack
 }
 
-// NewMockBuildpack creates a new mock instance
+// NewMockBuildpack creates a new mock instance.
 func NewMockBuildpack(ctrl *gomock.Controller) *MockBuildpack {
 	mock := &MockBuildpack{ctrl: ctrl}
 	mock.recorder = &MockBuildpackMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockBuildpack) EXPECT() *MockBuildpackMockRecorder {
 	return m.recorder
 }
 
-// Build mocks base method
+// Build mocks base method.
 func (m *MockBuildpack) Build(arg0 buildpack.Plan, arg1 buildpack.BuildConfig) (buildpack.BuildResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Build", arg0, arg1)
@@ -44,13 +44,13 @@ func (m *MockBuildpack) Build(arg0 buildpack.Plan, arg1 buildpack.BuildConfig) (
 	return ret0, ret1
 }
 
-// Build indicates an expected call of Build
+// Build indicates an expected call of Build.
 func (mr *MockBuildpackMockRecorder) Build(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockBuildpack)(nil).Build), arg0, arg1)
 }
 
-// ConfigFile mocks base method
+// ConfigFile mocks base method.
 func (m *MockBuildpack) ConfigFile() *buildpack.Descriptor {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConfigFile")
@@ -58,13 +58,13 @@ func (m *MockBuildpack) ConfigFile() *buildpack.Descriptor {
 	return ret0
 }
 
-// ConfigFile indicates an expected call of ConfigFile
+// ConfigFile indicates an expected call of ConfigFile.
 func (mr *MockBuildpackMockRecorder) ConfigFile() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFile", reflect.TypeOf((*MockBuildpack)(nil).ConfigFile))
 }
 
-// Detect mocks base method
+// Detect mocks base method.
 func (m *MockBuildpack) Detect(arg0 *buildpack.DetectConfig) buildpack.DetectRun {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Detect", arg0)
@@ -72,7 +72,7 @@ func (m *MockBuildpack) Detect(arg0 *buildpack.DetectConfig) buildpack.DetectRun
 	return ret0
 }
 
-// Detect indicates an expected call of Detect
+// Detect indicates an expected call of Detect.
 func (mr *MockBuildpackMockRecorder) Detect(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detect", reflect.TypeOf((*MockBuildpack)(nil).Detect), arg0)

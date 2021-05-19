@@ -12,30 +12,30 @@ import (
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 )
 
-// MockBuildpackStore is a mock of BuildpackStore interface
+// MockBuildpackStore is a mock of BuildpackStore interface.
 type MockBuildpackStore struct {
 	ctrl     *gomock.Controller
 	recorder *MockBuildpackStoreMockRecorder
 }
 
-// MockBuildpackStoreMockRecorder is the mock recorder for MockBuildpackStore
+// MockBuildpackStoreMockRecorder is the mock recorder for MockBuildpackStore.
 type MockBuildpackStoreMockRecorder struct {
 	mock *MockBuildpackStore
 }
 
-// NewMockBuildpackStore creates a new mock instance
+// NewMockBuildpackStore creates a new mock instance.
 func NewMockBuildpackStore(ctrl *gomock.Controller) *MockBuildpackStore {
 	mock := &MockBuildpackStore{ctrl: ctrl}
 	mock.recorder = &MockBuildpackStoreMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockBuildpackStore) EXPECT() *MockBuildpackStoreMockRecorder {
 	return m.recorder
 }
 
-// Lookup mocks base method
+// Lookup mocks base method.
 func (m *MockBuildpackStore) Lookup(arg0, arg1 string) (buildpack.Buildpack, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Lookup", arg0, arg1)
@@ -44,7 +44,7 @@ func (m *MockBuildpackStore) Lookup(arg0, arg1 string) (buildpack.Buildpack, err
 	return ret0, ret1
 }
 
-// Lookup indicates an expected call of Lookup
+// Lookup indicates an expected call of Lookup.
 func (mr *MockBuildpackStoreMockRecorder) Lookup(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lookup", reflect.TypeOf((*MockBuildpackStore)(nil).Lookup), arg0, arg1)
