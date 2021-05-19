@@ -113,7 +113,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called without an app image", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept an image argument")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -206,11 +205,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
-				imgArg := ""
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					imgArg = "some-image"
-				}
+				imgArg := "some-image"
 
 				output := h.DockerRun(t,
 					analyzeImage,
@@ -252,16 +247,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-					"-previous-image", "some-image",
-				}
-
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					execArgs = []string{
-						ctrPath(analyzerPath),
-						"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-						"some-image",
-					}
+					"some-image",
 				}
 
 				h.DockerRunAndCopy(t,
@@ -282,16 +268,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-daemon",
-					"-previous-image", "some-image",
-				}
-
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					execArgs = []string{
-						ctrPath(analyzerPath),
-						"-daemon",
-						"some-image",
-					}
+					"some-image",
 				}
 
 				h.DockerRunAndCopy(t,
@@ -345,7 +322,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(
 							ctrPath(analyzerPath),
 							"-daemon",
-							"-previous-image", appImage),
+							appImage),
 					)
 
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
@@ -643,11 +620,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("registry case", func() {
 			it("writes analyzed.toml", func() {
-				execArgs := []string{ctrPath(analyzerPath)}
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					execArgs = append(execArgs, "some-image")
-				}
+				execArgs := []string{ctrPath(analyzerPath), "some-image"}
 
 				h.DockerRunAndCopy(t,
 					containerName,
