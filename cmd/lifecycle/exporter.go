@@ -22,6 +22,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/layout"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -55,6 +56,7 @@ type exportArgs struct {
 	stackMD             platform.StackMetadata
 	stackPath           string
 	useDaemon           bool
+	useLayout           bool
 	uid, gid            int
 
 	platform cmd.Platform
@@ -81,6 +83,7 @@ func (e *exportCmd) DefineFlags() {
 	cmd.FlagStackPath(&e.stackPath)
 	cmd.FlagUID(&e.uid)
 	cmd.FlagUseDaemon(&e.useDaemon)
+	cmd.FlagUseLayout(&e.useLayout)
 
 	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
@@ -91,8 +94,8 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	e.imageNames = args
-	if e.launchCacheDir != "" && !e.useDaemon {
-		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
+	if e.launchCacheDir != "" && (!e.useDaemon || !e.useLayout) {
+		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon or -layout")
 		e.launchCacheDir = ""
 	}
 
@@ -227,9 +230,13 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 
 	var appImage imgutil.Image
 	var runImageID string
-	if ea.useDaemon {
+
+	switch {
+	case ea.useDaemon:
 		appImage, runImageID, err = ea.initDaemonAppImage(analyzedMD)
-	} else {
+	case ea.useLayout:
+		appImage, runImageID, err = ea.initLayoutAppImage(analyzedMD)
+	default:
 		appImage, runImageID, err = ea.initRemoteAppImage(analyzedMD)
 	}
 	if err != nil {
@@ -296,6 +303,21 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (i
 		appImage = cache.NewCachingImage(appImage, volumeCache)
 	}
 	return appImage, runImageID.String(), nil
+}
+
+func (ea exportArgs) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+		location := ea.imageNames[0]
+		appImage, err := layout.NewImage(location)
+
+		runImage, err := remote.NewImage(ea.runImageRef, ea.keychain, remote.FromBaseImage(ea.runImageRef))
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "access run image")
+		}
+		runImageID, err := runImage.Identifier()
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "get run image reference")
+		}
+		return appImage, runImageID.String(), nil
 }
 
 func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
@@ -367,7 +389,7 @@ func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (platform.Ana
 	return analyzedMD, nil
 }
 
-func resolveStack(imageName, stackPath, runImageRefOrig string) (platform.StackMetadata, string, string, error) {
+func resolveStack(imageName, stackPath, providedRunImageRef string) (platform.StackMetadata, string, string, error) {
 	ref, err := name.ParseReference(imageName, name.WeakValidation)
 	if err != nil {
 		return platform.StackMetadata{}, "", "", cmd.FailErr(err, "failed to parse registry")
@@ -381,21 +403,22 @@ func resolveStack(imageName, stackPath, runImageRefOrig string) (platform.StackM
 		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
 	}
 
-	var runImageRef string
-	if runImageRefOrig == "" {
-		if stackMD.RunImage.Image == "" {
-			return platform.StackMetadata{}, "", "", cmd.FailErrCode(
-				errors.New("-run-image is required when there is no stack metadata available"),
-				cmd.CodeInvalidArgs,
-				"parse arguments",
-			)
-		}
-		runImageRef, err = stackMD.BestRunImageMirror(registry)
-		if err != nil {
-			return platform.StackMetadata{}, "", "", err
-		}
-	} else {
-		runImageRef = runImageRefOrig
+	if providedRunImageRef != "" {
+		// if a specific run image was provided use that
+		return stackMD, providedRunImageRef, registry, nil	
+	}
+
+	if stackMD.RunImage.Image == "" {
+		return platform.StackMetadata{}, "", "", cmd.FailErrCode(
+			errors.New("-run-image is required when there is no stack metadata available"),
+			cmd.CodeInvalidArgs,
+			"parse arguments",
+		)
+	}
+
+	runImageRef, err := stackMD.BestRunImageMirror(registry)
+	if err != nil {
+		return platform.StackMetadata{}, "", "", err
 	}
 
 	return stackMD, runImageRef, registry, nil

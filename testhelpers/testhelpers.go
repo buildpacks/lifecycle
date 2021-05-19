@@ -291,7 +291,7 @@ func CreateSingleFileTar(path, txt string) (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents []byte) {
+func RandomLayer(t *testing.T, tmpDir string) (path string, diffID string, contents []byte) {
 	t.Helper()
 
 	r, err := CreateSingleFileTar("/some-file", RandString(10))
@@ -309,7 +309,7 @@ func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents
 	_, err = io.Copy(mw, r)
 	AssertNil(t, err)
 
-	sha = hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 
 	return path, "sha256:" + sha, contentsBuf.Bytes()
 }
