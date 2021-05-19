@@ -215,8 +215,7 @@ func (a *analyzeCmd) registryImages() []string {
 		registryImages = append(registryImages, a.platform06.cacheImageTag)
 	}
 	if !a.useDaemon {
-		registryImages = append(registryImages, append([]string{a.imageName}, a.additionalTags...)...)
-		registryImages = append(registryImages, a.runImageRef, a.previousImage)
+		registryImages = append(registryImages, append([]string{a.imageName, a.previousImage, a.runImageRef}, a.additionalTags...)...)
 	}
 	return registryImages
 }

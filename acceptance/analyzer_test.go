@@ -136,7 +136,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzeImage,
 					ctrPath(analyzerPath),
 					"-group", "group.toml",
-					"-previous-image", "some-image",
+					"some-image",
 				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
@@ -155,7 +155,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzeImage,
 					ctrPath(analyzerPath),
 					"-skip-layers",
-					"-previous-image", "some-image",
+					"some-image",
 				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
@@ -174,7 +174,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzeImage,
 					ctrPath(analyzerPath),
 					"-cache-dir", "/cache",
-					"-previous-image", "some-image",
+					"some-image",
 				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
@@ -205,12 +205,10 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
-				imgArg := "some-image"
-
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
-					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers", analyzerPath, imgArg)),
+					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s some-image; ls -al /layers", analyzerPath)),
 				)
 
 				h.AssertMatch(t, output, "2222 3333 .+ \\.")
@@ -620,8 +618,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("registry case", func() {
 			it("writes analyzed.toml", func() {
-				execArgs := []string{ctrPath(analyzerPath), "some-image"}
-
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -630,7 +626,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 					),
-					h.WithArgs(execArgs...),
+					h.WithArgs(ctrPath(analyzerPath), "some-image"),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
