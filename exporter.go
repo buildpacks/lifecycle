@@ -166,7 +166,7 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 		}
 		for _, fsLayer := range bpDir.findLayers(forLaunch) {
 			fsLayer := fsLayer
-			lmd, err := fsLayer.read()
+			lmd, err := fsLayer.read(false)
 			if err != nil {
 				return errors.Wrapf(err, "reading '%s' metadata", fsLayer.Identifier())
 			}

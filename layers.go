@@ -83,17 +83,17 @@ func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack, logge
 }
 
 func forLaunch(l bpLayer) bool {
-	md, err := l.read()
+	md, err := l.read(false)
 	return err == nil && md.Launch
 }
 
 func forMalformed(l bpLayer) bool {
-	_, err := l.read()
+	_, err := l.read(false)
 	return err != nil
 }
 
 func forCached(l bpLayer) bool {
-	md, err := l.read()
+	md, err := l.read(false)
 	return err == nil && md.Cache
 }
 
@@ -124,7 +124,7 @@ type bpLayer struct { // TODO: need to refactor so api and logger won't be part 
 	logger Logger
 }
 
-func (bp *bpLayer) read() (platform.BuildpackLayerMetadata, error) {
+func (bp *bpLayer) read(restoreSha bool) (platform.BuildpackLayerMetadata, error) {
 	tomlPath := bp.path + ".toml"
 	layerMetadataFile, msg, err := buildpack.DecodeLayerMetadataFile(tomlPath, bp.api)
 	if err != nil {
@@ -137,14 +137,17 @@ func (bp *bpLayer) read() (platform.BuildpackLayerMetadata, error) {
 			return platform.BuildpackLayerMetadata{}, errors.New(msg)
 		}
 	}
-	sha, err := ioutil.ReadFile(bp.path + ".sha")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: ""}, LayerMetadataFile: layerMetadataFile}, nil
+	var sha string
+	if restoreSha {
+		shaBytes, err := ioutil.ReadFile(bp.path + ".sha")
+		if err != nil && !os.IsNotExist(err) {
+			return platform.BuildpackLayerMetadata{}, err
 		}
-		return platform.BuildpackLayerMetadata{}, err
+		if err == nil {
+			sha = string(shaBytes)
+		}
 	}
-	return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: string(sha)}, LayerMetadataFile: layerMetadataFile}, nil
+	return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: sha}, LayerMetadataFile: layerMetadataFile}, nil
 }
 
 func (bp *bpLayer) remove() error {

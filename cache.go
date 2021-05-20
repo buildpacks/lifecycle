@@ -34,7 +34,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 				e.Logger.Warnf("Failed to cache layer '%s' because it has no contents", layer.Identifier())
 				continue
 			}
-			lmd, err := layer.read()
+			lmd, err := layer.read(false)
 			if err != nil {
 				e.Logger.Warnf("Failed to cache layer '%s' because of error reading metadata: %s", layer.Identifier(), err)
 				continue

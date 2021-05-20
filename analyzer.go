@@ -53,7 +53,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 			return platform.AnalyzedMetadata{}, err
 		}
 
-		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta); err != nil {
+		if _, err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, true); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}

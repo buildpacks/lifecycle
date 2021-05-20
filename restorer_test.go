@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/discard"
+	"github.com/apex/log/handlers/memory"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -18,7 +18,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -44,6 +43,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 			var (
 				cacheDir   string
 				layersDir  string
+				logHandler *memory.Handler
 				skipLayers bool
 				testCache  lifecycle.Cache
 				restorer   *lifecycle.Restorer
@@ -61,22 +61,19 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				testCache, err = cache.NewVolumeCache(cacheDir)
 				h.AssertNil(t, err)
 
-				discardLogger := log.Logger{Handler: &discard.Handler{}}
+				logHandler = memory.New()
+
+				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
 				restorer = &lifecycle.Restorer{
 					LayersDir: layersDir,
-					Logger:    &discardLogger,
+					Logger:    &logger,
 					Buildpacks: []buildpack.GroupBuildpack{
 						{ID: "buildpack.id", API: buildpackAPI},
 						{ID: "escaped/buildpack/id", API: buildpackAPI},
 					},
-					LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&discardLogger, layersDir, skipLayers),
+					LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&logger, layersDir, skipLayers),
 					Platform:              platform.NewPlatform(platformAPI),
-				}
-
-				if testing.Verbose() {
-					restorer.Logger = cmd.DefaultLogger
-					h.AssertNil(t, cmd.SetLogLevel("debug"))
 				}
 			})
 
@@ -88,38 +85,58 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 			when("there is no cache", func() {
 				when("there is a cache=true layer", func() {
 					it.Before(func() {
-						var meta string
+						var meta, sha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=true\n"
 						}
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = "cache-only-layer-sha"
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, sha))
 						h.AssertNil(t, restorer.Restore(nil))
 					})
 
-					it("removes metadata and sha file", func() {
+					it("removes metadata file", func() {
 						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
 
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.toml"))
-						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha"))
+					})
+
+					it("removes sha file", func() {
+						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
+
+						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha")) // not really needed for platformAPI >= 0.7
 					})
 
 					it("does not restore layer data", func() {
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true"))
+						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
+							expected := "Removing \"buildpack.id:cache-true\", not in cache"
+							assertLogEntry(t, logHandler, expected)
+						}
 					})
 				})
 
 				when("there is a cache=false layer", func() {
 					it.Before(func() {
-						var meta string
+						var meta, sha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=false"
 						}
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = "cache-false-layer-sha"
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
-					it("keeps metadata and sha file", func() {
+					it("keeps metadata file", func() {
 						h.AssertPathExists(t, filepath.Join(layersDir, "buildpack.id", "cache-false.toml"))
+					})
+
+					it("keeps sha file", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						h.AssertPathExists(t, filepath.Join(layersDir, "buildpack.id", "cache-false.sha"))
 					})
 
@@ -132,38 +149,58 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 			when("there is an empty cache", func() {
 				when("there is a cache=true layer", func() {
 					it.Before(func() {
-						var meta string
+						var meta, sha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=true\n"
 						}
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, "cache-only-layer-sha"))
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = "cache-only-layer-sha"
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-true", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
+					})
+
+					it("removes metadata file", func() {
+						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
+
+						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.toml"))
 					})
 
 					it("removes metadata and sha file", func() {
 						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 
-						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.toml"))
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha"))
 					})
 
 					it("does not restore layer data", func() {
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true"))
+						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
+							expected := "Removing \"buildpack.id:cache-true\", not in cache"
+							assertLogEntry(t, logHandler, expected)
+						}
 					})
 				})
 
 				when("there is a cache=false layer", func() {
 					it.Before(func() {
-						var meta string
+						var meta, sha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=false"
 						}
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, "cache-false-layer-sha"))
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = "cache-false-layer-sha"
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
-					it("keeps metadata and sha file", func() {
+					it("keeps metadata file", func() {
 						h.AssertPathExists(t, filepath.Join(layersDir, "buildpack.id", "cache-false.toml"))
+					})
+
+					it("keeps sha file", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						h.AssertPathExists(t, filepath.Join(layersDir, "buildpack.id", "cache-false.sha"))
 					})
 
@@ -291,7 +328,11 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 							meta = "build = false\nlaunch = false\ncache = true\n\n"
 						}
 						meta += "[metadata]\n  cache-only-key = \"cache-only-val\"\n"
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, cacheOnlyLayerSHA))
+						var sha string
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = cacheOnlyLayerSHA
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
@@ -301,6 +342,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					})
 
 					it("keeps layer sha", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.sha"))
 						h.AssertEq(t, string(got), cacheOnlyLayerSHA)
 					})
@@ -316,7 +358,11 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					var meta string
 					it.Before(func() {
 						meta = "[metadata]\n  cache-false-key = \"cache-false-val\""
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, cacheFalseLayerSHA))
+						var sha string
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = cacheFalseLayerSHA
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-false", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
@@ -326,6 +372,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					})
 
 					it("keeps layer sha", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-false.sha"))
 						h.AssertEq(t, string(got), cacheFalseLayerSHA)
 					})
@@ -336,39 +383,81 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				})
 
 				when("there is a cache=true layer with wrong sha", func() {
+					var wrongSha string
 					it.Before(func() {
-						var meta string
+						wrongSha = "some-made-up-sha"
+						var meta, layerSha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=true\n"
 						}
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, "some-made-up-sha"))
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							layerSha = wrongSha
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, layerSha))
+
+						appMetaContents := []byte(fmt.Sprintf(`{
+   "buildpacks": [
+       {
+           "key": "buildpack.id",
+           "layers": {
+               "cache-launch": {
+                   "data": {
+                       "cache-launch-key": "cache-launch-val"
+                   },
+                   "cache": true,
+                   "launch": true,
+                   "sha": "%s"
+               }
+           }
+       }
+   ]
+}
+`, wrongSha))
+
+						h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
+
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
-					it("removes metadata and sha file", func() {
+					it("removes metadata file", func() {
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-launch.toml"))
+					})
+
+					it("removes sha file", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-launch.sha"))
 					})
 
 					it("does not restore layer data", func() {
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"))
+						expected := "Removing \"buildpack.id:cache-launch\", wrong sha"
+						assertLogEntry(t, logHandler, expected)
+						expected = fmt.Sprintf("Layer sha: %q", wrongSha)
+						assertLogEntry(t, logHandler, expected)
 					})
 				})
 
 				when("there is a cache=true layer not in cache", func() {
 					it.Before(func() {
-						var meta string
+						var meta, sha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=true\n"
 						}
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-layer-not-in-cache", meta, "some-made-up-sha"))
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = "some-made-up-sha"
+						}
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-layer-not-in-cache", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
+					})
+
+					it("removes metadata file", func() {
+						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
+						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-layer-not-in-cache.toml"))
 					})
 
 					it("removes metadata and sha file", func() {
 						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
-
-						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-layer-not-in-cache.toml"))
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-layer-not-in-cache.sha"))
 					})
 
@@ -384,7 +473,11 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 							meta = "build = false\nlaunch = false\ncache = true\n\n"
 						}
 						meta += "[metadata]\n  escaped-bp-key = \"escaped-bp-val\"\n"
-						h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, escapedLayerSHA))
+						var sha string
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = escapedLayerSHA
+						}
+						h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
@@ -394,6 +487,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					})
 
 					it("keeps layer sha", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						got := h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer.sha"))
 						h.AssertEq(t, string(got), escapedLayerSHA)
 					})
@@ -407,11 +501,14 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 				when("there is a cache=true layer in cache but not in group", func() {
 					it.Before(func() {
-						var meta string
+						var meta, sha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=true\n"
 						}
-						h.AssertNil(t, writeLayer(layersDir, "nogroup.buildpack.id", "some-layer", meta, noGroupLayerSHA))
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							sha = noGroupLayerSHA
+						}
+						h.AssertNil(t, writeLayer(layersDir, "nogroup.buildpack.id", "some-layer", meta, sha))
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
@@ -425,8 +522,12 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 							h.AssertNil(t, restorer.Restore(testCache))
 						})
 
-						it("keeps metadata and sha file", func() {
+						it("keeps metadata file", func() {
 							h.AssertPathExists(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer.toml"))
+						})
+
+						it("keeps sha file", func() {
+							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 							h.AssertPathExists(t, filepath.Join(layersDir, "nogroup.buildpack.id", "some-layer.sha"))
 						})
 
@@ -439,18 +540,55 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				})
 
 				when("there are multiple cache=true layers", func() {
-					var typesMeta, cacheOnlyMeta, cacheLaunchMeta, escapedMeta string
+					var cacheOnlyMeta, cacheLaunchMeta, escapedMeta string
 
 					it.Before(func() {
+						var typesMeta, cacheOnlySha, cacheLunchSha, escapedSha string
+
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							cacheOnlySha = cacheOnlyLayerSHA
+							cacheLunchSha = cacheLaunchLayerSHA
+							escapedSha = escapedLayerSHA
+						}
+
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							typesMeta = "build = false\nlaunch = false\ncache = true\n\n"
 						}
+
 						cacheOnlyMeta = typesMeta + "[metadata]\n  cache-only-key = \"cache-only-val\"\n"
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", cacheOnlyMeta, cacheOnlyLayerSHA))
-						cacheLaunchMeta = typesMeta + "[metadata]\n  cache-launch-key = \"cache-launch-val\"\n"
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", cacheLaunchMeta, cacheLaunchLayerSHA))
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-only", cacheOnlyMeta, cacheOnlySha))
+
 						escapedMeta = typesMeta + "[metadata]\n  escaped-bp-key = \"escaped-bp-val\"\n"
-						h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", escapedMeta, escapedLayerSHA))
+						h.AssertNil(t, writeLayer(layersDir, "escaped_buildpack_id", "escaped-bp-layer", escapedMeta, escapedSha))
+
+						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
+							typesMeta = "build = false\nlaunch = true\ncache = true\n\n"
+						}
+
+						cacheLaunchMeta = typesMeta + "[metadata]\n  cache-launch-key = \"cache-launch-val\"\n"
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", cacheLaunchMeta, cacheLunchSha))
+
+						appMetaContents := []byte(fmt.Sprintf(`{
+   "buildpacks": [
+       {
+           "key": "buildpack.id",
+           "layers": {
+               "cache-launch": {
+                   "data": {
+                       "cache-launch-key": "cache-launch-val"
+                   },
+                   "cache": true,
+                   "launch": true,
+                   "sha": "%s"
+               }
+           }
+       }
+   ]
+}
+`, cacheLaunchLayerSHA))
+
+						h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
+
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
@@ -464,6 +602,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					})
 
 					it("keeps layer sha for all layers", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.sha"))
 						h.AssertEq(t, string(got), cacheOnlyLayerSHA)
 						got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-launch.sha"))
@@ -483,18 +622,6 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						want = "echo text from escaped bp layer\n"
 						h.AssertEq(t, string(got), want)
 					})
-				})
-			})
-
-			when("there is app image metadata", func() {
-				it.Before(func() {
-					restorer.Buildpacks = []buildpack.GroupBuildpack{
-						{ID: "metadata.buildpack", API: buildpackAPI},
-						{ID: "no.cache.buildpack", API: buildpackAPI},
-						{ID: "no.metadata.buildpack", API: buildpackAPI},
-					}
-					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
-					h.AssertNil(t, json.Unmarshal(metadata, &restorer.LayersMetadata))
 				})
 			})
 
@@ -521,9 +648,11 @@ func writeLayer(layersDir, buildpack, name, metadata, sha string) error {
 	if err := ioutil.WriteFile(metadataPath, []byte(metadata), 0600); err != nil {
 		return errors.Wrapf(err, "writing metadata file")
 	}
-	shaPath := filepath.Join(buildpackDir, name+".sha")
-	if err := ioutil.WriteFile(shaPath, []byte(sha), 0600); err != nil {
-		return errors.Wrapf(err, "writing sha file")
+	if sha != "" {
+		shaPath := filepath.Join(buildpackDir, name+".sha")
+		if err := ioutil.WriteFile(shaPath, []byte(sha), 0600); err != nil {
+			return errors.Wrapf(err, "writing sha file")
+		}
 	}
 	return nil
 }

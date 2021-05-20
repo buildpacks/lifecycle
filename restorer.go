@@ -18,8 +18,8 @@ type Restorer struct {
 	Logger    Logger
 
 	Buildpacks            []buildpack.GroupBuildpack
-	LayerMetadataRestorer LayerMetadataRestorer   // Platform API > 0.7
-	LayersMetadata        platform.LayersMetadata // Platform API > 0.7
+	LayerMetadataRestorer LayerMetadataRestorer   // Platform API >= 0.7
+	LayersMetadata        platform.LayersMetadata // Platform API >= 0.7
 	Platform              cmd.Platform
 }
 
@@ -31,8 +31,10 @@ func (r *Restorer) Restore(cache Cache) error {
 		return err
 	}
 
+	var buildpackLayersToSha BuildpackLayersToSha
 	if r.restoresLayerMetadata() {
-		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta); err != nil {
+		var err error
+		if buildpackLayersToSha, err = r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, false); err != nil {
 			return err
 		}
 	}
@@ -64,8 +66,8 @@ func (r *Restorer) Restore(cache Cache) error {
 		foundLayers := buildpackDir.findLayers(cachedFn)
 
 		for _, bpLayer := range foundLayers {
-			name := bpLayer.name()
-			cachedLayer, exists := cachedLayers[name]
+			layerName := bpLayer.name()
+			cachedLayer, exists := cachedLayers[layerName]
 			if !exists {
 				r.Logger.Infof("Removing %q, not in cache", bpLayer.Identifier())
 				if err := bpLayer.remove(); err != nil {
@@ -73,13 +75,22 @@ func (r *Restorer) Restore(cache Cache) error {
 				}
 				continue
 			}
-			data, err := bpLayer.read()
+
+			restoreSha := !r.restoresLayerMetadata()
+			data, err := bpLayer.read(restoreSha)
 			if err != nil {
 				return errors.Wrapf(err, "reading layer")
 			}
-			if data.SHA != cachedLayer.SHA {
+			var layerSha string
+			if restoreSha {
+				layerSha = data.SHA
+			} else {
+				layerSha = buildpackLayersToSha.getShaByBuildpackLayers(buildpack.ID, layerName)
+			}
+
+			if layerSha != cachedLayer.SHA {
 				r.Logger.Infof("Removing %q, wrong sha", bpLayer.Identifier())
-				r.Logger.Debugf("Layer sha: %q, cache sha: %q", data.SHA, cachedLayer.SHA)
+				r.Logger.Debugf("Layer sha: %q, cache sha: %q", layerSha, cachedLayer.SHA)
 				if err := bpLayer.remove(); err != nil {
 					return errors.Wrapf(err, "removing layer")
 				}
