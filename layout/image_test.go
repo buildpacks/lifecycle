@@ -20,18 +20,43 @@ func TestImage(t *testing.T) {
 
 func testImage(t *testing.T, when spec.G, it spec.S) {
 
+	var tmpDir string
+
+	it.Before(func() {
+		var err error
+		tmpDir, err = ioutil.TempDir("", "layout")
+		h.AssertNil(t, err)
+	})
+
+	it.After(func() {
+		os.RemoveAll(tmpDir)
+	})
+
+	when("#Found", func() {
+		when("directory doesn't exist", func() {
+			it("returns true", func() {
+				img, err := layout.NewImage(filepath.Join(tmpDir, "non-existent"))
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, img.Found(), false)
+			})
+		})
+
+		when("directory exists", func() {
+			it.Before(func() {
+				os.MkdirAll(filepath.Join(tmpDir, "some-image"), os.ModePerm)
+			})
+
+			it("returns true", func() {
+				img, err := layout.NewImage(filepath.Join(tmpDir, "some-image"))
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, img.Found(), true)
+			})
+		})
+	})
+
 	when("#Save", func() {
-		var tmpDir string
-
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "layout")
-			h.AssertNil(t, err)
-		})
-
-		it.After(func() {
-			os.RemoveAll(tmpDir)
-		})
 
 		when("no base image is provided", func() {
 			it("creates layout", func() {
@@ -129,7 +154,7 @@ func testImage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 			})
 
-			it.Focus("creates layout", func() {
+			it("creates layout", func() {
 				layoutDir := filepath.Join(tmpDir, "layout")
 
 				// create image

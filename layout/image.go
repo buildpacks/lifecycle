@@ -16,18 +16,16 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 )
 
 var _ imgutil.Image = (*Image)(nil)
 
 type Image struct {
-	path            string
-	underlyingImage *layout.Path
-	config          *v1.ConfigFile
-	prevImage       *Image
-	// additionalLayers hold the reference to the path of the layers by diffID
+	path             string
+	underlyingImage  v1.Image
+	config           *v1.ConfigFile
+	prevImage        *Image
 	additionalLayers []layerInfo
 }
 
@@ -70,10 +68,9 @@ func NewImage(path string, ops ...ImageOption) (*Image, error) {
 		}
 	}
 
-	p := layout.Path(path)
 	image := &Image{
 		path:            path,
-		underlyingImage: &p,
+		underlyingImage: empty.Image,
 		config:          &v1.ConfigFile{},
 	}
 
@@ -127,7 +124,7 @@ func loadImage(path string) (*Image, error) {
 	}
 
 	return &Image{
-		underlyingImage: &p,
+		underlyingImage: image,
 		path:            path,
 		config:          config,
 	}, nil
@@ -303,18 +300,18 @@ func (i *Image) TopLayer() (string, error) {
 // Save saves the image as `Name()` and any additional names provided to this method.
 func (i *Image) Save(additionalNames ...string) error {
 	var (
-		image = empty.Image
+		image = i.underlyingImage
 		err   error
 	)
-
-	image = mutate.MediaType(image, types.OCIManifestSchema1)
 
 	image, err = mutate.Config(image, i.config.Config)
 	if err != nil {
 		return errors.Wrap(err, "set config")
 	}
 
-	// TODO: Copy additional layers to final location
+	// FIXME: This still produces a gzip (with no actual compression) based on the current GGCR implementation.
+	// We would need to PR a change to skip gunzip packaging all together and update the mediatype.
+	// See: https://github.com/google/go-containerregistry/blob/c061b3f39cff652d18f95ee23ebfd39cb3f5ee89/pkg/v1/tarball/layer.go#L85
 	for _, layerInfo := range i.additionalLayers {
 		layer, err := tarball.LayerFromFile(layerInfo.path, tarball.WithCompressionLevel(flate.NoCompression))
 		if err != nil {
@@ -332,7 +329,8 @@ func (i *Image) Save(additionalNames ...string) error {
 		return errors.Wrap(err, "creating layout dir")
 	}
 
-	err = i.underlyingImage.AppendImage(image)
+	path := layout.Path(i.path)
+	err = path.AppendImage(image)
 	if err != nil {
 		return errors.Wrap(err, "append image")
 	}
@@ -342,7 +340,10 @@ func (i *Image) Save(additionalNames ...string) error {
 
 // Found tells whether the image exists in the repository by `Name()`.
 func (i *Image) Found() bool {
-	// TODO: Implement
+	if _, err := os.Stat(i.path); os.IsNotExist(err) {
+		return false
+	}
+
 	return true
 }
 
@@ -358,7 +359,12 @@ func (i *Image) GetLayer(diffID string) (io.ReadCloser, error) {
 		return nil, errors.Wrap(err, "parsing diffID")
 	}
 
-	return i.underlyingImage.Blob(hash)
+	layer, err := i.underlyingImage.LayerByDiffID(hash)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading layer")
+	}
+
+	return layer.Uncompressed()
 }
 
 func (i *Image) Delete() error {
