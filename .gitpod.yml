@@ -1,6 +1,10 @@
 
 tasks:
-  - init: make build-linux
+  # allow socket to be writable by all
+  # (necessary for acceptance tests / calls from within container)
+  - init: chmod ugo+w /var/run/docker.sock
+  # build linux to install dependencies
+  - init: make tidy build-linux
 github:
   prebuilds:
     master: true

@@ -156,7 +156,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS == "windows" {
 					h.AssertEq(t, strings.ToLower(syscallExecArgsColl[0].argv0), `c:\windows\system32\notepad.exe`)
 				} else {
-					h.AssertEq(t, syscallExecArgsColl[0].argv0, "/bin/sh")
+					h.AssertMatch(t, syscallExecArgsColl[0].argv0, ".*/bin/sh$")
 				}
 			})
 
