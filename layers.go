@@ -20,7 +20,7 @@ import (
 
 type bpLayersDir struct {
 	path      string
-	layers    []bpLayer
+	layers    []BpLayer
 	name      string
 	buildpack buildpack.GroupBuildpack
 	store     *buildpack.StoreTOML
@@ -31,7 +31,7 @@ func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack, logge
 	bpDir := bpLayersDir{
 		name:      bp.ID,
 		path:      path,
-		layers:    []bpLayer{},
+		layers:    []BpLayer{},
 		buildpack: bp,
 	}
 
@@ -82,23 +82,23 @@ func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack, logge
 	return bpDir, nil
 }
 
-func forLaunch(l bpLayer) bool {
+func forLaunch(l BpLayer) bool {
 	md, err := l.read(false)
 	return err == nil && md.Launch
 }
 
-func forMalformed(l bpLayer) bool {
+func forMalformed(l BpLayer) bool {
 	_, err := l.read(false)
 	return err != nil
 }
 
-func forCached(l bpLayer) bool {
+func forCached(l BpLayer) bool {
 	md, err := l.read(false)
 	return err == nil && md.Cache
 }
 
-func (bd *bpLayersDir) findLayers(f func(layer bpLayer) bool) []bpLayer {
-	var selectedLayers []bpLayer
+func (bd *bpLayersDir) findLayers(f func(layer BpLayer) bool) []BpLayer {
+	var selectedLayers []BpLayer
 	for _, l := range bd.layers {
 		if f(l) {
 			selectedLayers = append(selectedLayers, l)
@@ -107,8 +107,8 @@ func (bd *bpLayersDir) findLayers(f func(layer bpLayer) bool) []bpLayer {
 	return selectedLayers
 }
 
-func (bd *bpLayersDir) newBPLayer(name, buildpackAPI string, logger Logger) *bpLayer {
-	return &bpLayer{
+func (bd *bpLayersDir) newBPLayer(name, buildpackAPI string, logger Logger) *BpLayer {
+	return &BpLayer{
 		layer: layer{
 			path:       filepath.Join(bd.path, name),
 			identifier: fmt.Sprintf("%s:%s", bd.buildpack.ID, name),
@@ -118,13 +118,13 @@ func (bd *bpLayersDir) newBPLayer(name, buildpackAPI string, logger Logger) *bpL
 	}
 }
 
-type bpLayer struct { // TODO: need to refactor so api and logger won't be part of this struct
+type BpLayer struct { // TODO: need to refactor so api and logger won't be part of this struct
 	layer
 	api    string
 	logger Logger
 }
 
-func (bp *bpLayer) read(readShaFile bool) (platform.BuildpackLayerMetadata, error) {
+func (bp *BpLayer) read(readShaFile bool) (platform.BuildpackLayerMetadata, error) {
 	tomlPath := bp.path + ".toml"
 	layerMetadataFile, msg, err := buildpack.DecodeLayerMetadataFile(tomlPath, bp.api)
 	if err != nil {
@@ -150,7 +150,7 @@ func (bp *bpLayer) read(readShaFile bool) (platform.BuildpackLayerMetadata, erro
 	return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: sha}, LayerMetadataFile: layerMetadataFile}, nil
 }
 
-func (bp *bpLayer) remove() error {
+func (bp *BpLayer) remove() error {
 	if err := os.RemoveAll(bp.path); err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -163,7 +163,7 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadata(metadata layertypes.LayerMetadataFile) error {
+func (bp *BpLayer) writeMetadata(metadata layertypes.LayerMetadataFile) error {
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
@@ -171,20 +171,20 @@ func (bp *bpLayer) writeMetadata(metadata layertypes.LayerMetadataFile) error {
 	return buildpack.EncodeLayerMetadataFile(metadata, path, bp.api)
 }
 
-func (bp *bpLayer) hasLocalContents() bool {
+func (bp *BpLayer) hasLocalContents() bool {
 	_, err := ioutil.ReadDir(bp.path)
 
 	return !os.IsNotExist(err)
 }
 
-func (bp *bpLayer) writeSha(sha string) error {
+func (bp *BpLayer) writeSha(sha string) error {
 	if err := ioutil.WriteFile(bp.path+".sha", []byte(sha), 0666); err != nil {
 		return err
 	} // #nosec G306
 	return nil
 }
 
-func (bp *bpLayer) name() string {
+func (bp *BpLayer) name() string {
 	return filepath.Base(bp.path)
 }
 

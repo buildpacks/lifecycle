@@ -37,13 +37,27 @@ func (m *MockLayerMetadataRestorer) EXPECT() *MockLayerMetadataRestorerMockRecor
 	return m.recorder
 }
 
-// Restore mocks base method.
-func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata) (lifecycle.BuildpackLayersToSha, error) {
+// CacheIsValid mocks base method.
+func (m *MockLayerMetadataRestorer) CacheIsValid(arg0, arg1 string, arg2 lifecycle.BpLayer) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2)
-	ret0, _ := ret[0].(lifecycle.BuildpackLayersToSha)
+	ret := m.ctrl.Call(m, "CacheIsValid", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
+}
+
+// CacheIsValid indicates an expected call of CacheIsValid.
+func (mr *MockLayerMetadataRestorerMockRecorder) CacheIsValid(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheIsValid", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).CacheIsValid), arg0, arg1, arg2)
+}
+
+// Restore mocks base method.
+func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Restore indicates an expected call of Restore.

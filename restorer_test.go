@@ -65,6 +65,8 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
+				useShaFile := api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0
+
 				restorer = &lifecycle.Restorer{
 					LayersDir: layersDir,
 					Logger:    &logger,
@@ -72,7 +74,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						{ID: "buildpack.id", API: buildpackAPI},
 						{ID: "escaped/buildpack/id", API: buildpackAPI},
 					},
-					LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&logger, layersDir, skipLayers, false),
+					LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&logger, layersDir, skipLayers, useShaFile),
 					Platform:              platform.NewPlatform(platformAPI),
 				}
 			})

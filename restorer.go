@@ -31,10 +31,8 @@ func (r *Restorer) Restore(cache Cache) error {
 		return err
 	}
 
-	var buildpackLayersToSha BuildpackLayersToSha
 	if r.restoresLayerMetadata() {
-		var err error
-		if buildpackLayersToSha, err = r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta); err != nil {
+		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta); err != nil {
 			return err
 		}
 	}
@@ -43,11 +41,11 @@ func (r *Restorer) Restore(cache Cache) error {
 	for _, buildpack := range r.Buildpacks {
 		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 
-		var cachedFn func(bpLayer) bool
+		var cachedFn func(BpLayer) bool
 		if api.MustParse(buildpack.API).Compare(api.MustParse("0.6")) >= 0 {
 			// On Buildpack API 0.6+, the <layer>.toml file never contains layer types information.
 			// The cache metadata is the only way to identify cache=true layers.
-			cachedFn = func(l bpLayer) bool {
+			cachedFn = func(l BpLayer) bool {
 				layer, ok := cachedLayers[filepath.Base(l.path)]
 				return ok && layer.Cache
 			}
@@ -66,8 +64,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		foundLayers := buildpackDir.findLayers(cachedFn)
 
 		for _, bpLayer := range foundLayers {
-			layerName := bpLayer.name()
-			cachedLayer, exists := cachedLayers[layerName]
+			cachedLayer, exists := cachedLayers[bpLayer.name()]
 			if !exists {
 				r.Logger.Infof("Removing %q, not in cache", bpLayer.Identifier())
 				if err := bpLayer.remove(); err != nil {
@@ -76,26 +73,11 @@ func (r *Restorer) Restore(cache Cache) error {
 				continue
 			}
 
-			restoreSha := !r.restoresLayerMetadata()
-			var layerSha string
-			if restoreSha {
-				data, err := bpLayer.read(restoreSha)
-				if err != nil {
-					return errors.Wrapf(err, "reading layer")
-				}
-				layerSha = data.SHA
-			} else {
-				layerSha = buildpackLayersToSha.getShaByBuildpackLayers(buildpack.ID, layerName)
+			restoreLayer, err := r.LayerMetadataRestorer.CacheIsValid(buildpack.ID, cachedLayer.SHA, bpLayer)
+			if err != nil {
+				return err
 			}
-
-			if layerSha != cachedLayer.SHA {
-				r.Logger.Infof("Removing %q, wrong sha", bpLayer.Identifier())
-				r.Logger.Debugf("Layer sha: %q, cache sha: %q", layerSha, cachedLayer.SHA)
-				if err := bpLayer.remove(); err != nil {
-					return errors.Wrapf(err, "removing layer")
-				}
-			} else {
-				r.Logger.Infof("Restoring data for %q from cache", bpLayer.Identifier())
+			if restoreLayer {
 				g.Go(func() error {
 					return r.restoreLayer(cache, cachedLayer.SHA)
 				})

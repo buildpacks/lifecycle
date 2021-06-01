@@ -121,7 +121,7 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		Buildpacks:            group.Group,
 		Logger:                cmd.DefaultLogger,
 		Platform:              r.platform,
-		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers, false),
+		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers, !r.restoresLayerMetadata()),
 		LayersMetadata:        layerMetadata,
 	}
 
