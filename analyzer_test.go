@@ -104,7 +104,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 			expectRestoresLayerMetadataIfSupported := func() {
 				if api.MustParse(analyzer.Platform.API()).Compare(api.MustParse("0.7")) < 0 {
-					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, true)
+					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata)
 				}
 			}
 

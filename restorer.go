@@ -34,7 +34,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	var buildpackLayersToSha BuildpackLayersToSha
 	if r.restoresLayerMetadata() {
 		var err error
-		if buildpackLayersToSha, err = r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, false); err != nil {
+		if buildpackLayersToSha, err = r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta); err != nil {
 			return err
 		}
 	}
@@ -77,12 +77,12 @@ func (r *Restorer) Restore(cache Cache) error {
 			}
 
 			restoreSha := !r.restoresLayerMetadata()
-			data, err := bpLayer.read(restoreSha)
-			if err != nil {
-				return errors.Wrapf(err, "reading layer")
-			}
 			var layerSha string
 			if restoreSha {
+				data, err := bpLayer.read(restoreSha)
+				if err != nil {
+					return errors.Wrapf(err, "reading layer")
+				}
 				layerSha = data.SHA
 			} else {
 				layerSha = buildpackLayersToSha.getShaByBuildpackLayers(buildpack.ID, layerName)

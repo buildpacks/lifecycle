@@ -13,29 +13,31 @@ import (
 
 //go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle LayerMetadataRestorer
 type LayerMetadataRestorer interface {
-	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, writeShaToFile bool) (BuildpackLayersToSha, error)
+	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata) (BuildpackLayersToSha, error)
 }
 
 type DefaultLayerMetadataRestorer struct {
-	Logger     Logger
-	LayersDir  string
-	SkipLayers bool
+	logger         Logger
+	layersDir      string
+	skipLayers     bool
+	writeShaToFile bool
 }
 
-func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers bool) LayerMetadataRestorer {
+func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers, writeShaToFile bool) LayerMetadataRestorer {
 	return &DefaultLayerMetadataRestorer{
-		Logger:     logger,
-		LayersDir:  layersDir,
-		SkipLayers: skipLayers,
+		logger:         logger,
+		layersDir:      layersDir,
+		skipLayers:     skipLayers,
+		writeShaToFile: writeShaToFile,
 	}
 }
 
-func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, writeShaToFile bool) (BuildpackLayersToSha, error) {
+func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata) (BuildpackLayersToSha, error) {
 	if err := la.restoreStoreTOML(appMeta, buildpacks); err != nil {
 		return BuildpackLayersToSha{}, err
 	}
 
-	buildpackLayersToSha, err := la.restoreLayerMetadata(appMeta, cacheMeta, buildpacks, writeShaToFile)
+	buildpackLayersToSha, err := la.restoreLayerMetadata(appMeta, cacheMeta, buildpacks)
 	if err != nil {
 		return BuildpackLayersToSha{}, err
 	}
@@ -46,7 +48,7 @@ func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuil
 func (la *DefaultLayerMetadataRestorer) restoreStoreTOML(appMeta platform.LayersMetadata, buildpacks []buildpack.GroupBuildpack) error {
 	for _, bp := range buildpacks {
 		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
-			if err := WriteTOML(filepath.Join(la.LayersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
+			if err := WriteTOML(filepath.Join(la.layersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
 				return err
 			}
 		}
@@ -88,19 +90,19 @@ func (bls *BuildpackLayersToSha) addLayerToMap(buildpackID, layerName, sha strin
 	bls.buildpacksToLayersShaMap[buildpackID].layerToShaMap[layerName] = sha
 }
 
-func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, buildpacks []buildpack.GroupBuildpack, writeShaToFile bool) (BuildpackLayersToSha, error) {
+func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, buildpacks []buildpack.GroupBuildpack) (BuildpackLayersToSha, error) {
 	var buildpackLayersToSha BuildpackLayersToSha
-	if !writeShaToFile {
+	if !la.writeShaToFile {
 		buildpackLayersToSha = initializeBuildpackLayersToSha()
 	}
 
-	if la.SkipLayers {
-		la.Logger.Infof("Skipping buildpack layer analysis")
+	if la.skipLayers {
+		la.logger.Infof("Skipping buildpack layer analysis")
 		return BuildpackLayersToSha{}, nil
 	}
 
 	for _, buildpack := range buildpacks {
-		buildpackDir, err := readBuildpackLayersDir(la.LayersDir, buildpack, la.Logger)
+		buildpackDir, err := readBuildpackLayersDir(la.layersDir, buildpack, la.logger)
 		if err != nil {
 			return BuildpackLayersToSha{}, errors.Wrap(err, "reading buildpack layer directory")
 		}
@@ -112,13 +114,13 @@ func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(appMeta platform.La
 		for layerName, layer := range appLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, layerName)
 			if !layer.Launch {
-				la.Logger.Debugf("Not restoring metadata for %q, marked as launch=false", identifier)
+				la.logger.Debugf("Not restoring metadata for %q, marked as launch=false", identifier)
 				continue
 			}
 			if layer.Build && !layer.Cache {
 				// layer is launch=true, build=true. Because build=true, the layer contents must be present in the build container.
 				// There is no reason to restore the metadata file, because the buildpack will always recreate the layer.
-				la.Logger.Debugf("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
+				la.logger.Debugf("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
 				continue
 			}
 			if layer.Cache {
@@ -126,12 +128,12 @@ func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(appMeta platform.La
 					// The layer is not cache=true in the cache metadata and will not be restored.
 					// Do not write the metadata file so that it is clear to the buildpack that it needs to recreate the layer.
 					// Although a launch=true (only) layer still needs a metadata file, the restorer will remove the file anyway when it does its cleanup (for buildpack apis < 0.6).
-					la.Logger.Debugf("Not restoring metadata for %q, marked as cache=true, but not found in cache", identifier)
+					la.logger.Debugf("Not restoring metadata for %q, marked as cache=true, but not found in cache", identifier)
 					continue
 				}
 			}
-			la.Logger.Infof("Restoring metadata for %q from app image", identifier)
-			if err := la.writeLayerMetadata(buildpackDir, layerName, layer, writeShaToFile, buildpack.ID, &buildpackLayersToSha); err != nil {
+			la.logger.Infof("Restoring metadata for %q from app image", identifier)
+			if err := la.writeLayerMetadata(buildpackDir, layerName, layer, buildpack.ID, &buildpackLayersToSha); err != nil {
 				return BuildpackLayersToSha{}, err
 			}
 		}
@@ -141,16 +143,16 @@ func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(appMeta platform.La
 		for layerName, layer := range cachedLayers {
 			identifier := fmt.Sprintf("%s:%s", buildpack.ID, layerName)
 			if !layer.Cache {
-				la.Logger.Debugf("Not restoring %q from cache, marked as cache=false", identifier)
+				la.logger.Debugf("Not restoring %q from cache, marked as cache=false", identifier)
 				continue
 			}
 			// If launch=true, the metadata was restored from the app image or the layer is stale.
 			if layer.Launch {
-				la.Logger.Debugf("Not restoring %q from cache, marked as launch=true", identifier)
+				la.logger.Debugf("Not restoring %q from cache, marked as launch=true", identifier)
 				continue
 			}
-			la.Logger.Infof("Restoring metadata for %q from cache", identifier)
-			if err := la.writeLayerMetadata(buildpackDir, layerName, layer, writeShaToFile, buildpack.ID, &buildpackLayersToSha); err != nil {
+			la.logger.Infof("Restoring metadata for %q from cache", identifier)
+			if err := la.writeLayerMetadata(buildpackDir, layerName, layer, buildpack.ID, &buildpackLayersToSha); err != nil {
 				return BuildpackLayersToSha{}, err
 			}
 		}
@@ -158,13 +160,13 @@ func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(appMeta platform.La
 	return buildpackLayersToSha, nil
 }
 
-func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(buildpackDir bpLayersDir, layerName string, metadata platform.BuildpackLayerMetadata, writeShaToFile bool, buildpackID string, buildpackLayersToSha *BuildpackLayersToSha) error {
-	layer := buildpackDir.newBPLayer(layerName, buildpackDir.buildpack.API, la.Logger)
-	la.Logger.Debugf("Writing layer metadata for %q", layer.Identifier())
+func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(buildpackDir bpLayersDir, layerName string, metadata platform.BuildpackLayerMetadata, buildpackID string, buildpackLayersToSha *BuildpackLayersToSha) error {
+	layer := buildpackDir.newBPLayer(layerName, buildpackDir.buildpack.API, la.logger)
+	la.logger.Debugf("Writing layer metadata for %q", layer.Identifier())
 	if err := layer.writeMetadata(metadata.LayerMetadataFile); err != nil {
 		return err
 	}
-	if writeShaToFile {
+	if la.writeShaToFile {
 		return layer.writeSha(metadata.SHA)
 	}
 	buildpackLayersToSha.addLayerToMap(buildpackID, layerName, metadata.SHA)
