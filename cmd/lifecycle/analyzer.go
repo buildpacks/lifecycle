@@ -176,23 +176,21 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		img imgutil.Image
 		err error
 	)
-	if aa.previousImage != "" {
-		if aa.useDaemon {
-			img, err = local.NewImage(
-				aa.previousImage,
-				aa.docker,
-				local.FromBaseImage(aa.previousImage),
-			)
-		} else {
-			img, err = remote.NewImage(
-				aa.previousImage,
-				aa.keychain,
-				remote.FromBaseImage(aa.previousImage),
-			)
-		}
-		if err != nil {
-			return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
-		}
+	if aa.useDaemon {
+		img, err = local.NewImage(
+			aa.previousImage,
+			aa.docker,
+			local.FromBaseImage(aa.previousImage),
+		)
+	} else {
+		img, err = remote.NewImage(
+			aa.previousImage,
+			aa.keychain,
+			remote.FromBaseImage(aa.previousImage),
+		)
+	}
+	if err != nil {
+		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
