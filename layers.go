@@ -124,7 +124,7 @@ type bpLayer struct { // TODO: need to refactor so api and logger won't be part 
 	logger Logger
 }
 
-func (bp *bpLayer) read(restoreSha bool) (platform.BuildpackLayerMetadata, error) {
+func (bp *bpLayer) read(readShaFile bool) (platform.BuildpackLayerMetadata, error) {
 	tomlPath := bp.path + ".toml"
 	layerMetadataFile, msg, err := buildpack.DecodeLayerMetadataFile(tomlPath, bp.api)
 	if err != nil {
@@ -138,7 +138,7 @@ func (bp *bpLayer) read(restoreSha bool) (platform.BuildpackLayerMetadata, error
 		}
 	}
 	var sha string
-	if restoreSha {
+	if readShaFile {
 		shaBytes, err := ioutil.ReadFile(bp.path + ".sha")
 		if err != nil && !os.IsNotExist(err) {
 			return platform.BuildpackLayerMetadata{}, err

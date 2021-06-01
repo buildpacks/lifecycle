@@ -81,8 +81,8 @@ func (bls *BuildpackLayersToSha) getShaByBuildpackLayers(buildpackID, layerName 
 }
 
 func (bls *BuildpackLayersToSha) addLayerToMap(buildpackID, layerName, sha string) {
-	_, ok := bls.buildpacksToLayersShaMap[buildpackID]
-	if !ok {
+	_, exists := bls.buildpacksToLayersShaMap[buildpackID]
+	if !exists {
 		bls.buildpacksToLayersShaMap[buildpackID] = initializeLayerToSha()
 	}
 	bls.buildpacksToLayersShaMap[buildpackID].layerToShaMap[layerName] = sha
