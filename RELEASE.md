@@ -11,7 +11,9 @@ To cut a release:
 Inside the `pack` repo:
     On Linux:
     ```
-    LIFECYCLE_PATH="/path/to/created/lifecycle-v0.99.0+linux.x86-64.tgz" LIFECYCLE_IMAGe="buildpacksio/lifecycle:<commit sha>" make acceptance
+    LIFECYCLE_PATH="/path/to/created/lifecycle-v0.99.0+linux.x86-64.tgz" \
+    LIFECYCLE_IMAGE="buildpacksio/lifecycle:<commit sha>" \
+    make acceptance
     ```
     On Windows:
     ```
