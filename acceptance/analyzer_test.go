@@ -790,6 +790,10 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("called with previous image", func() {
+				it.Before(func() {
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not support -previous-image")
+				})
+
 				when("auth registry", func() {
 					var authRegAppImage, appAuthConfig string
 
@@ -804,26 +808,28 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 					})
 
-					it("restores app metadata from previous image", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
-						output := h.DockerRunAndCopy(t,
+					it("writes analyzed.toml with previous image identifier", func() {
+						execArgs := []string{
+							ctrPath(analyzerPath),
+							"-previous-image", authRegAppImage,
+							"some-fake-image",
+						}
+
+						h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
-							ctrPath("/layers"),
+							ctrPath("/layers/analyzed.toml"),
 							analyzeImage,
 							h.WithFlags(
+								"--env", "CNB_PLATFORM_API="+platformAPI,
 								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
 								"--network", registryNetwork,
-								"--env", "CNB_PLATFORM_API="+platformAPI,
 							),
-							h.WithArgs(
-								ctrPath(analyzerPath),
-								"some-ignored-app-image",
-								"--previous-image", authRegAppImage,
-							),
+							h.WithArgs(execArgs...),
 						)
 
-						assertLogsAndRestoresAppMetadata(t, copyDir, output)
+						md := getAnalyzedMetadataImageRef(t, filepath.Join(copyDir, "analyzed.toml"))
+						h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
 					})
 				})
 			})
@@ -1060,6 +1066,17 @@ func assertAnalyzedMetadata(t *testing.T, path string) {
 	var analyzedMd platform.AnalyzedMetadata
 	_, err := toml.Decode(string(contents), &analyzedMd)
 	h.AssertNil(t, err)
+}
+
+func getAnalyzedMetadataImageRef(t *testing.T, path string) *platform.AnalyzedMetadata {
+	contents, _ := ioutil.ReadFile(path)
+	h.AssertEq(t, len(contents) > 0, true)
+
+	var analyzedMd platform.AnalyzedMetadata
+	_, err := toml.Decode(string(contents), &analyzedMd)
+	h.AssertNil(t, err)
+
+	return &analyzedMd
 }
 
 func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {
