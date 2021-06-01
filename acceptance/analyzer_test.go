@@ -789,6 +789,45 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 
+			when("called with previous image", func() {
+				when("auth registry", func() {
+					var authRegAppImage, appAuthConfig string
+
+					it.Before(func() {
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
+						authRegAppImage, appAuthConfig = buildAuthRegistryImage(
+							t,
+							"some-app-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "app-image"),
+							"--build-arg", "fromImage="+containerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
+					})
+
+					it("restores app metadata from previous image", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
+						output := h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							ctrPath("/layers"),
+							analyzeImage,
+							h.WithFlags(
+								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+								"--network", registryNetwork,
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+							),
+							h.WithArgs(
+								ctrPath(analyzerPath),
+								"some-ignored-app-image",
+								"--previous-image", authRegAppImage,
+							),
+						)
+
+						assertLogsAndRestoresAppMetadata(t, copyDir, output)
+					})
+				})
+			})
+
 			when("cache is provided", func() {
 				when("cache image case", func() {
 					when("auth registry", func() {
