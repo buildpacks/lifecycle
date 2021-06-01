@@ -16,6 +16,7 @@ Inside the `pack` repo:
     On Windows:
     ```
     $env:LIFECYCLE_PATH="C:\path\to\created\lifecycle-v0.99.0+windows.x86-64.tgz" 
+    $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:<commit sha>"
     make acceptance
     ```
 1. When ready to publish the release, edit the release page and click "Publish release". This will trigger the `post-release` workflow that will re-tag the lifecycle image from `buildpacksio/lifecycle:<commit sha>` to `buildpacksio/lifecycle:0.99.0`.
