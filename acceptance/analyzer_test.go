@@ -828,7 +828,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithArgs(execArgs...),
 						)
 
-						md := getAnalyzedMetadataImageRef(t, filepath.Join(copyDir, "analyzed.toml"))
+						md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
 						h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
 					})
 				})
@@ -1068,7 +1068,7 @@ func assertAnalyzedMetadata(t *testing.T, path string) {
 	h.AssertNil(t, err)
 }
 
-func getAnalyzedMetadataImageRef(t *testing.T, path string) *platform.AnalyzedMetadata {
+func getAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
