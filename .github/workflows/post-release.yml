@@ -3,7 +3,7 @@ name: post-release
 on:
   release:
     types:
-      - published
+      - released # do not trigger for pre-releases
 
 jobs:
   retag-lifecycle-images-linux:
