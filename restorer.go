@@ -31,8 +31,9 @@ func (r *Restorer) Restore(cache Cache) error {
 		return err
 	}
 
+	layerSHAStore := NewLayerSHAStore(r.LayerMetadataRestorer.UseSHAFiles())
 	if r.restoresLayerMetadata() {
-		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta); err != nil {
+		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
 			return err
 		}
 	}
@@ -41,11 +42,11 @@ func (r *Restorer) Restore(cache Cache) error {
 	for _, buildpack := range r.Buildpacks {
 		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 
-		var cachedFn func(BpLayer) bool
+		var cachedFn func(bpLayer) bool
 		if api.MustParse(buildpack.API).Compare(api.MustParse("0.6")) >= 0 {
 			// On Buildpack API 0.6+, the <layer>.toml file never contains layer types information.
 			// The cache metadata is the only way to identify cache=true layers.
-			cachedFn = func(l BpLayer) bool {
+			cachedFn = func(l bpLayer) bool {
 				layer, ok := cachedLayers[filepath.Base(l.path)]
 				return ok && layer.Cache
 			}
@@ -73,11 +74,19 @@ func (r *Restorer) Restore(cache Cache) error {
 				continue
 			}
 
-			restoreLayer, err := r.LayerMetadataRestorer.CacheIsValid(buildpack.ID, cachedLayer.SHA, bpLayer)
+			layerSha, err := layerSHAStore.get(buildpack.ID, bpLayer)
 			if err != nil {
 				return err
 			}
-			if restoreLayer {
+
+			if layerSha != cachedLayer.SHA {
+				r.Logger.Infof("Removing %q, wrong sha", bpLayer.Identifier())
+				r.Logger.Debugf("Layer sha: %q, cache sha: %q", layerSha, cachedLayer.SHA)
+				if err := bpLayer.remove(); err != nil {
+					return errors.Wrapf(err, "removing layer")
+				}
+			} else {
+				r.Logger.Infof("Restoring data for %q from cache", bpLayer.Identifier())
 				g.Go(func() error {
 					return r.restoreLayer(cache, cachedLayer.SHA)
 				})

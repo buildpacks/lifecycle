@@ -37,31 +37,30 @@ func (m *MockLayerMetadataRestorer) EXPECT() *MockLayerMetadataRestorerMockRecor
 	return m.recorder
 }
 
-// CacheIsValid mocks base method.
-func (m *MockLayerMetadataRestorer) CacheIsValid(arg0, arg1 string, arg2 lifecycle.BpLayer) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CacheIsValid", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CacheIsValid indicates an expected call of CacheIsValid.
-func (mr *MockLayerMetadataRestorerMockRecorder) CacheIsValid(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CacheIsValid", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).CacheIsValid), arg0, arg1, arg2)
-}
-
 // Restore mocks base method.
-func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata) error {
+func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata, arg3 lifecycle.LayerSHAStore) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Restore indicates an expected call of Restore.
-func (mr *MockLayerMetadataRestorerMockRecorder) Restore(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockLayerMetadataRestorerMockRecorder) Restore(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restore", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).Restore), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restore", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).Restore), arg0, arg1, arg2, arg3)
+}
+
+// UseSHAFiles mocks base method.
+func (m *MockLayerMetadataRestorer) UseSHAFiles() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UseSHAFiles")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// UseSHAFiles indicates an expected call of UseSHAFiles.
+func (mr *MockLayerMetadataRestorerMockRecorder) UseSHAFiles() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UseSHAFiles", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).UseSHAFiles))
 }

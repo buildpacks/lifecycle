@@ -108,7 +108,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 
-						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha")) // not really needed for platformAPI >= 0.7
+						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sha"))
 					})
 
 					it("does not restore layer data", func() {
@@ -168,7 +168,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-true.toml"))
 					})
 
-					it("removes metadata and sha file", func() {
+					it("removes sha file", func() {
 						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 
@@ -385,15 +385,15 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				})
 
 				when("there is a cache=true layer with wrong sha", func() {
-					var wrongSha string
+					var madeUpSha string
 					it.Before(func() {
-						wrongSha = "some-made-up-sha"
+						madeUpSha = "some-made-up-sha"
 						var meta, layerSha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=true\n"
 						}
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-							layerSha = wrongSha
+							layerSha = madeUpSha
 						}
 						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, layerSha))
 
@@ -414,7 +414,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
        }
    ]
 }
-`, wrongSha))
+`, madeUpSha))
 
 						h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
 
@@ -434,7 +434,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"))
 						expected := "Removing \"buildpack.id:cache-launch\", wrong sha"
 						assertLogEntry(t, logHandler, expected)
-						expected = fmt.Sprintf("Layer sha: %q", wrongSha)
+						expected = fmt.Sprintf("Layer sha: %q", madeUpSha)
 						assertLogEntry(t, logHandler, expected)
 					})
 				})
@@ -457,7 +457,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-layer-not-in-cache.toml"))
 					})
 
-					it("removes metadata and sha file", func() {
+					it("removes sha file", func() {
 						h.SkipIf(t, api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) >= 0, "Not possible to determine if layers not in cache are launch-only or the result of incorrect metadata")
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "sha file isn't created")
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-layer-not-in-cache.sha"))
@@ -545,11 +545,11 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					var cacheOnlyMeta, cacheLaunchMeta, escapedMeta string
 
 					it.Before(func() {
-						var typesMeta, cacheOnlySha, cacheLunchSha, escapedSha string
+						var typesMeta, cacheOnlySha, cacheLaunchSha, escapedSha string
 
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
 							cacheOnlySha = cacheOnlyLayerSHA
-							cacheLunchSha = cacheLaunchLayerSHA
+							cacheLaunchSha = cacheLaunchLayerSHA
 							escapedSha = escapedLayerSHA
 						}
 
@@ -568,7 +568,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						}
 
 						cacheLaunchMeta = typesMeta + "[metadata]\n  cache-launch-key = \"cache-launch-val\"\n"
-						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", cacheLaunchMeta, cacheLunchSha))
+						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", cacheLaunchMeta, cacheLaunchSha))
 
 						appMetaContents := []byte(fmt.Sprintf(`{
    "buildpacks": [

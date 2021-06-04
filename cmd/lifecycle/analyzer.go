@@ -194,13 +194,14 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
+	useShaFile := true
 	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks:            aa.platform06.group.Group,
 		Cache:                 aa.platform06.cache,
 		Logger:                cmd.DefaultLogger,
 		Platform:              aa.platform,
 		Image:                 img,
-		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers, true),
+		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers, useShaFile),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
