@@ -62,7 +62,7 @@ func (lss *defaultLayerSHAStore) get(buildpackID string, layer bpLayer) (string,
 		}
 		return data.SHA, nil
 	}
-	return lss.getShaByBuildpackLayers(buildpackID, layer.name()), nil
+	return lss.getShaByBuildpackLayer(buildpackID, layer.name()), nil
 }
 
 func (lss *defaultLayerSHAStore) addLayerToMap(buildpackID, layerName, sha string) {
@@ -74,7 +74,7 @@ func (lss *defaultLayerSHAStore) addLayerToMap(buildpackID, layerName, sha strin
 }
 
 // if the layer exists for the buildpack ID, its SHA will be returned. Otherwise, an empty string will be returned.
-func (lss *defaultLayerSHAStore) getShaByBuildpackLayers(buildpackID, layerName string) string {
+func (lss *defaultLayerSHAStore) getShaByBuildpackLayer(buildpackID, layerName string) string {
 	if layerToSha, buildpackExists := lss.buildpacksToLayersShaMap[buildpackID]; buildpackExists {
 		if sha, layerExists := layerToSha.layerToShaMap[layerName]; layerExists {
 			return sha

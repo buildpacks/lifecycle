@@ -385,15 +385,15 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				})
 
 				when("there is a cache=true layer with wrong sha", func() {
-					var madeUpSha string
+					var otherSHA string
 					it.Before(func() {
-						madeUpSha = "some-made-up-sha"
+						otherSHA = "some-made-up-sha"
 						var meta, layerSha string
 						if api.MustParse(buildpackAPI).Compare(api.MustParse("0.6")) < 0 {
 							meta = "cache=true\n"
 						}
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-							layerSha = madeUpSha
+							layerSha = otherSHA
 						}
 						h.AssertNil(t, writeLayer(layersDir, "buildpack.id", "cache-launch", meta, layerSha))
 
@@ -414,7 +414,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
        }
    ]
 }
-`, madeUpSha))
+`, otherSHA))
 
 						h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
 
@@ -434,7 +434,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "cache-launch"))
 						expected := "Removing \"buildpack.id:cache-launch\", wrong sha"
 						assertLogEntry(t, logHandler, expected)
-						expected = fmt.Sprintf("Layer sha: %q", madeUpSha)
+						expected = fmt.Sprintf("Layer sha: %q", otherSHA)
 						assertLogEntry(t, logHandler, expected)
 					})
 				})
@@ -650,7 +650,7 @@ func writeLayer(layersDir, buildpack, name, metadata, sha string) error {
 	if err := ioutil.WriteFile(metadataPath, []byte(metadata), 0600); err != nil {
 		return errors.Wrapf(err, "writing metadata file")
 	}
-	if sha != "" {
+	if sha != "" { // don't write a sha file when sha is an empty string
 		shaPath := filepath.Join(buildpackDir, name+".sha")
 		if err := ioutil.WriteFile(shaPath, []byte(sha), 0600); err != nil {
 			return errors.Wrapf(err, "writing sha file")
