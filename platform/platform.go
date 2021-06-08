@@ -3,7 +3,6 @@ package platform
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/platform/pre06"
 	v06 "github.com/buildpacks/lifecycle/platform/v06"
@@ -25,8 +24,7 @@ var supportedPlatforms = map[string]common.Platform{
 }
 
 func NewPlatform(apiStr string) (common.Platform, error) {
-	platformAPI := api.MustParse(apiStr)
-	p, ok := supportedPlatforms[platformAPI.String()]
+	p, ok := supportedPlatforms[apiStr]
 	if !ok {
 		return nil, fmt.Errorf("unable to create platform for api %s: unknown api", apiStr)
 	}
