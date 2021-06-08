@@ -121,11 +121,8 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				benv := env.NewBuildEnv([]string{
 					"CNB_ASSETS=some-assets-path",
 				}, platform)
-				out := benv.List()
-				sort.Strings(out)
-				var expectedVars []string
-				// Environment variables in Windows are case insensitive, and are added by the lifecycle in uppercase.
-				if s := cmp.Diff(out, expectedVars); s != "" {
+				var expected []string
+				if s := cmp.Diff(benv.List(), expected); s != "" {
 					t.Fatalf("Unexpected env\n%s\n", s)
 				}
 			})

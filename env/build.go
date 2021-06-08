@@ -35,7 +35,7 @@ var ignoreEnvVarCase = runtime.GOOS == "windows"
 // NewBuildEnv returns an build-time Env from the given environment.
 //
 // Keys in the BuildEnvIncludelist will be added to the Environment.
-// if the platform supports asset packages, keys from AssetsEnvVars will be added to the environment.
+// If the platform supports asset packages, keys from AssetsEnvVars will be added to the environment.
 func NewBuildEnv(environ []string, platform Platform) *Env {
 	envFilter := isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv))
 	if platform.SupportsAssetPackages() {
@@ -49,9 +49,9 @@ func NewBuildEnv(environ []string, platform Platform) *Env {
 
 // NewDetectEnv returns an detect-time Env from the given environment.
 //
-// only keys in the BuildEnvIncludelist will be added to the Environment.
+// Only keys in the BuildEnvIncludelist will be added to the Environment.
 func NewDetectEnv(environ []string) *Env {
-	envFilter := isNotMember(append(BuildEnvIncludelist, flattenMap(POSIXBuildEnv)...))
+	envFilter := isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv))
 
 	return &Env{
 		RootDirMap: POSIXBuildEnv,

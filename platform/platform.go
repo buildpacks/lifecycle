@@ -5,7 +5,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/common"
-	pre06 "github.com/buildpacks/lifecycle/platform/pre06"
+	"github.com/buildpacks/lifecycle/platform/pre06"
 	v06 "github.com/buildpacks/lifecycle/platform/v06"
 	v07 "github.com/buildpacks/lifecycle/platform/v07"
 )
