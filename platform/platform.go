@@ -16,7 +16,7 @@ var platform05 = pre06.NewPlatform("0.5")
 var platform06 = v06.NewPlatform(platform05)
 var platform07 = v07.NewPlatform(platform06)
 
-var platformMap = map[string]common.Platform{
+var supportedPlatforms = map[string]common.Platform{
 	"0.3": platform03,
 	"0.4": platform04,
 	"0.5": platform05,
@@ -26,7 +26,7 @@ var platformMap = map[string]common.Platform{
 
 func NewPlatform(apiStr string) (common.Platform, error) {
 	platformAPI := api.MustParse(apiStr)
-	p, ok := platformMap[platformAPI.String()]
+	p, ok := supportedPlatforms[platformAPI.String()]
 	if !ok {
 		return nil, fmt.Errorf("unable to create platform for api %s: unknown api", apiStr)
 	}

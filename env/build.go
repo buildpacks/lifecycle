@@ -83,11 +83,7 @@ var POSIXBuildEnv = map[string][]string{
 	},
 }
 
-// removeFilter is generic function used to filter env vars out of the environment
-// if removeFilter(key) returns true, then the env var will be removed from the respective environment
-type removeFilter func(key string) bool
-
-func isNotMember(lists ...[]string) removeFilter {
+func isNotMember(lists ...[]string) func(string) bool {
 	return func(key string) bool {
 		for _, list := range lists {
 			for _, wk := range list {
