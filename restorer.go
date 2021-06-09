@@ -31,7 +31,8 @@ func (r *Restorer) Restore(cache Cache) error {
 		return err
 	}
 
-	layerSHAStore := NewLayerSHAStore(r.LayerMetadataRestorer.UseSHAFiles())
+	useShaFiles := !r.restoresLayerMetadata()
+	layerSHAStore := NewLayerSHAStore(useShaFiles)
 	if r.restoresLayerMetadata() {
 		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
 			return err

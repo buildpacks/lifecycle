@@ -13,15 +13,13 @@ import (
 
 //go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle LayerMetadataRestorer
 type LayerMetadataRestorer interface {
-	UseSHAFiles() bool
 	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore LayerSHAStore) error
 }
 
 type DefaultLayerMetadataRestorer struct {
-	logger      Logger
-	layersDir   string
-	skipLayers  bool
-	useShaFiles bool
+	logger     Logger
+	layersDir  string
+	skipLayers bool
 }
 
 type LayerSHAStore interface {
@@ -29,8 +27,29 @@ type LayerSHAStore interface {
 	get(buildpackID string, layer bpLayer) (string, error)
 }
 
-type defaultLayerSHAStore struct {
-	useShaFiles              bool
+func NewLayerSHAStore(useShaFiles bool) LayerSHAStore {
+	if useShaFiles {
+		return &filesLayerSHAStore{}
+	}
+	return &mapLayerSHAStore{make(map[string]layerToSha)}
+}
+
+type filesLayerSHAStore struct {
+}
+
+func (flss *filesLayerSHAStore) add(buildpackID, sha string, layer *bpLayer) error {
+	return layer.writeSha(sha)
+}
+
+func (flss *filesLayerSHAStore) get(buildpackID string, layer bpLayer) (string, error) {
+	data, err := layer.read()
+	if err != nil {
+		return "", errors.Wrapf(err, "reading layer")
+	}
+	return data.SHA, nil
+}
+
+type mapLayerSHAStore struct {
 	buildpacksToLayersShaMap map[string]layerToSha
 }
 
@@ -38,44 +57,26 @@ type layerToSha struct {
 	layerToShaMap map[string]string
 }
 
-func NewLayerSHAStore(useShaFiles bool) LayerSHAStore {
-	var buildpacksToLayersShaMap map[string]layerToSha
-	if !useShaFiles {
-		buildpacksToLayersShaMap = make(map[string]layerToSha)
-	}
-	return &defaultLayerSHAStore{useShaFiles, buildpacksToLayersShaMap}
-}
-
-func (lss *defaultLayerSHAStore) add(buildpackID, sha string, layer *bpLayer) error {
-	if lss.useShaFiles {
-		return layer.writeSha(sha)
-	}
-	lss.addLayerToMap(buildpackID, layer.name(), sha)
+func (mlss *mapLayerSHAStore) add(buildpackID, sha string, layer *bpLayer) error {
+	mlss.addLayerToMap(buildpackID, layer.name(), sha)
 	return nil
 }
 
-func (lss *defaultLayerSHAStore) get(buildpackID string, layer bpLayer) (string, error) {
-	if lss.useShaFiles {
-		data, err := layer.read()
-		if err != nil {
-			return "", errors.Wrapf(err, "reading layer")
-		}
-		return data.SHA, nil
-	}
-	return lss.getShaByBuildpackLayer(buildpackID, layer.name()), nil
+func (mlss *mapLayerSHAStore) get(buildpackID string, layer bpLayer) (string, error) {
+	return mlss.getShaByBuildpackLayer(buildpackID, layer.name()), nil
 }
 
-func (lss *defaultLayerSHAStore) addLayerToMap(buildpackID, layerName, sha string) {
-	_, exists := lss.buildpacksToLayersShaMap[buildpackID]
+func (mlss *mapLayerSHAStore) addLayerToMap(buildpackID, layerName, sha string) {
+	_, exists := mlss.buildpacksToLayersShaMap[buildpackID]
 	if !exists {
-		lss.buildpacksToLayersShaMap[buildpackID] = layerToSha{make(map[string]string)}
+		mlss.buildpacksToLayersShaMap[buildpackID] = layerToSha{make(map[string]string)}
 	}
-	lss.buildpacksToLayersShaMap[buildpackID].layerToShaMap[layerName] = sha
+	mlss.buildpacksToLayersShaMap[buildpackID].layerToShaMap[layerName] = sha
 }
 
 // if the layer exists for the buildpack ID, its SHA will be returned. Otherwise, an empty string will be returned.
-func (lss *defaultLayerSHAStore) getShaByBuildpackLayer(buildpackID, layerName string) string {
-	if layerToSha, buildpackExists := lss.buildpacksToLayersShaMap[buildpackID]; buildpackExists {
+func (mlss *mapLayerSHAStore) getShaByBuildpackLayer(buildpackID, layerName string) string {
+	if layerToSha, buildpackExists := mlss.buildpacksToLayersShaMap[buildpackID]; buildpackExists {
 		if sha, layerExists := layerToSha.layerToShaMap[layerName]; layerExists {
 			return sha
 		}
@@ -83,17 +84,12 @@ func (lss *defaultLayerSHAStore) getShaByBuildpackLayer(buildpackID, layerName s
 	return ""
 }
 
-func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers, useShaFiles bool) LayerMetadataRestorer {
+func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers bool) LayerMetadataRestorer {
 	return &DefaultLayerMetadataRestorer{
-		logger:      logger,
-		layersDir:   layersDir,
-		skipLayers:  skipLayers,
-		useShaFiles: useShaFiles,
+		logger:     logger,
+		layersDir:  layersDir,
+		skipLayers: skipLayers,
 	}
-}
-
-func (la *DefaultLayerMetadataRestorer) UseSHAFiles() bool {
-	return la.useShaFiles
 }
 
 func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore LayerSHAStore) error {

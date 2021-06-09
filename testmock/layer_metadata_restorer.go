@@ -50,17 +50,3 @@ func (mr *MockLayerMetadataRestorerMockRecorder) Restore(arg0, arg1, arg2, arg3 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restore", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).Restore), arg0, arg1, arg2, arg3)
 }
-
-// UseSHAFiles mocks base method.
-func (m *MockLayerMetadataRestorer) UseSHAFiles() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UseSHAFiles")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// UseSHAFiles indicates an expected call of UseSHAFiles.
-func (mr *MockLayerMetadataRestorerMockRecorder) UseSHAFiles() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UseSHAFiles", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).UseSHAFiles))
-}

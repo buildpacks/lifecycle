@@ -44,8 +44,8 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		useShaFiles = true // notice - the default for platform API >= 0.7 is false (it's set to false in some of the tests)
 		logger = log.Logger{Handler: &discard.Handler{}}
-		layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers, useShaFiles)
-		layerSHAStore = lifecycle.NewLayerSHAStore(layerMetadataRestorer.UseSHAFiles())
+		layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+		layerSHAStore = lifecycle.NewLayerSHAStore(useShaFiles)
 	})
 
 	it.After(func() {
@@ -190,8 +190,8 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("restoring sha files is not needed", func() {
 				it.Before(func() {
 					useShaFiles = false
-					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers, useShaFiles)
-					layerSHAStore = lifecycle.NewLayerSHAStore(layerMetadataRestorer.UseSHAFiles())
+					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+					layerSHAStore = lifecycle.NewLayerSHAStore(useShaFiles)
 				})
 
 				it("does not restore sha files", func() {
@@ -375,7 +375,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("skip layers is true", func() {
 				it.Before(func() {
 					skipLayers = true
-					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers, useShaFiles)
+					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
 				})
 
 				it("does not write buildpack layer metadata", func() {

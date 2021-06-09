@@ -116,13 +116,12 @@ func (r *restoreCmd) registryImages() []string {
 }
 
 func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
-	useShaFile := !r.restoresLayerMetadata()
 	restorer := &lifecycle.Restorer{
 		LayersDir:             r.layersDir,
 		Buildpacks:            group.Group,
 		Logger:                cmd.DefaultLogger,
 		Platform:              r.platform,
-		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers, useShaFile),
+		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers),
 		LayersMetadata:        layerMetadata,
 	}
 
