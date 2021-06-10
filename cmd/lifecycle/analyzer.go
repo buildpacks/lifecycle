@@ -29,12 +29,13 @@ type analyzeCmd struct {
 }
 
 type analyzeArgs struct {
-	imageName   string
-	layersDir   string
-	orderPath   string //nolint - Platform API >= 0.7
-	runImageRef string //nolint - Platform API >= 0.7
-	stackPath   string //nolint - Platform API >= 0.7
-	useDaemon   bool
+	imageName     string
+	layersDir     string
+	orderPath     string //nolint - Platform API >= 0.7
+	previousImage string //nolint - Platform API >= 0.7
+	runImageRef   string //nolint - Platform API >= 0.7
+	stackPath     string //nolint - Platform API >= 0.7
+	useDaemon     bool
 
 	platform06     analyzeArgsPlatform06
 	additionalTags cmd.StringSlice        //nolint Platform API >= 0.7
@@ -57,7 +58,7 @@ func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagLayersDir(&a.layersDir)
 	if a.platformAPIVersionGreaterThan06() {
 		cmd.FlagOrderPath(&a.orderPath)
-		cmd.FlagPreviousImage(&a.imageName)
+		cmd.FlagPreviousImage(&a.previousImage)
 		cmd.FlagRunImage(&a.runImageRef)
 		cmd.FlagStackPath(&a.stackPath)
 		cmd.FlagTags(&a.additionalTags)
@@ -73,16 +74,16 @@ func (a *analyzeCmd) DefineFlags() {
 }
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	if a.supportsImageArgument() {
-		if nargs != 1 {
-			return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
-		}
-		if args[0] == "" {
-			return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
-		}
-		a.imageName = args[0]
-	} else if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
+	if nargs != 1 {
+		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+	}
+	if args[0] == "" {
+		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+	}
+	a.imageName = args[0]
+
+	if a.previousImage == "" {
+		a.previousImage = a.imageName
 	}
 
 	if a.restoresLayerMetadata() {
@@ -175,23 +176,21 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		img imgutil.Image
 		err error
 	)
-	if aa.imageName != "" {
-		if aa.useDaemon {
-			img, err = local.NewImage(
-				aa.imageName,
-				aa.docker,
-				local.FromBaseImage(aa.imageName),
-			)
-		} else {
-			img, err = remote.NewImage(
-				aa.imageName,
-				aa.keychain,
-				remote.FromBaseImage(aa.imageName),
-			)
-		}
-		if err != nil {
-			return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
-		}
+	if aa.useDaemon {
+		img, err = local.NewImage(
+			aa.previousImage,
+			aa.docker,
+			local.FromBaseImage(aa.previousImage),
+		)
+	} else {
+		img, err = remote.NewImage(
+			aa.previousImage,
+			aa.keychain,
+			remote.FromBaseImage(aa.previousImage),
+		)
+	}
+	if err != nil {
+		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
@@ -214,16 +213,12 @@ func (a *analyzeCmd) registryImages() []string {
 		registryImages = append(registryImages, a.platform06.cacheImageTag)
 	}
 	if !a.useDaemon {
-		registryImages = append(registryImages, a.analyzeArgs.imageName)
+		registryImages = append(registryImages, append([]string{a.imageName, a.previousImage, a.runImageRef}, a.additionalTags...)...)
 	}
 	return registryImages
 }
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {
-	return !a.platformAPIVersionGreaterThan06()
-}
-
-func (a *analyzeCmd) supportsImageArgument() bool {
 	return !a.platformAPIVersionGreaterThan06()
 }
 
