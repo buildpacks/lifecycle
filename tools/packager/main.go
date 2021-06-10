@@ -21,7 +21,6 @@ var (
 	descriptorPath string
 	inputDir       string
 	version        string
-	exitCode       int = 2
 )
 
 // Write contents of inputDir to archive at archivePath

@@ -30,8 +30,8 @@ LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 GOBUILD:=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test $(GOFLAGS)
 BUILD_DIR?=$(PWD)$/out
-LINUX_COMPILATION_IMAGE?=golang:1.15-alpine
-WINDOWS_COMPILATION_IMAGE?=golang:1.15-windowsservercore-1809
+LINUX_COMPILATION_IMAGE?=golang:1.16-alpine
+WINDOWS_COMPILATION_IMAGE?=golang:1.16-windowsservercore-1809
 SOURCE_COMPILATION_IMAGE?=lifecycle-img
 BUILD_CTR?=lifecycle-ctr
 DOCKER_CMD?=make test
@@ -176,19 +176,19 @@ $(BUILD_DIR)/darwin/lifecycle/launcher:
 
 install-goimports:
 	@echo "> Installing goimports..."
-	cd tools && $(GOCMD) install golang.org/x/tools/cmd/goimports
+	$(GOCMD) install golang.org/x/tools/cmd/goimports@v0.1.2
 
 install-yj:
 	@echo "> Installing yj..."
-	cd tools && $(GOCMD) install github.com/sclevine/yj
+	$(GOCMD) install github.com/sclevine/yj@v0.0.0-20210612025309-737bdf40a5d1
 
 install-mockgen:
 	@echo "> Installing mockgen..."
-	cd tools && $(GOCMD) install github.com/golang/mock/mockgen
+	$(GOCMD) install github.com/golang/mock/mockgen@v1.5.0
 
 install-golangci-lint:
 	@echo "> Installing golangci-lint..."
-	cd tools && $(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint
+	$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.30.0
 
 lint: install-golangci-lint
 	@echo "> Linting code..."

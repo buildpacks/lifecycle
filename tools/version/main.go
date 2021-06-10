@@ -7,7 +7,6 @@ import (
 )
 
 func main() {
-
 	// if the current branch is a release branch, parse the version number from the branch
 
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")

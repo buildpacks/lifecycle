@@ -39,7 +39,7 @@ func main() {
 			if err == io.EOF {
 				break
 			}
-			panic("Could not parse output:" + string(stdout.Bytes()))
+			panic("Could not parse output:" + stdout.String())
 		}
 
 		for _, file := range pkg.GoFiles {
