@@ -26,12 +26,15 @@ func TestLayerMetadataRestorer(t *testing.T) {
 
 func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 	var (
-		layerDir       string
-		layerAnalyzer  lifecycle.LayerMetadataRestorer
-		layersMetadata platform.LayersMetadata
-		cacheMetadata  platform.CacheMetadata
-		buildpacks     []buildpack.GroupBuildpack
-		skipLayers     bool
+		layerDir              string
+		layerMetadataRestorer lifecycle.LayerMetadataRestorer
+		layerSHAStore         lifecycle.LayerSHAStore
+		layersMetadata        platform.LayersMetadata
+		cacheMetadata         platform.CacheMetadata
+		buildpacks            []buildpack.GroupBuildpack
+		skipLayers            bool
+		useShaFiles           bool
+		logger                log.Logger
 	)
 
 	it.Before(func() {
@@ -39,8 +42,10 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
 		h.AssertNil(t, err)
-		logger := &log.Logger{Handler: &discard.Handler{}}
-		layerAnalyzer = lifecycle.NewLayerMetadataRestorer(logger, layerDir, skipLayers)
+		useShaFiles = true // notice - the default for platform API >= 0.7 is false (it's set to false in some of the tests)
+		logger = log.Logger{Handler: &discard.Handler{}}
+		layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+		layerSHAStore = lifecycle.NewLayerSHAStore(useShaFiles)
 	})
 
 	it.After(func() {
@@ -58,7 +63,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		when("app and cache metadata are not present", func() {
 			it("does not restore any metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				files, err := ioutil.ReadDir(layerDir)
@@ -74,7 +79,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores each store metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				files, err := ioutil.ReadDir(layerDir)
@@ -99,7 +104,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore each store metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 				for _, file := range []string{
 					// store.toml files.
@@ -121,7 +126,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores app and cache layer metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				unsetFlags := "[types]"
@@ -147,7 +152,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 						{ID: "no.cache.buildpack", API: "0.5"},
 					}
 
-					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
 					for _, data := range []struct{ name, want string }{
@@ -167,7 +172,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 						{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 					}
 
-					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
 					unsetFlags := "[types]"
@@ -182,8 +187,27 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("restoring sha files is not needed", func() {
+				it.Before(func() {
+					useShaFiles = false
+					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+					layerSHAStore = lifecycle.NewLayerSHAStore(useShaFiles)
+				})
+
+				it("does not restore sha files", func() {
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
+					h.AssertNil(t, err)
+
+					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack/launch.sha", "launch-sha"))
+					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack/launch-build-cache.sha", "launch-build-cache-sha"))
+					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack/launch-cache.sha", "launch-cache-sha"))
+					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "no.cache.buildpack/some-layer.sha", "some-layer-sha"))
+					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache-not-in-app.sha"))
+				})
+			})
+
 			it("restores app and cache layer sha files, prefers app sha", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				for _, data := range []struct{ name, want string }{
@@ -200,7 +224,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not overwrite metadata from app image", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				for _, name := range []string{
@@ -216,7 +240,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not overwrite sha from app image", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				for _, name := range []string{
@@ -232,14 +256,14 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore cache=true layers for non-selected groups", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "no.group.buildpack"))
 			})
 
 			it("does not restore launch=true layer metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-cache-not-in-app.toml"))
@@ -247,7 +271,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore cache=false layer metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache-false.toml"))
@@ -255,7 +279,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore launch=false layer metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-false.toml"))
@@ -263,14 +287,14 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not restore build=true, cache=false layer metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "launch-build.sha"))
 			})
 
 			it("restores escaped buildpack layer metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
 				path := filepath.Join(layerDir, "escaped_buildpack_id", "escaped-bp-layer.toml")
@@ -281,7 +305,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("restores each store metadata", func() {
-				err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 				for _, data := range []struct{ name, want string }{
 					// store.toml files.
@@ -301,7 +325,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 				when("app metadata cache=true, cache metadata cache=false", func() {
 					it("treats the layer as cache=false", func() {
-						err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+						err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 						h.AssertNil(t, err)
 
 						h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack", "cache.toml"))
@@ -317,7 +341,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("restores layers for detected buildpacks", func() {
-					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
 					path := filepath.Join(layerDir, "no.cache.buildpack", "some-layer.toml")
@@ -328,7 +352,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not restore layers for undetected buildpacks", func() {
-					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack"))
@@ -341,18 +365,21 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not restore layers for any buildpacks", func() {
-					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layerDir, "metadata.buildpack"))
 				})
 			})
 
-			when("SkipLayers is true", func() {
-				skipLayers = true
+			when("skip layers is true", func() {
+				it.Before(func() {
+					skipLayers = true
+					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+				})
 
 				it("does not write buildpack layer metadata", func() {
-					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
 					files, err := ioutil.ReadDir(layerDir)
@@ -371,7 +398,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("restores each store metadata", func() {
-					err := layerAnalyzer.Restore(buildpacks, layersMetadata, cacheMetadata)
+					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 					for _, data := range []struct{ name, want string }{
 						// store.toml files.
