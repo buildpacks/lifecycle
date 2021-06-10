@@ -795,7 +795,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 
 				when("auth registry", func() {
-					var authRegAppImage, appAuthConfig string
+					var authRegAppImage, authRegAppOtherImage, appAuthConfig string
 
 					it.Before(func() {
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
@@ -806,30 +806,66 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--build-arg", "fromImage="+containerBaseImage,
 							"--build-arg", "metadata="+metadata,
 						)
+
+						authRegAppOtherImage, appAuthConfig = buildAuthRegistryImage(
+							t,
+							"some-app-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "app-image"),
+							"--build-arg", "fromImage="+containerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
 					})
 
-					it("writes analyzed.toml with previous image identifier", func() {
-						execArgs := []string{
-							ctrPath(analyzerPath),
-							"-previous-image", authRegAppImage,
-							"some-fake-image",
-						}
+					when("the destination image does not exist", func() {
+						it("writes analyzed.toml with previous image identifier", func() {
+							execArgs := []string{
+								ctrPath(analyzerPath),
+								"-previous-image", authRegAppImage,
+								"some-fake-image",
+							}
 
-						h.DockerRunAndCopy(t,
-							containerName,
-							copyDir,
-							ctrPath("/layers/analyzed.toml"),
-							analyzeImage,
-							h.WithFlags(
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
-								"--network", registryNetwork,
-							),
-							h.WithArgs(execArgs...),
-						)
+							h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								ctrPath("/layers/analyzed.toml"),
+								analyzeImage,
+								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+									"--network", registryNetwork,
+								),
+								h.WithArgs(execArgs...),
+							)
 
-						md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-						h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
+							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+							h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
+						})
+					})
+
+					when("the destination image exists", func() {
+						it("writes analyzed.toml with previous image identifier", func() {
+							execArgs := []string{
+								ctrPath(analyzerPath),
+								"-previous-image", authRegAppImage,
+								authRegAppOtherImage,
+							}
+
+							h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								ctrPath("/layers/analyzed.toml"),
+								analyzeImage,
+								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+									"--network", registryNetwork,
+								),
+								h.WithArgs(execArgs...),
+							)
+
+							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+							h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
+						})
 					})
 				})
 			})
