@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -29,14 +30,15 @@ type Buildpack interface {
 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig) (buildpack.BuildResult, error)
 	ConfigFile() *buildpack.Descriptor
 	Detect(config *buildpack.DetectConfig) buildpack.DetectRun
+	SupportsAssetPackages() bool
 }
 
 type Builder struct {
 	AppDir         string
 	LayersDir      string
 	PlatformDir    string
-	PlatformAPI    *api.Version
-	Env            BuildEnv
+	Platform       Platform
+	PlatformAPI    *api.Version // TODO: derive from platform
 	Group          buildpack.Group
 	Plan           platform.BuildPlan
 	Out, Err       io.Writer
@@ -59,6 +61,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	var labels []buildpack.Label
 
 	for _, bp := range b.Group.Group {
+		bpConfig := config
+
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
@@ -69,6 +73,9 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 		b.Logger.Debug("Finding plan")
 		bpPlan := plan.Find(bp.ID)
+
+		b.Logger.Debug("Getting build environment")
+		bpConfig.Env = env.NewBuildEnv(os.Environ(), b.Platform, bpTOML)
 
 		br, err := bpTOML.Build(bpPlan, config)
 		if err != nil {
@@ -142,7 +149,6 @@ func (b *Builder) BuildConfig() (buildpack.BuildConfig, error) {
 	}
 
 	return buildpack.BuildConfig{
-		Env:         b.Env,
 		AppDir:      appDir,
 		PlatformDir: platformDir,
 		LayersDir:   layersDir,

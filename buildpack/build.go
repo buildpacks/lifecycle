@@ -105,6 +105,10 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Logger)
 }
 
+func (b *Descriptor) SupportsAssetPackages() bool {
+	return api.MustParse(b.API).Compare(api.MustParse("0.6")) > 0
+}
+
 func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, layerDir string) error {
 	// rename <layers>/<layer> to <layers>/<layer>.ignore if buildpack API >= 0.6 and all of the types flags are set to false
 	if !layerMetadataFile.Launch && !layerMetadataFile.Cache && !layerMetadataFile.Build {

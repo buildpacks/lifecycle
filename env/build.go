@@ -17,7 +17,14 @@ var BuildEnvIncludelist = []string{
 	"no_proxy",
 }
 
+//go:generate mockgen -package testmock -destination testmock/buildpack.go github.com/buildpacks/lifecycle/env Buildpack
 //go:generate mockgen -package testmock -destination testmock/platform.go github.com/buildpacks/lifecycle/env Platform
+
+// Buildpack represents capabilities supported by a buildpack and may be used to alter the env
+// to fit supported features.
+type Buildpack interface {
+	SupportsAssetPackages() bool
+}
 
 // Platform represents capabilities supported by the platform and may be used to alter the env
 // to fit supported features.
@@ -32,13 +39,13 @@ var AssetsEnvVars = []string{
 
 var ignoreEnvVarCase = runtime.GOOS == "windows"
 
-// NewBuildEnv returns an build-time Env from the given environment.
+// NewBuildEnv returns a build-time Env from the given environment.
 //
 // Keys in the BuildEnvIncludelist will be added to the Environment.
-// If the platform supports asset packages, keys from AssetsEnvVars will be added to the environment.
-func NewBuildEnv(environ []string, platform Platform) *Env {
+// If the platform and buildpack support asset packages, keys from AssetsEnvVars will be added to the environment.
+func NewBuildEnv(environ []string, platform Platform, buildpack Buildpack) *Env {
 	envFilter := isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv))
-	if platform.SupportsAssetPackages() {
+	if platform.SupportsAssetPackages() && buildpack.SupportsAssetPackages() {
 		envFilter = isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv), AssetsEnvVars)
 	}
 	return &Env{
