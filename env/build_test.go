@@ -171,10 +171,12 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS != "windows" {
 					t.Skip("This test only applies to Windows builds")
 				}
-				platform.EXPECT().SupportsAssetPackages().Return(true)
 			})
 
 			it("ignores case when initializing", func() {
+				platform.EXPECT().SupportsAssetPackages().Return(true)
+				buildpack.EXPECT().SupportsAssetPackages().Return(true)
+
 				benv := env.NewBuildEnv([]string{
 					"Path=some-path",
 				}, platform, buildpack)
