@@ -113,7 +113,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called without an app image", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept an image argument")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -137,7 +136,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzeImage,
 					ctrPath(analyzerPath),
 					"-group", "group.toml",
-					"-previous-image", "some-image",
+					"some-image",
 				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
@@ -156,7 +155,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzeImage,
 					ctrPath(analyzerPath),
 					"-skip-layers",
-					"-previous-image", "some-image",
+					"some-image",
 				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
@@ -175,7 +174,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzeImage,
 					ctrPath(analyzerPath),
 					"-cache-dir", "/cache",
-					"-previous-image", "some-image",
+					"some-image",
 				) // #nosec G204
 				output, err := cmd.CombinedOutput()
 
@@ -206,16 +205,10 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
-				imgArg := ""
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					imgArg = "some-image"
-				}
-
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
-					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers", analyzerPath, imgArg)),
+					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s some-image; ls -al /layers", analyzerPath)),
 				)
 
 				h.AssertMatch(t, output, "2222 3333 .+ \\.")
@@ -252,16 +245,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-					"-previous-image", "some-image",
-				}
-
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					execArgs = []string{
-						ctrPath(analyzerPath),
-						"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-						"some-image",
-					}
+					"some-image",
 				}
 
 				h.DockerRunAndCopy(t,
@@ -282,16 +266,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-daemon",
-					"-previous-image", "some-image",
-				}
-
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					execArgs = []string{
-						ctrPath(analyzerPath),
-						"-daemon",
-						"some-image",
-					}
+					"some-image",
 				}
 
 				h.DockerRunAndCopy(t,
@@ -345,7 +320,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(
 							ctrPath(analyzerPath),
 							"-daemon",
-							"-previous-image", appImage),
+							appImage),
 					)
 
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
@@ -643,12 +618,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("registry case", func() {
 			it("writes analyzed.toml", func() {
-				execArgs := []string{ctrPath(analyzerPath)}
-				// Platform >= 0.7 does not allow an argument, < 7 requires an argument
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-					execArgs = append(execArgs, "some-image")
-				}
-
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -657,7 +626,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 					),
-					h.WithArgs(execArgs...),
+					h.WithArgs(ctrPath(analyzerPath), "some-image"),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -815,6 +784,87 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 							assertAnalyzedMetadata(t, filepath.Join(copyDir, "layers", "analyzed.toml"))
 							assertWritesStoreTomlOnly(t, copyDir, output)
+						})
+					})
+				})
+			})
+
+			when("called with previous image", func() {
+				it.Before(func() {
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not support -previous-image")
+				})
+
+				when("auth registry", func() {
+					var authRegAppImage, authRegAppOtherImage, appAuthConfig string
+
+					it.Before(func() {
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
+						authRegAppImage, appAuthConfig = buildAuthRegistryImage(
+							t,
+							"some-app-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "app-image"),
+							"--build-arg", "fromImage="+containerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
+
+						authRegAppOtherImage, appAuthConfig = buildAuthRegistryImage(
+							t,
+							"some-app-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "app-image"),
+							"--build-arg", "fromImage="+containerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
+					})
+
+					when("the destination image does not exist", func() {
+						it("writes analyzed.toml with previous image identifier", func() {
+							execArgs := []string{
+								ctrPath(analyzerPath),
+								"-previous-image", authRegAppImage,
+								"some-fake-image",
+							}
+
+							h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								ctrPath("/layers/analyzed.toml"),
+								analyzeImage,
+								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+									"--network", registryNetwork,
+								),
+								h.WithArgs(execArgs...),
+							)
+
+							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+							h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
+						})
+					})
+
+					when("the destination image exists", func() {
+						it("writes analyzed.toml with previous image identifier", func() {
+							execArgs := []string{
+								ctrPath(analyzerPath),
+								"-previous-image", authRegAppImage,
+								authRegAppOtherImage,
+							}
+
+							h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								ctrPath("/layers/analyzed.toml"),
+								analyzeImage,
+								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+									"--network", registryNetwork,
+								),
+								h.WithArgs(execArgs...),
+							)
+
+							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+							h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
 						})
 					})
 				})
@@ -1052,6 +1102,17 @@ func assertAnalyzedMetadata(t *testing.T, path string) {
 	var analyzedMd platform.AnalyzedMetadata
 	_, err := toml.Decode(string(contents), &analyzedMd)
 	h.AssertNil(t, err)
+}
+
+func getAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {
+	contents, _ := ioutil.ReadFile(path)
+	h.AssertEq(t, len(contents) > 0, true)
+
+	var analyzedMd platform.AnalyzedMetadata
+	_, err := toml.Decode(string(contents), &analyzedMd)
+	h.AssertNil(t, err)
+
+	return &analyzedMd
 }
 
 func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {

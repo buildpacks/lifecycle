@@ -9,6 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
+	lifecycle "github.com/buildpacks/lifecycle"
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	platform "github.com/buildpacks/lifecycle/platform"
 )
@@ -37,15 +38,15 @@ func (m *MockLayerMetadataRestorer) EXPECT() *MockLayerMetadataRestorerMockRecor
 }
 
 // Restore mocks base method.
-func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata) error {
+func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata, arg3 lifecycle.LayerSHAStore) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Restore indicates an expected call of Restore.
-func (mr *MockLayerMetadataRestorerMockRecorder) Restore(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockLayerMetadataRestorerMockRecorder) Restore(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restore", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).Restore), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restore", reflect.TypeOf((*MockLayerMetadataRestorer)(nil).Restore), arg0, arg1, arg2, arg3)
 }

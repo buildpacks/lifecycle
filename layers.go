@@ -137,14 +137,15 @@ func (bp *bpLayer) read() (platform.BuildpackLayerMetadata, error) {
 			return platform.BuildpackLayerMetadata{}, errors.New(msg)
 		}
 	}
-	sha, err := ioutil.ReadFile(bp.path + ".sha")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: ""}, LayerMetadataFile: layerMetadataFile}, nil
-		}
+	var sha string
+	shaBytes, err := ioutil.ReadFile(bp.path + ".sha")
+	if err != nil && !os.IsNotExist(err) { // if the sha file doesn't exist, an empty sha will be returned
 		return platform.BuildpackLayerMetadata{}, err
 	}
-	return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: string(sha)}, LayerMetadataFile: layerMetadataFile}, nil
+	if err == nil {
+		sha = string(shaBytes)
+	}
+	return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: sha}, LayerMetadataFile: layerMetadataFile}, nil
 }
 
 func (bp *bpLayer) remove() error {
