@@ -27,7 +27,7 @@ type BuildpackStore interface {
 }
 
 type Buildpack interface {
-	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig) (buildpack.BuildResult, error)
+	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
 	ConfigFile() *buildpack.Descriptor
 	Detect(config *buildpack.DetectConfig) buildpack.DetectRun
 	SupportsAssetPackages() bool
@@ -61,8 +61,6 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	var labels []buildpack.Label
 
 	for _, bp := range b.Group.Group {
-		bpConfig := config
-
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
@@ -75,9 +73,9 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		bpPlan := plan.Find(bp.ID)
 
 		b.Logger.Debug("Getting build environment")
-		bpConfig.Env = env.NewBuildEnv(os.Environ(), b.Platform, bpTOML)
+		bpEnv := env.NewBuildEnv(os.Environ(), b.Platform, bpTOML)
 
-		br, err := bpTOML.Build(bpPlan, config)
+		br, err := bpTOML.Build(bpPlan, config, bpEnv)
 		if err != nil {
 			return nil, err
 		}

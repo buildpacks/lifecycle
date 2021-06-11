@@ -27,7 +27,6 @@ type BuildEnv interface {
 }
 
 type BuildConfig struct {
-	Env         BuildEnv
 	AppDir      string
 	PlatformDir string
 	LayersDir   string
@@ -61,7 +60,7 @@ func (bom *BOMEntry) convertVersionToMetadata() {
 	}
 }
 
-func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error) {
+func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error) {
 	config.Logger.Debugf("Running build for buildpack %s", b)
 
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
@@ -86,7 +85,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 	}
 
 	config.Logger.Debug("Running build command")
-	if err := b.runBuildCmd(bpLayersDir, bpPlanPath, config); err != nil {
+	if err := b.runBuildCmd(bpLayersDir, bpPlanPath, config, bpEnv); err != nil {
 		return BuildResult{}, err
 	}
 
@@ -97,7 +96,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig) (BuildResult, error)
 	}
 
 	config.Logger.Debug("Updating environment")
-	if err := b.setupEnv(pathToLayerMetadataFile, config.Env); err != nil {
+	if err := b.setupEnv(pathToLayerMetadataFile, bpEnv); err != nil {
 		return BuildResult{}, err
 	}
 
@@ -177,7 +176,7 @@ func WriteTOML(path string, data interface{}) error {
 	return toml.NewEncoder(f).Encode(data)
 }
 
-func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig) error {
+func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig, bpEnv BuildEnv) error {
 	cmd := exec.Command(
 		filepath.Join(b.Dir, "bin", "build"),
 		bpLayersDir,
@@ -190,9 +189,9 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 
 	var err error
 	if b.Buildpack.ClearEnv {
-		cmd.Env = config.Env.List()
+		cmd.Env = bpEnv.List()
 	} else {
-		cmd.Env, err = config.Env.WithPlatform(config.PlatformDir)
+		cmd.Env, err = bpEnv.WithPlatform(config.PlatformDir)
 		if err != nil {
 			return err
 		}

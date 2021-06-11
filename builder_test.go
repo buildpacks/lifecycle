@@ -138,7 +138,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{Name: "some-dep", Version: "v1"},
 					{Name: "some-unmet-dep", Version: "v2"},
 				}}
-				bpA.EXPECT().Build(expectedPlanA, config).Return(buildpack.BuildResult{
+				bpA.EXPECT().Build(expectedPlanA, config, gomock.Any()).Return(buildpack.BuildResult{
 					MetRequires: []string{"some-dep"},
 				}, nil)
 				buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
@@ -147,7 +147,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{Name: "other-dep", Version: "v4"},
 				}}
 				bpB.EXPECT().SupportsAssetPackages().Return(true)
-				bpB.EXPECT().Build(expectedPlanB, config)
+				bpB.EXPECT().Build(expectedPlanB, config, gomock.Any())
 
 				_, err := builder.Build()
 				if err != nil {
@@ -166,7 +166,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							BOM: []buildpack.BOMEntry{
 								{
 									Require: buildpack.Require{
@@ -180,7 +180,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().SupportsAssetPackages().Return(true)
-						bpB.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							BOM: []buildpack.BOMEntry{
 								{
 									Require: buildpack.Require{
@@ -224,11 +224,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config)
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any())
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().SupportsAssetPackages().Return(true)
-						bpB.EXPECT().Build(gomock.Any(), config)
+						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any())
 
 						metadata, err := builder.Build()
 						if err != nil {
@@ -248,7 +248,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Labels: []buildpack.Label{
 								{Key: "some-bpA-key", Value: "some-bpA-value"},
 								{Key: "some-other-bpA-key", Value: "some-other-bpA-value"},
@@ -257,7 +257,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().SupportsAssetPackages().Return(true)
-						bpB.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Labels: []buildpack.Label{
 								{Key: "some-bpB-key", Value: "some-bpB-value"},
 								{Key: "some-other-bpB-key", Value: "some-other-bpB-value"},
@@ -284,7 +284,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
 								{
 									Type:        "some-type",
@@ -305,7 +305,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().SupportsAssetPackages().Return(true)
-						bpB.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
 								{
 									Type:        "some-other-type",
@@ -369,7 +369,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							bpA := testmock.NewMockBuildpack(mockCtrl)
 							buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 							bpA.EXPECT().SupportsAssetPackages().Return(true)
-							bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+							bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
 									{
 										Type:        "override-type",
@@ -384,7 +384,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							bpB := testmock.NewMockBuildpack(mockCtrl)
 							buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 							bpB.EXPECT().SupportsAssetPackages().Return(true)
-							bpB.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+							bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
 									{
 										Type:        "some-type",
@@ -400,7 +400,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							bpC := testmock.NewMockBuildpack(mockCtrl)
 							buildpackStore.EXPECT().Lookup("C", "v3").Return(bpC, nil)
 							bpC.EXPECT().SupportsAssetPackages().Return(true)
-							bpC.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+							bpC.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
 									{
 										Type:        "override-type",
@@ -452,7 +452,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							bpB := testmock.NewMockBuildpack(mockCtrl)
 							buildpackStore.EXPECT().Lookup("A", "v1").Return(bpB, nil)
 							bpB.EXPECT().SupportsAssetPackages().Return(true)
-							bpB.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+							bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
 									{
 										Type:        "some-type",
@@ -468,7 +468,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							bpA := testmock.NewMockBuildpack(mockCtrl)
 							buildpackStore.EXPECT().Lookup("B", "v2").Return(bpA, nil)
 							bpA.EXPECT().SupportsAssetPackages().Return(true)
-							bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+							bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
 									{
 										Type:        "override-type",
@@ -484,7 +484,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							bpC := testmock.NewMockBuildpack(mockCtrl)
 							buildpackStore.EXPECT().Lookup("C", "v3").Return(bpC, nil)
 							bpC.EXPECT().SupportsAssetPackages().Return(true)
-							bpC.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+							bpC.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
 									{
 										Type:        "override-type",
@@ -537,7 +537,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								bpA := testmock.NewMockBuildpack(mockCtrl)
 								buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 								bpA.EXPECT().SupportsAssetPackages().Return(true)
-								bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+								bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 									Processes: []launch.Process{
 										{
 											Type:        "web",
@@ -581,7 +581,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								bpA := testmock.NewMockBuildpack(mockCtrl)
 								buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 								bpA.EXPECT().SupportsAssetPackages().Return(true)
-								bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+								bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 									Processes: []launch.Process{
 										{
 											Type:        "web",
@@ -636,7 +636,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Slices: []layers.Slice{
 								{Paths: []string{"some-bpA-path", "some-other-bpA-path"}},
 								{Paths: []string{"duplicate-path"}},
@@ -646,7 +646,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().SupportsAssetPackages().Return(true)
-						bpB.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Slices: []layers.Slice{
 								{Paths: []string{"some-bpB-path", "some-other-bpB-path"}},
 								{Paths: []string{"duplicate-path"}},
@@ -677,7 +677,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					bpA := testmock.NewMockBuildpack(mockCtrl)
 					buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().SupportsAssetPackages().Return(true)
-					bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{}, errors.New("some error"))
+					bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
 					if _, err := builder.Build(); err == nil {
 						t.Fatal("Expected error.\n")
@@ -692,11 +692,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					bpA := testmock.NewMockBuildpack(mockCtrl)
 					buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().SupportsAssetPackages().Return(true)
-					bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{}, nil)
+					bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, nil)
 					bpB := testmock.NewMockBuildpack(mockCtrl)
 					buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 					bpB.EXPECT().SupportsAssetPackages().Return(true)
-					bpB.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{}, errors.New("some error"))
+					bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
 					if _, err := builder.Build(); err == nil {
 						t.Fatal("Expected error.\n")
@@ -718,7 +718,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							BOM: []buildpack.BOMEntry{
 								{
 									Require: buildpack.Require{
@@ -732,7 +732,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().SupportsAssetPackages().Return(true)
-						bpB.EXPECT().Build(gomock.Any(), config)
+						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any())
 
 						metadata, err := builder.Build()
 						if err != nil {
@@ -773,7 +773,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
 								{
 									Type:        "web",
@@ -818,7 +818,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().SupportsAssetPackages().Return(true)
-						bpA.EXPECT().Build(gomock.Any(), config).Return(buildpack.BuildResult{
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
 								{
 									Type:        "web",
