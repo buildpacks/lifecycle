@@ -5,6 +5,7 @@ ARG cnb_gid=1000
 ARG cnb_platform_api
 
 ENV CNB_PLATFORM_API=${cnb_platform_api}
+ENV CNB_ASSETS=/some/asset/path
 
 COPY ./container/ /
 

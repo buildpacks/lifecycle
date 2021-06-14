@@ -68,10 +68,12 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			mockCtrl = gomock.NewController(t)
 			metadataRestorer = testmock.NewMockLayerMetadataRestorer(mockCtrl)
 
+			p, err := platform.NewPlatform(platformAPI)
+			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
 				Image:    image,
 				Logger:   &discardLogger,
-				Platform: platform.NewPlatform(platformAPI),
+				Platform: p,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},

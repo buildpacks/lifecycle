@@ -78,9 +78,9 @@ func testLaunchEnv(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("ignores case when initializing", func() {
-				benv := env.NewBuildEnv([]string{
+				benv := env.NewLaunchEnv([]string{
 					"Path=some-path",
-				})
+				}, "", "")
 				out := benv.List()
 				h.AssertEq(t, len(out), 1)
 				h.AssertEq(t, out[0], "PATH=some-path")

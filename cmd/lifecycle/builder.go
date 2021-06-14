@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"os"
 
 	"github.com/BurntSushi/toml"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -87,8 +85,8 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		AppDir:         ba.appDir,
 		LayersDir:      ba.layersDir,
 		PlatformDir:    ba.platformDir,
+		Platform:       ba.platform,
 		PlatformAPI:    api.MustParse(ba.platform.API()),
-		Env:            env.NewBuildEnv(os.Environ()),
 		Group:          group,
 		Plan:           plan,
 		Out:            cmd.Stdout,

@@ -71,7 +71,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		config = buildpack.BuildConfig{
-			Env:         mockEnv,
 			AppDir:      appDir,
 			PlatformDir: platformDir,
 			LayersDir:   layersDir,
@@ -126,7 +125,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypeOverride),
 					mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypeOverride),
 				)
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				testExists(t,
@@ -138,7 +137,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.Mkfile(t, "some-data",
 					filepath.Join(platformDir, "env", "SOME_VAR"),
 				)
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				testExists(t,
@@ -147,7 +146,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should provide environment variables", func() {
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-info-A-v1")),
@@ -158,7 +157,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should set CNB_BUILDPACK_DIR", func() {
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1")),
@@ -169,7 +168,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should connect stdout and stdin to the terminal", func() {
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(h.CleanEndings(stdout.String()), "build out: A@v1\n"); s != "" {
@@ -224,7 +223,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "build-A-v1.toml"),
 					)
 
-					br, err := bpTOML.Build(bpPlan, config)
+					br, err := bpTOML.Build(bpPlan, config, mockEnv)
 					if err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
@@ -273,7 +272,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "launch-A-v1.toml"),
 					)
 
-					br, err := bpTOML.Build(buildpack.Plan{}, config)
+					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					if err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
@@ -305,7 +304,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							// default is false and therefore doesn't appear
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
-						br, err := bpTOML.Build(buildpack.Plan{}, config)
+						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 						if err != nil {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
@@ -331,7 +330,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "launch-A-v1.toml"),
 					)
 
-					br, err := bpTOML.Build(buildpack.Plan{}, config)
+					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					if err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
@@ -359,7 +358,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(layersDir, "A", "layer.toml"),
 						)
 
-						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 						h.AssertNil(t, err)
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
 						h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
@@ -376,7 +375,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(layersDir, "A", "layer.toml"),
 						)
 
-						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 						h.AssertNil(t, err)
 						h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
 						h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
@@ -395,7 +394,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should not apply user-provided env vars", func() {
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 				if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-info-A-v1.clear")),
@@ -406,7 +405,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should set CNB_BUILDPACK_DIR", func() {
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
 				if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1.clear")),
@@ -420,7 +419,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		when("building fails", func() {
 			it("should error when layer directories cannot be created", func() {
 				h.Mkfile(t, "some-data", filepath.Join(layersDir, "A"))
-				_, err := bpTOML.Build(buildpack.Plan{}, config)
+				_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 				if _, ok := err.(*os.PathError); !ok {
 					t.Fatalf("Incorrect error: %s\n", err)
 				}
@@ -434,7 +433,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				if _, err := bpTOML.Build(bpPlan, config); err == nil {
+				if _, err := bpTOML.Build(bpPlan, config, mockEnv); err == nil {
 					t.Fatal("Expected error.\n")
 				} else if !strings.Contains(err.Error(), "toml") {
 					t.Fatalf("Incorrect error: %s\n", err)
@@ -443,7 +442,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it("should error when the env cannot be found", func() {
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
-				if _, err := bpTOML.Build(buildpack.Plan{}, config); err == nil {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err == nil {
 					t.Fatal("Expected error.\n")
 				} else if !strings.Contains(err.Error(), "some error") {
 					t.Fatalf("Incorrect error: %s\n", err)
@@ -455,7 +454,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				if err := os.RemoveAll(platformDir); err != nil {
 					t.Fatalf("Error: %s\n", err)
 				}
-				_, err := bpTOML.Build(buildpack.Plan{}, config)
+				_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 				if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeBuildpack {
 					t.Fatalf("Incorrect error: %s\n", err)
 				}
@@ -500,7 +499,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
 						filepath.Join(appDir, "layers-A-v1", "layer2.toml"),
 					)
-					if _, err := bpTOML.Build(buildpack.Plan{}, config); err != appendErr {
+					if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != appendErr {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
 				})
@@ -514,7 +513,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						`version = "some-version"`+"\n",
 					filepath.Join(appDir, "launch-A-v1.toml"),
 				)
-				_, err := bpTOML.Build(buildpack.Plan{}, config)
+				_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 				h.AssertNotNil(t, err)
 				expected := "top level version which is not allowed"
 				h.AssertStringContains(t, err.Error(), expected)
@@ -528,7 +527,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						`version = "some-version"`+"\n",
 					filepath.Join(appDir, "build-A-v1.toml"),
 				)
-				_, err := bpTOML.Build(buildpack.Plan{}, config)
+				_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 				h.AssertNotNil(t, err)
 				expected := "top level version which is not allowed"
 				h.AssertStringContains(t, err.Error(), expected)
@@ -542,7 +541,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							"[[unmet]]\n",
 							filepath.Join(appDir, "build-A-v1.toml"),
 						)
-						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 						h.AssertNotNil(t, err)
 						expected := "name is required"
 						h.AssertStringContains(t, err.Error(), expected)
@@ -557,7 +556,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								`name = "unknown-dep"`+"\n",
 							filepath.Join(appDir, "build-A-v1.toml"),
 						)
-						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 						h.AssertNotNil(t, err)
 						expected := "must match a requested dependency"
 						h.AssertStringContains(t, err.Error(), expected)
@@ -583,7 +582,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								`default = true`+"\n",
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
-						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 						h.AssertNotNil(t, err)
 						expected := "multiple default process types aren't allowed"
 						h.AssertStringContains(t, err.Error(), expected)
@@ -603,7 +602,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								`default = true`+"\n",
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
-						_, err := bpTOML.Build(buildpack.Plan{}, config)
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 						h.AssertNotNil(t, err)
 						expected := "multiple default process types aren't allowed"
 						h.AssertStringContains(t, err.Error(), expected)
@@ -623,7 +622,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "layers-A-v1", "layer.toml"),
 					)
 
-					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					h.AssertNotNil(t, err)
 					expected := "the launch, cache and build flags should be in the types table"
 					h.AssertStringContains(t, err.Error(), expected)
@@ -647,7 +646,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					},
 				}
 
-				_, err := bpTOML.Build(bpPlan, config)
+				_, err := bpTOML.Build(bpPlan, config, mockEnv)
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
@@ -696,7 +695,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypePrependPath),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypePrependPath),
 					)
-					if _, err := bpTOML.Build(buildpack.Plan{}, config); err != nil {
+					if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					testExists(t,
@@ -747,7 +746,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
 					)
 
-					br, err := bpTOML.Build(bpPlan, config)
+					br, err := bpTOML.Build(bpPlan, config, mockEnv)
 					if err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
@@ -814,7 +813,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
 					)
 
-					br, err := bpTOML.Build(buildpack.Plan{}, config)
+					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					if err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
@@ -851,7 +850,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("should error when the output buildpack plan is invalid", func() {
 					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 					h.Mkfile(t, "bad-key", filepath.Join(appDir, "build-plan-out-A-v1.toml"))
-					if _, err := bpTOML.Build(buildpack.Plan{}, config); err == nil {
+					if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err == nil {
 						t.Fatal("Expected error.\n")
 					} else if !strings.Contains(err.Error(), "key") {
 						t.Fatalf("Incorrect error: %s\n", err)
@@ -868,7 +867,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							`version = "v1"`+"\n",
 						filepath.Join(appDir, "build-plan-out-A-v1.toml"),
 					)
-					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					h.AssertNotNil(t, err)
 					expected := "top level version does not match metadata version"
 					h.AssertStringContains(t, err.Error(), expected)
@@ -893,7 +892,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						`default = true`+"\n",
 					filepath.Join(appDir, "launch-A-v1.toml"),
 				)
-				br, err := bpTOML.Build(buildpack.Plan{}, config)
+				br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 				if err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
@@ -924,7 +923,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(appDir, "layers-A-v1", "layer.toml"),
 					)
 
-					_, err := bpTOML.Build(buildpack.Plan{}, config)
+					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					h.AssertNil(t, err)
 					expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
 					assertLogEntry(t, logHandler, expected)

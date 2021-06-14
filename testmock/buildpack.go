@@ -36,18 +36,18 @@ func (m *MockBuildpack) EXPECT() *MockBuildpackMockRecorder {
 }
 
 // Build mocks base method.
-func (m *MockBuildpack) Build(arg0 buildpack.Plan, arg1 buildpack.BuildConfig) (buildpack.BuildResult, error) {
+func (m *MockBuildpack) Build(arg0 buildpack.Plan, arg1 buildpack.BuildConfig, arg2 buildpack.BuildEnv) (buildpack.BuildResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Build", arg0, arg1)
+	ret := m.ctrl.Call(m, "Build", arg0, arg1, arg2)
 	ret0, _ := ret[0].(buildpack.BuildResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Build indicates an expected call of Build.
-func (mr *MockBuildpackMockRecorder) Build(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockBuildpackMockRecorder) Build(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockBuildpack)(nil).Build), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockBuildpack)(nil).Build), arg0, arg1, arg2)
 }
 
 // ConfigFile mocks base method.
@@ -76,4 +76,18 @@ func (m *MockBuildpack) Detect(arg0 *buildpack.DetectConfig) buildpack.DetectRun
 func (mr *MockBuildpackMockRecorder) Detect(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detect", reflect.TypeOf((*MockBuildpack)(nil).Detect), arg0)
+}
+
+// SupportsAssetPackages mocks base method.
+func (m *MockBuildpack) SupportsAssetPackages() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SupportsAssetPackages")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SupportsAssetPackages indicates an expected call of SupportsAssetPackages.
+func (mr *MockBuildpackMockRecorder) SupportsAssetPackages() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SupportsAssetPackages", reflect.TypeOf((*MockBuildpack)(nil).SupportsAssetPackages))
 }

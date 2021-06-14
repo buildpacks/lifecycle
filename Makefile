@@ -224,7 +224,7 @@ out:
 	@mkdir out || (exit 0)
 	mkdir out$/tests || (exit 0)
 
-acceptance: format lint tidy
+acceptance: format tidy
 	@echo "> Running acceptance tests..."
 	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
 
