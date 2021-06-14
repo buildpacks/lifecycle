@@ -23,6 +23,7 @@ import (
 )
 
 //go:generate mockgen -package testmock -destination testmock/resolver.go github.com/buildpacks/lifecycle Resolver
+//go:generate mockgen -package testmock -destination testmock/mixin_validator.go github.com/buildpacks/lifecycle MixinValidator
 
 func TestDetector(t *testing.T) {
 	spec.Run(t, "Detector", testDetector, spec.Report(report.Terminal{}))
@@ -33,6 +34,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		var (
 			mockCtrl       *gomock.Controller
 			detector       *lifecycle.Detector
+			mixinValidator *testmock.MockMixinValidator
 			resolver       *testmock.MockResolver
 			buildpackStore *testmock.MockBuildpackStore
 		)
@@ -47,6 +49,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				Platform: platform,
 				Runs:     &sync.Map{},
 			}
+
+			mixinValidator = testmock.NewMockMixinValidator(mockCtrl)
+			detector.MixinValidator = mixinValidator
 
 			resolver = testmock.NewMockResolver(mockCtrl)
 			detector.Resolver = resolver
@@ -562,6 +567,28 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		when("mixin validation", func() {
+			when("supported", func() {
+				when("successful", func() {
+					it("runs detect", func() {
+
+					})
+				})
+
+				when("failed", func() {
+					it("fails fast", func() {
+
+					})
+				})
+			})
+
+			when("not supported", func() {
+				it("runs detect", func() {
+
+				})
+			})
+		}
+
 		when("resolve errors", func() {
 			when("with buildpack error", func() {
 				it("returns a buildpack error", func() {
@@ -620,7 +647,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mixinValidator = &lifecycle.DefaultMixinValidator{}
 		})
 
-		when("satisfied", func() {
+		when("successful", func() {
 			it("returns nil", func() {
 				bpDesc := buildpack.Descriptor{
 					API: "0.3",
@@ -652,7 +679,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("not satisfied", func() {
+		when("failed", func() {
 			when("by build image", func() {
 				it("returns an error", func() {
 					bpDesc := buildpack.Descriptor{
