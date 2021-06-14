@@ -12,6 +12,7 @@ import (
 type Platform interface {
 	API() string
 	SupportsAssetPackages() bool
+	SupportsMixinValidation() bool
 }
 
 type Analyzer struct {

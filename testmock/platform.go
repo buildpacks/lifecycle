@@ -60,3 +60,17 @@ func (mr *MockPlatformMockRecorder) SupportsAssetPackages() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SupportsAssetPackages", reflect.TypeOf((*MockPlatform)(nil).SupportsAssetPackages))
 }
+
+// SupportsMixinValidation mocks base method.
+func (m *MockPlatform) SupportsMixinValidation() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SupportsMixinValidation")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SupportsMixinValidation indicates an expected call of SupportsMixinValidation.
+func (mr *MockPlatformMockRecorder) SupportsMixinValidation() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SupportsMixinValidation", reflect.TypeOf((*MockPlatform)(nil).SupportsMixinValidation))
+}

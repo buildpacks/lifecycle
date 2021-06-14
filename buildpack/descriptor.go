@@ -27,6 +27,12 @@ type Info struct {
 	ID       string `toml:"id"`
 	Name     string `toml:"name"`
 	Version  string `toml:"version"`
+	Stacks   []Stack
+}
+
+type Stack struct {
+	ID     string   `toml:"id"`
+	Mixins []string `toml:"mixins"`
 }
 
 type Order []Group

@@ -17,3 +17,7 @@ func (p *Platform) API() string {
 func (p *Platform) SupportsAssetPackages() bool {
 	return false
 }
+
+func (p *Platform) SupportsMixinValidation() bool {
+	return false
+}

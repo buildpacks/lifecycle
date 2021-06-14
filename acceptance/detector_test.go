@@ -100,7 +100,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("no buildpack group passed detection", func() {
-		it("errors", func() {
+		it("errors with new code", func() {
 			command := exec.Command(
 				"docker",
 				"run",
@@ -481,7 +481,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when("platform api < 0.6", func() {
 		when("no buildpack group passed detection", func() {
-			it("errors", func() {
+			it("errors with old code", func() {
 				command := exec.Command(
 					"docker",
 					"run",

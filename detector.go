@@ -20,18 +20,31 @@ var (
 	ErrBuildpack       = errors.New("buildpack(s) failed with err")
 )
 
+type MixinValidator interface {
+	ValidateMixins(descriptor buildpack.Descriptor, analyzed Analyzed) error
+}
+
 type Resolver interface {
 	Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error)
 }
 
 type Detector struct {
 	buildpack.DetectConfig
-	Resolver Resolver
-	Runs     *sync.Map
-	Store    BuildpackStore
+	MixinValidator MixinValidator
+	Resolver       Resolver
+	Runs           *sync.Map
+	Store          BuildpackStore
+	Platform       Platform
+	Analyzed       Analyzed // Platform API >= 0.7
+}
+
+type Analyzed struct {
+	RunImageMixins   []string
+	BuildImageMixins []string
 }
 
 func NewDetector(config buildpack.DetectConfig, buildpacksDir string) (*Detector, error) {
+	mixinValidator := &DefaultMixinValidator{}
 	resolver := &DefaultResolver{
 		Logger: config.Logger,
 	}
@@ -40,10 +53,11 @@ func NewDetector(config buildpack.DetectConfig, buildpacksDir string) (*Detector
 		return nil, err
 	}
 	return &Detector{
-		DetectConfig: config,
-		Resolver:     resolver,
-		Runs:         &sync.Map{},
-		Store:        store,
+		DetectConfig:   config,
+		MixinValidator: mixinValidator,
+		Resolver:       resolver,
+		Runs:           &sync.Map{},
+		Store:          store,
 	}, nil
 }
 
@@ -112,6 +126,13 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 			// FIXME: cyclical references lead to infinite recursion
 			return d.detectOrder(bpDesc.Order, done, group.Group[i+1:], groupBp.Optional, wg)
 		}
+
+		if d.Platform.SupportsMixinValidation() {
+			if err := d.MixinValidator.ValidateMixins(*bpDesc, d.Analyzed); err != nil {
+				return nil, nil, err
+			}
+		}
+
 		done = append(done, groupBp)
 		wg.Add(1)
 		go func(key string, bp Buildpack) {
@@ -134,6 +155,12 @@ func hasID(bps []buildpack.GroupBuildpack, id string) bool {
 		}
 	}
 	return false
+}
+
+type DefaultMixinValidator struct{}
+
+func (v *DefaultMixinValidator) ValidateMixins(descriptor buildpack.Descriptor, analyzed Analyzed) error {
+	return errors.Errorf("buildpack %s missing required mixin", descriptor.String())
 }
 
 type DefaultResolver struct {

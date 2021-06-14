@@ -15,6 +15,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -38,8 +39,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			mockCtrl = gomock.NewController(t)
+
+			platform, err := platform.NewPlatform(api.Platform.Latest().String())
+			h.AssertNil(t, err)
+
 			detector = &lifecycle.Detector{
-				Runs: &sync.Map{},
+				Platform: platform,
+				Runs:     &sync.Map{},
 			}
 
 			resolver = testmock.NewMockResolver(mockCtrl)
@@ -600,6 +606,56 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
+				})
+			})
+		})
+	})
+
+	when("#ValidateMixins", func() {
+		var (
+			mixinValidator *lifecycle.DefaultMixinValidator
+		)
+
+		it.Before(func() {
+			mixinValidator = &lifecycle.DefaultMixinValidator{}
+		})
+
+		//when("satisfied", func() {
+		//	it("runs detect", func() {
+		//
+		//	})
+		//})
+
+		when("not satisfied", func() {
+			when("by build image", func() {
+				it.Focus("returns an error", func() {
+					bpDesc := buildpack.Descriptor{
+						API: "0.3",
+						Buildpack: buildpack.Info{
+							Name: "Buildpack A",
+							Version: "v1",
+							Stacks: []buildpack.Stack{
+								{
+									ID:     "some-stack-id",
+									Mixins: []string{"build:some-missing-mixin", "run:some-present-mixin"},
+								},
+							},
+						},
+					}
+
+					analyzed := lifecycle.Analyzed{
+						RunImageMixins:   []string{"some-present-mixin"},
+						BuildImageMixins: []string{},
+					}
+
+					err := mixinValidator.ValidateMixins(bpDesc, analyzed)
+					h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin build:some-missing-mixin")
+				})
+			})
+
+			when("by run image", func() {
+				it("returns an error", func() {
+					// TODO
 				})
 			})
 		})
