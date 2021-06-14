@@ -620,15 +620,41 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mixinValidator = &lifecycle.DefaultMixinValidator{}
 		})
 
-		//when("satisfied", func() {
-		//	it("runs detect", func() {
-		//
-		//	})
-		//})
+		when("satisfied", func() {
+			it("returns nil", func() {
+				bpDesc := buildpack.Descriptor{
+					API: "0.3",
+					Buildpack: buildpack.Info{
+						Name:    "Buildpack A",
+						Version: "v1",
+					},
+					Stacks: []buildpack.Stack{
+						{
+							ID: "some-stack-id",
+							Mixins: []string{
+								"some-unprefixed-mixin",
+								"some-other-mixin",
+								"build:some-mixin",
+								"run:some-mixin",
+							},
+						},
+					},
+				}
+
+				analyzed := lifecycle.Analyzed{
+					BuildImageStackID: "some-stack-id",
+					BuildImageMixins:  []string{"some-unprefixed-mixin", "build:some-other-mixin", "some-mixin"},
+					RunImageMixins:    []string{"some-unprefixed-mixin", "run:some-other-mixin", "some-mixin"},
+				}
+
+				err := mixinValidator.ValidateMixins(bpDesc, analyzed)
+				h.AssertNil(t, err)
+			})
+		})
 
 		when("not satisfied", func() {
 			when("by build image", func() {
-				it.Focus("returns an error", func() {
+				it("returns an error", func() {
 					bpDesc := buildpack.Descriptor{
 						API: "0.3",
 						Buildpack: buildpack.Info{
@@ -638,15 +664,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						Stacks: []buildpack.Stack{
 							{
 								ID:     "some-stack-id",
-								Mixins: []string{"build:some-missing-mixin", "run:some-present-mixin"},
+								Mixins: []string{"some-present-mixin", "build:some-missing-mixin", "run:some-present-mixin"},
 							},
 						},
 					}
 
 					analyzed := lifecycle.Analyzed{
 						BuildImageStackID: "some-stack-id",
-						BuildImageMixins: []string{},
-						RunImageMixins:   []string{"some-present-mixin"},
+						BuildImageMixins:  []string{"some-present-mixin"},
+						RunImageMixins:    []string{"some-present-mixin"},
 					}
 
 					err := mixinValidator.ValidateMixins(bpDesc, analyzed)
@@ -656,7 +682,28 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			when("by run image", func() {
 				it("returns an error", func() {
-					// TODO
+					bpDesc := buildpack.Descriptor{
+						API: "0.3",
+						Buildpack: buildpack.Info{
+							Name:    "Buildpack A",
+							Version: "v1",
+						},
+						Stacks: []buildpack.Stack{
+							{
+								ID:     "some-stack-id",
+								Mixins: []string{"some-present-mixin", "build:some-present-mixin", "run:some-missing-mixin"},
+							},
+						},
+					}
+
+					analyzed := lifecycle.Analyzed{
+						BuildImageStackID: "some-stack-id",
+						BuildImageMixins:  []string{"some-present-mixin"},
+						RunImageMixins:    []string{"some-present-mixin"},
+					}
+
+					err := mixinValidator.ValidateMixins(bpDesc, analyzed)
+					h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin run:some-missing-mixin")
 				})
 			})
 		})

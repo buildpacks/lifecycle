@@ -194,7 +194,7 @@ func satisfied(mixin string, analyzed Analyzed) bool {
 
 func buildImageHasMixin(requiredMixin string, analyzed Analyzed) bool {
 	for _, buildMixin := range analyzed.BuildImageMixins {
-		if requiredMixin == buildMixin || requiredMixin == "build:"+buildMixin {
+		if removeStagePrefix(buildMixin) == removeStagePrefix(requiredMixin) {
 			return true
 		}
 	}
@@ -203,7 +203,7 @@ func buildImageHasMixin(requiredMixin string, analyzed Analyzed) bool {
 
 func runImageHasMixin(requiredMixin string, analyzed Analyzed) bool {
 	for _, runMixin := range analyzed.RunImageMixins {
-		if requiredMixin == runMixin || requiredMixin == "run:"+runMixin {
+		if removeStagePrefix(runMixin) == removeStagePrefix(requiredMixin) {
 			return true
 		}
 	}

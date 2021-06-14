@@ -67,14 +67,18 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 func removeStagePrefixes(mixins []string) []string {
 	var result []string
 	for _, m := range mixins {
-		s := strings.SplitN(m, ":", 2)
-		if len(s) == 1 {
-			result = append(result, s[0])
-		} else {
-			result = append(result, s[1])
-		}
+		result = append(result, removeStagePrefix(m))
 	}
 	return result
+}
+
+func removeStagePrefix(m string) string {
+	s := strings.SplitN(m, ":", 2)
+	if len(s) == 1 {
+		return s[0]
+	} else {
+		return s[1]
+	}
 }
 
 // compare performs a set comparison between two slices. `extra` represents elements present in
