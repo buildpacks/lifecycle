@@ -632,20 +632,21 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					bpDesc := buildpack.Descriptor{
 						API: "0.3",
 						Buildpack: buildpack.Info{
-							Name: "Buildpack A",
+							Name:    "Buildpack A",
 							Version: "v1",
-							Stacks: []buildpack.Stack{
-								{
-									ID:     "some-stack-id",
-									Mixins: []string{"build:some-missing-mixin", "run:some-present-mixin"},
-								},
+						},
+						Stacks: []buildpack.Stack{
+							{
+								ID:     "some-stack-id",
+								Mixins: []string{"build:some-missing-mixin", "run:some-present-mixin"},
 							},
 						},
 					}
 
 					analyzed := lifecycle.Analyzed{
-						RunImageMixins:   []string{"some-present-mixin"},
+						BuildImageStackID: "some-stack-id",
 						BuildImageMixins: []string{},
+						RunImageMixins:   []string{"some-present-mixin"},
 					}
 
 					err := mixinValidator.ValidateMixins(bpDesc, analyzed)

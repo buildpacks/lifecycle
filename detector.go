@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -39,8 +40,9 @@ type Detector struct {
 }
 
 type Analyzed struct {
-	RunImageMixins   []string
-	BuildImageMixins []string
+	BuildImageStackID string
+	BuildImageMixins  []string
+	RunImageMixins    []string
 }
 
 func NewDetector(config buildpack.DetectConfig, buildpacksDir string) (*Detector, error) {
@@ -160,7 +162,52 @@ func hasID(bps []buildpack.GroupBuildpack, id string) bool {
 type DefaultMixinValidator struct{}
 
 func (v *DefaultMixinValidator) ValidateMixins(descriptor buildpack.Descriptor, analyzed Analyzed) error {
-	return errors.Errorf("buildpack %s missing required mixin", descriptor.String())
+	var currentStack buildpack.Stack
+	for _, stack := range descriptor.Stacks {
+		if stack.ID == analyzed.BuildImageStackID {
+			currentStack = stack
+			break
+		}
+	}
+	if currentStack.ID == "" {
+		return errors.New("failed to find current stack") // shouldn't get here if analyzer validated the stack id
+	}
+
+	for _, mixin := range currentStack.Mixins {
+		if !satisfied(mixin, analyzed) {
+			return errors.Errorf("buildpack %s missing required mixin %s", descriptor.String(), mixin)
+		}
+	}
+
+	return nil
+}
+
+func satisfied(mixin string, analyzed Analyzed) bool {
+	if strings.HasPrefix(mixin, "build") {
+		return buildImageHasMixin(mixin, analyzed)
+	}
+	if strings.HasPrefix(mixin, "run") {
+		return runImageHasMixin(mixin, analyzed)
+	}
+	return buildImageHasMixin(mixin, analyzed) && runImageHasMixin(mixin, analyzed)
+}
+
+func buildImageHasMixin(requiredMixin string, analyzed Analyzed) bool {
+	for _, buildMixin := range analyzed.BuildImageMixins {
+		if requiredMixin == buildMixin || requiredMixin == "build:"+buildMixin {
+			return true
+		}
+	}
+	return false
+}
+
+func runImageHasMixin(requiredMixin string, analyzed Analyzed) bool {
+	for _, runMixin := range analyzed.RunImageMixins {
+		if requiredMixin == runMixin || requiredMixin == "run:"+runMixin {
+			return true
+		}
+	}
+	return false
 }
 
 type DefaultResolver struct {
