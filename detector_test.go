@@ -647,7 +647,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mixinValidator = &lifecycle.DefaultMixinValidator{}
 		})
 
-		when("successful", func() {
+		when("mixins are satisfied", func() {
 			it("returns nil", func() {
 				bpDesc := buildpack.Descriptor{
 					API: "0.3",
@@ -679,7 +679,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("failed", func() {
+		when("mixins are not satisfied", func() {
 			when("by build image", func() {
 				it("returns an error", func() {
 					bpDesc := buildpack.Descriptor{
