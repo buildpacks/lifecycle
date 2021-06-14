@@ -161,10 +161,6 @@ func (a *analyzeCmd) Exec() error {
 		}
 	}
 
-	if err := a.validateStack(); err != nil {
-		return cmd.FailErr(err, "validate stack")
-	}
-
 	analyzedMD, err := a.analyze()
 	if err != nil {
 		return err
@@ -177,7 +173,29 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
+func (aa analyzeArgs) validateStack() error {
+	if !aa.supportsStackValidation() {
+		return nil
+	}
+
+	var stackMD platform.StackMetadata
+	if _, err := toml.DecodeFile(aa.stackPath, &stackMD); err != nil && !os.IsNotExist(err) {
+		return cmd.FailErr(err, "get stack metadata")
+	}
+
+	runImage, err := aa.getRunImage(stackMD)
+	if err != nil {
+		return cmd.FailErr(err, "resolve run image")
+	}
+
+	return lifecycle.ValidateStack(stackMD, runImage)
+}
+
 func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
+	if err := aa.validateStack(); err != nil {
+		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "validate stack")
+	}
+
 	var (
 		img imgutil.Image
 		err error
@@ -213,46 +231,28 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	return analyzedMD, nil
 }
 
-func (a *analyzeCmd) validateStack() error {
-	if !a.supportsStackValidation() {
-		return nil
-	}
-
-	var stackMD platform.StackMetadata
-	if _, err := toml.DecodeFile(a.stackPath, &stackMD); err != nil && !os.IsNotExist(err) {
-		return cmd.FailErr(err, "get stack metadata")
-	}
-
-	runImage, err := a.getRunImage(stackMD)
-	if err != nil {
-		return cmd.FailErr(err, "resolve run image")
-	}
-
-	return lifecycle.ValidateStack(stackMD, runImage)
-}
-
-func (a *analyzeCmd) getRunImage(stackMD platform.StackMetadata) (imgutil.Image, error) {
-	if a.runImageRef == "" {
-		runImageRef, err := lifecycle.ResolveRunImage(stackMD, a.imageName)
+func (aa *analyzeArgs) getRunImage(stackMD platform.StackMetadata) (imgutil.Image, error) {
+	if aa.runImageRef == "" {
+		runImageRef, err := lifecycle.ResolveRunImage(stackMD, aa.imageName)
 		if err != nil {
 			return nil, err
 		}
-		a.runImageRef = runImageRef
+		aa.runImageRef = runImageRef
 	}
 
 	var runImage imgutil.Image
 	var err error
-	if a.useDaemon {
+	if aa.useDaemon {
 		runImage, err = local.NewImage(
-			a.runImageRef,
-			a.docker,
-			local.FromBaseImage(a.runImageRef),
+			aa.runImageRef,
+			aa.docker,
+			local.FromBaseImage(aa.runImageRef),
 		)
 	} else {
 		runImage, err = remote.NewImage(
-			a.runImageRef,
-			a.keychain,
-			remote.FromBaseImage(a.runImageRef),
+			aa.runImageRef,
+			aa.keychain,
+			remote.FromBaseImage(aa.runImageRef),
 		)
 	}
 	return runImage, err
@@ -273,8 +273,8 @@ func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return !a.platformAPIVersionGreaterThan06()
 }
 
-func (a *analyzeCmd) supportsStackValidation() bool {
-	return a.platformAPIVersionGreaterThan06()
+func (aa *analyzeArgs) supportsStackValidation() bool {
+	return api.MustParse(aa.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
 
 func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
