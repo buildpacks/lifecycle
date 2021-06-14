@@ -85,6 +85,7 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		AppDir:         ba.appDir,
 		LayersDir:      ba.layersDir,
 		PlatformDir:    ba.platformDir,
+		Platform:       ba.platform,
 		PlatformAPI:    api.MustParse(ba.platform.API()),
 		Group:          group,
 		Plan:           plan,
