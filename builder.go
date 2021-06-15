@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type BuildEnv interface {
@@ -40,13 +40,13 @@ type Builder struct {
 	Platform       Platform
 	PlatformAPI    *api.Version // TODO: derive from platform
 	Group          buildpack.Group
-	Plan           common.BuildPlan
+	Plan           platform.BuildPlan
 	Out, Err       io.Writer
 	Logger         Logger
 	BuildpackStore BuildpackStore
 }
 
-func (b *Builder) Build() (*common.BuildMetadata, error) {
+func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Starting build")
 
 	config, err := b.BuildConfig()
@@ -109,7 +109,7 @@ func (b *Builder) Build() (*common.BuildMetadata, error) {
 	procList := processMap.list()
 
 	b.Logger.Debug("Finished build")
-	return &common.BuildMetadata{
+	return &platform.BuildMetadata{
 		BOM:                         bom,
 		Buildpacks:                  b.Group.Group,
 		Labels:                      labels,

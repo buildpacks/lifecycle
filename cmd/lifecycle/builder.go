@@ -76,7 +76,7 @@ func (b *buildCmd) Exec() error {
 	return b.build(group, plan)
 }
 
-func (ba buildArgs) build(group buildpack.Group, plan common.BuildPlan) error {
+func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
 		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
@@ -117,15 +117,15 @@ func (ba buildArgs) build(group buildpack.Group, plan common.BuildPlan) error {
 	return nil
 }
 
-func (b *buildCmd) readData() (buildpack.Group, common.BuildPlan, error) {
+func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {
 	group, err := lifecycle.ReadGroup(b.groupPath)
 	if err != nil {
-		return buildpack.Group{}, common.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}
 
-	var plan common.BuildPlan
+	var plan platform.BuildPlan
 	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
-		return buildpack.Group{}, common.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
 	}
 	return group, plan, nil
 }

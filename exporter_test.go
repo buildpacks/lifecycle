@@ -27,6 +27,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -64,10 +65,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		opts.LauncherConfig = lifecycle.LauncherConfig{
 			Path: launcherPath,
-			Metadata: common.LauncherMetadata{
+			Metadata: platform.LauncherMetadata{
 				Version: "1.2.3",
-				Source: common.SourceMetadata{
-					Git: common.GitMetadata{
+				Source: platform.SourceMetadata{
+					Git: platform.GitMetadata{
 						Repository: "github.com/buildpacks/lifecycle",
 						Commit:     "asdf1234",
 					},
@@ -517,8 +518,8 @@ version = "4.5.6"
 
 			when("there is project metadata", func() {
 				it("saves metadata with project info", func() {
-					opts.Project = common.ProjectMetadata{
-						Source: &common.ProjectSource{
+					opts.Project = platform.ProjectMetadata{
+						Source: &platform.ProjectSource{
 							Type: "git",
 							Version: map[string]interface{}{
 								"commit": "abcd1234",
@@ -534,7 +535,7 @@ version = "4.5.6"
 					projectJSON, err := fakeAppImage.Label("io.buildpacks.project.metadata")
 					h.AssertNil(t, err)
 
-					var projectMD common.ProjectMetadata
+					var projectMD platform.ProjectMetadata
 					if err := json.Unmarshal([]byte(projectJSON), &projectMD); err != nil {
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
@@ -903,8 +904,8 @@ version = "4.5.6"
 
 			when("there is project metadata", func() {
 				it("saves metadata with project info", func() {
-					opts.Project = common.ProjectMetadata{
-						Source: &common.ProjectSource{
+					opts.Project = platform.ProjectMetadata{
+						Source: &platform.ProjectSource{
 							Type: "git",
 							Version: map[string]interface{}{
 								"commit": "abcd1234",
@@ -920,7 +921,7 @@ version = "4.5.6"
 					projectJSON, err := fakeAppImage.Label("io.buildpacks.project.metadata")
 					h.AssertNil(t, err)
 
-					var projectMD common.ProjectMetadata
+					var projectMD platform.ProjectMetadata
 					if err := json.Unmarshal([]byte(projectJSON), &projectMD); err != nil {
 						t.Fatalf("badly formatted metadata: %s", err)
 					}

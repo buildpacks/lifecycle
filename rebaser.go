@@ -20,7 +20,7 @@ type Rebaser struct {
 }
 
 type RebaseReport struct {
-	Image common.ImageReport `toml:"image"`
+	Image platform.ImageReport `toml:"image"`
 }
 
 func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {

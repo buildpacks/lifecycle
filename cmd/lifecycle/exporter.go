@@ -22,6 +22,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -204,7 +205,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	var projectMD common.ProjectMetadata
+	var projectMD platform.ProjectMetadata
 	_, err = toml.DecodeFile(ea.projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -339,10 +340,10 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD common.AnalyzedMetadata) (img
 func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	return lifecycle.LauncherConfig{
 		Path: launcherPath,
-		Metadata: common.LauncherMetadata{
+		Metadata: platform.LauncherMetadata{
 			Version: cmd.Version,
-			Source: common.SourceMetadata{
-				Git: common.GitMetadata{
+			Source: platform.SourceMetadata{
+				Git: platform.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},

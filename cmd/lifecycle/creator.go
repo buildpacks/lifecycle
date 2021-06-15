@@ -150,7 +150,7 @@ func (c *createCmd) Exec() error {
 	var (
 		analyzedMD common.AnalyzedMetadata
 		group      buildpack.Group
-		plan       common.BuildPlan
+		plan       platform.BuildPlan
 	)
 
 	commonPlatform, err := platform.NewPlatform(c.platform.API())
