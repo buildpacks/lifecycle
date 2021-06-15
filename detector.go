@@ -39,7 +39,7 @@ type Detector struct {
 	Analyzed       common.AnalyzedMetadata // Platform API >= 0.7
 }
 
-func NewDetector(config buildpack.DetectConfig, buildpacksDir string) (*Detector, error) {
+func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform common.Platform) (*Detector, error) {
 	mixinValidator := &StackValidator{}
 	resolver := &DefaultResolver{
 		Logger: config.Logger,
@@ -54,6 +54,7 @@ func NewDetector(config buildpack.DetectConfig, buildpacksDir string) (*Detector
 		Resolver:       resolver,
 		Runs:           &sync.Map{},
 		Store:          store,
+		Platform:       platform,
 	}, nil
 }
 

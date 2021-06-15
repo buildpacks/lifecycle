@@ -1,0 +1,11 @@
+# [previous-image]
+#   reference = "<image reference>"
+# [previous-image.metadata]
+#   # previous image layer metadata
+# [run-image]
+#   reference = "<image reference>"
+#   mixins = ["libgc", "libpq"]
+# [build-image]
+#  stack-id = "some-stack-id"
+#   mixins = ["mixin name"]
+# TODO: add for newer platform api

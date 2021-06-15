@@ -355,7 +355,7 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 func (ea *exportArgs) parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (common.AnalyzedMetadata, error) {
 	var analyzedMD common.AnalyzedMetadata
 
-	analyzedMD, err := ea.platform.DecodeAnalyzedMetadata(path)
+	analyzedMD, err := ea.platform.DecodeAnalyzedMetadataFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)

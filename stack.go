@@ -12,6 +12,10 @@ import (
 type StackValidator struct{}
 
 func (v *StackValidator) ValidateMixins(descriptor buildpack.Descriptor, analyzed common.AnalyzedMetadata) error {
+	if len(descriptor.Stacks) == 0 {
+		return nil // nothing to validate
+	}
+
 	var currentStack buildpack.Stack
 	for _, stack := range descriptor.Stacks {
 		if stack.ID == analyzed.BuildImageStackID() {

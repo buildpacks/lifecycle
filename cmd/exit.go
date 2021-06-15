@@ -25,7 +25,7 @@ const (
 type Platform interface {
 	API() string
 	CodeFor(errType common.LifecycleExitError) int
-	DecodeAnalyzedMetadata(path string) (common.AnalyzedMetadata, error)
+	DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetadata, error)
 }
 
 type ErrorFail struct {

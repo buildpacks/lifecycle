@@ -101,7 +101,7 @@ func (r *restoreCmd) Exec() error {
 
 	var appMeta common.LayersMetadata
 	if r.restoresLayerMetadata() {
-		if analyzedMd, err := r.platform.DecodeAnalyzedMetadata(r.analyzedPath); err == nil {
+		if analyzedMd, err := r.platform.DecodeAnalyzedMetadataFile(r.analyzedPath); err == nil {
 			appMeta = analyzedMd.PreviousImageMetadata()
 		}
 	}

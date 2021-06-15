@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -94,6 +94,12 @@ func (da detectArgs) detect() (buildpack.Group, common.BuildPlan, error) {
 	if err != nil {
 		return buildpack.Group{}, common.BuildPlan{}, cmd.FailErr(err, "read full env")
 	}
+
+	commonPlatform, err := platform.NewPlatform(da.platform.API())
+	if err != nil {
+		return buildpack.Group{}, common.BuildPlan{}, cmd.FailErr(err, "initialize platform")
+	}
+
 	detector, err := lifecycle.NewDetector(
 		buildpack.DetectConfig{
 			FullEnv:     fullEnv,
@@ -103,6 +109,7 @@ func (da detectArgs) detect() (buildpack.Group, common.BuildPlan, error) {
 			Logger:      cmd.DefaultLogger,
 		},
 		da.buildpacksDir,
+		commonPlatform,
 	)
 	if err != nil {
 		return buildpack.Group{}, common.BuildPlan{}, cmd.FailErr(err, "initialize detector")

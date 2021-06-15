@@ -6,18 +6,6 @@ import (
 	"github.com/buildpacks/lifecycle/platform/common"
 )
 
-func (p *Platform) DecodeAnalyzedMetadata(contents string) (common.AnalyzedMetadata, error) {
-	var (
-		analyzedMd analyzedMetadata
-		err        error
-	)
-
-	if _, err = toml.Decode(contents, &analyzedMd); err == nil {
-		return &analyzedMd, nil
-	}
-	return nil, err
-}
-
 func (p *Platform) DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetadata, error) {
 	var (
 		analyzedMd analyzedMetadata // TODO: change analyzedMD to analyzedMd
