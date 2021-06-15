@@ -1,11 +1,11 @@
 package pre06
 
-import "github.com/buildpacks/lifecycle/api"
+import (
+	"github.com/buildpacks/lifecycle/api"
+)
 
 type Platform struct {
 	api *api.Version
-
-	analyzedMetadata *analyzedMetadata
 }
 
 func NewPlatform(apiString string) *Platform {

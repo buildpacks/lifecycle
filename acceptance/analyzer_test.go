@@ -95,11 +95,14 @@ func TestAnalyzer(t *testing.T) {
 func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var copyDir, containerName, cacheVolume string
+		var platformInt common.Platform
 
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
 			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+			platformInt, err = platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 		})
 
@@ -839,8 +842,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 
-							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
+							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"), platformInt)
+							h.AssertStringContains(t, md.PreviousImage().Reference, authRegAppImage)
 						})
 					})
 
@@ -865,8 +868,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 
-							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, md.Image.Reference, authRegAppImage)
+							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"), platformInt)
+							h.AssertStringContains(t, md.PreviousImage().Reference, authRegAppImage)
 						})
 					})
 				})
@@ -1106,15 +1109,15 @@ func assertAnalyzedMetadata(t *testing.T, path string) {
 	h.AssertNil(t, err)
 }
 
-func getAnalyzedMetadata(t *testing.T, path string) *common.AnalyzedMetadata {
+func getAnalyzedMetadata(t *testing.T, path string, platform common.Platform) common.AnalyzedMetadata {
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
 	var analyzedMd common.AnalyzedMetadata
-	_, err := toml.Decode(string(contents), &analyzedMd)
+	analyzedMd, err := platform.DecodeAnalyzedMetadata(string(contents))
 	h.AssertNil(t, err)
 
-	return &analyzedMd
+	return analyzedMd
 }
 
 func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {

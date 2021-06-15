@@ -7,7 +7,6 @@ import (
 
 type Platform struct {
 	api              *api.Version
-	analyzedMetadata *analyzedMetadata
 	previousPlatform common.Platform
 }
 

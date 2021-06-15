@@ -2,7 +2,11 @@ package v07
 
 import "github.com/buildpacks/lifecycle/platform/common"
 
-func (p *Platform) DecodeAnalyzedMetadata(path string) (common.AnalyzedMetadata, error) {
+func (p *Platform) DecodeAnalyzedMetadata(contents string) (common.AnalyzedMetadata, error) {
+	return nil, nil // TODO
+}
+
+func (p *Platform) DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetadata, error) {
 	return nil, nil // TODO
 }
 
@@ -12,14 +16,26 @@ type analyzedMetadataBuilder struct {
 	ops []analyzedMetadataOp
 }
 
-type analyzedMetadataOp func(analyzedMetadata)
-
 func (a *analyzedMetadataBuilder) Build() common.AnalyzedMetadata {
 	meta := analyzedMetadata{}
 	for _, op := range a.ops {
 		op(meta)
 	}
 	return &meta
+}
+
+func (a *analyzedMetadataBuilder) WithBuildImageMixins(mixins []string) common.AnalyzedMetadataBuilder {
+	a.ops = append(a.ops, func(analyzedMD analyzedMetadata) {
+		analyzedMD.BuildImageData.Mixins = mixins
+	})
+	return a
+}
+
+func (a *analyzedMetadataBuilder) WithBuildImageStackID(stackID string) common.AnalyzedMetadataBuilder {
+	a.ops = append(a.ops, func(analyzedMD analyzedMetadata) {
+		analyzedMD.BuildImageData.StackID = stackID
+	})
+	return a
 }
 
 func (a *analyzedMetadataBuilder) WithPreviousImage(imageID *common.ImageIdentifier) common.AnalyzedMetadataBuilder {
@@ -35,6 +51,15 @@ func (a *analyzedMetadataBuilder) WithPreviousImageMetadata(meta common.LayersMe
 	})
 	return a
 }
+
+func (a *analyzedMetadataBuilder) WithRunImageMixins(mixins []string) common.AnalyzedMetadataBuilder {
+	a.ops = append(a.ops, func(analyzedMD analyzedMetadata) {
+		analyzedMD.RunImageData.Mixins = mixins
+	})
+	return a
+}
+
+type analyzedMetadataOp func(analyzedMetadata)
 
 func (p *Platform) NewAnalyzedMetadataBuilder() common.AnalyzedMetadataBuilder {
 	return &analyzedMetadataBuilder{}

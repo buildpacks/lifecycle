@@ -7,7 +7,10 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -19,10 +22,15 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 	when("StackValidator", func() {
 		var (
 			stackValidator *lifecycle.StackValidator
+			platformInt    common.Platform
 		)
 
 		it.Before(func() {
 			stackValidator = &lifecycle.StackValidator{}
+
+			var err error
+			platformInt, err = platform.NewPlatform(api.Platform.Latest().String())
+			h.AssertNil(t, err)
 		})
 
 		when("#ValidateMixins", func() {
@@ -46,11 +54,11 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}
-					analyzed := lifecycle.Analyzed{
-						BuildImageStackID: "some-stack-id",
-						BuildImageMixins:  []string{"some-unprefixed-mixin", "build:some-other-mixin", "some-mixin"},
-						RunImageMixins:    []string{"some-unprefixed-mixin", "run:some-other-mixin", "some-mixin"},
-					}
+					analyzed := platformInt.NewAnalyzedMetadataBuilder().
+						WithBuildImageStackID("some-stack-id").
+						WithBuildImageMixins([]string{"some-unprefixed-mixin", "build:some-other-mixin", "some-mixin"}).
+						WithRunImageMixins([]string{"some-unprefixed-mixin", "run:some-other-mixin", "some-mixin"}).
+						Build()
 
 					err := stackValidator.ValidateMixins(bpDesc, analyzed)
 					h.AssertNil(t, err)
@@ -73,11 +81,11 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}
-						analyzed := lifecycle.Analyzed{
-							BuildImageStackID: "some-stack-id",
-							BuildImageMixins:  []string{"some-present-mixin"},
-							RunImageMixins:    []string{"some-present-mixin"},
-						}
+						analyzed := platformInt.NewAnalyzedMetadataBuilder().
+							WithBuildImageStackID("some-stack-id").
+							WithBuildImageMixins([]string{"some-present-mixin"}).
+							WithRunImageMixins([]string{"some-present-mixin"}).
+							Build()
 
 						err := stackValidator.ValidateMixins(bpDesc, analyzed)
 						h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin build:some-missing-mixin")
@@ -99,11 +107,11 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}
-						analyzed := lifecycle.Analyzed{
-							BuildImageStackID: "some-stack-id",
-							BuildImageMixins:  []string{"some-present-mixin"},
-							RunImageMixins:    []string{"some-present-mixin"},
-						}
+						analyzed := platformInt.NewAnalyzedMetadataBuilder().
+							WithBuildImageStackID("some-stack-id").
+							WithBuildImageMixins([]string{"some-present-mixin"}).
+							WithRunImageMixins([]string{"some-present-mixin"}).
+							Build()
 
 						err := stackValidator.ValidateMixins(bpDesc, analyzed)
 						h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin run:some-missing-mixin")

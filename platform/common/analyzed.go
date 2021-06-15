@@ -17,8 +17,11 @@ type AnalyzedMetadata interface {
 type AnalyzedMetadataBuilder interface {
 	Build() AnalyzedMetadata
 
+	WithBuildImageMixins(mixins []string) AnalyzedMetadataBuilder
+	WithBuildImageStackID(stackID string) AnalyzedMetadataBuilder
 	WithPreviousImage(imageID *ImageIdentifier) AnalyzedMetadataBuilder
 	WithPreviousImageMetadata(meta LayersMetadata) AnalyzedMetadataBuilder
+	WithRunImageMixins(mixins []string) AnalyzedMetadataBuilder
 }
 
 // analyzed.toml
