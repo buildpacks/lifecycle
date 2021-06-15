@@ -3,9 +3,8 @@ package lifecycle
 import (
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {

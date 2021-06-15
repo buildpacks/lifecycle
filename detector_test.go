@@ -6,8 +6,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
@@ -20,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -577,7 +576,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		when("mixin validation", func() {
+		when("mixin validation", func() { // TODO: add
 			when("supported", func() {
 				when("successful", func() {
 					it("runs detect", func() {

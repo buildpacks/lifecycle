@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 
@@ -15,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	lplatform "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 func main() {

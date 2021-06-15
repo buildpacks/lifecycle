@@ -8,8 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type bpLayersDir struct {

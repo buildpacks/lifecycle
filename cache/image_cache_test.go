@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/sclevine/spec"
@@ -19,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

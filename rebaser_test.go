@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/buildpacks/imgutil/fakes"
@@ -19,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

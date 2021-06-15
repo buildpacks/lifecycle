@@ -3,13 +3,12 @@ package lifecycle
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
-	"github.com/pkg/errors"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (common.ImageReport, error) {

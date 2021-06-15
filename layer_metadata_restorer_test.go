@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/sclevine/spec"
@@ -19,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

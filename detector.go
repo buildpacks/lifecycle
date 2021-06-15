@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 const (
