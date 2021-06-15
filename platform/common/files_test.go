@@ -1,11 +1,12 @@
 package common
 
 import (
+	"github.com/buildpacks/imgutil/testhelpers"
 	"testing"
 
 	"github.com/sclevine/spec"
 
-	"github.com/buildpacks/lifecycle/testhelpers"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestStackMetadata(t *testing.T) {
@@ -30,31 +31,31 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 		when("repoName is dockerhub", func() {
 			it("returns the dockerhub image", func() {
 				name, err := stackMD.BestRunImageMirror("index.docker.io")
-				testhelpers.AssertNil(t, err)
-				testhelpers.AssertEq(t, name, "myorg/myrepo")
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "myorg/myrepo")
 			})
 		})
 
 		when("registry is gcr.io", func() {
 			it("returns the gcr.io image", func() {
 				name, err := stackMD.BestRunImageMirror("gcr.io")
-				testhelpers.AssertNil(t, err)
-				testhelpers.AssertEq(t, name, "gcr.io/org/repo")
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "gcr.io/org/repo")
 			})
 
 			when("registry is zonal.gcr.io", func() {
 				it("returns the gcr image", func() {
 					name, err := stackMD.BestRunImageMirror("zonal.gcr.io")
-					testhelpers.AssertNil(t, err)
-					testhelpers.AssertEq(t, name, "zonal.gcr.io/org/repo")
+					h.AssertNil(t, err)
+					h.AssertEq(t, name, "zonal.gcr.io/org/repo")
 				})
 			})
 
 			when("registry is missingzone.gcr.io", func() {
 				it("returns the run image", func() {
 					name, err := stackMD.BestRunImageMirror("missingzone.gcr.io")
-					testhelpers.AssertNil(t, err)
-					testhelpers.AssertEq(t, name, "first.com/org/repo")
+					h.AssertNil(t, err)
+					h.AssertEq(t, name, "first.com/org/repo")
 				})
 			})
 		})
@@ -66,8 +67,8 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 
 			it("skips over it", func() {
 				name, err := stackMD.BestRunImageMirror("gcr.io")
-				testhelpers.AssertNil(t, err)
-				testhelpers.AssertEq(t, name, "gcr.io/myorg/myrepo")
+				h.AssertNil(t, err)
+				h.AssertEq(t, name, "gcr.io/myorg/myrepo")
 			})
 		})
 	})

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
