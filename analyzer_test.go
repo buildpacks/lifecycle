@@ -126,7 +126,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					h.AssertNil(t, json.Unmarshal(metadata, &expectedAppMetadata))
 				})
 
-				it("returns the analyzed metadata", func() {
+				it.Focus("returns the analyzed metadata", func() {
 					expectRestoresLayerMetadataIfSupported()
 
 					md, err := analyzer.Analyze()
