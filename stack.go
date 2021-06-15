@@ -6,14 +6,15 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type StackValidator struct{}
 
-func (v *StackValidator) ValidateMixins(descriptor buildpack.Descriptor, analyzed Analyzed) error {
+func (v *StackValidator) ValidateMixins(descriptor buildpack.Descriptor, analyzed common.AnalyzedMetadata) error {
 	var currentStack buildpack.Stack
 	for _, stack := range descriptor.Stacks {
-		if stack.ID == analyzed.BuildImageStackID {
+		if stack.ID == analyzed.BuildImageStackID() {
 			currentStack = stack
 			break
 		}
@@ -31,14 +32,14 @@ func (v *StackValidator) ValidateMixins(descriptor buildpack.Descriptor, analyze
 	return nil
 }
 
-func satisfied(mixin string, analyzed Analyzed) bool {
+func satisfied(mixin string, analyzed common.AnalyzedMetadata) bool {
 	if strings.HasPrefix(mixin, "build") {
-		return hasMixin(analyzed.BuildImageMixins, mixin)
+		return hasMixin(analyzed.BuildImageMixins(), mixin)
 	}
 	if strings.HasPrefix(mixin, "run") {
-		return hasMixin(analyzed.RunImageMixins, mixin)
+		return hasMixin(analyzed.RunImageMixins(), mixin)
 	}
-	return hasMixin(analyzed.BuildImageMixins, mixin) && hasMixin(analyzed.RunImageMixins, mixin)
+	return hasMixin(analyzed.BuildImageMixins(), mixin) && hasMixin(analyzed.RunImageMixins(), mixin)
 }
 
 func hasMixin(installedMixins []string, required string) bool {

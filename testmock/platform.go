@@ -8,6 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+
+	common "github.com/buildpacks/lifecycle/platform/common"
 )
 
 // MockPlatform is a mock of Platform interface.
@@ -45,6 +47,20 @@ func (m *MockPlatform) API() string {
 func (mr *MockPlatformMockRecorder) API() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "API", reflect.TypeOf((*MockPlatform)(nil).API))
+}
+
+// NewAnalyzedMetadataBuilder mocks base method.
+func (m *MockPlatform) NewAnalyzedMetadataBuilder() common.AnalyzedMetadataBuilder {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewAnalyzedMetadataBuilder")
+	ret0, _ := ret[0].(common.AnalyzedMetadataBuilder)
+	return ret0
+}
+
+// NewAnalyzedMetadataBuilder indicates an expected call of NewAnalyzedMetadataBuilder.
+func (mr *MockPlatformMockRecorder) NewAnalyzedMetadataBuilder() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewAnalyzedMetadataBuilder", reflect.TypeOf((*MockPlatform)(nil).NewAnalyzedMetadataBuilder))
 }
 
 // SupportsAssetPackages mocks base method.

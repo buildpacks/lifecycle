@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/sclevine/spec"
@@ -29,7 +31,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		layerDir              string
 		layerMetadataRestorer lifecycle.LayerMetadataRestorer
 		layerSHAStore         lifecycle.LayerSHAStore
-		layersMetadata        platform.LayersMetadata
+		layersMetadata        common.LayersMetadata
 		cacheMetadata         platform.CacheMetadata
 		buildpacks            []buildpack.GroupBuildpack
 		skipLayers            bool

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/buildpacks/imgutil/fakes"
@@ -99,7 +101,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 		when("#Analyze", func() {
 			var (
-				expectedAppMetadata   platform.LayersMetadata
+				expectedAppMetadata   common.LayersMetadata
 				expectedCacheMetadata platform.CacheMetadata
 				ref                   *testmock.MockReference
 			)
@@ -165,7 +167,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, common.LayersMetadata{})
 				})
 			})
 
@@ -178,7 +180,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, common.LayersMetadata{})
 				})
 			})
 
@@ -191,7 +193,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, common.LayersMetadata{})
 				})
 			})
 		})

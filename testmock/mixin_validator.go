@@ -9,8 +9,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	lifecycle "github.com/buildpacks/lifecycle"
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	common "github.com/buildpacks/lifecycle/platform/common"
 )
 
 // MockMixinValidator is a mock of MixinValidator interface.
@@ -37,7 +37,7 @@ func (m *MockMixinValidator) EXPECT() *MockMixinValidatorMockRecorder {
 }
 
 // ValidateMixins mocks base method.
-func (m *MockMixinValidator) ValidateMixins(arg0 buildpack.Descriptor, arg1 lifecycle.Analyzed) error {
+func (m *MockMixinValidator) ValidateMixins(arg0 buildpack.Descriptor, arg1 common.AnalyzedMetadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateMixins", arg0, arg1)
 	ret0, _ := ret[0].(error)

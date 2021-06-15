@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 const (
@@ -21,11 +22,11 @@ var (
 )
 
 type MixinValidator interface {
-	ValidateMixins(descriptor buildpack.Descriptor, analyzed Analyzed) error
+	ValidateMixins(descriptor buildpack.Descriptor, analyzed common.AnalyzedMetadata) error
 }
 
 type Resolver interface {
-	Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error)
+	Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []common.BuildPlanEntry, error)
 }
 
 type Detector struct {
@@ -35,13 +36,7 @@ type Detector struct {
 	Runs           *sync.Map
 	Store          BuildpackStore
 	Platform       Platform
-	Analyzed       Analyzed // Platform API >= 0.7
-}
-
-type Analyzed struct {
-	BuildImageStackID string
-	BuildImageMixins  []string
-	RunImageMixins    []string
+	Analyzed       common.AnalyzedMetadata // Platform API >= 0.7
 }
 
 func NewDetector(config buildpack.DetectConfig, buildpacksDir string) (*Detector, error) {
@@ -62,11 +57,11 @@ func NewDetector(config buildpack.DetectConfig, buildpacksDir string) (*Detector
 	}, nil
 }
 
-func (d *Detector) Detect(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
+func (d *Detector) Detect(order buildpack.Order) (buildpack.Group, common.BuildPlan, error) {
 	return d.DetectOrder(order)
 }
 
-func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
+func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, common.BuildPlan, error) {
 	bps, entries, err := d.detectOrder(order, nil, nil, false, &sync.WaitGroup{})
 	if err == ErrBuildpack {
 		err = buildpack.NewLifecycleError(err, buildpack.ErrTypeBuildpack)
@@ -78,10 +73,10 @@ func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform
 			entries[i].Requires[j].ConvertVersionToMetadata()
 		}
 	}
-	return buildpack.Group{Group: bps}, platform.BuildPlan{Entries: entries}, err
+	return buildpack.Group{Group: bps}, common.BuildPlan{Entries: entries}, err
 }
 
-func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupBuildpack, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupBuildpack, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []common.BuildPlanEntry, error) {
 	ngroup := buildpack.Group{Group: next}
 	buildpackErr := false
 	for _, group := range order {
@@ -106,7 +101,7 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 	return nil, nil, ErrFailedDetection
 }
 
-func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuildpack, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuildpack, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []common.BuildPlanEntry, error) {
 	for i, groupBp := range group.Group {
 		key := groupBp.String()
 		if hasID(done, groupBp.ID) {
@@ -164,7 +159,7 @@ type DefaultResolver struct {
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
 // If any required buildpack in the group failed detection or a build plan cannot be resolved, it returns an error.
-func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []common.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectRun
 	for _, bp := range done {
 		t, ok := detectRuns.Load(bp.String())
@@ -257,7 +252,7 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildpack, detectRuns *s
 	for _, r := range trial {
 		found = append(found, r.GroupBuildpack.NoOpt())
 	}
-	var plan []platform.BuildPlanEntry
+	var plan []common.BuildPlanEntry
 	for _, dep := range deps {
 		plan = append(plan, dep.BuildPlanEntry.NoOpt())
 	}
@@ -364,7 +359,7 @@ func (ts detectTrial) remove(bp buildpack.GroupBuildpack) detectTrial {
 }
 
 type depEntry struct {
-	platform.BuildPlanEntry
+	common.BuildPlanEntry
 	earlyRequires []buildpack.GroupBuildpack
 	extraProvides []buildpack.GroupBuildpack
 }

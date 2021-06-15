@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/buildpacks/imgutil/fakes"
@@ -31,7 +33,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		fakeAppImage     *fakes.Image
 		fakeNewBaseImage *fakes.Image
 		additionalNames  []string
-		md               platform.LayersMetadataCompat
+		md               common.LayersMetadataCompat
 	)
 
 	it.Before(func() {

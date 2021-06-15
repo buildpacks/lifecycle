@@ -3,6 +3,10 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/platform"
+
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -11,7 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -33,7 +36,7 @@ type createCmd struct {
 	registry            string
 	reportPath          string
 	runImageRef         string
-	stackMD             platform.StackMetadata
+	stackMD             common.StackMetadata
 	stackPath           string
 	uid, gid            int
 	additionalTags      cmd.StringSlice
@@ -147,17 +150,23 @@ func (c *createCmd) Exec() error {
 	}
 
 	var (
-		analyzedMD platform.AnalyzedMetadata
+		analyzedMD common.AnalyzedMetadata
 		group      buildpack.Group
-		plan       platform.BuildPlan
+		plan       common.BuildPlan
 	)
+
+	commonPlatform, err := platform.NewPlatform(c.platform.API())
+	if err != nil {
+		return err
+	}
+
 	if api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0 {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzedMD, err = analyzeArgs{
 			imageName: c.previousImage,
 			keychain:  c.keychain,
 			layersDir: c.layersDir,
-			platform:  c.platform,
+			platform:  commonPlatform,
 			useDaemon: c.useDaemon,
 			docker:    c.docker,
 		}.analyze()
@@ -170,7 +179,7 @@ func (c *createCmd) Exec() error {
 			buildpacksDir: c.buildpacksDir,
 			appDir:        c.appDir,
 			layersDir:     c.layersDir,
-			platform:      c.platform,
+			platform:      commonPlatform,
 			platformDir:   c.platformDir,
 			orderPath:     c.orderPath,
 		}.detect()
@@ -183,7 +192,7 @@ func (c *createCmd) Exec() error {
 			buildpacksDir: c.buildpacksDir,
 			appDir:        c.appDir,
 			layersDir:     c.layersDir,
-			platform:      c.platform,
+			platform:      commonPlatform,
 			platformDir:   c.platformDir,
 			orderPath:     c.orderPath,
 		}.detect()
@@ -217,7 +226,7 @@ func (c *createCmd) Exec() error {
 			layersDir:  c.layersDir,
 			platform:   c.platform,
 			skipLayers: c.skipRestore,
-		}.restore(analyzedMD.Metadata, group, cacheStore)
+		}.restore(analyzedMD.PreviousImageMetadata(), group, cacheStore)
 		if err != nil {
 			return err
 		}

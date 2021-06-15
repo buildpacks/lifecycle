@@ -13,13 +13,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -200,7 +201,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check plan.toml
 			tempPlanToml := filepath.Join(copyDir, "layers", "plan.toml")
-			var buildPlan platform.BuildPlan
+			var buildPlan common.BuildPlan
 			_, err = toml.DecodeFile(tempPlanToml, &buildPlan)
 			h.AssertNil(t, err)
 			h.AssertEq(t, buildPlan.Entries[0].Providers[0].ID, "simple_buildpack")

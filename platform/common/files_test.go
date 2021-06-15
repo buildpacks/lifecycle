@@ -1,11 +1,11 @@
-package platform_test
+package common_test
 
 import (
 	"testing"
 
 	"github.com/sclevine/spec"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -15,10 +15,10 @@ func TestStackMetadata(t *testing.T) {
 
 func testMetadata(t *testing.T, when spec.G, it spec.S) {
 	when("BestRunImageMirror", func() {
-		var stackMD *platform.StackMetadata
+		var stackMD *common.StackMetadata
 
 		it.Before(func() {
-			stackMD = &platform.StackMetadata{RunImage: platform.StackRunImageMetadata{
+			stackMD = &common.StackMetadata{RunImage: common.StackRunImageMetadata{
 				Image: "first.com/org/repo",
 				Mirrors: []string{
 					"myorg/myrepo",

@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
@@ -19,11 +21,11 @@ type Rebaser struct {
 }
 
 type RebaseReport struct {
-	Image platform.ImageReport `toml:"image"`
+	Image common.ImageReport `toml:"image"`
 }
 
 func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
-	var origMetadata platform.LayersMetadataCompat
+	var origMetadata common.LayersMetadataCompat
 	if err := DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}

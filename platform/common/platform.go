@@ -1,12 +1,10 @@
 package common
 
-import (
-	"github.com/buildpacks/lifecycle/cmd"
-)
-
 type Platform interface {
 	API() string
-	CodeFor(errType cmd.LifecycleExitError) int
+	CodeFor(errType LifecycleExitError) int
+	DecodeAnalyzedMetadata(path string) (AnalyzedMetadata, error)
+	NewAnalyzedMetadataBuilder() AnalyzedMetadataBuilder
 	SupportsAssetPackages() bool
 	SupportsMixinValidation() bool
 }

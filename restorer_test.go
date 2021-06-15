@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/pkg/errors"
@@ -630,7 +632,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 			when("there is no app image metadata", func() {
 				it.Before(func() {
-					restorer.LayersMetadata = platform.LayersMetadata{}
+					restorer.LayersMetadata = common.LayersMetadata{}
 				})
 
 				it("analyzes with no layer metadata", func() {
