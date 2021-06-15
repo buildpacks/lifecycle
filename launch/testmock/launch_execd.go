@@ -7,8 +7,9 @@ package testmock
 import (
 	reflect "reflect"
 
-	launch "github.com/buildpacks/lifecycle/launch"
 	gomock "github.com/golang/mock/gomock"
+
+	launch "github.com/buildpacks/lifecycle/launch"
 )
 
 // MockExecD is a mock of ExecD interface.

@@ -68,6 +68,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 			// The order that other calls are written in is the order that they happen in.
 
+			mixinValidator.EXPECT().ValidateMixins(gomock.Any(), gomock.Any()).AnyTimes()
+
 			bpE1 := testmock.NewMockBuildpack(mockCtrl)
 			bpA1 := testmock.NewMockBuildpack(mockCtrl)
 			bpF1 := testmock.NewMockBuildpack(mockCtrl)
@@ -247,6 +249,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 			// The order that other calls are written in is the order that they happen in.
 
+			mixinValidator.EXPECT().ValidateMixins(gomock.Any(), gomock.Any()).AnyTimes()
+
 			bpE1 := testmock.NewMockBuildpack(mockCtrl)
 			bpA1 := testmock.NewMockBuildpack(mockCtrl)
 			bpF1 := testmock.NewMockBuildpack(mockCtrl)
@@ -417,6 +421,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should convert top level versions to metadata versions", func() {
+			mixinValidator.EXPECT().ValidateMixins(gomock.Any(), gomock.Any()).AnyTimes()
+
 			bpA1 := testmock.NewMockBuildpack(mockCtrl)
 			buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA1, nil)
 			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
@@ -489,6 +495,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should update detect runs for each buildpack", func() {
+			mixinValidator.EXPECT().ValidateMixins(gomock.Any(), gomock.Any()).AnyTimes()
+
 			bpA1 := testmock.NewMockBuildpack(mockCtrl)
 			buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA1, nil)
 			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
@@ -587,9 +595,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				})
 			})
-		}
+		})
 
 		when("resolve errors", func() {
+			it.Before(func() {
+				mixinValidator.EXPECT().ValidateMixins(gomock.Any(), gomock.Any()).AnyTimes()
+			})
+
 			when("with buildpack error", func() {
 				it("returns a buildpack error", func() {
 					bpA1 := testmock.NewMockBuildpack(mockCtrl)
@@ -633,104 +645,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
-				})
-			})
-		})
-	})
-
-	when("#ValidateMixins", func() {
-		var (
-			mixinValidator *lifecycle.DefaultMixinValidator
-		)
-
-		it.Before(func() {
-			mixinValidator = &lifecycle.DefaultMixinValidator{}
-		})
-
-		when("mixins are satisfied", func() {
-			it("returns nil", func() {
-				bpDesc := buildpack.Descriptor{
-					API: "0.3",
-					Buildpack: buildpack.Info{
-						Name:    "Buildpack A",
-						Version: "v1",
-					},
-					Stacks: []buildpack.Stack{
-						{
-							ID: "some-stack-id",
-							Mixins: []string{
-								"some-unprefixed-mixin",
-								"some-other-mixin",
-								"build:some-mixin",
-								"run:some-mixin",
-							},
-						},
-					},
-				}
-
-				analyzed := lifecycle.Analyzed{
-					BuildImageStackID: "some-stack-id",
-					BuildImageMixins:  []string{"some-unprefixed-mixin", "build:some-other-mixin", "some-mixin"},
-					RunImageMixins:    []string{"some-unprefixed-mixin", "run:some-other-mixin", "some-mixin"},
-				}
-
-				err := mixinValidator.ValidateMixins(bpDesc, analyzed)
-				h.AssertNil(t, err)
-			})
-		})
-
-		when("mixins are not satisfied", func() {
-			when("by build image", func() {
-				it("returns an error", func() {
-					bpDesc := buildpack.Descriptor{
-						API: "0.3",
-						Buildpack: buildpack.Info{
-							Name:    "Buildpack A",
-							Version: "v1",
-						},
-						Stacks: []buildpack.Stack{
-							{
-								ID:     "some-stack-id",
-								Mixins: []string{"some-present-mixin", "build:some-missing-mixin", "run:some-present-mixin"},
-							},
-						},
-					}
-
-					analyzed := lifecycle.Analyzed{
-						BuildImageStackID: "some-stack-id",
-						BuildImageMixins:  []string{"some-present-mixin"},
-						RunImageMixins:    []string{"some-present-mixin"},
-					}
-
-					err := mixinValidator.ValidateMixins(bpDesc, analyzed)
-					h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin build:some-missing-mixin")
-				})
-			})
-
-			when("by run image", func() {
-				it("returns an error", func() {
-					bpDesc := buildpack.Descriptor{
-						API: "0.3",
-						Buildpack: buildpack.Info{
-							Name:    "Buildpack A",
-							Version: "v1",
-						},
-						Stacks: []buildpack.Stack{
-							{
-								ID:     "some-stack-id",
-								Mixins: []string{"some-present-mixin", "build:some-present-mixin", "run:some-missing-mixin"},
-							},
-						},
-					}
-
-					analyzed := lifecycle.Analyzed{
-						BuildImageStackID: "some-stack-id",
-						BuildImageMixins:  []string{"some-present-mixin"},
-						RunImageMixins:    []string{"some-present-mixin"},
-					}
-
-					err := mixinValidator.ValidateMixins(bpDesc, analyzed)
-					h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin run:some-missing-mixin")
 				})
 			})
 		})

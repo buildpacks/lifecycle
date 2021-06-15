@@ -7,9 +7,10 @@ package testmock
 import (
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+
 	lifecycle "github.com/buildpacks/lifecycle"
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockMixinValidator is a mock of MixinValidator interface.

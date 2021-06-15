@@ -76,9 +76,8 @@ func removeStagePrefix(m string) string {
 	s := strings.SplitN(m, ":", 2)
 	if len(s) == 1 {
 		return s[0]
-	} else {
-		return s[1]
 	}
+	return s[1]
 }
 
 // compare performs a set comparison between two slices. `extra` represents elements present in

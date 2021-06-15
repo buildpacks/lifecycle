@@ -7,8 +7,9 @@ package testmock
 import (
 	reflect "reflect"
 
-	env "github.com/buildpacks/lifecycle/env"
 	gomock "github.com/golang/mock/gomock"
+
+	env "github.com/buildpacks/lifecycle/env"
 )
 
 // MockEnv is a mock of Env interface.

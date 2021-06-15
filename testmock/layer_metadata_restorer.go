@@ -7,10 +7,11 @@ package testmock
 import (
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+
 	lifecycle "github.com/buildpacks/lifecycle"
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	platform "github.com/buildpacks/lifecycle/platform"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockLayerMetadataRestorer is a mock of LayerMetadataRestorer interface.

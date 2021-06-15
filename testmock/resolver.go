@@ -8,9 +8,10 @@ import (
 	reflect "reflect"
 	sync "sync"
 
+	gomock "github.com/golang/mock/gomock"
+
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	platform "github.com/buildpacks/lifecycle/platform"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockResolver is a mock of Resolver interface.
