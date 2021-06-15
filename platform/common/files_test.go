@@ -1,7 +1,6 @@
 package common
 
 import (
-	"github.com/buildpacks/imgutil/testhelpers"
 	"testing"
 
 	"github.com/sclevine/spec"
