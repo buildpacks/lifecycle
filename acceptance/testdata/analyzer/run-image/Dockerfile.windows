@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/windows/nanoserver:1809
+USER ContainerAdministrator
+
+ARG stackid
+LABEL io.buildpacks.stack.id=${stackid}
