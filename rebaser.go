@@ -11,7 +11,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type Rebaser struct {
@@ -24,7 +23,7 @@ type RebaseReport struct {
 }
 
 func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
-	var origMetadata common.LayersMetadataCompat
+	var origMetadata platform.LayersMetadataCompat
 	if err := DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}

@@ -10,7 +10,6 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -22,7 +21,7 @@ func testStackValidation(t *testing.T, when spec.G, it spec.S) {
 	when("ValidateStack", func() {
 		when("build and run stack ids match", func() {
 			it("should not err", func() {
-				md := common.StackMetadata{BuildImage: common.StackBuildImageMetadata{StackID: "my-stack"}}
+				md := platform.StackMetadata{BuildImage: platform.StackBuildImageMetadata{StackID: "my-stack"}}
 				runImage := fakes.NewImage("runimg", "", nil)
 				h.AssertNil(t, runImage.SetLabel(platform.StackIDLabel, "my-stack"))
 				err := lifecycle.ValidateStack(md, runImage)
@@ -32,7 +31,7 @@ func testStackValidation(t *testing.T, when spec.G, it spec.S) {
 
 		when("build and run stack ids do not match", func() {
 			it("should fail", func() {
-				md := common.StackMetadata{BuildImage: common.StackBuildImageMetadata{StackID: "my-stack"}}
+				md := platform.StackMetadata{BuildImage: platform.StackBuildImageMetadata{StackID: "my-stack"}}
 				runImage := fakes.NewImage("runimg", "", nil)
 				h.AssertNil(t, runImage.SetLabel(platform.StackIDLabel, "my-other-stack"))
 				err := lifecycle.ValidateStack(md, runImage)
@@ -43,7 +42,7 @@ func testStackValidation(t *testing.T, when spec.G, it spec.S) {
 
 		when("run image is missing io.buildpacks.stack.id label", func() {
 			it("should fail", func() {
-				md := common.StackMetadata{BuildImage: common.StackBuildImageMetadata{StackID: "my-stack"}}
+				md := platform.StackMetadata{BuildImage: platform.StackBuildImageMetadata{StackID: "my-stack"}}
 				runImage := fakes.NewImage("runimg", "", nil)
 				err := lifecycle.ValidateStack(md, runImage)
 				h.AssertNotNil(t, err)
@@ -61,7 +60,7 @@ func testStackValidation(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("prefers that value", func() {
-				md := common.StackMetadata{BuildImage: common.StackBuildImageMetadata{StackID: "my-other-stack"}}
+				md := platform.StackMetadata{BuildImage: platform.StackBuildImageMetadata{StackID: "my-other-stack"}}
 				runImage := fakes.NewImage("runimg", "", nil)
 				h.AssertNil(t, runImage.SetLabel(platform.StackIDLabel, "my-stack"))
 				err := lifecycle.ValidateStack(md, runImage)
@@ -71,7 +70,7 @@ func testStackValidation(t *testing.T, when spec.G, it spec.S) {
 
 		when("no build stack is present", func() {
 			it("should fail", func() {
-				md := common.StackMetadata{BuildImage: common.StackBuildImageMetadata{StackID: ""}}
+				md := platform.StackMetadata{BuildImage: platform.StackBuildImageMetadata{StackID: ""}}
 				runImage := fakes.NewImage("runimg", "", nil)
 				h.AssertNil(t, runImage.SetLabel(platform.StackIDLabel, "my-stack"))
 				err := lifecycle.ValidateStack(md, runImage)

@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	platform2 "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 
@@ -12,8 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
-	lplatform "github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 func main() {
@@ -28,7 +29,7 @@ func runLaunch() error {
 		cmd.Exit(err)
 	}
 
-	platform, err := lplatform.NewPlatform(platformAPI)
+	platform, err := factory.NewPlatform(platformAPI)
 	if err != nil {
 		cmd.Exit(err)
 	}
@@ -58,7 +59,7 @@ func runLaunch() error {
 	}
 
 	if err := launcher.Launch(os.Args[0], os.Args[1:]); err != nil {
-		return cmd.FailErrCode(err, platform.CodeFor(common.LaunchError), "launch")
+		return cmd.FailErrCode(err, platform.CodeFor(platform2.LaunchError), "launch")
 	}
 	return nil
 }

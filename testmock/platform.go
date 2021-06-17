@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	common "github.com/buildpacks/lifecycle/platform/common"
+	platform "github.com/buildpacks/lifecycle/platform"
 )
 
 // MockPlatform is a mock of Platform interface.
@@ -50,10 +50,10 @@ func (mr *MockPlatformMockRecorder) API() *gomock.Call {
 }
 
 // NewAnalyzedMetadata mocks base method.
-func (m *MockPlatform) NewAnalyzedMetadata(arg0 common.AnalyzedMetadataConfig) common.AnalyzedMetadata {
+func (m *MockPlatform) NewAnalyzedMetadata(arg0 platform.AnalyzedMetadataConfig) platform.AnalyzedMetadata {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewAnalyzedMetadata", arg0)
-	ret0, _ := ret[0].(common.AnalyzedMetadata)
+	ret0, _ := ret[0].(platform.AnalyzedMetadata)
 	return ret0
 }
 

@@ -1,4 +1,4 @@
-package common
+package platform
 
 type LifecycleExitError int
 

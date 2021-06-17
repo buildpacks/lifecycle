@@ -9,11 +9,10 @@ import (
 
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 // TODO: move into stack.go
-func ValidateStack(stackMD common.StackMetadata, runImage imgutil.Image) error {
+func ValidateStack(stackMD platform.StackMetadata, runImage imgutil.Image) error {
 	buildStackID, err := getBuildStack(stackMD)
 	if err != nil {
 		return err
@@ -41,7 +40,7 @@ func getRunStack(runImage imgutil.Image) (string, error) {
 	return runStackID, nil
 }
 
-func getBuildStack(stackMD common.StackMetadata) (string, error) {
+func getBuildStack(stackMD platform.StackMetadata) (string, error) {
 	var buildStackID string
 	if buildStackID = os.Getenv(cmd.EnvStackID); buildStackID != "" {
 		return buildStackID, nil

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/buildpacks/imgutil/fakes"
@@ -21,7 +23,6 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -69,7 +70,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			mockCtrl = gomock.NewController(t)
 			metadataRestorer = testmock.NewMockLayerMetadataRestorer(mockCtrl)
 
-			p, err := platform.NewPlatform(platformAPI)
+			p, err := factory.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
 				Image:    image,
@@ -100,7 +101,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 		when("#Analyze", func() {
 			var (
-				expectedAppMetadata   common.LayersMetadata
+				expectedAppMetadata   platform.LayersMetadata
 				expectedCacheMetadata platform.CacheMetadata
 				ref                   *testmock.MockReference
 			)
@@ -166,7 +167,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.PreviousImage())
-					h.AssertEq(t, md.PreviousImageMetadata(), common.LayersMetadata{})
+					h.AssertEq(t, md.PreviousImageMetadata(), platform.LayersMetadata{})
 				})
 			})
 
@@ -179,7 +180,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.PreviousImageMetadata(), common.LayersMetadata{})
+					h.AssertEq(t, md.PreviousImageMetadata(), platform.LayersMetadata{})
 				})
 			})
 
@@ -192,7 +193,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.PreviousImageMetadata(), common.LayersMetadata{})
+					h.AssertEq(t, md.PreviousImageMetadata(), platform.LayersMetadata{})
 				})
 			})
 		})

@@ -1,4 +1,4 @@
-package common
+package platform
 
 import (
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -22,8 +22,6 @@ type AnalyzedMetadata interface {
 	RunImage() *ImageIdentifier
 	RunImageMixins() []string
 }
-
-// analyzed.toml
 
 // FIXME: fix key names to be accurate in the daemon case
 type ImageIdentifier struct {

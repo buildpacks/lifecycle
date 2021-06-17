@@ -2,15 +2,15 @@ package v06
 
 import (
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Platform struct {
 	api              *api.Version
-	previousPlatform common.Platform
+	previousPlatform platform.Platform
 }
 
-func NewPlatform(previousPlatform common.Platform) *Platform {
+func NewPlatform(previousPlatform platform.Platform) *Platform {
 	return &Platform{
 		api:              api.MustParse("0.6"),
 		previousPlatform: previousPlatform,

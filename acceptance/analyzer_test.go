@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
@@ -23,7 +25,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -124,14 +125,14 @@ func TestAnalyzer(t *testing.T) {
 func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var copyDir, containerName, cacheVolume string
-		var platformInt common.Platform
+		var platformInt platform.Platform
 
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
 			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
 			h.AssertNil(t, err)
-			platformInt, err = platform.NewPlatform(platformAPI)
+			platformInt, err = factory.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 		})
 
@@ -327,7 +328,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				it.Before(func() {
 					appImage = "some-app-image-" + h.RandString(10)
-					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), common.LayersMetadata{})
+					metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 
 					cmd := exec.Command(
 						"docker",
@@ -677,7 +678,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					var authRegAppImage, appAuthConfig string
 
 					it.Before(func() {
-						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), common.LayersMetadata{})
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 						authRegAppImage, appAuthConfig = buildAuthRegistryImage(
 							t,
 							"some-app-image-"+h.RandString(10),
@@ -766,7 +767,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					var noAuthRegAppImage string
 
 					it.Before(func() {
-						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), common.LayersMetadata{})
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 
 						imageName := "some-app-image-" + h.RandString(10)
 						buildAuthRegistryImage(
@@ -838,7 +839,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					var authRegAppImage, authRegAppOtherImage, appAuthConfig string
 
 					it.Before(func() {
-						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), common.LayersMetadata{})
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 						authRegAppImage, appAuthConfig = buildAuthRegistryImage(
 							t,
 							"some-app-image-"+h.RandString(10),
@@ -1295,7 +1296,7 @@ func buildAuthRegistryImage(t *testing.T, repoName, context string, buildArgs ..
 	return regRepoName, authConfig
 }
 
-func assertAnalyzedMetadata(t *testing.T, path string, platform common.Platform) common.AnalyzedMetadata {
+func assertAnalyzedMetadata(t *testing.T, path string, platform platform.Platform) platform.AnalyzedMetadata {
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 

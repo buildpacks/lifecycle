@@ -8,7 +8,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 const (
@@ -22,7 +21,7 @@ var (
 )
 
 type MixinValidator interface {
-	ValidateMixins(descriptor buildpack.Descriptor, analyzed common.AnalyzedMetadata) error
+	ValidateMixins(descriptor buildpack.Descriptor, analyzed platform.AnalyzedMetadata) error
 }
 
 type Resolver interface {
@@ -36,10 +35,10 @@ type Detector struct {
 	Runs           *sync.Map
 	Store          BuildpackStore
 	Platform       Platform
-	Analyzed       common.AnalyzedMetadata // Platform API >= 0.7
+	Analyzed       platform.AnalyzedMetadata // Platform API >= 0.7
 }
 
-func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform common.Platform) (*Detector, error) {
+func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform platform.Platform) (*Detector, error) {
 	mixinValidator := &StackValidator{}
 	resolver := &DefaultResolver{
 		Logger: config.Logger,

@@ -3,15 +3,16 @@ package lifecycle
 import (
 	"strings"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type StackValidator struct{}
 
-func (v *StackValidator) ValidateMixins(descriptor buildpack.Descriptor, analyzed common.AnalyzedMetadata) error {
+func (v *StackValidator) ValidateMixins(descriptor buildpack.Descriptor, analyzed platform.AnalyzedMetadata) error {
 	if len(descriptor.Stacks) == 0 {
 		return nil // nothing to validate
 	}
@@ -36,7 +37,7 @@ func (v *StackValidator) ValidateMixins(descriptor buildpack.Descriptor, analyze
 	return nil
 }
 
-func satisfied(mixin string, analyzed common.AnalyzedMetadata) bool {
+func satisfied(mixin string, analyzed platform.AnalyzedMetadata) bool {
 	if strings.HasPrefix(mixin, "build") {
 		return hasMixin(analyzed.BuildImageMixins(), mixin)
 	}

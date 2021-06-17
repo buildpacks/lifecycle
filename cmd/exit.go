@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 const (
@@ -24,8 +24,8 @@ const (
 
 type Platform interface {
 	API() string
-	CodeFor(errType common.LifecycleExitError) int
-	DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetadata, error)
+	CodeFor(errType platform.LifecycleExitError) int
+	DecodeAnalyzedMetadataFile(path string) (platform.AnalyzedMetadata, error)
 }
 
 type ErrorFail struct {

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -12,7 +14,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -34,7 +35,7 @@ type createCmd struct {
 	registry            string
 	reportPath          string
 	runImageRef         string
-	stackMD             common.StackMetadata
+	stackMD             platform.StackMetadata
 	stackPath           string
 	uid, gid            int
 	additionalTags      cmd.StringSlice
@@ -148,12 +149,12 @@ func (c *createCmd) Exec() error {
 	}
 
 	var (
-		analyzedMD common.AnalyzedMetadata
+		analyzedMD platform.AnalyzedMetadata
 		group      buildpack.Group
 		plan       platform.BuildPlan
 	)
 
-	commonPlatform, err := platform.NewPlatform(c.platform.API())
+	commonPlatform, err := factory.NewPlatform(c.platform.API())
 	if err != nil {
 		return err
 	}

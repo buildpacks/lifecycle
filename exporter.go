@@ -18,7 +18,6 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type Cache interface {
@@ -57,10 +56,10 @@ type ExportOptions struct {
 	AppDir             string
 	WorkingImage       imgutil.Image
 	RunImageRef        string
-	OrigMetadata       common.LayersMetadata
+	OrigMetadata       platform.LayersMetadata
 	AdditionalNames    []string
 	LauncherConfig     LauncherConfig
-	Stack              common.StackMetadata
+	Stack              platform.StackMetadata
 	Project            platform.ProjectMetadata
 	DefaultProcessType string
 }
@@ -78,7 +77,7 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 		return platform.ExportReport{}, errors.Wrapf(err, "app dir absolute path")
 	}
 
-	meta := common.LayersMetadata{}
+	meta := platform.LayersMetadata{}
 	meta.RunImage.TopLayer, err = opts.WorkingImage.TopLayer()
 	if err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "get run image top layer SHA")
@@ -153,16 +152,16 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	return report, nil
 }
 
-func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *common.LayersMetadata) error {
+func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp, e.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
-		bpMD := common.BuildpackLayersMetadata{
+		bpMD := platform.BuildpackLayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]common.BuildpackLayerMetadata{},
+			Layers:  map[string]platform.BuildpackLayerMetadata{},
 			Store:   bpDir.store,
 		}
 		for _, fsLayer := range bpDir.findLayers(forLaunch) {
@@ -213,7 +212,7 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *common.LayersMet
 	return nil
 }
 
-func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.BuildMetadata, meta *common.LayersMetadata) error {
+func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.BuildMetadata, meta *platform.LayersMetadata) error {
 	launcherLayer, err := e.LayerFactory.LauncherLayer(opts.LauncherConfig.Path)
 	if err != nil {
 		return errors.Wrap(err, "creating launcher layers")
@@ -237,7 +236,7 @@ func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.Build
 	return nil
 }
 
-func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta *common.LayersMetadata) error {
+func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta *platform.LayersMetadata) error {
 	// creating app layers (slices + app dir)
 	sliceLayers, err := e.LayerFactory.SliceLayers(opts.AppDir, slices)
 	if err != nil {
@@ -265,7 +264,7 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 			return err
 		}
 		e.Logger.Debugf("Layer '%s' SHA: %s\n", slice.ID, slice.Digest)
-		meta.App = append(meta.App, common.LayerMetadata{SHA: slice.Digest})
+		meta.App = append(meta.App, platform.LayerMetadata{SHA: slice.Digest})
 	}
 
 	delta := len(sliceLayers) - numberOfReusedLayers
@@ -278,7 +277,7 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 	return nil
 }
 
-func (e *Exporter) setLabels(opts ExportOptions, meta common.LayersMetadata, buildMD *platform.BuildMetadata) error {
+func (e *Exporter) setLabels(opts ExportOptions, meta platform.LayersMetadata, buildMD *platform.BuildMetadata) error {
 	data, err := json.Marshal(meta)
 	if err != nil {
 		return errors.Wrap(err, "marshall metadata")
@@ -398,7 +397,7 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, userDefaultProcessType, 
 }
 
 // processTypes adds
-func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *platform.BuildMetadata, meta *common.LayersMetadata) error {
+func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *platform.BuildMetadata, meta *platform.LayersMetadata) error {
 	if e.supportsMulticallLauncher() {
 		launchMD := launch.Metadata{
 			Processes: buildMD.Processes,

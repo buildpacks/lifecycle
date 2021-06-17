@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
@@ -11,8 +14,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -97,7 +98,7 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var appMeta common.LayersMetadata
+	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
 		if analyzedMd, err := r.platform.DecodeAnalyzedMetadataFile(r.analyzedPath); err == nil {
 			appMeta = analyzedMd.PreviousImageMetadata()
@@ -114,10 +115,10 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func (r restoreArgs) restore(layerMetadata common.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
-	commonPlatform, err := platform.NewPlatform(r.platform.API()) // TODO: fix weirdness
+func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
+	commonPlatform, err := factory.NewPlatform(r.platform.API()) // TODO: fix weirdness
 	if err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(common.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
 	}
 
 	restorer := &lifecycle.Restorer{
@@ -130,7 +131,7 @@ func (r restoreArgs) restore(layerMetadata common.LayersMetadata, group buildpac
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(common.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
 	}
 	return nil
 }

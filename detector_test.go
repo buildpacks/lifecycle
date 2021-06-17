@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
@@ -42,7 +44,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			mockCtrl = gomock.NewController(t)
 
-			platform, err := platform.NewPlatform(api.Platform.Latest().String())
+			platform, err := factory.NewPlatform(api.Platform.Latest().String())
 			h.AssertNil(t, err)
 
 			detector = &lifecycle.Detector{

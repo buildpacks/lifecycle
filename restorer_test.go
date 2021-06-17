@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/pkg/errors"
@@ -19,8 +22,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -66,7 +67,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
-				p, err := platform.NewPlatform(platformAPI)
+				p, err := factory.NewPlatform(platformAPI)
 				h.AssertNil(t, err)
 
 				restorer = &lifecycle.Restorer{
@@ -631,7 +632,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 			when("there is no app image metadata", func() {
 				it.Before(func() {
-					restorer.LayersMetadata = common.LayersMetadata{}
+					restorer.LayersMetadata = platform.LayersMetadata{}
 				})
 
 				it("analyzes with no layer metadata", func() {

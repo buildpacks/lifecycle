@@ -17,7 +17,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -69,7 +68,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(common.RebaseError), "set app image")
+		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(platform.RebaseError), "set app image")
 	}
 
 	return nil
@@ -121,10 +120,10 @@ func (r *rebaseCmd) Exec() error {
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "rebase")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "rebase")
 	}
 	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "write rebase report")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "write rebase report")
 	}
 	return nil
 }
@@ -166,7 +165,7 @@ func (r *rebaseCmd) setAppImage() error {
 		return cmd.FailErr(err, "access image to rebase")
 	}
 
-	var md common.LayersMetadata
+	var md platform.LayersMetadata
 	if err := lifecycle.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
 		return err
 	}

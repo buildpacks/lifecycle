@@ -17,7 +17,6 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -32,7 +31,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		fakeAppImage     *fakes.Image
 		fakeNewBaseImage *fakes.Image
 		additionalNames  []string
-		md               common.LayersMetadataCompat
+		md               platform.LayersMetadataCompat
 	)
 
 	it.Before(func() {

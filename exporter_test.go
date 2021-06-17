@@ -28,7 +28,6 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -216,7 +215,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 							{ID: "slice-3", Digest: "slice-3-digest"},
 						}, nil)
 					fakeAppImage.AddPreviousLayer("slice-1-digest", "")
-					opts.OrigMetadata.App = append(opts.OrigMetadata.App, common.LayerMetadata{SHA: "slice-1-digest"})
+					opts.OrigMetadata.App = append(opts.OrigMetadata.App, platform.LayerMetadata{SHA: "slice-1-digest"})
 				})
 
 				it("reuses slice layer if the sha matches the sha in the archive metadata", func() {
@@ -278,10 +277,10 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "bad.buildpack.id", API: api.Buildpack.Latest().String()}}
 					fakeAppImage.AddPreviousLayer("bad-layer", "")
-					opts.OrigMetadata = common.LayersMetadata{
-						Buildpacks: []common.BuildpackLayersMetadata{{
+					opts.OrigMetadata = platform.LayersMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{
 							ID:     "bad.buildpack.id",
-							Layers: map[string]common.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: common.LayerMetadata{SHA: "bad-layer"}}},
+							Layers: map[string]platform.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: platform.LayerMetadata{SHA: "bad-layer"}}},
 						}},
 					}
 				})
@@ -340,7 +339,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta common.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -375,8 +374,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("saves run image metadata to the resulting image", func() {
-				opts.Stack = common.StackMetadata{
-					RunImage: common.StackRunImageMetadata{
+				opts.Stack = platform.StackMetadata{
+					RunImage: platform.StackRunImageMetadata{
 						Image:   "some/run",
 						Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
 					},
@@ -387,7 +386,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta common.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -676,8 +675,8 @@ version = "4.5.6"
 
 			when("previous image metadata is missing buildpack for reused layer", func() {
 				it.Before(func() {
-					opts.OrigMetadata = common.LayersMetadata{
-						Buildpacks: []common.BuildpackLayersMetadata{{}},
+					opts.OrigMetadata = platform.LayersMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{}},
 					}
 				})
 
@@ -693,10 +692,10 @@ version = "4.5.6"
 
 			when("previous image metadata is missing reused layer", func() {
 				it.Before(func() {
-					opts.OrigMetadata = common.LayersMetadata{
-						Buildpacks: []common.BuildpackLayersMetadata{{
+					opts.OrigMetadata = platform.LayersMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{
 							ID:     "buildpack.id",
-							Layers: map[string]common.BuildpackLayerMetadata{},
+							Layers: map[string]platform.BuildpackLayerMetadata{},
 						}},
 					}
 				})
@@ -852,7 +851,7 @@ version = "4.5.6"
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta common.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -891,7 +890,7 @@ version = "4.5.6"
 					metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 					h.AssertNil(t, err)
 
-					var meta common.LayersMetadata
+					var meta platform.LayersMetadata
 					if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 						t.Fatalf("badly formatted metadata: %s", err)
 					}
@@ -1290,7 +1289,7 @@ version = "4.5.6"
 				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, err)
 
-				var meta common.LayersMetadata
+				var meta platform.LayersMetadata
 				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
 					t.Fatalf("badly formatted metadata: %s", err)
 				}
@@ -1362,10 +1361,10 @@ version = "4.5.6"
 				when("the launch flag is in the types table", func() {
 					it.Before(func() {
 						fakeAppImage.AddPreviousLayer("bad-layer-digest", "")
-						opts.OrigMetadata = common.LayersMetadata{
-							Buildpacks: []common.BuildpackLayersMetadata{{
+						opts.OrigMetadata = platform.LayersMetadata{
+							Buildpacks: []platform.BuildpackLayersMetadata{{
 								ID:     "old.buildpack.id",
-								Layers: map[string]common.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: common.LayerMetadata{SHA: "bad-layer-digest"}}},
+								Layers: map[string]platform.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: platform.LayerMetadata{SHA: "bad-layer-digest"}}},
 							}},
 						}
 					})

@@ -6,13 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 func WriteTOML(path string, data interface{}) error {
@@ -66,7 +67,7 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 	return nil
 }
 
-func ResolveRunImage(stackMD common.StackMetadata, destinationImageRef string) (string, error) {
+func ResolveRunImage(stackMD platform.StackMetadata, destinationImageRef string) (string, error) {
 	runImageRef := stackMD.RunImage.Image
 
 	if runImageRef == "" {

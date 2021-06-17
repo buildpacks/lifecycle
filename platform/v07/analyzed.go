@@ -3,10 +3,10 @@ package v07
 import (
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
-func (p *Platform) DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetadata, error) {
+func (p *Platform) DecodeAnalyzedMetadataFile(path string) (platform.AnalyzedMetadata, error) {
 	var (
 		analyzedMd analyzedMetadata // TODO: change analyzedMD to analyzedMd
 		err        error
@@ -18,7 +18,7 @@ func (p *Platform) DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetad
 	return nil, err
 }
 
-func (p *Platform) NewAnalyzedMetadata(config common.AnalyzedMetadataConfig) common.AnalyzedMetadata {
+func (p *Platform) NewAnalyzedMetadata(config platform.AnalyzedMetadataConfig) platform.AnalyzedMetadata {
 	return &analyzedMetadata{
 		BuildImageData: BuildImage{
 			StackID: config.BuildImageStackID,
@@ -49,13 +49,13 @@ type BuildImage struct {
 }
 
 type PreviousImage struct {
-	Reference *common.ImageIdentifier `toml:"reference"`
-	Metadata  common.LayersMetadata   `toml:"metadata"`
+	Reference *platform.ImageIdentifier `toml:"reference"`
+	Metadata  platform.LayersMetadata   `toml:"metadata"`
 }
 
 type RunImage struct {
-	Reference *common.ImageIdentifier `toml:"reference"`
-	Mixins    []string                `toml:"mixins"`
+	Reference *platform.ImageIdentifier `toml:"reference"`
+	Mixins    []string                  `toml:"mixins"`
 }
 
 func (a *analyzedMetadata) BuildImageStackID() string {
@@ -66,15 +66,15 @@ func (a *analyzedMetadata) BuildImageMixins() []string {
 	return a.BuildImageData.Mixins
 }
 
-func (a *analyzedMetadata) PreviousImage() *common.ImageIdentifier {
+func (a *analyzedMetadata) PreviousImage() *platform.ImageIdentifier {
 	return a.PreviousImageData.Reference
 }
 
-func (a *analyzedMetadata) PreviousImageMetadata() common.LayersMetadata {
+func (a *analyzedMetadata) PreviousImageMetadata() platform.LayersMetadata {
 	return a.PreviousImageData.Metadata
 }
 
-func (a *analyzedMetadata) RunImage() *common.ImageIdentifier {
+func (a *analyzedMetadata) RunImage() *platform.ImageIdentifier {
 	return a.RunImageData.Reference
 }
 

@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
@@ -17,8 +20,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -179,7 +180,7 @@ func (aa analyzeArgs) validateStack() error {
 		return nil
 	}
 
-	var stackMD common.StackMetadata
+	var stackMD platform.StackMetadata
 	if _, err := toml.DecodeFile(aa.stackPath, &stackMD); err != nil && !os.IsNotExist(err) {
 		return cmd.FailErr(err, "get stack metadata")
 	}
@@ -192,7 +193,7 @@ func (aa analyzeArgs) validateStack() error {
 	return lifecycle.ValidateStack(stackMD, runImage)
 }
 
-func (aa analyzeArgs) analyze() (common.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	if err := aa.validateStack(); err != nil {
 		return nil, cmd.FailErr(err, "validate stack")
 	}
@@ -218,7 +219,7 @@ func (aa analyzeArgs) analyze() (common.AnalyzedMetadata, error) {
 		return nil, cmd.FailErr(err, "get previous image")
 	}
 
-	commonPlatform, err := platform.NewPlatform(aa.platform.API())
+	commonPlatform, err := factory.NewPlatform(aa.platform.API())
 	if err != nil {
 		return nil, cmd.FailErr(err, "initialize platform")
 	}
@@ -232,12 +233,12 @@ func (aa analyzeArgs) analyze() (common.AnalyzedMetadata, error) {
 		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze()
 	if err != nil {
-		return nil, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
+		return nil, cmd.FailErrCode(err, aa.platform.CodeFor(platform.AnalyzeError), "analyzer")
 	}
 	return analyzedMD, nil
 }
 
-func (aa *analyzeArgs) getRunImage(stackMD common.StackMetadata) (imgutil.Image, error) {
+func (aa *analyzeArgs) getRunImage(stackMD platform.StackMetadata) (imgutil.Image, error) {
 	if aa.runImageRef == "" {
 		runImageRef, err := lifecycle.ResolveRunImage(stackMD, aa.imageName)
 		if err != nil {

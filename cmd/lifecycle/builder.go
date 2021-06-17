@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle"
@@ -11,7 +13,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -79,12 +80,12 @@ func (b *buildCmd) Exec() error {
 func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
-		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
-	commonPlatform, err := platform.NewPlatform(ba.platform.API())
+	commonPlatform, err := factory.NewPlatform(ba.platform.API())
 	if err != nil {
-		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
@@ -105,10 +106,10 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	if err != nil {
 		if err, ok := err.(*buildpack.Error); ok {
 			if err.Type == buildpack.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(common.FailedBuildWithErrors), "build")
+				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(platform.FailedBuildWithErrors), "build")
 			}
 		}
-		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
 	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {

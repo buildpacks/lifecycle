@@ -3,14 +3,15 @@ package lifecycle_test
 import (
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -22,14 +23,14 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 	when("StackValidator", func() {
 		var (
 			stackValidator *lifecycle.StackValidator
-			platformInt    common.Platform
+			platformInt    platform.Platform
 		)
 
 		it.Before(func() {
 			stackValidator = &lifecycle.StackValidator{}
 
 			var err error
-			platformInt, err = platform.NewPlatform(api.Platform.Latest().String())
+			platformInt, err = factory.NewPlatform(api.Platform.Latest().String())
 			h.AssertNil(t, err)
 		})
 
@@ -54,7 +55,7 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}
-					analyzed := platformInt.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+					analyzed := platformInt.NewAnalyzedMetadata(platform.AnalyzedMetadataConfig{
 						BuildImageStackID: "some-stack-id",
 						BuildImageMixins:  []string{"some-unprefixed-mixin", "build:some-other-mixin", "some-mixin"},
 						RunImageMixins:    []string{"some-unprefixed-mixin", "run:some-other-mixin", "some-mixin"},
@@ -81,7 +82,7 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}
-						analyzed := platformInt.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+						analyzed := platformInt.NewAnalyzedMetadata(platform.AnalyzedMetadataConfig{
 							BuildImageStackID: "some-stack-id",
 							BuildImageMixins:  []string{"some-present-mixin"},
 							RunImageMixins:    []string{"some-present-mixin"},
@@ -107,7 +108,7 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}
-						analyzed := platformInt.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+						analyzed := platformInt.NewAnalyzedMetadata(platform.AnalyzedMetadataConfig{
 							BuildImageStackID: "some-stack-id",
 							BuildImageMixins:  []string{"some-present-mixin"},
 							RunImageMixins:    []string{"some-present-mixin"},

@@ -6,13 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform/common"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -150,7 +151,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 	when("ResolveRunImage", func() {
 		when("there are no mirrors", func() {
 			it("should return run-image", func() {
-				md := common.StackMetadata{RunImage: common.StackRunImageMetadata{Image: "company/run:focal"}}
+				md := platform.StackMetadata{RunImage: platform.StackRunImageMetadata{Image: "company/run:focal"}}
 				dstImage := "someregistry/whatever"
 				res, err := lifecycle.ResolveRunImage(md, dstImage)
 				h.AssertNil(t, err)
@@ -160,7 +161,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 
 		when("there are mirrors", func() {
 			it("should return a run-image from the mirror matching the destination image", func() {
-				md := common.StackMetadata{RunImage: common.StackRunImageMetadata{
+				md := platform.StackMetadata{RunImage: platform.StackRunImageMetadata{
 					Image:   "company/run:focal",
 					Mirrors: []string{"some.registry/_/run:focal"},
 				}}
@@ -173,7 +174,7 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is no run image defined", func() {
 			it("should fail", func() {
-				md := common.StackMetadata{}
+				md := platform.StackMetadata{}
 				dstImage := "someregistry/whatever"
 				_, err := lifecycle.ResolveRunImage(md, dstImage)
 				h.AssertError(t, err, "a run image must be specified when there is no stack metadata available")

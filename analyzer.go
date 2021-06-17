@@ -7,14 +7,13 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type Platform interface {
 	API() string
 	SupportsAssetPackages() bool
 	SupportsMixinValidation() bool
-	NewAnalyzedMetadata(config common.AnalyzedMetadataConfig) common.AnalyzedMetadata
+	NewAnalyzedMetadata(config platform.AnalyzedMetadataConfig) platform.AnalyzedMetadata
 }
 
 type Analyzer struct {
@@ -29,11 +28,11 @@ type Analyzer struct {
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
-func (a *Analyzer) Analyze() (common.AnalyzedMetadata, error) {
+func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
-		appMeta   common.LayersMetadata
+		appMeta   platform.LayersMetadata
 		cacheMeta platform.CacheMetadata
-		imageID   *common.ImageIdentifier
+		imageID   *platform.ImageIdentifier
 		err       error
 	)
 
@@ -45,10 +44,10 @@ func (a *Analyzer) Analyze() (common.AnalyzedMetadata, error) {
 
 		// continue even if the label cannot be decoded
 		if err := DecodeLabel(a.Image, platform.LayerMetadataLabel, &appMeta); err != nil {
-			appMeta = common.LayersMetadata{}
+			appMeta = platform.LayersMetadata{}
 		}
 	} else {
-		appMeta = common.LayersMetadata{}
+		appMeta = platform.LayersMetadata{}
 	}
 
 	if a.restoresLayerMetadata() {
@@ -63,7 +62,7 @@ func (a *Analyzer) Analyze() (common.AnalyzedMetadata, error) {
 		}
 	}
 
-	analyzedMD := a.Platform.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+	analyzedMD := a.Platform.NewAnalyzedMetadata(platform.AnalyzedMetadataConfig{
 		PreviousImage:         imageID,
 		PreviousImageMetadata: appMeta,
 	})
@@ -75,7 +74,7 @@ func (a *Analyzer) restoresLayerMetadata() bool {
 	return api.MustParse(a.Platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 
-func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*common.ImageIdentifier, error) {
+func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
 	if !image.Found() {
 		a.Logger.Infof("Previous image with name %q not found", image.Name())
 		return nil, nil
@@ -85,7 +84,7 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*common.ImageIdentif
 		return nil, err
 	}
 	a.Logger.Debugf("Analyzing image %q", identifier.String())
-	return &common.ImageIdentifier{
+	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
 }

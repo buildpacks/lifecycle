@@ -5,13 +5,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/platform/factory"
+
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	lplatform "github.com/buildpacks/lifecycle/platform"
 )
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	platform, err := lplatform.NewPlatform(platformAPI)
+	platform, err := factory.NewPlatform(platformAPI)
 	if err != nil {
 		cmd.Exit(err)
 	}
