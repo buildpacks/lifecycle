@@ -6,8 +6,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform/factory"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
@@ -20,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )

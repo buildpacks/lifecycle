@@ -5,14 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/factory"
-
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/platform/factory"
 )
 
 func main() {

@@ -8,9 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/factory"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/pkg/errors"
@@ -22,6 +19,8 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

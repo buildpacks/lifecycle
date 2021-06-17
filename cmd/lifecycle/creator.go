@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/factory"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -14,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
 	"github.com/buildpacks/lifecycle/priv"
 )
 

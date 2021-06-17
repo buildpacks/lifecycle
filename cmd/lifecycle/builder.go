@@ -3,8 +3,6 @@ package main
 import (
 	"errors"
 
-	"github.com/buildpacks/lifecycle/platform/factory"
-
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle"
@@ -13,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/factory"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
