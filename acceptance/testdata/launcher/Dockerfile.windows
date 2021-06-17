@@ -1,7 +1,7 @@
 FROM golang:1.16-nanoserver-1809
 
 COPY exec.d/ /go/src/exec.d
-RUN set GO111MODULE=off; go build -o helper.exe exec.d
+RUN set GO111MODULE=off; go build -o c:\gopath\helper.exe exec.d
 
 COPY windows/container /
 
