@@ -5,6 +5,15 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 )
 
+type AnalyzedMetadataConfig struct {
+	BuildImageStackID     string
+	BuildImageMixins      []string
+	PreviousImage         *ImageIdentifier
+	PreviousImageMetadata LayersMetadata
+	RunImage              *ImageIdentifier
+	RunImageMixins        []string
+}
+
 type AnalyzedMetadata interface {
 	BuildImageStackID() string
 	BuildImageMixins() []string
@@ -12,16 +21,6 @@ type AnalyzedMetadata interface {
 	PreviousImageMetadata() LayersMetadata
 	RunImage() *ImageIdentifier
 	RunImageMixins() []string
-}
-
-type AnalyzedMetadataBuilder interface {
-	Build() AnalyzedMetadata
-
-	WithBuildImageMixins(mixins []string) AnalyzedMetadataBuilder
-	WithBuildImageStackID(stackID string) AnalyzedMetadataBuilder
-	WithPreviousImage(imageID *ImageIdentifier) AnalyzedMetadataBuilder
-	WithPreviousImageMetadata(meta LayersMetadata) AnalyzedMetadataBuilder
-	WithRunImageMixins(mixins []string) AnalyzedMetadataBuilder
 }
 
 // analyzed.toml

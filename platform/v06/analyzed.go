@@ -6,6 +6,6 @@ func (p *Platform) DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetad
 	return p.previousPlatform.DecodeAnalyzedMetadataFile(path)
 }
 
-func (p *Platform) NewAnalyzedMetadataBuilder() common.AnalyzedMetadataBuilder {
-	return p.previousPlatform.NewAnalyzedMetadataBuilder()
+func (p *Platform) NewAnalyzedMetadata(config common.AnalyzedMetadataConfig) common.AnalyzedMetadata {
+	return p.previousPlatform.NewAnalyzedMetadata(config)
 }

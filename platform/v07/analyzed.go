@@ -18,59 +18,21 @@ func (p *Platform) DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetad
 	return nil, err
 }
 
-// AnalyzedMetadataBuilder
-
-type analyzedMetadataBuilder struct {
-	ops []analyzedMetadataOp
-}
-
-func (a *analyzedMetadataBuilder) Build() common.AnalyzedMetadata {
-	meta := analyzedMetadata{}
-	for _, op := range a.ops {
-		op(&meta)
+func (p *Platform) NewAnalyzedMetadata(config common.AnalyzedMetadataConfig) common.AnalyzedMetadata {
+	return &analyzedMetadata{
+		BuildImageData: BuildImage{
+			StackID: config.BuildImageStackID,
+			Mixins:  config.BuildImageMixins,
+		},
+		PreviousImageData: PreviousImage{
+			Reference: config.PreviousImage,
+			Metadata:  config.PreviousImageMetadata,
+		},
+		RunImageData: RunImage{
+			Reference: config.RunImage,
+			Mixins:    config.RunImageMixins,
+		},
 	}
-	return &meta
-}
-
-func (a *analyzedMetadataBuilder) WithBuildImageMixins(mixins []string) common.AnalyzedMetadataBuilder {
-	a.ops = append(a.ops, func(analyzedMD *analyzedMetadata) {
-		analyzedMD.BuildImageData.Mixins = mixins
-	})
-	return a
-}
-
-func (a *analyzedMetadataBuilder) WithBuildImageStackID(stackID string) common.AnalyzedMetadataBuilder {
-	a.ops = append(a.ops, func(analyzedMD *analyzedMetadata) {
-		analyzedMD.BuildImageData.StackID = stackID
-	})
-	return a
-}
-
-func (a *analyzedMetadataBuilder) WithPreviousImage(imageID *common.ImageIdentifier) common.AnalyzedMetadataBuilder {
-	a.ops = append(a.ops, func(analyzedMD *analyzedMetadata) {
-		analyzedMD.PreviousImageData.Reference = imageID
-	})
-	return a
-}
-
-func (a *analyzedMetadataBuilder) WithPreviousImageMetadata(meta common.LayersMetadata) common.AnalyzedMetadataBuilder {
-	a.ops = append(a.ops, func(analyzedMD *analyzedMetadata) {
-		analyzedMD.PreviousImageData.Metadata = meta
-	})
-	return a
-}
-
-func (a *analyzedMetadataBuilder) WithRunImageMixins(mixins []string) common.AnalyzedMetadataBuilder {
-	a.ops = append(a.ops, func(analyzedMD *analyzedMetadata) {
-		analyzedMD.RunImageData.Mixins = mixins
-	})
-	return a
-}
-
-type analyzedMetadataOp func(*analyzedMetadata)
-
-func (p *Platform) NewAnalyzedMetadataBuilder() common.AnalyzedMetadataBuilder {
-	return &analyzedMetadataBuilder{}
 }
 
 // AnalyzedMetadata

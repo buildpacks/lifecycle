@@ -14,7 +14,7 @@ type Platform interface {
 	API() string
 	SupportsAssetPackages() bool
 	SupportsMixinValidation() bool
-	NewAnalyzedMetadataBuilder() common.AnalyzedMetadataBuilder
+	NewAnalyzedMetadata(config common.AnalyzedMetadataConfig) common.AnalyzedMetadata
 }
 
 type Analyzer struct {
@@ -63,10 +63,10 @@ func (a *Analyzer) Analyze() (common.AnalyzedMetadata, error) {
 		}
 	}
 
-	analyzedMD := a.Platform.NewAnalyzedMetadataBuilder().
-		WithPreviousImage(imageID).
-		WithPreviousImageMetadata(appMeta).
-		Build()
+	analyzedMD := a.Platform.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+		PreviousImage:         imageID,
+		PreviousImageMetadata: appMeta,
+	})
 
 	return analyzedMD, nil
 }

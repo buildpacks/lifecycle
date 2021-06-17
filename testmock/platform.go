@@ -49,18 +49,18 @@ func (mr *MockPlatformMockRecorder) API() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "API", reflect.TypeOf((*MockPlatform)(nil).API))
 }
 
-// NewAnalyzedMetadataBuilder mocks base method.
-func (m *MockPlatform) NewAnalyzedMetadataBuilder() common.AnalyzedMetadataBuilder {
+// NewAnalyzedMetadata mocks base method.
+func (m *MockPlatform) NewAnalyzedMetadata(arg0 common.AnalyzedMetadataConfig) common.AnalyzedMetadata {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewAnalyzedMetadataBuilder")
-	ret0, _ := ret[0].(common.AnalyzedMetadataBuilder)
+	ret := m.ctrl.Call(m, "NewAnalyzedMetadata", arg0)
+	ret0, _ := ret[0].(common.AnalyzedMetadata)
 	return ret0
 }
 
-// NewAnalyzedMetadataBuilder indicates an expected call of NewAnalyzedMetadataBuilder.
-func (mr *MockPlatformMockRecorder) NewAnalyzedMetadataBuilder() *gomock.Call {
+// NewAnalyzedMetadata indicates an expected call of NewAnalyzedMetadata.
+func (mr *MockPlatformMockRecorder) NewAnalyzedMetadata(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewAnalyzedMetadataBuilder", reflect.TypeOf((*MockPlatform)(nil).NewAnalyzedMetadataBuilder))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewAnalyzedMetadata", reflect.TypeOf((*MockPlatform)(nil).NewAnalyzedMetadata), arg0)
 }
 
 // SupportsAssetPackages mocks base method.

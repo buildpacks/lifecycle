@@ -18,50 +18,11 @@ func (p *Platform) DecodeAnalyzedMetadataFile(path string) (common.AnalyzedMetad
 	return nil, err
 }
 
-// AnalyzedMetadataBuilder
-
-type analyzedMetadataBuilder struct {
-	ops []analyzedMetadataOp
-}
-
-func (a *analyzedMetadataBuilder) Build() common.AnalyzedMetadata {
-	meta := analyzedMetadata{}
-	for _, op := range a.ops {
-		op(&meta)
+func (p *Platform) NewAnalyzedMetadata(config common.AnalyzedMetadataConfig) common.AnalyzedMetadata {
+	return &analyzedMetadata{
+		Image:    config.PreviousImage,
+		Metadata: config.PreviousImageMetadata,
 	}
-	return &meta
-}
-
-func (a *analyzedMetadataBuilder) WithBuildImageMixins(mixins []string) common.AnalyzedMetadataBuilder {
-	return a // nop
-}
-
-func (a *analyzedMetadataBuilder) WithBuildImageStackID(stackID string) common.AnalyzedMetadataBuilder {
-	return a // nop
-}
-
-func (a *analyzedMetadataBuilder) WithPreviousImage(imageID *common.ImageIdentifier) common.AnalyzedMetadataBuilder {
-	a.ops = append(a.ops, func(analyzedMD *analyzedMetadata) {
-		analyzedMD.Image = imageID
-	})
-	return a
-}
-
-func (a *analyzedMetadataBuilder) WithPreviousImageMetadata(meta common.LayersMetadata) common.AnalyzedMetadataBuilder {
-	a.ops = append(a.ops, func(analyzedMD *analyzedMetadata) {
-		analyzedMD.Metadata = meta
-	})
-	return a
-}
-
-func (a *analyzedMetadataBuilder) WithRunImageMixins(mixins []string) common.AnalyzedMetadataBuilder {
-	return a // nop
-}
-
-type analyzedMetadataOp func(*analyzedMetadata)
-
-func (p *Platform) NewAnalyzedMetadataBuilder() common.AnalyzedMetadataBuilder {
-	return &analyzedMetadataBuilder{}
 }
 
 // AnalyzedMetadata

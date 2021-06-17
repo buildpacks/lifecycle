@@ -54,11 +54,11 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}
-					analyzed := platformInt.NewAnalyzedMetadataBuilder().
-						WithBuildImageStackID("some-stack-id").
-						WithBuildImageMixins([]string{"some-unprefixed-mixin", "build:some-other-mixin", "some-mixin"}).
-						WithRunImageMixins([]string{"some-unprefixed-mixin", "run:some-other-mixin", "some-mixin"}).
-						Build()
+					analyzed := platformInt.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+						BuildImageStackID: "some-stack-id",
+						BuildImageMixins:  []string{"some-unprefixed-mixin", "build:some-other-mixin", "some-mixin"},
+						RunImageMixins:    []string{"some-unprefixed-mixin", "run:some-other-mixin", "some-mixin"},
+					})
 
 					err := stackValidator.ValidateMixins(bpDesc, analyzed)
 					h.AssertNil(t, err)
@@ -81,11 +81,11 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}
-						analyzed := platformInt.NewAnalyzedMetadataBuilder().
-							WithBuildImageStackID("some-stack-id").
-							WithBuildImageMixins([]string{"some-present-mixin"}).
-							WithRunImageMixins([]string{"some-present-mixin"}).
-							Build()
+						analyzed := platformInt.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+							BuildImageStackID: "some-stack-id",
+							BuildImageMixins:  []string{"some-present-mixin"},
+							RunImageMixins:    []string{"some-present-mixin"},
+						})
 
 						err := stackValidator.ValidateMixins(bpDesc, analyzed)
 						h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin build:some-missing-mixin")
@@ -107,11 +107,11 @@ func testStack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}
-						analyzed := platformInt.NewAnalyzedMetadataBuilder().
-							WithBuildImageStackID("some-stack-id").
-							WithBuildImageMixins([]string{"some-present-mixin"}).
-							WithRunImageMixins([]string{"some-present-mixin"}).
-							Build()
+						analyzed := platformInt.NewAnalyzedMetadata(common.AnalyzedMetadataConfig{
+							BuildImageStackID: "some-stack-id",
+							BuildImageMixins:  []string{"some-present-mixin"},
+							RunImageMixins:    []string{"some-present-mixin"},
+						})
 
 						err := stackValidator.ValidateMixins(bpDesc, analyzed)
 						h.AssertError(t, err, "buildpack Buildpack A v1 missing required mixin run:some-missing-mixin")
