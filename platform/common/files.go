@@ -6,12 +6,18 @@ import (
 )
 
 type StackMetadata struct {
-	RunImage StackRunImageMetadata `json:"runImage" toml:"run-image"`
+	RunImage   StackRunImageMetadata   `json:"runImage" toml:"run-image"`
+	BuildImage StackBuildImageMetadata `json:"buildImage" toml:"build-image"`
 }
 
 type StackRunImageMetadata struct {
 	Image   string   `toml:"image" json:"image"`
 	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
+}
+
+type StackBuildImageMetadata struct {
+	StackID string   `toml:"stack-id" json:"stack-id"`
+	Mixins  []string `toml:"mixins" json:"mixins,omitempty"`
 }
 
 func (sm *StackMetadata) BestRunImageMirror(registry string) (string, error) {

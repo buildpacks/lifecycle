@@ -131,5 +131,3 @@ type ImageReport struct {
 	Digest       string   `toml:"digest,omitempty"`
 	ManifestSize int64    `toml:"manifest-size,omitzero"`
 }
-
-// stack.toml
