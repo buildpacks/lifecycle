@@ -1,13 +1,13 @@
 FROM golang:1.16-nanoserver-1809
 
 COPY exec.d/ /go/src/exec.d
-RUN set GO111MODULE=off; go build -o c:\gopath\helper.exe exec.d
+RUN set GO111MODULE=off; go build -o helper.exe exec.d
 
 COPY windows/container /
 
 RUN mkdir c:\layers\0.6_buildpack\some_layer\exec.d\exec.d-checker
-RUN copy c:\gopath\helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\helper.exe
-RUN copy c:\gopath\helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\exec.d-checker\helper.exe
+RUN copy helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\helper.exe
+RUN copy helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\exec.d-checker\helper.exe
 
 ENV PATH="c:\cnb\process;c:\cnb\lifecycle;C:\Windows\system32;C:\Windows;"
 
