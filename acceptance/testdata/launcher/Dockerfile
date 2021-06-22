@@ -1,7 +1,7 @@
-FROM golang:1.15 as builder
+FROM golang:1.16 as builder
 
 COPY exec.d/ /go/src/exec.d
-RUN go build -o helper ./src/exec.d
+RUN GO111MODULE=off go build -o helper ./src/exec.d
 
 
 FROM ubuntu:bionic

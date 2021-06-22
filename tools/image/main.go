@@ -251,11 +251,13 @@ func lifecycleLayer() string {
 		ntw.WithUID(0)
 		ntw.WithGID(0)
 	}
-	ntw.WriteHeader(&tar.Header{
+	if err := ntw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     "/cnb",
 		Mode:     mode,
-	})
+	}); err != nil {
+		log.Fatalf("WriteHeader(/cnb): %v", err)
+	}
 	for {
 		hdr, err := ntr.Next()
 		if err == io.EOF {
