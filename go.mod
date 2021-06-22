@@ -6,7 +6,7 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20210609210403-3145c7480cde
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
-	github.com/golang/mock v1.5.0
+	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-containerregistry v0.5.2-0.20210604130445-3bfab55f3bd9
 	github.com/heroku/color v0.0.6
