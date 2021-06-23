@@ -9,23 +9,7 @@ jobs:
   retag-lifecycle-images-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Determine version
-        uses: actions/github-script@v4.0.2
-        id: version
-        with:
-          result-encoding: string
-          script: |
-            let tag = (context.payload.release && context.payload.release.tag_name)
-              || (context.payload.inputs && context.payload.inputs.tag_name);
-
-            if (!tag) {
-              throw "ERROR: unable to determine tag";
-            }
-
-            return tag.replace(/^v/, '');
       - uses: actions/checkout@v2
-        with:
-          ref: v${{ steps.version.outputs.result }}
       - uses: azure/docker-login@v1
         with:
          username: ${{ secrets.DOCKER_USERNAME }}
@@ -48,23 +32,7 @@ jobs:
   retag-lifecycle-images-windows:
     runs-on: windows-latest
     steps:
-      - name: Determine version
-        uses: actions/github-script@v4.0.2
-        id: version
-        with:
-          result-encoding: string
-          script: |
-            let tag = (context.payload.release && context.payload.release.tag_name)
-              || (context.payload.inputs && context.payload.inputs.tag_name);
-
-            if (!tag) {
-              throw "ERROR: unable to determine tag";
-            }
-
-            return tag.replace(/^v/, '');
       - uses: actions/checkout@v2
-        with:
-          ref: v${{ steps.version.outputs.result }}
       - uses: azure/docker-login@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
