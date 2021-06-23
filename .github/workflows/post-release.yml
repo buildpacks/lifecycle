@@ -34,12 +34,12 @@ jobs:
         run: |
           echo "LIFECYCLE_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)" >> $GITHUB_ENV
           echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)" >> $GITHUB_ENV
-      - name: Retag release candidate lifecycle images - semver
+      - name: Retag lifecycle images - semver
         run: |
           docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux
           docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux
           docker push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux
-      - name: Retag release candidate lifecycle images - latest
+      - name: Retag lifecycle images - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux
@@ -73,12 +73,12 @@ jobs:
         run: |
           echo "LIFECYCLE_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)" >> $env:GITHUB_ENV
           echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)" >> $env:GITHUB_ENV
-      - name: Retag release candidate lifecycle images - semver
+      - name: Retag lifecycle images - semver
         run: |
           docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows
           docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows
           docker push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows
-      - name: Retag release candidate lifecycle images - latest
+      - name: Retag lifecycle images - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows

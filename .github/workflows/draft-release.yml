@@ -108,59 +108,51 @@ jobs:
           unzip -d artifact-windows artifact-windows.zip
           lifecycle_path=$(ls artifact-windows/lifecycle-*windows.x86-64.tgz)
           echo "ARTIFACT_WINDOWS_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+      - name: Set pre-release kind
+        if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
+        run: |
+          echo "RELEASE_KIND=pre-release" >> $GITHUB_ENV
+      - name: Set release kind
+        if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
+        run: |
+          echo "RELEASE_KIND=release" >> $GITHUB_ENV
+      - name: Set release body text
+        run: |
+          cat << EOF > body.txt
+          # lifecycle v${{ env.LIFECYCLE_VERSION }}
+
+          Welcome to v${{ env.LIFECYCLE_VERSION }}, a **beta** ${{ env.RELEASE_KIND }} of the Cloud Native Buildpacks Lifecycle.
+
+          ##  Prerequisites
+
+          The lifecycle runs as a normal user in a series of unprivileged containers. To export images and cache image layers, it requires access to a Docker daemon **or** Docker registry.
+
+          ## Install
+
+          Extract the .tgz file and copy the lifecycle binaries into a [build stack base image](https://github.com/buildpack/spec/blob/master/platform.md#stacks). The build image can then be orchestrated by a platform implementation such as the [pack CLI](https://github.com/buildpack/pack) or [tekton](https://github.com/tektoncd/catalog/blob/master/task/buildpacks/0.1/README.md).
+
+          ## Lifecycle Image
+
+          An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
+          EOF
       - name: Create Pre Release
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
-        id: create_pre_release
-        uses: softprops/action-gh-release@v1
+        run: |
+          gh release create v${{ env.LIFECYCLE_VERSION }} ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
+            --draft \
+            --notes-file body.txt \
+            --prerelease \
+            --target $GITHUB_REF \
+            --title "lifecycle v${{ env.LIFECYCLE_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.LIFECYCLE_VERSION }}
-          name: lifecycle v${{ env.LIFECYCLE_VERSION }}
-          draft: true
-          prerelease: true
-          files: ${{ env.ARTIFACT_LINUX_PATH }}, ${{ env.ARTIFACT_WINDOWS_PATH }}
-          body: |
-            # lifecycle v${{ env.LIFECYCLE_VERSION }}
-
-            Welcome to `v${{ env.LIFECYCLE_VERSION }}`, a **beta** pre-release of the Cloud Native Buildpacks Lifecycle.
-
-            ##  Prerequisites
-
-            The lifecycle runs as a normal user in a series of unprivileged containers. To export images and cache image layers, it requires access to a Docker daemon **or** Docker registry.
-
-            ## Install
-
-            Extract the `.tgz` file and copy the lifecycle binaries into a [build stack base image](https://github.com/buildpack/spec/blob/master/platform.md#stacks). The build image can then be orchestrated by a platform implementation such as the [pack CLI](https://github.com/buildpack/pack) or [tekton](https://github.com/tektoncd/catalog/blob/master/task/buildpacks/0.1/README.md).
-
-            ## Lifecycle Image
-
-            An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
       - name: Create Release
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
-        id: create_release
-        uses: softprops/action-gh-release@v1
+        run: |
+          gh release create v${{ env.LIFECYCLE_VERSION }} ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
+            --draft \
+            --notes-file body.txt \
+            --target $GITHUB_REF \
+            --title "lifecycle v${{ env.LIFECYCLE_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.LIFECYCLE_VERSION }}
-          name: lifecycle v${{ env.LIFECYCLE_VERSION }}
-          draft: true
-          prerelease: false
-          files: ${{ env.ARTIFACT_LINUX_PATH }}, ${{ env.ARTIFACT_WINDOWS_PATH }}
-          body: |
-            # lifecycle v${{ env.LIFECYCLE_VERSION }}
-
-            Welcome to `v${{ env.LIFECYCLE_VERSION }}`, a **beta** release of the Cloud Native Buildpacks Lifecycle.
-
-            ##  Prerequisites
-
-            The lifecycle runs as a normal user in a series of unprivileged containers. To export images and cache image layers, it requires access to a Docker daemon **or** Docker registry.
-
-            ## Install
-
-            Extract the `.tgz` file and copy the lifecycle binaries into a [build stack base image](https://github.com/buildpack/spec/blob/master/platform.md#stacks). The build image can then be orchestrated by a platform implementation such as the [pack CLI](https://github.com/buildpack/pack) or [tekton](https://github.com/tektoncd/catalog/blob/master/task/buildpacks/0.1/README.md).
-
-            ## Lifecycle Image
-
-            An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
