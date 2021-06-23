@@ -23,9 +23,6 @@ jobs:
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
         shell: bash
-      - name: Compute short sha
-        run: |
-          echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
       - name: Determine download urls for linux and windows
         id: artifact-urls
         uses: actions/github-script@v3.0.0
@@ -112,16 +109,17 @@ jobs:
           lifecycle_path=$(ls artifact-windows/lifecycle-*windows.x86-64.tgz)
           echo "ARTIFACT_WINDOWS_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
       - name: Create Pre Release
-        if: contains(env.LIFECYCLE_VERSION, 'rc')
+        if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         id: create_pre_release
-        uses: actions/create-release@latest
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ env.LIFECYCLE_VERSION }}
-          release_name: lifecycle v${{ env.LIFECYCLE_VERSION }}
+          name: lifecycle v${{ env.LIFECYCLE_VERSION }}
           draft: true
           prerelease: true
+          files: ${{ env.ARTIFACT_LINUX_PATH }}, ${{ env.ARTIFACT_WINDOWS_PATH }}
           body: |
             # lifecycle v${{ env.LIFECYCLE_VERSION }}
 
@@ -137,38 +135,19 @@ jobs:
 
             ## Lifecycle Image
 
-            An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.SHORT_SHA }}.
-      - name: Upload Pre Release Asset - linux
-        if: contains(env.LIFECYCLE_VERSION, 'rc')
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_pre_release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_LINUX_PATH }}
-          asset_name: lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz
-          asset_content_type: application/gzip
-      - name: Upload Pre Release Asset - windows
-        if: contains(env.LIFECYCLE_VERSION, 'rc')
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_pre_release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_WINDOWS_PATH }}
-          asset_name: lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz
-          asset_content_type: application/gzip
+            An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
       - name: Create Release
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         id: create_release
-        uses: actions/create-release@latest
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ env.LIFECYCLE_VERSION }}
-          release_name: lifecycle v${{ env.LIFECYCLE_VERSION }}
+          name: lifecycle v${{ env.LIFECYCLE_VERSION }}
           draft: true
           prerelease: false
+          files: ${{ env.ARTIFACT_LINUX_PATH }}, ${{ env.ARTIFACT_WINDOWS_PATH }}
           body: |
             # lifecycle v${{ env.LIFECYCLE_VERSION }}
 
@@ -185,23 +164,3 @@ jobs:
             ## Lifecycle Image
 
             An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
-      - name: Upload Release Asset - linux
-        if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_LINUX_PATH }}
-          asset_name: lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz
-          asset_content_type: application/gzip
-      - name: Upload Release Asset - windows
-        if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ARTIFACT_WINDOWS_PATH }}
-          asset_name: lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz
-          asset_content_type: application/gzip
