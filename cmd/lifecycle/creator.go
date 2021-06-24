@@ -154,15 +154,12 @@ func (c *createCmd) Exec() error {
 	if api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0 {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzedMD, err = analyzeArgs{
-			imageName:     c.imageName,
-			keychain:      c.keychain,
-			layersDir:     c.layersDir,
-			platform:      c.platform,
-			previousImage: c.previousImage,
-			runImageRef:   c.runImageRef,
-			stackPath:     c.stackPath,
-			useDaemon:     c.useDaemon,
-			docker:        c.docker,
+			imageName: c.previousImage,
+			keychain:  c.keychain,
+			layersDir: c.layersDir,
+			platform:  c.platform,
+			useDaemon: c.useDaemon,
+			docker:    c.docker,
 		}.analyze()
 		if err != nil {
 			return err

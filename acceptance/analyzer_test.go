@@ -73,36 +73,6 @@ func TestAnalyzer(t *testing.T) {
 	h.AssertNil(t, os.RemoveAll(filepath.Join(targetDockerConfig, "config.json")))
 	h.RecursiveCopy(t, authRegistry.DockerDirectory, targetDockerConfig)
 
-	// build run-images into test registry
-	runImageContext := filepath.Join("testdata", "analyzer", "run-image")
-	buildAuthRegistryImage(
-		t,
-		"company/stack:bionic",
-		runImageContext,
-		"-f", filepath.Join(runImageContext, dockerfileName),
-		"--build-arg", "stackid=io.buildpacks.stacks.bionic",
-	)
-	buildAuthRegistryImage(
-		t,
-		"company/stack:centos",
-		runImageContext,
-		"-f", filepath.Join(runImageContext, dockerfileName),
-		"--build-arg", "stackid=io.company.centos",
-	)
-
-	// build run-image into daemon
-	h.DockerBuild(
-		t,
-		"localcompany/stack:bionic",
-		runImageContext,
-		h.WithArgs(
-			"-f", filepath.Join(runImageContext, dockerfileName),
-			"--build-arg", "stackid=io.buildpacks.stacks.bionic",
-		),
-	)
-
-	defer h.DockerImageRemove(t, "localcompany/stack:bionic")
-
 	// Setup test container
 
 	h.MakeAndCopyLifecycle(t, daemonOS, analyzerBinaryDir)
@@ -111,7 +81,6 @@ func TestAnalyzer(t *testing.T) {
 		analyzeDockerContext,
 		h.WithFlags(
 			"-f", filepath.Join(analyzeDockerContext, dockerfileName),
-			"--build-arg", "registry="+noAuthRegistry.Host+":"+noAuthRegistry.Port,
 		),
 	)
 	defer h.DockerImageRemove(t, analyzeImage)
@@ -284,10 +253,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					copyDir,
 					ctrPath("/some-dir/some-analyzed.toml"),
 					analyzeImage,
-					h.WithFlags(
-						"--network", registryNetwork,
-						"--env", "CNB_PLATFORM_API="+platformAPI,
-					),
+					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
 					h.WithArgs(execArgs...),
 				)
 
@@ -311,7 +277,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(append(
 						dockerSocketMount,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
-						"--env", "CNB_STACK_PATH=/cnb/local-bionic-stack.toml", // /cnb/local-bionic-stack.toml has `io.buildpacks.stacks.bionic` and points to run image `localcompany/stack:bionic` with same stack id
 					)...),
 					h.WithArgs(execArgs...),
 				)
@@ -351,7 +316,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(append(
 							dockerSocketMount,
 							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_STACK_PATH=/cnb/local-bionic-stack.toml", // /cnb/local-bionic-stack.toml has `io.buildpacks.stacks.bionic` and points to run image `localcompany/stack:bionic` with same stack id
 						)...),
 						h.WithArgs(
 							ctrPath(analyzerPath),
@@ -660,7 +624,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					ctrPath("/layers/analyzed.toml"),
 					analyzeImage,
 					h.WithFlags(
-						"--network", registryNetwork,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 					),
 					h.WithArgs(ctrPath(analyzerPath), "some-image"),
@@ -1100,166 +1063,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertPathExists(t, filepath.Join(copyDir, "some-other-layers", "another-buildpack-id")) // another-buildpack-id is found in the provided -layers directory: /some-other-layers/group.toml
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-other-layers", "analyzed.toml")) // analyzed.toml is written at the provided -layers directory: /some-other-layers
-			})
-		})
-
-		when("validating stack", func() {
-			it.Before(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not validate stack")
-			})
-
-			when("stack metadata is present", func() {
-				when("stacks match", func() {
-					it("passes validation", func() {
-						execArgs := []string{ctrPath(analyzerPath), "some-image"}
-						h.DockerRun(t,
-							analyzeImage, // /cnb/stack.toml has `io.buildpacks.stacks.bionic` and points to run image `company/stack:bionic` with same stack id
-							h.WithFlags(
-								"--network", registryNetwork,
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-							),
-							h.WithArgs(execArgs...),
-						)
-					})
-				})
-
-				when("CNB_RUN_IMAGE is present", func() {
-					it("uses CNB_RUN_IMAGE for validation", func() {
-						execArgs := []string{ctrPath(analyzerPath), "some-image"}
-
-						h.DockerRun(t,
-							analyzeImage,
-							h.WithFlags(
-								"--network", registryNetwork,
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_STACK_PATH=/cnb/mismatch-stack.toml", // /cnb/mismatch-stack.toml points to run image `company/stack:centos`
-								"--env", "CNB_RUN_IMAGE="+noAuthRegistry.RepoName("company/stack:bionic"),
-							),
-							h.WithArgs(execArgs...),
-						)
-					})
-				})
-
-				when("stack metadata file is invalid", func() {
-					it("fails validation", func() {
-						cmd := exec.Command(
-							"docker", "run", "--rm",
-							"--network", registryNetwork,
-							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_STACK_PATH=/cnb/bad-stack.toml",
-							analyzeImage,
-							ctrPath(analyzerPath),
-							"some-image",
-						) // #nosec G204
-						output, err := cmd.CombinedOutput()
-
-						h.AssertNotNil(t, err)
-						expected := "get stack metadata"
-						h.AssertStringContains(t, string(output), expected)
-					})
-				})
-
-				when("run image inaccessible", func() {
-					it("fails validation", func() {
-						cmd := exec.Command(
-							"docker", "run", "--rm",
-							"--network", registryNetwork,
-							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_RUN_IMAGE=fake.example.com/company/example:20",
-							analyzeImage,
-							ctrPath(analyzerPath),
-							"some-image",
-						) // #nosec G204
-						output, err := cmd.CombinedOutput()
-
-						h.AssertNotNil(t, err)
-						expected := "failed to resolve run image"
-						h.AssertStringContains(t, string(output), expected)
-					})
-				})
-
-				when("run image has mirrors", func() {
-					it("uses expected mirror for run-image", func() {
-						execArgs := []string{ctrPath(analyzerPath), noAuthRegistry.RepoName("apprepo/myapp")} // image located on same registry as mirror
-
-						h.DockerRunAndCopy(t,
-							containerName,
-							copyDir,
-							ctrPath("/layers/analyzed.toml"),
-							analyzeImage,
-							h.WithFlags(
-								"--network", registryNetwork,
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_STACK_PATH=/cnb/run-mirror-stack.toml", // /cnb/run-mirror-stack.toml points to run image on gcr.io and mirror on test registry
-							),
-							h.WithArgs(execArgs...),
-						)
-					})
-				})
-
-				when("daemon case", func() {
-					when("stacks match", func() {
-						it("passes validation", func() {
-							execArgs := []string{ctrPath(analyzerPath), "-daemon", "some-image"}
-
-							h.DockerRunAndCopy(t,
-								containerName,
-								copyDir,
-								ctrPath("/layers/analyzed.toml"),
-								analyzeImage,
-								h.WithFlags(append(
-									dockerSocketMount,
-									"--network", registryNetwork,
-									"--env", "CNB_PLATFORM_API="+platformAPI,
-									"--env", "CNB_STACK_PATH=/cnb/local-bionic-stack.toml", // /cnb/local-bionic-stack.toml has `io.buildpacks.stacks.bionic` and points to run image `localcompany/stack:bionic` with same stack id
-								)...),
-								h.WithArgs(execArgs...),
-							)
-						})
-					})
-				})
-			})
-
-			when("stack metadata is not present", func() {
-				when("CNB_RUN_IMAGE and CNB_STACK_ID are set", func() {
-					it("passes validation", func() {
-						execArgs := []string{ctrPath(analyzerPath), "some-image"}
-
-						h.DockerRunAndCopy(t,
-							containerName,
-							copyDir,
-							ctrPath("/layers/analyzed.toml"),
-							analyzeImage,
-							h.WithFlags(
-								"--network", registryNetwork,
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_STACK_PATH=/cnb/file-does-not-exist.toml",
-								"--env", "CNB_RUN_IMAGE="+noAuthRegistry.RepoName("company/stack:bionic"),
-								"--env", "CNB_STACK_ID=io.buildpacks.stacks.bionic",
-							),
-							h.WithArgs(execArgs...),
-						)
-					})
-				})
-
-				when("run image and stack id are not provided as arguments or in the environment", func() {
-					it("fails validation", func() {
-						cmd := exec.Command(
-							"docker", "run", "--rm",
-							"--network", registryNetwork,
-							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_STACK_PATH=/cnb/file-does-not-exist.toml",
-							analyzeImage,
-							ctrPath(analyzerPath),
-							"some-image",
-						) // #nosec G204
-						output, err := cmd.CombinedOutput()
-
-						h.AssertNotNil(t, err)
-						expected := "a run image must be specified when there is no stack metadata available"
-						h.AssertStringContains(t, string(output), expected)
-					})
-				})
 			})
 		})
 	}

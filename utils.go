@@ -8,11 +8,9 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 func WriteTOML(path string, data interface{}) error {
@@ -64,30 +62,6 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 		return errors.Wrapf(err, "failed to unmarshal context of label '%s'", label)
 	}
 	return nil
-}
-
-func ResolveRunImage(stackMD platform.StackMetadata, destinationImageRef string) (string, error) {
-	runImageRef := stackMD.RunImage.Image
-
-	if runImageRef == "" {
-		return "", errors.New("a run image must be specified when there is no stack metadata available")
-	}
-
-	if destinationImageRef != "" && len(stackMD.RunImage.Mirrors) > 0 {
-		ref, err := name.ParseReference(destinationImageRef, name.WeakValidation)
-		if err != nil {
-			return "", err
-		}
-
-		registry := ref.Context().RegistryStr()
-
-		runImageRef, err = stackMD.BestRunImageMirror(registry)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return runImageRef, nil
 }
 
 func removeStagePrefixes(mixins []string) []string {
