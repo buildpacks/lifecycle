@@ -1017,7 +1017,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							output, err := cmd.CombinedOutput()
 
 							h.AssertNotNil(t, err)
-							expected := "failed to : read/write image "+noAuthRegCacheImage+" from/to the registry"
+							expected := "failed to : read/write image " + noAuthRegCacheImage + " from/to the registry"
 							h.AssertStringContains(t, string(output), expected)
 						})
 					})
