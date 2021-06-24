@@ -10,36 +10,3 @@ ENV CNB_USER_ID=1
 ENV CNB_GROUP_ID=1
 
 ENV CNB_PLATFORM_API=${cnb_platform_api}
-
-ARG registry
-
-# write some stack.toml files to use in tests
-RUN echo [run-image] > /cnb/stack.toml &\
- echo   image = "%registry%/company/stack:bionic" >> /cnb/stack.toml &\
- echo   mirrors = [] >> /cnb/stack.toml &\
- echo [build-image] >> /cnb/stack.toml &\
- echo   stack-id = "io.buildpacks.stacks.bionic" >> /cnb/stack.toml &\
- echo   mixins = [] >> /cnb/stack.toml
-
-RUN echo [run-image] > /cnb/mismatch-stack.toml &\
- echo   image = "%registry%/company/stack:centos" >> /cnb/mismatch-stack.toml &\
- echo   mirrors = [] >> /cnb/mismatch-stack.toml &\
- echo [build-image] >> /cnb/mismatch-stack.toml &\
- echo   stack-id = "io.buildpacks.stacks.bionic" >> /cnb/mismatch-stack.toml &\
- echo   mixins = [] >> /cnb/mismatch-stack.toml
-
-RUN echo [run-image] > /cnb/run-mirror-stack.toml &\
- echo   image = "gcr.io/paketobuildpacks/invalidimg:20" >> /cnb/run-mirror-stack.toml &\
- echo   mirrors = ["%registry%/company/stack:bionic"] >> /cnb/run-mirror-stack.toml &\
- echo [build-image] >> /cnb/run-mirror-stack.toml &\
- echo   stack-id = "io.buildpacks.stacks.bionic" >> /cnb/run-mirror-stack.toml &\
- echo   mixins = [] >> /cnb/run-mirror-stack.toml
-
-RUN echo [run-image] > /cnb/local-bionic-stack.toml &\
- echo   image = "localcompany/stack:bionic" >> /cnb/local-bionic-stack.toml &\
- echo   mirrors = [] >> /cnb/local-bionic-stack.toml &\
- echo [build-image] >> /cnb/local-bionic-stack.toml &\
- echo   stack-id = "io.buildpacks.stacks.bionic" >> /cnb/local-bionic-stack.toml &\
- echo   mixins = [] >> /cnb/local-bionic-stack.toml
-
-RUN echo [run-images > /cnb/bad-stack.toml

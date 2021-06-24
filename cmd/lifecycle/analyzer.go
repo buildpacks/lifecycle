@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -173,29 +171,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) validateStack() error {
-	if !aa.supportsStackValidation() {
-		return nil
-	}
-
-	var stackMD platform.StackMetadata
-	if _, err := toml.DecodeFile(aa.stackPath, &stackMD); err != nil && !os.IsNotExist(err) {
-		return cmd.FailErr(err, "get stack metadata")
-	}
-
-	runImage, err := aa.getRunImage(stackMD)
-	if err != nil {
-		return cmd.FailErr(err, "resolve run image")
-	}
-
-	return lifecycle.ValidateStack(stackMD, runImage)
-}
-
 func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
-	if err := aa.validateStack(); err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "validate stack")
-	}
-
 	var (
 		img imgutil.Image
 		err error
@@ -231,33 +207,6 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	return analyzedMD, nil
 }
 
-func (aa *analyzeArgs) getRunImage(stackMD platform.StackMetadata) (imgutil.Image, error) {
-	if aa.runImageRef == "" {
-		runImageRef, err := lifecycle.ResolveRunImage(stackMD, aa.imageName)
-		if err != nil {
-			return nil, err
-		}
-		aa.runImageRef = runImageRef
-	}
-
-	var runImage imgutil.Image
-	var err error
-	if aa.useDaemon {
-		runImage, err = local.NewImage(
-			aa.runImageRef,
-			aa.docker,
-			local.FromBaseImage(aa.runImageRef),
-		)
-	} else {
-		runImage, err = remote.NewImage(
-			aa.runImageRef,
-			aa.keychain,
-			remote.FromBaseImage(aa.runImageRef),
-		)
-	}
-	return runImage, err
-}
-
 func (a *analyzeCmd) registryImages() []string {
 	var registryImages []string
 	if a.platform06.cacheImageTag != "" {
@@ -271,10 +220,6 @@ func (a *analyzeCmd) registryImages() []string {
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return !a.platformAPIVersionGreaterThan06()
-}
-
-func (aa *analyzeArgs) supportsStackValidation() bool {
-	return api.MustParse(aa.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
 
 func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
