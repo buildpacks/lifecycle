@@ -92,14 +92,13 @@ func TestAnalyzer(t *testing.T) {
 
 func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
-		var copyDir, containerName, cacheVolume, basicAuth string
+		var copyDir, containerName, cacheVolume string
 
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
 			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
 			h.AssertNil(t, err)
-			basicAuth = getBasicAuth()
 		})
 
 		it.After(func() {
@@ -377,12 +376,12 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			when("cache is provided", func() {
 				when("cache image case", func() {
 					when("cache image is in a daemon", func() {
-						var cacheImage string
+						var cacheImage, basicAuth string
 
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 							cacheImage = "some-cache-image-" + h.RandString(10)
-
+							basicAuth, _ = auth.BuildEnvVar(authn.DefaultKeychain, authRegistry.RepoName(cacheImage))
 							cmd := exec.Command(
 								"docker",
 								"build",
@@ -1118,7 +1117,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							noAuthRegistry.RepoName("some-image"),
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
-
 						h.AssertNotNil(t, err)
 						expected := "get stack metadata"
 						h.AssertStringContains(t, string(output), expected)
@@ -1220,7 +1218,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							noAuthRegistry.RepoName("some-image"),
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
-
 						h.AssertNotNil(t, err)
 						expected := "a run image must be specified when there is no stack metadata available"
 						h.AssertStringContains(t, string(output), expected)
@@ -1330,8 +1327,4 @@ func assertWritesStoreTomlOnly(t *testing.T, dir, output string) {
 		h.AssertPathDoesNotExist(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
 	}
 	h.AssertStringContains(t, output, "Skipping buildpack layer analysis")
-}
-
-func getBasicAuth() string {
-	return fmt.Sprintf("{\"%s\": \"Basic %s\"}", authRegistry.Host+":"+authRegistry.Port, authRegistry.BasicAuth())
 }
