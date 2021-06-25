@@ -126,6 +126,30 @@ func (a *analyzeCmd) Privileges() error {
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
+	} else {
+		if a.platformAPIVersionGreaterThan06() {
+			err := a.verifyReadAccess(a.previousImage)
+			if err != nil {
+				return cmd.FailErr(err)
+			}
+			err = a.verifyReadAccess(a.runImageRef)
+			if err != nil {
+				return cmd.FailErr(err)
+			}
+			if len(a.additionalTags) > 0 {
+				for _, tag := range a.additionalTags {
+					err := a.verifyReadWriteAccess(tag)
+					if err != nil {
+						return cmd.FailErr(err)
+					}
+				}
+			}
+		} else {
+			err := a.verifyReadWriteAccess(a.platform06.cacheImageTag)
+			if err != nil {
+				return cmd.FailErr(err)
+			}
+		}
 	}
 	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.platform06.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
@@ -223,4 +247,24 @@ func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return !a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) verifyReadAccess(name string) error {
+	if name != "" {
+		img, _ := remote.NewImage(name, a.keychain)
+		if !img.CheckReadAccess() {
+			return errors.New(fmt.Sprintf("read image %s from the registry", name))
+		}
+	}
+	return nil
+}
+
+func (a *analyzeCmd) verifyReadWriteAccess(name string) error {
+	if name != "" {
+		img, _ := remote.NewImage(name, a.keychain)
+		if !img.CheckReadWriteAccess() {
+			return errors.New(fmt.Sprintf("read/write image %s from/to the registry", name))
+		}
+	}
+	return nil
 }

@@ -204,11 +204,11 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("the provided layers directory isn't writeable", func() {
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
-					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s some-image; ls -al /layers", analyzerPath)),
+					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers", analyzerPath,
+						noAuthRegistry.RepoName("some-image"))),
 				)
 
 				h.AssertMatch(t, output, "2222 3333 .+ \\.")
@@ -245,7 +245,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-					"some-image",
+					noAuthRegistry.RepoName("some-image"),
 				}
 
 				h.DockerRunAndCopy(t,
@@ -323,7 +323,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-daemon",
-					"some-image",
+					noAuthRegistry.RepoName("some-image"),
 				}
 
 				h.DockerRunAndCopy(t,
@@ -377,7 +377,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(
 							ctrPath(analyzerPath),
 							"-daemon",
-							appImage),
+							noAuthRegistry.RepoName(appImage)),
 					)
 
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
@@ -433,12 +433,12 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			when("cache is provided", func() {
 				when("cache image case", func() {
 					when("cache image is in a daemon", func() {
-						var cacheImage string
+						var cacheImage, basicAuth string
 
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 							cacheImage = "some-cache-image-" + h.RandString(10)
-
+							basicAuth, _ = auth.BuildEnvVar(authn.DefaultKeychain, authRegistry.RepoName(cacheImage))
 							cmd := exec.Command(
 								"docker",
 								"build",
@@ -465,12 +465,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithFlags(append(
 									dockerSocketMount,
 									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+basicAuth,
 								)...),
 								h.WithArgs(
 									ctrPath(analyzerPath),
 									"-daemon",
-									"-cache-image", cacheImage,
-									"some-image",
+									"-cache-image", authRegistry.RepoName(cacheImage),
+									authRegistry.RepoName("some-image"),
 								),
 							)
 
@@ -577,12 +578,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 									copyDir,
 									ctrPath("/layers"),
 									analyzeImage,
-									h.WithFlags(
+									h.WithFlags(append(
+										dockerSocketMount,
 										"--network", registryNetwork,
 										"--env", "CNB_PLATFORM_API="+platformAPI,
-									),
+									)...),
 									h.WithArgs(
 										ctrPath(analyzerPath),
+										"-daemon",
 										"-cache-image",
 										noAuthRegCacheImage,
 										"some-image",
@@ -683,7 +686,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 					),
-					h.WithArgs(ctrPath(analyzerPath), "some-image"),
+					h.WithArgs(ctrPath(analyzerPath), noAuthRegistry.RepoName("some-image")),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -1017,25 +1020,24 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
 						// Attempting to remove the image sometimes produces `No such image` flakes.
 
-						it("restores cache metadata", func() {
+						it("throw read/write error", func() {
 							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
-							output := h.DockerRunAndCopy(t,
-								containerName,
-								copyDir,
-								ctrPath("/layers"),
+							cmd := exec.Command(
+								"docker", "run", "--rm",
+								"--network", registryNetwork,
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--name", containerName,
 								analyzeImage,
-								h.WithFlags(
-									"--network", registryNetwork,
-									"--env", "CNB_PLATFORM_API="+platformAPI,
-								),
-								h.WithArgs(
-									ctrPath(analyzerPath),
-									"-cache-image", noAuthRegCacheImage,
-									"some-image",
-								),
-							)
+								ctrPath(analyzerPath),
+								"-cache-image",
+								noAuthRegCacheImage,
+								"some-image",
+							) // #nosec G204
+							output, err := cmd.CombinedOutput()
 
-							assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+							h.AssertNotNil(t, err)
+							expected := "failed to : read/write image " + noAuthRegCacheImage + " from/to the registry"
+							h.AssertStringContains(t, string(output), expected)
 						})
 					})
 				})
