@@ -442,11 +442,12 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			when("cache is provided", func() {
 				when("cache image case", func() {
 					when("cache image is in a daemon", func() {
-						var cacheImage string
+						var cacheImage, basicAuth string
 
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
 							cacheImage = "some-cache-image-" + h.RandString(10)
+							basicAuth, _ = auth.BuildEnvVar(authn.DefaultKeychain, authRegistry.RepoName(cacheImage))
 							cmd := exec.Command(
 								"docker",
 								"build",
@@ -473,12 +474,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithFlags(append(
 									dockerSocketMount,
 									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+basicAuth,
 								)...),
 								h.WithArgs(
 									ctrPath(analyzerPath),
 									"-daemon",
-									"-cache-image", cacheImage,
-									"some-image",
+									"-cache-image", authRegistry.RepoName(cacheImage),
+									authRegistry.RepoName("some-image"),
 								),
 							)
 
@@ -1047,7 +1049,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
 						// Attempting to remove the image sometimes produces `No such image` flakes.
-
 						it("throws read/write error accessing cache image", func() {
 							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 							cmd := exec.Command(
