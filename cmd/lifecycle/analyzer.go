@@ -29,41 +29,39 @@ type analyzeCmd struct {
 }
 
 type analyzeArgs struct {
+	cacheImageTag string //nolint - Platform API >= 0.7
 	imageName     string
 	layersDir     string
-	orderPath     string //nolint - Platform API >= 0.7
 	previousImage string //nolint - Platform API >= 0.7
 	runImageRef   string //nolint - Platform API >= 0.7
 	stackPath     string //nolint - Platform API >= 0.7
 	useDaemon     bool
 
-	platform06     analyzeArgsPlatform06
 	additionalTags cmd.StringSlice        //nolint Platform API >= 0.7
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
 	platform       cmd.Platform
+	platform06     analyzeArgsPlatform06
 }
 
 type analyzeArgsPlatform06 struct {
-	cacheDir      string
-	cacheImageTag string
-	groupPath     string
-	skipLayers    bool
-	cache         lifecycle.Cache
-	group         buildpack.Group
+	cacheDir   string
+	groupPath  string
+	skipLayers bool
+	cache      lifecycle.Cache
+	group      buildpack.Group
 }
 
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
+	cmd.FlagCacheImage(&a.cacheImageTag)
 	cmd.FlagLayersDir(&a.layersDir)
 	if a.platformAPIVersionGreaterThan06() {
-		cmd.FlagOrderPath(&a.orderPath)
 		cmd.FlagPreviousImage(&a.previousImage)
 		cmd.FlagRunImage(&a.runImageRef)
 		cmd.FlagStackPath(&a.stackPath)
 		cmd.FlagTags(&a.additionalTags)
 	} else {
-		cmd.FlagCacheImage(&a.platform06.cacheImageTag)
 		cmd.FlagCacheDir(&a.platform06.cacheDir)
 		cmd.FlagGroupPath(&a.platform06.groupPath)
 		cmd.FlagSkipLayers(&a.platform06.skipLayers)
@@ -87,7 +85,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	}
 
 	if a.restoresLayerMetadata() {
-		if a.platform06.cacheImageTag == "" && a.platform06.cacheDir == "" {
+		if a.cacheImageTag == "" && a.platform06.cacheDir == "" {
 			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 		}
 	}
@@ -98,10 +96,6 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	if a.platform06.groupPath == cmd.PlaceholderGroupPath {
 		a.platform06.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
-	}
-
-	if a.orderPath == cmd.PlaceholderOrderPath {
-		a.orderPath = cmd.DefaultOrderPath(a.platform.API(), a.layersDir)
 	}
 
 	return nil
@@ -144,19 +138,12 @@ func (a *analyzeCmd) Exec() error {
 		if err := verifyBuildpackApis(group); err != nil {
 			return err
 		}
-		cacheStore, err = initCache(a.platform06.cacheImageTag, a.platform06.cacheDir, a.keychain)
+		cacheStore, err = initCache(a.cacheImageTag, a.platform06.cacheDir, a.keychain)
 		if err != nil {
 			return cmd.FailErr(err, "initialize cache")
 		}
 		a.platform06.group = group
 		a.platform06.cache = cacheStore
-	}
-
-	if a.orderPath != "" {
-		_, err := lifecycle.ReadOrder(a.orderPath)
-		if err != nil {
-			return cmd.FailErr(err, "read buildpack order file")
-		}
 	}
 
 	analyzedMD, err := a.analyze()
@@ -209,8 +196,8 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 
 func (a *analyzeCmd) registryImages() []string {
 	var registryImages []string
-	if a.platform06.cacheImageTag != "" {
-		registryImages = append(registryImages, a.platform06.cacheImageTag)
+	if a.cacheImageTag != "" {
+		registryImages = append(registryImages, a.cacheImageTag)
 	}
 	if !a.useDaemon {
 		registryImages = append(registryImages, append([]string{a.imageName, a.previousImage, a.runImageRef}, a.additionalTags...)...)
