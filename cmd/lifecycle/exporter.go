@@ -370,7 +370,7 @@ func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (platform.Ana
 func resolveStack(imageName, stackPath, runImageRefOrig string) (platform.StackMetadata, string, string, error) {
 	ref, err := name.ParseReference(imageName, name.WeakValidation)
 	if err != nil {
-		return platform.StackMetadata{}, "", "", cmd.FailErr(err, "failed to parse registry")
+		return platform.StackMetadata{}, "", "", cmd.FailErr(err, "parse registry")
 	}
 
 	registry := ref.Context().RegistryStr()
