@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
@@ -107,6 +108,14 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	c.stackMD, c.runImageRef, c.registry, err = resolveStack(c.outputImageRef, c.stackPath, c.runImageRef)
 	if err != nil {
 		return err
+	}
+
+	if c.runImageRef == "" {
+		return cmd.FailErrCode(
+			errors.New("-run-image is required when there is no stack metadata available"),
+			cmd.CodeInvalidArgs,
+			"parse arguments",
+		)
 	}
 
 	return nil

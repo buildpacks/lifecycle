@@ -134,6 +134,14 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return err
 	}
 
+	if e.runImageRef == "" {
+		return cmd.FailErrCode(
+			errors.New("-run-image is required when there is no stack metadata available"),
+			cmd.CodeInvalidArgs,
+			"parse arguments",
+		)
+	}
+
 	e.analyzedMD, err = parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
@@ -367,29 +375,25 @@ func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (platform.Ana
 	return analyzedMD, nil
 }
 
-func resolveStack(imageName, stackPath, runImageRefOrig string) (platform.StackMetadata, string, string, error) {
-	ref, err := name.ParseReference(imageName, name.WeakValidation)
+func resolveStack(outputImageRef, stackPath, runImageRefOrig string) (platform.StackMetadata, string, string, error) {
+	ref, err := name.ParseReference(outputImageRef, name.WeakValidation)
 	if err != nil {
 		return platform.StackMetadata{}, "", "", cmd.FailErr(err, "parse registry")
 	}
-
 	registry := ref.Context().RegistryStr()
 
 	var stackMD platform.StackMetadata
 	_, err = toml.DecodeFile(stackPath, &stackMD)
 	if err != nil {
-		cmd.DefaultLogger.Infof("no stack metadata found at path '%s', stack metadata will not be exported\n", stackPath)
+		cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
 	}
 
 	var runImageRef string
 	if runImageRefOrig == "" {
 		if stackMD.RunImage.Image == "" {
-			return platform.StackMetadata{}, "", "", cmd.FailErrCode(
-				errors.New("-run-image is required when there is no stack metadata available"),
-				cmd.CodeInvalidArgs,
-				"parse arguments",
-			)
+			return platform.StackMetadata{}, "", "", nil
 		}
+
 		runImageRef, err = stackMD.BestRunImageMirror(registry)
 		if err != nil {
 			return platform.StackMetadata{}, "", "", err
