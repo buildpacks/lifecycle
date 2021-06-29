@@ -34,7 +34,7 @@ func TestBuilder(t *testing.T) {
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
-	//defer h.DockerImageRemove(t, builderImage)
+	defer h.DockerImageRemove(t, builderImage)
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
