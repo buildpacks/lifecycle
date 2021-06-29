@@ -28,13 +28,13 @@ func TestBuilder(t *testing.T) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
+	//h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
-	defer h.DockerImageRemove(t, builderImage)
+	//defer h.DockerImageRemove(t, builderImage)
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -78,6 +78,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 	when("error on reading Data", func() {
 
+		// .../cmd/lifecycle/builder.go#116-118
 		when("read buildpack group file", func() {
 			it("no default group toml file in default location", func() {
 				command := exec.Command(
@@ -126,6 +127,58 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				expected := "failed to read buildpack group: Near line"
 				h.AssertStringContains(t, string(output), expected)
 			})
+		})
+
+		// .../cmd/lifecycle/builder.go#121
+		when("error during parse plan", func() {
+			it("no default plan.toml file in default location", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--entrypoint", "/cnb/delete_file_then_run.sh",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "DELETE_FILE=/layers/plan.toml",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to parse detect plan"
+				h.AssertStringContains(t, string(output), expected)
+			})
+
+			//TODO: check some output file for this case not except any error message
+			it("empty parse plan.toml file", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/empty_plan.toml",
+					builderImage,
+				)
+				_, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNil(t, err)
+				//expected := "failed to read buildpack order file"
+				//h.AssertStringContains(t, string(output), expected)
+			})
+
+			it("invalid parse plan.toml file", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/wrong_plan.toml",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to parse detect plan: Near line"
+				h.AssertStringContains(t, string(output), expected)
+			})
+
 		})
 	})
 }
