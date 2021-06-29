@@ -57,4 +57,23 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
+
+	// .../cmd/lifecycle/builder.go#62
+	when("running as a root", func() {
+		it("errors", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--user",
+				"root",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				builderImage,
+			)
+			output, err := command.CombinedOutput()
+			h.AssertNotNil(t, err)
+			expected := "failed to build: refusing to run as root"
+			h.AssertStringContains(t, string(output), expected)
+		})
+	})
 }
