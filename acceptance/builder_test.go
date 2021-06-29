@@ -76,52 +76,53 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
+	when("error on reading Data", func() {
+		when("read buildpack group file", func() {
+			it("no default group toml file in default location", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to read buildpack group: open /layers/group.toml: no such file or directory"
+				h.AssertStringContains(t, string(output), expected)
+			})
 
-	when("read buildpack group file", func() {
-		it("no default group toml file in default location", func() {
-			command := exec.Command(
-				"docker",
-				"run",
-				"--rm",
-				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-				builderImage,
-			)
-			output, err := command.CombinedOutput()
-			h.AssertNotNil(t, err)
-			expected := "failed to read buildpack group: open /layers/group.toml: no such file or directory"
-			h.AssertStringContains(t, string(output), expected)
-		})
+			//TODO: check some output file for this case not except any error message
+			it("empty group toml file", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/empty_group.toml",
+					builderImage,
+				)
+				_, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNil(t, err)
+				//expected := "failed to read buildpack order file"
+				//h.AssertStringContains(t, string(output), expected)
+			})
 
-		//TODO: check some output file for this case not except any error message
-		it("empty group toml file", func() {
-			command := exec.Command(
-				"docker",
-				"run",
-				"--rm",
-				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/empty_group.toml",
-				builderImage,
-			)
-			_, err := command.CombinedOutput()
-			//print(string(output), err)
-			h.AssertNil(t, err)
-			//expected := "failed to read buildpack order file"
-			//h.AssertStringContains(t, string(output), expected)
-		})
-
-		it("invalid group toml file", func() {
-			command := exec.Command(
-				"docker",
-				"run",
-				"--rm",
-				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/wrong_group.toml",
-				builderImage,
-			)
-			output, err := command.CombinedOutput()
-			h.AssertNotNil(t, err)
-			expected := "failed to read buildpack group: Near line"
-			h.AssertStringContains(t, string(output), expected)
+			it("invalid group toml file", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/wrong_group.toml",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to read buildpack group: Near line"
+				h.AssertStringContains(t, string(output), expected)
+			})
 		})
 	})
 }
