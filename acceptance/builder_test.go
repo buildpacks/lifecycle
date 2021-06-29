@@ -3,6 +3,7 @@ package acceptance
 import (
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -39,4 +40,21 @@ func TestBuilder(t *testing.T) {
 }
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
+	// .../cmd/lifecycle/builder.go#45
+	when("called with arguments", func() {
+		it("errors", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				builderImage,
+				"some-arg",
+			)
+			output, err := command.CombinedOutput()
+			h.AssertNotNil(t, err)
+			expected := "failed to parse arguments: received unexpected arguments"
+			h.AssertStringContains(t, string(output), expected)
+		})
+	})
 }
