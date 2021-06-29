@@ -77,18 +77,21 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 	when("error on reading Data", func() {
+
 		when("read buildpack group file", func() {
 			it("no default group toml file in default location", func() {
 				command := exec.Command(
 					"docker",
 					"run",
+					"--entrypoint", "/cnb/delete_file_then_run.sh",
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "DELETE_FILE=/layers/group.toml",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
-				expected := "failed to read buildpack group: open /layers/group.toml: no such file or directory"
+				expected := "failed to read buildpack group"
 				h.AssertStringContains(t, string(output), expected)
 			})
 
