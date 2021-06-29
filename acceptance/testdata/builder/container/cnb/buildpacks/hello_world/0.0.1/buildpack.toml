@@ -1,0 +1,19 @@
+# Buildpack API version
+api = "0.2asfas"
+
+# Buildpack ID and metadata
+[buildpack]
+id = "hello_world"
+version = "0.0.1"
+name = "Hello World Buildpack"
+homepage = "https://github.com/buildpacks/samples/tree/main/buildpacks/hello-world"
+
+# Stacks that the buildpack will work with
+[[stacks]]
+id = "io.buildpacks.samples.stacks.bionic"
+
+[[stacks]]
+id = "io.buildpacks.samples.stacks.alpine"
+
+[[stacks]]
+id = "io.buildpacks.stacks.bionic"
