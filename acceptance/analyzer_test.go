@@ -941,11 +941,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
-<<<<<<< HEAD
 							"-previous-image", "my-previous-image",
-=======
-							"-previous-image","my-previous-image",
->>>>>>> 7397de4 (adding more unit tests and also adding the network flag to verify if the test failures are fixed)
 							"some-image",
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
