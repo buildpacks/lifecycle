@@ -269,21 +269,21 @@ func (a *analyzeCmd) verifyReadWriteAccess(imageRef string) error {
 	return nil
 }
 
-func (a *analyzeCmd) verifyReadAccess(name string) error {
-	if name != "" {
-		img, _ := remote.NewImage(name, a.keychain)
+func (a *analyzeCmd) verifyReadAccess(imageRef string) error {
+	if imageRef != "" {
+		img, _ := remote.NewImage(imageRef, a.keychain)
 		if !img.CheckReadAccess() {
-			return errors.New(fmt.Sprintf("read image %s from the registry", name))
+			return errors.New(fmt.Sprintf("read image %s from the registry", imageRef))
 		}
 	}
 	return nil
 }
 
-func (a *analyzeCmd) verifyReadWriteAccess(name string) error {
-	if name != "" {
-		img, _ := remote.NewImage(name, a.keychain)
+func (a *analyzeCmd) verifyReadWriteAccess(imageRef string) error {
+	if imageRef != "" {
+		img, _ := remote.NewImage(imageRef, a.keychain)
 		if !img.CheckReadWriteAccess() {
-			return errors.New(fmt.Sprintf("read/write image %s from/to the registry", name))
+			return errors.New(fmt.Sprintf("read/write image %s from/to the registry", imageRef))
 		}
 	}
 	return nil
