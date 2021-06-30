@@ -1094,6 +1094,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("called with tag", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 				when("have read/write access to registry", func() {
 					var imageName, authConfig string
 					var err error
@@ -1113,12 +1114,11 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
-							"-tag", authRegistry.RepoName("my-tag"),
+							"-tag", noAuthRegistry.RepoName("my-tag"),
 							imageName,
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
-
-						h.AssertNil(t, err)
+						h.AssertNotNil(t, err)
 						expected := "Previous image with name \"" + imageName + "\" not found"
 						h.AssertStringContains(t, string(output), expected)
 					})
