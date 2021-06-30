@@ -87,10 +87,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				command := exec.Command(
 					"docker",
 					"run",
-					"--entrypoint", "/cnb/delete_file_then_run.sh",
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "DELETE_FILE=/layers/group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
@@ -107,6 +106,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/empty_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
 					builderImage,
 				)
 				_, err := command.CombinedOutput()
@@ -123,6 +123,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/wrong_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
@@ -138,10 +139,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				command := exec.Command(
 					"docker",
 					"run",
-					"--entrypoint", "/cnb/delete_file_then_run.sh",
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "DELETE_FILE=/layers/plan.toml",
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
@@ -158,6 +158,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/empty_plan.toml",
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					builderImage,
 				)
 				_, err := command.CombinedOutput()
@@ -174,6 +175,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/wrong_plan.toml",
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
