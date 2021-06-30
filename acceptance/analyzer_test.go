@@ -1136,7 +1136,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 				})
 			})
-
 		})
 
 		when("layers path is provided", func() {
