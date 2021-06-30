@@ -253,7 +253,10 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					copyDir,
 					ctrPath("/some-dir/some-analyzed.toml"),
 					analyzeImage,
-					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
+					h.WithFlags(
+						"--network", registryNetwork,
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+					),
 					h.WithArgs(execArgs...),
 				)
 
@@ -682,6 +685,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					ctrPath("/layers/analyzed.toml"),
 					analyzeImage,
 					h.WithFlags(
+						"--network", registryNetwork,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 					),
 					h.WithArgs(ctrPath(analyzerPath), noAuthRegistry.RepoName("some-image")),
@@ -926,6 +930,27 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						})
 					})
 				})
+
+				when("do have read access to registry", func() {
+					it("throw read error", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
+						cmd := exec.Command(
+							"docker", "run", "--rm",
+							"--network", registryNetwork,
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--name", containerName,
+							analyzeImage,
+							ctrPath(analyzerPath),
+							"-previous-image", "my-previous-image",
+							"some-image",
+						) // #nosec G204
+						output, err := cmd.CombinedOutput()
+
+						h.AssertNotNil(t, err)
+						expected := "failed to : read image"
+						h.AssertStringContains(t, string(output), expected)
+					})
+				})
 			})
 
 			when("cache is provided", func() {
@@ -1062,6 +1087,56 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 				})
 			})
+
+			when("called with tag", func() {
+				when("have read/write access to registry", func() {
+					var imageName, authConfig string
+					var err error
+					it.Before(func() {
+						imageName = authRegistry.RepoName("some-image")
+						authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, imageName)
+						h.AssertNil(t, err)
+					})
+
+					it("pass through read/write validation", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
+						output := h.DockerRun(t,
+							analyzeImage,
+							h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+authConfig),
+							h.WithArgs(
+								ctrPath(analyzerPath),
+								"-tag", authRegistry.RepoName("my-tag"),
+								imageName,
+							),
+						)
+						expected := "Previous image with name \"" + imageName + "\" not found"
+						h.AssertStringContains(t, output, expected)
+					})
+				})
+
+				when("do not have read/write access to registry", func() {
+					it("throw read/write error", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
+						cmd := exec.Command(
+							"docker", "run", "--rm",
+							"--network", registryNetwork,
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--name", containerName,
+							analyzeImage,
+							ctrPath(analyzerPath),
+							"-tag", noAuthRegistry.RepoName("my-tag"),
+							noAuthRegistry.RepoName("some-image"),
+						) // #nosec G204
+						output, err := cmd.CombinedOutput()
+
+						h.AssertNotNil(t, err)
+						expected := "failed to : read/write image " + noAuthRegistry.RepoName("my-tag") + " from/to the registry"
+						h.AssertStringContains(t, string(output), expected)
+					})
+				})
+			})
+
 		})
 
 		when("layers path is provided", func() {
