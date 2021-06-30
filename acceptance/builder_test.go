@@ -28,12 +28,14 @@ func TestBuilder(t *testing.T) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	// FIXME: this is for development speed we need to comment out before production !
 	//h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
+	// FIXME: this is for development speed we need to comment out before production !
 	//defer h.DockerImageRemove(t, builderImage)
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
