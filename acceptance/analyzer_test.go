@@ -1090,6 +1090,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("called with tag", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 				when("have read/write access to registry", func() {
 					var imageName, authConfig string
 					var err error
@@ -1099,26 +1100,28 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, err)
 					})
 
-					it("pass through read/write validation", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
-						output := h.DockerRun(t,
+					it("pass through read/write validation and failed finding image name", func() {
+						cmd := exec.Command(
+							"docker", "run", "--rm",
+							"--network", registryNetwork,
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_REGISTRY_AUTH="+authConfig,
+							"--name", containerName,
 							analyzeImage,
-							h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+authConfig),
-							h.WithArgs(
-								ctrPath(analyzerPath),
-								"-tag", authRegistry.RepoName("my-tag"),
-								imageName,
-							),
-						)
+							ctrPath(analyzerPath),
+							"-tag", noAuthRegistry.RepoName("my-tag"),
+							imageName,
+						) // #nosec G204
+						output, err := cmd.CombinedOutput()
+
+						h.AssertNotNil(t, err)
 						expected := "Previous image with name \"" + imageName + "\" not found"
-						h.AssertStringContains(t, output, expected)
+						h.AssertStringContains(t, string(output), expected)
 					})
 				})
 
 				when("do not have read/write access to registry", func() {
 					it("throw read/write error", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--network", registryNetwork,
