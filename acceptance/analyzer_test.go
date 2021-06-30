@@ -206,10 +206,15 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 				output := h.DockerRun(t,
 					analyzeImage,
-					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI,
-						"--network", registryNetwork),
-					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers", analyzerPath,
-						noAuthRegistry.RepoName("some-image"))),
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--network", registryNetwork,
+					),
+					h.WithBash(
+						fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers",
+							analyzerPath,
+							noAuthRegistry.RepoName("some-image")),
+					),
 				)
 
 				h.AssertMatch(t, output, "2222 3333 .+ \\.")
@@ -933,7 +938,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 
 				when("do have read access to registry", func() {
-					it("throw read error", func() {
+					it("throws read error accessing previous image", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
 							"docker", "run", "--rm",
@@ -1044,7 +1049,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
 						// Attempting to remove the image sometimes produces `No such image` flakes.
 
-						it("throw read/write error", func() {
+						it("throws read/write error accessing cache image", func() {
 							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
 							cmd := exec.Command(
 								"docker", "run", "--rm",
@@ -1090,7 +1095,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("called with tag", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 				when("have read/write access to registry", func() {
 					var imageName, authConfig string
 					var err error
@@ -1100,7 +1104,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, err)
 					})
 
-					it("pass through read/write validation and failed finding image name", func() {
+					it("passes read/write validation and does not error if there is no previous image", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--network", registryNetwork,
@@ -1109,19 +1114,20 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
-							"-tag", noAuthRegistry.RepoName("my-tag"),
+							"-tag", authRegistry.RepoName("my-tag"),
 							imageName,
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
 
-						h.AssertNotNil(t, err)
+						h.AssertNil(t, err)
 						expected := "Previous image with name \"" + imageName + "\" not found"
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
 
 				when("do not have read/write access to registry", func() {
-					it("throw read/write error", func() {
+					it("throws read/write error accessing destination tag", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--network", registryNetwork,
