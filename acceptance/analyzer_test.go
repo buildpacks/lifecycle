@@ -206,7 +206,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 				output := h.DockerRun(t,
 					analyzeImage,
-					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
+					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI,
+						"--network", registryNetwork),
 					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers", analyzerPath,
 						noAuthRegistry.RepoName("some-image"))),
 				)
