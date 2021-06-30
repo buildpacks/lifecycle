@@ -24,6 +24,7 @@ var (
 )
 
 func TestBuilder(t *testing.T) {
+	// FIXME: try other OS, should be fine
 	h.SkipIf(t, runtime.GOOS == "windows", "builder acceptance tests are not yet supported on Windows")
 
 	rand.Seed(time.Now().UTC().UnixNano())
