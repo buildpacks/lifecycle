@@ -1014,7 +1014,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 										ctrPath(analyzerPath),
 										"-cache-image",
 										authRegCacheImage,
-										"some-image",
+										authRegistry.RepoName("some-image"),
 									),
 								)
 
