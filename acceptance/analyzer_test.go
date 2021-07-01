@@ -939,7 +939,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("do have read access to registry", func() {
 					it("throws read error accessing previous image", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--network", registryNetwork,
