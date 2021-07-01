@@ -161,8 +161,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					builderImage,
 				)
-				_, err := command.CombinedOutput()
-				//print(string(output), err)
+				output, err := command.CombinedOutput()
+				print(string(output), err)
 				h.AssertNil(t, err)
 				//expected := "failed to read buildpack order file"
 				//h.AssertStringContains(t, string(output), expected)

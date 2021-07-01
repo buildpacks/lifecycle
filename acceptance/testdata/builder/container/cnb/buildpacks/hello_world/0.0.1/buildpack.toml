@@ -1,5 +1,5 @@
 # Buildpack API version
-api = "0.2asfas"
+api = "0.2"
 
 # Buildpack ID and metadata
 [buildpack]
