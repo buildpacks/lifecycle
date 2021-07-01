@@ -203,4 +203,46 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		})
 	})
+
+	when("When passed PlaceHolders for parameters", func() {
+
+		// .../cmd/lifecycle/builder.go#48-50
+		when("groupPath is equals to PlaceHolder groupPath", func() {
+			it("will replace placeholder with default groupPath", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=<layers>/group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to read buildpack group: open /layers/group.toml"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+		// .../cmd/lifecycle/builder.go#52-54
+		when("planPath is equals to PlaceHolder planPath", func() {
+			it("will replace placeholder with default planPath", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_PLAN_PATH=<layers>/plan.toml",
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to parse detect plan: open /layers/plan.toml"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+	})
+
 }
