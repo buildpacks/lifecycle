@@ -131,6 +131,23 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				expected := "failed to read buildpack group: Near line"
 				h.AssertStringContains(t, string(output), expected)
 			})
+
+			// .../cmd/lifecycle/builder.go#72-L74
+			it("invalid builpack api group toml file", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/invalid_buildpack_api_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				h.AssertNotNil(t, err)
+				expected := "failed to : parse buildpack API"
+				h.AssertStringContains(t, string(output), expected)
+			})
 		})
 
 		// .../cmd/lifecycle/builder.go#121
@@ -161,8 +178,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					builderImage,
 				)
-				output, err := command.CombinedOutput()
-				print(string(output), err)
+				_, err := command.CombinedOutput()
+				//print(string(output), err)
 				h.AssertNil(t, err)
 				//expected := "failed to read buildpack order file"
 				//h.AssertStringContains(t, string(output), expected)
