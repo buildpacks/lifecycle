@@ -76,7 +76,6 @@ func (d *detectCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s %s", group, plan)
 	return d.writeData(group, plan)
 }
 
