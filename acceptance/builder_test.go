@@ -204,7 +204,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("When passed PlaceHolders for parameters", func() {
+	when("PlaceHolders need to replace with defaults", func() {
 
 		// .../cmd/lifecycle/builder.go#48-50
 		when("groupPath is equals to PlaceHolder groupPath", func() {
