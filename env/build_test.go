@@ -37,14 +37,29 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#NewDetectEnv", func() {
-		it("always excludes CNB_ASSETS", func() {
-			benv := env.NewDetectEnv([]string{
-				"CNB_ASSETS=some-assets-path",
+		when("supported by platform", func() {
+			it.Before(func() {
+				platform.EXPECT().SupportsAssetPackages().Return(true)
 			})
-			var expectedEnv []string
-			if s := cmp.Diff(benv.List(), expectedEnv); s != "" {
-				t.Fatalf("Unexpected env\n%s\n", s)
-			}
+
+			it("includes CNB_ASSETS", func() {
+				foundEnv := env.NewDetectEnv([]string{"CNB_ASSETS=some-assets-path"}, platform).List()
+
+				h.AssertContains(t, foundEnv, "CNB_ASSETS=some-assets-path")
+			})
+		})
+
+		when("not supported by platform", func() {
+			it.Before(func() {
+				platform.EXPECT().SupportsAssetPackages().Return(false)
+			})
+
+			it("excludes CNB_ASSETS", func() {
+				foundEnv := env.NewDetectEnv([]string{"CNB_ASSETS=some-assets-path"}, platform).List()
+
+				var expectedEnv []string
+				h.AssertEq(t, foundEnv, expectedEnv)
+			})
 		})
 	})
 

@@ -88,7 +88,7 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 		return buildpack.Group{}, platform.BuildPlan{}, err
 	}
 
-	envv := env.NewDetectEnv(os.Environ())
+	envv := env.NewDetectEnv(os.Environ(), da.platform)
 	fullEnv, err := envv.WithPlatform(da.platformDir)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read full env")
