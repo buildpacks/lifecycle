@@ -261,6 +261,63 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
+		// TODO: add with or after https://github.com/buildpacks/lifecycle/pull/646
+		when.Pend("run image", func() {
+			when("provided", func() {
+				it("validates read access", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+				})
+			})
+
+			when("not provided", func() {
+				it("falls back to CNB_RUN_IMAGE", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+				})
+
+				when("CNB_RUN_IMAGE not provided", func() {
+					it("falls back to stack.toml", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+					})
+
+					when("stack.toml not present", func() {
+						it("ignores run image", func() {
+							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+						})
+					})
+				})
+			})
+		})
+
+		// TODO: add with or after https://github.com/buildpacks/lifecycle/pull/646
+		when.Pend("cache image", func() {
+			when("provided", func() {
+				it("validates read / write access", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not validate registry access")
+				})
+			})
+		})
+
+		when("the provided destination tags are on different registries", func() {
+			it("errors", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept destination tags")
+
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+platformAPI,
+					analyzeImage,
+					ctrPath(analyzerPath),
+					"-tag", "some-registry.io/some-namespace/some-image",
+					"-tag", "some-other-registry.io/some-namespace/some-image:tag",
+					"some-other-registry.io/some-namespace/some-image",
+				) // #nosec G204
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "writing to multiple registries is unsupported"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
 		when("daemon case", func() {
 			it("writes analyzed.toml", func() {
 				execArgs := []string{

@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
@@ -20,45 +21,43 @@ type createCmd struct {
 	appDir              string
 	buildpacksDir       string
 	cacheDir            string
-	cacheImageTag       string
-	imageName           string
+	cacheImageRef       string
 	launchCacheDir      string
 	launcherPath        string
 	layersDir           string
 	orderPath           string
+	outputImageRef      string
 	platformDir         string
-	previousImage       string
+	previousImageRef    string
 	processType         string
 	projectMetadataPath string
 	registry            string
 	reportPath          string
 	runImageRef         string
-	stackMD             platform.StackMetadata
 	stackPath           string
 	uid, gid            int
-	additionalTags      cmd.StringSlice
 	skipRestore         bool
 	useDaemon           bool
 
-	platform cmd.Platform
-
-	//set if necessary before dropping privileges
-	docker   client.CommonAPIClient
-	keychain authn.Keychain
+	additionalTags cmd.StringSlice
+	docker         client.CommonAPIClient // construct if necessary before dropping privileges
+	keychain       authn.Keychain
+	platform       cmd.Platform
+	stackMD        platform.StackMetadata
 }
 
 func (c *createCmd) DefineFlags() {
 	cmd.FlagAppDir(&c.appDir)
 	cmd.FlagBuildpacksDir(&c.buildpacksDir)
 	cmd.FlagCacheDir(&c.cacheDir)
-	cmd.FlagCacheImage(&c.cacheImageTag)
+	cmd.FlagCacheImage(&c.cacheImageRef)
 	cmd.FlagGID(&c.gid)
 	cmd.FlagLaunchCacheDir(&c.launchCacheDir)
 	cmd.FlagLauncherPath(&c.launcherPath)
 	cmd.FlagLayersDir(&c.layersDir)
 	cmd.FlagOrderPath(&c.orderPath)
 	cmd.FlagPlatformDir(&c.platformDir)
-	cmd.FlagPreviousImage(&c.previousImage)
+	cmd.FlagPreviousImage(&c.previousImageRef)
 	cmd.FlagReportPath(&c.reportPath)
 	cmd.FlagRunImage(&c.runImageRef)
 	cmd.FlagSkipRestore(&c.skipRestore)
@@ -75,21 +74,21 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	c.imageName = args[0]
+	c.outputImageRef = args[0]
 	if c.launchCacheDir != "" && !c.useDaemon {
 		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
 		c.launchCacheDir = ""
 	}
 
-	if c.cacheImageTag == "" && c.cacheDir == "" {
+	if c.cacheImageRef == "" && c.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring or caching layer data, no cache flag specified.")
 	}
 
-	if c.previousImage == "" {
-		c.previousImage = c.imageName
+	if c.previousImageRef == "" {
+		c.previousImageRef = c.outputImageRef
 	}
 
-	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.imageName)...); err != nil {
+	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.outputImageRef)...); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
@@ -106,9 +105,17 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	var err error
-	c.stackMD, c.runImageRef, c.registry, err = resolveStack(c.imageName, c.stackPath, c.runImageRef)
+	c.stackMD, c.runImageRef, c.registry, err = resolveStack(c.outputImageRef, c.stackPath, c.runImageRef)
 	if err != nil {
 		return err
+	}
+
+	if c.runImageRef == "" {
+		return cmd.FailErrCode(
+			errors.New("-run-image is required when there is no stack metadata available"),
+			cmd.CodeInvalidArgs,
+			"parse arguments",
+		)
 	}
 
 	return nil
@@ -141,7 +148,7 @@ func (c *createCmd) Privileges() error {
 }
 
 func (c *createCmd) Exec() error {
-	cacheStore, err := initCache(c.cacheImageTag, c.cacheDir, c.keychain)
+	cacheStore, err := initCache(c.cacheImageRef, c.cacheDir, c.keychain)
 	if err != nil {
 		return err
 	}
@@ -154,12 +161,16 @@ func (c *createCmd) Exec() error {
 	if api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0 {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzedMD, err = analyzeArgs{
-			imageName: c.previousImage,
-			keychain:  c.keychain,
-			layersDir: c.layersDir,
-			platform:  c.platform,
-			useDaemon: c.useDaemon,
-			docker:    c.docker,
+			additionalTags:   c.additionalTags,
+			cacheImageRef:    c.cacheImageRef,
+			docker:           c.docker,
+			keychain:         c.keychain,
+			layersDir:        c.layersDir,
+			outputImageRef:   c.outputImageRef,
+			platform:         c.platform,
+			previousImageRef: c.previousImageRef,
+			runImageRef:      c.runImageRef,
+			useDaemon:        c.useDaemon,
 		}.analyze()
 		if err != nil {
 			return err
@@ -193,12 +204,12 @@ func (c *createCmd) Exec() error {
 
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzedMD, err = analyzeArgs{
-			imageName: c.previousImage,
-			keychain:  c.keychain,
-			layersDir: c.layersDir,
-			platform:  c.platform,
-			useDaemon: c.useDaemon,
-			docker:    c.docker,
+			docker:           c.docker,
+			keychain:         c.keychain,
+			layersDir:        c.layersDir,
+			previousImageRef: c.previousImageRef,
+			platform:         c.platform,
+			useDaemon:        c.useDaemon,
 			platform06: analyzeArgsPlatform06{
 				skipLayers: c.skipRestore,
 				group:      group,
@@ -240,7 +251,7 @@ func (c *createCmd) Exec() error {
 		appDir:              c.appDir,
 		docker:              c.docker,
 		gid:                 c.gid,
-		imageNames:          append([]string{c.imageName}, c.additionalTags...),
+		imageNames:          append([]string{c.outputImageRef}, c.additionalTags...),
 		keychain:            c.keychain,
 		launchCacheDir:      c.launchCacheDir,
 		launcherPath:        c.launcherPath,
@@ -260,12 +271,12 @@ func (c *createCmd) Exec() error {
 
 func (c *createCmd) registryImages() []string {
 	var registryImages []string
-	if c.cacheImageTag != "" {
-		registryImages = append(registryImages, c.cacheImageTag)
+	if c.cacheImageRef != "" {
+		registryImages = append(registryImages, c.cacheImageRef)
 	}
 	if !c.useDaemon {
-		registryImages = append(registryImages, append([]string{c.imageName}, c.additionalTags...)...)
-		registryImages = append(registryImages, c.runImageRef, c.previousImage)
+		registryImages = append(registryImages, append([]string{c.outputImageRef}, c.additionalTags...)...)
+		registryImages = append(registryImages, c.runImageRef, c.previousImageRef)
 	}
 	return registryImages
 }
