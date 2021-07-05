@@ -79,6 +79,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
+
 	when("error on reading Data", func() {
 
 		// .../cmd/lifecycle/builder.go#116-118
