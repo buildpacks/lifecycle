@@ -243,6 +243,128 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
+
+	})
+
+	/// .../cmd/lifecycle/builder.go#85-91
+	when("Builder args are successfully transmitted to in build script", func() {
+		when("CNB_APP_DIR changed", func() {
+			it("CNB_APP_DIR is successfully transmitted to in build script", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					"--env", "CNB_APP_DIR=/different_workspace_from_env",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNotNil(t, err) //due to not exist directory
+				expected := "/different_workspace_from_env"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+		when("CNB_BUILDPACKS_DIR changed", func() {
+			it("CNB_BUILDPACKS_DIR is successfully transmitted to in build script", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					"--env", "CNB_BUILDPACKS_DIR=/different_buildpack_dir_from_env",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNotNil(t, err) //due to not exist directory
+				expected := "/different_buildpack_dir_from_env"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+		when("CNB_GROUP_PATH changed", func() {
+			it("CNB_GROUP_PATH is successfully transmitted to in build script", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					"--env", "CNB_GROUP_PATH=/different_group_path_dir_from_env",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNotNil(t, err) //due to not exist directory
+				expected := "/different_group_path_dir_from_env"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+		when("CNB_LAYERS_DIR", func() {
+			it("CNB_LAYERS_DIR is successfully transmitted to in build script", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					"--env", "CNB_LAYERS_DIR=/different_layers_path_dir_from_env",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNotNil(t, err) //due to not exist directory
+				expected := "/different_layers_path_dir_from_env"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+		when("CNB_PLAN_PATH", func() {
+			it("CNB_PLAN_PATH is successfully transmitted to in build script", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					"--env", "CNB_PLAN_PATH=/different_plan_path_dir_from_env",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNotNil(t, err) //due to not exist directory
+				expected := "/different_plan_path_dir_from_env"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
+		when("CNB_PLATFORM_DIR", func() {
+			it("CNB_PLATFORM_DIR is successfully transmitted to in build script", func() {
+				command := exec.Command(
+					"docker",
+					"run",
+					"--rm",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					"--env", "CNB_PLATFORM_DIR=/different_platform_dir_from_env",
+					builderImage,
+				)
+				output, err := command.CombinedOutput()
+				//print(string(output), err)
+				h.AssertNotNil(t, err) //due to not exist directory
+				expected := "/different_platform_dir_from_env"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
 	})
 
 }
