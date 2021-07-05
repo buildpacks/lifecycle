@@ -43,7 +43,7 @@ func TestBuilder(t *testing.T) {
 }
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
-	// .../cmd/lifecycle/builder.go#45
+	// .../cmd/lifecycle/builder.go#Args
 	when("called with arguments", func() {
 		it("errors", func() {
 			command := exec.Command(
@@ -61,7 +61,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	// .../cmd/lifecycle/builder.go#62
+	// .../cmd/lifecycle/builder.go#Privileges
 	when("running as a root", func() {
 		it("errors", func() {
 			command := exec.Command(
@@ -82,7 +82,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("error on reading Data", func() {
 
-		// .../cmd/lifecycle/builder.go#116-118
+		// .../cmd/lifecycle/builder.go#readData
 		when("read buildpack group file", func() {
 			it("no default group toml file in default location", func() {
 				command := exec.Command(
@@ -133,7 +133,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertStringContains(t, string(output), expected)
 			})
 
-			// .../cmd/lifecycle/builder.go#72-L74
+			// .../cmd/lifecycle/builder.go#Exec
 			it("invalid builpack api group toml file", func() {
 				command := exec.Command(
 					"docker",
@@ -151,7 +151,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		// .../cmd/lifecycle/builder.go#121
+		// .../cmd/lifecycle/builder.go#readData
 		when("error during parse plan", func() {
 			it("no default plan.toml file in default location", func() {
 				command := exec.Command(
@@ -207,7 +207,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("PlaceHolders need to replace with defaults", func() {
 
-		// .../cmd/lifecycle/builder.go#48-50
+		// .../cmd/lifecycle/builder.go#Args
 		when("groupPath is equals to PlaceHolder groupPath", func() {
 			it("will replace placeholder with default groupPath", func() {
 				command := exec.Command(
@@ -226,7 +226,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		// .../cmd/lifecycle/builder.go#52-54
+		// .../cmd/lifecycle/builder.go#Args
 		when("planPath is equals to PlaceHolder planPath", func() {
 			it("will replace placeholder with default planPath", func() {
 				command := exec.Command(
@@ -247,7 +247,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	})
 
-	/// .../cmd/lifecycle/builder.go#85-91
+	/// .../cmd/lifecycle/builder.go#build
 	when("Builder args are successfully transmitted to in build script", func() {
 		when("CNB_APP_DIR changed", func() {
 			it("CNB_APP_DIR is successfully transmitted to in build script", func() {
