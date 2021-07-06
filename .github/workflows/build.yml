@@ -221,8 +221,6 @@ jobs:
           name: tag
       - name: Set env
         run: |
-          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
-          echo "IP_ADDR=$IPAddress" >> $env:GITHUB_ENV
           cat version.txt >> $env:GITHUB_ENV
           cat tag.txt >> $env:GITHUB_ENV
       - uses: actions/download-artifact@v2
