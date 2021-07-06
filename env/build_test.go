@@ -36,33 +36,6 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 		mockController.Finish()
 	})
 
-	when("#NewDetectEnv", func() {
-		when("supported by platform", func() {
-			it.Before(func() {
-				platform.EXPECT().SupportsAssetPackages().Return(true)
-			})
-
-			it("includes CNB_ASSETS", func() {
-				foundEnv := env.NewDetectEnv([]string{"CNB_ASSETS=some-assets-path"}, platform).List()
-
-				h.AssertContains(t, foundEnv, "CNB_ASSETS=some-assets-path")
-			})
-		})
-
-		when("not supported by platform", func() {
-			it.Before(func() {
-				platform.EXPECT().SupportsAssetPackages().Return(false)
-			})
-
-			it("excludes CNB_ASSETS", func() {
-				foundEnv := env.NewDetectEnv([]string{"CNB_ASSETS=some-assets-path"}, platform).List()
-
-				var expectedEnv []string
-				h.AssertEq(t, foundEnv, expectedEnv)
-			})
-		})
-	})
-
 	when("#NewBuildEnv", func() {
 		it("includes expected vars", func() {
 			platform.EXPECT().SupportsAssetPackages().Return(true)

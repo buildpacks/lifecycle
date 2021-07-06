@@ -3,12 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -88,20 +86,14 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 		return buildpack.Group{}, platform.BuildPlan{}, err
 	}
 
-	envv := env.NewDetectEnv(os.Environ(), da.platform)
-	fullEnv, err := envv.WithPlatform(da.platformDir)
-	if err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read full env")
-	}
 	detector, err := lifecycle.NewDetector(
 		buildpack.DetectConfig{
-			FullEnv:     fullEnv,
-			ClearEnv:    envv.List(),
 			AppDir:      da.appDir,
 			PlatformDir: da.platformDir,
 			Logger:      cmd.DefaultLogger,
 		},
 		da.buildpacksDir,
+		da.platform,
 	)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "initialize detector")
