@@ -167,8 +167,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          # git checkout $(git describe --abbrev=0 --tags) # check out the latest tag - TODO: uncomment when lifecycle-image-expectation is merged & released
-          git checkout lifecycle-image-expectation
+          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
           LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
           LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
@@ -230,8 +229,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          # git checkout $(git describe --abbrev=0 --tags) # check out the latest tag - TODO: uncomment when lifecycle-image-expectation is merged & released
-          git checkout lifecycle-image-expectation
+          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
