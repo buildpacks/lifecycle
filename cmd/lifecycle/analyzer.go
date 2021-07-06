@@ -127,6 +127,9 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
+	if err := image.VerifyRegistryAccess(a, a.keychain); err != nil {
+		return cmd.FailErr(err)
+	}
 	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.platform06.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -225,22 +228,21 @@ func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return !a.platformAPIVersionGreaterThan06()
 }
 
-func (a *analyzeCmd) verifyReadAccess(imageRef string) error {
-	if imageRef != "" {
-		img, _ := remote.NewImage(imageRef, a.keychain)
-		if !img.CheckReadAccess() {
-			return errors.New(fmt.Sprintf("read image %s from the registry", imageRef))
+func (a *analyzeCmd) ReadableImages() []string {
+	var readableImages []string
+	if a.platformAPIVersionGreaterThan06() {
+		if !a.useDaemon {
+			readableImages = append(readableImages, a.previousImageRef, a.runImageRef)
 		}
 	}
-	return nil
+	return readableImages
 }
-
-func (a *analyzeCmd) verifyReadWriteAccess(imageRef string) error {
-	if imageRef != "" {
-		img, _ := remote.NewImage(imageRef, a.keychain)
-		if !img.CheckReadWriteAccess() {
-			return errors.New(fmt.Sprintf("read/write image %s from/to the registry", imageRef))
+func (a *analyzeCmd) WriteableImages() []string {
+	var writeableImages []string
+	if a.platformAPIVersionGreaterThan06() {
+		if !a.useDaemon {
+			writeableImages = append(writeableImages, append([]string{a.cacheImageRef}, a.additionalTags...)...)
 		}
 	}
-	return nil
+	return writeableImages
 }

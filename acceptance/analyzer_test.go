@@ -1047,8 +1047,29 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
 						// Attempting to remove the image sometimes produces `No such image` flakes.
-						it("throws read/write error accessing cache image", func() {
+						it("restores cache metadata", func() {
 							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+							output := h.DockerRunAndCopy(t,
+								containerName,
+								copyDir,
+								ctrPath("/layers"),
+								analyzeImage,
+								h.WithFlags(
+									"--network", registryNetwork,
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+								),
+								h.WithArgs(
+									ctrPath(analyzerPath),
+									"-cache-image", noAuthRegCacheImage,
+									"some-image",
+								),
+							)
+
+							assertLogsAndRestoresCacheMetadata(t, copyDir, output)
+						})
+
+						it("throws read/write error accessing cache image", func() {
+							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not validate cache flag")
 							cmd := exec.Command(
 								"docker", "run", "--rm",
 								"--network", registryNetwork,
@@ -1058,7 +1079,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								ctrPath(analyzerPath),
 								"-cache-image",
 								noAuthRegCacheImage,
-								"some-image",
+								noAuthRegistry.RepoName("some-image"),
 							) // #nosec G204
 							output, err := cmd.CombinedOutput()
 
