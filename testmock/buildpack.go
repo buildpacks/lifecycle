@@ -65,17 +65,17 @@ func (mr *MockBuildpackMockRecorder) ConfigFile() *gomock.Call {
 }
 
 // Detect mocks base method.
-func (m *MockBuildpack) Detect(arg0 *buildpack.DetectConfig) buildpack.DetectRun {
+func (m *MockBuildpack) Detect(arg0 *buildpack.DetectConfig, arg1 buildpack.BuildEnv) buildpack.DetectRun {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Detect", arg0)
+	ret := m.ctrl.Call(m, "Detect", arg0, arg1)
 	ret0, _ := ret[0].(buildpack.DetectRun)
 	return ret0
 }
 
 // Detect indicates an expected call of Detect.
-func (mr *MockBuildpackMockRecorder) Detect(arg0 interface{}) *gomock.Call {
+func (mr *MockBuildpackMockRecorder) Detect(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detect", reflect.TypeOf((*MockBuildpack)(nil).Detect), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detect", reflect.TypeOf((*MockBuildpack)(nil).Detect), arg0, arg1)
 }
 
 // SupportsAssetPackages mocks base method.
