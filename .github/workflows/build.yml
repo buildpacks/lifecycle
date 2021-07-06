@@ -35,7 +35,6 @@ jobs:
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_linux
           fail_ci_if_error: true
-          verbose: true
   test-windows:
     runs-on: windows-latest
     steps:
@@ -83,7 +82,7 @@ jobs:
       - name: Run Codecov
         run: |
           codecov.exe -f .\out\tests\coverage-unit.txt -v --flag os_windows
-  build:
+  build-and-publish:
     needs:
       - test-linux
       - test-windows
@@ -91,11 +90,25 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # fetch all history for all branches and tags
       - name: Set up go
         uses: actions/setup-go@v2
         with:
           go-version: '1.16'
+      - name: Set version
+        run: |
+          echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" >> version.txt
+      - uses: actions/upload-artifact@v2
+        with:
+          name: version
+          path: version.txt
+      - name: Set tag
+        run: |
+          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always)" >> tag.txt
+      - uses: actions/upload-artifact@v2
+        with:
+          name: tag
+          path: tag.txt
       - name: Build
         run: |
           make clean
@@ -113,11 +126,114 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: actions/download-artifact@v2
+        with:
+          name: tag
+      - name: Set env
+        run: |
+          cat tag.txt >> $GITHUB_ENV
       - name: Publish images
         if: github.event_name == 'push'
         run: |
-          LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
           go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
           go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
+  pack-acceptance-linux:
+    if: github.event_name == 'push'
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: 'buildpacks/pack'
+          path: 'pack'
+          ref: 'main'
+          fetch-depth: 0 # fetch all history for all branches and tags
+      - uses: actions/download-artifact@v2
+        with:
+          name: version
+      - uses: actions/download-artifact@v2
+        with:
+          name: tag
+      - name: Set env
+        run: |
+          cat version.txt >> $GITHUB_ENV
+          cat tag.txt >> $GITHUB_ENV
+      - uses: actions/download-artifact@v2
+        with:
+          name: lifecycle-linux-x86-64
+          path: pack
+      - name: Run pack acceptance
+        run: |
+          cd pack
+          # git checkout $(git describe --abbrev=0 --tags) # check out the latest tag - TODO: uncomment when lifecycle-image-expectation is merged & released
+          git checkout lifecycle-image-expectation
+          LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
+          LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
+          make acceptance
+  pack-acceptance-windows:
+    if: github.event_name == 'push'
+    needs: build-and-publish
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: 'buildpacks/pack'
+          path: 'pack'
+          ref: 'main'
+          fetch-depth: 0 # fetch all history for all branches and tags
+      - name: Add runner IP to daemon insecure-registries and firewall
+        shell: powershell
+        run: |
+          # Get IP from default gateway interface
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+
+          # Allow container-to-host registry traffic (from public interface, to the same interface)
+          New-NetfirewallRule -DisplayName test-registry -LocalAddress $IPAddress -RemoteAddress $IPAddress
+
+          # create or update daemon config to allow host as insecure-registry
+          $config=@{}
+          if (Test-Path C:\ProgramData\docker\config\daemon.json) {
+            $config=(Get-Content C:\ProgramData\docker\config\daemon.json | ConvertFrom-json)
+          }
+          $config."insecure-registries" = @("$IPAddress/32")
+          ConvertTo-json $config | Out-File -Encoding ASCII C:\ProgramData\docker\config\daemon.json
+
+          Restart-Service docker
+
+          # dump docker info for auditing
+          docker version
+          docker info
+      - name: Modify etc\hosts to include runner IP
+        shell: powershell
+        run: |
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+          "# Modified by CNB: https://github.com/buildpacks/ci/tree/main/gh-runners/windows
+          ${IPAddress} host.docker.internal
+          ${IPAddress} gateway.docker.internal
+          " | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Encoding utf8
+      - uses: actions/download-artifact@v2
+        with:
+          name: version
+      - uses: actions/download-artifact@v2
+        with:
+          name: tag
+      - name: Set env
+        run: |
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+          echo "IP_ADDR=$IPAddress" >> $env:GITHUB_ENV
+          cat version.txt >> $env:GITHUB_ENV
+          cat tag.txt >> $env:GITHUB_ENV
+      - uses: actions/download-artifact@v2
+        with:
+          name: lifecycle-windows-x86-64
+          path: pack
+      - name: Run pack acceptance
+        run: |
+          cd pack
+          # git checkout $(git describe --abbrev=0 --tags) # check out the latest tag - TODO: uncomment when lifecycle-image-expectation is merged & released
+          git checkout lifecycle-image-expectation
+          $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
+          $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
+          make acceptance
