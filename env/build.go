@@ -48,17 +48,6 @@ func NewBuildEnv(environ []string, platform Platform, buildpack Buildpack) *Env 
 	if platform.SupportsAssetPackages() && buildpack.SupportsAssetPackages() {
 		envFilter = isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv), AssetsEnvVars)
 	}
-	return &Env{
-		RootDirMap: POSIXBuildEnv,
-		Vars:       varsFromEnv(environ, ignoreEnvVarCase, envFilter),
-	}
-}
-
-// NewDetectEnv returns an detect-time Env from the given environment.
-//
-// Only keys in the BuildEnvIncludelist will be added to the Environment.
-func NewDetectEnv(environ []string) *Env {
-	envFilter := isNotMember(BuildEnvIncludelist, flattenMap(POSIXBuildEnv))
 
 	return &Env{
 		RootDirMap: POSIXBuildEnv,

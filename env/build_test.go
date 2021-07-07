@@ -36,18 +36,6 @@ func testBuildEnv(t *testing.T, when spec.G, it spec.S) {
 		mockController.Finish()
 	})
 
-	when("#NewDetectEnv", func() {
-		it("always excludes CNB_ASSETS", func() {
-			benv := env.NewDetectEnv([]string{
-				"CNB_ASSETS=some-assets-path",
-			})
-			var expectedEnv []string
-			if s := cmp.Diff(benv.List(), expectedEnv); s != "" {
-				t.Fatalf("Unexpected env\n%s\n", s)
-			}
-		})
-	})
-
 	when("#NewBuildEnv", func() {
 		it("includes expected vars", func() {
 			platform.EXPECT().SupportsAssetPackages().Return(true)
