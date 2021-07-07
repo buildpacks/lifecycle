@@ -135,6 +135,9 @@ func (c *createCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
+	if err := image.VerifyRegistryAccess(c, c.keychain); err != nil {
+		return cmd.FailErr(err)
+	}
 	if err := priv.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -279,4 +282,27 @@ func (c *createCmd) registryImages() []string {
 		registryImages = append(registryImages, c.runImageRef, c.previousImageRef)
 	}
 	return registryImages
+}
+
+func (c *createCmd) platformAPIVersionGreaterThan06() bool {
+	return api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0
+}
+
+func (c *createCmd) ReadableImages() []string {
+	var readableImages []string
+	if c.platformAPIVersionGreaterThan06() {
+		if !c.useDaemon {
+			readableImages = append(readableImages, c.previousImageRef, c.runImageRef)
+		}
+	}
+	return readableImages
+}
+func (c *createCmd) WriteableImages() []string {
+	var writeableImages []string
+	if c.platformAPIVersionGreaterThan06() {
+		if !c.useDaemon {
+			writeableImages = append(writeableImages, append([]string{c.cacheImageRef}, c.additionalTags...)...)
+		}
+	}
+	return writeableImages
 }
