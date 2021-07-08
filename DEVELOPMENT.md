@@ -22,9 +22,9 @@
 * The acceptance tests require the docker daemon to be able to communicate with a local containerized insecure registry. On Docker Desktop 3.3.x, this may result in failures such as: `Expected nil: push response: : Get http://localhost:<port>/v2/: dial tcp [::1]:<port>: connect: connection refused`. To fix these failures, it may be necessary to add the following to the Docker Desktop Engine config:
     * macOS: Docker > Preferences > Docker Engine:
 ```
-  "insecure-registries": {
+  "insecure-registries": [
     "<my-host-ip>/32"
-  }
+  ]
 ```
 
 
