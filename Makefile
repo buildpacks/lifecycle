@@ -63,7 +63,6 @@ docker-compilation-image-linux:
 
 $(BUILD_DIR)/linux/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)/lifecycle
-$(BUILD_DIR)/linux/lifecycle/lifecycle: GOENV:=GOARCH=$(GOARCH) CGO_ENABLED=1
 $(BUILD_DIR)/linux/lifecycle/lifecycle: docker-compilation-image-linux
 $(BUILD_DIR)/linux/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux/lifecycle/lifecycle:
