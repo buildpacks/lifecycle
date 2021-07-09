@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -33,11 +34,12 @@ func TestVersion(t *testing.T) {
 		h.AssertNil(t, os.RemoveAll(buildDir))
 	}()
 
-	outDir := filepath.Join(buildDir, runtime.GOOS, "lifecycle")
+	outDir := filepath.Join(buildDir, fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH), "lifecycle")
 	h.AssertNil(t, os.MkdirAll(outDir, 0755))
 
 	h.MakeAndCopyLifecycle(t,
 		runtime.GOOS,
+		runtime.GOARCH,
 		outDir,
 		"LIFECYCLE_VERSION=some-version",
 		"SCM_COMMIT="+expectedCommit,
@@ -153,5 +155,5 @@ func testVersion(t *testing.T, when spec.G, it spec.S) {
 }
 
 func lifecycleCmd(phase string, args ...string) *exec.Cmd {
-	return exec.Command(filepath.Join(buildDir, runtime.GOOS, "lifecycle", phase), args...) // #nosec G204
+	return exec.Command(filepath.Join(buildDir, fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH), "lifecycle", phase), args...) // #nosec G204
 }
