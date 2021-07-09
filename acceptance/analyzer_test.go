@@ -261,6 +261,26 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
+		it("drops privileges", func() {
+			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
+			output := h.DockerRun(t,
+				analyzeImage,
+				h.WithFlags(
+					"--network", registryNetwork,
+					"--env", "CNB_PLATFORM_API="+platformAPI,
+				),
+				h.WithBash(
+					fmt.Sprintf("%s -analyzed /some-dir/some-analyzed.toml %s; ls -al /some-dir",
+						ctrPath(analyzerPath),
+						noAuthRegistry.RepoName("some-image"),
+					),
+				),
+			)
+
+			h.AssertMatch(t, output, "2222 3333 .+ some-analyzed.toml")
+		})
+
 		// TODO: add with or after https://github.com/buildpacks/lifecycle/pull/646
 		when.Pend("run image", func() {
 			when("provided", func() {
