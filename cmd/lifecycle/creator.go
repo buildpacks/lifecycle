@@ -135,8 +135,10 @@ func (c *createCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := image.VerifyRegistryAccess(c, c.keychain); err != nil {
-		return cmd.FailErr(err)
+	if c.platformAPIVersionGreaterThan06() {
+		if err := image.VerifyRegistryAccess(c, c.keychain); err != nil {
+			return cmd.FailErr(err)
+		}
 	}
 	if err := priv.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
@@ -288,7 +290,7 @@ func (c *createCmd) platformAPIVersionGreaterThan06() bool {
 	return api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0
 }
 
-func (c *createCmd) ReadableImages() []string {
+func (c *createCmd) ReadableRegistryImages() []string {
 	var readableImages []string
 	if c.platformAPIVersionGreaterThan06() {
 		if !c.useDaemon {
@@ -297,7 +299,7 @@ func (c *createCmd) ReadableImages() []string {
 	}
 	return readableImages
 }
-func (c *createCmd) WriteableImages() []string {
+func (c *createCmd) WriteableRegistryImages() []string {
 	var writeableImages []string
 	if c.platformAPIVersionGreaterThan06() {
 		if !c.useDaemon {

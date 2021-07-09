@@ -202,18 +202,27 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("the provided layers directory isn't writeable", func() {
+			var imageName, authConfig string
+			var err error
+			it.Before(func() {
+				imageName = authRegistry.RepoName("some-image")
+				authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, imageName)
+				h.AssertNil(t, err)
+			})
+
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_REGISTRY_AUTH="+authConfig,
 						"--network", registryNetwork,
 					),
 					h.WithBash(
 						fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers",
 							analyzerPath,
-							noAuthRegistry.RepoName("some-image")),
+							imageName),
 					),
 				)
 
@@ -247,11 +256,18 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("analyzed path is provided", func() {
+			var imageName, authConfig string
+			var err error
+			it.Before(func() {
+				imageName = authRegistry.RepoName("some-image")
+				authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, imageName)
+				h.AssertNil(t, err)
+			})
 			it("writes analyzed.toml at the provided path", func() {
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-					noAuthRegistry.RepoName("some-image"),
+					imageName,
 				}
 
 				h.DockerRunAndCopy(t,
@@ -262,6 +278,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(
 						"--network", registryNetwork,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_REGISTRY_AUTH="+authConfig,
 					),
 					h.WithArgs(execArgs...),
 				)
@@ -684,6 +701,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("registry case", func() {
+			var imageName, authConfig string
+			var err error
+			it.Before(func() {
+				imageName = authRegistry.RepoName("some-image")
+				authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, imageName)
+				h.AssertNil(t, err)
+			})
+
 			it("writes analyzed.toml", func() {
 				h.DockerRunAndCopy(t,
 					containerName,
@@ -693,8 +718,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(
 						"--network", registryNetwork,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_REGISTRY_AUTH="+authConfig,
 					),
-					h.WithArgs(ctrPath(analyzerPath), noAuthRegistry.RepoName("some-image")),
+					h.WithArgs(ctrPath(analyzerPath), imageName),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -889,7 +915,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							execArgs := []string{
 								ctrPath(analyzerPath),
 								"-previous-image", authRegAppImage,
-								"some-fake-image",
+								authRegistry.RepoName("some-fake-image"),
 							}
 
 							h.DockerRunAndCopy(t,
@@ -952,7 +978,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "failed to : read image"
+						expected := "failed to : ensure registry read access to"
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
@@ -1084,7 +1110,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							output, err := cmd.CombinedOutput()
 
 							h.AssertNotNil(t, err)
-							expected := "failed to : read/write image " + noAuthRegCacheImage + " from/to the registry"
+							expected := "failed to : ensure registry read/write access to " + noAuthRegCacheImage
 							h.AssertStringContains(t, string(output), expected)
 						})
 					})
@@ -1115,31 +1141,38 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			when("called with tag", func() {
 				when("have read/write access to registry", func() {
-					var imageName, authConfig string
-					var err error
+					var authRegAppImage, appAuthConfig string
 					it.Before(func() {
-						imageName = authRegistry.RepoName("some-image")
-						authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, imageName)
-						h.AssertNil(t, err)
+						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
+						authRegAppImage, appAuthConfig = buildAuthRegistryImage(
+							t,
+							"some-app-image-"+h.RandString(10),
+							filepath.Join("testdata", "analyzer", "app-image"),
+							"--build-arg", "fromImage="+containerBaseImage,
+							"--build-arg", "metadata="+metadata,
+						)
 					})
-
-					it("passes read/write validation and does not error if there is no previous image", func() {
+					it("passes read/write validation and writes analyzed.toml", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
-						cmd := exec.Command(
-							"docker", "run", "--rm",
-							"--network", registryNetwork,
-							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_REGISTRY_AUTH="+authConfig,
-							"--name", containerName,
-							analyzeImage,
+						execArgs := []string{
 							ctrPath(analyzerPath),
 							"-tag", authRegistry.RepoName("my-tag"),
-							imageName,
-						) // #nosec G204
-						output, err := cmd.CombinedOutput()
-						h.AssertNil(t, err)
-						expected := "Previous image with name \"" + imageName + "\" not found"
-						h.AssertStringContains(t, string(output), expected)
+							authRegAppImage,
+						}
+						h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							ctrPath("/layers/analyzed.toml"),
+							analyzeImage,
+							h.WithFlags(
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+appAuthConfig,
+								"--network", registryNetwork,
+							),
+							h.WithArgs(execArgs...),
+						)
+						cmd := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+						h.AssertStringContains(t, cmd.Image.Reference, authRegAppImage)
 					})
 				})
 
@@ -1159,7 +1192,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "failed to : read/write image " + noAuthRegistry.RepoName("my-tag") + " from/to the registry"
+						expected := "failed to : ensure registry read/write access to "
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})

@@ -10,8 +10,8 @@ import (
 )
 
 type RegistryInputs interface {
-	ReadableImages() []string
-	WriteableImages() []string
+	ReadableRegistryImages() []string
+	WriteableRegistryImages() []string
 }
 
 // ValidateDestinationTags ensures all tags are valid
@@ -39,21 +39,16 @@ func ValidateDestinationTags(daemon bool, repoNames ...string) error {
 }
 
 func VerifyRegistryAccess(regInputs RegistryInputs, keychain authn.Keychain) error {
-	if len(regInputs.ReadableImages()) > 0 {
-		for _, imageRef := range regInputs.ReadableImages() {
-			err := verifyReadAccess(imageRef, keychain)
-			if err != nil {
-				return err
-			}
+	for _, imageRef := range regInputs.ReadableRegistryImages() {
+		err := verifyReadAccess(imageRef, keychain)
+		if err != nil {
+			return err
 		}
 	}
-
-	if len(regInputs.WriteableImages()) > 0 {
-		for _, imageRef := range regInputs.WriteableImages() {
-			err := verifyReadWriteAccess(imageRef, keychain)
-			if err != nil {
-				return err
-			}
+	for _, imageRef := range regInputs.WriteableRegistryImages() {
+		err := verifyReadWriteAccess(imageRef, keychain)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -63,7 +58,7 @@ func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
 	if imageRef != "" {
 		img, _ := remote.NewImage(imageRef, keychain)
 		if !img.CheckReadAccess() {
-			return errors.New(fmt.Sprintf("read image %s from the registry", imageRef))
+			return errors.New(fmt.Sprintf("ensure registry read access to %s", imageRef))
 		}
 	}
 	return nil
@@ -73,7 +68,7 @@ func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
 	if imageRef != "" {
 		img, _ := remote.NewImage(imageRef, keychain)
 		if !img.CheckReadWriteAccess() {
-			return errors.New(fmt.Sprintf("read/write image %s from/to the registry", imageRef))
+			return errors.New(fmt.Sprintf("ensure registry read/write access to %s", imageRef))
 		}
 	}
 	return nil

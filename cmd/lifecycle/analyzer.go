@@ -127,8 +127,10 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := image.VerifyRegistryAccess(a, a.keychain); err != nil {
-		return cmd.FailErr(err)
+	if a.platformAPIVersionGreaterThan06() {
+		if err := image.VerifyRegistryAccess(a, a.keychain); err != nil {
+			return cmd.FailErr(err)
+		}
 	}
 	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.platform06.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
@@ -141,13 +143,7 @@ func (a *analyzeCmd) Privileges() error {
 
 func (aa *analyzeArgs) registryImages() []string {
 	var registryImages []string
-	if aa.cacheImageRef != "" {
-		registryImages = append(registryImages, aa.cacheImageRef)
-	}
-	if !aa.useDaemon {
-		registryImages = append(registryImages, append([]string{aa.outputImageRef, aa.previousImageRef, aa.runImageRef}, aa.additionalTags...)...)
-	}
-	return registryImages
+	return append(append(registryImages, aa.ReadableRegistryImages()...), aa.WriteableRegistryImages()...)
 }
 
 func (a *analyzeCmd) Exec() error {
@@ -228,21 +224,20 @@ func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return !a.platformAPIVersionGreaterThan06()
 }
 
-func (a *analyzeCmd) ReadableImages() []string {
+func (aa *analyzeArgs) ReadableRegistryImages() []string {
 	var readableImages []string
-	if a.platformAPIVersionGreaterThan06() {
-		if !a.useDaemon {
-			readableImages = append(readableImages, a.previousImageRef, a.runImageRef)
-		}
+	if !aa.useDaemon {
+		readableImages = append(readableImages, aa.previousImageRef, aa.runImageRef)
 	}
 	return readableImages
 }
-func (a *analyzeCmd) WriteableImages() []string {
+func (aa *analyzeArgs) WriteableRegistryImages() []string {
 	var writeableImages []string
-	if a.platformAPIVersionGreaterThan06() {
-		if !a.useDaemon {
-			writeableImages = append(writeableImages, append([]string{a.cacheImageRef}, a.additionalTags...)...)
-		}
+	if aa.cacheImageRef != "" {
+		writeableImages = append(writeableImages, aa.cacheImageRef)
+	}
+	if !aa.useDaemon {
+		writeableImages = append(writeableImages, append([]string{aa.outputImageRef}, aa.additionalTags...)...)
 	}
 	return writeableImages
 }
