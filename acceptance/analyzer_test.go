@@ -33,7 +33,7 @@ var (
 	analyzeImage         = "lifecycle/acceptance/analyzer"
 	analyzerPath         = "/cnb/lifecycle/analyzer"
 	cacheFixtureDir      = filepath.Join("testdata", "analyzer", "cache-dir")
-	daemonOS             string
+	daemonOS, daemonArch string
 	noAuthRegistry       *ih.DockerRegistry
 	authRegistry         *ih.DockerRegistry
 	registryNetwork      string
@@ -45,6 +45,10 @@ func TestAnalyzer(t *testing.T) {
 	info, err := h.DockerCli(t).Info(context.TODO())
 	h.AssertNil(t, err)
 	daemonOS = info.OSType
+	daemonArch = info.Architecture
+	if daemonArch == "x86_64" {
+		daemonArch = "amd64"
+	}
 
 	// Setup registry
 
@@ -75,7 +79,7 @@ func TestAnalyzer(t *testing.T) {
 
 	// Setup test container
 
-	h.MakeAndCopyLifecycle(t, daemonOS, analyzerBinaryDir)
+	h.MakeAndCopyLifecycle(t, daemonOS, daemonArch, analyzerBinaryDir)
 	h.DockerBuild(t,
 		analyzeImage,
 		analyzeDockerContext,
