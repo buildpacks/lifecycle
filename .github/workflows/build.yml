@@ -124,7 +124,7 @@ jobs:
           LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)
           DOCKER_CLI_EXPERIMENTAL=enabled
           go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
-          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch amd64
+          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64
           go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux \
