@@ -34,7 +34,7 @@ var (
 	analyzerPath         = "/cnb/lifecycle/analyzer"
 	cacheFixtureDir      = filepath.Join("testdata", "analyzer", "cache-dir")
 	daemonOS, daemonArch string
-	noAuthRegistry       *ih.DockerRegistry
+	readOnlyRegistry     *ih.DockerRegistry
 	authRegistry         *ih.DockerRegistry
 	registryNetwork      string
 )
@@ -61,9 +61,9 @@ func TestAnalyzer(t *testing.T) {
 	authRegistry.Start(t)
 	defer authRegistry.Stop(t)
 
-	noAuthRegistry = ih.NewDockerRegistry(ih.WithSharedHandler(sharedRegHandler))
-	noAuthRegistry.Start(t)
-	defer noAuthRegistry.Stop(t)
+	readOnlyRegistry = ih.NewDockerRegistry(ih.WithSharedHandler(sharedRegHandler))
+	readOnlyRegistry.Start(t)
+	defer readOnlyRegistry.Stop(t)
 
 	// if registry is listening on localhost, use host networking to allow containers to reach it
 	registryNetwork = "default"
@@ -377,7 +377,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-daemon",
-					noAuthRegistry.RepoName("some-image"),
+					readOnlyRegistry.RepoName("some-image"),
 				}
 
 				h.DockerRunAndCopy(t,
@@ -431,7 +431,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(
 							ctrPath(analyzerPath),
 							"-daemon",
-							noAuthRegistry.RepoName(appImage)),
+							readOnlyRegistry.RepoName(appImage)),
 					)
 
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
@@ -617,7 +617,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 									"--build-arg", "metadata="+metadata,
 								)
 
-								noAuthRegCacheImage = noAuthRegistry.RepoName(imageName)
+								noAuthRegCacheImage = readOnlyRegistry.RepoName(imageName)
 							})
 
 							// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
@@ -859,7 +859,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--build-arg", "metadata="+metadata,
 						)
 
-						noAuthRegAppImage = noAuthRegistry.RepoName(imageName)
+						noAuthRegAppImage = readOnlyRegistry.RepoName(imageName)
 					})
 
 					// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
@@ -1096,7 +1096,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								"--build-arg", "metadata="+metadata,
 							)
 
-							noAuthRegCacheImage = noAuthRegistry.RepoName(imageName)
+							noAuthRegCacheImage = readOnlyRegistry.RepoName(imageName)
 						})
 
 						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
@@ -1133,7 +1133,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								ctrPath(analyzerPath),
 								"-cache-image",
 								noAuthRegCacheImage,
-								noAuthRegistry.RepoName("some-image"),
+								readOnlyRegistry.RepoName("some-image"),
 							) // #nosec G204
 							output, err := cmd.CombinedOutput()
 
@@ -1214,8 +1214,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
-							"-tag", noAuthRegistry.RepoName("my-tag"),
-							noAuthRegistry.RepoName("some-image"),
+							"-tag", readOnlyRegistry.RepoName("my-tag"),
+							readOnlyRegistry.RepoName("some-image"),
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
 
