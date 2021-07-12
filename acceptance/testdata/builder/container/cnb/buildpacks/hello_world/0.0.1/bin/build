@@ -9,6 +9,11 @@ env_dir=${platform_dir}/env
 layers_dir=$1
 plan_path=$3
 
+export
+env
+# acceptance test
+echo "CNB_APP_DIR: ${PWD}"
+
 # PLATFORM DIR
 echo "     platform_dir files:"
 ls -alR "${platform_dir}" | sed 's/^/       /'

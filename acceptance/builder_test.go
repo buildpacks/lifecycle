@@ -258,13 +258,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					"--env", "CNB_APP_DIR=/different_workspace_from_env",
+					"--env", "CNB_APP_DIR=/env_folders/different_cnb_app_dir_from_env",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
 				//print(string(output), err)
-				h.AssertNotNil(t, err) //due to not exist directory
-				expected := "/different_workspace_from_env"
+				h.AssertNil(t, err) //due to not exist directory
+				expected := "CNB_APP_DIR: /env_folders/different_cnb_app_dir_from_env"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
