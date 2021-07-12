@@ -603,7 +603,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						})
 
 						when("no auth registry", func() {
-							var noAuthRegCacheImage string
+							var readOnlyRegCacheImage string
 
 							it.Before(func() {
 								metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
@@ -617,7 +617,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 									"--build-arg", "metadata="+metadata,
 								)
 
-								noAuthRegCacheImage = readOnlyRegistry.RepoName(imageName)
+								readOnlyRegCacheImage = readOnlyRegistry.RepoName(imageName)
 							})
 
 							// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
@@ -639,7 +639,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 										ctrPath(analyzerPath),
 										"-daemon",
 										"-cache-image",
-										noAuthRegCacheImage,
+										readOnlyRegCacheImage,
 										"some-image",
 									),
 								)
@@ -1082,7 +1082,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 
 					when("no auth registry", func() {
-						var noAuthRegCacheImage string
+						var readOnlyRegCacheImage string
 
 						it.Before(func() {
 							metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
@@ -1096,7 +1096,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								"--build-arg", "metadata="+metadata,
 							)
 
-							noAuthRegCacheImage = readOnlyRegistry.RepoName(imageName)
+							readOnlyRegCacheImage = readOnlyRegistry.RepoName(imageName)
 						})
 
 						// Don't attempt to remove the image, as it's stored in the test registry, which is ephemeral.
@@ -1114,7 +1114,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								),
 								h.WithArgs(
 									ctrPath(analyzerPath),
-									"-cache-image", noAuthRegCacheImage,
+									"-cache-image", readOnlyRegCacheImage,
 									"some-image",
 								),
 							)
@@ -1132,13 +1132,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								analyzeImage,
 								ctrPath(analyzerPath),
 								"-cache-image",
-								noAuthRegCacheImage,
+								readOnlyRegCacheImage,
 								readOnlyRegistry.RepoName("some-image"),
 							) // #nosec G204
 							output, err := cmd.CombinedOutput()
 
 							h.AssertNotNil(t, err)
-							expected := "failed to : ensure registry read/write access to " + noAuthRegCacheImage
+							expected := "failed to : ensure registry read/write access to " + readOnlyRegCacheImage
 							h.AssertStringContains(t, string(output), expected)
 						})
 					})
