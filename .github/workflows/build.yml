@@ -120,9 +120,14 @@ jobs:
           path: out/lifecycle-v*+linux.x86-64.tgz
       - uses: actions/upload-artifact@v2
         with:
+          name: lifecycle-linux-arm64
+          path: out/lifecycle-v*+linux.arm64.tgz
+      - uses: actions/upload-artifact@v2
+        with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
       - uses: azure/docker-login@v1
+        if: github.event_name == 'push'
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -135,10 +140,16 @@ jobs:
       - name: Publish images
         if: github.event_name == 'push'
         run: |
+          LIFECYCLE_IMAGE_TAG=$(git describe --always)
+          DOCKER_CLI_EXPERIMENTAL=enabled
           go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
+          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch amd64
           go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows
-          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
-          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
+          docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
+          docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
   pack-acceptance-linux:
     if: github.event_name == 'push'
     needs: build-and-publish

@@ -29,7 +29,7 @@ type BuildpackStore interface {
 type Buildpack interface {
 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
 	ConfigFile() *buildpack.Descriptor
-	Detect(config *buildpack.DetectConfig) buildpack.DetectRun
+	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
 	SupportsAssetPackages() bool
 }
 

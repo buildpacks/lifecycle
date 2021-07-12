@@ -32,10 +32,11 @@ var (
 
 func TestDetector(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Detector acceptance tests are not yet supported on Windows")
+	h.SkipIf(t, runtime.GOARCH != "amd64", "Detector acceptance tests are not yet supported on non-amd64")
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	h.MakeAndCopyLifecycle(t, "linux", detectorBinaryDir)
+	h.MakeAndCopyLifecycle(t, "linux", "amd64", detectorBinaryDir)
 	h.DockerBuild(t,
 		detectImage,
 		detectDockerContext,
@@ -118,45 +119,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, failErr.ExitCode(), 20) // platform code for cmd.FailedDetect
 			expected := "No buildpack groups passed detection."
 			h.AssertStringContains(t, string(output), expected)
-		})
-	})
-
-	when("assets env var is set on the builder", func() {
-		var copyDir, containerName string
-		it.Before(func() {
-			containerName = "test-container-" + h.RandString(10)
-			var err error
-			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
-			h.AssertNil(t, err)
-		})
-		it.After(func() {
-			if h.DockerContainerExists(t, containerName) {
-				h.Run(t, exec.Command("docker", "rm", containerName))
-			}
-			os.RemoveAll(copyDir)
-		})
-
-		it("does not appear in the detection environment", func() {
-			h.DockerRunAndCopy(t,
-				containerName,
-				copyDir,
-				"/layers",
-				detectImage,
-				h.WithFlags("--user", userID,
-					"--env", "CNB_ORDER_PATH=/cnb/orders/always_detect_order.toml",
-					"--env", "CNB_BUILDPACKS_DIR=/cnb/custom_buildpacks",
-					"--env", "CNB_APP_DIR=/custom_workspace",
-					"--env", "CNB_GROUP_PATH=./custom_group.toml",
-					"--env", "CNB_PLAN_PATH=./custom_plan.toml",
-					"--env", "CNB_PLATFORM_DIR=/custom_platform",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-				),
-				h.WithArgs("-log-level=debug"),
-			)
-
-			logs := h.Run(t, exec.Command("docker", "logs", containerName))
-			h.AssertStringDoesNotContain(t, logs, "CNB_ASSETS")
-			h.AssertStringContains(t, logs, "NO ASSETS")
 		})
 	})
 
