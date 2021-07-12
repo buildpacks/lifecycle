@@ -10,11 +10,11 @@ import (
 	"testing"
 )
 
-func MakeAndCopyLauncher(t *testing.T, goos, destDir string) {
+func MakeAndCopyLauncher(t *testing.T, goos, goarch, destDir string) {
 	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
 
-	cmd := exec.Command("make", fmt.Sprintf("build-%s-launcher", goos)) // #nosec G204
+	cmd := exec.Command("make", fmt.Sprintf("build-%s-%s-launcher", goos, goarch)) // #nosec G204
 
 	wd, err := os.Getwd()
 	AssertNil(t, err)
@@ -29,14 +29,14 @@ func MakeAndCopyLauncher(t *testing.T, goos, destDir string) {
 	t.Log("Building binaries: ", cmd.Args)
 	Run(t, cmd)
 
-	copyLauncher(t, filepath.Join(buildDir, goos, "lifecycle"), destDir)
+	copyLauncher(t, filepath.Join(buildDir, fmt.Sprintf("%s-%s", goos, goarch), "lifecycle"), destDir)
 }
 
-func MakeAndCopyLifecycle(t *testing.T, goos, destDir string, envs ...string) {
+func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...string) {
 	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
 	AssertNil(t, err)
 
-	cmd := exec.Command("make", "build-"+goos) // #nosec G204
+	cmd := exec.Command("make", fmt.Sprintf("build-%s-%s", goos, goarch)) // #nosec G204
 
 	wd, err := os.Getwd()
 	AssertNil(t, err)
@@ -49,10 +49,10 @@ func MakeAndCopyLifecycle(t *testing.T, goos, destDir string, envs ...string) {
 	)
 	cmd.Env = append(os.Environ(), envs...)
 
-	t.Log("Building binaries: ", cmd.Args)
+	t.Log("Building binaries:", cmd.Args)
 	Run(t, cmd)
 
-	copyLifecycle(t, filepath.Join(buildDir, goos, "lifecycle"), destDir)
+	copyLifecycle(t, filepath.Join(buildDir, fmt.Sprintf("%s-%s", goos, goarch), "lifecycle"), destDir)
 }
 
 func copyLauncher(t *testing.T, src, dst string) {

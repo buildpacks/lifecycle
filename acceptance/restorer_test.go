@@ -27,10 +27,11 @@ var (
 
 func TestRestorer(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Restorer acceptance tests are not yet supported on Windows")
+	h.SkipIf(t, runtime.GOARCH != "amd64", "Restorer acceptance tests are not yet supported on non-amd64")
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	h.MakeAndCopyLifecycle(t, "linux", restorerBinaryDir)
+	h.MakeAndCopyLifecycle(t, "linux", "amd64", restorerBinaryDir)
 	h.DockerBuild(t, restorerImage, restoreDockerContext)
 	defer h.DockerImageRemove(t, restorerImage)
 
