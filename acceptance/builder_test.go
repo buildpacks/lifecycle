@@ -317,13 +317,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					"--env", "CNB_LAYERS_DIR=/different_layers_path_dir_from_env",
+					"--env", "CNB_LAYERS_DIR=/tmp/different_layers_path_dir_from_env",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
 				//print(string(output), err)
-				h.AssertNotNil(t, err) //due to not exist directory
-				expected := "/different_layers_path_dir_from_env"
+				h.AssertNil(t, err) //due to not exist directory
+				expected := "layers_dir: /tmp/different_layers_path_dir_from_env"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
