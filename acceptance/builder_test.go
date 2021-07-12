@@ -330,17 +330,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("CNB_PLAN_PATH", func() {
 			it("CNB_PLAN_PATH is successfully transmitted to in build script", func() {
+
 				command := exec.Command(
 					"docker",
 					"run",
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					"--env", "CNB_PLAN_PATH=/different_plan_path_dir_from_env",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/differrent_plan_from_env.toml",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
-				//print(string(output), err)
+				print(string(output), err)
 				h.AssertNotNil(t, err) //due to not exist directory
 				expected := "/different_plan_path_dir_from_env"
 				h.AssertStringContains(t, string(output), expected)
