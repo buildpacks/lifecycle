@@ -81,125 +81,139 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("error on reading Data", func() {
-
 		// .../cmd/lifecycle/builder.go#readData
 		when("read buildpack group file", func() {
-			it("no default group toml file in default location", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "failed to read buildpack group"
-				h.AssertStringContains(t, string(output), expected)
+			when("no default group toml file in default location", func() {
+				it("errors", func() {
+					command := exec.Command(
+						"docker",
+						"run",
+						"--rm",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+						builderImage,
+					)
+					output, err := command.CombinedOutput()
+					h.AssertNotNil(t, err)
+					expected := "failed to read buildpack group"
+					h.AssertStringContains(t, string(output), expected)
+				})
+
 			})
 
 			//TODO: check some output file for this case not except any error message
-			it("empty group toml file", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/empty_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					builderImage,
-				)
-				_, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNil(t, err)
-				//expected := "failed to read buildpack order file"
-				//h.AssertStringContains(t, string(output), expected)
+			when("empty group toml file", func() {
+				it("success", func() {
+					command := exec.Command(
+						"docker",
+						"run",
+						"--rm",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/empty_group.toml",
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+						builderImage,
+					)
+					_, err := command.CombinedOutput()
+					//print(string(output), err)
+					h.AssertNil(t, err)
+					//expected := "failed to read buildpack order file"
+					//h.AssertStringContains(t, string(output), expected)
+				})
 			})
 
-			it("invalid group toml file", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/wrong_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "failed to read buildpack group: Near line"
-				h.AssertStringContains(t, string(output), expected)
+			when("invalid group toml file", func() {
+				it("errors", func() {
+					command := exec.Command(
+						"docker",
+						"run",
+						"--rm",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/wrong_group.toml",
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+						builderImage,
+					)
+					output, err := command.CombinedOutput()
+					h.AssertNotNil(t, err)
+					expected := "failed to read buildpack group: Near line"
+					h.AssertStringContains(t, string(output), expected)
+				})
 			})
 
 			// .../cmd/lifecycle/builder.go#Exec
-			it("invalid builpack api group toml file", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/invalid_buildpack_api_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "failed to : parse buildpack API"
-				h.AssertStringContains(t, string(output), expected)
+			when("invalid builpack api group toml file", func() {
+				it("errors", func() {
+					command := exec.Command(
+						"docker",
+						"run",
+						"--rm",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/invalid_buildpack_api_group.toml",
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+						builderImage,
+					)
+					output, err := command.CombinedOutput()
+					h.AssertNotNil(t, err)
+					expected := "failed to : parse buildpack API"
+					h.AssertStringContains(t, string(output), expected)
+				})
 			})
 		})
 
 		// .../cmd/lifecycle/builder.go#readData
-		when("error during parse plan", func() {
-			it("no default plan.toml file in default location", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "failed to parse detect plan"
-				h.AssertStringContains(t, string(output), expected)
+		when("parse plan.toml", func() {
+			when("no default plan.toml file in default location", func() {
+				it("errors", func() {
+					command := exec.Command(
+						"docker",
+						"run",
+						"--rm",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+						builderImage,
+					)
+					output, err := command.CombinedOutput()
+					h.AssertNotNil(t, err)
+					expected := "failed to parse detect plan"
+					h.AssertStringContains(t, string(output), expected)
+				})
 			})
 
 			//TODO: check some output file for this case not except any error message
-			it("empty parse plan.toml file", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/empty_plan.toml",
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					builderImage,
-				)
-				_, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNil(t, err)
-				//expected := "failed to read buildpack order file"
-				//h.AssertStringContains(t, string(output), expected)
+			when("empty parse plan.toml file", func() {
+				it("success", func() {
+					command := exec.Command(
+						"docker",
+						"run",
+						"--rm",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/empty_plan.toml",
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+						builderImage,
+					)
+					_, err := command.CombinedOutput()
+					//print(string(output), err)
+					h.AssertNil(t, err)
+					//expected := "failed to read buildpack order file"
+					//h.AssertStringContains(t, string(output), expected)
+				})
 			})
 
-			it("invalid parse plan.toml file", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/wrong_plan.toml",
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "failed to parse detect plan: Near line"
-				h.AssertStringContains(t, string(output), expected)
+			when("invalid parse plan.toml file", func() {
+				it("errors", func() {
+					command := exec.Command(
+						"docker",
+						"run",
+						"--rm",
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/wrong_plan.toml",
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+						builderImage,
+					)
+					output, err := command.CombinedOutput()
+					h.AssertNotNil(t, err)
+					expected := "failed to parse detect plan: Near line"
+					h.AssertStringContains(t, string(output), expected)
+				})
 			})
 
 		})
