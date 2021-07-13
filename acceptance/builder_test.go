@@ -289,25 +289,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("CNB_GROUP_PATH changed", func() {
-			it("CNB_GROUP_PATH is successfully transmitted to in build script", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					"--env", "CNB_GROUP_PATH=/different_group_path_dir_from_env",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNotNil(t, err) //due to not exist directory
-				expected := "/different_group_path_dir_from_env"
-				h.AssertStringContains(t, string(output), expected)
-			})
-		})
-
 		when("CNB_LAYERS_DIR", func() {
 			it("CNB_LAYERS_DIR is successfully transmitted to in build script", func() {
 				command := exec.Command(
