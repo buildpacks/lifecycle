@@ -3,3 +3,8 @@
   homepage = "https://github.com/buildpacks/samples/tree/main/buildpacks/hello-world"
   id = "hello_world"
   version = "0.0.1"
+
+  [[entries.requires]]
+      name = "<dependency name>"
+      [entries.requires.metadata]
+        # arbitrary data describing the required dependency

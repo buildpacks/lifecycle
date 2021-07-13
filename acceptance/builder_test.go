@@ -310,7 +310,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("CNB_PLAN_PATH", func() {
-			it("CNB_PLAN_PATH is successfully transmitted to in build script", func() {
+			it.Focus("CNB_PLAN_PATH is successfully transmitted to in build script", func() {
 
 				command := exec.Command(
 					"docker",
@@ -323,8 +323,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 				output, err := command.CombinedOutput()
 				print(string(output), err)
-				h.AssertNotNil(t, err) //due to not exist directory
-				expected := "/different_plan_path_dir_from_env"
+				h.AssertNil(t, err) //due to not exist directory
+				expected := "different_plan_from_env.toml_reqires_subset_content"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})

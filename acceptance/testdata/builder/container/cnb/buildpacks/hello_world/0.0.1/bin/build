@@ -35,8 +35,6 @@ echo "     layers_dir: ${layers_dir}"
 echo "     plan_path: ${plan_path}"
 echo "     plan contents:"
 cat ${plan_path}
-echo "     plan word count:"
-wc ${plan_path}
 echo
 
 echo "---> Done"
