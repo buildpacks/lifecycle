@@ -336,7 +336,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
-				print(string(output), err)
+				//print(string(output), err)
 				h.AssertNil(t, err) //due to not exist directory
 				expected := "different_plan_from_env.toml_reqires_subset_content"
 				h.AssertStringContains(t, string(output), expected)
