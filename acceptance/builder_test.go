@@ -24,7 +24,7 @@ var (
 	builderDockerContext = filepath.Join("testdata", "builder")
 	builderBinaryDir     = filepath.Join("testdata", "builder", "container", "cnb", "lifecycle")
 	builderImage         = "lifecycle/acceptance/builder"
-	builderUserID        = "1234"
+	//builderUserID        = "1234"
 )
 
 func TestBuilder(t *testing.T) {
@@ -32,22 +32,18 @@ func TestBuilder(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "builder acceptance tests are not yet supported on Windows")
 
 	rand.Seed(time.Now().UTC().UnixNano())
-
-	// FIXME: this is for development speed we need to comment out before production !
-	//h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
+	h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
-	// FIXME: this is for development speed we need to comment out before production !
-	//defer h.DockerImageRemove(t, builderImage)
+	defer h.DockerImageRemove(t, builderImage)
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
-
 	var copyDir, containerName, cacheVolume string
 
 	it.Before(func() {
@@ -122,7 +118,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					expected := "failed to read buildpack group"
 					h.AssertStringContains(t, string(output), expected)
 				})
-
 			})
 
 			//TODO: check some output file for this case not except any error message
@@ -237,12 +232,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
-
 		})
 	})
 
 	when("determining the location of input files", func() {
-
 		// .../cmd/lifecycle/builder.go#Args
 		when("group.toml path is not specified", func() {
 			it("will look for group.toml in the provided layers directory", func() {
@@ -280,7 +273,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				//h.AssertStringContains(t, string(output), expected)
 			})
 		})
-
 	})
 
 	when("CNB_APP_DIR changed", func() {
@@ -381,7 +373,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
-
 }
 
 func assertBuilderMetadata(t *testing.T, path string) {
