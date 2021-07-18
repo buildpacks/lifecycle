@@ -242,7 +242,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		// .../cmd/lifecycle/builder.go#Args
 		when("plan.toml path is not specified", func() {
-			it(""will look for plan.toml in the provided <layers> directory", func() {
+			it("will look for plan.toml in the provided <layers> directory", func() {
 				command := exec.Command(
 					"docker",
 					"run",
