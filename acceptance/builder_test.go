@@ -80,10 +80,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("error on reading Data", func() {
+	when("invalid input files", func() {
 		// .../cmd/lifecycle/builder.go#readData
-		when("read buildpack group file", func() {
-			when("no default group toml file in default location", func() {
+		when("group.toml", func() {
+			when("not found", func() {
 				it("errors", func() {
 					command := exec.Command(
 						"docker",
@@ -102,8 +102,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			//TODO: check some output file for this case not except any error message
-			when("empty group toml file", func() {
-				it("success", func() {
+			when("empty", func() {
+				it("succeeds", func() {
 					command := exec.Command(
 						"docker",
 						"run",
@@ -121,7 +121,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("invalid group toml file", func() {
+			when("invalid", func() {
 				it("errors", func() {
 					command := exec.Command(
 						"docker",
@@ -140,7 +140,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			// .../cmd/lifecycle/builder.go#Exec
-			when("invalid builpack api group toml file", func() {
+			when("invalid builpack api", func() {
 				it("errors", func() {
 					command := exec.Command(
 						"docker",
@@ -160,7 +160,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		// .../cmd/lifecycle/builder.go#readData
-		when("parse plan.toml", func() {
+		when("plan.toml", func() {
 			when("no default plan.toml file in default location", func() {
 				it("errors", func() {
 					command := exec.Command(
@@ -179,7 +179,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			//TODO: check some output file for this case not except any error message
-			when("empty parse plan.toml file", func() {
+			when("empty", func() {
 				it("success", func() {
 					command := exec.Command(
 						"docker",
@@ -198,7 +198,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("invalid parse plan.toml file", func() {
+			when("invalid", func() {
 				it("errors", func() {
 					command := exec.Command(
 						"docker",
@@ -219,11 +219,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("PlaceHolders need to replace with defaults", func() {
+	when("determining the location of input files", func() {
 
 		// .../cmd/lifecycle/builder.go#Args
-		when("groupPath is equals to PlaceHolder groupPath", func() {
-			it("will replace placeholder with default groupPath", func() {
+		when("group.toml path is not specified", func() {
+			it("will look for group.toml in the provided <layers> directory", func() {
 				command := exec.Command(
 					"docker",
 					"run",
@@ -241,8 +241,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		// .../cmd/lifecycle/builder.go#Args
-		when("planPath is equals to PlaceHolder planPath", func() {
-			it("will replace placeholder with default planPath", func() {
+		when("plan.toml path is not specified", func() {
+			it(""will look for plan.toml in the provided <layers> directory", func() {
 				command := exec.Command(
 					"docker",
 					"run",
@@ -264,7 +264,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	/// .../cmd/lifecycle/builder.go#build
 	when("Builder args are successfully transmitted to in build script", func() {
 		when("CNB_APP_DIR changed", func() {
-			it("CNB_APP_DIR is successfully transmitted to in build script", func() {
+			it("sets the buildpacks' working directory to CNB_APP_DIR", func() {
 				command := exec.Command(
 					"docker",
 					"run",
@@ -284,7 +284,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("CNB_BUILDPACKS_DIR changed", func() {
-			it("CNB_BUILDPACKS_DIR is successfully transmitted to in build script", func() {
+			it("uses buildpacks from CNB_BUILDPACKS_DIR", func() {
 				command := exec.Command(
 					"docker",
 					"run",
@@ -304,7 +304,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("CNB_LAYERS_DIR", func() {
-			it("CNB_LAYERS_DIR is successfully transmitted to in build script", func() {
+			it("CNB_LAYERS_DIR is successfully transmitted to build script", func() {
 				command := exec.Command(
 					"docker",
 					"run",
@@ -324,7 +324,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("CNB_PLAN_PATH", func() {
-			it("CNB_PLAN_PATH is successfully transmitted to in build script", func() {
+			it("provides the buildpack a filtered version of the plan found at CNB_PLAN_PATH", func() {
 
 				command := exec.Command(
 					"docker",
@@ -332,7 +332,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/differrent_plan_from_env.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/different_plan_from_env.toml",
 					builderImage,
 				)
 				output, err := command.CombinedOutput()
@@ -344,7 +344,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("CNB_PLATFORM_DIR", func() {
-			it("CNB_PLATFORM_DIR is successfully transmitted to in build script", func() {
+			it("CNB_PLATFORM_DIR is successfully transmitted to build script", func() {
 				command := exec.Command(
 					"docker",
 					"run",
