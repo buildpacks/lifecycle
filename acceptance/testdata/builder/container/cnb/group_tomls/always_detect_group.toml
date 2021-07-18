@@ -8,3 +8,4 @@
       name = "<dependency name>"
       [entries.requires.metadata]
         # arbitrary data describing the required dependency
+  
