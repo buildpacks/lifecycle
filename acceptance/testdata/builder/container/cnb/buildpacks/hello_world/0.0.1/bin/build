@@ -9,31 +9,18 @@ env_dir=${platform_dir}/env
 layers_dir=$1
 plan_path=$3
 
-export
-env
-# acceptance test
+# CNB_APP_DIR
 echo "CNB_APP_DIR: ${PWD}"
 
 # PLATFORM DIR
-echo "     platform_dir files:"
-ls -alR "${platform_dir}" | sed 's/^/       /'
-
-# ENV VARS
-echo "     env_dir: ${env_dir}"
-echo "     env vars:"
-if compgen -G "${env_dir}/*" > /dev/null; then
-  for var in ${env_dir}/*; do
-    declare "$(basename ${var})=$(<${var})"
-  done
-fi
-export | sed 's/^/       /'
+echo "PLATFORM_DIR: ${platform_dir}"
 
 # LAYERS
-echo "     layers_dir: ${layers_dir}"
+echo "LAYERS_DIR: ${layers_dir}"
 
 # PLAN
-echo "     plan_path: ${plan_path}"
-echo "     plan contents:"
+echo "PLAN_PATH: ${plan_path}"
+echo "plan contents:"
 cat ${plan_path}
 echo
 

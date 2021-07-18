@@ -338,7 +338,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			output, err := command.CombinedOutput()
 			//print(string(output), err)
 			h.AssertNil(t, err) //we have real directory
-			expected := "layers_dir: /tmp/different_layers_path_dir_from_env"
+			expected := "LAYERS_DIR: /tmp/different_layers_path_dir_from_env"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
@@ -375,9 +375,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
-			print(string(output), err)
+			//print(string(output), err)
 			h.AssertNil(t, err) //we have real directory
-			expected := "/env_folders/different_platform_dir_from_env"
+			expected := "PLATFORM_DIR: /env_folders/different_platform_dir_from_env"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
