@@ -2,17 +2,21 @@ package acceptance
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -43,6 +47,26 @@ func TestBuilder(t *testing.T) {
 }
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
+
+	var copyDir, containerName, cacheVolume string
+
+	it.Before(func() {
+		containerName = "test-container-" + h.RandString(10)
+		var err error
+		copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+		h.AssertNil(t, err)
+	})
+
+	it.After(func() {
+		if h.DockerContainerExists(t, containerName) {
+			h.Run(t, exec.Command("docker", "rm", containerName))
+		}
+		if h.DockerVolumeExists(t, cacheVolume) {
+			h.DockerVolumeRemove(t, cacheVolume)
+		}
+		os.RemoveAll(copyDir)
+	})
+
 	// .../cmd/lifecycle/builder.go#Args
 	when("called with arguments", func() {
 		it("errors", func() {
@@ -104,20 +128,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			//TODO: check some output file for this case not except any error message
 			when("empty", func() {
 				it("succeeds", func() {
-					command := exec.Command(
-						"docker",
-						"run",
-						"--rm",
-						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/empty_group.toml",
-						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						ctrPath("/layers"),
 						builderImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+							"--env", "CNB_GROUP_PATH=/cnb/group_tomls/empty_group.toml",
+							"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+						),
 					)
-					_, err := command.CombinedOutput()
-					//print(string(output), err)
-					h.AssertNil(t, err)
-					//expected := "failed to read buildpack order file"
-					//h.AssertStringContains(t, string(output), expected)
+					// check builder metadata.toml for success test
+					assertBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
 				})
 			})
 
@@ -181,20 +204,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			//TODO: check some output file for this case not except any error message
 			when("empty", func() {
 				it("success", func() {
-					command := exec.Command(
-						"docker",
-						"run",
-						"--rm",
-						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/empty_plan.toml",
-						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						ctrPath("/layers"),
 						builderImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+							"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/empty_plan.toml",
+							"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+						),
 					)
-					_, err := command.CombinedOutput()
-					//print(string(output), err)
-					h.AssertNil(t, err)
-					//expected := "failed to read buildpack order file"
-					//h.AssertStringContains(t, string(output), expected)
+					// check builder metadata.toml for success test
+					assertBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
 				})
 			})
 
@@ -364,4 +386,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+}
+
+func assertBuilderMetadata(t *testing.T, path string) {
+	contents, _ := ioutil.ReadFile(path)
+	h.AssertEq(t, len(contents) > 0, true)
+
+	var analyzedMd platform.BuildMetadata
+	_, err := toml.Decode(string(contents), &analyzedMd)
+	h.AssertNil(t, err)
 }
