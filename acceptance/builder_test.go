@@ -376,7 +376,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			)
 			output, err := command.CombinedOutput()
 			print(string(output), err)
-			h.AssertNil(t, err) //due to not exist directory
+			h.AssertNil(t, err) //we have real directory
 			expected := "/env_folders/different_platform_dir_from_env"
 			h.AssertStringContains(t, string(output), expected)
 		})
