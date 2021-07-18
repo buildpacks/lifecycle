@@ -338,7 +338,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			output, err := command.CombinedOutput()
 			//print(string(output), err)
 			h.AssertNil(t, err) //we have real directory
-			expected := "LAYERS_DIR: /tmp/different_layers_path_dir_from_env"
+			expected := "LAYERS_DIR: /tmp/different_layers_path_dir_from_env/hello_world"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
