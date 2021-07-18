@@ -161,7 +161,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		// .../cmd/lifecycle/builder.go#readData
 		when("plan.toml", func() {
-			when("no default plan.toml file in default location", func() {
+			when("not found", func() {
 				it("errors", func() {
 					command := exec.Command(
 						"docker",
