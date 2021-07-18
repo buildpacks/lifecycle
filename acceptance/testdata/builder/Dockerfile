@@ -3,8 +3,6 @@ FROM ubuntu:bionic
 ARG cnb_uid=1234
 ARG cnb_gid=1000
 
-ENV CNB_ASSETS=/some/asset/path
-
 COPY ./container/ /
 
 ENTRYPOINT ["/cnb/lifecycle/builder"]
