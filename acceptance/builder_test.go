@@ -283,106 +283,103 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	})
 
-	/// .../cmd/lifecycle/builder.go#build
-	when("Builder args are successfully transmitted to in build script", func() {
-		when("CNB_APP_DIR changed", func() {
-			it("sets the buildpacks' working directory to CNB_APP_DIR", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					"--env", "CNB_APP_DIR=/env_folders/different_cnb_app_dir_from_env",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNil(t, err) //we have real directory
-				expected := "CNB_APP_DIR: /env_folders/different_cnb_app_dir_from_env"
-				h.AssertStringContains(t, string(output), expected)
-			})
+	when("CNB_APP_DIR changed", func() {
+		it("sets the buildpacks' working directory to CNB_APP_DIR", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+				"--env", "CNB_APP_DIR=/env_folders/different_cnb_app_dir_from_env",
+				builderImage,
+			)
+			output, err := command.CombinedOutput()
+			//print(string(output), err)
+			h.AssertNil(t, err) //we have real directory
+			expected := "CNB_APP_DIR: /env_folders/different_cnb_app_dir_from_env"
+			h.AssertStringContains(t, string(output), expected)
 		})
+	})
 
-		when("CNB_BUILDPACKS_DIR changed", func() {
-			it("uses buildpacks from CNB_BUILDPACKS_DIR", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					"--env", "CNB_BUILDPACKS_DIR=/env_folders/different_buildpack_dir_from_env",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNil(t, err) //we have real directory
-				expected := "CNB_BUILDPACK_DIR: /env_folders/different_buildpack_dir_from_env"
-				h.AssertStringContains(t, string(output), expected)
-			})
+	when("CNB_BUILDPACKS_DIR changed", func() {
+		it("uses buildpacks from CNB_BUILDPACKS_DIR", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+				"--env", "CNB_BUILDPACKS_DIR=/env_folders/different_buildpack_dir_from_env",
+				builderImage,
+			)
+			output, err := command.CombinedOutput()
+			//print(string(output), err)
+			h.AssertNil(t, err) //we have real directory
+			expected := "CNB_BUILDPACK_DIR: /env_folders/different_buildpack_dir_from_env"
+			h.AssertStringContains(t, string(output), expected)
 		})
+	})
 
-		when("CNB_LAYERS_DIR", func() {
-			it("CNB_LAYERS_DIR is successfully transmitted to build script", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					"--env", "CNB_LAYERS_DIR=/tmp/different_layers_path_dir_from_env",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNil(t, err) //we have real directory
-				expected := "layers_dir: /tmp/different_layers_path_dir_from_env"
-				h.AssertStringContains(t, string(output), expected)
-			})
+	when("CNB_LAYERS_DIR", func() {
+		it("CNB_LAYERS_DIR is successfully transmitted to build script", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+				"--env", "CNB_LAYERS_DIR=/tmp/different_layers_path_dir_from_env",
+				builderImage,
+			)
+			output, err := command.CombinedOutput()
+			//print(string(output), err)
+			h.AssertNil(t, err) //we have real directory
+			expected := "layers_dir: /tmp/different_layers_path_dir_from_env"
+			h.AssertStringContains(t, string(output), expected)
 		})
+	})
 
-		when("CNB_PLAN_PATH", func() {
-			it("provides the buildpack a filtered version of the plan found at CNB_PLAN_PATH", func() {
+	when("CNB_PLAN_PATH", func() {
+		it("provides the buildpack a filtered version of the plan found at CNB_PLAN_PATH", func() {
 
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/different_plan_from_env.toml",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNil(t, err) //we have real directory
-				expected := "different_plan_from_env.toml_reqires_subset_content"
-				h.AssertStringContains(t, string(output), expected)
-			})
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/different_plan_from_env.toml",
+				builderImage,
+			)
+			output, err := command.CombinedOutput()
+			//print(string(output), err)
+			h.AssertNil(t, err) //we have real directory
+			expected := "different_plan_from_env.toml_reqires_subset_content"
+			h.AssertStringContains(t, string(output), expected)
 		})
+	})
 
-		when("CNB_PLATFORM_DIR", func() {
-			it("CNB_PLATFORM_DIR is successfully transmitted to build script", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-					"--env", "CNB_PLATFORM_DIR=/different_platform_dir_from_env",
-					builderImage,
-				)
-				output, err := command.CombinedOutput()
-				//print(string(output), err)
-				h.AssertNotNil(t, err) //due to not exist directory
-				expected := "/different_platform_dir_from_env"
-				h.AssertStringContains(t, string(output), expected)
-			})
+	when("CNB_PLATFORM_DIR", func() {
+		it("CNB_PLATFORM_DIR is successfully transmitted to build script", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+				"--env", "CNB_PLATFORM_DIR=/different_platform_dir_from_env",
+				builderImage,
+			)
+			output, err := command.CombinedOutput()
+			//print(string(output), err)
+			h.AssertNotNil(t, err) //due to not exist directory
+			expected := "/different_platform_dir_from_env"
+			h.AssertStringContains(t, string(output), expected)
 		})
 	})
 
