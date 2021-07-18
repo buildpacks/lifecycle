@@ -299,7 +299,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 				output, err := command.CombinedOutput()
 				//print(string(output), err)
-				h.AssertNil(t, err) //due to not exist directory
+				h.AssertNil(t, err) //we have real directory
 				expected := "CNB_APP_DIR: /env_folders/different_cnb_app_dir_from_env"
 				h.AssertStringContains(t, string(output), expected)
 			})
@@ -319,7 +319,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 				output, err := command.CombinedOutput()
 				//print(string(output), err)
-				h.AssertNil(t, err) //due to not exist directory
+				h.AssertNil(t, err) //we have real directory
 				expected := "CNB_BUILDPACK_DIR: /env_folders/different_buildpack_dir_from_env"
 				h.AssertStringContains(t, string(output), expected)
 			})
@@ -339,7 +339,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 				output, err := command.CombinedOutput()
 				//print(string(output), err)
-				h.AssertNil(t, err) //due to not exist directory
+				h.AssertNil(t, err) //we have real directory
 				expected := "layers_dir: /tmp/different_layers_path_dir_from_env"
 				h.AssertStringContains(t, string(output), expected)
 			})
@@ -359,7 +359,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 				output, err := command.CombinedOutput()
 				//print(string(output), err)
-				h.AssertNil(t, err) //due to not exist directory
+				h.AssertNil(t, err) //we have real directory
 				expected := "different_plan_from_env.toml_reqires_subset_content"
 				h.AssertStringContains(t, string(output), expected)
 			})
