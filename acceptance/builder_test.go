@@ -245,39 +245,39 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		// .../cmd/lifecycle/builder.go#Args
 		when("group.toml path is not specified", func() {
-			it("will look for group.toml in the provided <layers> directory", func() {
+			it("will look for group.toml in the provided layers directory", func() {
 				command := exec.Command(
 					"docker",
 					"run",
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_GROUP_PATH=<layers>/group.toml",
+					"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
 					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
 					builderImage,
 				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "failed to read buildpack group: open /layers/group.toml"
-				h.AssertStringContains(t, string(output), expected)
+				_, err := command.CombinedOutput()
+				h.AssertNil(t, err)
+				//expected := "failed to read buildpack group: open /layers/group.toml"
+				//h.AssertStringContains(t, string(output), expected)
 			})
 		})
 
 		// .../cmd/lifecycle/builder.go#Args
 		when("plan.toml path is not specified", func() {
-			it("will look for plan.toml in the provided <layers> directory", func() {
+			it("will look for plan.toml in the provided layers directory", func() {
 				command := exec.Command(
 					"docker",
 					"run",
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_PLAN_PATH=<layers>/plan.toml",
+					"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
 					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 					builderImage,
 				)
-				output, err := command.CombinedOutput()
-				h.AssertNotNil(t, err)
-				expected := "failed to parse detect plan: open /layers/plan.toml"
-				h.AssertStringContains(t, string(output), expected)
+				_, err := command.CombinedOutput()
+				h.AssertNil(t, err)
+				//expected := "failed to parse detect plan: open /layers/plan.toml"
+				//h.AssertStringContains(t, string(output), expected)
 			})
 		})
 
@@ -332,13 +332,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
 				"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
-				"--env", "CNB_LAYERS_DIR=/tmp/different_layers_path_dir_from_env",
+				"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
 			//print(string(output), err)
 			h.AssertNil(t, err) //we have real directory
-			expected := "LAYERS_DIR: /tmp/different_layers_path_dir_from_env/hello_world"
+			expected := "LAYERS_DIR: /layers/different_layer_dir_from_env/hello_world"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
