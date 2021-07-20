@@ -153,7 +153,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			detectRun := bpTOML.Detect(&detectConfig, mockEnv)
 
 			h.AssertEq(t, detectRun.Code, -1)
-			h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1\ndetect err: A@v1") // the output from the buildpack detect script
+			h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
 			err := detectRun.Err
 			h.AssertEq(t, err.Error(), `Near line 2 (last key parsed 'bad'): expected value but found "toml" instead`)
 		})
