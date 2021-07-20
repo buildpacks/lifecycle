@@ -121,6 +121,30 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("there is a buildpack with a bad toml file", func() {
+		it("errors and prints the output", func() {
+			command := exec.Command(
+				"docker",
+				"run",
+				"--rm",
+				"--env", "CNB_ORDER_PATH=/cnb/orders/bad_order.toml",
+				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				detectImage,
+			)
+			output, err := command.CombinedOutput()
+			h.AssertNotNil(t, err)
+			failErr, ok := err.(*exec.ExitError)
+			if !ok {
+				t.Fatalf("expected an error of type exec.ExitError")
+			}
+			h.AssertEq(t, failErr.ExitCode(), 21) // platform code for cmd.FailedDetectWithErrors
+			expectedErr := "Near line 1 (last key parsed 'bad'): expected value but found \"toml\" instead"
+			h.AssertStringContains(t, string(output), expectedErr)
+			expectedOutput := "some-output"
+			h.AssertStringContains(t, string(output), expectedOutput)
+		})
+	})
+
 	when("there is a buildpack group that pass detection", func() {
 		var copyDir, containerName string
 
