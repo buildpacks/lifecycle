@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-echo "some-output"
-
-plan_path=$2
-
-cat >> "${plan_path}" <<EOL
-bad=toml
-EOL
