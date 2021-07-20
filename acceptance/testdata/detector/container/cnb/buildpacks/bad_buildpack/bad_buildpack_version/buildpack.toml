@@ -1,5 +1,0 @@
-api = "0.3"
-[buildpack]
-    id = "bad_buildpack"
-    version = "bad_buildpack_version"
-    name = "Bad Buildpack"
