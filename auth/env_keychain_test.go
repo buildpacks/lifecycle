@@ -193,6 +193,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 
 						_, err = resolvedKeychain.Resolve(registry)
 						h.AssertNotNil(t, err)
+						h.AssertStringContains(t, err.Error(), "parsing auth header")
 						h.AssertStringDoesNotContain(t, err.Error(), "Some Bad Header")
 					})
 				})
