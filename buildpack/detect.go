@@ -86,7 +86,7 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	}
 	var t DetectRun
 	if _, err := toml.DecodeFile(planPath, &t); err != nil {
-		return DetectRun{Code: -1, Err: err}
+		return DetectRun{Code: -1, Err: err, Output: out.Bytes()}
 	}
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
