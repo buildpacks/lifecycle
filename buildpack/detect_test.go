@@ -118,11 +118,9 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail and print the output if the buildpack plan file has a bad format", func() {
-			mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
-
 			toappfile("\nbad=toml", "detect-plan-A-v1.toml")
 
-			detectRun := bpTOML.Detect(&detectConfig, mockEnv)
+			detectRun := bpTOML.Detect(&detectConfig)
 
 			h.AssertEq(t, detectRun.Code, -1)
 			h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
