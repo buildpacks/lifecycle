@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -179,9 +178,9 @@ func (a analyzeFixtures) removeAll(t *testing.T) {
 	h.DockerImageRemove(t, fixtures.daemonCacheImage)
 
 	// remove images that were built locally before being pushed to test registry
-	h.DockerImageRemove(t, strings.Split(fixtures.authRegAppImage, "/")[1])
-	h.DockerImageRemove(t, strings.Split(fixtures.authRegCacheImage, "/")[1])
-	h.DockerImageRemove(t, strings.Split(fixtures.authRegOtherAppImage, "/")[1])
+	h.DockerImageRemove(t, fixtures.authRegAppImage)
+	h.DockerImageRemove(t, fixtures.authRegCacheImage)
+	h.DockerImageRemove(t, fixtures.authRegOtherAppImage)
 }
 
 func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
