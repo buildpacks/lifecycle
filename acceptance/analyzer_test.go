@@ -36,7 +36,15 @@ var (
 	daemonOS, daemonArch string
 	readOnlyRegistry     *ih.DockerRegistry
 	authRegistry         *ih.DockerRegistry
+	customRegistry       *ih.DockerRegistry
 	registryNetwork      string
+)
+
+const (
+	readWriteImage = "image-readable-writable"
+	onlyReadImage  = "image-readable"
+	onlyWriteImage = "image-writable"
+	noAccessImage  = "noAccessImage"
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -56,7 +64,23 @@ func TestAnalyzer(t *testing.T) {
 	h.AssertNil(t, err)
 	defer os.RemoveAll(dockerConfigDir)
 
+	customDockerConfigDir, err := ioutil.TempDir("", "test.docker.config.custom.dir")
+	h.AssertNil(t, err)
+	defer os.RemoveAll(customDockerConfigDir)
+
+	var customPrivileges = make(map[string]ih.ImagePrivileges)
+	customPrivileges[readWriteImage] = ih.NewImagePrivileges(readWriteImage)
+	customPrivileges[onlyReadImage] = ih.NewImagePrivileges(onlyReadImage)
+	customPrivileges[onlyWriteImage] = ih.NewImagePrivileges(onlyWriteImage)
+	customPrivileges[noAccessImage] = ih.NewImagePrivileges(noAccessImage)
+
 	sharedRegHandler := registry.New(registry.Logger(log.New(ioutil.Discard, "", log.Lshortfile)))
+	customRegistry = ih.NewDockerRegistry(ih.WithAuth(customDockerConfigDir), ih.WithSharedHandler(sharedRegHandler),
+		ih.WithCustomPrivileges(customPrivileges))
+
+	customRegistry.Start(t)
+	defer customRegistry.Stop(t)
+
 	authRegistry = ih.NewDockerRegistry(ih.WithAuth(dockerConfigDir), ih.WithSharedHandler(sharedRegHandler))
 	authRegistry.Start(t)
 	defer authRegistry.Stop(t)
@@ -207,8 +231,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("the provided layers directory isn't writeable", func() {
 			var imageName, authConfig string
-			var err error
 			it.Before(func() {
+				var err error
 				imageName = authRegistry.RepoName("some-image")
 				authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, imageName)
 				h.AssertNil(t, err)
@@ -992,21 +1016,34 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 
 				when("no read access", func() {
+					var previousImage string
+					it.Before(func() {
+						os.Setenv("DOCKER_CONFIG", customRegistry.DockerDirectory)
+						previousImage = customRegistry.RepoName(noAccessImage)
+					})
+
+					it.After(func() {
+						os.Setenv("DOCKER_CONFIG", authRegistry.DockerDirectory)
+					})
+
 					it("throws read error accessing previous image", func() {
+						authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, customRegistry.RepoName(readWriteImage))
+						h.AssertNil(t, err)
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--network", registryNetwork,
 							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_REGISTRY_AUTH="+authConfig,
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
-							"-previous-image", "my-previous-image",
-							"some-image",
+							"-previous-image", previousImage,
+							customRegistry.RepoName(readWriteImage),
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "failed to : ensure registry read access to"
+						expected := "failed to : ensure registry read access to " + previousImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})

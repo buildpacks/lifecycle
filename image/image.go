@@ -55,21 +55,17 @@ func VerifyRegistryAccess(regInputs RegistryInputs, keychain authn.Keychain) err
 }
 
 func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
-	if imageRef != "" {
-		img, _ := remote.NewImage(imageRef, keychain)
-		if !img.CheckReadAccess() {
-			return errors.New(fmt.Sprintf("ensure registry read access to %s", imageRef))
-		}
+	img, _ := remote.NewImage(imageRef, keychain)
+	if !img.CheckReadAccess() {
+		return errors.New(fmt.Sprintf("ensure registry read access to %s", imageRef))
 	}
 	return nil
 }
 
 func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
-	if imageRef != "" {
-		img, _ := remote.NewImage(imageRef, keychain)
-		if !img.CheckReadWriteAccess() {
-			return errors.New(fmt.Sprintf("ensure registry read/write access to %s", imageRef))
-		}
+	img, _ := remote.NewImage(imageRef, keychain)
+	if !img.CheckReadWriteAccess() {
+		return errors.New(fmt.Sprintf("ensure registry read/write access to %s", imageRef))
 	}
 	return nil
 }

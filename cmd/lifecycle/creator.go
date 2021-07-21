@@ -276,14 +276,7 @@ func (c *createCmd) Exec() error {
 
 func (c *createCmd) registryImages() []string {
 	var registryImages []string
-	if c.cacheImageRef != "" {
-		registryImages = append(registryImages, c.cacheImageRef)
-	}
-	if !c.useDaemon {
-		registryImages = append(registryImages, append([]string{c.outputImageRef}, c.additionalTags...)...)
-		registryImages = append(registryImages, c.runImageRef, c.previousImageRef)
-	}
-	return registryImages
+	return append(append(registryImages, c.ReadableRegistryImages()...), c.WriteableRegistryImages()...)
 }
 
 func (c *createCmd) platformAPIVersionGreaterThan06() bool {
@@ -292,19 +285,16 @@ func (c *createCmd) platformAPIVersionGreaterThan06() bool {
 
 func (c *createCmd) ReadableRegistryImages() []string {
 	var readableImages []string
-	if c.platformAPIVersionGreaterThan06() {
-		if !c.useDaemon {
-			readableImages = append(readableImages, c.previousImageRef, c.runImageRef)
-		}
+	if !c.useDaemon {
+		readableImages = appendNotEmpty(readableImages, c.previousImageRef, c.runImageRef)
 	}
 	return readableImages
 }
 func (c *createCmd) WriteableRegistryImages() []string {
 	var writeableImages []string
-	if c.platformAPIVersionGreaterThan06() {
-		if !c.useDaemon {
-			writeableImages = append(writeableImages, append([]string{c.cacheImageRef}, c.additionalTags...)...)
-		}
+	writeableImages = appendNotEmpty(writeableImages, c.cacheImageRef)
+	if !c.useDaemon {
+		writeableImages = append(writeableImages, appendNotEmpty([]string{c.outputImageRef}, c.additionalTags...)...)
 	}
 	return writeableImages
 }

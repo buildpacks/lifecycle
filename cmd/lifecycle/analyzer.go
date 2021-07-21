@@ -227,17 +227,15 @@ func (a *analyzeCmd) restoresLayerMetadata() bool {
 func (aa *analyzeArgs) ReadableRegistryImages() []string {
 	var readableImages []string
 	if !aa.useDaemon {
-		readableImages = append(readableImages, aa.previousImageRef, aa.runImageRef)
+		readableImages = appendNotEmpty(readableImages, aa.previousImageRef, aa.runImageRef)
 	}
 	return readableImages
 }
 func (aa *analyzeArgs) WriteableRegistryImages() []string {
 	var writeableImages []string
-	if aa.cacheImageRef != "" {
-		writeableImages = append(writeableImages, aa.cacheImageRef)
-	}
+	writeableImages = appendNotEmpty(writeableImages, aa.cacheImageRef)
 	if !aa.useDaemon {
-		writeableImages = append(writeableImages, append([]string{aa.outputImageRef}, aa.additionalTags...)...)
+		writeableImages = append(writeableImages, appendNotEmpty([]string{aa.outputImageRef}, aa.additionalTags...)...)
 	}
 	return writeableImages
 }
