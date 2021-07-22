@@ -143,7 +143,8 @@ func (a *analyzeCmd) Privileges() error {
 
 func (aa *analyzeArgs) registryImages() []string {
 	var registryImages []string
-	return append(append(registryImages, aa.ReadableRegistryImages()...), aa.WriteableRegistryImages()...)
+	registryImages = append(registryImages, aa.ReadableRegistryImages()...)
+	return append(registryImages, aa.WriteableRegistryImages()...)
 }
 
 func (a *analyzeCmd) Exec() error {
@@ -235,7 +236,8 @@ func (aa *analyzeArgs) WriteableRegistryImages() []string {
 	var writeableImages []string
 	writeableImages = appendNotEmpty(writeableImages, aa.cacheImageRef)
 	if !aa.useDaemon {
-		writeableImages = append(writeableImages, appendNotEmpty([]string{aa.outputImageRef}, aa.additionalTags...)...)
+		writeableImages = appendNotEmpty(writeableImages, aa.outputImageRef)
+		writeableImages = appendNotEmpty(writeableImages, aa.additionalTags...)
 	}
 	return writeableImages
 }

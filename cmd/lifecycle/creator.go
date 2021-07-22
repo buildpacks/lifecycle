@@ -276,7 +276,8 @@ func (c *createCmd) Exec() error {
 
 func (c *createCmd) registryImages() []string {
 	var registryImages []string
-	return append(append(registryImages, c.ReadableRegistryImages()...), c.WriteableRegistryImages()...)
+	registryImages = append(registryImages, c.ReadableRegistryImages()...)
+	return append(registryImages, c.WriteableRegistryImages()...)
 }
 
 func (c *createCmd) platformAPIVersionGreaterThan06() bool {
@@ -294,7 +295,8 @@ func (c *createCmd) WriteableRegistryImages() []string {
 	var writeableImages []string
 	writeableImages = appendNotEmpty(writeableImages, c.cacheImageRef)
 	if !c.useDaemon {
-		writeableImages = append(writeableImages, appendNotEmpty([]string{c.outputImageRef}, c.additionalTags...)...)
+		writeableImages = appendNotEmpty(writeableImages, c.outputImageRef)
+		writeableImages = appendNotEmpty(writeableImages, c.additionalTags...)
 	}
 	return writeableImages
 }

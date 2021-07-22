@@ -232,8 +232,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("the provided layers directory isn't writeable", func() {
 			var imageName, authConfig string
 			it.Before(func() {
-				var err error
 				imageName = authRegistry.RepoName("some-image")
+				var err error
 				authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, imageName)
 				h.AssertNil(t, err)
 			})
