@@ -4,8 +4,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -47,15 +50,12 @@ func doPackage() error {
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Failed to open -archivePath %s", archivePath))
 	}
-	defer f.Close()
 
 	zw := gzip.NewWriter(f)
-	defer zw.Close()
 
 	tw := archive.NewNormalizingTarWriter(tar.NewWriter(zw))
 	tw.WithUID(0)
 	tw.WithGID(0)
-	defer tw.Close()
 
 	templateContents, err := ioutil.ReadFile(descriptorPath)
 	if err != nil {
@@ -110,6 +110,45 @@ func doPackage() error {
 	err = archive.AddDirToArchive(tw, filepath.Base(inputDir))
 	if err != nil {
 		return errors.Wrap(err, "Failed to write dir to archive")
+	}
+
+	err = tw.Close()
+	if err != nil {
+		return errors.Wrap(err, "Failed to close tar writer")
+	}
+
+	err = zw.Close()
+	if err != nil {
+		return errors.Wrap(err, "Failed to close gzip writer")
+	}
+
+	err = f.Close()
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to close -archivePath %s", archivePath))
+	}
+
+	f, err = os.OpenFile(archivePath, os.O_RDONLY, 0777)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to open -archivePath %s", archivePath))
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err = io.Copy(h, f); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to calculate sha256 of -archivePath %s", archivePath))
+	}
+
+	hashFileName := archivePath + ".sha256"
+	hashFile, err := os.OpenFile(hashFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0777)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to open %s", hashFileName))
+	}
+	defer hashFile.Close()
+
+	sha := hex.EncodeToString(h.Sum(nil))
+	_, err = hashFile.Write([]byte(sha))
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to write sha256:%s to %s", h.Sum(nil), hashFileName))
 	}
 
 	return nil
