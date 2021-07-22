@@ -117,6 +117,17 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		it("should fail and print the output if the buildpack plan file has a bad format", func() {
+			toappfile("\nbad=toml", "detect-plan-A-v1.toml")
+
+			detectRun := bpTOML.Detect(&detectConfig)
+
+			h.AssertEq(t, detectRun.Code, -1)
+			h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
+			err := detectRun.Err
+			h.AssertEq(t, err.Error(), `Near line 2 (last key parsed 'bad'): expected value but found "toml" instead`)
+		})
+
 		it("should fail if buildpacks have both a top level version and a metadata version", func() {
 			toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 			toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
