@@ -943,7 +943,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					var authRegAppImage, authRegAppOtherImage, appAuthConfig string
 
 					it.Before(func() {
-						os.Setenv("DOCKER_CONFIG", authRegistry.DockerDirectory)
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 						authRegAppImage, appAuthConfig = buildAuthRegistryImage(
 							t,
@@ -1017,23 +1016,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("no read access", func() {
 					var previousImage string
-					it.Before(func() {
-						os.Setenv("DOCKER_CONFIG", customRegistry.DockerDirectory)
-						previousImage = customRegistry.RepoName(noAccessImage)
-					})
-
-					it.After(func() {
-						os.Setenv("DOCKER_CONFIG", authRegistry.DockerDirectory)
-					})
-
 					it("throws read error accessing previous image", func() {
-						authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, customRegistry.RepoName(readWriteImage))
 						h.AssertNil(t, err)
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--network", registryNetwork,
 							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_REGISTRY_AUTH="+authConfig,
+							"--env", "CNB_REGISTRY_AUTH={}",
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
