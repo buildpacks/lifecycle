@@ -82,7 +82,11 @@ func main() {
 		if info.OSType != targetOS {
 			log.Fatal("Target OS and daemon OS must match")
 		}
-		if info.Architecture != targetArch {
+		daemonArch := info.Architecture
+		if daemonArch == "x86_64" {
+			daemonArch = "amd64"
+		}
+		if daemonArch != targetArch {
 			log.Fatal("Target architecture and daemon architecture must match")
 		}
 		err = pullImage(dockerClient, baseImage)

@@ -320,7 +320,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			imageName := authRegistry.RepoName("some-image")
 			authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, imageName)
 			h.AssertNil(t, err)
-
 			output := h.DockerRun(t,
 				analyzeImage,
 				h.WithFlags(

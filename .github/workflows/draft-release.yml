@@ -22,7 +22,6 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-        shell: bash
       - name: Determine download urls for linux and windows
         id: artifact-urls
         uses: actions/github-script@v3.0.0
@@ -138,7 +137,8 @@ jobs:
       - name: Create Pre Release
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
-          gh release create v${{ env.LIFECYCLE_VERSION }} ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
+          gh release create v${{ env.LIFECYCLE_VERSION }} \
+            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
             --draft \
             --notes-file body.txt \
             --prerelease \
@@ -149,7 +149,8 @@ jobs:
       - name: Create Release
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
-          gh release create v${{ env.LIFECYCLE_VERSION }} ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
+          gh release create v${{ env.LIFECYCLE_VERSION }} \
+            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
             --draft \
             --notes-file body.txt \
             --target $GITHUB_REF \

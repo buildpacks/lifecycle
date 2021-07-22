@@ -17,7 +17,7 @@ jobs:
       - name: Set env
         run: |
           echo "LIFECYCLE_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)" >> $GITHUB_ENV
-          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)" >> $GITHUB_ENV
+          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always)" >> $GITHUB_ENV
       - name: Retag lifecycle images - semver
         run: |
           docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux
@@ -40,7 +40,7 @@ jobs:
       - name: Set env
         run: |
           echo "LIFECYCLE_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)" >> $env:GITHUB_ENV
-          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --dirty)" >> $env:GITHUB_ENV
+          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always)" >> $env:GITHUB_ENV
       - name: Retag lifecycle images - semver
         run: |
           docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows
