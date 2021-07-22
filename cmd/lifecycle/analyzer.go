@@ -166,6 +166,11 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
+	if a.platformAPIVersionGreaterThan06() {
+		if err := image.VerifyRegistryAccess(a, a.keychain); err != nil {
+			return cmd.FailErr(err)
+		}
+	}
 	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.platform06.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -177,13 +182,8 @@ func (a *analyzeCmd) Privileges() error {
 
 func (aa *analyzeArgs) registryImages() []string {
 	var registryImages []string
-	if aa.cacheImageRef != "" {
-		registryImages = append(registryImages, aa.cacheImageRef)
-	}
-	if !aa.useDaemon {
-		registryImages = append(registryImages, append([]string{aa.outputImageRef, aa.previousImageRef, aa.runImageRef}, aa.additionalTags...)...)
-	}
-	return registryImages
+	registryImages = append(registryImages, aa.ReadableRegistryImages()...)
+	return append(registryImages, aa.WriteableRegistryImages()...)
 }
 
 func (a *analyzeCmd) Exec() error {
@@ -269,4 +269,21 @@ func (a *analyzeCmd) restoresLayerMetadata() bool {
 
 func (a *analyzeCmd) supportsRunImage() bool {
 	return a.platformAPIVersionGreaterThan06()
+}
+
+func (aa *analyzeArgs) ReadableRegistryImages() []string {
+	var readableImages []string
+	if !aa.useDaemon {
+		readableImages = appendNotEmpty(readableImages, aa.previousImageRef, aa.runImageRef)
+	}
+	return readableImages
+}
+func (aa *analyzeArgs) WriteableRegistryImages() []string {
+	var writeableImages []string
+	writeableImages = appendNotEmpty(writeableImages, aa.cacheImageRef)
+	if !aa.useDaemon {
+		writeableImages = appendNotEmpty(writeableImages, aa.outputImageRef)
+		writeableImages = appendNotEmpty(writeableImages, aa.additionalTags...)
+	}
+	return writeableImages
 }

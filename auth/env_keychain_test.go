@@ -155,6 +155,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				resolvedKeychain = auth.ResolvedKeychain{Auths: map[string]string{
 					"basic-registry.com":  "Basic some-basic-auth=",
 					"bearer-registry.com": "Bearer some-bearer-auth=",
+					"bad-header.com":      "Some Bad Header",
 				}}
 			})
 
@@ -183,6 +184,18 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, header, &authn.AuthConfig{RegistryToken: "some-bearer-auth="})
+				})
+
+				when("error parsing header", func() {
+					it("doesn't print the header in the error message", func() {
+						registry, err := name.NewRegistry("bad-header.com", name.WeakValidation)
+						h.AssertNil(t, err)
+
+						_, err = resolvedKeychain.Resolve(registry)
+						h.AssertNotNil(t, err)
+						h.AssertStringContains(t, err.Error(), "parsing auth header")
+						h.AssertStringDoesNotContain(t, err.Error(), "Some Bad Header")
+					})
 				})
 			})
 

@@ -203,6 +203,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"--env", "CNB_GROUP_PATH=./custom_group.toml",
 					"--env", "CNB_PLAN_PATH=./custom_plan.toml",
 					"--env", "CNB_PLATFORM_DIR=/custom_platform",
+					"--env", "CNB_ASSETS=/some-asset-path",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				),
 				h.WithArgs("-log-level=debug"),
@@ -228,6 +229,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			expectedAppDir := "app_dir: /custom_workspace"
 			h.AssertStringContains(t, logs, expectedPlatformPath)
 			h.AssertStringContains(t, logs, expectedAppDir)
+
+			// check no asset packages
+			h.AssertStringDoesNotContain(t, logs, "CNB_ASSETS=/some-asset-path")
 		})
 	})
 
