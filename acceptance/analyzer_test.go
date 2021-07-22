@@ -943,6 +943,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					var authRegAppImage, authRegAppOtherImage, appAuthConfig string
 
 					it.Before(func() {
+						os.Setenv("DOCKER_CONFIG", authRegistry.DockerDirectory)
 						metadata := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
 						authRegAppImage, appAuthConfig = buildAuthRegistryImage(
 							t,
