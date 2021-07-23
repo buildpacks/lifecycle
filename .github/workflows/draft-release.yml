@@ -72,18 +72,21 @@ jobs:
                   .map(artifact => [artifact.name, artifact.archive_download_url]);
                 let urlMap = new Map();
                 tuples.forEach(function(tuple) {
-                  if (tuple[0].includes("linux")) {
+                  if (tuple[0].includes("linux-x86-64")) {
                     urlMap.set("linux", tuple[1])
                   }
                   if (tuple[0].includes("windows")) {
                     urlMap.set("windows", tuple[1])
                   }
+                  if (tuple[0].includes("cosign")) {
+                    urlMap.set("cosign", tuple[1])
+                  }
                 })
                 if (urlMap.size === 0) {
                   throw "no artifacts found"
                 }
-                if (urlMap.size != 2) {
-                  throw "there should be exactly two artifacts"
+                if (urlMap.size != 3) {
+                  throw "there should be exactly three artifacts"
                 }
                 return Object.fromEntries(urlMap.entries())
               })
@@ -107,6 +110,16 @@ jobs:
           unzip -d artifact-windows artifact-windows.zip
           lifecycle_path=$(ls artifact-windows/lifecycle-*windows.x86-64.tgz)
           echo "ARTIFACT_WINDOWS_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+      - name: Download cosign public key
+        run: |
+          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .cosign )
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o cosign.zip $url
+          mkdir cosign
+          unzip -d cosign cosign.zip
+          cosign_path=$(ls cosign/cosign.pub)
+          echo "ARTIFACT_COSIGN_PATH=$PWD/$cosign_path" >> $GITHUB_ENV
       - name: Set pre-release kind
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
@@ -138,7 +151,7 @@ jobs:
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
+            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_COSIGN_PATH }} \
             --draft \
             --notes-file body.txt \
             --prerelease \
@@ -150,7 +163,7 @@ jobs:
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} \
+            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_COSIGN_PATH }} \
             --draft \
             --notes-file body.txt \
             --target $GITHUB_REF \
