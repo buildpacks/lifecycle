@@ -51,7 +51,10 @@ func doPackage() error {
 		return errors.Wrap(err, fmt.Sprintf("Failed to open -archivePath %s", archivePath))
 	}
 
-	zw := gzip.NewWriter(f)
+	hasher := sha256.New()
+	mw := io.MultiWriter(f, hasher) // calculate the sha256 while writing to f
+
+	zw := gzip.NewWriter(mw)
 
 	tw := archive.NewNormalizingTarWriter(tar.NewWriter(zw))
 	tw.WithUID(0)
@@ -127,17 +130,6 @@ func doPackage() error {
 		return errors.Wrap(err, fmt.Sprintf("Failed to close -archivePath %s", archivePath))
 	}
 
-	f, err = os.OpenFile(archivePath, os.O_RDONLY, 0777)
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Failed to open -archivePath %s", archivePath))
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err = io.Copy(h, f); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Failed to calculate sha256 of -archivePath %s", archivePath))
-	}
-
 	hashFileName := archivePath + ".sha256"
 	hashFile, err := os.OpenFile(hashFileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
@@ -145,10 +137,10 @@ func doPackage() error {
 	}
 	defer hashFile.Close()
 
-	sha := hex.EncodeToString(h.Sum(nil))
+	sha := hex.EncodeToString(hasher.Sum(nil))
 	_, err = hashFile.Write([]byte(sha))
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Failed to write sha256:%s to %s", h.Sum(nil), hashFileName))
+		return errors.Wrap(err, fmt.Sprintf("Failed to write sha256:%s to %s", hasher.Sum(nil), hashFileName))
 	}
 
 	return nil
