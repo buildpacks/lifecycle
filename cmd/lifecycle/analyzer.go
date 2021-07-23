@@ -245,7 +245,13 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
 	}
 
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: aa.runImageRef}
+	if aa.runImageRef != "" {
+		ref, err := name.ParseReference(aa.runImageRef, name.WeakValidation)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "parse reference for run image")
+		}
+		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: ref.String()}
+	}
 
 	return analyzedMD, nil
 }
@@ -270,24 +276,15 @@ func (a *analyzeCmd) validateRunImageInput() error {
 }
 
 func (a *analyzeCmd) populateRunImageIfNeeded(stackMD platform.StackMetadata, targetRegistry string) error {
-	if !a.supportsRunImage() {
+	if !a.supportsRunImage() || a.runImageRef != "" {
 		return nil
 	}
 
-	if a.runImageRef == "" {
-		var err error
-		a.runImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
-		if err != nil {
-			return errors.New("-run-image is required when there is no stack metadata available")
-		}
-		return nil
-	}
-
-	ref, err := name.ParseReference(a.runImageRef, name.WeakValidation)
+	var err error
+	a.runImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
 	if err != nil {
-		return errors.New("failed to parse reference for run image")
+		return errors.New("-run-image is required when there is no stack metadata available")
 	}
-	a.runImageRef = ref.String()
 	return nil
 }
 

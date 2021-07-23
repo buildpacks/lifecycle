@@ -115,13 +115,8 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
 	}
 
-	if c.runImageRef == "" {
-		var err error
-		c.runImageRef, err = c.stackMD.BestRunImageMirror(c.targetRegistry)
-		if err != nil {
-			msg := "-run-image is required when there is no stack metadata available"
-			return cmd.FailErrCode(errors.New(msg), cmd.CodeInvalidArgs, "parse arguments")
-		}
+	if err := c.populateRunImageIfNeeded(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -305,4 +300,17 @@ func (c *createCmd) WriteableRegistryImages() []string {
 		writeableImages = appendNotEmpty(writeableImages, c.additionalTags...)
 	}
 	return writeableImages
+}
+
+func (c *createCmd) populateRunImageIfNeeded() error {
+	if c.runImageRef != "" {
+		return nil
+	}
+
+	var err error
+	c.runImageRef, err = c.stackMD.BestRunImageMirror(c.targetRegistry)
+	if err != nil {
+		return errors.New("-run-image is required when there is no stack metadata available")
+	}
+	return nil
 }
