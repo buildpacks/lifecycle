@@ -57,7 +57,6 @@ type analyzeFixtures struct {
 	authRegRunImage       string
 	daemonAppImage        string
 	daemonCacheImage      string
-	daemonRunImage        string
 	readOnlyRegAppImage   string
 	readOnlyRegCacheImage string
 	readOnlyRegRunImage   string
@@ -207,16 +206,6 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"-t", fixtures.daemonCacheImage,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
-		filepath.Join("testdata", "analyzer", "cache-image"),
-	) // #nosec G204
-	h.Run(t, cmd)
-
-	fixtures.daemonRunImage = "some-run-image-" + h.RandString(10)
-	cmd = exec.Command(
-		"docker",
-		"build",
-		"-t", fixtures.daemonRunImage,
-		"--build-arg", "fromImage="+containerBaseImage,
 		filepath.Join("testdata", "analyzer", "cache-image"),
 	) // #nosec G204
 	h.Run(t, cmd)

@@ -124,21 +124,12 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
 	}
 
-	if a.supportsRunImage() {
-		if a.runImageRef == "" {
-			var err error
-			a.runImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
-			if err != nil {
-				msg := "-run-image is required when there is no stack metadata available"
-				return cmd.FailErrCode(errors.New(msg), cmd.CodeInvalidArgs, "determine run image")
-			}
-		} else {
-			ref, err := name.ParseReference(a.runImageRef, name.WeakValidation)
-			if err != nil {
-				return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse reference for run image")
-			}
-			a.runImageRef = ref.String()
-		}
+	if err := a.validateRunImageInput(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
+	}
+
+	if err := a.populateRunImageIfNeeded(stackMD, targetRegistry); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -269,6 +260,35 @@ func (a *analyzeCmd) restoresLayerMetadata() bool {
 
 func (a *analyzeCmd) supportsRunImage() bool {
 	return a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) validateRunImageInput() error {
+	if !a.supportsRunImage() && a.runImageRef != "" {
+		return errors.New("-run-image is unsupported")
+	}
+	return nil
+}
+
+func (a *analyzeCmd) populateRunImageIfNeeded(stackMD platform.StackMetadata, targetRegistry string) error {
+	if !a.supportsRunImage() {
+		return nil
+	}
+
+	if a.runImageRef == "" {
+		var err error
+		a.runImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
+		if err != nil {
+			return errors.New("-run-image is required when there is no stack metadata available")
+		}
+		return nil
+	}
+
+	ref, err := name.ParseReference(a.runImageRef, name.WeakValidation)
+	if err != nil {
+		return errors.New("failed to parse reference for run image")
+	}
+	a.runImageRef = ref.String()
+	return nil
 }
 
 func (aa *analyzeArgs) ReadableRegistryImages() []string {

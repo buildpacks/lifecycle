@@ -104,8 +104,8 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
-	if e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage) {
-		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+	if err := e.validateRunImageInput(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
 	}
 
 	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -144,29 +144,8 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
 	}
 
-	// run image
-
-	if !e.supportsRunImage() { // TODO: break out into separate function?
-		if e.runImageRef != "" {
-			var msg string
-			if e.deprecatedRunImageRef != "" {
-				msg = "-image is unsupported"
-			} else {
-				msg = "-run-image is unsupported"
-			}
-			return cmd.FailErrCode(errors.New(msg), cmd.CodeInvalidArgs, "parse arguments")
-		}
-		if e.analyzedMD.RunImage == nil || e.analyzedMD.RunImage.Reference == "" {
-			msg := "run image not found in analyzed metadata"
-			return cmd.FailErrCode(errors.New(msg), cmd.CodeInvalidArgs, "parse arguments")
-		}
-		e.runImageRef = e.analyzedMD.RunImage.Reference
-	} else if e.runImageRef == "" {
-		e.runImageRef, err = e.stackMD.BestRunImageMirror(e.targetRegistry)
-		if err != nil {
-			msg := "-run-image is required when there is no stack metadata available"
-			return cmd.FailErrCode(errors.New(msg), cmd.CodeInvalidArgs, "parse arguments")
-		}
+	if err := e.populateRunImageRefIfNeeded(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -246,6 +225,35 @@ func (e *exportCmd) registryImages() []string {
 		}
 	}
 	return registryImages
+}
+
+func (e *exportCmd) populateRunImageRefIfNeeded() error {
+	if !e.supportsRunImage() {
+		if e.analyzedMD.RunImage == nil || e.analyzedMD.RunImage.Reference == "" {
+			return errors.New("run image not found in analyzed metadata")
+		}
+		e.runImageRef = e.analyzedMD.RunImage.Reference
+	} else if e.runImageRef == "" {
+		var err error
+		e.runImageRef, err = e.stackMD.BestRunImageMirror(e.targetRegistry)
+		if err != nil {
+			return errors.New("-run-image is required when there is no stack metadata available")
+		}
+	}
+	return nil
+}
+
+func (e *exportCmd) validateRunImageInput() error {
+	switch {
+	case e.supportsRunImage() && e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+		return errors.New("supply only one of -run-image or (deprecated) -image")
+	case !e.supportsRunImage() && e.deprecatedRunImageRef != "":
+		return errors.New("-image is unsupported")
+	case !e.supportsRunImage() && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+		return errors.New("-run-image is unsupported")
+	default:
+		return nil
+	}
 }
 
 func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
