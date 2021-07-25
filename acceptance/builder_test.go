@@ -24,7 +24,6 @@ var (
 	builderDockerContext = filepath.Join("testdata", "builder")
 	builderBinaryDir     = filepath.Join("testdata", "builder", "container", "cnb", "lifecycle")
 	builderImage         = "lifecycle/acceptance/builder"
-	//builderUserID        = "1234"
 )
 
 func TestBuilder(t *testing.T) {
@@ -32,13 +31,13 @@ func TestBuilder(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "builder acceptance tests are not yet supported on Windows")
 
 	rand.Seed(time.Now().UTC().UnixNano())
-	h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
+	//h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
-	defer h.DockerImageRemove(t, builderImage)
+	//defer h.DockerImageRemove(t, builderImage)
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -193,7 +192,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to : parse buildpack API"
+					expected := "parse buildpack API '<nil>' for buildpack 'hello_world@0.0.1'"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -267,13 +266,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"--rm",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 					"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan_buildpack_2.toml",
 					builderImage,
 				)
 				_, err := command.CombinedOutput()
 				h.AssertNil(t, err)
-				//expected := "failed to read buildpack group: open /layers/group.toml"
-				//h.AssertStringContains(t, string(output), expected)
 			})
 		})
 
@@ -310,8 +307,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
-			//print(string(output), err)
-			h.AssertNil(t, err) //we have real directory
+			h.AssertNil(t, err)
 			expected := "CNB_APP_DIR: /env_folders/different_cnb_app_dir_from_env"
 			h.AssertStringContains(t, string(output), expected)
 		})
@@ -330,8 +326,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
-			//print(string(output), err)
-			h.AssertNil(t, err) //we have real directory
+			h.AssertNil(t, err)
 			expected := "CNB_BUILDPACK_DIR: /env_folders/different_buildpack_dir_from_env"
 			h.AssertStringContains(t, string(output), expected)
 		})
@@ -350,8 +345,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
-			//print(string(output), err)
-			h.AssertNil(t, err) //we have real directory
+			h.AssertNil(t, err)
 			expected := "LAYERS_DIR: /layers/different_layer_dir_from_env/hello_world"
 			h.AssertStringContains(t, string(output), expected)
 		})
@@ -369,8 +363,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
-			//print(string(output), err)
-			h.AssertNil(t, err) //we have real directory
+			h.AssertNil(t, err)
 			expected := "different_plan_from_env.toml_reqires_subset_content"
 			h.AssertStringContains(t, string(output), expected)
 		})
@@ -389,8 +382,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builderImage,
 			)
 			output, err := command.CombinedOutput()
-			//print(string(output), err)
-			h.AssertNil(t, err) //we have real directory
+			h.AssertNil(t, err)
 			expected := "PLATFORM_DIR: /env_folders/different_platform_dir_from_env"
 			h.AssertStringContains(t, string(output), expected)
 		})
