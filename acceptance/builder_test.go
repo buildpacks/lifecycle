@@ -258,36 +258,44 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		// .../cmd/lifecycle/builder.go#Args
 		when("group.toml path is not specified", func() {
 			it("will look for group.toml in the provided layers directory", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
-					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan_buildpack_2.toml",
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					ctrPath("/layers"),
 					builderImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan_buildpack_2.toml",
+					),
 				)
-				_, err := command.CombinedOutput()
-				h.AssertNil(t, err)
+				md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
+
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
+				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.2")
 			})
 		})
 
 		// .../cmd/lifecycle/builder.go#Args
 		when("plan.toml path is not specified", func() {
 			it("will look for plan.toml in the provided layers directory", func() {
-				command := exec.Command(
-					"docker",
-					"run",
-					"--rm",
-					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
-					"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
-					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					ctrPath("/layers"),
 					builderImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+						"--env", "CNB_LAYERS_DIR=/layers/different_layer_dir_from_env",
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group_buildpack2.toml",
+					),
 				)
-				_, err := command.CombinedOutput()
-				h.AssertNil(t, err)
-				//expected := "failed to parse detect plan: open /layers/plan.toml"
-				//h.AssertStringContains(t, string(output), expected)
+				md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
+
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
+				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.2")
 			})
 		})
 	})
