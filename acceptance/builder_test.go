@@ -219,7 +219,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			//TODO: check some output file for this case not except any error message
 			when("empty", func() {
-				it("success", func() {
+				it("succeeds", func() {
 					h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
