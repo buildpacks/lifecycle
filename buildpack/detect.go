@@ -31,14 +31,12 @@ type Logger interface {
 }
 
 type DetectConfig struct {
-	FullEnv     []string
-	ClearEnv    []string
 	AppDir      string
 	PlatformDir string
 	Logger      Logger
 }
 
-func (b *Descriptor) Detect(config *DetectConfig) DetectRun {
+func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	appDir, err := filepath.Abs(config.AppDir)
 	if err != nil {
 		return DetectRun{Code: -1, Err: err}
@@ -67,9 +65,14 @@ func (b *Descriptor) Detect(config *DetectConfig) DetectRun {
 	cmd.Dir = appDir
 	cmd.Stdout = out
 	cmd.Stderr = out
-	cmd.Env = append([]string{}, config.FullEnv...)
+
 	if b.Buildpack.ClearEnv {
-		cmd.Env = append([]string{}, config.ClearEnv...)
+		cmd.Env = bpEnv.List()
+	} else {
+		cmd.Env, err = bpEnv.WithPlatform(config.PlatformDir)
+		if err != nil {
+			return DetectRun{Code: -1, Err: err}
+		}
 	}
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
 
@@ -83,7 +86,7 @@ func (b *Descriptor) Detect(config *DetectConfig) DetectRun {
 	}
 	var t DetectRun
 	if _, err := toml.DecodeFile(planPath, &t); err != nil {
-		return DetectRun{Code: -1, Err: err}
+		return DetectRun{Code: -1, Err: err, Output: out.Bytes()}
 	}
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {

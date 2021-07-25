@@ -105,7 +105,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Bui
 }
 
 func (b *Descriptor) SupportsAssetPackages() bool {
-	return api.MustParse(b.API).Compare(api.MustParse("0.6")) > 0
+	return false
 }
 
 func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, layerDir string) error {

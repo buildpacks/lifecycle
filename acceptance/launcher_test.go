@@ -25,6 +25,10 @@ func TestLauncher(t *testing.T) {
 	info, err := h.DockerCli(t).Info(context.TODO())
 	h.AssertNil(t, err)
 	daemonOS = info.OSType
+	daemonArch = info.Architecture
+	if daemonArch == "x86_64" {
+		daemonArch = "amd64"
+	}
 
 	launchDockerContext = filepath.Join("testdata", "launcher")
 	if daemonOS == "windows" {
@@ -33,7 +37,7 @@ func TestLauncher(t *testing.T) {
 		launcherBinaryDir = filepath.Join("testdata", "launcher", "linux", "container", "cnb", "lifecycle")
 	}
 
-	h.MakeAndCopyLauncher(t, daemonOS, launcherBinaryDir)
+	h.MakeAndCopyLauncher(t, daemonOS, daemonArch, launcherBinaryDir)
 
 	h.DockerBuild(t, launchImage, launchDockerContext, h.WithFlags("-f", filepath.Join(launchDockerContext, dockerfileName)))
 	defer h.DockerImageRemove(t, launchImage)

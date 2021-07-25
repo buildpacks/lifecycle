@@ -33,10 +33,10 @@ const (
 
 // commandline flags
 var (
-	lifecyclePath string      // path to lifecycle TGZ
-	tags          stringSlice // tag reference to write lifecycle image
-	targetOS      string      // operating system
-	useDaemon     bool        // export to docker daemon
+	lifecyclePath        string      // path to lifecycle TGZ
+	tags                 stringSlice // tag reference to write lifecycle image
+	targetOS, targetArch string      // operating system and CPU architecture
+	useDaemon            bool        // export to docker daemon
 )
 
 type stringSlice []string
@@ -54,6 +54,7 @@ func (s *stringSlice) Set(value string) error {
 func main() {
 	flag.StringVar(&lifecyclePath, "lifecyclePath", "", "path to lifecycle TGZ")
 	flag.StringVar(&targetOS, "os", runtime.GOOS, "operating system")
+	flag.StringVar(&targetArch, "arch", runtime.GOARCH, "CPU architecture")
 	flag.Var(&tags, "tag", "tag reference to write lifecycle image")
 	flag.BoolVar(&useDaemon, "daemon", false, "export to docker daemon")
 
@@ -81,6 +82,13 @@ func main() {
 		if info.OSType != targetOS {
 			log.Fatal("Target OS and daemon OS must match")
 		}
+		daemonArch := info.Architecture
+		if daemonArch == "x86_64" {
+			daemonArch = "amd64"
+		}
+		if daemonArch != targetArch {
+			log.Fatal("Target architecture and daemon architecture must match")
+		}
 		err = pullImage(dockerClient, baseImage)
 		if err != nil {
 			log.Fatal("Failed to pull base image:", err)
@@ -91,7 +99,10 @@ func main() {
 		}
 	} else {
 		var err error
-		img, err = remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage))
+		img, err = remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage), remote.WithDefaultPlatform(imgutil.Platform{
+			Architecture: targetArch,
+			OS:           targetOS,
+		}))
 		if err != nil {
 			log.Fatal("Failed to create remote image:", err)
 		}
