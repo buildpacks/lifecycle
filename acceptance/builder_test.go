@@ -27,17 +27,16 @@ var (
 )
 
 func TestBuilder(t *testing.T) {
-	// FIXME: try other OS, should be fine
 	h.SkipIf(t, runtime.GOOS == "windows", "builder acceptance tests are not yet supported on Windows")
 
 	rand.Seed(time.Now().UTC().UnixNano())
-	//h.MakeAndCopyLifecycle(t, "linux", builderBinaryDir)
+	h.MakeAndCopyLifecycle(t, "linux", "amd64", builderBinaryDir)
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
-	//defer h.DockerImageRemove(t, builderImage)
+	defer h.DockerImageRemove(t, builderImage)
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
