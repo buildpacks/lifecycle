@@ -337,7 +337,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("CNB_LAYERS_DIR", func() {
+	when("CNB_LAYERS_DIR is set", func() {
 		it("CNB_LAYERS_DIR is successfully transmitted to build script", func() {
 			command := exec.Command(
 				"docker",
