@@ -1,0 +1,7 @@
+# Buildpack API version
+api = "0.2"
+
+# Buildpack ID and metadata
+[buildpack]
+id = "hello_world_2"
+version = "0.0.2"
