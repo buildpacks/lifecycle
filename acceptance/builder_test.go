@@ -357,7 +357,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("CNB_PLAN_PATH", func() {
+	when("CNB_PLAN_PATH is set", func() {
 		it("provides the buildpack a filtered version of the plan found at CNB_PLAN_PATH", func() {
 			command := exec.Command(
 				"docker",
@@ -376,7 +376,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("CNB_PLATFORM_DIR", func() {
+	when("CNB_PLATFORM_DIR is set", func() {
 		it("CNB_PLATFORM_DIR is successfully transmitted to build script", func() {
 			command := exec.Command(
 				"docker",
