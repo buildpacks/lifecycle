@@ -27,6 +27,7 @@ var (
 )
 
 func TestBuilder(t *testing.T) {
+	//FIXME: test on windows and delete this skip condition if everything is fine
 	h.SkipIf(t, runtime.GOOS == "windows", "builder acceptance tests are not yet supported on Windows")
 
 	rand.Seed(time.Now().UTC().UnixNano())
