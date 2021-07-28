@@ -54,7 +54,7 @@ type analyzeFixtures struct {
 	daemonCacheImage      string
 	readOnlyRegAppImage   string // read-only
 	readOnlyRegCacheImage string // read-only
-	inaccessibleImage	  string // no access at all
+	inaccessibleImage     string // no access at all
 }
 
 func TestAnalyzer(t *testing.T) {
