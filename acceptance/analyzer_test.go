@@ -30,7 +30,6 @@ import (
 const (
 	readWriteImage = "image-readable-writable"
 	onlyReadImage  = "image-readable"
-	onlyWriteImage = "image-writable"
 	noAccessImage  = "noAccessImage"
 )
 
@@ -41,22 +40,21 @@ var (
 	analyzerPath         = "/cnb/lifecycle/analyzer"
 	cacheFixtureDir      = filepath.Join("testdata", "analyzer", "cache-dir")
 	daemonOS, daemonArch string
-	readOnlyRegistry     *ih.DockerRegistry
-	authRegistry         *ih.DockerRegistry
-	customRegistry       *ih.DockerRegistry
+	testRegistry         *ih.DockerRegistry
 	registryNetwork      string
 	fixtures             analyzeFixtures
 )
 
 type analyzeFixtures struct {
-	authRegAppImage       string
+	authRegAppImage       string // read and write access
 	authRegAuthConfig     string
-	authRegCacheImage     string
-	authRegOtherAppImage  string
+	authRegCacheImage     string // read-only
+	authRegOtherAppImage  string // read and write access
 	daemonAppImage        string
 	daemonCacheImage      string
-	readOnlyRegAppImage   string
-	readOnlyRegCacheImage string
+	readOnlyRegAppImage   string // read-only
+	readOnlyRegCacheImage string // read-only
+	inaccessibleImage	  string // no access at all
 }
 
 func TestAnalyzer(t *testing.T) {
@@ -76,42 +74,26 @@ func TestAnalyzer(t *testing.T) {
 	h.AssertNil(t, err)
 	defer os.RemoveAll(dockerConfigDir)
 
-	customDockerConfigDir, err := ioutil.TempDir("", "test.docker.config.custom.dir")
-	h.AssertNil(t, err)
-	defer os.RemoveAll(customDockerConfigDir)
-
 	var customPrivileges = make(map[string]ih.ImagePrivileges)
-	customPrivileges[readWriteImage] = ih.NewImagePrivileges(readWriteImage)
-	customPrivileges[onlyReadImage] = ih.NewImagePrivileges(onlyReadImage)
-	customPrivileges[onlyWriteImage] = ih.NewImagePrivileges(onlyWriteImage)
-	customPrivileges[noAccessImage] = ih.NewImagePrivileges(noAccessImage)
 
 	sharedRegHandler := registry.New(registry.Logger(log.New(ioutil.Discard, "", log.Lshortfile)))
-	customRegistry = ih.NewDockerRegistry(ih.WithAuth(customDockerConfigDir), ih.WithSharedHandler(sharedRegHandler),
+	testRegistry = ih.NewDockerRegistry(ih.WithAuth(dockerConfigDir), ih.WithSharedHandler(sharedRegHandler),
 		ih.WithCustomPrivileges(customPrivileges))
 
-	customRegistry.Start(t)
-	defer customRegistry.Stop(t)
-
-	authRegistry = ih.NewDockerRegistry(ih.WithAuth(dockerConfigDir), ih.WithSharedHandler(sharedRegHandler))
-	authRegistry.Start(t)
-	defer authRegistry.Stop(t)
-
-	readOnlyRegistry = ih.NewDockerRegistry(ih.WithSharedHandler(sharedRegHandler))
-	readOnlyRegistry.Start(t)
-	defer readOnlyRegistry.Stop(t)
+	testRegistry.Start(t)
+	defer testRegistry.Stop(t)
 
 	// if registry is listening on localhost, use host networking to allow containers to reach it
 	registryNetwork = "default"
-	if authRegistry.Host == "localhost" {
+	if testRegistry.Host == "localhost" {
 		registryNetwork = "host"
 	}
 
-	os.Setenv("DOCKER_CONFIG", authRegistry.DockerDirectory)
+	os.Setenv("DOCKER_CONFIG", testRegistry.DockerDirectory)
 	// Copy docker config directory to analyze-image container
 	targetDockerConfig := filepath.Join("testdata", "analyzer", "analyze-image", "container", "docker-config")
 	h.AssertNil(t, os.RemoveAll(filepath.Join(targetDockerConfig, "config.json")))
-	h.RecursiveCopy(t, authRegistry.DockerDirectory, targetDockerConfig)
+	h.RecursiveCopy(t, testRegistry.DockerDirectory, targetDockerConfig)
 
 	// Setup test container
 
@@ -145,34 +127,57 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 
 	// Registry
 
+	// setup read and write images
 	someAppName := "some-app-image-" + h.RandString(10)
 	fixtures.authRegAppImage, fixtures.authRegAuthConfig = buildAuthRegistryImage(
 		t,
 		someAppName,
 		filepath.Join("testdata", "analyzer", "app-image"),
+		testRegistry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
 	)
-	fixtures.readOnlyRegAppImage = readOnlyRegistry.RepoName(someAppName)
+	testRegistry.Add(someAppName, ih.NewImagePrivileges(readWriteImage))
 
 	someOtherAppName := "some-other-app-image-" + h.RandString(10)
 	fixtures.authRegOtherAppImage, _ = buildAuthRegistryImage(
 		t,
 		someOtherAppName,
 		filepath.Join("testdata", "analyzer", "app-image"),
+		testRegistry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
 	)
+	testRegistry.Add(someOtherAppName, ih.NewImagePrivileges(readWriteImage))
 
-	someCacheName := "some-cache-image-" + h.RandString(10)
+	// setup read only images
+	someReadOnlyAppName := "some-readonly-app-image-" + h.RandString(10)
+	fixtures.readOnlyRegAppImage, _ = buildAuthRegistryImage(
+		t,
+		someReadOnlyAppName,
+		filepath.Join("testdata", "analyzer", "app-image"),
+		testRegistry,
+		"--build-arg", "fromImage="+containerBaseImage,
+		"--build-arg", "metadata="+appMeta,
+	)
+	testRegistry.Add(someReadOnlyAppName, ih.NewImagePrivileges(onlyReadImage))
+
+	someCacheName := "some-cache-image"
 	fixtures.authRegCacheImage, _ = buildAuthRegistryImage(
 		t,
 		someCacheName,
 		filepath.Join("testdata", "analyzer", "cache-image"),
+		testRegistry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
 	)
-	fixtures.readOnlyRegCacheImage = readOnlyRegistry.RepoName(someCacheName)
+	testRegistry.Add(someCacheName, ih.NewImagePrivileges(onlyReadImage))
+	fixtures.readOnlyRegCacheImage = testRegistry.RepoName(someCacheName)
+
+	// setup no access image
+	inaccessibleImage := "inaccessible-image"
+	testRegistry.Add(inaccessibleImage, ih.NewImagePrivileges(noAccessImage))
+	fixtures.inaccessibleImage = testRegistry.RepoName(inaccessibleImage)
 
 	// Daemon
 
@@ -395,15 +400,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		it("drops privileges", func() {
 			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-			imageName := authRegistry.RepoName("some-image")
-			authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, imageName)
-			h.AssertNil(t, err)
+			imageName := fixtures.authRegAppImage
 			output := h.DockerRun(t,
 				analyzeImage,
 				h.WithFlags(
 					"--network", registryNetwork,
 					"--env", "CNB_PLATFORM_API="+platformAPI,
-					"--env", "CNB_REGISTRY_AUTH="+authConfig,
+					"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
 				),
 				h.WithBash(
 					fmt.Sprintf("%s -analyzed /some-dir/some-analyzed.toml %s; ls -al /some-dir",
@@ -478,7 +481,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				execArgs := []string{
 					ctrPath(analyzerPath),
 					"-daemon",
-					readOnlyRegistry.RepoName("some-image"),
+					fixtures.readOnlyRegAppImage,
 				}
 
 				h.DockerRunAndCopy(t,
@@ -612,7 +615,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 											ctrPath(analyzerPath),
 											"-daemon",
 											"-cache-image", fixtures.authRegCacheImage,
-											authRegistry.RepoName("some-image"),
+											fixtures.authRegAppImage,
 										),
 									)
 
@@ -637,7 +640,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 											ctrPath(analyzerPath),
 											"-cache-image",
 											fixtures.authRegCacheImage,
-											authRegistry.RepoName("some-image"),
+											fixtures.authRegAppImage,
 										),
 									)
 
@@ -664,7 +667,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 										"-daemon",
 										"-cache-image",
 										fixtures.readOnlyRegCacheImage,
-										readOnlyRegistry.RepoName("some-image"),
+										fixtures.readOnlyRegAppImage,
 									),
 								)
 
@@ -902,7 +905,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							execArgs := []string{
 								ctrPath(analyzerPath),
 								"-previous-image", fixtures.authRegAppImage,
-								authRegistry.RepoName("some-fake-image"),
+								fixtures.authRegOtherAppImage,
 							}
 
 							h.DockerRunAndCopy(t,
@@ -960,13 +963,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
-							"-previous-image", fixtures.authRegAppImage,
-							customRegistry.RepoName(readWriteImage),
+							"-previous-image", fixtures.inaccessibleImage,
+							fixtures.authRegAppImage,
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "failed to : ensure registry read access to " + fixtures.authRegAppImage
+						expected := "failed to : ensure registry read access to " + fixtures.inaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
@@ -1016,7 +1019,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 										ctrPath(analyzerPath),
 										"-cache-image",
 										fixtures.authRegCacheImage,
-										authRegistry.RepoName("some-image"),
+										fixtures.authRegAppImage,
 									),
 								)
 
@@ -1040,7 +1043,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(
 									ctrPath(analyzerPath),
 									"-cache-image", fixtures.readOnlyRegCacheImage,
-									readOnlyRegistry.RepoName("some-image"),
+									fixtures.readOnlyRegAppImage,
 								),
 							)
 
@@ -1058,7 +1061,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								ctrPath(analyzerPath),
 								"-cache-image",
 								fixtures.readOnlyRegCacheImage,
-								readOnlyRegistry.RepoName("some-image"),
+								fixtures.readOnlyRegAppImage,
 							) // #nosec G204
 							output, err := cmd.CombinedOutput()
 
@@ -1098,7 +1101,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 						execArgs := []string{
 							ctrPath(analyzerPath),
-							"-tag", authRegistry.RepoName("my-tag"),
+							"-tag", fixtures.authRegOtherAppImage,
 							fixtures.authRegAppImage,
 						}
 						h.DockerRunAndCopy(t,
@@ -1125,16 +1128,17 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"docker", "run", "--rm",
 							"--network", registryNetwork,
 							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
 							"--name", containerName,
 							analyzeImage,
 							ctrPath(analyzerPath),
-							"-tag", readOnlyRegistry.RepoName("my-tag"),
-							readOnlyRegistry.RepoName("some-image"),
+							"-tag", fixtures.inaccessibleImage,
+							fixtures.authRegAppImage,
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "failed to : ensure registry read/write access to "
+						expected := "failed to : ensure registry read/write access to " + fixtures.inaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
@@ -1214,13 +1218,13 @@ func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) strin
 	return string(flatMetadata)
 }
 
-func buildAuthRegistryImage(t *testing.T, repoName, context string, buildArgs ...string) (string, string) {
+func buildAuthRegistryImage(t *testing.T, repoName, context string, registry *ih.DockerRegistry, buildArgs ...string) (string, string) {
 	// Build image
-	regRepoName := authRegistry.RepoName(repoName)
+	regRepoName := registry.RepoName(repoName)
 	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
 
 	// Push image
-	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, authRegistry.EncodedLabeledAuth()))
+	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, registry.EncodedLabeledAuth()))
 
 	// Setup auth
 	authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, regRepoName)

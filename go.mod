@@ -22,4 +22,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
 
+replace github.com/buildpacks/imgutil => github.com/jjbustamante/imgutil v0.0.0-20210728202257-f17e488af4f4
+
 go 1.16
