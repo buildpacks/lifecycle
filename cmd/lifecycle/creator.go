@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -240,6 +242,8 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
+	// send pings to docker daemon while BUILDING to prevent connection closure
+	stopPinging := startPinging(c.docker)
 	cmd.DefaultLogger.Phase("BUILDING")
 	err = buildArgs{
 		buildpacksDir: c.buildpacksDir,
@@ -248,6 +252,8 @@ func (c *createCmd) Exec() error {
 		platform:      c.platform,
 		platformDir:   c.platformDir,
 	}.build(group, plan)
+	stopPinging()
+
 	if err != nil {
 		return err
 	}
@@ -313,4 +319,32 @@ func (c *createCmd) populateRunImage() error {
 		return errors.New("-run-image is required when there is no stack metadata available")
 	}
 	return nil
+}
+
+func startPinging(docker client.CommonAPIClient) (stopPinging func()) {
+	pingCtx, cancelPing := context.WithCancel(context.Background())
+	pingDoneChan := make(chan struct{})
+	go func() {
+		defer func() { close(pingDoneChan) }()
+
+		if docker == nil {
+			return
+		}
+		for {
+			select {
+			case <-time.After(time.Millisecond * 500):
+				_, err := docker.Ping(pingCtx)
+				if err != nil && !errors.Is(err, context.Canceled) {
+					cmd.DefaultLogger.Warnf("ping error: %v", err)
+				}
+			case <-pingCtx.Done():
+				return
+			}
+		}
+	}()
+
+	return func() {
+		cancelPing()
+		<-pingDoneChan
+	}
 }
