@@ -120,12 +120,24 @@ jobs:
           path: out/lifecycle-v*+linux.x86-64.tgz
       - uses: actions/upload-artifact@v2
         with:
+          name: lifecycle-linux-x86-64-sha256
+          path: out/lifecycle-v*+linux.x86-64.tgz.sha256
+      - uses: actions/upload-artifact@v2
+        with:
           name: lifecycle-linux-arm64
           path: out/lifecycle-v*+linux.arm64.tgz
       - uses: actions/upload-artifact@v2
         with:
+          name: lifecycle-linux-arm64-sha256
+          path: out/lifecycle-v*+linux.arm64.tgz.sha256
+      - uses: actions/upload-artifact@v2
+        with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-windows-x86-64-sha256
+          path: out/lifecycle-v*+windows.x86-64.tgz.sha256
       - uses: azure/docker-login@v1
         if: github.event_name == 'push'
         with:
