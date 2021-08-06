@@ -155,7 +155,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 					// check builder metadata.toml for success test
-					assertBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
+					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
+
+					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
+					h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 				})
 			})
 
@@ -230,7 +234,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 					// check builder metadata.toml for success test
-					assertBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
+					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
+
+					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
+					h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
 				})
 			})
 
@@ -393,15 +401,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
-}
-
-func assertBuilderMetadata(t *testing.T, path string) {
-	contents, _ := ioutil.ReadFile(path)
-	h.AssertEq(t, len(contents) > 0, true)
-
-	var analyzedMd platform.BuildMetadata
-	_, err := toml.Decode(string(contents), &analyzedMd)
-	h.AssertNil(t, err)
 }
 
 func getBuilderMetadata(t *testing.T, path string) *platform.BuildMetadata {
