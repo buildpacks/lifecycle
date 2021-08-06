@@ -31,13 +31,13 @@ func TestBuilder(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "builder acceptance tests are not yet supported on Windows")
 
 	rand.Seed(time.Now().UTC().UnixNano())
-	h.MakeAndCopyLifecycle(t, "linux", "amd64", builderBinaryDir)
+	//h.MakeAndCopyLifecycle(t, "linux", "amd64", builderBinaryDir)
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
 	)
-	defer h.DockerImageRemove(t, builderImage)
+	//defer h.DockerImageRemove(t, builderImage)
 
 	spec.Run(t, "acceptance-builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -59,6 +59,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		if h.DockerVolumeExists(t, cacheVolume) {
 			h.DockerVolumeRemove(t, cacheVolume)
 		}
+		//print(copyDir)
 		os.RemoveAll(copyDir)
 	})
 
@@ -136,7 +137,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to read buildpack group"
+					expected := "failed to read buildpack group: open /layers/group.toml: no such file or directory"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -156,7 +157,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					// check builder metadata.toml for success test
 					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
-
 					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 					h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
@@ -176,7 +176,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to read buildpack group: Near line"
+					expected := "failed to read buildpack group: Near line 1 (last key parsed 'I'): expected key separator '=', but got 'a' instead"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -215,7 +215,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to parse detect plan"
+					expected := "failed to parse detect plan: open /layers/plan.toml: no such file or directory"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -255,7 +255,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to parse detect plan: Near line"
+					expected := "failed to parse detect plan: Near line 1 (last key parsed 'I'): expected key separator '=', but got 'a' instead"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -378,7 +378,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			)
 			output, err := command.CombinedOutput()
 			h.AssertNil(t, err)
-			expected := "different_plan_from_env.toml_reqires_subset_content"
+			expected := "name = \"different_plan_from_env.toml_reqires_subset_content\""
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
