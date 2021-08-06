@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -58,8 +59,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		if h.DockerVolumeExists(t, cacheVolume) {
 			h.DockerVolumeRemove(t, cacheVolume)
 		}
-		print(copyDir)
-		//os.RemoveAll(copyDir)
+		os.RemoveAll(copyDir)
 	})
 
 	// .../cmd/lifecycle/builder.go#Args
@@ -142,7 +142,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("empty", func() {
-				it.Focus("succeeds", func() {
+				it("succeeds", func() {
 					h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
