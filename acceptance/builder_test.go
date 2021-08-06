@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -59,8 +58,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		if h.DockerVolumeExists(t, cacheVolume) {
 			h.DockerVolumeRemove(t, cacheVolume)
 		}
-		//print(copyDir)
-		os.RemoveAll(copyDir)
+		print(copyDir)
+		//os.RemoveAll(copyDir)
 	})
 
 	// .../cmd/lifecycle/builder.go#Args
@@ -143,7 +142,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("empty", func() {
-				it("succeeds", func() {
+				it.Focus("succeeds", func() {
 					h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
@@ -157,9 +156,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					// check builder metadata.toml for success test
 					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
-					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
-					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
-					h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+					h.AssertEq(t, len(md.Processes), 0)
 				})
 			})
 
