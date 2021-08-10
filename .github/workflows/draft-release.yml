@@ -22,7 +22,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux and windows
+      - name: Determine download urls for linux-x86-64 and windows
         id: artifact-urls
         uses: actions/github-script@v3.0.0
         with:
@@ -72,11 +72,11 @@ jobs:
                   .map(artifact => [artifact.name, artifact.archive_download_url]);
                 let urlMap = new Map();
                 tuples.forEach(function(tuple) {
-                  if (tuple[0].includes("linux")) {
+                  if (tuple[0].includes("linux-x86-64")) {
                     if (tuple[0].includes("sha256")) {
-                      urlMap.set("linux_sha256", tuple[1])
+                      urlMap.set("linux_x86_64_sha256", tuple[1])
                     } else {
-                      urlMap.set("linux", tuple[1])
+                      urlMap.set("linux_x86_64", tuple[1])
                     }
                   }
                   if (tuple[0].includes("windows")) {
@@ -95,26 +95,26 @@ jobs:
                 }
                 return Object.fromEntries(urlMap.entries())
               })
-      - name: Download linux artifact
+      - name: Download linux-x86-64 artifact
         run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux )
+          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux_x86_64 )
           curl -sL -w 'RESP_CODE:%{response_code}\n' \
             --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o artifact-linux.zip $url
-          mkdir artifact-linux
-          unzip -d artifact-linux artifact-linux.zip
-          lifecycle_path=$(ls artifact-linux/lifecycle-*linux.x86-64.tgz)
-          echo "ARTIFACT_LINUX_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
-      - name: Download linux-sha256 artifact
+            -o artifact-linux-x86-64.zip $url
+          mkdir artifact-linux-x86-64
+          unzip -d artifact-linux-x86-64 artifact-linux-x86-64.zip
+          lifecycle_path=$(ls artifact-linux-x86-64/lifecycle-*linux.x86-64.tgz)
+          echo "ARTIFACT_LINUX_X86_64_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+      - name: Download linux-x86-64-sha256 artifact
         run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux_sha256 )
+          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux_x86_64_sha256 )
           curl -sL -w 'RESP_CODE:%{response_code}\n' \
             --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o artifact-linux-sha256.zip $url
-          mkdir artifact-linux-sha256
-          unzip -d artifact-linux-sha256 artifact-linux-sha256.zip
-          lifecycle_path=$(ls artifact-linux-sha256/lifecycle-*linux.x86-64.tgz.sha256)
-          echo "ARTIFACT_LINUX_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+            -o artifact-linux-x86-64-sha256.zip $url
+          mkdir artifact-linux-x86-64-sha256
+          unzip -d artifact-linux-x86-64-sha256 artifact-linux-x86-64-sha256.zip
+          lifecycle_path=$(ls artifact-linux-x86-64-sha256/lifecycle-*linux.x86-64.tgz.sha256)
+          echo "ARTIFACT_LINUX_X86_64_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
       - name: Download windows artifact
         run: |
           url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .windows )
@@ -166,7 +166,7 @@ jobs:
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_LINUX_SHA_PATH }} \
+            ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
             ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
             --draft \
             --notes-file body.txt \
@@ -179,7 +179,7 @@ jobs:
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_PATH }} ${{ env.ARTIFACT_LINUX_SHA_PATH }} \
+            ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
             ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
             --draft \
             --notes-file body.txt \

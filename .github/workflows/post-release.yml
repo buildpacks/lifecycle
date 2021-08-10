@@ -6,7 +6,7 @@ on:
       - published # trigger for releases and pre-releases
 
 jobs:
-  retag-lifecycle-images-linux:
+  retag-lifecycle-images-linux-x86-64:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -20,15 +20,15 @@ jobs:
           echo "LIFECYCLE_IMAGE_TAG=$(git describe --always)" >> $GITHUB_ENV
       - name: Retag lifecycle images - semver
         run: |
-          docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux
-          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux
-          docker push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux
+          docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64
+          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64 buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-x86-64
+          docker push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-x86-64
       - name: Retag lifecycle images - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
-          docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux
-          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux buildpacksio/lifecycle:latest-linux
-          docker push buildpacksio/lifecycle:latest-linux
+          docker pull buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64
+          docker image tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64 buildpacksio/lifecycle:latest-linux-x86-64
+          docker push buildpacksio/lifecycle:latest-linux-x86-64
   retag-lifecycle-images-windows:
     runs-on: windows-latest
     steps:
@@ -54,7 +54,7 @@ jobs:
           docker push buildpacksio/lifecycle:latest-windows
   create-manifest-lists:
     runs-on: ubuntu-latest
-    needs: [retag-lifecycle-images-linux, retag-lifecycle-images-windows]
+    needs: [retag-lifecycle-images-linux-x86-64, retag-lifecycle-images-windows]
     steps:
       - uses: azure/docker-login@v1
         with:
@@ -65,10 +65,10 @@ jobs:
           echo "LIFECYCLE_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)" >> $GITHUB_ENV
       - name: Create lifecycle image manifest lists - semver
         run: |
-          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-x86-64 buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
       - name: Create lifecycle image manifest lists - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
-          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:latest buildpacksio/lifecycle:latest-linux buildpacksio/lifecycle:latest-windows
+          DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create buildpacksio/lifecycle:latest buildpacksio/lifecycle:latest-linux-x86-64 buildpacksio/lifecycle:latest-windows
           DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push buildpacksio/lifecycle:latest
