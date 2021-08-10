@@ -48,7 +48,7 @@ var (
 type analyzeFixtures struct {
 	authRegAppImage       string // read and write access
 	authRegAuthConfig     string
-	authRegCacheImage     string // read-only
+	authRegCacheImage     string // read and write access
 	authRegOtherAppImage  string // read and write access
 	daemonAppImage        string
 	daemonCacheImage      string
@@ -162,7 +162,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 	)
 	testRegistry.Add(someReadOnlyAppName, ih.NewImagePrivileges(onlyReadImage))
 
-	someCacheName := "some-cache-image"
+	someCacheName := "some-cache-image-" + h.RandString(10)
 	fixtures.authRegCacheImage, _ = buildAuthRegistryImage(
 		t,
 		someCacheName,
@@ -171,7 +171,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
 	)
-	testRegistry.Add(someCacheName, ih.NewImagePrivileges(onlyReadImage))
+	testRegistry.Add(someCacheName, ih.NewImagePrivileges(readWriteImage))
 	fixtures.readOnlyRegCacheImage = testRegistry.RepoName(someCacheName)
 
 	// setup no access image
