@@ -27,12 +27,6 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-const (
-	readWriteImage = "image-readable-writable"
-	onlyReadImage  = "image-readable"
-	noAccessImage  = "noAccessImage"
-)
-
 var (
 	analyzerBinaryDir    = filepath.Join("testdata", "analyzer", "analyze-image", "container", "cnb", "lifecycle")
 	analyzeDockerContext = filepath.Join("testdata", "analyzer", "analyze-image")
@@ -137,7 +131,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
 	)
-	testRegistry.Add(someAppName, ih.NewImagePrivileges(readWriteImage))
+	testRegistry.Add(someAppName, ih.NewImagePrivileges(ih.Readable, ih.Writable))
 
 	someOtherAppName := "some-other-app-image-" + h.RandString(10)
 	fixtures.authRegOtherAppImage, _ = buildAuthRegistryImage(
@@ -148,7 +142,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
 	)
-	testRegistry.Add(someOtherAppName, ih.NewImagePrivileges(readWriteImage))
+	testRegistry.Add(someOtherAppName, ih.NewImagePrivileges(ih.Readable, ih.Writable))
 
 	// setup read only images
 	someReadOnlyAppName := "some-readonly-app-image-" + h.RandString(10)
@@ -160,7 +154,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
 	)
-	testRegistry.Add(someReadOnlyAppName, ih.NewImagePrivileges(onlyReadImage))
+	testRegistry.Add(someReadOnlyAppName, ih.NewImagePrivileges(ih.Readable))
 
 	someCacheName := "some-cache-image-" + h.RandString(10)
 	fixtures.authRegCacheImage, _ = buildAuthRegistryImage(
@@ -171,12 +165,12 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
 	)
-	testRegistry.Add(someCacheName, ih.NewImagePrivileges(readWriteImage))
+	testRegistry.Add(someCacheName, ih.NewImagePrivileges(ih.Readable, ih.Writable))
 	fixtures.readOnlyRegCacheImage = testRegistry.RepoName(someCacheName)
 
 	// setup no access image
 	inaccessibleImage := "inaccessible-image"
-	testRegistry.Add(inaccessibleImage, ih.NewImagePrivileges(noAccessImage))
+	testRegistry.Add(inaccessibleImage, ih.NewImagePrivileges())
 	fixtures.inaccessibleImage = testRegistry.RepoName(inaccessibleImage)
 
 	// Daemon
