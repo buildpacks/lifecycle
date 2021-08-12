@@ -138,9 +138,9 @@ func doPackage() error {
 	defer hashFile.Close()
 
 	sha := hex.EncodeToString(hasher.Sum(nil))
-	_, err = hashFile.Write([]byte(sha))
+	_, err = hashFile.Write([]byte(sha + "\n"))
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Failed to write sha256:%s to %s", hasher.Sum(nil), hashFileName))
+		return errors.Wrap(err, fmt.Sprintf("Failed to write sha256:%s to %s", sha, hashFileName))
 	}
 
 	return nil
