@@ -123,12 +123,24 @@ jobs:
           path: out/lifecycle-v*+linux.x86-64.tgz
       - uses: actions/upload-artifact@v2
         with:
+          name: lifecycle-linux-x86-64-sha256
+          path: out/lifecycle-v*+linux.x86-64.tgz.sha256
+      - uses: actions/upload-artifact@v2
+        with:
           name: lifecycle-linux-arm64
           path: out/lifecycle-v*+linux.arm64.tgz
       - uses: actions/upload-artifact@v2
         with:
+          name: lifecycle-linux-arm64-sha256
+          path: out/lifecycle-v*+linux.arm64.tgz.sha256
+      - uses: actions/upload-artifact@v2
+        with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-windows-x86-64-sha256
+          path: out/lifecycle-v*+windows.x86-64.tgz.sha256
       - uses: azure/docker-login@v1
         if: github.event_name == 'push'
         with:
@@ -150,7 +162,7 @@ jobs:
           DOCKER_CLI_EXPERIMENTAL=enabled
           LIFECYCLE_IMAGE_TAG=$(git describe --always)
 
-          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux | awk '{print $NF}')
+          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
 
           LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
@@ -263,3 +275,4 @@ jobs:
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
+

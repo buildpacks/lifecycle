@@ -135,6 +135,11 @@ func (c *createCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
+	if c.platformAPIVersionGreaterThan06() {
+		if err := image.VerifyRegistryAccess(c, c.keychain); err != nil {
+			return cmd.FailErr(err)
+		}
+	}
 	if err := priv.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -271,12 +276,27 @@ func (c *createCmd) Exec() error {
 
 func (c *createCmd) registryImages() []string {
 	var registryImages []string
-	if c.cacheImageRef != "" {
-		registryImages = append(registryImages, c.cacheImageRef)
-	}
+	registryImages = append(registryImages, c.ReadableRegistryImages()...)
+	return append(registryImages, c.WriteableRegistryImages()...)
+}
+
+func (c *createCmd) platformAPIVersionGreaterThan06() bool {
+	return api.MustParse(c.platform.API()).Compare(api.MustParse("0.7")) >= 0
+}
+
+func (c *createCmd) ReadableRegistryImages() []string {
+	var readableImages []string
 	if !c.useDaemon {
-		registryImages = append(registryImages, append([]string{c.outputImageRef}, c.additionalTags...)...)
-		registryImages = append(registryImages, c.runImageRef, c.previousImageRef)
+		readableImages = appendNotEmpty(readableImages, c.previousImageRef, c.runImageRef)
 	}
-	return registryImages
+	return readableImages
+}
+func (c *createCmd) WriteableRegistryImages() []string {
+	var writeableImages []string
+	writeableImages = appendNotEmpty(writeableImages, c.cacheImageRef)
+	if !c.useDaemon {
+		writeableImages = appendNotEmpty(writeableImages, c.outputImageRef)
+		writeableImages = appendNotEmpty(writeableImages, c.additionalTags...)
+	}
+	return writeableImages
 }

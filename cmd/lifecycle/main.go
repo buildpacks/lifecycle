@@ -104,3 +104,12 @@ func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecyc
 	}
 	return cacheStore, nil
 }
+
+func appendNotEmpty(slice []string, elems ...string) []string {
+	for _, v := range elems {
+		if v != "" {
+			slice = append(slice, v)
+		}
+	}
+	return slice
+}

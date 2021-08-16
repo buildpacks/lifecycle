@@ -22,5 +22,5 @@ func (p *Platform) API() string {
 }
 
 func (p *Platform) SupportsAssetPackages() bool {
-	return true
+	return false
 }
