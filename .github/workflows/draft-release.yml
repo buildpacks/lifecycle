@@ -86,12 +86,15 @@ jobs:
                       urlMap.set("windows", tuple[1])
                     }
                   }
+                  if (tuple[0].includes("cdx")) {
+                    urlMap.set("bom-cdx", tuple[1])
+                  }
                 })
                 if (urlMap.size === 0) {
                   throw "no artifacts found"
                 }
-                if (urlMap.size != 4) {
-                  throw "there should be exactly four artifacts"
+                if (urlMap.size != 5) {
+                  throw "there should be exactly five artifacts"
                 }
                 return Object.fromEntries(urlMap.entries())
               })
@@ -135,6 +138,16 @@ jobs:
           unzip -d artifact-windows-sha256 artifact-windows-sha256.zip
           lifecycle_path=$(ls artifact-windows-sha256/lifecycle-*windows.x86-64.tgz.sha256)
           echo "ARTIFACT_WINDOWS_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+      - name: Download SBOM JSON
+        run: |
+          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .bom-cdx )
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o artifact-bom-cdx.zip $url
+          mkdir artifact-bom-cdx
+          unzip -d artifact-bom-cdx artifact-bom-cdx.zip
+          bom_cdx_path=$(ls artifact-bom-cdx/lifecycle-v*-bom.cdx.json)
+          echo "ARTIFACT_BOM_CDX_PATH=$PWD/bom_cdx_path" >> $GITHUB_ENV
       - name: Set pre-release kind
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
@@ -168,6 +181,7 @@ jobs:
           gh release create v${{ env.LIFECYCLE_VERSION }} \
             ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
             ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
+            ${{ env.ARTIFACT_BOM_CDX_PATH }} \
             --draft \
             --notes-file body.txt \
             --prerelease \
@@ -181,6 +195,7 @@ jobs:
           gh release create v${{ env.LIFECYCLE_VERSION }} \
             ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
             ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
+            ${{ env.ARTIFACT_BOM_CDX_PATH }} \
             --draft \
             --notes-file body.txt \
             --target $GITHUB_REF \
