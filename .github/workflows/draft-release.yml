@@ -87,7 +87,7 @@ jobs:
                     }
                   }
                   if (tuple[0].includes("cdx")) {
-                    urlMap.set("bom-cdx", tuple[1])
+                    urlMap.set("bom_cdx", tuple[1])
                   }
                 })
                 if (urlMap.size === 0) {
@@ -140,7 +140,7 @@ jobs:
           echo "ARTIFACT_WINDOWS_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
       - name: Download SBOM JSON
         run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .bom-cdx )
+          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .bom_cdx )
           curl -sL -w 'RESP_CODE:%{response_code}\n' \
             --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
             -o artifact-bom-cdx.zip $url
