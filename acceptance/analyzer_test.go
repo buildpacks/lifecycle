@@ -500,7 +500,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 						h.AssertNotNil(t, err)
 
-						h.AssertStringContains(t, string(output), "failed to : ensure registry read access to some-run-image")
+						h.AssertStringContains(t, string(output), "failed to : ensure registry read access to some-run-image") // TODO: update some-run-image to have explicit permissions when https://github.com/buildpacks/lifecycle/pull/685 is merged
 					})
 
 					when("stack.toml not present", func() {
