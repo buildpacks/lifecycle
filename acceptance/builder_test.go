@@ -301,7 +301,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("CNB_APP_DIR changed", func() {
+	when("CNB_APP_DIR is set", func() {
 		it("sets the buildpacks' working directory to CNB_APP_DIR", func() {
 			command := exec.Command(
 				"docker",
@@ -320,7 +320,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("CNB_BUILDPACKS_DIR changed", func() {
+	when("CNB_BUILDPACKS_DIR is set", func() {
 		it("uses buildpacks from CNB_BUILDPACKS_DIR", func() {
 			command := exec.Command(
 				"docker",
@@ -340,7 +340,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("CNB_LAYERS_DIR is set", func() {
-		it("CNB_LAYERS_DIR is successfully transmitted to build script", func() {
+		it("CNB_LAYERS_DIR is a parent of the buildpack layers dir", func() {
 			command := exec.Command(
 				"docker",
 				"run",
