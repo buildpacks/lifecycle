@@ -97,7 +97,7 @@ jobs:
           go-version: '1.16'
       - name: Set version
         run: |
-          echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" >> version.txt
+          echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" | tee -a $GITHUB_ENV version.txt
       - uses: actions/upload-artifact@v2
         with:
           name: version
