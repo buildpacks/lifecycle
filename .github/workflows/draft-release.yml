@@ -147,7 +147,7 @@ jobs:
           mkdir artifact-bom-cdx
           unzip -d artifact-bom-cdx artifact-bom-cdx.zip
           bom_cdx_path=$(ls artifact-bom-cdx/lifecycle-v*-bom.cdx.json)
-          echo "ARTIFACT_BOM_CDX_PATH=$PWD/bom_cdx_path" >> $GITHUB_ENV
+          echo "ARTIFACT_BOM_CDX_PATH=$PWD/$bom_cdx_path" >> $GITHUB_ENV
       - name: Set pre-release kind
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
