@@ -54,7 +54,7 @@ jobs:
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
-          echo -n "${{ secrets.COSIGN_PASSWORD }}" | cosign sign -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) -a tag=${{ env.LIFECYCLE_VERSION }} -r buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
+          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) -a tag=${{ env.LIFECYCLE_VERSION }} -r buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
       - name: Retag lifecycle images & create manifest list - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
@@ -74,5 +74,5 @@ jobs:
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:latest)
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
-          echo -n "${{ secrets.COSIGN_PASSWORD }}" | cosign sign -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) -a tag=latest -r buildpacksio/lifecycle:latest@${MANIFEST_SHA}
+          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) -a tag=latest -r buildpacksio/lifecycle:latest@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=latest buildpacksio/lifecycle:latest
