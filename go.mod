@@ -1,7 +1,7 @@
 module github.com/buildpacks/lifecycle
 
 require (
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20210719153540-a83d74d568a7
 	github.com/docker/docker v20.10.7+incompatible
