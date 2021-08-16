@@ -28,9 +28,6 @@ jobs:
         run: |
           echo "LIFECYCLE_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)" >> $GITHUB_ENV
           echo "LIFECYCLE_IMAGE_TAG=$(git describe --always)" >> $GITHUB_ENV
-      - name: Get cosign public key
-        run: |
-          echo -n "${{ secrets.COSIGN_PUBLIC_KEY }}" | base64 --decode > cosign.pub
       - name: Verify lifecycle images
         run: |
           LINUX_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux | jq -r .critical.image.\"docker-manifest-digest\")

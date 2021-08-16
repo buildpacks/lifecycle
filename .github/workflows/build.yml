@@ -140,9 +140,6 @@ jobs:
       - name: Set env
         run: |
           cat tag.txt >> $GITHUB_ENV
-      - name: Create cosign public key
-        run: |
-          echo -n "${{ secrets.COSIGN_PUBLIC_KEY }}" | base64 --decode > cosign.pub
       - uses: actions/upload-artifact@v2
         with:
           name: cosign-public-key
