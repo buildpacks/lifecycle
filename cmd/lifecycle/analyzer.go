@@ -128,7 +128,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
 	}
 
-	if err := a.populateRunImageIfNeeded(stackMD, targetRegistry); err != nil {
+	if err := a.populateRunImage(stackMD, targetRegistry); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
@@ -275,7 +275,7 @@ func (a *analyzeCmd) validateRunImageInput() error {
 	return nil
 }
 
-func (a *analyzeCmd) populateRunImageIfNeeded(stackMD platform.StackMetadata, targetRegistry string) error {
+func (a *analyzeCmd) populateRunImage(stackMD platform.StackMetadata, targetRegistry string) error {
 	if !a.supportsRunImage() || a.runImageRef != "" {
 		return nil
 	}

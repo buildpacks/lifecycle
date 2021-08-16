@@ -115,7 +115,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
 	}
 
-	if err := c.populateRunImageIfNeeded(); err != nil {
+	if err := c.populateRunImage(); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
@@ -302,7 +302,7 @@ func (c *createCmd) WriteableRegistryImages() []string {
 	return writeableImages
 }
 
-func (c *createCmd) populateRunImageIfNeeded() error {
+func (c *createCmd) populateRunImage() error {
 	if c.runImageRef != "" {
 		return nil
 	}
