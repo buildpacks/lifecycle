@@ -388,7 +388,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("uses the provided analyzed path", func() {
 				analyzeFlags := []string{"-analyzed", ctrPath("/some-dir/some-analyzed.toml")}
 				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+					analyzeFlags = append(analyzeFlags, "-run-image", fixtures.authRegRunImage)
 				}
 
 				var execArgs []string
@@ -494,7 +494,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--network", registryNetwork,
 							analyzeImage,
 							ctrPath(analyzerPath),
-							"-stack", "/cnb/platform-0.7-stack.toml",
+							"-stack", "/cnb/platform-0.7-stack.toml", // run image is some-run-image
 							authRegistry.RepoName("some-image"),
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
@@ -576,10 +576,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				it("does not restore app metadata", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 restores app metadata")
 
-					analyzeFlags := []string{"-daemon"}
-					if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-						analyzeFlags = append(analyzeFlags, []string{"-run-image", "some-run-image"}...)
-					}
+					analyzeFlags := []string{"-daemon", "-run-image", "some-run-image"}
 
 					var execArgs []string
 					execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)

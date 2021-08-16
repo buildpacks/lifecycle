@@ -154,10 +154,9 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 func readStack(stackPath string) (platform.StackMetadata, error) {
 	var (
 		stackMD platform.StackMetadata
-		err     error
 	)
 
-	if _, err = toml.DecodeFile(stackPath, &stackMD); err != nil {
+	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
 		if os.IsNotExist(err) {
 			cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
 		} else {
