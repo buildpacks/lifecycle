@@ -172,7 +172,7 @@ jobs:
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux@${LINUX_AMD64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 
