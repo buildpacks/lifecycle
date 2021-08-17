@@ -27,6 +27,43 @@
   ]
 ```
 
+### Testing GitHub actions on forks
+
+The lifecycle release process involves chaining a series of GitHub actions together such that:
+* The "build" workflow creates the artifacts
+  * .tgz files containing the lifecycle binaries, shasums for the .tgz files, a cosign public key, an SBOM, etc.
+  * OCI images containing the lifecycle binaries, tagged with their commit sha (for more information, see RELEASE.md)
+* The "draft-release" workflow finds the artifacts and downloads them, creating the draft release
+* The "post-release" workflow re-tags the OCI images that were created during the "build" workflow with the release version
+
+It can be rather cumbersome to test changes to these workflows, as they are heavily intertwined. Thus we recommend forking the buildpacks/lifecycle repository in GitHub and running through the entire release process end-to-end.
+For the fork, it is necessary to add the following secrets:
+* COSIGN_PASSWORD (see [cosign](https://github.com/sigstore/cosign#generate-a-keypair))
+* COSIGN_PRIVATE_KEY
+* DOCKER_PASSWORD
+* DOCKER_USERNAME
+
+The following script can be used to update the source code to reflect the state of the fork. Note that it assumes the lifecycle is cloned inside `~/workspace/` and that there is a cosign public key saved at `~/workspace/fork.pub`.
+It can be invoked like so: `<path to script> <Docker Hub username> <GitHub username>`
+
+```bash
+# $1 - Docker Hub username
+# $2 - GitHub username
+
+echo "Use fork"
+sed -i '' "s/\"buildpacks\"/\"$2\"/g" ~/workspace/lifecycle/.github/workflows/draft-release.yml
+
+echo "Use public key from fork (assumes private key and passphrase have been added to GitHub secrets)"
+cp ~/workspace/fork.pub cosign.pub
+
+echo "Use own Docker Hub account (assumes docker password has been added to GitHub secrets)"
+sed -i '' "s/buildpacksio\/lifecycle/$1\/lifecycle/g" ~/workspace/lifecycle/.github/workflows/build.yml
+sed -i '' "s/buildpacksio\/lifecycle/$1\/lifecycle/g" ~/workspace/lifecycle/.github/workflows/post-release.yml
+
+echo "Skip tests to make things faster"
+sed -i '' "s/make test/echo "test"/g" ~/workspace/lifecycle/.github/workflows/build.yml
+sed -i '' "s/make acceptance/echo "acceptance"/g" ~/workspace/lifecycle/.github/workflows/build.yml
+```
 
 ## Tasks
 
