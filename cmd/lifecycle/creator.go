@@ -31,10 +31,10 @@ type createCmd struct {
 	previousImageRef    string
 	processType         string
 	projectMetadataPath string
-	registry            string
 	reportPath          string
 	runImageRef         string
 	stackPath           string
+	targetRegistry      string
 	uid, gid            int
 	skipRestore         bool
 	useDaemon           bool
@@ -105,17 +105,18 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	var err error
-	c.stackMD, c.runImageRef, c.registry, err = resolveStack(c.outputImageRef, c.stackPath, c.runImageRef)
+	c.stackMD, err = readStack(c.stackPath)
 	if err != nil {
-		return err
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
 	}
 
-	if c.runImageRef == "" {
-		return cmd.FailErrCode(
-			errors.New("-run-image is required when there is no stack metadata available"),
-			cmd.CodeInvalidArgs,
-			"parse arguments",
-		)
+	c.targetRegistry, err = parseRegistry(c.outputImageRef)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+	}
+
+	if err := c.populateRunImage(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -264,11 +265,11 @@ func (c *createCmd) Exec() error {
 		platform:            c.platform,
 		processType:         c.processType,
 		projectMetadataPath: c.projectMetadataPath,
-		registry:            c.registry,
 		reportPath:          c.reportPath,
 		runImageRef:         c.runImageRef,
 		stackMD:             c.stackMD,
 		stackPath:           c.stackPath,
+		targetRegistry:      c.targetRegistry,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
 	}.export(group, cacheStore, analyzedMD)
@@ -299,4 +300,17 @@ func (c *createCmd) WriteableRegistryImages() []string {
 		writeableImages = appendNotEmpty(writeableImages, c.additionalTags...)
 	}
 	return writeableImages
+}
+
+func (c *createCmd) populateRunImage() error {
+	if c.runImageRef != "" {
+		return nil
+	}
+
+	var err error
+	c.runImageRef, err = c.stackMD.BestRunImageMirror(c.targetRegistry)
+	if err != nil {
+		return errors.New("-run-image is required when there is no stack metadata available")
+	}
+	return nil
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -43,19 +42,20 @@ type exportCmd struct {
 type exportArgs struct {
 	// inputs needed when run by creator
 	appDir              string
-	imageNames          []string
 	launchCacheDir      string
 	launcherPath        string
 	layersDir           string
 	processType         string
 	projectMetadataPath string
-	registry            string
 	reportPath          string
 	runImageRef         string
-	stackMD             platform.StackMetadata
 	stackPath           string
-	useDaemon           bool
-	uid, gid            int
+	targetRegistry      string
+	imageNames          []string
+	stackMD             platform.StackMetadata
+
+	useDaemon bool
+	uid, gid  int
 
 	platform cmd.Platform
 
@@ -104,8 +104,8 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
-	if e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage) {
-		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+	if err := e.validateRunImageInput(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
 	}
 
 	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -129,25 +129,46 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	var err error
-	e.stackMD, e.runImageRef, e.registry, err = resolveStack(e.imageNames[0], e.stackPath, e.runImageRef)
-	if err != nil {
-		return err
-	}
-
-	if e.runImageRef == "" {
-		return cmd.FailErrCode(
-			errors.New("-run-image is required when there is no stack metadata available"),
-			cmd.CodeInvalidArgs,
-			"parse arguments",
-		)
-	}
-
-	e.analyzedMD, err = parseOptionalAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
+	e.analyzedMD, err = parseAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
 
+	e.stackMD, err = readStack(e.stackPath)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+	}
+
+	e.targetRegistry, err = parseRegistry(e.imageNames[0])
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+	}
+
+	if err := e.populateRunImageRefIfNeeded(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+	}
+
 	return nil
+}
+
+func readStack(stackPath string) (platform.StackMetadata, error) {
+	var (
+		stackMD platform.StackMetadata
+	)
+
+	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
+		if os.IsNotExist(err) {
+			cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
+		} else {
+			return platform.StackMetadata{}, err
+		}
+	}
+
+	return stackMD, nil
+}
+
+func (e *exportCmd) supportsRunImage() bool {
+	return api.MustParse(e.platform.API()).Compare(api.MustParse("0.7")) < 0
 }
 
 func (e *exportCmd) Privileges() error {
@@ -203,6 +224,35 @@ func (e *exportCmd) registryImages() []string {
 		}
 	}
 	return registryImages
+}
+
+func (e *exportCmd) populateRunImageRefIfNeeded() error {
+	if !e.supportsRunImage() {
+		if e.analyzedMD.RunImage == nil || e.analyzedMD.RunImage.Reference == "" {
+			return errors.New("run image not found in analyzed metadata")
+		}
+		e.runImageRef = e.analyzedMD.RunImage.Reference
+	} else if e.runImageRef == "" {
+		var err error
+		e.runImageRef, err = e.stackMD.BestRunImageMirror(e.targetRegistry)
+		if err != nil {
+			return errors.New("-run-image is required when there is no stack metadata available")
+		}
+	}
+	return nil
+}
+
+func (e *exportCmd) validateRunImageInput() error {
+	switch {
+	case e.supportsRunImage() && e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+		return errors.New("supply only one of -run-image or (deprecated) -image")
+	case !e.supportsRunImage() && e.deprecatedRunImageRef != "":
+		return errors.New("-image is unsupported")
+	case !e.supportsRunImage() && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+		return errors.New("-run-image is unsupported")
+	default:
+		return nil
+	}
 }
 
 func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
@@ -313,13 +363,13 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 
 	if analyzedMD.Image != nil {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
-		ref, err := name.ParseReference(analyzedMD.Image.Reference, name.WeakValidation)
+		// ensure previous image is on same registry as output image
+		analyzedRegistry, err := parseRegistry(analyzedMD.Image.Reference)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "parse analyzed registry")
 		}
-		analyzedRegistry := ref.Context().RegistryStr()
-		if analyzedRegistry != ea.registry {
-			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, ea.registry)
+		if analyzedRegistry != ea.targetRegistry {
+			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, ea.targetRegistry)
 		}
 		opts = append(opts, remote.WithPreviousImage(analyzedMD.Image.Reference))
 	}
@@ -359,7 +409,7 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	}
 }
 
-func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
+func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
 	var analyzedMD platform.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
@@ -373,34 +423,4 @@ func parseOptionalAnalyzedMD(logger lifecycle.Logger, path string) (platform.Ana
 	}
 
 	return analyzedMD, nil
-}
-
-func resolveStack(outputImageRef, stackPath, runImageRefOrig string) (platform.StackMetadata, string, string, error) {
-	ref, err := name.ParseReference(outputImageRef, name.WeakValidation)
-	if err != nil {
-		return platform.StackMetadata{}, "", "", cmd.FailErr(err, "parse registry")
-	}
-	registry := ref.Context().RegistryStr()
-
-	var stackMD platform.StackMetadata
-	_, err = toml.DecodeFile(stackPath, &stackMD)
-	if err != nil {
-		cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
-	}
-
-	var runImageRef string
-	if runImageRefOrig == "" {
-		if stackMD.RunImage.Image == "" {
-			return platform.StackMetadata{}, "", "", nil
-		}
-
-		runImageRef, err = stackMD.BestRunImageMirror(registry)
-		if err != nil {
-			return platform.StackMetadata{}, "", "", err
-		}
-	} else {
-		runImageRef = runImageRefOrig
-	}
-
-	return stackMD, runImageRef, registry, nil
 }

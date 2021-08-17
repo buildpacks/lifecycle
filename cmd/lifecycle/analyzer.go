@@ -8,6 +8,7 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -88,8 +89,22 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		}
 	}
 
+	targetRegistry, err := parseRegistry(a.outputImageRef)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+	}
+
 	if a.previousImageRef == "" {
 		a.previousImageRef = a.outputImageRef
+	} else if !a.useDaemon {
+		previousRegistry, err := parseRegistry(a.previousImageRef)
+		if err != nil {
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse previous registry")
+		}
+		if previousRegistry != targetRegistry {
+			err := fmt.Errorf("previous image is on a different registry %s from the exported image %s", previousRegistry, targetRegistry)
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate registry")
+		}
 	}
 
 	if err := image.ValidateDestinationTags(a.useDaemon, append(a.additionalTags, a.outputImageRef)...); err != nil {
@@ -104,13 +119,28 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		a.platform06.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
 	}
 
-	var err error
-	_, a.runImageRef, _, err = resolveStack(a.outputImageRef, a.stackPath, a.runImageRef)
+	stackMD, err := readStack(a.stackPath)
 	if err != nil {
-		return err
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+	}
+
+	if err := a.validateRunImageInput(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
+	}
+
+	if err := a.populateRunImage(stackMD, targetRegistry); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
+}
+
+func parseRegistry(providedRef string) (string, error) {
+	ref, err := name.ParseReference(providedRef, name.WeakValidation)
+	if err != nil {
+		return "", err
+	}
+	return ref.Context().RegistryStr(), nil
 }
 
 func (a *analyzeCmd) Privileges() error {
@@ -214,6 +244,15 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
 	}
+
+	if aa.runImageRef != "" {
+		ref, err := name.ParseReference(aa.runImageRef, name.WeakValidation)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "parse reference for run image")
+		}
+		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: ref.String()}
+	}
+
 	return analyzedMD, nil
 }
 
@@ -223,6 +262,30 @@ func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {
 	return !a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) supportsRunImage() bool {
+	return a.platformAPIVersionGreaterThan06()
+}
+
+func (a *analyzeCmd) validateRunImageInput() error {
+	if !a.supportsRunImage() && a.runImageRef != "" {
+		return errors.New("-run-image is unsupported")
+	}
+	return nil
+}
+
+func (a *analyzeCmd) populateRunImage(stackMD platform.StackMetadata, targetRegistry string) error {
+	if !a.supportsRunImage() || a.runImageRef != "" {
+		return nil
+	}
+
+	var err error
+	a.runImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
+	if err != nil {
+		return errors.New("-run-image is required when there is no stack metadata available")
+	}
+	return nil
 }
 
 func (aa *analyzeArgs) ReadableRegistryImages() []string {

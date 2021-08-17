@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,10 +54,12 @@ type analyzeFixtures struct {
 	authRegAuthConfig     string
 	authRegCacheImage     string
 	authRegOtherAppImage  string
+	authRegRunImage       string
 	daemonAppImage        string
 	daemonCacheImage      string
 	readOnlyRegAppImage   string
 	readOnlyRegCacheImage string
+	readOnlyRegRunImage   string
 }
 
 func TestAnalyzer(t *testing.T) {
@@ -173,6 +176,15 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "metadata="+cacheMeta,
 	)
 	fixtures.readOnlyRegCacheImage = readOnlyRegistry.RepoName(someCacheName)
+
+	someRunImageName := "some-run-image-" + h.RandString(10)
+	fixtures.authRegRunImage, _ = buildAuthRegistryImage(
+		t,
+		someRunImageName,
+		filepath.Join("testdata", "analyzer", "cache-image"),
+		"--build-arg", "fromImage="+containerBaseImage,
+	)
+	fixtures.readOnlyRegRunImage = readOnlyRegistry.RepoName(someRunImageName)
 
 	// Daemon
 
@@ -325,6 +337,12 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("the provided layers directory isn't writeable", func() {
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
+
+				var analyzeFlags []string
+				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+				}
+
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags(
@@ -332,11 +350,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
 						"--network", registryNetwork,
 					),
-					h.WithBash(
-						fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s; ls -al /layers",
-							analyzerPath,
-							fixtures.authRegAppImage),
-					),
+
+					h.WithBash(fmt.Sprintf("chown -R 9999:9999 /layers; chmod -R 775 /layers; %s %s %s; ls -al /layers", analyzerPath, flatPrint(analyzeFlags), authRegistry.RepoName("some-image"))),
 				)
 
 				h.AssertMatch(t, output, "2222 3333 .+ \\.")
@@ -347,6 +362,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("group path is provided", func() {
 			it("uses the provided group path", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -group flag")
+
 				h.DockerSeedRunAndCopy(t,
 					containerName,
 					cacheFixtureDir, ctrPath("/cache"),
@@ -370,11 +386,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("analyzed path is provided", func() {
 			it("uses the provided analyzed path", func() {
-				execArgs := []string{
-					ctrPath(analyzerPath),
-					"-analyzed", ctrPath("/some-dir/some-analyzed.toml"),
-					fixtures.authRegAppImage,
+				analyzeFlags := []string{"-analyzed", ctrPath("/some-dir/some-analyzed.toml")}
+				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+					analyzeFlags = append(analyzeFlags, "-run-image", fixtures.authRegRunImage)
 				}
+
+				var execArgs []string
+				execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+				execArgs = append(execArgs, fixtures.authRegAppImage)
 
 				h.DockerRunAndCopy(t,
 					containerName,
@@ -382,9 +401,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					ctrPath("/some-dir/some-analyzed.toml"),
 					analyzeImage,
 					h.WithFlags(
-						"--network", registryNetwork,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 						"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+						"--network", registryNetwork,
 					),
 					h.WithArgs(execArgs...),
 				)
@@ -395,20 +414,24 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		it("drops privileges", func() {
 			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-			imageName := authRegistry.RepoName("some-image")
-			authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, imageName)
-			h.AssertNil(t, err)
+
+			analyzeArgs := []string{"-analyzed", "/some-dir/some-analyzed.toml"}
+			if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+				analyzeArgs = append(analyzeArgs, "-run-image", fixtures.authRegRunImage)
+			}
+
 			output := h.DockerRun(t,
 				analyzeImage,
 				h.WithFlags(
-					"--network", registryNetwork,
 					"--env", "CNB_PLATFORM_API="+platformAPI,
-					"--env", "CNB_REGISTRY_AUTH="+authConfig,
+					"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+					"--network", registryNetwork,
 				),
 				h.WithBash(
-					fmt.Sprintf("%s -analyzed /some-dir/some-analyzed.toml %s; ls -al /some-dir",
+					fmt.Sprintf("%s %s %s; ls -al /some-dir",
 						ctrPath(analyzerPath),
-						imageName,
+						flatPrint(analyzeArgs),
+						authRegistry.RepoName("some-image"),
 					),
 				),
 			)
@@ -416,38 +439,88 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			h.AssertMatch(t, output, "2222 3333 .+ some-analyzed.toml")
 		})
 
-		// TODO: add with or after https://github.com/buildpacks/lifecycle/pull/646
-		when.Pend("run image", func() {
+		when("run image", func() {
 			when("provided", func() {
-				it("validates read access", func() {
+				it("is recorded in analyzed.toml", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						ctrPath("/layers/analyzed.toml"),
+						analyzeImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+							"--network", registryNetwork,
+						),
+						h.WithArgs(ctrPath(analyzerPath), "-run-image", fixtures.authRegRunImage, authRegistry.RepoName("some-image")),
+					)
+
+					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.authRegRunImage)
 				})
 			})
 
 			when("not provided", func() {
 				it("falls back to CNB_RUN_IMAGE", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						ctrPath("/layers/analyzed.toml"),
+						analyzeImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+							"--env", "CNB_RUN_IMAGE="+fixtures.authRegRunImage,
+							"--network", registryNetwork,
+						),
+						h.WithArgs(ctrPath(analyzerPath), authRegistry.RepoName("some-image")),
+					)
+
+					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.authRegRunImage)
 				})
 
 				when("CNB_RUN_IMAGE not provided", func() {
 					it("falls back to stack.toml", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+
+						cmd := exec.Command("docker", "run", "--rm",
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+							"--network", registryNetwork,
+							analyzeImage,
+							ctrPath(analyzerPath),
+							"-stack", "/cnb/platform-0.7-stack.toml", // run image is some-run-image
+							authRegistry.RepoName("some-image"),
+						) // #nosec G204
+						output, err := cmd.CombinedOutput()
+						h.AssertNotNil(t, err)
+
+						h.AssertStringContains(t, string(output), "failed to : ensure registry read access to some-run-image") // TODO: update some-run-image to have explicit permissions when https://github.com/buildpacks/lifecycle/pull/685 is merged
 					})
 
 					when("stack.toml not present", func() {
-						it("ignores run image", func() {
+						it("errors", func() {
 							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+
+							cmd := exec.Command(
+								"docker", "run", "--rm",
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								analyzeImage,
+								ctrPath(analyzerPath),
+								"some-image",
+							) // #nosec G204
+							output, err := cmd.CombinedOutput()
+
+							h.AssertNotNil(t, err)
+							expected := "-run-image is required when there is no stack metadata available"
+							h.AssertStringContains(t, string(output), expected)
 						})
 					})
-				})
-			})
-		})
-
-		// TODO: add with or after https://github.com/buildpacks/lifecycle/pull/646
-		when.Pend("cache image", func() {
-			when("provided", func() {
-				it("validates read / write access", func() {
-					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not validate registry access")
 				})
 			})
 		})
@@ -475,11 +548,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("daemon case", func() {
 			it("writes analyzed.toml", func() {
-				execArgs := []string{
-					ctrPath(analyzerPath),
-					"-daemon",
-					readOnlyRegistry.RepoName("some-image"),
+				analyzeFlags := []string{"-daemon"}
+				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+					analyzeFlags = append(analyzeFlags, []string{"-run-image", "some-run-image"}...)
 				}
+
+				var execArgs []string
+				execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+				execArgs = append(execArgs, readOnlyRegistry.RepoName("some-image"))
 
 				h.DockerRunAndCopy(t,
 					containerName,
@@ -499,6 +575,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			when("app image exists", func() {
 				it("does not restore app metadata", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 restores app metadata")
+
+					analyzeFlags := []string{"-daemon", "-run-image", "some-run-image"}
+
+					var execArgs []string
+					execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+					execArgs = append(execArgs, fixtures.daemonAppImage)
+
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
@@ -508,10 +591,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							dockerSocketMount,
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 						)...),
-						h.WithArgs(
-							ctrPath(analyzerPath),
-							"-daemon",
-							fixtures.daemonAppImage),
+						h.WithArgs(execArgs...),
 					)
 
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
@@ -604,9 +684,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 										analyzeImage,
 										h.WithFlags(append(
 											dockerSocketMount,
-											"--network", registryNetwork,
-											"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
 											"--env", "CNB_PLATFORM_API="+platformAPI,
+											"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+											"--network", registryNetwork,
 										)...),
 										h.WithArgs(
 											ctrPath(analyzerPath),
@@ -629,9 +709,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 										ctrPath("/layers"),
 										analyzeImage,
 										h.WithFlags(
+											"--env", "CNB_PLATFORM_API="+platformAPI,
 											"--env", "DOCKER_CONFIG=/docker-config",
 											"--network", registryNetwork,
-											"--env", "CNB_PLATFORM_API="+platformAPI,
 										),
 										h.WithArgs(
 											ctrPath(analyzerPath),
@@ -656,8 +736,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 									analyzeImage,
 									h.WithFlags(append(
 										dockerSocketMount,
-										"--network", registryNetwork,
 										"--env", "CNB_PLATFORM_API="+platformAPI,
+										"--network", registryNetwork,
 									)...),
 									h.WithArgs(
 										ctrPath(analyzerPath),
@@ -709,8 +789,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								analyzeImage,
 								h.WithFlags(append(
 									dockerSocketMount,
-									"--volume", cacheVolume+":/cache",
 									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--volume", cacheVolume+":/cache",
 								)...),
 								h.WithBash(
 									fmt.Sprintf("chown -R 9999:9999 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
@@ -735,8 +815,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								analyzeImage,
 								h.WithFlags(append(
 									dockerSocketMount,
-									"--volume", cacheVolume+":/cache",
 									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--volume", cacheVolume+":/cache",
 								)...),
 								h.WithBash(
 									fmt.Sprintf("chown -R 9999:3333 /cache; chmod -R 775 /cache; %s -daemon -cache-dir /cache some-image; ls -alR /cache", analyzerPath),
@@ -754,17 +834,26 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("registry case", func() {
 			it("writes analyzed.toml", func() {
+				var analyzeFlags []string
+				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+				}
+
+				var execArgs []string
+				execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+				execArgs = append(execArgs, authRegistry.RepoName("some-image"))
+
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
 					ctrPath("/layers/analyzed.toml"),
 					analyzeImage,
 					h.WithFlags(
-						"--network", registryNetwork,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 						"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+						"--network", registryNetwork,
 					),
-					h.WithArgs(ctrPath(analyzerPath), fixtures.authRegAppImage),
+					h.WithArgs(execArgs...),
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
@@ -781,9 +870,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								ctrPath("/layers"),
 								analyzeImage,
 								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
 									"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
 									"--network", registryNetwork,
-									"--env", "CNB_PLATFORM_API="+platformAPI,
 								),
 								h.WithArgs(
 									ctrPath(analyzerPath),
@@ -804,9 +893,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								ctrPath("/layers"),
 								analyzeImage,
 								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
 									"--env", "DOCKER_CONFIG=/docker-config",
 									"--network", registryNetwork,
-									"--env", "CNB_PLATFORM_API="+platformAPI,
 								),
 								h.WithArgs(
 									ctrPath(analyzerPath),
@@ -827,9 +916,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								ctrPath("/layers"),
 								analyzeImage,
 								h.WithFlags(
-									"--network", registryNetwork,
-									"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
 									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+									"--network", registryNetwork,
 								),
 								h.WithArgs(
 									ctrPath(analyzerPath),
@@ -847,14 +936,15 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("no auth registry", func() {
 					it("restores app metadata", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
+
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
 							ctrPath("/layers"),
 							analyzeImage,
 							h.WithFlags(
-								"--network", registryNetwork,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--network", registryNetwork,
 							),
 							h.WithArgs(
 								ctrPath(analyzerPath),
@@ -874,8 +964,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								ctrPath("/layers"),
 								analyzeImage,
 								h.WithFlags(
-									"--network", registryNetwork,
 									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--network", registryNetwork,
 								),
 								h.WithArgs(
 									ctrPath(analyzerPath),
@@ -899,11 +989,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("auth registry", func() {
 					when("the destination image does not exist", func() {
 						it("writes analyzed.toml with previous image identifier", func() {
-							execArgs := []string{
-								ctrPath(analyzerPath),
-								"-previous-image", fixtures.authRegAppImage,
-								authRegistry.RepoName("some-fake-image"),
+							analyzeFlags := []string{"-previous-image", fixtures.authRegAppImage}
+							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
 							}
+
+							var execArgs []string
+							execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+							execArgs = append(execArgs, authRegistry.RepoName("some-fake-image"))
 
 							h.DockerRunAndCopy(t,
 								containerName,
@@ -918,18 +1011,21 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 
-							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, md.Image.Reference, fixtures.authRegAppImage)
+							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+							h.AssertStringContains(t, analyzedMD.Image.Reference, fixtures.authRegAppImage)
 						})
 					})
 
 					when("the destination image exists", func() {
 						it("writes analyzed.toml with previous image identifier", func() {
-							execArgs := []string{
-								ctrPath(analyzerPath),
-								"-previous-image", fixtures.authRegAppImage,
-								fixtures.authRegOtherAppImage,
+							analyzeFlags := []string{"-previous-image", fixtures.authRegAppImage}
+							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
 							}
+
+							var execArgs []string
+							execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+							execArgs = append(execArgs, fixtures.authRegOtherAppImage)
 
 							h.DockerRunAndCopy(t,
 								containerName,
@@ -944,24 +1040,36 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 
-							md := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, md.Image.Reference, fixtures.authRegAppImage)
+							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+							h.AssertStringContains(t, analyzedMD.Image.Reference, fixtures.authRegAppImage)
 						})
 					})
 				})
 
 				when("no read access", func() {
 					it("throws read error accessing previous image", func() {
+						analyzeFlags := []string{"-previous-image", fixtures.authRegAppImage}
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+							analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+						}
+
+						var execArgs []string
+						execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+						execArgs = append(execArgs, authRegistry.RepoName("some-app-image"))
+
 						cmd := exec.Command(
-							"docker", "run", "--rm",
-							"--network", registryNetwork,
-							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_REGISTRY_AUTH={}",
-							"--name", containerName,
-							analyzeImage,
-							ctrPath(analyzerPath),
-							"-previous-image", fixtures.authRegAppImage,
-							customRegistry.RepoName(readWriteImage),
+							"docker",
+							append(
+								[]string{
+									"run", "--rm",
+									"--env", "CNB_PLATFORM_API=" + platformAPI,
+									"--env", "CNB_REGISTRY_AUTH={}",
+									"--name", containerName,
+									"--network", registryNetwork,
+									analyzeImage,
+								},
+								execArgs...,
+							)...,
 						) // #nosec G204
 						output, err := cmd.CombinedOutput()
 
@@ -984,9 +1092,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 									ctrPath("/layers"),
 									analyzeImage,
 									h.WithFlags(
+										"--env", "CNB_PLATFORM_API="+platformAPI,
 										"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
 										"--network", registryNetwork,
-										"--env", "CNB_PLATFORM_API="+platformAPI,
 									),
 									h.WithArgs(
 										ctrPath(analyzerPath),
@@ -1008,9 +1116,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 									ctrPath("/layers"),
 									analyzeImage,
 									h.WithFlags(
+										"--env", "CNB_PLATFORM_API="+platformAPI,
 										"--env", "DOCKER_CONFIG=/docker-config",
 										"--network", registryNetwork,
-										"--env", "CNB_PLATFORM_API="+platformAPI,
 									),
 									h.WithArgs(
 										ctrPath(analyzerPath),
@@ -1028,14 +1136,15 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					when("no auth registry", func() {
 						it("restores cache metadata", func() {
 							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
 								ctrPath("/layers"),
 								analyzeImage,
 								h.WithFlags(
-									"--network", registryNetwork,
 									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--network", registryNetwork,
 								),
 								h.WithArgs(
 									ctrPath(analyzerPath),
@@ -1049,11 +1158,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						it("throws read/write error accessing cache image", func() {
 							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not validate cache flag")
+
 							cmd := exec.Command(
 								"docker", "run", "--rm",
-								"--network", registryNetwork,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRegRunImage,
 								"--name", containerName,
+								"--network", registryNetwork,
 								analyzeImage,
 								ctrPath(analyzerPath),
 								"-cache-image",
@@ -1109,12 +1220,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithFlags(
 								"--env", "CNB_PLATFORM_API="+platformAPI,
 								"--env", "CNB_REGISTRY_AUTH="+fixtures.authRegAuthConfig,
+								"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRegRunImage,
 								"--network", registryNetwork,
 							),
 							h.WithArgs(execArgs...),
 						)
-						cmd := getAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-						h.AssertStringContains(t, cmd.Image.Reference, fixtures.authRegAppImage)
+						analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+						h.AssertStringContains(t, analyzedMD.Image.Reference, fixtures.authRegAppImage)
 					})
 				})
 
@@ -1123,9 +1235,10 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
 							"docker", "run", "--rm",
-							"--network", registryNetwork,
 							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRegRunImage,
 							"--name", containerName,
+							"--network", registryNetwork,
 							analyzeImage,
 							ctrPath(analyzerPath),
 							"-tag", readOnlyRegistry.RepoName("my-tag"),
@@ -1229,16 +1342,7 @@ func buildAuthRegistryImage(t *testing.T, repoName, context string, buildArgs ..
 	return regRepoName, authConfig
 }
 
-func assertAnalyzedMetadata(t *testing.T, path string) {
-	contents, _ := ioutil.ReadFile(path)
-	h.AssertEq(t, len(contents) > 0, true)
-
-	var analyzedMd platform.AnalyzedMetadata
-	_, err := toml.Decode(string(contents), &analyzedMd)
-	h.AssertNil(t, err)
-}
-
-func getAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {
+func assertAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
@@ -1301,4 +1405,8 @@ func assertWritesStoreTomlOnly(t *testing.T, dir, output string) {
 		h.AssertPathDoesNotExist(t, filepath.Join(dir, "layers", "some-buildpack-id", filename))
 	}
 	h.AssertStringContains(t, output, "Skipping buildpack layer analysis")
+}
+
+func flatPrint(arr []string) string {
+	return strings.Join(arr, " ")
 }
