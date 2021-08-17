@@ -129,8 +129,7 @@ jobs:
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
-            ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
+            $(ls ${{ env.ARTIFACTS_PATH }}/*) \
             --draft \
             --notes-file body.txt \
             --prerelease \
