@@ -82,19 +82,22 @@ jobs:
                 if (urlList.length != 6) {
                   throw "there should be exactly six artifacts"
                 }
-                return Object.fromEntries(urlList.entries())
+                return urlList.join(",")
               })
       - name: Download artifacts
         run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r . )
-          echo $url
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o artifact-linux-x86-64.zip $url
-          mkdir artifact-linux-x86-64
-          unzip -d artifact-linux-x86-64 artifact-linux-x86-64.zip
-          lifecycle_path=$(ls artifact-linux-x86-64/lifecycle-*linux.x86-64.tgz)
-          echo "ARTIFACT_LINUX_X86_64_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+          mkdir artifacts
+          echo "ARTIFACTS_PATH=$PWD/artifacts" >> $GITHUB_ENV
+
+          urls=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r . )
+
+          for url in $(echo $urls | tr "," "\n"); do
+            curl -sL -w 'RESP_CODE:%{response_code}\n' \
+              --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+              -o tmp-artifact.zip $url
+            unzip -d artifacts tmp-artifact.zip
+            rm tmp-artifact.zip
+          done
       - name: Set pre-release kind
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
@@ -128,11 +131,6 @@ jobs:
           gh release create v${{ env.LIFECYCLE_VERSION }} \
             ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
             ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
-<<<<<<< HEAD
-            ${{ env.ARTIFACT_BOM_CDX_PATH }} \
-=======
-            ${{ env.ARTIFACT_COSIGN_PATH }} \
->>>>>>> main
             --draft \
             --notes-file body.txt \
             --prerelease \
@@ -144,13 +142,7 @@ jobs:
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
-            ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
-<<<<<<< HEAD
-            ${{ env.ARTIFACT_BOM_CDX_PATH }} \
-=======
-            ${{ env.ARTIFACT_COSIGN_PATH }} \
->>>>>>> main
+            $(ls ${{ env.ARTIFACTS_PATH }}/*) \
             --draft \
             --notes-file body.txt \
             --target $GITHUB_REF \

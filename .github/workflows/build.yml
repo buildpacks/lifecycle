@@ -163,10 +163,13 @@ jobs:
       - name: Set env
         run: |
           cat tag.txt >> $GITHUB_ENV
+      - name: Rename cosign public key
+        run: |
+          cp cosign.pub lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
       - uses: actions/upload-artifact@v2
         with:
           name: lifecycle-cosign-public-key
-          path: cosign.pub
+          path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
       - name: Publish images
         if: github.event_name == 'push'
         run: |
