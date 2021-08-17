@@ -139,6 +139,17 @@ func main() {
 			log.Fatal("Failed to save image:", err)
 		}
 	}
+	id, err := img.Identifier()
+	if err != nil {
+		log.Fatal("Failed to get image id:", err)
+	}
+	switch v := id.(type) {
+	case local.IDIdentifier:
+		fmt.Println("Image ID:", v.String())
+	case remote.DigestIdentifier:
+		fmt.Println("Digest:", v.Digest.DigestStr())
+	default:
+	}
 }
 
 type Descriptor struct {
