@@ -61,8 +61,8 @@ sed -i '' "s/buildpacksio\/lifecycle/$1\/lifecycle/g" ~/workspace/lifecycle/.git
 sed -i '' "s/buildpacksio\/lifecycle/$1\/lifecycle/g" ~/workspace/lifecycle/.github/workflows/post-release.yml
 
 echo "Skip tests to make things faster"
-sed -i '' "s/make test/echo "test"/g" ~/workspace/lifecycle/.github/workflows/build.yml
-sed -i '' "s/make acceptance/echo "acceptance"/g" ~/workspace/lifecycle/.github/workflows/build.yml
+sed -i '' "s/make test/echo test/g" ~/workspace/lifecycle/.github/workflows/build.yml
+sed -i '' "s/make acceptance/echo acceptance/g" ~/workspace/lifecycle/.github/workflows/build.yml
 ```
 
 ## Tasks
