@@ -95,6 +95,9 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.16'
+      - name: Install cosign
+        run: |
+          go install github.com/sigstore/cosign/cmd/cosign@latest
       - name: Set version
         run: |
           echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" >> version.txt
@@ -120,12 +123,24 @@ jobs:
           path: out/lifecycle-v*+linux.x86-64.tgz
       - uses: actions/upload-artifact@v2
         with:
+          name: lifecycle-linux-x86-64-sha256
+          path: out/lifecycle-v*+linux.x86-64.tgz.sha256
+      - uses: actions/upload-artifact@v2
+        with:
           name: lifecycle-linux-arm64
           path: out/lifecycle-v*+linux.arm64.tgz
       - uses: actions/upload-artifact@v2
         with:
+          name: lifecycle-linux-arm64-sha256
+          path: out/lifecycle-v*+linux.arm64.tgz.sha256
+      - uses: actions/upload-artifact@v2
+        with:
           name: lifecycle-windows-x86-64
           path: out/lifecycle-v*+windows.x86-64.tgz
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-windows-x86-64-sha256
+          path: out/lifecycle-v*+windows.x86-64.tgz.sha256
       - uses: azure/docker-login@v1
         if: github.event_name == 'push'
         with:
@@ -137,19 +152,35 @@ jobs:
       - name: Set env
         run: |
           cat tag.txt >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v2
+        with:
+          name: cosign-public-key
+          path: cosign.pub
       - name: Publish images
         if: github.event_name == 'push'
         run: |
-          LIFECYCLE_IMAGE_TAG=$(git describe --always)
           DOCKER_CLI_EXPERIMENTAL=enabled
-          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux
-          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64
-          go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows
+          LIFECYCLE_IMAGE_TAG=$(git describe --always)
+
+          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
+          echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
+
+          LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
+          echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
+
+          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
+          echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
+
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows
-          docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
+
+          MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
+          echo "MANIFEST_SHA: $MANIFEST_SHA"
+
+          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) -a tag=${LIFECYCLE_IMAGE_TAG} -r buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
+          cosign verify -key cosign.pub -a tag=${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
   pack-acceptance-linux:
     if: github.event_name == 'push'
     needs: build-and-publish
@@ -244,3 +275,4 @@ jobs:
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
+

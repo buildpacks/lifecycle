@@ -64,40 +64,23 @@ build-linux-amd64-lifecycle: $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle
 
 build-linux-arm64-lifecycle: $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle
 
-docker-compilation-image-linux:
-	docker build ./tools --build-arg from_image=$(LINUX_COMPILATION_IMAGE) --tag $(SOURCE_COMPILATION_IMAGE)
-
 $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: export GOARCH:=amd64
-$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: docker-compilation-image-linux
+$(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
-	docker run \
-	  --workdir=/lifecycle \
-	  --volume $(OUT_DIR):/out \
-	  --volume $(PWD):/lifecycle \
-	  --volume gocache:/go \
-	  $(SOURCE_COMPILATION_IMAGE) \
-	  sh -c '$(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: export GOARCH:=arm64
-$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: docker-compilation-image-linux
+$(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: OUT_DIR?=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
-	docker run \
-	  --workdir=/lifecycle \
-	  --volume $(OUT_DIR):/out \
-	  --volume $(PWD):/lifecycle \
-	  --volume gocache:/go \
-	  $(SOURCE_COMPILATION_IMAGE) \
-	  sh -c '$(GOENV) $(GOBUILD) -o /out/lifecycle -a ./cmd/lifecycle'
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 
 build-linux-amd64-launcher: $(BUILD_DIR)/linux-amd64/lifecycle/launcher
 
