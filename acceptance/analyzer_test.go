@@ -216,6 +216,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "fromImage="+containerBaseImage,
 	)
 	fixtures.readOnlyRegRunImage = testRegistry.SetReadOnly(someRunImageName)
+	fixtures.authRegRunImage = testRegistry.RepoName(someRunImageName)
 
 	// Daemon
 
