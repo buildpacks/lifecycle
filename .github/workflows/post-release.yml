@@ -34,6 +34,10 @@ jobs:
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
           echo "LINUX_AMD64_SHA=$LINUX_AMD64_SHA" >> $GITHUB_ENV
 
+          LINUX_ARM64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64 | jq -r .critical.image.\"docker-manifest-digest\")
+          echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
+          echo "LINUX_ARM64_SHA=$LINUX_ARM64_SHA" >> $GITHUB_ENV
+
           WINDOWS_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows | jq -r .critical.image.\"docker-manifest-digest\")
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
           echo "WINDOWS_AMD64_SHA=$WINDOWS_AMD64_SHA" >> $GITHUB_ENV
@@ -44,11 +48,15 @@ jobs:
           LINUX_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-x86-64 2>&1 | cut -d' ' -f5)
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
 
+          LINUX_ARM64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-arm64 2>&1 | cut -d' ' -f5)
+          echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
+
           WINDOWS_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-windows 2>&1 | cut -d' ' -f5)
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
           docker manifest create buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }} \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-x86-64@${LINUX_AMD64_SHA} \
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-arm64@${LINUX_ARM64_SHA} \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows@${WINDOWS_AMD64_SHA}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }})
@@ -64,11 +72,15 @@ jobs:
           LINUX_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} latest-linux-x86-64 2>&1 | cut -d' ' -f5)
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
 
+          LINUX_ARM64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} latest-linux-arm64 2>&1 | cut -d' ' -f5)
+          echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
+
           WINDOWS_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} latest-windows 2>&1 | cut -d' ' -f5)
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
           docker manifest create buildpacksio/lifecycle:latest \
             buildpacksio/lifecycle:latest-linux-x86-64@${LINUX_AMD64_SHA} \
+            buildpacksio/lifecycle:latest-linux-arm64@${LINUX_ARM64_SHA} \
             buildpacksio/lifecycle:latest-windows@${WINDOWS_AMD64_SHA}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:latest)

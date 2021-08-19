@@ -22,7 +22,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux-x86-64 and windows
+      - name: Determine download urls for linux-x86-64, linux-arm64 and windows
         id: artifact-urls
         uses: actions/github-script@v3.0.0
         with:
@@ -79,6 +79,13 @@ jobs:
                       urlMap.set("linux_x86_64", tuple[1])
                     }
                   }
+                  if (tuple[0].includes("linux-arm64")) {
+                    if (tuple[0].includes("sha256")) {
+                      urlMap.set("linux_arm64_sha256", tuple[1])
+                    } else {
+                      urlMap.set("linux_arm64", tuple[1])
+                    }
+                  }
                   if (tuple[0].includes("windows")) {
                     if (tuple[0].includes("sha256")) {
                       urlMap.set("windows_sha256", tuple[1])
@@ -93,8 +100,8 @@ jobs:
                 if (urlMap.size === 0) {
                   throw "no artifacts found"
                 }
-                if (urlMap.size != 5) {
-                  throw "there should be exactly five artifacts"
+                if (urlMap.size != 7) {
+                  throw "there should be exactly seven artifacts"
                 }
                 return Object.fromEntries(urlMap.entries())
               })
@@ -118,6 +125,26 @@ jobs:
           unzip -d artifact-linux-x86-64-sha256 artifact-linux-x86-64-sha256.zip
           lifecycle_path=$(ls artifact-linux-x86-64-sha256/lifecycle-*linux.x86-64.tgz.sha256)
           echo "ARTIFACT_LINUX_X86_64_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+      - name: Download linux-arm64 artifact
+        run: |
+          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux_arm64 )
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o artifact-linux-arm64.zip $url
+          mkdir artifact-linux-arm64
+          unzip -d artifact-linux-arm64 artifact-linux-arm64.zip
+          lifecycle_path=$(ls artifact-linux-arm64/lifecycle-*linux.arm64.tgz)
+          echo "ARTIFACT_LINUX_ARM64_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
+      - name: Download linux-arm64-sha256 artifact
+        run: |
+          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux_arm64_sha256 )
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o artifact-linux-arm64-sha256.zip $url
+          mkdir artifact-linux-arm64-sha256
+          unzip -d artifact-linux-arm64-sha256 artifact-linux-arm64-sha256.zip
+          lifecycle_path=$(ls artifact-linux-arm64-sha256/lifecycle-*linux.arm64.tgz.sha256)
+          echo "ARTIFACT_LINUX_ARM64_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
       - name: Download windows artifact
         run: |
           url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .windows )
@@ -180,6 +207,7 @@ jobs:
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
             ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
+            ${{ env.ARTIFACT_LINUX_ARM64_PATH }} ${{ env.ARTIFACT_LINUX_ARM64_SHA_PATH }} \
             ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
             ${{ env.ARTIFACT_COSIGN_PATH }} \
             --draft \
@@ -194,6 +222,7 @@ jobs:
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
             ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
+            ${{ env.ARTIFACT_LINUX_ARM64_PATH }} ${{ env.ARTIFACT_LINUX_ARM64_SHA_PATH }} \
             ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
             ${{ env.ARTIFACT_COSIGN_PATH }} \
             --draft \
