@@ -30,7 +30,7 @@ jobs:
           script: |
             return github.actions
               .listRepoWorkflows({
-                 owner: "buildpacks",
+                 owner: "${{ github.repository_owner }}",
                  repo: "lifecycle",
               })
               .then(workflows_result => {
@@ -44,7 +44,7 @@ jobs:
               })
               .then(workflow_id => {
                 return github.actions.listWorkflowRunsForRepo({
-                  owner: "buildpacks",
+                  owner: "${{ github.repository_owner }}",
                   repo: "lifecycle",
                   workflow_id: workflow_id,
                   branch: "release/${{ env.LIFECYCLE_VERSION }}",
@@ -62,7 +62,7 @@ jobs:
               })
               .then(workflow_runid => {
                 return github.actions.listWorkflowRunArtifacts({
-                  owner: "buildpacks",
+                  owner: "${{ github.repository_owner }}",
                   repo: "lifecycle",
                   run_id: workflow_runid
                 })
