@@ -41,7 +41,6 @@ var (
 )
 
 type analyzeFixtures struct {
-	authRegRunImage        string
 	daemonAppImage         string
 	daemonCacheImage       string
 	inaccessibleImage      string
@@ -49,11 +48,12 @@ type analyzeFixtures struct {
 	someCacheImage         string
 	readOnlyAppImage       string
 	readOnlyCacheImage     string
-	readOnlyRegRunImage    string
+	readOnlyRunImage       string
 	readWriteAppImage      string
 	readWriteCacheImage    string
 	readWriteOtherAppImage string
 	regAuthConfig          string
+	runImage               string
 }
 
 func TestAnalyzer(t *testing.T) {
@@ -215,8 +215,8 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		testRegistry,
 		"--build-arg", "fromImage="+containerBaseImage,
 	)
-	fixtures.readOnlyRegRunImage = testRegistry.SetReadOnly(someRunImageName)
-	fixtures.authRegRunImage = testRegistry.RepoName(someRunImageName)
+	fixtures.readOnlyRunImage = testRegistry.SetReadOnly(someRunImageName)
+	fixtures.runImage = testRegistry.RepoName(someRunImageName)
 
 	// Daemon
 
@@ -372,7 +372,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				var analyzeFlags []string
 				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
 				}
 
 				output := h.DockerRun(t,
@@ -424,7 +424,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("uses the provided analyzed path", func() {
 				analyzeFlags := []string{"-analyzed", ctrPath("/some-dir/some-analyzed.toml")}
 				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-					analyzeFlags = append(analyzeFlags, "-run-image", fixtures.authRegRunImage)
+					analyzeFlags = append(analyzeFlags, "-run-image", fixtures.runImage)
 				}
 
 				var execArgs []string
@@ -453,7 +453,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			analyzeArgs := []string{"-analyzed", "/some-dir/some-analyzed.toml"}
 			if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-				analyzeArgs = append(analyzeArgs, "-run-image", fixtures.authRegRunImage)
+				analyzeArgs = append(analyzeArgs, "-run-image", fixtures.runImage)
 			}
 
 			output := h.DockerRun(t,
@@ -490,11 +490,11 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
 							"--network", registryNetwork,
 						),
-						h.WithArgs(ctrPath(analyzerPath), "-run-image", fixtures.authRegRunImage, fixtures.someAppImage),
+						h.WithArgs(ctrPath(analyzerPath), "-run-image", fixtures.runImage, fixtures.someAppImage),
 					)
 
 					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.authRegRunImage)
+					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.runImage)
 				})
 			})
 
@@ -510,14 +510,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 							"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
-							"--env", "CNB_RUN_IMAGE="+fixtures.authRegRunImage,
+							"--env", "CNB_RUN_IMAGE="+fixtures.runImage,
 							"--network", registryNetwork,
 						),
 						h.WithArgs(ctrPath(analyzerPath), fixtures.someAppImage),
 					)
 
 					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.authRegRunImage)
+					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.runImage)
 				})
 
 				when("CNB_RUN_IMAGE not provided", func() {
@@ -872,7 +872,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("writes analyzed.toml", func() {
 				var analyzeFlags []string
 				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
 				}
 
 				var execArgs []string
@@ -1027,7 +1027,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						it("writes analyzed.toml with previous image identifier", func() {
 							analyzeFlags := []string{"-previous-image", fixtures.readWriteAppImage}
 							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
 							}
 
 							var execArgs []string
@@ -1055,7 +1055,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						it("writes analyzed.toml with previous image identifier", func() {
 							analyzeFlags := []string{"-previous-image", fixtures.readWriteAppImage}
 							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
 							}
 
 							var execArgs []string
@@ -1085,7 +1085,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					it("throws read error accessing previous image", func() {
 						analyzeFlags := []string{"-previous-image", fixtures.inaccessibleImage}
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-							analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.authRegRunImage}...)
+							analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
 						}
 
 						var execArgs []string
@@ -1197,7 +1197,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							cmd := exec.Command(
 								"docker", "run", "--rm",
 								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRegRunImage,
+								"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRunImage,
 								"--name", containerName,
 								"--network", registryNetwork,
 								analyzeImage,
@@ -1255,7 +1255,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithFlags(
 								"--env", "CNB_PLATFORM_API="+platformAPI,
 								"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
-								"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRegRunImage,
+								"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRunImage,
 								"--network", registryNetwork,
 							),
 							h.WithArgs(execArgs...),
@@ -1271,7 +1271,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRegRunImage,
+							"--env", "CNB_RUN_IMAGE="+fixtures.readOnlyRunImage,
 							"--name", containerName,
 							"--network", registryNetwork,
 							analyzeImage,
