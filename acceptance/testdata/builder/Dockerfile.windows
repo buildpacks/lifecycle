@@ -1,7 +1,9 @@
 FROM mcr.microsoft.com/windows/nanoserver:1809
 USER ContainerAdministrator
 
-COPY container /
+COPY ./container/ /
+
+ENTRYPOINT ["/cnb/lifecycle/builder"]
 
 WORKDIR /layers
 
