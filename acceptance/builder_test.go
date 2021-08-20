@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -20,14 +21,28 @@ import (
 )
 
 var (
-	builderDockerContext = filepath.Join("testdata", "builder")
-	builderBinaryDir     = filepath.Join("testdata", "builder", "container", "cnb", "lifecycle")
-	builderImage         = "lifecycle/acceptance/builder"
+	builderDockerContext               = filepath.Join("testdata", "builder")
+	builderBinaryDir                   = filepath.Join("testdata", "builder", "container", "cnb", "lifecycle")
+	builderImage                       = "lifecycle/acceptance/builder"
+	builderDaemonOS, builderDaemonArch string
 )
 
 func TestBuilder(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	h.MakeAndCopyLifecycle(t, "linux", "amd64", builderBinaryDir)
+
+	info, err := h.DockerCli(t).Info(context.TODO())
+	h.AssertNil(t, err)
+
+	// These variables are clones of the variables in analyzer_test.go.
+	// You can find the same variables there without `builder` prefix.
+	// These lines are added for supporting windows tests.
+	builderDaemonOS = info.OSType
+	builderDaemonArch = info.Architecture
+	if builderDaemonArch == "x86_64" {
+		builderDaemonArch = "amd64"
+	}
+
+	h.MakeAndCopyLifecycle(t, builderDaemonOS, builderDaemonArch, builderBinaryDir)
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
