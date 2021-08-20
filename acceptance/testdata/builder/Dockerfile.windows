@@ -1,0 +1,12 @@
+FROM mcr.microsoft.com/windows/nanoserver:1809
+USER ContainerAdministrator
+
+COPY container /
+
+WORKDIR /layers
+
+ENV CNB_USER_ID=1
+
+ENV CNB_GROUP_ID=1
+
+ENV CNB_PLATFORM_API=${cnb_platform_api}

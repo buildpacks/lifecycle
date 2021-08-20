@@ -47,6 +47,9 @@ func TestBuilder(t *testing.T) {
 		builderImage,
 		builderDockerContext,
 		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
+		h.WithFlags(
+			"-f", filepath.Join(builderDockerContext, dockerfileName),
+		),
 	)
 	defer h.DockerImageRemove(t, builderImage)
 
