@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -19,14 +20,16 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 var (
-	exporterBinaryDir    = filepath.Join("testdata", "exporter", "container", "cnb", "lifecycle")
-	exportDockerContext  = filepath.Join("testdata", "exporter")
-	exportImage        = "lifecycle/acceptance/exporter"
-	exporterPath         = "/cnb/lifecycle/exporter"
+	exporterBinaryDir   = filepath.Join("testdata", "exporter", "container", "cnb", "lifecycle")
+	exportDockerContext = filepath.Join("testdata", "exporter")
+	exportImage         = "lifecycle/acceptance/exporter"
+	exporterPath        = "/cnb/lifecycle/exporter"
 )
 
 func TestExporter(t *testing.T) {
@@ -71,14 +74,27 @@ func TestExporter(t *testing.T) {
 
 	// end TODO
 
-	h.MakeAndCopyLifecycle(t, daemonOS, daemonArch, exporterBinaryDir)
-	h.DockerBuild(t, exportImage, exportDockerContext)
-	defer h.DockerImageRemove(t, exportImage)
-
 	// Setup fixtures
 
 	fixtures = setupAnalyzeFixtures(t) // TODO: rename to be more generic
 	defer fixtures.removeAll(t)
+
+	// TODO: make this better
+	analyzedPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml")
+	analyzedMD := assertAnalyzedMetadata(t, analyzedPath)
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.runImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+
+	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml")
+	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
+	analyzedMD.Image = &platform.ImageIdentifier{Reference: fixtures.someAppImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.runImage}  // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+	// end TODO
+
+	h.MakeAndCopyLifecycle(t, daemonOS, daemonArch, exporterBinaryDir)
+	h.DockerBuild(t, exportImage, exportDockerContext)
+	defer h.DockerImageRemove(t, exportImage)
 
 	for _, platformAPI := range api.Platform.Supported {
 		spec.Run(t, "acceptance-exporter/"+platformAPI.String(), testExporterFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
@@ -127,19 +143,26 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					}
 
 					exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-					exportArgs = append(exportArgs, testRegistry.RepoName("some-image"))
+					exportedImageName := testRegistry.RepoName("some-exported-image-" + h.RandString(10))
+					exportArgs = append(exportArgs, exportedImageName)
 
 					it.Focus("is created", func() {
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(
 								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
 								"--network", registryNetwork,
 							),
 							h.WithArgs(exportArgs...),
 						)
+						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-						h.AssertStringContains(t, output, "FOO")
+						h.Run(t, exec.Command("docker", "pull", exportedImageName))
+						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
+						h.AssertNil(t, err)
+						h.AssertEq(t, inspect.Os, daemonOS)
+						h.AssertEq(t, inspect.Architecture, daemonArch)
 					})
 				})
 				when("cache", func() {
