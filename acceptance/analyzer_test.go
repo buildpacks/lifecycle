@@ -69,6 +69,9 @@ func TestAnalyzer(t *testing.T) {
 	if daemonArch == "x86_64" {
 		daemonArch = "amd64"
 	}
+	if daemonArch == "aarch64" { // TODO: propagate everywhere
+		daemonArch = "arm64"
+	}
 
 	// Setup registry
 
