@@ -83,6 +83,7 @@ func TestExporter(t *testing.T) {
 	defer fixtures.removeAll(t)
 
 	// TODO: make this better
+	// TODO: see about ignoring changes to *analyzed.toml
 	analyzedPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml")
 	analyzedMD := assertAnalyzedMetadata(t, analyzedPath)
 	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.regRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
@@ -90,7 +91,7 @@ func TestExporter(t *testing.T) {
 
 	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "daemon-analyzed.toml")
 	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.daemonRunImage}  // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.daemonRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
 	lifecycle.WriteTOML(analyzedPath, analyzedMD)
 
 	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml")
@@ -114,7 +115,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("daemon case", func() {
 			when("first build", func() {
 				when("app", func() {
-					it.Focus("is created", func() {
+					it("is created", func() {
 						exportFlags := []string{"-daemon"}
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
 							exportFlags = append(exportFlags, []string{"-run-image", fixtures.regRunImage}...)
@@ -144,34 +145,34 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertEq(t, inspect.Architecture, daemonArch)
 					})
 				})
-				when("cache", func() {
-					when("cache directory case", func() {
-						it("is updated", func() {
-
-						})
-					})
-				})
+				//when("cache", func() {
+				//	when("cache directory case", func() {
+				//		it("is updated", func() {
+				//
+				//		})
+				//	})
+				//})
 			})
-			when("next build", func() {
-				when("app", func() {
-					it("is updated", func() {
-
-					})
-				})
-				when("cache", func() {
-					when("cache directory case", func() {
-						it("is updated", func() {
-
-						})
-					})
-				})
-			})
+			//when("next build", func() {
+			//	when("app", func() {
+			//		it("is updated", func() {
+			//
+			//		})
+			//	})
+			//	when("cache", func() {
+			//		when("cache directory case", func() {
+			//			it("is updated", func() {
+			//
+			//			})
+			//		})
+			//	})
+			//})
 		})
 
 		when("registry case", func() {
 			when("first build", func() {
 				when("app", func() {
-					it.Focus("is created", func() {
+					it("is created", func() {
 						var exportFlags []string
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
 							exportFlags = append(exportFlags, []string{"-run-image", fixtures.regRunImage}...)
@@ -192,7 +193,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-						h.Run(t, exec.Command("docker", "pull", exportedImageName)) // TODO: cleanup this image
+						h.Run(t, exec.Command("docker", "pull", exportedImageName))                              // TODO: cleanup this image
 						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
 						h.AssertNil(t, err)
 						h.AssertEq(t, inspect.Os, daemonOS)
@@ -202,25 +203,56 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("cache", func() {
 					when("cache image case", func() {
 						it("is created", func() {
+							cacheImageName := testRegistry.RepoName("some-cache-image-" + h.RandString(10))
+							exportFlags := []string{"-cache-image", cacheImageName}
+							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+								exportFlags = append(exportFlags, "-run-image", fixtures.regRunImage)
+							}
 
+							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+							exportedImageName := testRegistry.RepoName("some-exported-image-" + h.RandString(10))
+							exportArgs = append(exportArgs, exportedImageName)
+
+							output := h.DockerRun(t,
+								exportImage,
+								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
+									"--network", registryNetwork,
+								),
+								h.WithArgs(exportArgs...),
+							)
+							h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+							h.Run(t, exec.Command("docker", "pull", exportedImageName))                              // TODO: cleanup this image
+							inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
+							h.AssertNil(t, err)
+							h.AssertEq(t, inspect.Os, daemonOS)
+							h.AssertEq(t, inspect.Architecture, daemonArch)
+
+							h.Run(t, exec.Command("docker", "pull", cacheImageName))                                // TODO: cleanup this image
+							inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
+							h.AssertNil(t, err)
+							h.AssertEq(t, inspect.Os, daemonOS)
+							h.AssertEq(t, inspect.Architecture, daemonArch)
 						})
 					})
 				})
 			})
-			when("next build", func() {
-				when("app", func() {
-					it("is updated", func() {
-
-					})
-				})
-				when("cache", func() {
-					when("cache image case", func() {
-						it("is updated", func() {
-
-						})
-					})
-				})
-			})
+			//when("next build", func() {
+			//	when("app", func() {
+			//		it("is updated", func() {
+			//
+			//		})
+			//	})
+			//	when("cache", func() {
+			//		when("cache image case", func() {
+			//			it("is updated", func() {
+			//
+			//			})
+			//		})
+			//	})
+			//})
 		})
 	}
 }
