@@ -253,6 +253,8 @@ func (a analyzeFixtures) removeAll(t *testing.T) {
 	h.DockerImageRemove(t, fixtures.readWriteAppImage)
 	h.DockerImageRemove(t, fixtures.readWriteCacheImage)
 	h.DockerImageRemove(t, fixtures.readWriteOtherAppImage)
+	h.DockerImageRemove(t, fixtures.someAppImage)
+	h.DockerImageRemove(t, fixtures.someCacheImage)
 }
 
 func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
