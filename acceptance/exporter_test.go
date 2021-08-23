@@ -19,8 +19,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -44,6 +44,9 @@ func TestExporter(t *testing.T) {
 	daemonArch = info.Architecture
 	if daemonArch == "x86_64" {
 		daemonArch = "amd64"
+	}
+	if daemonArch == "aarch64" { // TODO: propagate everywhere
+		daemonArch = "arm64"
 	}
 
 	// Setup registry
@@ -82,13 +85,18 @@ func TestExporter(t *testing.T) {
 	// TODO: make this better
 	analyzedPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml")
 	analyzedMD := assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.runImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.regRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+
+	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "daemon-analyzed.toml")
+	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.daemonRunImage}  // TODO: check if metadata on fixture matches metadata in analyzed.toml
 	lifecycle.WriteTOML(analyzedPath, analyzedMD)
 
 	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml")
 	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.Image = &platform.ImageIdentifier{Reference: fixtures.someAppImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.runImage}  // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.Image = &platform.ImageIdentifier{Reference: fixtures.someAppImage}   // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.regRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
 	lifecycle.WriteTOML(analyzedPath, analyzedMD)
 	// end TODO
 
@@ -106,8 +114,34 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("daemon case", func() {
 			when("first build", func() {
 				when("app", func() {
-					it("is created", func() {
+					it.Focus("is created", func() {
+						exportFlags := []string{"-daemon"}
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							exportFlags = append(exportFlags, []string{"-run-image", fixtures.regRunImage}...)
+						} else {
+							exportFlags = append(exportFlags, []string{"-analyzed", "/layers/daemon-analyzed.toml"}...) // TODO: understand why this fixes platform 0.7 but other platforms are fine
+						}
 
+						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+						exportedImageName := "some-exported-image-" + h.RandString(10)
+						exportArgs = append(exportArgs, exportedImageName)
+
+						output := h.DockerRun(t,
+							exportImage,
+							h.WithFlags(append(
+								dockerSocketMount,
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
+								"--network", registryNetwork,
+							)...),
+							h.WithArgs(exportArgs...),
+						)
+						h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
+						h.AssertNil(t, err)
+						h.AssertEq(t, inspect.Os, daemonOS)
+						h.AssertEq(t, inspect.Architecture, daemonArch)
 					})
 				})
 				when("cache", func() {
@@ -137,16 +171,16 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("registry case", func() {
 			when("first build", func() {
 				when("app", func() {
-					var exportFlags []string
-					if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-						exportFlags = append(exportFlags, []string{"-run-image", fixtures.runImage}...)
-					}
-
-					exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-					exportedImageName := testRegistry.RepoName("some-exported-image-" + h.RandString(10))
-					exportArgs = append(exportArgs, exportedImageName)
-
 					it.Focus("is created", func() {
+						var exportFlags []string
+						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							exportFlags = append(exportFlags, []string{"-run-image", fixtures.regRunImage}...)
+						}
+
+						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+						exportedImageName := testRegistry.RepoName("some-exported-image-" + h.RandString(10))
+						exportArgs = append(exportArgs, exportedImageName)
+
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(
@@ -158,7 +192,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-						h.Run(t, exec.Command("docker", "pull", exportedImageName))
+						h.Run(t, exec.Command("docker", "pull", exportedImageName)) // TODO: cleanup this image
 						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
 						h.AssertNil(t, err)
 						h.AssertEq(t, inspect.Os, daemonOS)

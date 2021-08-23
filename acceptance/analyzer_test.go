@@ -45,6 +45,7 @@ var (
 type analyzeFixtures struct {
 	daemonAppImage         string
 	daemonCacheImage       string
+	daemonRunImage         string
 	inaccessibleImage      string
 	someAppImage           string
 	someCacheImage         string
@@ -55,7 +56,7 @@ type analyzeFixtures struct {
 	readWriteCacheImage    string
 	readWriteOtherAppImage string
 	regAuthConfig          string
-	runImage               string
+	regRunImage            string
 }
 
 func TestAnalyzer(t *testing.T) {
@@ -218,7 +219,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"--build-arg", "fromImage="+containerBaseImage,
 	)
 	fixtures.readOnlyRunImage = testRegistry.SetReadOnly(someRunImageName)
-	fixtures.runImage = testRegistry.RepoName(someRunImageName)
+	fixtures.regRunImage = testRegistry.RepoName(someRunImageName)
 
 	// Daemon
 
@@ -240,6 +241,16 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		"-t", fixtures.daemonCacheImage,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
+		filepath.Join("testdata", "analyzer", "cache-image"),
+	) // #nosec G204
+	h.Run(t, cmd)
+
+	fixtures.daemonRunImage = "some-run-image-" + h.RandString(10)
+	cmd = exec.Command(
+		"docker",
+		"build",
+		"-t", fixtures.daemonRunImage,
+		"--build-arg", "fromImage="+containerBaseImage,
 		filepath.Join("testdata", "analyzer", "cache-image"),
 	) // #nosec G204
 	h.Run(t, cmd)
@@ -376,7 +387,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				var analyzeFlags []string
 				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
+					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.regRunImage}...)
 				}
 
 				output := h.DockerRun(t,
@@ -428,7 +439,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("uses the provided analyzed path", func() {
 				analyzeFlags := []string{"-analyzed", ctrPath("/some-dir/some-analyzed.toml")}
 				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-					analyzeFlags = append(analyzeFlags, "-run-image", fixtures.runImage)
+					analyzeFlags = append(analyzeFlags, "-run-image", fixtures.regRunImage)
 				}
 
 				var execArgs []string
@@ -457,7 +468,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			analyzeArgs := []string{"-analyzed", "/some-dir/some-analyzed.toml"}
 			if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-				analyzeArgs = append(analyzeArgs, "-run-image", fixtures.runImage)
+				analyzeArgs = append(analyzeArgs, "-run-image", fixtures.regRunImage)
 			}
 
 			output := h.DockerRun(t,
@@ -494,11 +505,11 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
 							"--network", registryNetwork,
 						),
-						h.WithArgs(ctrPath(analyzerPath), "-run-image", fixtures.runImage, fixtures.someAppImage),
+						h.WithArgs(ctrPath(analyzerPath), "-run-image", fixtures.regRunImage, fixtures.someAppImage),
 					)
 
 					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.runImage)
+					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.regRunImage)
 				})
 			})
 
@@ -514,14 +525,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 							"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
-							"--env", "CNB_RUN_IMAGE="+fixtures.runImage,
+							"--env", "CNB_RUN_IMAGE="+fixtures.regRunImage,
 							"--network", registryNetwork,
 						),
 						h.WithArgs(ctrPath(analyzerPath), fixtures.someAppImage),
 					)
 
 					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.runImage)
+					h.AssertEq(t, analyzedMD.RunImage.Reference, fixtures.regRunImage)
 				})
 
 				when("CNB_RUN_IMAGE not provided", func() {
@@ -876,7 +887,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			it("writes analyzed.toml", func() {
 				var analyzeFlags []string
 				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
+					analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.regRunImage}...)
 				}
 
 				var execArgs []string
@@ -1031,7 +1042,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						it("writes analyzed.toml with previous image identifier", func() {
 							analyzeFlags := []string{"-previous-image", fixtures.readWriteAppImage}
 							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
+								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.regRunImage}...)
 							}
 
 							var execArgs []string
@@ -1059,7 +1070,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						it("writes analyzed.toml with previous image identifier", func() {
 							analyzeFlags := []string{"-previous-image", fixtures.readWriteAppImage}
 							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
+								analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.regRunImage}...)
 							}
 
 							var execArgs []string
@@ -1089,7 +1100,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					it("throws read error accessing previous image", func() {
 						analyzeFlags := []string{"-previous-image", fixtures.inaccessibleImage}
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
-							analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.runImage}...)
+							analyzeFlags = append(analyzeFlags, []string{"-run-image", fixtures.regRunImage}...)
 						}
 
 						var execArgs []string
