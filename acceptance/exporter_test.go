@@ -231,7 +231,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.AssertEq(t, inspect.Architecture, daemonArch)
 
 							h.Run(t, exec.Command("docker", "pull", cacheImageName))                                // TODO: cleanup this image
-							inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
+							inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), cacheImageName) // TODO: make test helper
 							h.AssertNil(t, err)
 							h.AssertEq(t, inspect.Os, daemonOS)
 							h.AssertEq(t, inspect.Architecture, daemonArch)
