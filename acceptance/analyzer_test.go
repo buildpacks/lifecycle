@@ -33,6 +33,8 @@ var (
 	analyzeDockerContext = filepath.Join("testdata", "analyzer", "analyze-image")
 	analyzeImage         = "lifecycle/acceptance/analyzer"
 	analyzerPath         = "/cnb/lifecycle/analyzer"
+
+	// TODO: these variables are used by acceptance tests for other phases. See how this could be made clearer
 	cacheFixtureDir      = filepath.Join("testdata", "analyzer", "cache-dir")
 	daemonOS, daemonArch string
 	testRegistry         *ih.DockerRegistry
@@ -87,7 +89,7 @@ func TestAnalyzer(t *testing.T) {
 	}
 
 	os.Setenv("DOCKER_CONFIG", testRegistry.DockerDirectory)
-	// Copy docker config directory to analyze-image container
+	// Copy docker config directory to test container
 	targetDockerConfig := filepath.Join("testdata", "analyzer", "analyze-image", "container", "docker-config")
 	h.AssertNil(t, os.RemoveAll(filepath.Join(targetDockerConfig, "config.json")))
 	h.RecursiveCopy(t, testRegistry.DockerDirectory, targetDockerConfig)
