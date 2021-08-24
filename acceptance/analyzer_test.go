@@ -219,7 +219,7 @@ func setupAnalyzeFixtures(t *testing.T) analyzeFixtures {
 		someRunImageName,
 		filepath.Join("testdata", "analyzer", "cache-image"),
 		testRegistry,
-		"--build-arg", "fromImage="+containerBaseImage,
+		"--build-arg", "fromImage="+"ubuntu:bionic", // TODO: fix
 	)
 	fixtures.readOnlyRunImage = testRegistry.SetReadOnly(someRunImageName)
 	fixtures.regRunImage = testRegistry.RepoName(someRunImageName)
