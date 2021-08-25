@@ -17,9 +17,10 @@ jobs:
       - name: Install crane
         run: |
           go install github.com/google/go-containerregistry/cmd/crane@latest
-      - name: Install cosign
-        run: |
-          go install github.com/sigstore/cosign/cmd/cosign@latest
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v1.0.0
+        with:
+          cosign-release: 'v1.0.0'
       - uses: azure/docker-login@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
