@@ -77,7 +77,7 @@ func TestCreator(t *testing.T) {
 
 	// Setup fixtures
 
-	fixtures = setupAnalyzeFixtures(t) // TODO: rename to be more generic
+	fixtures = createRegImageFixtures(t) // TODO: rename to be more generic
 	defer fixtures.removeAll(t)
 
 	h.MakeAndCopyLifecycle(t, daemonOS, daemonArch, creatorBinaryDir)

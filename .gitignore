@@ -6,4 +6,4 @@
 /out
 
 acceptance/testdata/*/**/container/cnb/lifecycle/*
-acceptance/testdata/*/**/container/docker-config/config.json
+acceptance/testdata/*/**/container/docker-config/*

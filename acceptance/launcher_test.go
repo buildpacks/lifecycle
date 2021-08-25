@@ -17,6 +17,8 @@ import (
 
 var (
 	launchImage         = "lifecycle/acceptance/launcher"
+	daemonOS            string
+	daemonArch          string
 	launchDockerContext string
 	launcherBinaryDir   string
 )
