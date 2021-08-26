@@ -1,7 +1,6 @@
 package acceptance
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -14,7 +13,6 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -38,14 +36,14 @@ var (
 func TestAnalyzer(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	testImageDockerContext := filepath.Join("testdata", "analyzer", "analyze-image")
+	testImageDockerContext := filepath.Join("testdata", "analyzer")
 	analyzeTest = NewPhaseTest(t, "analyzer", testImageDockerContext)
 	analyzeTest.Start(t)
 	defer analyzeTest.Stop(t)
 
 	analyzeImage = analyzeTest.testImageRef
 	analyzerPath = analyzeTest.containerBinaryPath
-	cacheFixtureDir = filepath.Join("testdata", "analyzer", "cache-dir")
+	cacheFixtureDir = filepath.Join("testdata", "cache-dir")
 	analyzeRegAuthConfig = analyzeTest.targetRegistry.authConfig
 	analyzeRegNetwork = analyzeTest.targetRegistry.network
 	analyzeDaemonFixtures = analyzeTest.targetDaemon.fixtures
@@ -1149,30 +1147,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 	}
-}
-
-func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) string {
-	metadata, err := ioutil.ReadFile(path)
-	h.AssertNil(t, err)
-
-	// Unmarshal and marshal to strip unnecessary whitespace
-	h.AssertNil(t, json.Unmarshal(metadata, &metadataStruct))
-	flatMetadata, err := json.Marshal(metadataStruct)
-	h.AssertNil(t, err)
-
-	return string(flatMetadata)
-}
-
-func buildRegistryImage(t *testing.T, repoName, context string, registry *ih.DockerRegistry, buildArgs ...string) string {
-	// Build image
-	regRepoName := registry.RepoName(repoName)
-	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
-
-	// Push image
-	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, registry.EncodedLabeledAuth()))
-
-	// Return registry repo name
-	return regRepoName
 }
 
 func assertAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {

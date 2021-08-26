@@ -2,6 +2,7 @@ package acceptance
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -22,12 +23,13 @@ import (
 )
 
 type PhaseTest struct {
-	containerBinaryPath    string
-	phaseName              string
-	testImageDockerContext string
-	testImageRef           string
-	targetDaemon           *targetDaemon   // TODO: make optional so that these helpers can be used by detect & build
-	targetRegistry         *targetRegistry // TODO: make optional so that these helpers can be used by detect & build
+	containerBinaryDir     string // The path to copy lifecycle binaries to before building the test image.
+	containerBinaryPath    string // The path to invoke when running the test container.
+	phaseName              string // The phase name, such as detect, analyze, restore, build, export, or create.
+	testImageDockerContext string // The directory containing the Dockerfile for the test image.
+	testImageRef           string // The test image to run.
+	targetDaemon           *targetDaemon
+	targetRegistry         *targetRegistry // The target registry to use. Remove by passing `withoutRegistry` to the constructor.
 }
 
 type targetDaemon struct {
@@ -62,15 +64,22 @@ type regImageFixtures struct {
 	SomeCacheImage         string
 }
 
-func NewPhaseTest(t *testing.T, phaseName, testImageDockerContext string) *PhaseTest {
-	return &PhaseTest{
-		containerBinaryPath:    "/cnb/lifecycle/" + phaseName, // TODO: consider calling ctrPath here to make the tests more readable
+func NewPhaseTest(t *testing.T, phaseName, testImageDockerContext string, phaseOp ...func(*PhaseTest)) *PhaseTest {
+	phaseTest := &PhaseTest{
+		containerBinaryDir:     filepath.Join(testImageDockerContext, "container", "cnb", "lifecycle"),
+		containerBinaryPath:    "/cnb/lifecycle/" + phaseName,
 		phaseName:              phaseName,
 		targetDaemon:           newTargetDaemon(t),
-		targetRegistry:         newTargetRegistry(t),
+		targetRegistry:         &targetRegistry{},
 		testImageDockerContext: testImageDockerContext,
 		testImageRef:           "lifecycle/acceptance/" + phaseName,
 	}
+
+	for _, op := range phaseOp {
+		op(phaseTest)
+	}
+
+	return phaseTest
 }
 
 func newTargetDaemon(t *testing.T) *targetDaemon {
@@ -86,64 +95,56 @@ func newTargetDaemon(t *testing.T) *targetDaemon {
 	}
 
 	return &targetDaemon{
-		os:   info.OSType,
-		arch: arch,
+		os:       info.OSType,
+		arch:     arch,
+		fixtures: nil,
 	}
 }
 
-func newTargetRegistry(t *testing.T) *targetRegistry {
-	dockerConfigDir, err := ioutil.TempDir("", "test.docker.config.dir")
-	h.AssertNil(t, err)
-
-	sharedRegHandler := registry.New(registry.Logger(log.New(ioutil.Discard, "", log.Lshortfile)))
-
-	return &targetRegistry{
-		dockerConfigDir: dockerConfigDir,
-		fixtures:        nil,
-		registry: ih.NewDockerRegistry(
-			ih.WithAuth(dockerConfigDir),
-			ih.WithSharedHandler(sharedRegHandler),
-			ih.WithImagePrivileges(),
-		),
-	}
+func (p *PhaseTest) RegRepoName(repoName string) string {
+	return p.targetRegistry.registry.RepoName(repoName)
 }
 
-func (p *PhaseTest) Start(t *testing.T, modifyFixturesWithReg ...func(t *testing.T, daemonFixtures *daemonImageFixtures, regFixtures *regImageFixtures)) {
+func (p *PhaseTest) Start(t *testing.T, phaseOp ...func(*testing.T, *PhaseTest)) {
 	p.targetDaemon.createFixtures(t)
 
-	p.targetRegistry.start(t)
-	containerDockerConfigDir := filepath.Join(p.testImageDockerContext, "container", "docker-config")
-	h.AssertNil(t, os.RemoveAll(containerDockerConfigDir))
-	h.AssertNil(t, os.MkdirAll(containerDockerConfigDir, 0755)) // TODO: check permissions
-	h.RecursiveCopy(t, p.targetRegistry.dockerConfigDir, containerDockerConfigDir)
-
-	// If optional function was provided to modify fixtures with registry ip/port (now that the registry has been created),
-	// run this function.
-	if len(modifyFixturesWithReg) > 0 {
-		modifyFn := modifyFixturesWithReg[0]
-		modifyFn(t, p.targetDaemon.fixtures, p.targetRegistry.fixtures)
+	if p.targetRegistry != nil {
+		p.targetRegistry.start(t)
+		containerDockerConfigDir := filepath.Join(p.testImageDockerContext, "container", "docker-config")
+		h.AssertNil(t, os.RemoveAll(containerDockerConfigDir))
+		h.AssertNil(t, os.MkdirAll(containerDockerConfigDir, 0755))
+		h.RecursiveCopy(t, p.targetRegistry.dockerConfigDir, containerDockerConfigDir)
 	}
 
-	containerBinaryDir := filepath.Join(p.testImageDockerContext, "container", "cnb", "lifecycle")
-	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, containerBinaryDir) // TODO: only run make once
+	for _, op := range phaseOp {
+		op(t, p)
+	}
+
+	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, p.containerBinaryDir) // TODO: only run make once
 	h.DockerBuild(t, p.testImageRef, p.testImageDockerContext)
 }
 
 func (p *PhaseTest) Stop(t *testing.T) {
 	p.targetDaemon.removeFixtures(t)
 
-	p.targetRegistry.stop(t)
-	// remove images that were built locally before being pushed to test registry
-	cleanupDaemonFixtures(t, *p.targetRegistry.fixtures)
+	if p.targetRegistry != nil {
+		p.targetRegistry.stop(t)
+		// remove images that were built locally before being pushed to test registry
+		cleanupDaemonFixtures(t, *p.targetRegistry.fixtures)
+	}
 
 	h.DockerImageRemove(t, p.testImageRef)
 }
 
 func (d *targetDaemon) createFixtures(t *testing.T) {
+	if d.fixtures != nil {
+		return
+	}
+
 	var fixtures daemonImageFixtures
 
-	appMeta := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{}) // TODO: make this configurable per-phase
-	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
+	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), platform.LayersMetadata{})
+	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 	fixtures.AppImage = "some-app-image-" + h.RandString(10)
 	cmd := exec.Command(
@@ -152,7 +153,7 @@ func (d *targetDaemon) createFixtures(t *testing.T) {
 		"-t", fixtures.AppImage,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
-		filepath.Join("testdata", "analyzer", "app-image"),
+		filepath.Join("testdata", "app-image"),
 	) // #nosec G204
 	h.Run(t, cmd)
 
@@ -163,7 +164,7 @@ func (d *targetDaemon) createFixtures(t *testing.T) {
 		"-t", fixtures.CacheImage,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
-		filepath.Join("testdata", "analyzer", "cache-image"),
+		filepath.Join("testdata", "cache-image"),
 	) // #nosec G204
 	h.Run(t, cmd)
 
@@ -173,7 +174,7 @@ func (d *targetDaemon) createFixtures(t *testing.T) {
 		"build",
 		"-t", fixtures.RunImage,
 		"--build-arg", "fromImage="+containerBaseImage,
-		filepath.Join("testdata", "analyzer", "cache-image"),
+		filepath.Join("testdata", "cache-image"),
 	) // #nosec G204
 	h.Run(t, cmd)
 
@@ -185,6 +186,17 @@ func (d *targetDaemon) removeFixtures(t *testing.T) {
 }
 
 func (r *targetRegistry) start(t *testing.T) {
+	var err error
+
+	r.dockerConfigDir, err = ioutil.TempDir("", "test.docker.config.dir")
+	h.AssertNil(t, err)
+
+	sharedRegHandler := registry.New(registry.Logger(log.New(ioutil.Discard, "", log.Lshortfile)))
+	r.registry = ih.NewDockerRegistry(
+		ih.WithAuth(r.dockerConfigDir),
+		ih.WithSharedHandler(sharedRegHandler),
+		ih.WithImagePrivileges(),
+	)
 	r.registry.Start(t)
 
 	// if registry is listening on localhost, use host networking to allow containers to reach it
@@ -195,7 +207,6 @@ func (r *targetRegistry) start(t *testing.T) {
 
 	// Save auth config
 	os.Setenv("DOCKER_CONFIG", r.dockerConfigDir)
-	var err error
 	r.authConfig, err = auth.BuildEnvVar(authn.DefaultKeychain, r.registry.RepoName("some-repo")) // repo name doesn't matter
 	h.AssertNil(t, err)
 
@@ -205,8 +216,8 @@ func (r *targetRegistry) start(t *testing.T) {
 func (r *targetRegistry) createFixtures(t *testing.T) {
 	var fixtures regImageFixtures
 
-	appMeta := minifyMetadata(t, filepath.Join("testdata", "analyzer", "app_image_metadata.json"), platform.LayersMetadata{})
-	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "analyzer", "cache_image_metadata.json"), platform.CacheMetadata{})
+	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), platform.LayersMetadata{})
+	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 	// With Permissions
 
@@ -216,7 +227,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	fixtures.ReadOnlyAppImage = buildRegistryImage(
 		t,
 		someReadOnlyAppName,
-		filepath.Join("testdata", "analyzer", "app-image"),
+		filepath.Join("testdata", "app-image"),
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
@@ -227,7 +238,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	fixtures.ReadOnlyCacheImage = buildRegistryImage(
 		t,
 		someReadOnlyCacheImage,
-		filepath.Join("testdata", "analyzer", "cache-image"),
+		filepath.Join("testdata", "cache-image"),
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
@@ -238,9 +249,9 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	buildRegistryImage(
 		t,
 		someRunImageName,
-		filepath.Join("testdata", "analyzer", "cache-image"),
+		filepath.Join("testdata", "cache-image"),
 		r.registry,
-		"--build-arg", "fromImage="+"ubuntu:bionic", // TODO: fix
+		"--build-arg", "fromImage="+containerBaseImageFull,
 	)
 	fixtures.ReadOnlyRunImage = r.registry.SetReadOnly(someRunImageName)
 
@@ -248,7 +259,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	fixtures.ReadWriteAppImage = buildRegistryImage(
 		t,
 		readWriteAppName,
-		filepath.Join("testdata", "analyzer", "app-image"),
+		filepath.Join("testdata", "app-image"),
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
@@ -259,7 +270,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	fixtures.ReadWriteCacheImage = buildRegistryImage(
 		t,
 		someReadWriteCacheName,
-		filepath.Join("testdata", "analyzer", "cache-image"),
+		filepath.Join("testdata", "cache-image"),
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
@@ -270,7 +281,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	fixtures.ReadWriteOtherAppImage = buildRegistryImage(
 		t,
 		readWriteOtherAppName,
-		filepath.Join("testdata", "analyzer", "app-image"),
+		filepath.Join("testdata", "app-image"),
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
@@ -282,7 +293,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	fixtures.SomeAppImage = buildRegistryImage(
 		t,
 		"some-app-image-"+h.RandString(10),
-		filepath.Join("testdata", "analyzer", "app-image"),
+		filepath.Join("testdata", "app-image"),
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+appMeta,
@@ -291,7 +302,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	fixtures.SomeCacheImage = buildRegistryImage(
 		t,
 		"some-cache-image-"+h.RandString(10),
-		filepath.Join("testdata", "analyzer", "cache-image"),
+		filepath.Join("testdata", "cache-image"),
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImage,
 		"--build-arg", "metadata="+cacheMeta,
@@ -302,8 +313,20 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 
 func (r *targetRegistry) stop(t *testing.T) {
 	r.registry.Stop(t)
+	os.Unsetenv("DOCKER_CONFIG")
 	os.RemoveAll(r.dockerConfigDir)
-	// TODO: unset env var
+}
+
+func buildRegistryImage(t *testing.T, repoName, context string, registry *ih.DockerRegistry, buildArgs ...string) string {
+	// Build image
+	regRepoName := registry.RepoName(repoName)
+	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
+
+	// Push image
+	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, registry.EncodedLabeledAuth()))
+
+	// Return registry repo name
+	return regRepoName
 }
 
 func cleanupDaemonFixtures(t *testing.T, fixtures interface{}) {
@@ -311,9 +334,32 @@ func cleanupDaemonFixtures(t *testing.T, fixtures interface{}) {
 
 	for i := 0; i < v.NumField(); i++ {
 		imageName := fmt.Sprintf("%v", v.Field(i).Interface())
+		if imageName == "" {
+			continue
+		}
 		if strings.Contains(imageName, "inaccessible") {
 			continue
 		}
 		h.DockerImageRemove(t, imageName)
 	}
+}
+
+func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) string {
+	metadata, err := ioutil.ReadFile(path)
+	h.AssertNil(t, err)
+
+	// Unmarshal and marshal to strip unnecessary whitespace
+	h.AssertNil(t, json.Unmarshal(metadata, &metadataStruct))
+	flatMetadata, err := json.Marshal(metadataStruct)
+	h.AssertNil(t, err)
+
+	return string(flatMetadata)
+}
+
+func withoutDaemonFixtures(phaseTest *PhaseTest) {
+	phaseTest.targetDaemon.fixtures = &daemonImageFixtures{}
+}
+
+func withoutRegistry(phaseTest *PhaseTest) {
+	phaseTest.targetRegistry = nil
 }

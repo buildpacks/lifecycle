@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	dockerfileName     = "Dockerfile.windows"
-	exe                = ".exe"
-	execDBpDir         = "0.6_buildpack"
-	containerBaseImage = "mcr.microsoft.com/windows/nanoserver:1809"
+	exe                    = ".exe"
+	execDBpDir             = "0.6_buildpack"
+	containerBaseImage     = "mcr.microsoft.com/windows/nanoserver:1809"
+	containerBaseImageFull = "mcr.microsoft.com/windows/nanoserver:1809"
 )
 
 var dockerSocketMount = []string{

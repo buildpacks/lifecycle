@@ -1,5 +1,5 @@
 [image]
-  reference = "192.168.50.43:62187/some-app-image-hgirfufnhw"
+  reference = "REPLACE"
 
 [metadata]
 
@@ -36,18 +36,6 @@
       [metadata.buildpacks.store.metadata]
         [metadata.buildpacks.store.metadata.metadata-buildpack-store-data]
           store-key = "store-val"
-  [metadata.config]
-    sha = ""
-  [metadata.launcher]
-    sha = ""
-  [metadata.process-types]
-    sha = ""
-  [metadata.run-image]
-    top-layer = ""
-    reference = ""
-  [metadata.stack]
-    [metadata.stack.run-image]
-      image = ""
 
 [run-image]
-  reference = "192.168.50.43:62187/some-read-only-run-image-aslcxxphkv"
+  reference = "REPLACE"

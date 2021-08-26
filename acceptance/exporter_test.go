@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,7 +38,7 @@ func TestExporter(t *testing.T) {
 
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
-	exportTest.Start(t, modifyAnalyzedTOMLWithRegRepoName)
+	exportTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
 	defer exportTest.Stop(t)
 
 	exportImage = exportTest.testImageRef
@@ -57,6 +58,12 @@ func TestExporter(t *testing.T) {
 
 func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
+		var exportedImageName string
+
+		it.After(func() {
+			h.DockerImageRemove(t, exportedImageName)
+		})
+
 		when("daemon case", func() {
 			when("first build", func() {
 				when("app", func() {
@@ -69,7 +76,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						}
 
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-						exportedImageName := "some-exported-image-" + h.RandString(10)
+						exportedImageName = "some-exported-image-" + h.RandString(10)
 						exportArgs = append(exportArgs, exportedImageName)
 
 						output := h.DockerRun(t,
@@ -84,10 +91,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
-						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
-						h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
+						assertImageOSAndArch(t, exportedImageName, exportTest)
 					})
 				})
 			})
@@ -103,7 +107,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						}
 
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-						exportedImageName := exportTest.targetRegistry.registry.RepoName("some-exported-image-" + h.RandString(10))
+						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 						exportArgs = append(exportArgs, exportedImageName)
 
 						output := h.DockerRun(t,
@@ -117,24 +121,21 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-						h.Run(t, exec.Command("docker", "pull", exportedImageName))                              // TODO: cleanup this image
-						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
-						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
-						h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
+						h.Run(t, exec.Command("docker", "pull", exportedImageName))
+						assertImageOSAndArch(t, exportedImageName, exportTest)
 					})
 				})
 				when("cache", func() {
 					when("cache image case", func() {
 						it("is created", func() {
-							cacheImageName := exportTest.targetRegistry.registry.RepoName("some-cache-image-" + h.RandString(10))
+							cacheImageName := exportTest.RegRepoName("some-cache-image-" + h.RandString(10))
 							exportFlags := []string{"-cache-image", cacheImageName}
 							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
 								exportFlags = append(exportFlags, "-run-image", exportRegFixtures.ReadOnlyRunImage)
 							}
 
 							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-							exportedImageName := exportTest.targetRegistry.registry.RepoName("some-exported-image-" + h.RandString(10))
+							exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 							exportArgs = append(exportArgs, exportedImageName)
 
 							output := h.DockerRun(t,
@@ -148,18 +149,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 							h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-							h.Run(t, exec.Command("docker", "pull", exportedImageName))                              // TODO: cleanup this image
-							inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
-							h.AssertNil(t, err)
-							h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
-							h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
-
-							// TODO: create issue for this maybe
-							//h.Run(t, exec.Command("docker", "pull", cacheImageName))                                // TODO: cleanup this image
-							//inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), cacheImageName) // TODO: make test helper
-							//h.AssertNil(t, err)
-							//h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
-							//h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
+							h.Run(t, exec.Command("docker", "pull", exportedImageName))
+							assertImageOSAndArch(t, exportedImageName, exportTest)
 						})
 					})
 				})
@@ -168,21 +159,27 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 	}
 }
 
-func modifyAnalyzedTOMLWithRegRepoName(t *testing.T, daemonFixtures *daemonImageFixtures, regFixtures *regImageFixtures) {
-	// TODO: see about ignoring changes to *analyzed.toml
-	analyzedPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml")
-	analyzedMD := assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: regFixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) {
+	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+	h.AssertNil(t, err)
+	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
+	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
+}
 
-	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "daemon-analyzed.toml")
-	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: daemonFixtures.RunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
+	placeHolderPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml.placeholder")
+	analyzedMD := assertAnalyzedMetadata(t, placeHolderPath)
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 
-	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml")
-	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.Image = &platform.ImageIdentifier{Reference: regFixtures.SomeAppImage}        // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: regFixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "daemon-analyzed.toml.placeholder")
+	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetDaemon.fixtures.RunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+
+	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml.placeholder")
+	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
+	analyzedMD.Image = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}        // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 }

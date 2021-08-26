@@ -3,7 +3,6 @@
 package acceptance
 
 import (
-	"context"
 	"math/rand"
 	"os/exec"
 	"path/filepath"
@@ -53,15 +52,21 @@ func TestCreator(t *testing.T) {
 
 func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
+		var createdImageName string
+
+		it.After(func() {
+			h.DockerImageRemove(t, createdImageName)
+		})
+
 		when("daemon case", func() {
 			when("first build", func() {
 				when("app", func() {
 					it("is created", func() {
 						createFlags := []string{"-daemon"}
-						createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...) // TODO: test specific auth tests
+						createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...) // TODO: check specific auth tests
 
 						createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
-						createdImageName := "some-created-image-" + h.RandString(10)
+						createdImageName = "some-created-image-" + h.RandString(10)
 						createArgs = append(createArgs, createdImageName)
 
 						output := h.DockerRun(t,
@@ -76,10 +81,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						)
 						h.AssertStringContains(t, output, "Saving "+createdImageName)
 
-						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), createdImageName) // TODO: make test helper
-						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Os, createTest.targetDaemon.os)
-						h.AssertEq(t, inspect.Architecture, createTest.targetDaemon.arch)
+						assertImageOSAndArch(t, createdImageName, createTest)
 
 						output = h.DockerRun(t,
 							createdImageName,
@@ -102,7 +104,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...)
 
 						createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
-						createdImageName := createTest.targetRegistry.registry.RepoName("some-created-image-" + h.RandString(10)) // TODO: fix
+						createdImageName = createTest.RegRepoName("some-created-image-" + h.RandString(10))
 						createArgs = append(createArgs, createdImageName)
 
 						output := h.DockerRun(t,
@@ -116,11 +118,8 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						)
 						h.AssertStringContains(t, output, "Saving "+createdImageName)
 
-						h.Run(t, exec.Command("docker", "pull", createdImageName))                              // TODO: cleanup this image
-						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), createdImageName) // TODO: make test helper
-						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Os, createTest.targetDaemon.os)
-						h.AssertEq(t, inspect.Architecture, createTest.targetDaemon.arch)
+						h.Run(t, exec.Command("docker", "pull", createdImageName))
+						assertImageOSAndArch(t, createdImageName, createTest)
 
 						output = h.DockerRun(t,
 							createdImageName,
