@@ -108,7 +108,7 @@ func newTargetRegistry(t *testing.T) *targetRegistry {
 	}
 }
 
-func (p *PhaseTest) Start(t *testing.T) {
+func (p *PhaseTest) Start(t *testing.T, modifyFixturesWithReg ...func(t *testing.T, daemonFixtures *daemonImageFixtures, regFixtures *regImageFixtures)) {
 	p.targetDaemon.createFixtures(t)
 
 	p.targetRegistry.start(t)
@@ -116,6 +116,13 @@ func (p *PhaseTest) Start(t *testing.T) {
 	h.AssertNil(t, os.RemoveAll(containerDockerConfigDir))
 	h.AssertNil(t, os.MkdirAll(containerDockerConfigDir, 0755)) // TODO: check permissions
 	h.RecursiveCopy(t, p.targetRegistry.dockerConfigDir, containerDockerConfigDir)
+
+	// If optional function was provided to modify fixtures with registry ip/port (now that the registry has been created),
+	// run this function.
+	if len(modifyFixturesWithReg) > 0 {
+		modifyFn := modifyFixturesWithReg[0]
+		modifyFn(t, p.targetDaemon.fixtures, p.targetRegistry.fixtures)
+	}
 
 	containerBinaryDir := filepath.Join(p.testImageDockerContext, "container", "cnb", "lifecycle")
 	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, containerBinaryDir) // TODO: only run make once
@@ -127,7 +134,7 @@ func (p *PhaseTest) Stop(t *testing.T) {
 
 	p.targetRegistry.stop(t)
 	// remove images that were built locally before being pushed to test registry
-	cleanupFixtures(t, *p.targetRegistry.fixtures)
+	cleanupDaemonFixtures(t, *p.targetRegistry.fixtures)
 
 	h.DockerImageRemove(t, p.testImageRef)
 }
@@ -174,7 +181,7 @@ func (d *targetDaemon) createFixtures(t *testing.T) {
 }
 
 func (d *targetDaemon) removeFixtures(t *testing.T) {
-	cleanupFixtures(t, *d.fixtures)
+	cleanupDaemonFixtures(t, *d.fixtures)
 }
 
 func (r *targetRegistry) start(t *testing.T) {
@@ -296,9 +303,10 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 func (r *targetRegistry) stop(t *testing.T) {
 	r.registry.Stop(t)
 	os.RemoveAll(r.dockerConfigDir)
+	// TODO: unset env var
 }
 
-func cleanupFixtures(t *testing.T, fixtures interface{}) {
+func cleanupDaemonFixtures(t *testing.T, fixtures interface{}) {
 	v := reflect.ValueOf(fixtures)
 
 	for i := 0; i < v.NumField(); i++ {

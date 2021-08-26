@@ -1,5 +1,5 @@
 [image]
-  reference = "192.168.50.43:51046/some-app-namejcjsnuwojr"
+  reference = "192.168.50.43:62187/some-app-image-hgirfufnhw"
 
 [metadata]
 
@@ -50,4 +50,4 @@
       image = ""
 
 [run-image]
-  reference = "192.168.50.43:51046/some-run-image-jpnhgzwucl"
+  reference = "192.168.50.43:62187/some-read-only-run-image-aslcxxphkv"

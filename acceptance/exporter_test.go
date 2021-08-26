@@ -4,18 +4,13 @@ package acceptance
 
 import (
 	"context"
-	"io/ioutil"
-	"log"
 	"math/rand"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
 
-	ih "github.com/buildpacks/imgutil/testhelpers"
-	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -26,10 +21,13 @@ import (
 )
 
 var (
-	exporterBinaryDir   = filepath.Join("testdata", "exporter", "container", "cnb", "lifecycle")
-	exportDockerContext = filepath.Join("testdata", "exporter")
-	exportImage         = "lifecycle/acceptance/exporter"
-	exporterPath        = "/cnb/lifecycle/exporter"
+	exportImage          string
+	exportRegAuthConfig  string
+	exportRegNetwork     string
+	exporterPath         string
+	exportDaemonFixtures *daemonImageFixtures
+	exportRegFixtures    *regImageFixtures
+	exportTest           *PhaseTest
 )
 
 func TestExporter(t *testing.T) {
@@ -37,73 +35,20 @@ func TestExporter(t *testing.T) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	// TODO: make helper functions to avoid duplication
-	info, err := h.DockerCli(t).Info(context.TODO())
-	h.AssertNil(t, err)
-	daemonOS = info.OSType
-	daemonArch = info.Architecture
-	if daemonArch == "x86_64" {
-		daemonArch = "amd64"
-	}
-	if daemonArch == "aarch64" { // TODO: propagate everywhere
-		daemonArch = "arm64"
-	}
+	testImageDockerContext := filepath.Join("testdata", "exporter")
+	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
+	exportTest.Start(t, modifyAnalyzedTOMLWithRegRepoName)
+	defer exportTest.Stop(t)
 
-	// Setup registry
+	exportImage = exportTest.testImageRef
+	exporterPath = exportTest.containerBinaryPath
+	cacheFixtureDir = filepath.Join("testdata", "exporter", "cache-dir")
+	exportRegAuthConfig = exportTest.targetRegistry.authConfig
+	exportRegNetwork = exportTest.targetRegistry.network
+	exportDaemonFixtures = exportTest.targetDaemon.fixtures
+	exportRegFixtures = exportTest.targetRegistry.fixtures
 
-	dockerConfigDir, err := ioutil.TempDir("", "test.docker.config.dir")
-	h.AssertNil(t, err)
-	defer os.RemoveAll(dockerConfigDir)
-
-	sharedRegHandler := registry.New(registry.Logger(log.New(ioutil.Discard, "", log.Lshortfile)))
-	testRegistry = ih.NewDockerRegistry(ih.WithAuth(dockerConfigDir), ih.WithSharedHandler(sharedRegHandler),
-		ih.WithImagePrivileges())
-
-	testRegistry.Start(t)
-	defer testRegistry.Stop(t)
-
-	// if registry is listening on localhost, use host networking to allow containers to reach it
-	registryNetwork = "default"
-	if testRegistry.Host == "localhost" {
-		registryNetwork = "host"
-	}
-
-	os.Setenv("DOCKER_CONFIG", testRegistry.DockerDirectory)
-
-	// Copy docker config directory to test container
-	targetDockerConfig := filepath.Join("testdata", "exporter", "container", "docker-config")
-	h.AssertNil(t, os.RemoveAll(filepath.Join(targetDockerConfig, "config.json")))
-	h.RecursiveCopy(t, testRegistry.DockerDirectory, targetDockerConfig)
-
-	// end TODO
-
-	// Setup fixtures
-
-	fixtures = createRegImageFixtures(t) // TODO: rename to be more generic
-	defer fixtures.removeAll(t)
-
-	// TODO: make this better
-	// TODO: see about ignoring changes to *analyzed.toml
-	analyzedPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml")
-	analyzedMD := assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.regRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	lifecycle.WriteTOML(analyzedPath, analyzedMD)
-
-	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "daemon-analyzed.toml")
-	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.daemonRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	lifecycle.WriteTOML(analyzedPath, analyzedMD)
-
-	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml")
-	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
-	analyzedMD.Image = &platform.ImageIdentifier{Reference: fixtures.someAppImage}   // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: fixtures.regRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	lifecycle.WriteTOML(analyzedPath, analyzedMD)
-	// end TODO
-
-	h.MakeAndCopyLifecycle(t, daemonOS, daemonArch, exporterBinaryDir)
-	h.DockerBuild(t, exportImage, exportDockerContext)
-	defer h.DockerImageRemove(t, exportImage)
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	for _, platformAPI := range api.Platform.Supported {
 		spec.Run(t, "acceptance-exporter/"+platformAPI.String(), testExporterFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
@@ -118,7 +63,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					it("is created", func() {
 						exportFlags := []string{"-daemon"}
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-							exportFlags = append(exportFlags, []string{"-run-image", fixtures.regRunImage}...)
+							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
 						} else {
 							exportFlags = append(exportFlags, []string{"-analyzed", "/layers/daemon-analyzed.toml"}...) // TODO: understand why this fixes platform 0.7 but other platforms are fine
 						}
@@ -132,8 +77,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithFlags(append(
 								dockerSocketMount,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
-								"--network", registryNetwork,
+								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+								"--network", exportRegNetwork,
 							)...),
 							h.WithArgs(exportArgs...),
 						)
@@ -141,32 +86,11 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
 						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Os, daemonOS)
-						h.AssertEq(t, inspect.Architecture, daemonArch)
+						h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
+						h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
 					})
 				})
-				//when("cache", func() {
-				//	when("cache directory case", func() {
-				//		it("is updated", func() {
-				//
-				//		})
-				//	})
-				//})
 			})
-			//when("next build", func() {
-			//	when("app", func() {
-			//		it("is updated", func() {
-			//
-			//		})
-			//	})
-			//	when("cache", func() {
-			//		when("cache directory case", func() {
-			//			it("is updated", func() {
-			//
-			//			})
-			//		})
-			//	})
-			//})
 		})
 
 		when("registry case", func() {
@@ -175,19 +99,19 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					it("is created", func() {
 						var exportFlags []string
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-							exportFlags = append(exportFlags, []string{"-run-image", fixtures.regRunImage}...)
+							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
 						}
 
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-						exportedImageName := testRegistry.RepoName("some-exported-image-" + h.RandString(10))
+						exportedImageName := exportTest.targetRegistry.registry.RepoName("some-exported-image-" + h.RandString(10))
 						exportArgs = append(exportArgs, exportedImageName)
 
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(
 								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
-								"--network", registryNetwork,
+								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+								"--network", exportRegNetwork,
 							),
 							h.WithArgs(exportArgs...),
 						)
@@ -196,29 +120,29 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.Run(t, exec.Command("docker", "pull", exportedImageName))                              // TODO: cleanup this image
 						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
 						h.AssertNil(t, err)
-						h.AssertEq(t, inspect.Os, daemonOS)
-						h.AssertEq(t, inspect.Architecture, daemonArch)
+						h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
+						h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
 					})
 				})
 				when("cache", func() {
 					when("cache image case", func() {
 						it("is created", func() {
-							cacheImageName := testRegistry.RepoName("some-cache-image-" + h.RandString(10))
+							cacheImageName := exportTest.targetRegistry.registry.RepoName("some-cache-image-" + h.RandString(10))
 							exportFlags := []string{"-cache-image", cacheImageName}
 							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
-								exportFlags = append(exportFlags, "-run-image", fixtures.regRunImage)
+								exportFlags = append(exportFlags, "-run-image", exportRegFixtures.ReadOnlyRunImage)
 							}
 
 							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-							exportedImageName := testRegistry.RepoName("some-exported-image-" + h.RandString(10))
+							exportedImageName := exportTest.targetRegistry.registry.RepoName("some-exported-image-" + h.RandString(10))
 							exportArgs = append(exportArgs, exportedImageName)
 
 							output := h.DockerRun(t,
 								exportImage,
 								h.WithFlags(
 									"--env", "CNB_PLATFORM_API="+platformAPI,
-									"--env", "CNB_REGISTRY_AUTH="+fixtures.regAuthConfig,
-									"--network", registryNetwork,
+									"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+									"--network", exportRegNetwork,
 								),
 								h.WithArgs(exportArgs...),
 							)
@@ -227,33 +151,38 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.Run(t, exec.Command("docker", "pull", exportedImageName))                              // TODO: cleanup this image
 							inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName) // TODO: make test helper
 							h.AssertNil(t, err)
-							h.AssertEq(t, inspect.Os, daemonOS)
-							h.AssertEq(t, inspect.Architecture, daemonArch)
+							h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
+							h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
 
 							// TODO: create issue for this maybe
 							//h.Run(t, exec.Command("docker", "pull", cacheImageName))                                // TODO: cleanup this image
 							//inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), cacheImageName) // TODO: make test helper
 							//h.AssertNil(t, err)
-							//h.AssertEq(t, inspect.Os, daemonOS)
-							//h.AssertEq(t, inspect.Architecture, daemonArch)
+							//h.AssertEq(t, inspect.Os, exportTest.targetDaemon.os)
+							//h.AssertEq(t, inspect.Architecture, exportTest.targetDaemon.arch)
 						})
 					})
 				})
 			})
-			//when("next build", func() {
-			//	when("app", func() {
-			//		it("is updated", func() {
-			//
-			//		})
-			//	})
-			//	when("cache", func() {
-			//		when("cache image case", func() {
-			//			it("is updated", func() {
-			//
-			//			})
-			//		})
-			//	})
-			//})
 		})
 	}
+}
+
+func modifyAnalyzedTOMLWithRegRepoName(t *testing.T, daemonFixtures *daemonImageFixtures, regFixtures *regImageFixtures) {
+	// TODO: see about ignoring changes to *analyzed.toml
+	analyzedPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml")
+	analyzedMD := assertAnalyzedMetadata(t, analyzedPath)
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: regFixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+
+	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "daemon-analyzed.toml")
+	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: daemonFixtures.RunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(analyzedPath, analyzedMD)
+
+	analyzedPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml")
+	analyzedMD = assertAnalyzedMetadata(t, analyzedPath)
+	analyzedMD.Image = &platform.ImageIdentifier{Reference: regFixtures.SomeAppImage}        // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: regFixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	lifecycle.WriteTOML(analyzedPath, analyzedMD)
 }
