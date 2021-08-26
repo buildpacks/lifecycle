@@ -27,7 +27,8 @@ func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...st
 	cmd.Env = append(os.Environ(), envs...)
 
 	t.Log("Building binaries:", cmd.Args)
-	Run(t, cmd)
+	output := Run(t, cmd)
+	t.Log(output)
 
 	copyLifecycle(t, filepath.Join(buildDir, fmt.Sprintf("%s-%s", goos, goarch), "lifecycle"), destDir)
 }

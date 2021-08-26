@@ -120,7 +120,7 @@ func (p *PhaseTest) Start(t *testing.T, phaseOp ...func(*testing.T, *PhaseTest))
 		op(t, p)
 	}
 
-	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, p.containerBinaryDir) // TODO: only run make once
+	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, p.containerBinaryDir)
 	h.DockerBuild(t, p.testImageRef, p.testImageDockerContext)
 }
 
