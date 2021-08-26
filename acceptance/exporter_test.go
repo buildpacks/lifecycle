@@ -71,8 +71,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportFlags := []string{"-daemon"}
 						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
 							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
-						} else {
-							exportFlags = append(exportFlags, []string{"-analyzed", "/layers/daemon-analyzed.toml"}...) // TODO: understand why this fixes platform 0.7 but other platforms are fine
 						}
 
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
@@ -169,17 +167,12 @@ func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) 
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
 	placeHolderPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml.placeholder")
 	analyzedMD := assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
-
-	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "daemon-analyzed.toml.placeholder")
-	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetDaemon.fixtures.RunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml.placeholder")
 	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.Image = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}        // TODO: check if metadata on fixture matches metadata in analyzed.toml
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage} // TODO: check if metadata on fixture matches metadata in analyzed.toml
+	analyzedMD.Image = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 }

@@ -63,7 +63,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				when("app", func() {
 					it("is created", func() {
 						createFlags := []string{"-daemon"}
-						createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...) // TODO: check specific auth tests
+						createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...)
 
 						createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
 						createdImageName = "some-created-image-" + h.RandString(10)
