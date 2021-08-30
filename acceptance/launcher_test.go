@@ -1,7 +1,6 @@
 package acceptance
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -16,31 +15,27 @@ import (
 )
 
 var (
-	launchImage         = "lifecycle/acceptance/launcher"
-	launchDockerContext string
-	launcherBinaryDir   string
+	launchImage  string
+	launcherPath string
+	launchTest   *PhaseTest
 )
 
 func TestLauncher(t *testing.T) {
-	info, err := h.DockerCli(t).Info(context.TODO())
-	h.AssertNil(t, err)
-	daemonOS = info.OSType
-	daemonArch = info.Architecture
-	if daemonArch == "x86_64" {
-		daemonArch = "amd64"
+	testImageDockerContext := filepath.Join("testdata", "launcher")
+	launchTest = NewPhaseTest(t, "launcher", testImageDockerContext, withoutDaemonFixtures, withoutRegistry)
+
+	containerBinaryDir := filepath.Join("testdata", "launcher", "linux", "container", "cnb", "lifecycle")
+	if launchTest.targetDaemon.os == "windows" {
+		containerBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
 	}
-
-	launchDockerContext = filepath.Join("testdata", "launcher")
-	if daemonOS == "windows" {
-		launcherBinaryDir = filepath.Join("testdata", "launcher", "windows", "container", "cnb", "lifecycle")
-	} else {
-		launcherBinaryDir = filepath.Join("testdata", "launcher", "linux", "container", "cnb", "lifecycle")
+	withCustomContainerBinaryDir := func(_ *testing.T, phaseTest *PhaseTest) {
+		phaseTest.containerBinaryDir = containerBinaryDir
 	}
+	launchTest.Start(t, withCustomContainerBinaryDir)
+	defer launchTest.Stop(t)
 
-	h.MakeAndCopyLauncher(t, daemonOS, daemonArch, launcherBinaryDir)
-
-	h.DockerBuild(t, launchImage, launchDockerContext, h.WithFlags("-f", filepath.Join(launchDockerContext, dockerfileName)))
-	defer h.DockerImageRemove(t, launchImage)
+	launchImage = launchTest.testImageRef
+	launcherPath = launchTest.containerBinaryPath
 
 	spec.Run(t, "acceptance", testLauncher, spec.Parallel(), spec.Report(report.Terminal{}))
 }

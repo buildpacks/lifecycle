@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+echo "---> Hello World buildpack"
+
+# INPUT ARGUMENTS
+platform_dir=$2
+env_dir=${platform_dir}/env
+layers_dir=$1
+plan_path=$3
+
+# LAYERS
+echo "     layers_dir: ${layers_dir}"
+
+mkdir -p ${layers_dir}/some-layer/env
+
+echo -n "some-val" > ${layers_dir}/some-layer/env/SOME_VAR
+
+cat <<EOF > "$layers_dir"/some-layer.toml
+[types]
+  launch = true
+EOF

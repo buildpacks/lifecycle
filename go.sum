@@ -114,8 +114,8 @@ github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44/go.mod h1:bbYlZJ7
 github.com/bugsnag/bugsnag-go v0.0.0-20141110184014-b1d153021fcd/go.mod h1:2oa8nejYd4cQ/b0hMIopN0lCRxU0bueqREvZLWFrtK8=
 github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b/go.mod h1:obH5gd0BsqsP2LwDJ9aOkm/6J86V6lyAXCoQWGw3K50=
 github.com/bugsnag/panicwrap v0.0.0-20151223152923-e2c28503fcd0/go.mod h1:D/8v3kj0zr8ZAKg1AQ6crr+5VwKN5eIywRkfhyM/+dE=
-github.com/buildpacks/imgutil v0.0.0-20210719153540-a83d74d568a7 h1:RLQSFwioYuJtGx+1npBNPdcaNbkYXpN/6gUrFvSnkKo=
-github.com/buildpacks/imgutil v0.0.0-20210719153540-a83d74d568a7/go.mod h1:u67HqXr7QbMDRXn8plSamdI9LgYu1kODpIp0c6LoCDE=
+github.com/buildpacks/imgutil v0.0.0-20210818180451-66aea982d5dc h1:0AyNL75M0OLaI2OrU5B8fwCCkB9Qd0sQpO2Dw178MBs=
+github.com/buildpacks/imgutil v0.0.0-20210818180451-66aea982d5dc/go.mod h1:ZfCbsFruoxG0vbEVMsX/afizEo4vn2e88Km7rJ1M2D8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
