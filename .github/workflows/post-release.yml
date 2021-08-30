@@ -41,6 +41,8 @@ jobs:
       - name: Download SBOM
         run: |
           gh release download --pattern '*-bom.cdx.json' ${{ github.event.release.tag_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Retag lifecycle images & create manifest list - semver
         run: |
           DOCKER_CLI_EXPERIMENTAL=enabled
