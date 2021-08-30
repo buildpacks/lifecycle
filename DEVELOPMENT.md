@@ -40,30 +40,11 @@ It can be rather cumbersome to test changes to these workflows, as they are heav
 For the fork, it is necessary to add the following secrets:
 * COSIGN_PASSWORD (see [cosign](https://github.com/sigstore/cosign#generate-a-keypair))
 * COSIGN_PRIVATE_KEY
-* DOCKER_PASSWORD
-* DOCKER_USERNAME
+* DOCKER_PASSWORD (if not using ghcr.io)
+* DOCKER_USERNAME (if not using ghcr.io)
 
-The following script can be used to update the source code to reflect the state of the fork. Note that it assumes the lifecycle is cloned inside `~/workspace/` and that there is a cosign public key saved at `~/workspace/fork.pub`.
-It can be invoked like so: `<path to script> <Docker Hub username> <GitHub username>`
-
-```bash
-# $1 - Docker Hub username
-# $2 - GitHub username
-
-echo "Use fork"
-sed -i '' "s/\"buildpacks\"/\"$2\"/g" ~/workspace/lifecycle/.github/workflows/draft-release.yml
-
-echo "Use public key from fork (assumes private key and passphrase have been added to GitHub secrets)"
-cp ~/workspace/fork.pub cosign.pub
-
-echo "Use own Docker Hub account (assumes docker password has been added to GitHub secrets)"
-sed -i '' "s/buildpacksio\/lifecycle/$1\/lifecycle/g" ~/workspace/lifecycle/.github/workflows/build.yml
-sed -i '' "s/buildpacksio\/lifecycle/$1\/lifecycle/g" ~/workspace/lifecycle/.github/workflows/post-release.yml
-
-echo "Skip tests to make things faster"
-sed -i '' "s/make test/echo test/g" ~/workspace/lifecycle/.github/workflows/build.yml
-sed -i '' "s/make acceptance/echo acceptance/g" ~/workspace/lifecycle/.github/workflows/build.yml
-```
+The tools/test-fork.sh script can be used to update the source code to reflect the state of the fork. 
+It can be invoked like so: `./tools/test-fork.sh <registry repo name> <path to cosign public key>`
 
 ## Tasks
 
