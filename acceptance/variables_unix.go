@@ -5,10 +5,11 @@ package acceptance
 import "path"
 
 const (
-	exe                    = ""
-	execDBpDir             = "0.5_buildpack"
 	containerBaseImage     = "busybox"
 	containerBaseImageFull = "ubuntu:bionic"
+	dockerfileName         = "Dockerfile"
+	exe                    = ""
+	execDBpDir             = "0.5_buildpack"
 )
 
 var dockerSocketMount = []string{
