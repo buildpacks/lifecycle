@@ -36,7 +36,7 @@ if [[ $registry != "index.docker.io" ]]; then
 fi
 
 # If using ghcr.io, we don't need to set the DOCKER_* secrets. Update the login action to use GitHub token instead.
-if [[ "$1" == *"ghcr.io"* ]]; then
+if [[ $registry == *"ghcr.io"* ]]; then
   echo "Update login action to use GitHub token for ghcr.io"
   sed -i '' "s/secrets.DOCKER_PASSWORD/secrets.GITHUB_TOKEN/g" .github/workflows/*.yml
 fi
