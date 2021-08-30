@@ -89,4 +89,4 @@ jobs:
             -a tag=latest \
             buildpacksio/lifecycle:latest@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=latest buildpacksio/lifecycle:latest
-          cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
+          cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:latest
