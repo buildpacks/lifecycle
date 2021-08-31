@@ -47,3 +47,4 @@ cp $2 cosign.pub
 echo "Skip tests to make things faster"
 sed -i '' "s/make test/echo test/g" .github/workflows/*.yml
 sed -i '' "s/make acceptance/echo acceptance/g" .github/workflows/*.yml
+echo "$(sed '/pack-acceptance/,$d' .github/workflows/build.yml)" > .github/workflows/build.yml
