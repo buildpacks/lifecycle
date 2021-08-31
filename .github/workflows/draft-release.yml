@@ -70,84 +70,34 @@ jobs:
               .then(artifacts_result => {
                 let tuples = artifacts_result.data.artifacts
                   .map(artifact => [artifact.name, artifact.archive_download_url]);
-                let urlMap = new Map();
+                let urlList = new Array();
                 tuples.forEach(function(tuple) {
-                  if (tuple[0].includes("linux-x86-64")) {
-                    if (tuple[0].includes("sha256")) {
-                      urlMap.set("linux_x86_64_sha256", tuple[1])
-                    } else {
-                      urlMap.set("linux_x86_64", tuple[1])
-                    }
-                  }
-                  if (tuple[0].includes("windows")) {
-                    if (tuple[0].includes("sha256")) {
-                      urlMap.set("windows_sha256", tuple[1])
-                    } else {
-                      urlMap.set("windows", tuple[1])
-                    }
-                  }
-                  if (tuple[0].includes("cosign")) {
-                    urlMap.set("cosign", tuple[1])
+                  if (tuple[0].includes("lifecycle-") && !(tuple[0].includes("arm64"))) {
+                      urlList.push(tuple[1]);
                   }
                 })
-                if (urlMap.size === 0) {
+                if (urlList.length === 0) {
                   throw "no artifacts found"
                 }
-                if (urlMap.size != 5) {
-                  throw "there should be exactly five artifacts"
+                if (urlList.length != 6) {
+                  throw "there should be exactly six artifacts"
                 }
-                return Object.fromEntries(urlMap.entries())
+                return urlList.join(",")
               })
-      - name: Download linux-x86-64 artifact
+      - name: Download artifacts
         run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux_x86_64 )
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o artifact-linux-x86-64.zip $url
-          mkdir artifact-linux-x86-64
-          unzip -d artifact-linux-x86-64 artifact-linux-x86-64.zip
-          lifecycle_path=$(ls artifact-linux-x86-64/lifecycle-*linux.x86-64.tgz)
-          echo "ARTIFACT_LINUX_X86_64_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
-      - name: Download linux-x86-64-sha256 artifact
-        run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .linux_x86_64_sha256 )
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o artifact-linux-x86-64-sha256.zip $url
-          mkdir artifact-linux-x86-64-sha256
-          unzip -d artifact-linux-x86-64-sha256 artifact-linux-x86-64-sha256.zip
-          lifecycle_path=$(ls artifact-linux-x86-64-sha256/lifecycle-*linux.x86-64.tgz.sha256)
-          echo "ARTIFACT_LINUX_X86_64_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
-      - name: Download windows artifact
-        run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .windows )
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o artifact-windows.zip $url
-          mkdir artifact-windows
-          unzip -d artifact-windows artifact-windows.zip
-          lifecycle_path=$(ls artifact-windows/lifecycle-*windows.x86-64.tgz)
-          echo "ARTIFACT_WINDOWS_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
-      - name: Download windows-sha256 artifact
-        run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .windows_sha256 )
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o artifact-windows-sha256.zip $url
-          mkdir artifact-windows-sha256
-          unzip -d artifact-windows-sha256 artifact-windows-sha256.zip
-          lifecycle_path=$(ls artifact-windows-sha256/lifecycle-*windows.x86-64.tgz.sha256)
-          echo "ARTIFACT_WINDOWS_SHA_PATH=$PWD/$lifecycle_path" >> $GITHUB_ENV
-      - name: Download cosign public key
-        run: |
-          url=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r .cosign )
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o cosign.zip $url
-          mkdir cosign
-          unzip -d cosign cosign.zip
-          cosign_path=$(ls cosign/cosign.pub)
-          echo "ARTIFACT_COSIGN_PATH=$PWD/$cosign_path" >> $GITHUB_ENV
+          mkdir artifacts
+          echo "ARTIFACTS_PATH=$PWD/artifacts" >> $GITHUB_ENV
+
+          urls=$(echo '${{ steps.artifact-urls.outputs.result }}' | jq -r . )
+
+          for url in $(echo $urls | tr "," "\n"); do
+            curl -sL -w 'RESP_CODE:%{response_code}\n' \
+              --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+              -o tmp-artifact.zip $url
+            unzip -d artifacts tmp-artifact.zip
+            rm tmp-artifact.zip
+          done
       - name: Set pre-release kind
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
@@ -179,9 +129,7 @@ jobs:
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
-            ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
-            ${{ env.ARTIFACT_COSIGN_PATH }} \
+            $(ls ${{ env.ARTIFACTS_PATH }}/*) \
             --draft \
             --notes-file body.txt \
             --prerelease \
@@ -193,9 +141,7 @@ jobs:
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            ${{ env.ARTIFACT_LINUX_X86_64_PATH }} ${{ env.ARTIFACT_LINUX_X86_64_SHA_PATH }} \
-            ${{ env.ARTIFACT_WINDOWS_PATH }} ${{ env.ARTIFACT_WINDOWS_SHA_PATH }} \
-            ${{ env.ARTIFACT_COSIGN_PATH }} \
+            $(ls ${{ env.ARTIFACTS_PATH }}/*) \
             --draft \
             --notes-file body.txt \
             --target $GITHUB_REF \
