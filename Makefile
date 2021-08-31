@@ -17,6 +17,7 @@ else
 LIFECYCLE_IMAGE_TAG?=$(LIFECYCLE_VERSION)
 endif
 
+ACCEPTANCE_TIMEOUT?=2400s
 GOCMD?=go
 GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LIFECYCLE_DESCRIPTOR_PATH?=lifecycle.toml
@@ -263,7 +264,7 @@ out:
 
 acceptance: format tidy
 	@echo "> Running acceptance tests..."
-	$(GOTEST) -v -count=1 -tags=acceptance ./acceptance/...
+	$(GOTEST) -v -count=1 -tags=acceptance -timeout=$(ACCEPTANCE_TIMEOUT) ./acceptance/...
 
 clean:
 	@echo "> Cleaning workspace..."

@@ -6,31 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
-
-func MakeAndCopyLauncher(t *testing.T, goos, goarch, destDir string) {
-	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
-	AssertNil(t, err)
-
-	cmd := exec.Command("make", fmt.Sprintf("build-%s-%s-launcher", goos, goarch)) // #nosec G204
-
-	wd, err := os.Getwd()
-	AssertNil(t, err)
-	cmd.Dir = filepath.Join(wd, "..")
-
-	cmd.Env = append(
-		os.Environ(),
-		"PWD="+cmd.Dir,
-		"BUILD_DIR="+buildDir,
-	)
-
-	t.Log("Building binaries: ", cmd.Args)
-	Run(t, cmd)
-
-	copyLauncher(t, filepath.Join(buildDir, fmt.Sprintf("%s-%s", goos, goarch), "lifecycle"), destDir)
-}
 
 func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...string) {
 	buildDir, err := filepath.Abs(filepath.Join("..", "out"))
@@ -50,25 +27,10 @@ func MakeAndCopyLifecycle(t *testing.T, goos, goarch, destDir string, envs ...st
 	cmd.Env = append(os.Environ(), envs...)
 
 	t.Log("Building binaries:", cmd.Args)
-	Run(t, cmd)
+	output := Run(t, cmd)
+	t.Log(output)
 
 	copyLifecycle(t, filepath.Join(buildDir, fmt.Sprintf("%s-%s", goos, goarch), "lifecycle"), destDir)
-}
-
-func copyLauncher(t *testing.T, src, dst string) {
-	AssertNil(t, os.RemoveAll(dst)) // Clear any existing binaries
-	AssertNil(t, os.MkdirAll(dst, 0755))
-
-	binaryName := "launcher"
-	if runtime.GOOS == "windows" {
-		binaryName += ".exe"
-	}
-
-	// Copy launcher
-	CopyFile(t, filepath.Join(src, binaryName), filepath.Join(dst, binaryName))
-
-	// Ensure correct permissions
-	AssertNil(t, os.Chmod(filepath.Join(dst, binaryName), 0755))
 }
 
 func copyLifecycle(t *testing.T, src, dst string) {

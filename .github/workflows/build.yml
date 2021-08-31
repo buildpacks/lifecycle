@@ -11,7 +11,7 @@ on:
       - 'release/**'
 
 jobs:
-  test-linux:
+  test-linux-amd64:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
@@ -35,6 +35,18 @@ jobs:
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_linux
           fail_ci_if_error: true
+  test-linux-arm64:
+    runs-on: linux-arm64
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: Test
+        run: |
+          make format || true
+          make test
   test-windows:
     runs-on: windows-latest
     steps:
@@ -84,7 +96,8 @@ jobs:
           codecov.exe -f .\out\tests\coverage-unit.txt -v --flag os_windows
   build-and-publish:
     needs:
-      - test-linux
+      - test-linux-amd64
+      - test-linux-arm64
       - test-windows
     runs-on: ubuntu-18.04
     steps:
@@ -95,12 +108,13 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.16'
-      - name: Install cosign
-        run: |
-          go install github.com/sigstore/cosign/cmd/cosign@latest
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v1.0.0
+        with:
+          cosign-release: 'v1.0.0'
       - name: Set version
         run: |
-          echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" >> version.txt
+          echo "LIFECYCLE_VERSION=$(go run tools/version/main.go)" | tee -a $GITHUB_ENV version.txt
       - uses: actions/upload-artifact@v2
         with:
           name: version
@@ -141,6 +155,17 @@ jobs:
         with:
           name: lifecycle-windows-x86-64-sha256
           path: out/lifecycle-v*+windows.x86-64.tgz.sha256
+      - name: Generate SBOM JSON
+        uses: CycloneDX/gh-gomod-generate-sbom@v0.3.0
+        with:
+          json: true
+          output: lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json
+          resolve-licenses: true
+          version: ^v0
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-bom-cdx
+          path: lifecycle-v*-bom.cdx.json
       - uses: azure/docker-login@v1
         if: github.event_name == 'push'
         with:
@@ -152,10 +177,13 @@ jobs:
       - name: Set env
         run: |
           cat tag.txt >> $GITHUB_ENV
+      - name: Rename cosign public key
+        run: |
+          cp cosign.pub lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
       - uses: actions/upload-artifact@v2
         with:
-          name: cosign-public-key
-          path: cosign.pub
+          name: lifecycle-cosign-public-key
+          path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
       - name: Publish images
         if: github.event_name == 'push'
         run: |
@@ -179,7 +207,10 @@ jobs:
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
 
-          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) -a tag=${LIFECYCLE_IMAGE_TAG} -r buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
+          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
+            -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
+            -a tag=${LIFECYCLE_IMAGE_TAG} \
+            buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
   pack-acceptance-linux:
     if: github.event_name == 'push'
