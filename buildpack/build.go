@@ -104,10 +104,6 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Bui
 	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Logger)
 }
 
-func (b *Descriptor) SupportsAssetPackages() bool {
-	return false
-}
-
 func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, layerDir string) error {
 	// rename <layers>/<layer> to <layers>/<layer>.ignore if buildpack API >= 0.6 and all of the types flags are set to false
 	if !layerMetadataFile.Launch && !layerMetadataFile.Cache && !layerMetadataFile.Build {

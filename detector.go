@@ -117,7 +117,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 			return d.detectOrder(bpDesc.Order, done, group.Group[i+1:], groupBp.Optional, wg)
 		}
 
-		bpEnv := env.NewBuildEnv(os.Environ(), d.Platform, bp)
+		bpEnv := env.NewBuildEnv(os.Environ())
 
 		done = append(done, groupBp)
 		wg.Add(1)

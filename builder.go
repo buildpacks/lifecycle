@@ -30,7 +30,6 @@ type Buildpack interface {
 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
 	ConfigFile() *buildpack.Descriptor
 	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
-	SupportsAssetPackages() bool
 }
 
 type Builder struct {
@@ -73,7 +72,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		bpPlan := plan.Find(bp.ID)
 
 		b.Logger.Debug("Getting build environment")
-		bpEnv := env.NewBuildEnv(os.Environ(), b.Platform, bpTOML)
+		bpEnv := env.NewBuildEnv(os.Environ())
 
 		br, err := bpTOML.Build(bpPlan, config, bpEnv)
 		if err != nil {

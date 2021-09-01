@@ -11,7 +11,6 @@ import (
 
 type Platform interface {
 	API() string
-	SupportsAssetPackages() bool
 }
 
 type Analyzer struct {

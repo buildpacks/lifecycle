@@ -77,17 +77,3 @@ func (mr *MockBuildpackMockRecorder) Detect(arg0, arg1 interface{}) *gomock.Call
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detect", reflect.TypeOf((*MockBuildpack)(nil).Detect), arg0, arg1)
 }
-
-// SupportsAssetPackages mocks base method.
-func (m *MockBuildpack) SupportsAssetPackages() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SupportsAssetPackages")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// SupportsAssetPackages indicates an expected call of SupportsAssetPackages.
-func (mr *MockBuildpackMockRecorder) SupportsAssetPackages() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SupportsAssetPackages", reflect.TypeOf((*MockBuildpack)(nil).SupportsAssetPackages))
-}
