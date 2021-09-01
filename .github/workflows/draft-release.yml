@@ -22,7 +22,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux-x86-64 and windows
+      - name: Determine download urls for linux-x86-64, linux-arm64 and windows
         id: artifact-urls
         uses: actions/github-script@v3.0.0
         with:
@@ -72,15 +72,15 @@ jobs:
                   .map(artifact => [artifact.name, artifact.archive_download_url]);
                 let urlList = new Array();
                 tuples.forEach(function(tuple) {
-                  if (tuple[0].includes("lifecycle-") && !(tuple[0].includes("arm64"))) {
+                  if (tuple[0].includes("lifecycle-")) {
                       urlList.push(tuple[1]);
                   }
                 })
                 if (urlList.length === 0) {
                   throw "no artifacts found"
                 }
-                if (urlList.length != 6) {
-                  throw "there should be exactly six artifacts"
+                if (urlList.length != 8) {
+                  throw "there should be exactly eight artifacts"
                 }
                 return urlList.join(",")
               })
