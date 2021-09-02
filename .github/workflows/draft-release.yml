@@ -133,10 +133,11 @@ jobs:
       - name: Create Pre Release
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
+          cd ${{ env.ARTIFACTS_PATH }}
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            $(ls ${{ env.ARTIFACTS_PATH }} | sort | paste -sd " " -) \
+            $(ls | sort | paste -sd " " -) \
             --draft \
-            --notes-file body.txt \
+            --notes-file ../body.txt \
             --prerelease \
             --target $GITHUB_REF \
             --title "lifecycle v${{ env.LIFECYCLE_VERSION }}"
@@ -145,10 +146,11 @@ jobs:
       - name: Create Release
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
+          cd ${{ env.ARTIFACTS_PATH }}
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            $(ls ${{ env.ARTIFACTS_PATH }} | sort | paste -sd " " -) \
+            $(ls | sort | paste -sd " " -) \
             --draft \
-            --notes-file body.txt \
+            --notes-file ../body.txt \
             --target $GITHUB_REF \
             --title "lifecycle v${{ env.LIFECYCLE_VERSION }}"
         env:
