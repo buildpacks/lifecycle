@@ -19,6 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -145,6 +146,21 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{Name: "other-dep", Version: "v4"},
 				}}
 				bpB.EXPECT().Build(expectedPlanB, config, gomock.Any())
+
+				_, err := builder.Build()
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+			})
+
+			it("should provide the correct environment to each buildpack", func() {
+				bpA := &fakeBp{}
+				bpB := testmock.NewMockBuildpack(mockCtrl)
+				expectedEnv := env.NewBuildEnv(append(os.Environ(), "HOME=modified-by-bpA"))
+
+				buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+				buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
+				bpB.EXPECT().Build(gomock.Any(), config, expectedEnv)
 
 				_, err := builder.Build()
 				if err != nil {
@@ -826,4 +842,24 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+type fakeBp struct{}
+
+func (b *fakeBp) Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error) {
+	providedEnv, ok := bpEnv.(*env.Env)
+	if !ok {
+		return buildpack.BuildResult{}, errors.New("failed to cast bpEnv")
+	}
+	newEnv := env.NewBuildEnv(append(os.Environ(), "HOME=modified-by-bpA"))
+	*providedEnv = *newEnv
+	return buildpack.BuildResult{}, nil
+}
+
+func (b *fakeBp) ConfigFile() *buildpack.Descriptor {
+	return nil
+}
+
+func (b *fakeBp) Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun {
+	return buildpack.DetectRun{}
 }

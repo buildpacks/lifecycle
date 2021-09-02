@@ -59,6 +59,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	var slices []layers.Slice
 	var labels []buildpack.Label
 
+	bpEnv := env.NewBuildEnv(os.Environ())
+
 	for _, bp := range b.Group.Group {
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
@@ -70,9 +72,6 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 		b.Logger.Debug("Finding plan")
 		bpPlan := plan.Find(bp.ID)
-
-		b.Logger.Debug("Getting build environment")
-		bpEnv := env.NewBuildEnv(os.Environ())
 
 		br, err := bpTOML.Build(bpPlan, config, bpEnv)
 		if err != nil {
