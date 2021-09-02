@@ -28,7 +28,7 @@ jobs:
       - name: Set env
         run: |
           echo "LIFECYCLE_VERSION=$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)" >> $GITHUB_ENV
-          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always)" >> $GITHUB_ENV
+          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)" >> $GITHUB_ENV
       - name: Verify lifecycle images
         run: |
           LINUX_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64 | jq -r .critical.image.\"docker-manifest-digest\")
@@ -42,9 +42,10 @@ jobs:
           WINDOWS_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows | jq -r .critical.image.\"docker-manifest-digest\")
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
           echo "WINDOWS_AMD64_SHA=$WINDOWS_AMD64_SHA" >> $GITHUB_ENV
-      - name: Download SBOM
+      - name: Download SBOM and checksums
         run: |
           gh release download --pattern '*-bom.cdx.json' ${{ github.event.release.tag_name }}
+          gh release download --pattern '*-checksums.txt' ${{ github.event.release.tag_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Retag lifecycle images & create manifest list - semver
@@ -73,7 +74,14 @@ jobs:
             -a tag=${{ env.LIFECYCLE_VERSION }} \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
+
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
+          SBOM_SHA=$(cat *-checksums.txt | grep bom.cdx.json | awk '{print $1}')
+          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
+            -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
+            -a tag=${{ env.LIFECYCLE_VERSION }} \
+            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
+          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
       - name: Retag lifecycle images & create manifest list - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
@@ -101,4 +109,11 @@ jobs:
             -a tag=latest \
             buildpacksio/lifecycle:latest@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=latest buildpacksio/lifecycle:latest
+
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:latest
+          SBOM_SHA=$(cat *-checksums.txt | grep bom.cdx.json | awk '{print $1}')
+          COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
+            -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
+            -a tag=${{ env.LIFECYCLE_VERSION }} \
+            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
+          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom

@@ -121,7 +121,7 @@ jobs:
           path: version.txt
       - name: Set tag
         run: |
-          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always)" >> tag.txt
+          echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)" >> tag.txt
       - uses: actions/upload-artifact@v2
         with:
           name: tag
@@ -166,6 +166,13 @@ jobs:
         with:
           name: lifecycle-bom-cdx
           path: lifecycle-v*-bom.cdx.json
+      - name: Calculate SBOM sha
+        run: |
+          shasum -a 256 lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json > lifecycle-v${{ env.LIFECYCLE_VERSION }}-bom.cdx.json.sha256
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-bom-cdx-sha256
+          path: lifecycle-v*-bom.cdx.json.sha256
       - uses: azure/docker-login@v1
         if: github.event_name == 'push'
         with:
@@ -184,11 +191,18 @@ jobs:
         with:
           name: lifecycle-cosign-public-key
           path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub
+      - name: Calculate cosign sha
+        run: |
+          shasum -a 256 lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub > lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub.sha256
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-cosign-public-key-sha256
+          path: lifecycle-v${{ env.LIFECYCLE_VERSION }}-cosign.pub.sha256
       - name: Publish images
         if: github.event_name == 'push'
         run: |
           DOCKER_CLI_EXPERIMENTAL=enabled
-          LIFECYCLE_IMAGE_TAG=$(git describe --always)
+          LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)
 
           LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"

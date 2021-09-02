@@ -79,8 +79,8 @@ jobs:
                 if (urlList.length === 0) {
                   throw "no artifacts found"
                 }
-                if (urlList.length != 8) {
-                  throw "there should be exactly eight artifacts"
+                if (urlList.length != 10) {
+                  throw "there should be exactly ten artifacts"
                 }
                 return urlList.join(",")
               })
@@ -98,6 +98,11 @@ jobs:
             unzip -d artifacts tmp-artifact.zip
             rm tmp-artifact.zip
           done
+      - name: Combine checksums
+        run: |
+          cd ${{ env.ARTIFACTS_PATH }}
+          cat *.sha256 > lifecycle-v${{ env.LIFECYCLE_VERSION }}-checksums.txt
+          rm *.sha256
       - name: Set pre-release kind
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
@@ -129,7 +134,7 @@ jobs:
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            $(ls ${{ env.ARTIFACTS_PATH }}/*) \
+            $(ls ${{ env.ARTIFACTS_PATH }}/* | sort) \
             --draft \
             --notes-file body.txt \
             --prerelease \
@@ -141,7 +146,7 @@ jobs:
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            $(ls ${{ env.ARTIFACTS_PATH }}/*) \
+            $(ls ${{ env.ARTIFACTS_PATH }}/* | sort) \
             --draft \
             --notes-file body.txt \
             --target $GITHUB_REF \
