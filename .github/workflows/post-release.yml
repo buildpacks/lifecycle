@@ -77,6 +77,7 @@ jobs:
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
           SBOM_SHA=$(cat *-checksums.txt | grep bom.cdx.json | awk '{print $1}')
+          MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} \
@@ -112,6 +113,7 @@ jobs:
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:latest
           SBOM_SHA=$(cat *-checksums.txt | grep bom.cdx.json | awk '{print $1}')
+          MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} \

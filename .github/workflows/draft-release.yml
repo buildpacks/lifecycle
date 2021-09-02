@@ -134,7 +134,7 @@ jobs:
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            $(ls ${{ env.ARTIFACTS_PATH }}/* | sort) \
+            $(paste -s --delimiters=" " <(ls ${{ env.ARTIFACTS_PATH }} | sort)) \
             --draft \
             --notes-file body.txt \
             --prerelease \
@@ -146,7 +146,7 @@ jobs:
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           gh release create v${{ env.LIFECYCLE_VERSION }} \
-            $(ls ${{ env.ARTIFACTS_PATH }}/* | sort) \
+            $(paste -s --delimiters=" " <(ls ${{ env.ARTIFACTS_PATH }} | sort)) \
             --draft \
             --notes-file body.txt \
             --target $GITHUB_REF \
