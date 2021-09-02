@@ -12,7 +12,6 @@ type Buildpack interface {
 	Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error)
 	ConfigFile() *Descriptor
 	Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun
-	SupportsAssetPackages() bool
 }
 
 type DirBuildpackStore struct {

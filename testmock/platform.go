@@ -46,17 +46,3 @@ func (mr *MockPlatformMockRecorder) API() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "API", reflect.TypeOf((*MockPlatform)(nil).API))
 }
-
-// SupportsAssetPackages mocks base method.
-func (m *MockPlatform) SupportsAssetPackages() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SupportsAssetPackages")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// SupportsAssetPackages indicates an expected call of SupportsAssetPackages.
-func (mr *MockPlatformMockRecorder) SupportsAssetPackages() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SupportsAssetPackages", reflect.TypeOf((*MockPlatform)(nil).SupportsAssetPackages))
-}

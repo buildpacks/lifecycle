@@ -20,7 +20,3 @@ func NewPlatform(previousPlatform common.Platform) common.Platform {
 func (p *v07Platform) API() string {
 	return p.api.String()
 }
-
-func (p *v07Platform) SupportsAssetPackages() bool {
-	return false
-}
