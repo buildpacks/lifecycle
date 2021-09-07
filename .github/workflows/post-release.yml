@@ -17,7 +17,7 @@ jobs:
       - name: Install crane
         run: |
           go install github.com/google/go-containerregistry/cmd/crane@latest
-      - name: Install Cosign
+      - name: Install cosign
         uses: sigstore/cosign-installer@v1.0.0
         with:
           cosign-release: 'v1.0.0'
@@ -42,10 +42,9 @@ jobs:
           WINDOWS_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows | jq -r .critical.image.\"docker-manifest-digest\")
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
           echo "WINDOWS_AMD64_SHA=$WINDOWS_AMD64_SHA" >> $GITHUB_ENV
-      - name: Download SBOM and checksums
+      - name: Download SBOM
         run: |
           gh release download --pattern '*-bom.cdx.json' ${{ github.event.release.tag_name }}
-          gh release download --pattern '*-checksums.txt' ${{ github.event.release.tag_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Retag lifecycle images & create manifest list - semver
@@ -76,12 +75,11 @@ jobs:
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
-          SBOM_SHA=$(cat *-checksums.txt | grep bom.cdx.json | awk '{print $1}')
           MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} \
-            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom@sha256:${SBOM_SHA}
+            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
       - name: Retag lifecycle images & create manifest list - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
@@ -112,10 +110,9 @@ jobs:
           cosign verify -key cosign.pub -a tag=latest buildpacksio/lifecycle:latest
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:latest
-          SBOM_SHA=$(cat *-checksums.txt | grep bom.cdx.json | awk '{print $1}')
           MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} \
-            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom@sha256:${SBOM_SHA}
+            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
