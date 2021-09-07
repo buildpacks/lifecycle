@@ -2,6 +2,7 @@
 
 # $1 - registry repo name
 # $2 - path to cosign public key
+# $3 - enable tests
 
 echo "Parse registry: $1"
 firstPart=$(echo $1 | cut -d/ -f1)
@@ -44,7 +45,16 @@ fi
 echo "Use public key from fork (assumes private key and passphrase have been added to GitHub secrets)"
 cp $2 cosign.pub
 
-echo "Skip tests to make things faster"
-sed -i '' "s/make test/echo test/g" .github/workflows/*.yml
-sed -i '' "s/make acceptance/echo acceptance/g" .github/workflows/*.yml
-echo "$(sed '/pack-acceptance/,$d' .github/workflows/build.yml)" > .github/workflows/build.yml
+echo "Remove arm tests (these require a self-hosted runner)"
+sed -i '' "/test-linux-arm64:/,+11d" .github/workflows/build.yml
+sed -i '' "/test-linux-arm64/d" .github/workflows/build.yml
+
+if [[ -z $3 ]]; then
+  echo "Remove all tests to make things faster"
+  sed -i '' "s/make test/echo test/g" .github/workflows/*.yml
+  sed -i '' "s/make acceptance/echo acceptance/g" .github/workflows/*.yml
+  echo "$(sed '/pack-acceptance/,$d' .github/workflows/build.yml)" > .github/workflows/build.yml
+else
+  echo "Retain other tests"
+fi
+
