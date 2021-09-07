@@ -1,0 +1,11 @@
+[[entries]]
+
+  [[entries.providers]]
+    id = "hello_world"
+    version = "0.0.1"
+  
+  [[entries.requires]]
+      name = "different_plan_from_env.toml_reqires_subset_content"
+      [entries.requires.metadata]
+        # arbitrary data describing the required dependency
+        

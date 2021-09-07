@@ -1,0 +1,6 @@
+[[entries]]
+
+  [[entries.providers]]
+    id = "hello_world_2"
+    version = "0.0.2"
+    

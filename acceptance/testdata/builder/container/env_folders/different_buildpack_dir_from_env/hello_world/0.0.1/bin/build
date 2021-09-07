@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+echo "---> Hello World buildpack"
+
+# INPUT ARGUMENTS
+platform_dir=$2
+env_dir=${platform_dir}/env
+layers_dir=$1
+plan_path=$3
+
+# acceptance test
+echo "CNB_BUILDPACK_DIR: ${CNB_BUILDPACK_DIR}"
