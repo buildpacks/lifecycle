@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ var (
 )
 
 func TestBuilder(t *testing.T) {
+	h.SkipIf(t, runtime.GOOS == "windows", "Builder acceptance tests are not yet supported on Windows")
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	info, err := h.DockerCli(t).Info(context.TODO())
