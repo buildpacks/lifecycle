@@ -101,7 +101,7 @@ jobs:
       - name: Combine checksums
         run: |
           cd ${{ env.ARTIFACTS_PATH }}
-          cat *.sha256 > lifecycle-v${{ env.LIFECYCLE_VERSION }}-checksums.txt
+          cat *.sha256 | sort > lifecycle-v${{ env.LIFECYCLE_VERSION }}-checksums.txt
           rm *.sha256
       - name: Set pre-release kind
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
