@@ -105,7 +105,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			)
 
 			expectRestoresLayerMetadataIfSupported := func() {
-				if api.MustParse(analyzer.Platform.API()).Compare(api.MustParse("0.7")) < 0 {
+				if api.MustParse(analyzer.Platform.API()).LessThan("0.7") {
 					useShaFiles := true
 					layerSHAStore := lifecycle.NewLayerSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)

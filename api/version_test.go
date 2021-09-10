@@ -92,4 +92,32 @@ func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#LessThan", func() {
+		var subject = api.MustParse("0.3")
+		var toTest = map[string]bool{
+			"0.2": false,
+			"0.3": false,
+			"0.4": true,
+		}
+		it("returns the expected value", func() {
+			for comparison, expected := range toTest {
+				h.AssertEq(t, subject.LessThan(comparison), expected)
+			}
+		})
+	})
+
+	when("#AtLeast", func() {
+		var subject = api.MustParse("0.3")
+		var toTest = map[string]bool{
+			"0.2": true,
+			"0.3": true,
+			"0.4": false,
+		}
+		it("returns the expected value", func() {
+			for comparison, expected := range toTest {
+				h.AssertEq(t, subject.AtLeast(comparison), expected)
+			}
+		})
+	})
 }

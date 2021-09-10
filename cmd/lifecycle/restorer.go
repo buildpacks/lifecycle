@@ -132,5 +132,5 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 }
 
 func (r *restoreArgs) restoresLayerMetadata() bool {
-	return api.MustParse(r.platform.API()).Compare(api.MustParse("0.7")) >= 0
+	return api.MustParse(r.platform.API()).AtLeast("0.7")
 }

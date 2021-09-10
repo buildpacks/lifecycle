@@ -63,7 +63,7 @@ func runLaunch() error {
 }
 
 func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) string {
-	if platformAPI.Compare(api.MustParse("0.4")) < 0 {
+	if platformAPI.LessThan("0.4") {
 		return cmd.EnvOrDefault(cmd.EnvProcessType, cmd.DefaultProcessType)
 	}
 	if pType := os.Getenv(cmd.EnvProcessType); pType != "" {
