@@ -114,7 +114,7 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 		return platform.ExportReport{}, err
 	}
 
-	if e.PlatformAPI.AtLeast("0.5") {
+	if e.PlatformAPI.AtLeast("0.6") {
 		e.Logger.Debugf("Setting WORKDIR: '%s'", opts.AppDir)
 		if err := e.setWorkingDir(opts); err != nil {
 			return platform.ExportReport{}, errors.Wrap(err, "setting workdir")
