@@ -168,7 +168,7 @@ func readStack(stackPath string) (platform.StackMetadata, error) {
 }
 
 func (e *exportCmd) supportsRunImage() bool {
-	return api.MustParse(e.platform.API()).Compare(api.MustParse("0.7")) < 0
+	return api.MustParse(e.platform.API()).LessThan("0.7")
 }
 
 func (e *exportCmd) Privileges() error {

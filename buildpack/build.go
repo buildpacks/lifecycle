@@ -115,7 +115,7 @@ func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, laye
 }
 
 func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]layertypes.LayerMetadataFile, error) {
-	if api.MustParse(b.API).Compare(api.MustParse("0.6")) < 0 {
+	if api.MustParse(b.API).LessThan("0.6") {
 		return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layertypes.LayerMetadataFile, error) {
 			layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
 			if err != nil {
@@ -249,7 +249,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	var launchTOML LaunchTOML
 	launchPath := filepath.Join(bpLayersDir, "launch.toml")
 
-	if api.MustParse(b.API).Compare(api.MustParse("0.5")) < 0 { // buildpack API <= 0.4
+	if api.MustParse(b.API).LessThan("0.5") {
 		// read buildpack plan
 		var bpPlanOut Plan
 		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
@@ -323,7 +323,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 }
 
 func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, logger Logger) error {
-	if api.MustParse(bpAPI).Compare(api.MustParse("0.6")) >= 0 {
+	if api.MustParse(bpAPI).AtLeast("0.6") {
 		return nil
 	}
 	replacedDefaults := []string{}
@@ -353,7 +353,7 @@ func validateNoMultipleDefaults(processes []launch.Process) error {
 }
 
 func validateBOM(bom []BOMEntry, bpAPI string) error {
-	if api.MustParse(bpAPI).Compare(api.MustParse("0.5")) < 0 {
+	if api.MustParse(bpAPI).LessThan("0.5") {
 		for _, entry := range bom {
 			if version, ok := entry.Metadata["version"]; ok {
 				metadataVersion := fmt.Sprintf("%v", version)

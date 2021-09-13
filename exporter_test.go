@@ -616,12 +616,28 @@ version = "4.5.6"
 				})
 			})
 
-			it("sets WorkingDir", func() {
-				_, err := exporter.Export(opts)
-				h.AssertNil(t, err)
+			when("working directory", func() {
+				when("platform API > 0.5", func() {
+					it("sets WorkingDir", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
 
-				val := fakeAppImage.WorkingDir()
-				h.AssertEq(t, val, opts.AppDir)
+						val := fakeAppImage.WorkingDir()
+						h.AssertEq(t, val, opts.AppDir)
+					})
+				})
+				when("platform API <= 0.5", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.5")
+					})
+					it("doesn't set WorkingDir", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						val := fakeAppImage.WorkingDir()
+						h.AssertEq(t, val, "")
+					})
+				})
 			})
 
 			it("sets empty CMD", func() {

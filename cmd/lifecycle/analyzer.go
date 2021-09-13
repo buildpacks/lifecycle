@@ -257,7 +257,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 }
 
 func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
-	return api.MustParse(a.platform.API()).Compare(api.MustParse("0.7")) >= 0
+	return api.MustParse(a.platform.API()).AtLeast("0.7")
 }
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {

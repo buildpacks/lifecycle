@@ -66,7 +66,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 }
 
 func (a *Analyzer) restoresLayerMetadata() bool {
-	return api.MustParse(a.Platform.API()).Compare(api.MustParse("0.7")) < 0
+	return api.MustParse(a.Platform.API()).LessThan("0.7")
 }
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
