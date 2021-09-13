@@ -627,7 +627,7 @@ version = "4.5.6"
 					})
 				})
 				when("platform API <= 0.5", func() {
-					it.Before(func(){
+					it.Before(func() {
 						exporter.PlatformAPI = api.MustParse("0.5")
 					})
 					it("doesn't set WorkingDir", func() {

@@ -249,7 +249,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	var launchTOML LaunchTOML
 	launchPath := filepath.Join(bpLayersDir, "launch.toml")
 
-	if api.MustParse(b.API).LessThan("0.5") { // buildpack API <= 0.4
+	if api.MustParse(b.API).LessThan("0.5") {
 		// read buildpack plan
 		var bpPlanOut Plan
 		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
