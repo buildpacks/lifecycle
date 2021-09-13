@@ -637,7 +637,6 @@ version = "4.5.6"
 						val := fakeAppImage.WorkingDir()
 						h.AssertEq(t, val, "")
 					})
-
 				})
 			})
 
