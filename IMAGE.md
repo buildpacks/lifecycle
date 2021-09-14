@@ -15,16 +15,16 @@ Images are built in [GitHub actions](https://github.com/buildpacks/lifecycle/act
 * Locate the public key `lifecycle-v<tag>-cosign.pub` on the [releases page](https://github.com/buildpacks/lifecycle/releases)
 * Run:
 ```
-cosign verify -key ~/lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:<tag>
+cosign verify -key lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:<tag>
 ```
 
 A CycloneDX SBOM is "attached" to the image and signed with [`cosign`](https://github.com/sigstore/cosign). To verify:
 * Locate the public key `lifecycle-v<tag>-cosign.pub` on the [releases page](https://github.com/buildpacks/lifecycle/releases)
 * Run:
 ```
-digest=$(cosign verify -key ~/lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:<tag> | jq -r .critical.image.\"docker-manifest-digest\" | head -n 1)
+digest=$(cosign verify -key lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:<tag> | jq -r .critical.image.\"docker-manifest-digest\" | head -n 1)
 digest=${digest#"sha256:"}
-cosign verify -key ~/lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:sha256-${digest}.sbom
+cosign verify -key lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:sha256-${digest}.sbom
 cosign download sbom buildpacksio/lifecycle:<tag>
 ```
 
