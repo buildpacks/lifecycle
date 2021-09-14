@@ -1,6 +1,6 @@
 # Quick reference
 
-This image is maintained by the [Cloud Native Buildpacks project](https://buildpacks.io/). The maintainers can be contacted via the [Cloud Native Buildpacks Slack](https://slack.buildpacks.io/), or by opening an issue on the buildpacks/lifecycle [GitHub repo](https://github.com/buildpacks/lifecycle).
+This image is maintained by the [Cloud Native Buildpacks project](https://buildpacks.io/). The maintainers can be contacted via the [Cloud Native Buildpacks Slack](https://slack.buildpacks.io/), or by opening an issue on the `buildpacks/lifecycle` [GitHub repo](https://github.com/buildpacks/lifecycle).
 
 # Supported tags
 
@@ -32,5 +32,6 @@ cosign download sbom buildpacksio/lifecycle:<tag>
 
 With [pack](https://github.com/buildpack/pack):
 * `pack build <target> --lifecycle-image buildpacksio/lifecycle:<tag>`
+
 With [tekton](https://github.com/tektoncd/catalog/tree/main/task/buildpacks-phases/0.2):
 * Provide as param `LIFECYCLE_IMAGE` in taskrun
