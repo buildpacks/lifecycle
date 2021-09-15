@@ -18,9 +18,9 @@ jobs:
         run: |
           go install github.com/google/go-containerregistry/cmd/crane@latest
       - name: Install cosign
-        uses: sigstore/cosign-installer@v1.0.0
+        uses: sigstore/cosign-installer@main
         with:
-          cosign-release: 'v1.0.0'
+          cosign-release: 'v1.2.0'
       - uses: azure/docker-login@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -31,15 +31,15 @@ jobs:
           echo "LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)" >> $GITHUB_ENV
       - name: Verify lifecycle images
         run: |
-          LINUX_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64 | jq -r .critical.image.\"docker-manifest-digest\")
+          LINUX_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64 | jq -r .[0].critical.image.\"docker-manifest-digest\")
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
           echo "LINUX_AMD64_SHA=$LINUX_AMD64_SHA" >> $GITHUB_ENV
 
-          LINUX_ARM64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64 | jq -r .critical.image.\"docker-manifest-digest\")
+          LINUX_ARM64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64 | jq -r .[0].critical.image.\"docker-manifest-digest\")
           echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
           echo "LINUX_ARM64_SHA=$LINUX_ARM64_SHA" >> $GITHUB_ENV
 
-          WINDOWS_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows | jq -r .critical.image.\"docker-manifest-digest\")
+          WINDOWS_AMD64_SHA=$(cosign verify -key cosign.pub buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows | jq -r .[0].critical.image.\"docker-manifest-digest\")
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
           echo "WINDOWS_AMD64_SHA=$WINDOWS_AMD64_SHA" >> $GITHUB_ENV
       - name: Download SBOM
@@ -78,9 +78,9 @@ jobs:
           MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
-            -a tag=${{ env.LIFECYCLE_VERSION }} \
-            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
-          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
+            -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom \
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
+          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
       - name: Retag lifecycle images & create manifest list - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
@@ -113,6 +113,6 @@ jobs:
           MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
-            -a tag=${{ env.LIFECYCLE_VERSION }} \
-            buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
-          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:sha256-${MANIFEST_SHA}.sbom
+            -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom \
+            buildpacksio/lifecycle:latest@${MANIFEST_SHA}
+          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:latest@${MANIFEST_SHA}
