@@ -44,7 +44,7 @@ func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack, logge
 	names := map[string]struct{}{}
 	var tomls []string
 	for _, fi := range fis {
-		logger.Debug(fmt.Sprintf("Reading buildpack child directory: %s", fi.Name()))
+		logger.Debug(fmt.Sprintf("Reading buildpack directory item: %s", fi.Name()))
 		if fi.IsDir() {
 			bpDir.layers = append(bpDir.layers, *bpDir.newBPLayer(fi.Name(), bp.API, logger))
 			names[fi.Name()] = struct{}{}
