@@ -28,7 +28,7 @@ type bpLayersDir struct {
 
 func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack, logger Logger) (bpLayersDir, error) {
 	path := filepath.Join(layersDir, launch.EscapeID(bp.ID))
-	logger.Debug(fmt.Sprintf("Reading buildpack directory: %s", path))
+	logger.Debugf("Reading buildpack directory: %s", path)
 	bpDir := bpLayersDir{
 		name:      bp.ID,
 		path:      path,
@@ -44,7 +44,7 @@ func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack, logge
 	names := map[string]struct{}{}
 	var tomls []string
 	for _, fi := range fis {
-		logger.Debug(fmt.Sprintf("Reading buildpack directory item: %s", fi.Name()))
+		logger.Debugf("Reading buildpack directory item: %s", fi.Name())
 		if fi.IsDir() {
 			bpDir.layers = append(bpDir.layers, *bpDir.newBPLayer(fi.Name(), bp.API, logger))
 			names[fi.Name()] = struct{}{}
