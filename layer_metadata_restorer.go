@@ -8,13 +8,12 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
 //go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle LayerMetadataRestorer
 type LayerMetadataRestorer interface {
-	Restore(buildpacks []buildpack.GroupBuildpack, appMeta dataformat.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore LayerSHAStore) error
+	Restore(buildpacks []buildpack.GroupBuildpack, appMeta dataformat.LayersMetadata, cacheMeta dataformat.CacheMetadata, layerSHAStore LayerSHAStore) error
 }
 
 type DefaultLayerMetadataRestorer struct {
@@ -93,7 +92,7 @@ func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers bool) 
 	}
 }
 
-func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta dataformat.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore LayerSHAStore) error {
+func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta dataformat.LayersMetadata, cacheMeta dataformat.CacheMetadata, layerSHAStore LayerSHAStore) error {
 	if err := la.restoreStoreTOML(appMeta, buildpacks); err != nil {
 		return err
 	}
@@ -116,7 +115,7 @@ func (la *DefaultLayerMetadataRestorer) restoreStoreTOML(appMeta dataformat.Laye
 	return nil
 }
 
-func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(layerSHAStore LayerSHAStore, appMeta dataformat.LayersMetadata, cacheMeta platform.CacheMetadata, buildpacks []buildpack.GroupBuildpack) error {
+func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(layerSHAStore LayerSHAStore, appMeta dataformat.LayersMetadata, cacheMeta dataformat.CacheMetadata, buildpacks []buildpack.GroupBuildpack) error {
 	if la.skipLayers {
 		la.logger.Infof("Skipping buildpack layer analysis")
 		return nil
@@ -190,9 +189,9 @@ func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(layerSHAStore LayerSH
 	return layerSHAStore.add(buildpackID, metadata.SHA, layer)
 }
 
-func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+func retrieveCacheMetadata(cache Cache, logger Logger) (dataformat.CacheMetadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
-	var cacheMeta platform.CacheMetadata
+	var cacheMeta dataformat.CacheMetadata
 	if cache != nil {
 		var err error
 		if !cache.Exists() {

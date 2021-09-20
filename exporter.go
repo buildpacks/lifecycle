@@ -16,7 +16,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
@@ -32,8 +31,8 @@ const (
 type Cache interface {
 	Exists() bool
 	Name() string
-	SetMetadata(metadata platform.CacheMetadata) error
-	RetrieveMetadata() (platform.CacheMetadata, error)
+	SetMetadata(metadata dataformat.CacheMetadata) error
+	RetrieveMetadata() (dataformat.CacheMetadata, error)
 	AddLayerFile(tarPath string, sha string) error
 	ReuseLayer(sha string) error
 	RetrieveLayer(sha string) (io.ReadCloser, error)

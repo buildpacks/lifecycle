@@ -11,7 +11,6 @@ import (
 
 	lifecycle "github.com/buildpacks/lifecycle"
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
-	platform "github.com/buildpacks/lifecycle/platform"
 	dataformat "github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
@@ -39,7 +38,7 @@ func (m *MockLayerMetadataRestorer) EXPECT() *MockLayerMetadataRestorerMockRecor
 }
 
 // Restore mocks base method.
-func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 dataformat.LayersMetadata, arg2 platform.CacheMetadata, arg3 lifecycle.LayerSHAStore) error {
+func (m *MockLayerMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 dataformat.LayersMetadata, arg2 dataformat.CacheMetadata, arg3 lifecycle.LayerSHAStore) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

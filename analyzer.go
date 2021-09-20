@@ -6,7 +6,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
@@ -29,7 +28,7 @@ type Analyzer struct {
 func (a *Analyzer) Analyze() (dataformat.AnalyzedMetadata, error) {
 	var (
 		appMeta   dataformat.LayersMetadata
-		cacheMeta platform.CacheMetadata
+		cacheMeta dataformat.CacheMetadata
 		imageID   *dataformat.ImageIdentifier
 		err       error
 	)

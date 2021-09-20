@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
@@ -16,7 +15,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous cache")
 	}
-	meta := platform.CacheMetadata{}
+	meta := dataformat.CacheMetadata{}
 
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(layersDir, bp, e.Logger)

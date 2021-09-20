@@ -101,7 +101,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 		when("#Analyze", func() {
 			var (
 				expectedAppMetadata   dataformat.LayersMetadata
-				expectedCacheMetadata platform.CacheMetadata
+				expectedCacheMetadata dataformat.CacheMetadata
 				ref                   *testmock.MockReference
 			)
 
