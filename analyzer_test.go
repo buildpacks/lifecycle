@@ -43,6 +43,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			metadataRestorer *testmock.MockLayerMetadataRestorer
 			mockCtrl         *gomock.Controller
 			testCache        lifecycle.Cache
+			ops              []lifecycle.AnalyzeOperation
 		)
 
 		it.Before(func() {
@@ -84,6 +85,8 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				LayerMetadataRestorer: metadataRestorer,
 			}
 
+			ops = append(ops, lifecycle.ReadPreviousImage)
+
 			if testing.Verbose() {
 				analyzer.Logger = cmd.DefaultLogger
 				h.AssertNil(t, cmd.SetLogLevel("debug"))
@@ -107,6 +110,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 			expectRestoresLayerMetadataIfSupported := func() {
 				if api.MustParse(analyzer.Platform.API()).LessThan("0.7") {
+					ops = append(ops, lifecycle.RestoreLayerMetadata)
 					useShaFiles := true
 					layerSHAStore := lifecycle.NewLayerSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)
@@ -128,7 +132,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns the analyzed metadata", func() {
 					expectRestoresLayerMetadataIfSupported()
 
-					md, err := analyzer.Analyze()
+					md, err := analyzer.Analyze(ops...)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
@@ -147,7 +151,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					})
 
 					it("returns the analyzed metadata", func() {
-						md, err := analyzer.Analyze()
+						md, err := analyzer.Analyze(ops...)
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, md.Metadata, expectedAppMetadata)
@@ -162,7 +166,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 
 				it("returns a nil image in the analyzed metadata", func() {
-					md, err := analyzer.Analyze()
+					md, err := analyzer.Analyze(ops...)
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)
@@ -177,7 +181,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 
 				it("returns empty analyzed metadata", func() {
-					md, err := analyzer.Analyze()
+					md, err := analyzer.Analyze(ops...)
 					h.AssertNil(t, err)
 					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
 				})
@@ -190,7 +194,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 
 				it("returns empty analyzed metadata", func() {
-					md, err := analyzer.Analyze()
+					md, err := analyzer.Analyze(ops...)
 					h.AssertNil(t, err)
 					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
 				})

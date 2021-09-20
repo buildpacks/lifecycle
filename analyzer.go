@@ -4,7 +4,6 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
@@ -24,49 +23,48 @@ type Analyzer struct {
 	LayerMetadataRestorer LayerMetadataRestorer
 }
 
+type AnalyzeOperation func(a *Analyzer, analyzedMD *dataformat.AnalyzedMetadata) error
+
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
-func (a *Analyzer) Analyze() (dataformat.AnalyzedMetadata, error) {
-	var (
-		appMeta   dataformat.LayersMetadata
-		cacheMeta dataformat.CacheMetadata
-		imageID   *dataformat.ImageIdentifier
-		err       error
-	)
+func (a *Analyzer) Analyze(ops ...AnalyzeOperation) (dataformat.AnalyzedMetadata, error) {
+	analyzedMD := &dataformat.AnalyzedMetadata{}
 
-	if a.Image != nil { // Image is optional in Platform API >= 0.7
-		imageID, err = a.getImageIdentifier(a.Image)
-		if err != nil {
-			return dataformat.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
-		}
-
-		// continue even if the label cannot be decoded
-		if err := DecodeLabel(a.Image, dataformat.LayerMetadataLabel, &appMeta); err != nil {
-			appMeta = dataformat.LayersMetadata{}
-		}
-	} else {
-		appMeta = dataformat.LayersMetadata{}
-	}
-
-	if a.restoresLayerMetadata() {
-		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
-		if err != nil {
-			return dataformat.AnalyzedMetadata{}, err
-		}
-
-		useShaFiles := true
-		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, NewLayerSHAStore(useShaFiles)); err != nil {
+	for _, op := range ops {
+		if err := op(a, analyzedMD); err != nil {
 			return dataformat.AnalyzedMetadata{}, err
 		}
 	}
 
-	return dataformat.AnalyzedMetadata{
-		Image:    imageID,
-		Metadata: appMeta,
-	}, nil
+	return *analyzedMD, nil
 }
 
-func (a *Analyzer) restoresLayerMetadata() bool {
-	return api.MustParse(a.Platform.API()).LessThan("0.7")
+func ReadPreviousImage(a *Analyzer, analyzedMD *dataformat.AnalyzedMetadata) error {
+	if a.Image == nil { // Image is optional in Platform API >= 0.7
+		return nil
+	}
+
+	var err error
+	analyzedMD.Image, err = a.getImageIdentifier(a.Image)
+	if err != nil {
+		return errors.Wrap(err, "retrieving image identifier")
+	}
+
+	_ = DecodeLabel(a.Image, dataformat.LayerMetadataLabel, &analyzedMD.Metadata) // continue even if the label cannot be decoded
+	return nil
+}
+
+func RestoreLayerMetadata(a *Analyzer, analyzedMD *dataformat.AnalyzedMetadata) error {
+	cacheMeta, err := retrieveCacheMetadata(a.Cache, a.Logger)
+	if err != nil {
+		return err
+	}
+
+	useShaFiles := true
+	if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, analyzedMD.Metadata, cacheMeta, NewLayerSHAStore(useShaFiles)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*dataformat.ImageIdentifier, error) {

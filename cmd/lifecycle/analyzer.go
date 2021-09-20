@@ -235,6 +235,11 @@ func (aa analyzeArgs) analyze() (dataformat.AnalyzedMetadata, error) {
 		return dataformat.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
 
+	analyzeOps := []lifecycle.AnalyzeOperation{lifecycle.ReadPreviousImage}
+	if api.MustParse(aa.platform.API()).LessThan("0.7") {
+		analyzeOps = append(analyzeOps, lifecycle.RestoreLayerMetadata)
+	}
+
 	analyzedMD, err := (&lifecycle.Analyzer{
 		Buildpacks:            aa.platform06.group.Group,
 		Cache:                 aa.platform06.cache,
@@ -242,7 +247,7 @@ func (aa analyzeArgs) analyze() (dataformat.AnalyzedMetadata, error) {
 		Platform:              aa.platform,
 		Image:                 img,
 		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
-	}).Analyze()
+	}).Analyze(analyzeOps...)
 	if err != nil {
 		return dataformat.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
 	}
