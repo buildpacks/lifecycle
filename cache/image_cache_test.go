@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -74,12 +75,12 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns the metadata", func() {
 				expected := platform.CacheMetadata{
-					Buildpacks: []platform.BuildpackLayersMetadata{{
+					Buildpacks: []dataformat.BuildpackLayersMetadata{{
 						ID:      "bp.id",
 						Version: "1.2.3",
-						Layers: map[string]platform.BuildpackLayerMetadata{
+						Layers: map[string]dataformat.BuildpackLayerMetadata{
 							"some-layer": {
-								LayerMetadata: platform.LayerMetadata{
+								LayerMetadata: dataformat.LayerMetadata{
 									SHA: "some-sha",
 								},
 								LayerMetadataFile: layertypes.LayerMetadataFile{
@@ -153,7 +154,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, fakeOriginalImage.SetLabel("io.buildpacks.lifecycle.cache.metadata", `{"buildpacks": [{"key": "old.bp.id"}]}`))
 
 				newMetadata = platform.CacheMetadata{
-					Buildpacks: []platform.BuildpackLayersMetadata{{
+					Buildpacks: []dataformat.BuildpackLayersMetadata{{
 						ID: "new.bp.id",
 					}},
 				}
@@ -184,7 +185,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			when("set without commit", func() {
 				it("retrieve returns the previous metadata", func() {
 					previousMetadata := platform.CacheMetadata{
-						Buildpacks: []platform.BuildpackLayersMetadata{{
+						Buildpacks: []dataformat.BuildpackLayersMetadata{{
 							ID: "old.bp.id",
 						}},
 					}

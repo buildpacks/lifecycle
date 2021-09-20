@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
+
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -12,7 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -51,7 +53,7 @@ func (r *restoreCmd) DefineFlags() {
 
 func (r *restoreCmd) Args(nargs int, args []string) error {
 	if nargs > 0 {
-		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected Args"), common.CodeInvalidArgs, "parse arguments")
 	}
 	if r.cacheImageTag == "" && r.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")
@@ -97,9 +99,9 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var appMeta platform.LayersMetadata
+	var appMeta dataformat.LayersMetadata
 	if r.restoresLayerMetadata() {
-		var analyzedMd platform.AnalyzedMetadata
+		var analyzedMd dataformat.AnalyzedMetadata
 		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMd); err == nil {
 			appMeta = analyzedMd.Metadata
 		}
@@ -115,7 +117,7 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
+func (r restoreArgs) restore(layerMetadata dataformat.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:             r.layersDir,
 		Buildpacks:            group.Group,
@@ -126,7 +128,7 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(cmd.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(common.RestoreError), "restore")
 	}
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
 type Cache interface {
@@ -48,7 +49,7 @@ type LayerFactory interface {
 
 type LauncherConfig struct {
 	Path     string
-	Metadata platform.LauncherMetadata
+	Metadata dataformat.LauncherMetadata
 }
 
 type ExportOptions struct {
@@ -56,92 +57,92 @@ type ExportOptions struct {
 	AppDir             string
 	WorkingImage       imgutil.Image
 	RunImageRef        string
-	OrigMetadata       platform.LayersMetadata
+	OrigMetadata       dataformat.LayersMetadata
 	AdditionalNames    []string
 	LauncherConfig     LauncherConfig
-	Stack              platform.StackMetadata
-	Project            platform.ProjectMetadata
+	Stack              dataformat.StackMetadata
+	Project            dataformat.ProjectMetadata
 	DefaultProcessType string
 }
 
-func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
+func (e *Exporter) Export(opts ExportOptions) (dataformat.ExportReport, error) {
 	var err error
 
 	opts.LayersDir, err = filepath.Abs(opts.LayersDir)
 	if err != nil {
-		return platform.ExportReport{}, errors.Wrapf(err, "layers dir absolute path")
+		return dataformat.ExportReport{}, errors.Wrapf(err, "layers dir absolute path")
 	}
 
 	opts.AppDir, err = filepath.Abs(opts.AppDir)
 	if err != nil {
-		return platform.ExportReport{}, errors.Wrapf(err, "app dir absolute path")
+		return dataformat.ExportReport{}, errors.Wrapf(err, "app dir absolute path")
 	}
 
-	meta := platform.LayersMetadata{}
+	meta := dataformat.LayersMetadata{}
 	meta.RunImage.TopLayer, err = opts.WorkingImage.TopLayer()
 	if err != nil {
-		return platform.ExportReport{}, errors.Wrap(err, "get run image top layer SHA")
+		return dataformat.ExportReport{}, errors.Wrap(err, "get run image top layer SHA")
 	}
 
 	meta.RunImage.Reference = opts.RunImageRef
 	meta.Stack = opts.Stack
 
-	buildMD := &platform.BuildMetadata{}
+	buildMD := &dataformat.BuildMetadata{}
 	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(opts.LayersDir), buildMD); err != nil {
-		return platform.ExportReport{}, errors.Wrap(err, "read build metadata")
+		return dataformat.ExportReport{}, errors.Wrap(err, "read build metadata")
 	}
 
 	// buildpack-provided layers
 	if err := e.addBuildpackLayers(opts, &meta); err != nil {
-		return platform.ExportReport{}, err
+		return dataformat.ExportReport{}, err
 	}
 
 	// app layers (split into 1 or more slices)
 	if err := e.addAppLayers(opts, buildMD.Slices, &meta); err != nil {
-		return platform.ExportReport{}, errors.Wrap(err, "exporting app layers")
+		return dataformat.ExportReport{}, errors.Wrap(err, "exporting app layers")
 	}
 
 	// launcher layers (launcher binary, launcher config, process symlinks)
 	if err := e.addLauncherLayers(opts, buildMD, &meta); err != nil {
-		return platform.ExportReport{}, err
+		return dataformat.ExportReport{}, err
 	}
 
 	if err := e.setLabels(opts, meta, buildMD); err != nil {
-		return platform.ExportReport{}, err
+		return dataformat.ExportReport{}, err
 	}
 
 	if err := e.setEnv(opts, buildMD.ToLaunchMD()); err != nil {
-		return platform.ExportReport{}, err
+		return dataformat.ExportReport{}, err
 	}
 
 	if e.PlatformAPI.AtLeast("0.6") {
 		e.Logger.Debugf("Setting WORKDIR: '%s'", opts.AppDir)
 		if err := e.setWorkingDir(opts); err != nil {
-			return platform.ExportReport{}, errors.Wrap(err, "setting workdir")
+			return dataformat.ExportReport{}, errors.Wrap(err, "setting workdir")
 		}
 	}
 
 	entrypoint, err := e.entrypoint(buildMD.ToLaunchMD(), opts.DefaultProcessType, buildMD.BuildpackDefaultProcessType)
 	if err != nil {
-		return platform.ExportReport{}, errors.Wrap(err, "determining entrypoint")
+		return dataformat.ExportReport{}, errors.Wrap(err, "determining entrypoint")
 	}
 	e.Logger.Debugf("Setting ENTRYPOINT: '%s'", entrypoint)
 	if err = opts.WorkingImage.SetEntrypoint(entrypoint); err != nil {
-		return platform.ExportReport{}, errors.Wrap(err, "setting entrypoint")
+		return dataformat.ExportReport{}, errors.Wrap(err, "setting entrypoint")
 	}
 
 	if err = opts.WorkingImage.SetCmd(); err != nil { // Note: Command intentionally empty
-		return platform.ExportReport{}, errors.Wrap(err, "setting cmd")
+		return dataformat.ExportReport{}, errors.Wrap(err, "setting cmd")
 	}
 
-	report := platform.ExportReport{}
+	report := dataformat.ExportReport{}
 	report.Build, err = e.makeBuildReport(opts.LayersDir)
 	if err != nil {
-		return platform.ExportReport{}, err
+		return dataformat.ExportReport{}, err
 	}
 	report.Image, err = saveImage(opts.WorkingImage, opts.AdditionalNames, e.Logger)
 	if err != nil {
-		return platform.ExportReport{}, err
+		return dataformat.ExportReport{}, err
 	}
 	if !e.supportsManifestSize() {
 		// unset manifest size in report.toml for old platform API versions
@@ -151,16 +152,16 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	return report, nil
 }
 
-func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
+func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *dataformat.LayersMetadata) error {
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp, e.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
-		bpMD := platform.BuildpackLayersMetadata{
+		bpMD := dataformat.BuildpackLayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]platform.BuildpackLayerMetadata{},
+			Layers:  map[string]dataformat.BuildpackLayerMetadata{},
 			Store:   bpDir.store,
 		}
 		for _, fsLayer := range bpDir.findLayers(forLaunch) {
@@ -211,7 +212,7 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 	return nil
 }
 
-func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.BuildMetadata, meta *platform.LayersMetadata) error {
+func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *dataformat.BuildMetadata, meta *dataformat.LayersMetadata) error {
 	launcherLayer, err := e.LayerFactory.LauncherLayer(opts.LauncherConfig.Path)
 	if err != nil {
 		return errors.Wrap(err, "creating launcher layers")
@@ -235,7 +236,7 @@ func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.Build
 	return nil
 }
 
-func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta *platform.LayersMetadata) error {
+func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta *dataformat.LayersMetadata) error {
 	// creating app layers (slices + app dir)
 	sliceLayers, err := e.LayerFactory.SliceLayers(opts.AppDir, slices)
 	if err != nil {
@@ -263,7 +264,7 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 			return err
 		}
 		e.Logger.Debugf("Layer '%s' SHA: %s\n", slice.ID, slice.Digest)
-		meta.App = append(meta.App, platform.LayerMetadata{SHA: slice.Digest})
+		meta.App = append(meta.App, dataformat.LayerMetadata{SHA: slice.Digest})
 	}
 
 	delta := len(sliceLayers) - numberOfReusedLayers
@@ -276,14 +277,14 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 	return nil
 }
 
-func (e *Exporter) setLabels(opts ExportOptions, meta platform.LayersMetadata, buildMD *platform.BuildMetadata) error {
+func (e *Exporter) setLabels(opts ExportOptions, meta dataformat.LayersMetadata, buildMD *dataformat.BuildMetadata) error {
 	data, err := json.Marshal(meta)
 	if err != nil {
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.LayerMetadataLabel)
-	if err = opts.WorkingImage.SetLabel(platform.LayerMetadataLabel, string(data)); err != nil {
+	e.Logger.Infof("Adding label '%s'", dataformat.LayerMetadataLabel)
+	if err = opts.WorkingImage.SetLabel(dataformat.LayerMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
@@ -293,8 +294,8 @@ func (e *Exporter) setLabels(opts ExportOptions, meta platform.LayersMetadata, b
 		return errors.Wrap(err, "parse build metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.BuildMetadataLabel)
-	if err := opts.WorkingImage.SetLabel(platform.BuildMetadataLabel, string(buildJSON)); err != nil {
+	e.Logger.Infof("Adding label '%s'", dataformat.BuildMetadataLabel)
+	if err := opts.WorkingImage.SetLabel(dataformat.BuildMetadataLabel, string(buildJSON)); err != nil {
 		return errors.Wrap(err, "set build image metadata label")
 	}
 
@@ -303,8 +304,8 @@ func (e *Exporter) setLabels(opts ExportOptions, meta platform.LayersMetadata, b
 		return errors.Wrap(err, "parse project metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.ProjectMetadataLabel)
-	if err := opts.WorkingImage.SetLabel(platform.ProjectMetadataLabel, string(projectJSON)); err != nil {
+	e.Logger.Infof("Adding label '%s'", dataformat.ProjectMetadataLabel)
+	if err := opts.WorkingImage.SetLabel(dataformat.ProjectMetadataLabel, string(projectJSON)); err != nil {
 		return errors.Wrap(err, "set project metadata label")
 	}
 
@@ -396,7 +397,7 @@ func (e *Exporter) entrypoint(launchMD launch.Metadata, userDefaultProcessType, 
 }
 
 // processTypes adds
-func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *platform.BuildMetadata, meta *platform.LayersMetadata) error {
+func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *dataformat.BuildMetadata, meta *dataformat.LayersMetadata) error {
 	if e.supportsMulticallLauncher() {
 		launchMD := launch.Metadata{
 			Processes: buildMD.Processes,
@@ -450,21 +451,21 @@ func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, prev
 	return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
 }
 
-func (e *Exporter) makeBuildReport(layersDir string) (platform.BuildReport, error) {
+func (e *Exporter) makeBuildReport(layersDir string) (dataformat.BuildReport, error) {
 	if e.PlatformAPI.LessThan("0.5") {
-		return platform.BuildReport{}, nil
+		return dataformat.BuildReport{}, nil
 	}
 	var out []buildpack.BOMEntry
 	for _, bp := range e.Buildpacks {
 		if api.MustParse(bp.API).LessThan("0.5") {
 			continue
 		}
-		var bpBuildReport platform.BuildReport
+		var bpBuildReport dataformat.BuildReport
 		bpBuildTOML := filepath.Join(layersDir, launch.EscapeID(bp.ID), "build.toml")
 		if _, err := toml.DecodeFile(bpBuildTOML, &bpBuildReport); err != nil && !os.IsNotExist(err) {
-			return platform.BuildReport{}, err
+			return dataformat.BuildReport{}, err
 		}
 		out = append(out, buildpack.WithBuildpack(bp, bpBuildReport.BOM)...)
 	}
-	return platform.BuildReport{BOM: out}, nil
+	return dataformat.BuildReport{BOM: out}, nil
 }

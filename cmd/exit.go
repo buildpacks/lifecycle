@@ -4,40 +4,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
-)
 
-const (
-	// lifecycle errors not specific to any phase: 1-99
-	CodeFailed = 1 // CodeFailed indicates generic lifecycle error
-	// 2: reserved
-	CodeInvalidArgs = 3
-	// 4: CodeInvalidEnv
-	// 5: CodeNotFound
-	// 9: CodeFailedUpdate
-
-	// API errors
-	CodeIncompatiblePlatformAPI  = 11
-	CodeIncompatibleBuildpackAPI = 12
-)
-
-type LifecycleExitError int
-
-const (
-	FailedDetect           LifecycleExitError = iota
-	FailedDetectWithErrors                    // no buildpacks detected
-	DetectError                               // no buildpacks detected and at least one errored
-	AnalyzeError                              // generic analyze error
-	RestoreError                              // generic restore error
-	FailedBuildWithErrors                     // buildpack error during /bin/build
-	BuildError                                // generic build error
-	ExportError                               // generic export error
-	RebaseError                               // generic rebase error
-	LaunchError                               // generic launch error
+	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type Platform interface {
 	API() string
-	CodeFor(errType LifecycleExitError) int
+	CodeFor(errType common.LifecycleExitError) int
 }
 
 type ErrorFail struct {
@@ -59,7 +32,7 @@ func FailCode(code int, action ...string) *ErrorFail {
 }
 
 func FailErr(err error, action ...string) *ErrorFail {
-	code := CodeFailed
+	code := common.CodeFailed
 	if err, ok := err.(*ErrorFail); ok {
 		code = err.Code
 	}
@@ -78,7 +51,7 @@ func Exit(err error) {
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
-	os.Exit(CodeFailed)
+	os.Exit(common.CodeFailed)
 }
 
 func ExitWithVersion() {

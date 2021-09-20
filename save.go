@@ -9,26 +9,26 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
-func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (platform.ImageReport, error) {
+func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (dataformat.ImageReport, error) {
 	var saveErr error
-	imageReport := platform.ImageReport{}
+	imageReport := dataformat.ImageReport{}
 	logger.Infof("Saving %s...\n", image.Name())
 	if err := image.Save(additionalNames...); err != nil {
 		var ok bool
 		if saveErr, ok = err.(imgutil.SaveError); !ok {
-			return platform.ImageReport{}, errors.Wrap(err, "saving image")
+			return dataformat.ImageReport{}, errors.Wrap(err, "saving image")
 		}
 	}
 
 	id, idErr := image.Identifier()
 	if idErr != nil {
 		if saveErr != nil {
-			return platform.ImageReport{}, &MultiError{Errors: []error{idErr, saveErr}}
+			return dataformat.ImageReport{}, &MultiError{Errors: []error{idErr, saveErr}}
 		}
-		return platform.ImageReport{}, idErr
+		return dataformat.ImageReport{}, idErr
 	}
 
 	logger.Infof("*** Images (%s):\n", shortID(id))

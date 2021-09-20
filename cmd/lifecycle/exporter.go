@@ -5,6 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
@@ -21,12 +24,11 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type exportCmd struct {
-	analyzedMD platform.AnalyzedMetadata
+	analyzedMD dataformat.AnalyzedMetadata
 
 	//flags: inputs
 	cacheDir              string
@@ -52,7 +54,7 @@ type exportArgs struct {
 	stackPath           string
 	targetRegistry      string
 	imageNames          []string
-	stackMD             platform.StackMetadata
+	stackMD             dataformat.StackMetadata
 
 	useDaemon bool
 	uid, gid  int
@@ -87,7 +89,7 @@ func (e *exportCmd) DefineFlags() {
 
 func (e *exportCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), common.CodeInvalidArgs, "parse arguments")
 	}
 
 	e.imageNames = args
@@ -101,11 +103,11 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(e.useDaemon, e.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if err := e.validateRunImageInput(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate run image input")
 	}
 
 	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -131,36 +133,36 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	var err error
 	e.analyzedMD, err = parseAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse analyzed metadata")
 	}
 
 	e.stackMD, err = readStack(e.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse stack metadata")
 	}
 
 	e.targetRegistry, err = parseRegistry(e.imageNames[0])
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse target registry")
 	}
 
 	if err := e.populateRunImageRefIfNeeded(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
 }
 
-func readStack(stackPath string) (platform.StackMetadata, error) {
+func readStack(stackPath string) (dataformat.StackMetadata, error) {
 	var (
-		stackMD platform.StackMetadata
+		stackMD dataformat.StackMetadata
 	)
 
 	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
 		if os.IsNotExist(err) {
 			cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
 		} else {
-			return platform.StackMetadata{}, err
+			return dataformat.StackMetadata{}, err
 		}
 	}
 
@@ -255,14 +257,14 @@ func (e *exportCmd) validateRunImageInput() error {
 	}
 }
 
-func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
+func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD dataformat.AnalyzedMetadata) error {
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	var projectMD platform.ProjectMetadata
+	var projectMD dataformat.ProjectMetadata
 	_, err = toml.DecodeFile(ea.projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -307,10 +309,10 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(cmd.ExportError), "export")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "export")
 	}
 	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(cmd.ExportError), "write export report")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "write export report")
 	}
 
 	if cacheStore != nil {
@@ -321,7 +323,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	return nil
 }
 
-func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initDaemonAppImage(analyzedMD dataformat.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
 		local.FromBaseImage(ea.runImageRef),
 	}
@@ -356,7 +358,7 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (i
 	return appImage, runImageID.String(), nil
 }
 
-func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initRemoteAppImage(analyzedMD dataformat.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(ea.runImageRef),
 	}
@@ -397,10 +399,10 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	return lifecycle.LauncherConfig{
 		Path: launcherPath,
-		Metadata: platform.LauncherMetadata{
+		Metadata: dataformat.LauncherMetadata{
 			Version: cmd.Version,
-			Source: platform.SourceMetadata{
-				Git: platform.GitMetadata{
+			Source: dataformat.SourceMetadata{
+				Git: dataformat.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},
@@ -409,17 +411,17 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	}
 }
 
-func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
-	var analyzedMD platform.AnalyzedMetadata
+func parseAnalyzedMD(logger lifecycle.Logger, path string) (dataformat.AnalyzedMetadata, error) {
+	var analyzedMD dataformat.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)
-			return platform.AnalyzedMetadata{}, nil
+			return dataformat.AnalyzedMetadata{}, nil
 		}
 
-		return platform.AnalyzedMetadata{}, err
+		return dataformat.AnalyzedMetadata{}, err
 	}
 
 	return analyzedMD, nil

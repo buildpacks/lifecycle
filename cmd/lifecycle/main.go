@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
@@ -41,7 +43,7 @@ func main() {
 		cmd.Run(&createCmd{platform: platform}, false)
 	default:
 		if len(os.Args) < 2 {
-			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+			cmd.Exit(cmd.FailCode(common.CodeInvalidArgs, "parse arguments"))
 		}
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
@@ -68,7 +70,7 @@ func subcommand() {
 	case "create":
 		cmd.Run(&createCmd{}, true)
 	default:
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
+		cmd.Exit(cmd.FailCode(common.CodeInvalidArgs, "unknown phase:", phase))
 	}
 }
 

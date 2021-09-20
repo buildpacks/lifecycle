@@ -16,7 +16,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -124,7 +124,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			)
 
@@ -160,7 +160,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(firstResolve)
 
@@ -186,7 +186,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(secondResolve)
 
@@ -202,7 +202,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(thirdResolve)
 
@@ -223,7 +223,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(fourthResolve)
 
@@ -305,7 +305,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			)
 
@@ -341,7 +341,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(firstResolve)
 
@@ -367,7 +367,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				[]buildpack.GroupBuildpack{},
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(secondResolve)
 
@@ -383,7 +383,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detector.Runs,
 			).Return(
 				fourthGroup,
-				[]platform.BuildPlanEntry{},
+				[]dataformat.BuildPlanEntry{},
 				nil,
 			).After(thirdResolve)
 
@@ -404,7 +404,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(plan.Entries, []platform.BuildPlanEntry(nil)) {
+			if !hasEntries(plan.Entries, []dataformat.BuildPlanEntry(nil)) {
 				t.Fatalf("Unexpected entries:\n%+v\n", plan.Entries)
 			}
 		})
@@ -424,7 +424,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
-			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []platform.BuildPlanEntry{
+			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []dataformat.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupBuildpack{
 						{ID: "A", Version: "v1"},
@@ -459,7 +459,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(plan.Entries, []platform.BuildPlanEntry{
+			if !hasEntries(plan.Entries, []dataformat.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupBuildpack{
 						{ID: "A", Version: "v1"},
@@ -516,7 +516,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
-			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []platform.BuildPlanEntry{}, nil)
+			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []dataformat.BuildPlanEntry{}, nil)
 
 			_, _, err := detector.Detect(buildpack.Order{{Group: group}})
 			if err != nil {
@@ -573,7 +573,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					}
 					resolver.EXPECT().Resolve(group, detector.Runs).Return(
 						[]buildpack.GroupBuildpack{},
-						[]platform.BuildPlanEntry{},
+						[]dataformat.BuildPlanEntry{},
 						lifecycle.ErrBuildpack,
 					)
 
@@ -596,7 +596,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					}
 					resolver.EXPECT().Resolve(group, detector.Runs).Return(
 						[]buildpack.GroupBuildpack{},
-						[]platform.BuildPlanEntry{},
+						[]dataformat.BuildPlanEntry{},
 						lifecycle.ErrFailedDetection,
 					)
 
@@ -818,7 +818,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(entries, []platform.BuildPlanEntry{
+			if !hasEntries(entries, []dataformat.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupBuildpack{
 						{ID: "A", Version: "v1"},
@@ -1018,7 +1018,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(entries, []platform.BuildPlanEntry{
+			if !hasEntries(entries, []dataformat.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}},
 					Requires:  []buildpack.Require{{Name: "dep-present"}},
@@ -1141,7 +1141,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected group:\n%s\n", s)
 			}
 
-			if !hasEntries(entries, []platform.BuildPlanEntry{
+			if !hasEntries(entries, []dataformat.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}},
 					Requires:  []buildpack.Require{{Name: "dep1-present"}},
@@ -1169,7 +1169,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func hasEntry(l []platform.BuildPlanEntry, entry platform.BuildPlanEntry) bool {
+func hasEntry(l []dataformat.BuildPlanEntry, entry dataformat.BuildPlanEntry) bool {
 	for _, e := range l {
 		if reflect.DeepEqual(e, entry) {
 			return true
@@ -1178,7 +1178,7 @@ func hasEntry(l []platform.BuildPlanEntry, entry platform.BuildPlanEntry) bool {
 	return false
 }
 
-func hasEntries(a, b []platform.BuildPlanEntry) bool {
+func hasEntries(a, b []dataformat.BuildPlanEntry) bool {
 	if len(a) != len(b) {
 		return false
 	}

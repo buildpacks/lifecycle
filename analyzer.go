@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
 type Platform interface {
@@ -25,41 +26,41 @@ type Analyzer struct {
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
-func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
+func (a *Analyzer) Analyze() (dataformat.AnalyzedMetadata, error) {
 	var (
-		appMeta   platform.LayersMetadata
+		appMeta   dataformat.LayersMetadata
 		cacheMeta platform.CacheMetadata
-		imageID   *platform.ImageIdentifier
+		imageID   *dataformat.ImageIdentifier
 		err       error
 	)
 
 	if a.Image != nil { // Image is optional in Platform API >= 0.7
 		imageID, err = a.getImageIdentifier(a.Image)
 		if err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
+			return dataformat.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
 		}
 
 		// continue even if the label cannot be decoded
-		if err := DecodeLabel(a.Image, platform.LayerMetadataLabel, &appMeta); err != nil {
-			appMeta = platform.LayersMetadata{}
+		if err := DecodeLabel(a.Image, dataformat.LayerMetadataLabel, &appMeta); err != nil {
+			appMeta = dataformat.LayersMetadata{}
 		}
 	} else {
-		appMeta = platform.LayersMetadata{}
+		appMeta = dataformat.LayersMetadata{}
 	}
 
 	if a.restoresLayerMetadata() {
 		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
 		if err != nil {
-			return platform.AnalyzedMetadata{}, err
+			return dataformat.AnalyzedMetadata{}, err
 		}
 
 		useShaFiles := true
 		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, NewLayerSHAStore(useShaFiles)); err != nil {
-			return platform.AnalyzedMetadata{}, err
+			return dataformat.AnalyzedMetadata{}, err
 		}
 	}
 
-	return platform.AnalyzedMetadata{
+	return dataformat.AnalyzedMetadata{
 		Image:    imageID,
 		Metadata: appMeta,
 	}, nil
@@ -69,7 +70,7 @@ func (a *Analyzer) restoresLayerMetadata() bool {
 	return api.MustParse(a.Platform.API()).LessThan("0.7")
 }
 
-func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
+func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*dataformat.ImageIdentifier, error) {
 	if !image.Found() {
 		a.Logger.Infof("Previous image with name %q not found", image.Name())
 		return nil, nil
@@ -79,7 +80,7 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 		return nil, err
 	}
 	a.Logger.Debugf("Analyzing image %q", identifier.String())
-	return &platform.ImageIdentifier{
+	return &dataformat.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
 }

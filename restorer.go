@@ -10,7 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
 type Restorer struct {
@@ -18,8 +18,8 @@ type Restorer struct {
 	Logger    Logger
 
 	Buildpacks            []buildpack.GroupBuildpack
-	LayerMetadataRestorer LayerMetadataRestorer   // Platform API >= 0.7
-	LayersMetadata        platform.LayersMetadata // Platform API >= 0.7
+	LayerMetadataRestorer LayerMetadataRestorer     // Platform API >= 0.7
+	LayersMetadata        dataformat.LayersMetadata // Platform API >= 0.7
 	Platform              cmd.Platform
 }
 

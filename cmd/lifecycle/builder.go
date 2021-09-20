@@ -3,6 +3,9 @@ package main
 import (
 	"errors"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
+
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle"
@@ -10,7 +13,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -42,7 +44,7 @@ func (b *buildCmd) DefineFlags() {
 
 func (b *buildCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), common.CodeInvalidArgs, "parse arguments")
 	}
 
 	if b.groupPath == cmd.PlaceholderGroupPath {
@@ -75,10 +77,10 @@ func (b *buildCmd) Exec() error {
 	return b.build(group, plan)
 }
 
-func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
+func (ba buildArgs) build(group buildpack.Group, plan dataformat.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
-		return cmd.FailErrCode(err, ba.platform.CodeFor(cmd.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
@@ -99,10 +101,10 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	if err != nil {
 		if err, ok := err.(*buildpack.Error); ok {
 			if err.Type == buildpack.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(cmd.FailedBuildWithErrors), "build")
+				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(common.FailedBuildWithErrors), "build")
 			}
 		}
-		return cmd.FailErrCode(err, ba.platform.CodeFor(cmd.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
 	}
 
 	if err := lifecycle.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
@@ -111,15 +113,15 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	return nil
 }
 
-func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {
+func (b *buildCmd) readData() (buildpack.Group, dataformat.BuildPlan, error) {
 	group, err := lifecycle.ReadGroup(b.groupPath)
 	if err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
+		return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}
 
-	var plan platform.BuildPlan
+	var plan dataformat.BuildPlan
 	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
+		return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
 	}
 	return group, plan, nil
 }

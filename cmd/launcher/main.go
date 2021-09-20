@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 
@@ -57,7 +59,7 @@ func runLaunch() error {
 	}
 
 	if err := launcher.Launch(os.Args[0], os.Args[1:]); err != nil {
-		return cmd.FailErrCode(err, platform.CodeFor(cmd.LaunchError), "launch")
+		return cmd.FailErrCode(err, platform.CodeFor(common.LaunchError), "launch")
 	}
 	return nil
 }

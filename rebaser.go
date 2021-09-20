@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
 type Rebaser struct {
@@ -19,21 +19,21 @@ type Rebaser struct {
 }
 
 type RebaseReport struct {
-	Image platform.ImageReport `toml:"image"`
+	Image dataformat.ImageReport `toml:"image"`
 }
 
 func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
-	var origMetadata platform.LayersMetadataCompat
-	if err := DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
+	var origMetadata dataformat.LayersMetadataCompat
+	if err := DecodeLabel(appImage, dataformat.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}
 
-	appStackID, err := appImage.Label(platform.StackIDLabel)
+	appStackID, err := appImage.Label(dataformat.StackIDLabel)
 	if err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get app image stack")
 	}
 
-	newBaseStackID, err := newBaseImage.Label(platform.StackIDLabel)
+	newBaseStackID, err := newBaseImage.Label(dataformat.StackIDLabel)
 	if err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get new base image stack")
 	}
@@ -74,7 +74,7 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 		return RebaseReport{}, errors.Wrap(err, "marshall metadata")
 	}
 
-	if err := appImage.SetLabel(platform.LayerMetadataLabel, string(data)); err != nil {
+	if err := appImage.SetLabel(dataformat.LayerMetadataLabel, string(data)); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set app image metadata label")
 	}
 
@@ -100,11 +100,11 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 	var appImageMixins []string
 	var newBaseImageMixins []string
 
-	if err := DecodeLabel(appImg, platform.MixinsLabel, &appImageMixins); err != nil {
+	if err := DecodeLabel(appImg, dataformat.MixinsLabel, &appImageMixins); err != nil {
 		return errors.Wrap(err, "get app image mixins")
 	}
 
-	if err := DecodeLabel(newBaseImg, platform.MixinsLabel, &newBaseImageMixins); err != nil {
+	if err := DecodeLabel(newBaseImg, dataformat.MixinsLabel, &newBaseImageMixins); err != nil {
 		return errors.Wrap(err, "get run image mixins")
 	}
 

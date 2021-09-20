@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -17,7 +20,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -75,11 +77,11 @@ func (a *analyzeCmd) DefineFlags() {
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), common.CodeInvalidArgs, "parse arguments")
 	}
 
 	if args[0] == "" {
-		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("image argument is required"), common.CodeInvalidArgs, "parse arguments")
 	}
 	a.outputImageRef = args[0]
 
@@ -91,7 +93,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	targetRegistry, err := parseRegistry(a.outputImageRef)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse target registry")
 	}
 
 	if a.previousImageRef == "" {
@@ -99,16 +101,16 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	} else if !a.useDaemon {
 		previousRegistry, err := parseRegistry(a.previousImageRef)
 		if err != nil {
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse previous registry")
+			return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse previous registry")
 		}
 		if previousRegistry != targetRegistry {
 			err := fmt.Errorf("previous image is on a different registry %s from the exported image %s", previousRegistry, targetRegistry)
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate registry")
+			return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate registry")
 		}
 	}
 
 	if err := image.ValidateDestinationTags(a.useDaemon, append(a.additionalTags, a.outputImageRef)...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -121,15 +123,15 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	stackMD, err := readStack(a.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse stack metadata")
 	}
 
 	if err := a.validateRunImageInput(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate run image input")
 	}
 
 	if err := a.populateRunImage(stackMD, targetRegistry); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -211,7 +213,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze() (dataformat.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -230,7 +232,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		)
 	}
 	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+		return dataformat.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
@@ -242,15 +244,15 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze()
 	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
+		return dataformat.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
 	}
 
 	if aa.runImageRef != "" {
 		ref, err := name.ParseReference(aa.runImageRef, name.WeakValidation)
 		if err != nil {
-			return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "parse reference for run image")
+			return dataformat.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "parse reference for run image")
 		}
-		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: ref.String()}
+		analyzedMD.RunImage = &dataformat.ImageIdentifier{Reference: ref.String()}
 	}
 
 	return analyzedMD, nil
@@ -275,7 +277,7 @@ func (a *analyzeCmd) validateRunImageInput() error {
 	return nil
 }
 
-func (a *analyzeCmd) populateRunImage(stackMD platform.StackMetadata, targetRegistry string) error {
+func (a *analyzeCmd) populateRunImage(stackMD dataformat.StackMetadata, targetRegistry string) error {
 	if !a.supportsRunImage() || a.runImageRef != "" {
 		return nil
 	}

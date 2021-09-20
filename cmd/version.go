@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/buildpacks/lifecycle/api"
 )
 
@@ -40,7 +42,7 @@ func VerifyPlatformAPI(requested string) error {
 	if err != nil {
 		return FailErrCode(
 			fmt.Errorf("parse platform API '%s'", requested),
-			CodeIncompatiblePlatformAPI,
+			common.CodeIncompatiblePlatformAPI,
 		)
 	}
 	if api.Platform.IsSupported(requestedAPI) {
@@ -68,7 +70,7 @@ func VerifyBuildpackAPI(bp string, requested string) error {
 	if err != nil {
 		return FailErrCode(
 			fmt.Errorf("parse buildpack API '%s' for buildpack '%s'", requestedAPI, bp),
-			CodeIncompatibleBuildpackAPI,
+			common.CodeIncompatibleBuildpackAPI,
 		)
 	}
 	if api.Buildpack.IsSupported(requestedAPI) {
@@ -94,13 +96,13 @@ func VerifyBuildpackAPI(bp string, requested string) error {
 func platformAPIError(requested string) error {
 	return FailErrCode(
 		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requested),
-		CodeIncompatiblePlatformAPI,
+		common.CodeIncompatiblePlatformAPI,
 	)
 }
 
 func buildpackAPIError(bp string, requested string) error {
 	return FailErrCode(
 		fmt.Errorf("set API for buildpack '%s': buildpack API version '%s' is incompatible with the lifecycle", bp, requested),
-		CodeIncompatibleBuildpackAPI,
+		common.CodeIncompatibleBuildpackAPI,
 	)
 }

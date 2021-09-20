@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+
 	"github.com/apex/log"
 	"github.com/heroku/color"
 )
@@ -46,7 +48,7 @@ func SetLogLevel(level string) *ErrorFail {
 	var err error
 	DefaultLogger.Level, err = log.ParseLevel(level)
 	if err != nil {
-		return FailErrCode(err, CodeInvalidArgs, "parse log level")
+		return FailErrCode(err, common.CodeInvalidArgs, "parse log level")
 	}
 
 	return nil

@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -12,7 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -43,7 +45,7 @@ type createCmd struct {
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
 	platform       cmd.Platform
-	stackMD        platform.StackMetadata
+	stackMD        dataformat.StackMetadata
 }
 
 func (c *createCmd) DefineFlags() {
@@ -71,7 +73,7 @@ func (c *createCmd) DefineFlags() {
 
 func (c *createCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), common.CodeInvalidArgs, "parse arguments")
 	}
 
 	c.outputImageRef = args[0]
@@ -89,7 +91,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.outputImageRef)...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if c.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
@@ -107,16 +109,16 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	var err error
 	c.stackMD, err = readStack(c.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse stack metadata")
 	}
 
 	c.targetRegistry, err = parseRegistry(c.outputImageRef)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse target registry")
 	}
 
 	if err := c.populateRunImage(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -160,9 +162,9 @@ func (c *createCmd) Exec() error {
 	}
 
 	var (
-		analyzedMD platform.AnalyzedMetadata
+		analyzedMD dataformat.AnalyzedMetadata
 		group      buildpack.Group
-		plan       platform.BuildPlan
+		plan       dataformat.BuildPlan
 	)
 	if api.MustParse(c.platform.API()).AtLeast("0.7") {
 		cmd.DefaultLogger.Phase("ANALYZING")

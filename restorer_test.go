@@ -20,6 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -630,7 +631,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 			when("there is no app image metadata", func() {
 				it.Before(func() {
-					restorer.LayersMetadata = platform.LayersMetadata{}
+					restorer.LayersMetadata = dataformat.LayersMetadata{}
 				})
 
 				it("analyzes with no layer metadata", func() {

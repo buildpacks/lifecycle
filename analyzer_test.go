@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -99,7 +100,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 		when("#Analyze", func() {
 			var (
-				expectedAppMetadata   platform.LayersMetadata
+				expectedAppMetadata   dataformat.LayersMetadata
 				expectedCacheMetadata platform.CacheMetadata
 				ref                   *testmock.MockReference
 			)
@@ -165,7 +166,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
 				})
 			})
 
@@ -178,7 +179,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
 				})
 			})
 
@@ -191,7 +192,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
 				})
 			})
 		})

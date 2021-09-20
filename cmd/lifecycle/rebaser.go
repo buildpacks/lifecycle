@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform/dataformat"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -16,7 +19,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -49,15 +51,15 @@ func (r *rebaseCmd) DefineFlags() {
 
 func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), common.CodeInvalidArgs, "parse arguments")
 	}
 	r.imageNames = args
 	if err := image.ValidateDestinationTags(r.useDaemon, r.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {
-		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), common.CodeInvalidArgs, "parse arguments")
 	}
 	if r.deprecatedRunImageRef != "" {
 		r.runImageRef = r.deprecatedRunImageRef
@@ -68,7 +70,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(cmd.RebaseError), "set app image")
+		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(common.RebaseError), "set app image")
 	}
 
 	return nil
@@ -120,10 +122,10 @@ func (r *rebaseCmd) Exec() error {
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(cmd.RebaseError), "rebase")
+		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "rebase")
 	}
 	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(cmd.RebaseError), "write rebase report")
+		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "write rebase report")
 	}
 	return nil
 }
@@ -165,14 +167,14 @@ func (r *rebaseCmd) setAppImage() error {
 		return cmd.FailErr(err, "access image to rebase")
 	}
 
-	var md platform.LayersMetadata
-	if err := lifecycle.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
+	var md dataformat.LayersMetadata
+	if err := lifecycle.DecodeLabel(r.appImage, dataformat.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 
 	if r.runImageRef == "" {
 		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
+			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), common.CodeInvalidArgs, "parse arguments")
 		}
 		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {
