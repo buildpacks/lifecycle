@@ -293,7 +293,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					)
 
 					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-					h.AssertEq(t, analyzedMD.RunImage.Reference, analyzeRegFixtures.ReadOnlyRunImage)
+					h.AssertStringContains(t, analyzedMD.RunImage.Reference, analyzeRegFixtures.ReadOnlyRunImage+"@sha256:")
 				})
 			})
 
@@ -846,7 +846,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.Image.Reference, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 
@@ -875,7 +875,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.Image.Reference, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 				})
@@ -1060,7 +1060,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithArgs(execArgs...),
 						)
 						analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-						h.AssertStringContains(t, analyzedMD.Image.Reference, analyzeRegFixtures.ReadWriteAppImage)
+						h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
 					})
 				})
 

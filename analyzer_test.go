@@ -71,9 +71,9 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			p, err := platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
-				Image:    image,
-				Logger:   &discardLogger,
-				Platform: p,
+				PreviousImage: image,
+				Logger:        &discardLogger,
+				Platform:      p,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
@@ -130,7 +130,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
+					h.AssertEq(t, md.PreviousImage.Reference, "s0m3D1g3sT")
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
 				})
 
@@ -164,7 +164,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertNil(t, md.Image)
+					h.AssertNil(t, md.PreviousImage)
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
@@ -192,6 +192,21 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+				})
+			})
+
+			when("run image is provided", func() {
+				it.Before(func() {
+					analyzer.RunImage = image
+				})
+
+				it("returns the run image digest in the analyzed metadata", func() {
+					expectRestoresLayerMetadataIfSupported()
+
+					md, err := analyzer.Analyze()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
 				})
 			})
 		})
