@@ -14,11 +14,19 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/dataformat"
+)
+
+const (
+	EnvLayersDir         = "CNB_LAYERS_DIR"
+	EnvAppDir            = "CNB_APP_DIR"
+	EnvPlatformAPI       = "CNB_PLATFORM_API"
+	EnvDeprecationMode   = "CNB_DEPRECATION_MODE"
+	EnvProcessType       = "CNB_PROCESS_TYPE"
+	DeprecationModeQuiet = "quiet"
 )
 
 type Cache interface {
@@ -319,24 +327,24 @@ func (e *Exporter) setLabels(opts ExportOptions, meta dataformat.LayersMetadata,
 }
 
 func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
-	e.Logger.Debugf("Setting %s=%s", cmd.EnvLayersDir, opts.LayersDir)
-	if err := opts.WorkingImage.SetEnv(cmd.EnvLayersDir, opts.LayersDir); err != nil {
-		return errors.Wrapf(err, "set app image env %s", cmd.EnvLayersDir)
+	e.Logger.Debugf("Setting %s=%s", EnvLayersDir, opts.LayersDir)
+	if err := opts.WorkingImage.SetEnv(EnvLayersDir, opts.LayersDir); err != nil {
+		return errors.Wrapf(err, "set app image env %s", EnvLayersDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", cmd.EnvAppDir, opts.AppDir)
-	if err := opts.WorkingImage.SetEnv(cmd.EnvAppDir, opts.AppDir); err != nil {
-		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
+	e.Logger.Debugf("Setting %s=%s", EnvAppDir, opts.AppDir)
+	if err := opts.WorkingImage.SetEnv(EnvAppDir, opts.AppDir); err != nil {
+		return errors.Wrapf(err, "set app image env %s", EnvAppDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", cmd.EnvPlatformAPI, e.PlatformAPI.String())
-	if err := opts.WorkingImage.SetEnv(cmd.EnvPlatformAPI, e.PlatformAPI.String()); err != nil {
-		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
+	e.Logger.Debugf("Setting %s=%s", EnvPlatformAPI, e.PlatformAPI.String())
+	if err := opts.WorkingImage.SetEnv(EnvPlatformAPI, e.PlatformAPI.String()); err != nil {
+		return errors.Wrapf(err, "set app image env %s", EnvAppDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet)
-	if err := opts.WorkingImage.SetEnv(cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet); err != nil {
-		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
+	e.Logger.Debugf("Setting %s=%s", EnvDeprecationMode, DeprecationModeQuiet)
+	if err := opts.WorkingImage.SetEnv(EnvDeprecationMode, DeprecationModeQuiet); err != nil {
+		return errors.Wrapf(err, "set app image env %s", EnvAppDir)
 	}
 
 	if e.supportsMulticallLauncher() {
@@ -353,9 +361,9 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		if _, ok := launchMD.FindProcessType(opts.DefaultProcessType); !ok {
 			return processTypeError(launchMD, opts.DefaultProcessType)
 		}
-		e.Logger.Debugf("Setting %s=%s", cmd.EnvProcessType, opts.DefaultProcessType)
-		if err := opts.WorkingImage.SetEnv(cmd.EnvProcessType, opts.DefaultProcessType); err != nil {
-			return errors.Wrapf(err, "set app image env %s", cmd.EnvProcessType)
+		e.Logger.Debugf("Setting %s=%s", EnvProcessType, opts.DefaultProcessType)
+		if err := opts.WorkingImage.SetEnv(EnvProcessType, opts.DefaultProcessType); err != nil {
+			return errors.Wrapf(err, "set app image env %s", EnvProcessType)
 		}
 	}
 	return nil
