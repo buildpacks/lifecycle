@@ -1,6 +1,7 @@
 package pre06
 
 import (
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
@@ -34,5 +35,5 @@ func (p *pre06Platform) CodeFor(errType common.LifecycleExitError) int {
 	if code, ok := exitCodes[errType]; ok {
 		return code
 	}
-	return common.CodeFailed
+	return cmd.CodeFailed
 }

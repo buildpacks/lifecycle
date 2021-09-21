@@ -58,7 +58,7 @@ type exportArgs struct {
 	useDaemon bool
 	uid, gid  int
 
-	platform cmd.Platform
+	platform common.Platform
 
 	//construct if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -88,7 +88,7 @@ func (e *exportCmd) DefineFlags() {
 
 func (e *exportCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	e.imageNames = args
@@ -102,11 +102,11 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(e.useDaemon, e.imageNames...); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if err := e.validateRunImageInput(); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate run image input")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
 	}
 
 	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -132,21 +132,21 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	var err error
 	e.analyzedMD, err = parseAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse analyzed metadata")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
 	}
 
 	e.stackMD, err = readStack(e.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
 	}
 
 	e.targetRegistry, err = parseRegistry(e.imageNames[0])
 	if err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
 	}
 
 	if err := e.populateRunImageRefIfNeeded(); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil

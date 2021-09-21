@@ -29,7 +29,7 @@ type detectArgs struct {
 	platformDir   string
 	orderPath     string
 
-	platform cmd.Platform
+	platform common.Platform
 }
 
 func (d *detectCmd) DefineFlags() {
@@ -44,7 +44,7 @@ func (d *detectCmd) DefineFlags() {
 
 func (d *detectCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	if d.groupPath == cmd.PlaceholderGroupPath {

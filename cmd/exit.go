@@ -4,14 +4,21 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
-type Platform interface {
-	API() string
-	CodeFor(errType common.LifecycleExitError) int
-}
+const (
+	// lifecycle errors not specific to any phase: 1-99
+	CodeFailed = 1 // CodeFailed indicates generic lifecycle error
+	// 2: reserved
+	CodeInvalidArgs = 3
+	// 4: CodeInvalidEnv
+	// 5: CodeNotFound
+	// 9: CodeFailedUpdate
+
+	// API errors
+	CodeIncompatiblePlatformAPI  = 11
+	CodeIncompatibleBuildpackAPI = 12
+)
 
 type ErrorFail struct {
 	Err    error
@@ -32,7 +39,7 @@ func FailCode(code int, action ...string) *ErrorFail {
 }
 
 func FailErr(err error, action ...string) *ErrorFail {
-	code := common.CodeFailed
+	code := CodeFailed
 	if err, ok := err.(*ErrorFail); ok {
 		code = err.Code
 	}
@@ -51,7 +58,7 @@ func Exit(err error) {
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
-	os.Exit(common.CodeFailed)
+	os.Exit(CodeFailed)
 }
 
 func ExitWithVersion() {

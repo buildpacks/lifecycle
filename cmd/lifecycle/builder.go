@@ -29,7 +29,7 @@ type buildArgs struct {
 	appDir        string
 	platformDir   string
 
-	platform cmd.Platform
+	platform common.Platform
 }
 
 func (b *buildCmd) DefineFlags() {
@@ -43,7 +43,7 @@ func (b *buildCmd) DefineFlags() {
 
 func (b *buildCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	if b.groupPath == cmd.PlaceholderGroupPath {

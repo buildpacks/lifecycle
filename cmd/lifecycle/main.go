@@ -12,7 +12,6 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 func main() {
@@ -42,7 +41,7 @@ func main() {
 		cmd.Run(&createCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
-			cmd.Exit(cmd.FailCode(common.CodeInvalidArgs, "parse arguments"))
+			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
 		}
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
@@ -69,7 +68,7 @@ func subcommand() {
 	case "create":
 		cmd.Run(&createCmd{}, true)
 	default:
-		cmd.Exit(cmd.FailCode(common.CodeInvalidArgs, "unknown phase:", phase))
+		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}
 }
 

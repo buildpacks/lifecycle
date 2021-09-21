@@ -31,7 +31,7 @@ type rebaseCmd struct {
 	useDaemon             bool
 	uid, gid              int
 
-	platform cmd.Platform
+	platform common.Platform
 
 	//set if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -50,15 +50,15 @@ func (r *rebaseCmd) DefineFlags() {
 
 func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	r.imageNames = args
 	if err := image.ValidateDestinationTags(r.useDaemon, r.imageNames...); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {
-		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	if r.deprecatedRunImageRef != "" {
 		r.runImageRef = r.deprecatedRunImageRef
@@ -173,7 +173,7 @@ func (r *rebaseCmd) setAppImage() error {
 
 	if r.runImageRef == "" {
 		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), common.CodeInvalidArgs, "parse arguments")
+			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
 		}
 		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {

@@ -30,7 +30,7 @@ type restoreCmd struct {
 
 type restoreArgs struct {
 	layersDir  string
-	platform   cmd.Platform
+	platform   common.Platform
 	skipLayers bool
 
 	// construct if necessary before dropping privileges
@@ -52,7 +52,7 @@ func (r *restoreCmd) DefineFlags() {
 
 func (r *restoreCmd) Args(nargs int, args []string) error {
 	if nargs > 0 {
-		return cmd.FailErrCode(errors.New("received unexpected Args"), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	if r.cacheImageTag == "" && r.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")

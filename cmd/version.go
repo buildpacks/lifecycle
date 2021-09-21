@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 // The following variables are injected at compile time.
@@ -41,7 +40,7 @@ func VerifyPlatformAPI(requested string) error {
 	if err != nil {
 		return FailErrCode(
 			fmt.Errorf("parse platform API '%s'", requested),
-			common.CodeIncompatiblePlatformAPI,
+			CodeIncompatiblePlatformAPI,
 		)
 	}
 	if api.Platform.IsSupported(requestedAPI) {
@@ -69,7 +68,7 @@ func VerifyBuildpackAPI(bp string, requested string) error {
 	if err != nil {
 		return FailErrCode(
 			fmt.Errorf("parse buildpack API '%s' for buildpack '%s'", requestedAPI, bp),
-			common.CodeIncompatibleBuildpackAPI,
+			CodeIncompatibleBuildpackAPI,
 		)
 	}
 	if api.Buildpack.IsSupported(requestedAPI) {
@@ -95,13 +94,13 @@ func VerifyBuildpackAPI(bp string, requested string) error {
 func platformAPIError(requested string) error {
 	return FailErrCode(
 		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requested),
-		common.CodeIncompatiblePlatformAPI,
+		CodeIncompatiblePlatformAPI,
 	)
 }
 
 func buildpackAPIError(bp string, requested string) error {
 	return FailErrCode(
 		fmt.Errorf("set API for buildpack '%s': buildpack API version '%s' is incompatible with the lifecycle", bp, requested),
-		common.CodeIncompatibleBuildpackAPI,
+		CodeIncompatibleBuildpackAPI,
 	)
 }

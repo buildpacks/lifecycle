@@ -43,7 +43,7 @@ type analyzeArgs struct {
 	additionalTags cmd.StringSlice
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
-	platform       cmd.Platform
+	platform       common.Platform
 	platform06     analyzeArgsPlatform06
 }
 
@@ -76,11 +76,11 @@ func (a *analyzeCmd) DefineFlags() {
 
 func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	if args[0] == "" {
-		return cmd.FailErrCode(errors.New("image argument is required"), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 	a.outputImageRef = args[0]
 
@@ -92,7 +92,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	targetRegistry, err := parseRegistry(a.outputImageRef)
 	if err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
 	}
 
 	if a.previousImageRef == "" {
@@ -100,16 +100,16 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	} else if !a.useDaemon {
 		previousRegistry, err := parseRegistry(a.previousImageRef)
 		if err != nil {
-			return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse previous registry")
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse previous registry")
 		}
 		if previousRegistry != targetRegistry {
 			err := fmt.Errorf("previous image is on a different registry %s from the exported image %s", previousRegistry, targetRegistry)
-			return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate registry")
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate registry")
 		}
 	}
 
 	if err := image.ValidateDestinationTags(a.useDaemon, append(a.additionalTags, a.outputImageRef)...); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
@@ -122,15 +122,15 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	stackMD, err := readStack(a.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
 	}
 
 	if err := a.validateRunImageInput(); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate run image input")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
 	}
 
 	if err := a.populateRunImage(stackMD, targetRegistry); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil

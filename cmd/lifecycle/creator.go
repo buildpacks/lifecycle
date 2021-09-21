@@ -43,7 +43,7 @@ type createCmd struct {
 	additionalTags cmd.StringSlice
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
-	platform       cmd.Platform
+	platform       common.Platform
 	stackMD        platform.StackMetadata
 }
 
@@ -72,7 +72,7 @@ func (c *createCmd) DefineFlags() {
 
 func (c *createCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), common.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	c.outputImageRef = args[0]
@@ -90,7 +90,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.outputImageRef)...); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
 	if c.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
@@ -108,16 +108,16 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	var err error
 	c.stackMD, err = readStack(c.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
 	}
 
 	c.targetRegistry, err = parseRegistry(c.outputImageRef)
 	if err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
 	}
 
 	if err := c.populateRunImage(); err != nil {
-		return cmd.FailErrCode(err, common.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
