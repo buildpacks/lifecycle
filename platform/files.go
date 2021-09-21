@@ -1,6 +1,5 @@
 // Data Format Files for the platform api spec (https://github.com/buildpacks/spec/blob/main/platform.md#data-format).
 
-// TODO: move comments
 package platform
 
 import (

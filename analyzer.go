@@ -4,9 +4,8 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Platform interface {

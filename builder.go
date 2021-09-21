@@ -7,13 +7,12 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type BuildEnv interface {

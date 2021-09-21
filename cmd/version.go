@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
-
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 // The following variables are injected at compile time.

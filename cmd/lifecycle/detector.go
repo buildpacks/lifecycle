@@ -4,12 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
