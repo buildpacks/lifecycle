@@ -3,14 +3,13 @@ package lifecycle
 import (
 	"path/filepath"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Restorer struct {

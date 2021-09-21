@@ -5,12 +5,11 @@ import (
 	"os"
 	"sync"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 const (

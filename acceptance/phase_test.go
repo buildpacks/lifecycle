@@ -13,13 +13,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
 
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

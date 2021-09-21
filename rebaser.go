@@ -6,12 +6,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Rebaser struct {

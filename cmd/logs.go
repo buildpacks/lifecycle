@@ -5,10 +5,10 @@ import (
 	"os"
 	"sync"
 
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
-
 	"github.com/apex/log"
 	"github.com/heroku/color"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 const (

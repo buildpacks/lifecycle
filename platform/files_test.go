@@ -3,10 +3,9 @@ package platform_test
 import (
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/sclevine/spec"
 
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

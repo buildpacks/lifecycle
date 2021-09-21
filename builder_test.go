@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
@@ -24,6 +22,7 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )

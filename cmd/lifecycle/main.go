@@ -5,16 +5,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	platform3 "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
-
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
-
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 func main() {
@@ -23,25 +21,25 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	platform, err := platform3.NewPlatform(platformAPI)
+	p, err := platform.NewPlatform(platformAPI)
 	if err != nil {
 		cmd.Exit(err)
 	}
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, false)
+		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: p}}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: platform}}, false)
+		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: p}}, false)
 	case "restorer":
-		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: platform}}, false)
+		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
 	case "builder":
-		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: platform}}, false)
+		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, false)
 	case "exporter":
-		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: platform}}, false)
+		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
 	case "rebaser":
-		cmd.Run(&rebaseCmd{platform: platform}, false)
+		cmd.Run(&rebaseCmd{platform: p}, false)
 	case "creator":
-		cmd.Run(&createCmd{platform: platform}, false)
+		cmd.Run(&createCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(common.CodeInvalidArgs, "parse arguments"))

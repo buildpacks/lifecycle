@@ -6,14 +6,13 @@ import (
 	"io"
 	"runtime"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"

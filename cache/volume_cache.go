@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type VolumeCache struct {

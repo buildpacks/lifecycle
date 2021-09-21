@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 //go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle LayerMetadataRestorer
