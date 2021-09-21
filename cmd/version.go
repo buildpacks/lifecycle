@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/buildpacks/lifecycle/api"
 )

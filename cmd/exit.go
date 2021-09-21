@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 type Platform interface {

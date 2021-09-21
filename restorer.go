@@ -3,13 +3,14 @@ package lifecycle
 import (
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
 type Restorer struct {
@@ -17,8 +18,8 @@ type Restorer struct {
 	Logger    Logger
 
 	Buildpacks            []buildpack.GroupBuildpack
-	LayerMetadataRestorer LayerMetadataRestorer     // Platform API >= 0.7
-	LayersMetadata        dataformat.LayersMetadata // Platform API >= 0.7
+	LayerMetadataRestorer LayerMetadataRestorer   // Platform API >= 0.7
+	LayersMetadata        platform.LayersMetadata // Platform API >= 0.7
 	Platform              Platform
 }
 

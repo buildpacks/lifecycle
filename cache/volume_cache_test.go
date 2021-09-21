@@ -10,12 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 	"github.com/buildpacks/lifecycle/cache"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -146,13 +147,13 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the metadata", func() {
-					expected := dataformat.CacheMetadata{
-						Buildpacks: []dataformat.BuildpackLayersMetadata{{
+					expected := platform.CacheMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{
 							ID:      "bp.id",
 							Version: "1.2.3",
-							Layers: map[string]dataformat.BuildpackLayerMetadata{
+							Layers: map[string]platform.BuildpackLayerMetadata{
 								"some-layer": {
-									LayerMetadata: dataformat.LayerMetadata{
+									LayerMetadata: platform.LayerMetadata{
 										SHA: "some-sha",
 									},
 									LayerMetadataFile: layertypes.LayerMetadataFile{
@@ -256,14 +257,14 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("#SetMetadata", func() {
-				var newMetadata dataformat.CacheMetadata
+				var newMetadata platform.CacheMetadata
 
 				it.Before(func() {
 					previousContents := []byte(`{"buildpacks": [{"key": "old.bp.id"}]}`)
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), previousContents, 0600))
 
-					newMetadata = dataformat.CacheMetadata{
-						Buildpacks: []dataformat.BuildpackLayersMetadata{{
+					newMetadata = platform.CacheMetadata{
+						Buildpacks: []platform.BuildpackLayersMetadata{{
 							ID: "new.bp.id",
 						}},
 					}
@@ -293,8 +294,8 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("set without commit", func() {
 					it("retrieve returns the previous metadata", func() {
-						previousMetadata := dataformat.CacheMetadata{
-							Buildpacks: []dataformat.BuildpackLayersMetadata{{
+						previousMetadata := platform.CacheMetadata{
+							Buildpacks: []platform.BuildpackLayersMetadata{{
 								ID: "old.bp.id",
 							}},
 						}

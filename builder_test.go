@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
@@ -22,7 +24,6 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -100,8 +101,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Build", func() {
 		when("building succeeds", func() {
 			it("should provide a subset of the build plan to each buildpack", func() {
-				builder.Plan = dataformat.BuildPlan{
-					Entries: []dataformat.BuildPlanEntry{
+				builder.Plan = platform.BuildPlan{
+					Entries: []platform.BuildPlanEntry{
 						{
 							Providers: []buildpack.GroupBuildpack{
 								{ID: "A", Version: "v1"},

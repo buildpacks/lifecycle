@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -77,7 +78,7 @@ func (b *buildCmd) Exec() error {
 	return b.build(group, plan)
 }
 
-func (ba buildArgs) build(group buildpack.Group, plan dataformat.BuildPlan) error {
+func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
 		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
@@ -113,15 +114,15 @@ func (ba buildArgs) build(group buildpack.Group, plan dataformat.BuildPlan) erro
 	return nil
 }
 
-func (b *buildCmd) readData() (buildpack.Group, dataformat.BuildPlan, error) {
+func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {
 	group, err := lifecycle.ReadGroup(b.groupPath)
 	if err != nil {
-		return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}
 
-	var plan dataformat.BuildPlan
+	var plan platform.BuildPlan
 	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
-		return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
 	}
 	return group, plan, nil
 }

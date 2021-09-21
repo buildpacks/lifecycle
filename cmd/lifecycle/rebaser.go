@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
@@ -13,6 +12,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -167,8 +168,8 @@ func (r *rebaseCmd) setAppImage() error {
 		return cmd.FailErr(err, "access image to rebase")
 	}
 
-	var md dataformat.LayersMetadata
-	if err := lifecycle.DecodeLabel(r.appImage, dataformat.LayerMetadataLabel, &md); err != nil {
+	var md platform.LayersMetadata
+	if err := lifecycle.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 

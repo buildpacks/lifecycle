@@ -13,12 +13,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
 
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -143,8 +144,8 @@ func (d *targetDaemon) createFixtures(t *testing.T) {
 
 	var fixtures daemonImageFixtures
 
-	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), dataformat.LayersMetadata{})
-	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), dataformat.CacheMetadata{})
+	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), platform.LayersMetadata{})
+	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 	fixtures.AppImage = "some-app-image-" + h.RandString(10)
 	cmd := exec.Command(
@@ -216,8 +217,8 @@ func (r *targetRegistry) start(t *testing.T) {
 func (r *targetRegistry) createFixtures(t *testing.T) {
 	var fixtures regImageFixtures
 
-	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), dataformat.LayersMetadata{})
-	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), dataformat.CacheMetadata{})
+	appMeta := minifyMetadata(t, filepath.Join("testdata", "app_image_metadata.json"), platform.LayersMetadata{})
+	cacheMeta := minifyMetadata(t, filepath.Join("testdata", "cache_image_metadata.json"), platform.CacheMetadata{})
 
 	// With Permissions
 

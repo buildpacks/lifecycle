@@ -1,11 +1,12 @@
-package dataformat_test
+package platform_test
 
 import (
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/sclevine/spec"
 
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -15,10 +16,10 @@ func TestStackMetadata(t *testing.T) {
 
 func testMetadata(t *testing.T, when spec.G, it spec.S) {
 	when("BestRunImageMirror", func() {
-		var stackMD *dataformat.StackMetadata
+		var stackMD *platform.StackMetadata
 
 		it.Before(func() {
-			stackMD = &dataformat.StackMetadata{RunImage: dataformat.StackRunImageMetadata{
+			stackMD = &platform.StackMetadata{RunImage: platform.StackRunImageMetadata{
 				Image: "first.com/org/repo",
 				Mirrors: []string{
 					"myorg/myrepo",

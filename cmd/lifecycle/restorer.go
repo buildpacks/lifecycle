@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -99,9 +100,9 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var appMeta dataformat.LayersMetadata
+	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		var analyzedMd dataformat.AnalyzedMetadata
+		var analyzedMd platform.AnalyzedMetadata
 		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMd); err == nil {
 			appMeta = analyzedMd.Metadata
 		}
@@ -117,7 +118,7 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func (r restoreArgs) restore(layerMetadata dataformat.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
+func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:             r.layersDir,
 		Buildpacks:            group.Group,

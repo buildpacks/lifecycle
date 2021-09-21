@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/common"
+	platform3 "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -13,7 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	lplatform "github.com/buildpacks/lifecycle/platform"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	platform, err := lplatform.NewPlatform(platformAPI)
+	platform, err := platform3.NewPlatform(platformAPI)
 	if err != nil {
 		cmd.Exit(err)
 	}

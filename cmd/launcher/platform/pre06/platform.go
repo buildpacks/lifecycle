@@ -2,7 +2,7 @@ package pre06
 
 import (
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/cmd/launcher/platform/common"
 )
 
 type pre06Platform struct {

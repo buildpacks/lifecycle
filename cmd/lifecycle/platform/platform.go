@@ -3,10 +3,10 @@ package platform
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/pre06"
-	v06 "github.com/buildpacks/lifecycle/platform/v06"
-	v07 "github.com/buildpacks/lifecycle/platform/v07"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/pre06"
+	v06 "github.com/buildpacks/lifecycle/cmd/lifecycle/platform/v06"
+	v07 "github.com/buildpacks/lifecycle/cmd/lifecycle/platform/v07"
 )
 
 var platform03 = pre06.NewPlatform("0.3")

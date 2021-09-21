@@ -5,8 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -15,6 +14,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -28,7 +29,7 @@ import (
 )
 
 type exportCmd struct {
-	analyzedMD dataformat.AnalyzedMetadata
+	analyzedMD platform.AnalyzedMetadata
 
 	//flags: inputs
 	cacheDir              string
@@ -54,7 +55,7 @@ type exportArgs struct {
 	stackPath           string
 	targetRegistry      string
 	imageNames          []string
-	stackMD             dataformat.StackMetadata
+	stackMD             platform.StackMetadata
 
 	useDaemon bool
 	uid, gid  int
@@ -153,16 +154,16 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func readStack(stackPath string) (dataformat.StackMetadata, error) {
+func readStack(stackPath string) (platform.StackMetadata, error) {
 	var (
-		stackMD dataformat.StackMetadata
+		stackMD platform.StackMetadata
 	)
 
 	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
 		if os.IsNotExist(err) {
 			cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
 		} else {
-			return dataformat.StackMetadata{}, err
+			return platform.StackMetadata{}, err
 		}
 	}
 
@@ -257,14 +258,14 @@ func (e *exportCmd) validateRunImageInput() error {
 	}
 }
 
-func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD dataformat.AnalyzedMetadata) error {
+func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	var projectMD dataformat.ProjectMetadata
+	var projectMD platform.ProjectMetadata
 	_, err = toml.DecodeFile(ea.projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -323,7 +324,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	return nil
 }
 
-func (ea exportArgs) initDaemonAppImage(analyzedMD dataformat.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
 		local.FromBaseImage(ea.runImageRef),
 	}
@@ -358,7 +359,7 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD dataformat.AnalyzedMetadata) 
 	return appImage, runImageID.String(), nil
 }
 
-func (ea exportArgs) initRemoteAppImage(analyzedMD dataformat.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(ea.runImageRef),
 	}
@@ -399,10 +400,10 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD dataformat.AnalyzedMetadata) 
 func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	return lifecycle.LauncherConfig{
 		Path: launcherPath,
-		Metadata: dataformat.LauncherMetadata{
+		Metadata: platform.LauncherMetadata{
 			Version: cmd.Version,
-			Source: dataformat.SourceMetadata{
-				Git: dataformat.GitMetadata{
+			Source: platform.SourceMetadata{
+				Git: platform.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},
@@ -411,17 +412,17 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	}
 }
 
-func parseAnalyzedMD(logger lifecycle.Logger, path string) (dataformat.AnalyzedMetadata, error) {
-	var analyzedMD dataformat.AnalyzedMetadata
+func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
+	var analyzedMD platform.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)
-			return dataformat.AnalyzedMetadata{}, nil
+			return platform.AnalyzedMetadata{}, nil
 		}
 
-		return dataformat.AnalyzedMetadata{}, err
+		return platform.AnalyzedMetadata{}, err
 	}
 
 	return analyzedMD, nil

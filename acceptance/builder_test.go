@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -418,11 +419,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func getBuilderMetadata(t *testing.T, path string) *dataformat.BuildMetadata {
+func getBuilderMetadata(t *testing.T, path string) *platform.BuildMetadata {
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var analyzedMd dataformat.BuildMetadata
+	var analyzedMd platform.BuildMetadata
 	_, err := toml.Decode(string(contents), &analyzedMd)
 	h.AssertNil(t, err)
 

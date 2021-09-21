@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
@@ -45,7 +46,7 @@ type createCmd struct {
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
 	platform       cmd.Platform
-	stackMD        dataformat.StackMetadata
+	stackMD        platform.StackMetadata
 }
 
 func (c *createCmd) DefineFlags() {
@@ -162,9 +163,9 @@ func (c *createCmd) Exec() error {
 	}
 
 	var (
-		analyzedMD dataformat.AnalyzedMetadata
+		analyzedMD platform.AnalyzedMetadata
 		group      buildpack.Group
-		plan       dataformat.BuildPlan
+		plan       platform.BuildPlan
 	)
 	if api.MustParse(c.platform.API()).AtLeast("0.7") {
 		cmd.DefaultLogger.Phase("ANALYZING")

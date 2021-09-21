@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -79,13 +79,13 @@ func (d *detectCmd) Exec() error {
 	return d.writeData(group, plan)
 }
 
-func (da detectArgs) detect() (buildpack.Group, dataformat.BuildPlan, error) {
+func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 	order, err := lifecycle.ReadOrder(da.orderPath)
 	if err != nil {
-		return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
 	if err := da.verifyBuildpackApis(order); err != nil {
-		return buildpack.Group{}, dataformat.BuildPlan{}, err
+		return buildpack.Group{}, platform.BuildPlan{}, err
 	}
 
 	detector, err := lifecycle.NewDetector(
@@ -98,7 +98,7 @@ func (da detectArgs) detect() (buildpack.Group, dataformat.BuildPlan, error) {
 		da.platform,
 	)
 	if err != nil {
-		return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErr(err, "initialize detector")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "initialize detector")
 	}
 	group, plan, err := detector.Detect(order)
 	if err != nil {
@@ -108,15 +108,15 @@ func (da detectArgs) detect() (buildpack.Group, dataformat.BuildPlan, error) {
 			case buildpack.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.FailedDetect), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.FailedDetect), "detect")
 			case buildpack.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.FailedDetectWithErrors), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.FailedDetectWithErrors), "detect")
 			default:
-				return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.DetectError), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.DetectError), "detect")
 			}
 		default:
-			return buildpack.Group{}, dataformat.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.DetectError), "detect")
+			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(common.DetectError), "detect")
 		}
 	}
 
@@ -142,7 +142,7 @@ func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
 	return nil
 }
 
-func (d *detectCmd) writeData(group buildpack.Group, plan dataformat.BuildPlan) error {
+func (d *detectCmd) writeData(group buildpack.Group, plan platform.BuildPlan) error {
 	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}

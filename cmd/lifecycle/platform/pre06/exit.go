@@ -1,7 +1,7 @@
 package pre06
 
 import (
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 var exitCodes = map[common.LifecycleExitError]int{

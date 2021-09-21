@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/pkg/errors"
 )
@@ -59,7 +59,7 @@ func (c *VolumeCache) Name() string {
 	return c.dir
 }
 
-func (c *VolumeCache) SetMetadata(metadata dataformat.CacheMetadata) error {
+func (c *VolumeCache) SetMetadata(metadata platform.CacheMetadata) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -77,20 +77,20 @@ func (c *VolumeCache) SetMetadata(metadata dataformat.CacheMetadata) error {
 	return nil
 }
 
-func (c *VolumeCache) RetrieveMetadata() (dataformat.CacheMetadata, error) {
+func (c *VolumeCache) RetrieveMetadata() (platform.CacheMetadata, error) {
 	metadataPath := filepath.Join(c.committedDir, MetadataLabel)
 	file, err := os.Open(metadataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return dataformat.CacheMetadata{}, nil
+			return platform.CacheMetadata{}, nil
 		}
-		return dataformat.CacheMetadata{}, errors.Wrapf(err, "opening metadata file '%s'", metadataPath)
+		return platform.CacheMetadata{}, errors.Wrapf(err, "opening metadata file '%s'", metadataPath)
 	}
 	defer file.Close()
 
-	metadata := dataformat.CacheMetadata{}
+	metadata := platform.CacheMetadata{}
 	if json.NewDecoder(file).Decode(&metadata) != nil {
-		return dataformat.CacheMetadata{}, nil
+		return platform.CacheMetadata{}, nil
 	}
 	return metadata, nil
 }

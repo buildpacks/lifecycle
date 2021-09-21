@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/apex/log"
 	"github.com/heroku/color"

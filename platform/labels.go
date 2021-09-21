@@ -1,4 +1,4 @@
-package dataformat
+package platform
 
 const (
 	BuildMetadataLabel   = "io.buildpacks.build.metadata"

@@ -7,6 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	platform3 "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
+
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/buildpacks/imgutil/fakes"
@@ -20,8 +24,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -70,7 +72,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			mockCtrl = gomock.NewController(t)
 			metadataRestorer = testmock.NewMockLayerMetadataRestorer(mockCtrl)
 
-			p, err := platform.NewPlatform(platformAPI)
+			p, err := platform3.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
 				Image:    image,
@@ -103,8 +105,8 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 		when("#Analyze", func() {
 			var (
-				expectedAppMetadata   dataformat.LayersMetadata
-				expectedCacheMetadata dataformat.CacheMetadata
+				expectedAppMetadata   platform.LayersMetadata
+				expectedCacheMetadata platform.CacheMetadata
 				ref                   *testmock.MockReference
 			)
 
@@ -170,7 +172,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.Image)
-					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 
@@ -183,7 +185,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze(ops...)
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 
@@ -196,7 +198,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze(ops...)
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, dataformat.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 		})

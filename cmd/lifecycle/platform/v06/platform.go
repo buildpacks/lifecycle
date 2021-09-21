@@ -2,7 +2,7 @@ package v06
 
 import (
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform/common"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 type v06Platform struct {

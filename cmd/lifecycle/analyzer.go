@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
@@ -13,6 +12,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
@@ -213,7 +214,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeArgs) analyze() (dataformat.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	var (
 		img imgutil.Image
 		err error
@@ -232,7 +233,7 @@ func (aa analyzeArgs) analyze() (dataformat.AnalyzedMetadata, error) {
 		)
 	}
 	if err != nil {
-		return dataformat.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
 
 	analyzeOps := []lifecycle.AnalyzeOperation{lifecycle.ReadPreviousImage}
@@ -249,15 +250,15 @@ func (aa analyzeArgs) analyze() (dataformat.AnalyzedMetadata, error) {
 		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze(analyzeOps...)
 	if err != nil {
-		return dataformat.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
+		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
 	}
 
 	if aa.runImageRef != "" {
 		ref, err := name.ParseReference(aa.runImageRef, name.WeakValidation)
 		if err != nil {
-			return dataformat.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "parse reference for run image")
+			return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "parse reference for run image")
 		}
-		analyzedMD.RunImage = &dataformat.ImageIdentifier{Reference: ref.String()}
+		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: ref.String()}
 	}
 
 	return analyzedMD, nil
@@ -282,7 +283,7 @@ func (a *analyzeCmd) validateRunImageInput() error {
 	return nil
 }
 
-func (a *analyzeCmd) populateRunImage(stackMD dataformat.StackMetadata, targetRegistry string) error {
+func (a *analyzeCmd) populateRunImage(stackMD platform.StackMetadata, targetRegistry string) error {
 	if !a.supportsRunImage() || a.runImageRef != "" {
 		return nil
 	}

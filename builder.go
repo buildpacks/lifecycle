@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform/dataformat"
 )
 
 type BuildEnv interface {
@@ -39,13 +40,13 @@ type Builder struct {
 	Platform       Platform
 	PlatformAPI    *api.Version // TODO: derive from platform
 	Group          buildpack.Group
-	Plan           dataformat.BuildPlan
+	Plan           platform.BuildPlan
 	Out, Err       io.Writer
 	Logger         Logger
 	BuildpackStore BuildpackStore
 }
 
-func (b *Builder) Build() (*dataformat.BuildMetadata, error) {
+func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Starting build")
 
 	config, err := b.BuildConfig()
@@ -107,7 +108,7 @@ func (b *Builder) Build() (*dataformat.BuildMetadata, error) {
 	procList := processMap.list()
 
 	b.Logger.Debug("Finished build")
-	return &dataformat.BuildMetadata{
+	return &platform.BuildMetadata{
 		BOM:                         bom,
 		Buildpacks:                  b.Group.Group,
 		Labels:                      labels,

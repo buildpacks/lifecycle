@@ -5,16 +5,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform/common"
-
 	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/launcher/platform"
+	"github.com/buildpacks/lifecycle/cmd/launcher/platform/common"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
-	lplatform "github.com/buildpacks/lifecycle/platform"
 )
 
 func main() {
@@ -29,7 +28,7 @@ func runLaunch() error {
 		cmd.Exit(err)
 	}
 
-	platform, err := lplatform.NewPlatform(platformAPI)
+	platform, err := platform.NewPlatform(platformAPI)
 	if err != nil {
 		cmd.Exit(err)
 	}
