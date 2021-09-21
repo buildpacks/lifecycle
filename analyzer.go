@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"github.com/buildpacks/imgutil"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
@@ -38,36 +37,7 @@ func (a *Analyzer) Analyze(ops ...AnalyzeOperation) (platform.AnalyzedMetadata, 
 	return *analyzedMD, nil
 }
 
-func ReadPreviousImage(a *Analyzer, analyzedMD *platform.AnalyzedMetadata) error {
-	if a.Image == nil { // Image is optional in Platform API >= 0.7
-		return nil
-	}
-
-	var err error
-	analyzedMD.Image, err = a.getImageIdentifier(a.Image)
-	if err != nil {
-		return errors.Wrap(err, "retrieving image identifier")
-	}
-
-	_ = DecodeLabel(a.Image, platform.LayerMetadataLabel, &analyzedMD.Metadata) // continue even if the label cannot be decoded
-	return nil
-}
-
-func RestoreLayerMetadata(a *Analyzer, analyzedMD *platform.AnalyzedMetadata) error {
-	cacheMeta, err := retrieveCacheMetadata(a.Cache, a.Logger)
-	if err != nil {
-		return err
-	}
-
-	useShaFiles := true
-	if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, analyzedMD.Metadata, cacheMeta, NewLayerSHAStore(useShaFiles)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
+func (a *Analyzer) GetImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
 	if !image.Found() {
 		a.Logger.Infof("Previous image with name %q not found", image.Name())
 		return nil, nil

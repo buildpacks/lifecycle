@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 	dataformat "github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -85,7 +86,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				LayerMetadataRestorer: metadataRestorer,
 			}
 
-			ops = append(ops, lifecycle.ReadPreviousImage)
+			ops = append(ops, common.ReadPreviousImage)
 
 			if testing.Verbose() {
 				analyzer.Logger = cmd.DefaultLogger
@@ -110,7 +111,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 			expectRestoresLayerMetadataIfSupported := func() {
 				if api.MustParse(analyzer.Platform.API()).LessThan("0.7") {
-					ops = append(ops, lifecycle.RestoreLayerMetadata)
+					ops = append(ops, common.RestoreLayerMetadata)
 					useShaFiles := true
 					layerSHAStore := lifecycle.NewLayerSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)

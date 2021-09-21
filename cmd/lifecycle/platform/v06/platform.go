@@ -1,6 +1,7 @@
 package v06
 
 import (
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
@@ -19,4 +20,8 @@ func NewPlatform(previousPlatform common.Platform) common.Platform {
 
 func (p *v06Platform) API() string {
 	return p.api.String()
+}
+
+func (p *v06Platform) AnalyzeOperations() []lifecycle.AnalyzeOperation {
+	return p.previousPlatform.AnalyzeOperations()
 }
