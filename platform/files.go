@@ -141,14 +141,14 @@ func (p BuildPlan) Find(bpID string) buildpack.Plan {
 func (p BuildPlan) Filter(metRequires []string) BuildPlan {
 	var out []BuildPlanEntry
 	for _, planEntry := range p.Entries {
-		if !ContainsEntry(metRequires, planEntry) {
+		if !containsEntry(metRequires, planEntry) {
 			out = append(out, planEntry)
 		}
 	}
 	return BuildPlan{Entries: out}
 }
 
-func ContainsEntry(metRequires []string, entry BuildPlanEntry) bool {
+func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
 	for _, met := range metRequires {
 		for _, planReq := range entry.Requires {
 			if met == planReq.Name {
