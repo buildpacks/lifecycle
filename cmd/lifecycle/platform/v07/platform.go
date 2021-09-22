@@ -1,27 +1,20 @@
 package v07
 
 import (
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 type v07Platform struct {
-	api              *api.Version
-	previousPlatform common.Platform
+	api *api.Version
 }
 
-func NewPlatform(previousPlatform common.Platform) common.Platform {
+func NewPlatform() common.Platform {
 	return &v07Platform{
-		api:              api.MustParse("0.7"),
-		previousPlatform: previousPlatform,
+		api: api.MustParse("0.7"),
 	}
 }
 
 func (p *v07Platform) API() string {
 	return p.api.String()
-}
-
-func (p *v07Platform) AnalyzeOperations() []lifecycle.AnalyzeOperation {
-	return []lifecycle.AnalyzeOperation{common.ReadPreviousImage}
 }

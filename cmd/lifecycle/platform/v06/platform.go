@@ -1,27 +1,20 @@
 package v06
 
 import (
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
 
 type v06Platform struct {
-	api              *api.Version
-	previousPlatform common.Platform
+	api *api.Version
 }
 
-func NewPlatform(previousPlatform common.Platform) common.Platform {
+func NewPlatform() common.Platform {
 	return &v06Platform{
-		api:              api.MustParse("0.6"),
-		previousPlatform: previousPlatform,
+		api: api.MustParse("0.6"),
 	}
 }
 
 func (p *v06Platform) API() string {
 	return p.api.String()
-}
-
-func (p *v06Platform) AnalyzeOperations() []lifecycle.AnalyzeOperation {
-	return p.previousPlatform.AnalyzeOperations()
 }

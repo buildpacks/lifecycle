@@ -1,4 +1,4 @@
-package common
+package pre06
 
 import (
 	"github.com/pkg/errors"
@@ -7,11 +7,11 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
-func ReadPreviousImage(a *lifecycle.Analyzer, analyzedMD *platform.AnalyzedMetadata) error {
-	if a.Image == nil { // Image is optional in Platform API >= 0.7
-		return nil
-	}
+func (p *pre06Platform) AnalyzeOperations() []lifecycle.AnalyzeOperation {
+	return []lifecycle.AnalyzeOperation{ReadPreviousImage, RestoreLayerMetadata}
+}
 
+func ReadPreviousImage(a *lifecycle.Analyzer, analyzedMD *platform.AnalyzedMetadata) error {
 	var err error
 	analyzedMD.Image, err = a.GetImageIdentifier(a.Image)
 	if err != nil {

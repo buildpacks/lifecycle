@@ -26,12 +26,13 @@ var exitCodes = map[common.LifecycleExitError]int{
 
 	// rebase phase errors: 70-79
 	common.RebaseError: 72, // RebaseError indicates generic rebase error
-
-	// launch phase errors: 80-89
-	common.LaunchError: 82, // LaunchError indicates generic launch error
 }
 
 func (p *v06Platform) CodeFor(errType common.LifecycleExitError) int {
+	return CodeFor(errType)
+}
+
+func CodeFor(errType common.LifecycleExitError) int {
 	if code, ok := exitCodes[errType]; ok {
 		return code
 	}

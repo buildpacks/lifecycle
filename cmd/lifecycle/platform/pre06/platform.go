@@ -1,7 +1,6 @@
 package pre06
 
 import (
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
 )
@@ -18,8 +17,4 @@ func NewPlatform(apiString string) common.Platform {
 
 func (p *pre06Platform) API() string {
 	return p.api.String()
-}
-
-func (p *pre06Platform) AnalyzeOperations() []lifecycle.AnalyzeOperation {
-	return []lifecycle.AnalyzeOperation{common.ReadPreviousImage, common.RestoreLayerMetadata}
 }
