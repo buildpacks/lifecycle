@@ -96,7 +96,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debugf("Finished running build for buildpack %s", bp)
 	}
 
-	if b.PlatformAPI.Compare(api.MustParse("0.4")) < 0 { // PlatformAPI <= 0.3
+	if b.PlatformAPI.LessThan("0.4") {
 		config.Logger.Debug("Updating BOM entries")
 		for i := range bom {
 			bom[i].ConvertMetadataToVersion()
@@ -119,7 +119,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 // we set default = true for web processes when platformAPI >= 0.6 and buildpackAPI < 0.6
 func updateDefaultProcesses(processes []launch.Process, buildpackAPI *api.Version, platformAPI *api.Version) {
-	if platformAPI.Compare(api.MustParse("0.6")) < 0 || buildpackAPI.Compare(api.MustParse("0.6")) >= 0 {
+	if platformAPI.LessThan("0.6") || buildpackAPI.AtLeast("0.6") {
 		return
 	}
 

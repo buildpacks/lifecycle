@@ -44,7 +44,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 
 		var cachedFn func(bpLayer) bool
-		if api.MustParse(buildpack.API).Compare(api.MustParse("0.6")) >= 0 {
+		if api.MustParse(buildpack.API).AtLeast("0.6") {
 			// On Buildpack API 0.6+, the <layer>.toml file never contains layer types information.
 			// The cache metadata is the only way to identify cache=true layers.
 			cachedFn = func(l bpLayer) bool {
@@ -101,7 +101,7 @@ func (r *Restorer) Restore(cache Cache) error {
 }
 
 func (r *Restorer) restoresLayerMetadata() bool {
-	return api.MustParse(r.Platform.API()).Compare(api.MustParse("0.7")) >= 0
+	return api.MustParse(r.Platform.API()).AtLeast("0.7")
 }
 
 func (r *Restorer) restoreLayer(cache Cache, sha string) error {

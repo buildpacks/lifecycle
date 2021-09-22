@@ -69,7 +69,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("app", func() {
 					it("is created", func() {
 						exportFlags := []string{"-daemon"}
-						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+						if api.MustParse(platformAPI).LessThan("0.7") {
 							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
 						}
 
@@ -100,7 +100,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("app", func() {
 					it("is created", func() {
 						var exportFlags []string
-						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+						if api.MustParse(platformAPI).LessThan("0.7") {
 							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
 						}
 
@@ -128,7 +128,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						it("is created", func() {
 							cacheImageName := exportTest.RegRepoName("some-cache-image-" + h.RandString(10))
 							exportFlags := []string{"-cache-image", cacheImageName}
-							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0 {
+							if api.MustParse(platformAPI).LessThan("0.7") {
 								exportFlags = append(exportFlags, "-run-image", exportRegFixtures.ReadOnlyRunImage)
 							}
 

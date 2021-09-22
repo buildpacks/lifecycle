@@ -54,7 +54,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called with -analyzed", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 supports -analyzed flag")
+				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -analyzed flag")
 				command := exec.Command("docker", "run", "--rm", restorerImage, "-analyzed some-file-location")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
@@ -65,7 +65,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called with -skip-layers", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 supports -skip-layers flag")
+				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -skip-layers flag")
 				command := exec.Command("docker", "run", "--rm", restorerImage, "-skip-layers true")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
@@ -101,7 +101,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			it("restores app metadata", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not restore app metadata")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not restore app metadata")
 				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,

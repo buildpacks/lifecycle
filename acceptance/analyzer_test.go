@@ -93,7 +93,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called with group", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts a -group flag")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 accepts a -group flag")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -112,7 +112,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called with skip layers", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts a -skip-layers flag")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 accepts a -skip-layers flag")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -131,7 +131,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called with cache dir", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 accepts a -cache-dir flag")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 accepts a -cache-dir flag")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -150,7 +150,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("cache image tag and cache directory are both blank", func() {
 			it("warns", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not warn because it does not accept a -cache-dir flag")
+				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not warn because it does not accept a -cache-dir flag")
 				output := h.DockerRun(t,
 					analyzeImage,
 					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
@@ -170,7 +170,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
 				var analyzeFlags []string
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+				if api.MustParse(platformAPI).AtLeast("0.7") {
 					analyzeFlags = append(analyzeFlags, []string{"-run-image", analyzeRegFixtures.ReadOnlyRunImage}...)
 				}
 
@@ -196,7 +196,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("group path is provided", func() {
 			it("uses the provided group path", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -group flag")
+				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -group flag")
 
 				h.DockerSeedRunAndCopy(t,
 					containerName,
@@ -222,7 +222,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("analyzed path is provided", func() {
 			it("uses the provided analyzed path", func() {
 				analyzeFlags := []string{"-analyzed", ctrPath("/some-dir/some-analyzed.toml")}
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+				if api.MustParse(platformAPI).AtLeast("0.7") {
 					analyzeFlags = append(analyzeFlags, "-run-image", analyzeRegFixtures.ReadOnlyRunImage)
 				}
 
@@ -251,7 +251,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
 			analyzeArgs := []string{"-analyzed", "/some-dir/some-analyzed.toml"}
-			if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+			if api.MustParse(platformAPI).AtLeast("0.7") {
 				analyzeArgs = append(analyzeArgs, "-run-image", analyzeRegFixtures.ReadOnlyRunImage)
 			}
 
@@ -277,7 +277,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("run image", func() {
 			when("provided", func() {
 				it("is recorded in analyzed.toml", func() {
-					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept run image")
 
 					h.DockerRunAndCopy(t,
 						containerName,
@@ -299,7 +299,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			when("not provided", func() {
 				it("falls back to CNB_RUN_IMAGE", func() {
-					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept run image")
 
 					h.DockerRunAndCopy(t,
 						containerName,
@@ -321,7 +321,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("CNB_RUN_IMAGE not provided", func() {
 					it("falls back to stack.toml", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept run image")
 
 						cmd := exec.Command("docker", "run", "--rm",
 							"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -340,7 +340,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					when("stack.toml not present", func() {
 						it("errors", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept run image")
+							h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept run image")
 
 							cmd := exec.Command(
 								"docker", "run", "--rm",
@@ -362,7 +362,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("the provided destination tags are on different registries", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not accept destination tags")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept destination tags")
 
 				cmd := exec.Command(
 					"docker", "run", "--rm",
@@ -384,7 +384,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("daemon case", func() {
 			it("writes analyzed.toml", func() {
 				analyzeFlags := []string{"-daemon"}
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+				if api.MustParse(platformAPI).AtLeast("0.7") {
 					analyzeFlags = append(analyzeFlags, []string{"-run-image", "some-run-image"}...)
 				}
 
@@ -409,7 +409,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			when("app image exists", func() {
 				it("does not restore app metadata", func() {
-					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 restores app metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 restores app metadata")
 
 					analyzeFlags := []string{"-daemon", "-run-image", "some-run-image"}
 
@@ -433,7 +433,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 
 				it("restores app metadata", func() {
-					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not restore app metadata")
+					h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not restore app metadata")
 					output := h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
@@ -455,7 +455,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("skip layers is provided", func() {
 					it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -skip-layers flag")
+						h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -skip-layers flag")
 						output := h.DockerRunAndCopy(t,
 							containerName,
 							copyDir,
@@ -483,7 +483,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("cache image case", func() {
 					when("cache image is in a daemon", func() {
 						it("ignores the cache", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 
 							h.DockerRunAndCopy(t,
 								containerName,
@@ -511,7 +511,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						when("auth registry", func() {
 							when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 								it("restores cache metadata", func() {
-									h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+									h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 									output := h.DockerRunAndCopy(t,
 										containerName,
 										copyDir,
@@ -537,7 +537,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 							when("registry creds are provided in the docker config.json", func() {
 								it("restores cache metadata", func() {
-									h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+									h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 									output := h.DockerRunAndCopy(t,
 										containerName,
 										copyDir,
@@ -563,7 +563,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						when("no auth registry", func() {
 							it("restores cache metadata", func() {
-								h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+								h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
@@ -591,7 +591,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("cache directory case", func() {
 					it("restores cache metadata", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+						h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 						output := h.DockerSeedRunAndCopy(t,
 							containerName,
 							cacheFixtureDir, ctrPath("/cache"),
@@ -614,7 +614,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					when("the provided cache directory isn't writeable by the CNB user's group", func() {
 						it("recursively chowns the directory", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 							h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
 
 							cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
@@ -641,7 +641,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					when("the provided cache directory is writeable by the CNB user's group", func() {
 						it("doesn't chown the directory", func() {
 							h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 
 							cacheVolume := h.SeedDockerVolume(t, cacheFixtureDir)
 							defer h.DockerVolumeRemove(t, cacheVolume)
@@ -670,7 +670,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("registry case", func() {
 			it("writes analyzed.toml", func() {
 				var analyzeFlags []string
-				if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+				if api.MustParse(platformAPI).AtLeast("0.7") {
 					analyzeFlags = append(analyzeFlags, []string{"-run-image", analyzeRegFixtures.ReadOnlyRunImage}...)
 				}
 
@@ -698,7 +698,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("auth registry", func() {
 					when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 						it("restores app metadata", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read app layer metadata")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -721,7 +721,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					when("registry creds are provided in the docker config.json", func() {
 						it("restores app metadata", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read app layer metadata")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -744,7 +744,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					when("skip layers is provided", func() {
 						it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -skip-layers flag")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -skip-layers flag")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -770,7 +770,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("no auth registry", func() {
 					it("restores app metadata", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read app layer metadata")
+						h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read app layer metadata")
 
 						output := h.DockerRunAndCopy(t,
 							containerName,
@@ -792,7 +792,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					when("skip layers is provided", func() {
 						it("writes analyzed.toml and does not write buildpack layer metadata", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not accept a -skip-layers flag")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -skip-layers flag")
 							output := h.DockerRunAndCopy(t,
 								containerName,
 								copyDir,
@@ -818,14 +818,14 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			when("called with previous image", func() {
 				it.Before(func() {
-					h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not support -previous-image")
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not support -previous-image")
 				})
 
 				when("auth registry", func() {
 					when("the destination image does not exist", func() {
 						it("writes analyzed.toml with previous image identifier", func() {
 							analyzeFlags := []string{"-previous-image", analyzeRegFixtures.ReadWriteAppImage}
-							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+							if api.MustParse(platformAPI).AtLeast("0.7") {
 								analyzeFlags = append(analyzeFlags, []string{"-run-image", analyzeRegFixtures.ReadOnlyRunImage}...)
 							}
 
@@ -853,7 +853,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					when("the destination image exists", func() {
 						it("writes analyzed.toml with previous image identifier", func() {
 							analyzeFlags := []string{"-previous-image", analyzeRegFixtures.ReadWriteAppImage}
-							if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+							if api.MustParse(platformAPI).AtLeast("0.7") {
 								analyzeFlags = append(analyzeFlags, []string{"-run-image", analyzeRegFixtures.ReadOnlyRunImage}...)
 							}
 
@@ -883,7 +883,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				when("no read access", func() {
 					it("throws read error accessing previous image", func() {
 						analyzeFlags := []string{"-previous-image", analyzeRegFixtures.InaccessibleImage}
-						if api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0 {
+						if api.MustParse(platformAPI).AtLeast("0.7") {
 							analyzeFlags = append(analyzeFlags, []string{"-run-image", analyzeRegFixtures.ReadOnlyRunImage}...)
 						}
 
@@ -919,7 +919,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					when("auth registry", func() {
 						when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
 							it("restores cache metadata", func() {
-								h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+								h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
@@ -943,7 +943,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						when("registry creds are provided in the docker config.json", func() {
 							it("restores cache metadata", func() {
-								h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+								h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 								output := h.DockerRunAndCopy(t,
 									containerName,
 									copyDir,
@@ -969,7 +969,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					when("no auth registry", func() {
 						it("restores cache metadata", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+							h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 
 							output := h.DockerRunAndCopy(t,
 								containerName,
@@ -991,7 +991,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						})
 
 						it("throws read/write error accessing cache image", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not validate cache flag")
+							h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not validate cache flag")
 
 							cmd := exec.Command(
 								"docker", "run", "--rm",
@@ -1016,7 +1016,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("cache directory case", func() {
 					it("restores cache metadata", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) >= 0, "Platform API >= 0.7 does not read from the cache")
+						h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not read from the cache")
 						output := h.DockerSeedRunAndCopy(t,
 							containerName,
 							cacheFixtureDir, ctrPath("/cache"),
@@ -1040,7 +1040,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			when("called with tag", func() {
 				when("have read/write access to registry", func() {
 					it("passes read/write validation and writes analyzed.toml", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not use tag flag")
 						execArgs := []string{
 							ctrPath(analyzerPath),
 							"-tag", analyzeRegFixtures.ReadWriteOtherAppImage,
@@ -1066,7 +1066,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				when("do not have read/write access to registry", func() {
 					it("throws read/write error accessing destination tag", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).Compare(api.MustParse("0.7")) < 0, "Platform API < 0.7 does not use tag flag")
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
 							"docker", "run", "--rm",
 							"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -1091,7 +1091,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("layers path is provided", func() {
 			it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
 				h.SkipIf(t,
-					api.MustParse(platformAPI).Compare(api.MustParse("0.5")) >= 0,
+					api.MustParse(platformAPI).AtLeast("0.5"),
 					"Platform API 0.5 and 0.6 read and write to the provided layers directory; Platform 0.7+ does not accept a -cache-dir flag",
 				)
 
@@ -1122,7 +1122,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			it("uses the group path at the layers path and writes analyzed.toml at the layers path", func() {
 				h.SkipIf(t,
-					api.MustParse(platformAPI).Compare(api.MustParse("0.5")) != 0 && api.MustParse(platformAPI).Compare(api.MustParse("0.6")) != 0,
+					api.MustParse(platformAPI).LessThan("0.5") || api.MustParse(platformAPI).AtLeast("0.7"),
 					"Platform API < 0.5 reads and writes to the working directory; Platform 0.7+ does not accept a -cache-dir flag",
 				)
 
