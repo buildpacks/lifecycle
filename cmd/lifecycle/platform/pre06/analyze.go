@@ -7,4 +7,3 @@ import (
 func (p *pre06Platform) AnalyzeOperations() []lifecycle.AnalyzeOperation {
 	return []lifecycle.AnalyzeOperation{lifecycle.ReadPreviousImage, lifecycle.RestoreLayerMetadata}
 }
-
