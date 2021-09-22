@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/pre06"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/v03through05"
 	v06 "github.com/buildpacks/lifecycle/cmd/lifecycle/platform/v06"
 	v07 "github.com/buildpacks/lifecycle/cmd/lifecycle/platform/v07"
 )
@@ -12,7 +12,7 @@ import (
 func NewPlatform(apiStr string) (common.Platform, error) {
 	switch apiStr {
 	case "0.3", "0.4", "0.5":
-		return pre06.NewPlatform(apiStr), nil
+		return v03through05.NewPlatform(apiStr), nil
 	case "0.6":
 		return v06.NewPlatform(), nil
 	case "0.7":
