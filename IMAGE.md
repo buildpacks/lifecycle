@@ -22,9 +22,8 @@ A CycloneDX SBOM is "attached" to the image and signed with [`cosign`](https://g
 * Locate the public key `lifecycle-v<tag>-cosign.pub` on the [releases page](https://github.com/buildpacks/lifecycle/releases)
 * Run:
 ```
-digest=$(cosign verify -key lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:<tag> | jq -r .critical.image.\"docker-manifest-digest\" | head -n 1)
-digest=${digest#"sha256:"}
-cosign verify -key lifecycle-v<tag>-cosign.pub buildpacksio/lifecycle:sha256-${digest}.sbom
+cosign version # must be at least 1.2.0
+cosign verify -key cosign.pub -a tag=<tag> -attachment sbom buildpacksio/lifecycle:<tag>
 cosign download sbom buildpacksio/lifecycle:<tag>
 ```
 
@@ -35,3 +34,6 @@ With [pack](https://github.com/buildpack/pack):
 
 With [tekton](https://github.com/tektoncd/catalog/tree/main/task/buildpacks-phases/0.2):
 * Provide as param `LIFECYCLE_IMAGE` in taskrun
+
+***
+[Source](https://github.com/buildpacks/lifecycle/blob/main/IMAGE.md) for this page
