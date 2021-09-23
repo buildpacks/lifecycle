@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle/cmd/launcher/platform/common"
-	"github.com/buildpacks/lifecycle/cmd/launcher/platform/pre06"
+	"github.com/buildpacks/lifecycle/cmd/launcher/platform/legacy"
 	v06 "github.com/buildpacks/lifecycle/cmd/launcher/platform/v06"
 	v07 "github.com/buildpacks/lifecycle/cmd/launcher/platform/v07"
 )
