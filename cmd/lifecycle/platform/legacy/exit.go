@@ -28,7 +28,7 @@ var exitCodes = map[common.LifecycleExitError]int{
 	common.RebaseError: 602, // RebaseError indicates generic rebase error
 }
 
-func (p *pre06Platform) CodeFor(errType common.LifecycleExitError) int {
+func (p *legacyPlatform) CodeFor(errType common.LifecycleExitError) int {
 	return CodeFor(errType)
 }
 

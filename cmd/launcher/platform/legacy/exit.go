@@ -10,7 +10,7 @@ var exitCodes = map[common.LifecycleExitError]int{
 	common.LaunchError: 702, // LaunchError indicates generic launch error
 }
 
-func (p *pre06Platform) CodeFor(errType common.LifecycleExitError) int {
+func (p *legacyPlatform) CodeFor(errType common.LifecycleExitError) int {
 	return CodeFor(errType)
 }
 
