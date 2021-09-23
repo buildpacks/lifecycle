@@ -8,12 +8,7 @@ const (
 
 type LifecycleExitError int
 
-var exitCodes = map[LifecycleExitError]int{
-	// launch phase errors: 80-89
-	LaunchError: 82, // LaunchError indicates generic launch error
-}
-
-func CodeFor(errType LifecycleExitError) int {
+func CodeFor(errType LifecycleExitError, exitCodes map[LifecycleExitError]int) int {
 	if code, ok := exitCodes[errType]; ok {
 		return code
 	}
