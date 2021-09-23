@@ -73,9 +73,8 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			p, err := platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
-				Image:    image,
-				Logger:   &discardLogger,
-				Platform: p,
+				Image:  image,
+				Logger: &discardLogger,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
@@ -109,7 +108,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			)
 
 			expectRestoresLayerMetadataIfSupported := func() {
-				if api.MustParse(analyzer.Platform.API()).LessThan("0.7") {
+				if api.MustParse(platformAPI).LessThan("0.7") {
 					useShaFiles := true
 					layerSHAStore := lifecycle.NewLayerSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)

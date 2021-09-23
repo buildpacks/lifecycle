@@ -238,7 +238,6 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		Buildpacks:            aa.platform06.group.Group,
 		Cache:                 aa.platform06.cache,
 		Logger:                cmd.DefaultLogger,
-		Platform:              aa.platform,
 		Image:                 img,
 		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze(aa.platform.AnalyzeOperations()...)

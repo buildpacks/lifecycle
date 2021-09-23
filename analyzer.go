@@ -13,9 +13,8 @@ type Platform interface {
 }
 
 type Analyzer struct {
-	Image    imgutil.Image
-	Logger   Logger
-	Platform Platform
+	Image  imgutil.Image
+	Logger Logger
 
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
