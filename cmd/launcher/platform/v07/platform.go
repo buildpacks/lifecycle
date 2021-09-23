@@ -1,20 +1,15 @@
 package v07
 
 import (
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd/launcher/platform/common"
 )
 
-type v07Platform struct {
-	api *api.Version
-}
+type v07Platform struct{}
 
 func NewPlatform() common.Platform {
-	return &v07Platform{
-		api: api.MustParse("0.7"),
-	}
+	return &v07Platform{}
 }
 
 func (p *v07Platform) API() string {
-	return p.api.String()
+	return "0.7"
 }
