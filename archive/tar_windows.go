@@ -17,7 +17,7 @@ const (
 	hdrFileAttributes  = hdrMSWindowsPrefix + "fileattr"
 )
 
-func setUmask(newMask int) (oldMask int) {
+func SetUmask(newMask int) (oldMask int) {
 	// Not implemented on Windows
 	return 0
 }
