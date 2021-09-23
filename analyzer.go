@@ -38,7 +38,7 @@ func (a *Analyzer) Analyze(ops ...AnalyzeOperation) (platform.AnalyzedMetadata, 
 	return *analyzedMD, nil
 }
 
-func (a *Analyzer) GetImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
+func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
 	if !image.Found() {
 		a.Logger.Infof("Previous image with name %q not found", image.Name())
 		return nil, nil
@@ -57,7 +57,7 @@ func (a *Analyzer) GetImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 
 func ReadPreviousImage(a *Analyzer, analyzedMD *platform.AnalyzedMetadata) error {
 	var err error
-	analyzedMD.Image, err = a.GetImageIdentifier(a.Image)
+	analyzedMD.Image, err = a.getImageIdentifier(a.Image)
 	if err != nil {
 		return errors.Wrap(err, "retrieving image identifier")
 	}
@@ -72,7 +72,7 @@ func ReadOptionalPreviousImage(a *Analyzer, analyzedMD *platform.AnalyzedMetadat
 	}
 
 	var err error
-	analyzedMD.Image, err = a.GetImageIdentifier(a.Image)
+	analyzedMD.Image, err = a.getImageIdentifier(a.Image)
 	if err != nil {
 		return errors.Wrap(err, "retrieving image identifier")
 	}
@@ -82,7 +82,7 @@ func ReadOptionalPreviousImage(a *Analyzer, analyzedMD *platform.AnalyzedMetadat
 }
 
 func RestoreLayerMetadata(a *Analyzer, analyzedMD *platform.AnalyzedMetadata) error {
-	cacheMeta, err := RetrieveCacheMetadata(a.Cache, a.Logger)
+	cacheMeta, err := retrieveCacheMetadata(a.Cache, a.Logger)
 	if err != nil {
 		return err
 	}

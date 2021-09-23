@@ -189,7 +189,7 @@ func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(layerSHAStore LayerSH
 	return layerSHAStore.add(buildpackID, metadata.SHA, layer)
 }
 
-func RetrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
 	var cacheMeta platform.CacheMetadata
 	if cache != nil {
