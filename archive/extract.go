@@ -15,7 +15,8 @@ type PathMode struct {
 	Mode os.FileMode
 }
 
-// Extract reads all entries from TarReader and extracts them to the filesystem
+// Extract reads all entries from TarReader and extracts them to the filesystem.
+// Note that this function is not thread-safe on Unix as it mutates the global umask.
 func Extract(tr TarReader) error {
 	// Avoid umask from changing the file permissions in the tar file.
 	umask := SetUmask(0)

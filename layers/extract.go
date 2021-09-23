@@ -10,7 +10,8 @@ import (
 
 // Extract extracts entries from r to the dest directory
 // Contents of r should be an OCI layer.
-// If dest is an empty string files with be extracted to `/` or `c:\` on unix and windows filesystems respectively
+// If dest is an empty string files with be extracted to `/` or `c:\` on unix and windows filesystems respectively.
+// Note that this function is not thread-safe on Unix as it mutates the global umask.
 func Extract(r io.Reader, dest string) error {
 	tr := tarReader(r, dest)
 	return archive.Extract(tr)
