@@ -1,4 +1,4 @@
-package pre06
+package legacy
 
 import (
 	"github.com/buildpacks/lifecycle/api"

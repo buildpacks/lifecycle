@@ -1,4 +1,4 @@
-package v03through05
+package legacy
 
 import (
 	"github.com/buildpacks/lifecycle/cmd"

@@ -12,7 +12,7 @@ import (
 func NewPlatform(apiStr string) (common.Platform, error) {
 	switch apiStr {
 	case "0.3", "0.4", "0.5":
-		return v03through05.NewPlatform(apiStr), nil
+		return legacy.NewPlatform(apiStr), nil
 	case "0.6":
 		return v06.NewPlatform(), nil
 	case "0.7":
