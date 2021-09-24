@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -29,7 +30,7 @@ type restoreCmd struct {
 
 type restoreArgs struct {
 	layersDir  string
-	platform   cmd.Platform
+	platform   Platform
 	skipLayers bool
 
 	// construct if necessary before dropping privileges
@@ -126,7 +127,7 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(cmd.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(common.RestoreError), "restore")
 	}
 	return nil
 }
