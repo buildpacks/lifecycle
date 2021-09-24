@@ -10,11 +10,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-var umask int
+var systemUmask int
 
 func init() {
-	umask = setUmask(0)
-	setUmask(umask)
+	// Avoid umask from changing the file permissions in the tar file.
+	systemUmask = setUmask(0)
+	_ = setUmask(systemUmask)
 }
 
 type PathMode struct {
@@ -24,10 +25,6 @@ type PathMode struct {
 
 // Extract reads all entries from TarReader and extracts them to the filesystem
 func Extract(tr TarReader) error {
-	// Avoid umask from changing the file permissions in the tar file.
-	umask := setUmask(0)
-	defer setUmask(umask)
-
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)
 
@@ -61,7 +58,7 @@ func Extract(tr TarReader) error {
 			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, umask)); err != nil {
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, systemUmask)); err != nil {
 						return errors.Wrapf(err, "failed to create parent dir %q for file %q", dirPath, hdr.Name)
 					}
 					dirsFound[dirPath] = true
