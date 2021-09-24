@@ -206,7 +206,7 @@ func (a *analyzeCmd) Exec() error {
 		return err
 	}
 
-	if err := lifecycle.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
+	if err := buildpack.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
 		return errors.Wrap(err, "write analyzed.toml")
 	}
 

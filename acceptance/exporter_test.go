@@ -15,8 +15,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -168,11 +168,11 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 	placeHolderPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml.placeholder")
 	analyzedMD := assertAnalyzedMetadata(t, placeHolderPath)
 	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+	buildpack.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml.placeholder")
 	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
 	analyzedMD.Image = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}
 	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	lifecycle.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+	buildpack.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 }

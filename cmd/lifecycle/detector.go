@@ -142,11 +142,11 @@ func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
 }
 
 func (d *detectCmd) writeData(group buildpack.Group, plan platform.BuildPlan) error {
-	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
+	if err := buildpack.WriteTOML(d.groupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
 
-	if err := lifecycle.WriteTOML(d.planPath, plan); err != nil {
+	if err := buildpack.WriteTOML(d.planPath, plan); err != nil {
 		return cmd.FailErr(err, "write detect plan")
 	}
 	return nil

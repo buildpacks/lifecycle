@@ -931,6 +931,37 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when(".WriteTOML", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+
+		it("should write TOML", func() {
+			group := buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}}
+			if err := buildpack.WriteTOML(filepath.Join(tmpDir, "subdir", "group.toml"), group); err != nil {
+				t.Fatal(err)
+			}
+			b := h.Rdfile(t, filepath.Join(tmpDir, "subdir", "group.toml"))
+			if s := cmp.Diff(b,
+				"[[group]]\n"+
+					`  id = "A"`+"\n"+
+					`  version = "v1"`+"\n",
+			); s != "" {
+				t.Fatalf("Unexpected TOML:\n%s\n", s)
+			}
+		})
+	})
 }
 
 func testExists(t *testing.T, paths ...string) {
