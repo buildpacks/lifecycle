@@ -1,7 +1,8 @@
-package lifecycle
+package layermetadata
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -11,8 +12,19 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
-//go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle LayerMetadataRestorer
-type LayerMetadataRestorer interface {
+type Cache interface {
+	Exists() bool
+	Name() string
+	SetMetadata(metadata platform.CacheMetadata) error
+	RetrieveMetadata() (platform.CacheMetadata, error)
+	AddLayerFile(tarPath string, sha string) error
+	ReuseLayer(sha string) error
+	RetrieveLayer(sha string) (io.ReadCloser, error)
+	Commit() error
+}
+
+//go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle/layermetadata MetaRestorer
+type MetaRestorer interface {
 	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore LayerSHAStore) error
 }
 
@@ -23,8 +35,8 @@ type DefaultLayerMetadataRestorer struct {
 }
 
 type LayerSHAStore interface {
-	add(buildpackID, sha string, layer *bpLayer) error
-	get(buildpackID string, layer bpLayer) (string, error)
+	add(buildpackID, sha string, layer *BpLayer) error
+	Get(buildpackID string, layer BpLayer) (string, error)
 }
 
 func NewLayerSHAStore(useShaFiles bool) LayerSHAStore {
@@ -37,12 +49,12 @@ func NewLayerSHAStore(useShaFiles bool) LayerSHAStore {
 type filesLayerSHAStore struct {
 }
 
-func (flss *filesLayerSHAStore) add(buildpackID, sha string, layer *bpLayer) error {
-	return layer.writeSha(sha)
+func (flss *filesLayerSHAStore) add(buildpackID, sha string, layer *BpLayer) error {
+	return layer.WriteSha(sha)
 }
 
-func (flss *filesLayerSHAStore) get(buildpackID string, layer bpLayer) (string, error) {
-	data, err := layer.read()
+func (flss *filesLayerSHAStore) Get(buildpackID string, layer BpLayer) (string, error) {
+	data, err := layer.Read()
 	if err != nil {
 		return "", errors.Wrapf(err, "reading layer")
 	}
@@ -57,13 +69,13 @@ type layerToSha struct {
 	layerToShaMap map[string]string
 }
 
-func (mlss *mapLayerSHAStore) add(buildpackID, sha string, layer *bpLayer) error {
-	mlss.addLayerToMap(buildpackID, layer.name(), sha)
+func (mlss *mapLayerSHAStore) add(buildpackID, sha string, layer *BpLayer) error {
+	mlss.addLayerToMap(buildpackID, layer.Name(), sha)
 	return nil
 }
 
-func (mlss *mapLayerSHAStore) get(buildpackID string, layer bpLayer) (string, error) {
-	return mlss.getShaByBuildpackLayer(buildpackID, layer.name()), nil
+func (mlss *mapLayerSHAStore) Get(buildpackID string, layer BpLayer) (string, error) {
+	return mlss.getShaByBuildpackLayer(buildpackID, layer.Name()), nil
 }
 
 func (mlss *mapLayerSHAStore) addLayerToMap(buildpackID, layerName, sha string) {
@@ -84,7 +96,7 @@ func (mlss *mapLayerSHAStore) getShaByBuildpackLayer(buildpackID, layerName stri
 	return ""
 }
 
-func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers bool) LayerMetadataRestorer {
+func NewLayerMetadataRestorer(logger Logger, layersDir string, skipLayers bool) MetaRestorer {
 	return &DefaultLayerMetadataRestorer{
 		logger:     logger,
 		layersDir:  layersDir,
@@ -107,7 +119,7 @@ func (la *DefaultLayerMetadataRestorer) Restore(buildpacks []buildpack.GroupBuil
 func (la *DefaultLayerMetadataRestorer) restoreStoreTOML(appMeta platform.LayersMetadata, buildpacks []buildpack.GroupBuildpack) error {
 	for _, bp := range buildpacks {
 		if store := appMeta.MetadataForBuildpack(bp.ID).Store; store != nil {
-			if err := WriteTOML(filepath.Join(la.layersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
+			if err := buildpack.WriteTOML(filepath.Join(la.layersDir, launch.EscapeID(bp.ID), "store.toml"), store); err != nil {
 				return err
 			}
 		}
@@ -122,7 +134,7 @@ func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(layerSHAStore Layer
 	}
 
 	for _, buildpack := range buildpacks {
-		buildpackDir, err := readBuildpackLayersDir(la.layersDir, buildpack, la.logger)
+		buildpackDir, err := ReadBuildpackLayersDir(la.layersDir, buildpack, la.logger)
 		if err != nil {
 			return errors.Wrap(err, "reading buildpack layer directory")
 		}
@@ -180,16 +192,16 @@ func (la *DefaultLayerMetadataRestorer) restoreLayerMetadata(layerSHAStore Layer
 	return nil
 }
 
-func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(layerSHAStore LayerSHAStore, buildpackDir bpLayersDir, layerName string, metadata platform.BuildpackLayerMetadata, buildpackID string) error {
-	layer := buildpackDir.newBPLayer(layerName, buildpackDir.buildpack.API, la.logger)
+func (la *DefaultLayerMetadataRestorer) writeLayerMetadata(layerSHAStore LayerSHAStore, buildpackDir BpLayersDir, layerName string, metadata platform.BuildpackLayerMetadata, buildpackID string) error {
+	layer := buildpackDir.NewBPLayer(layerName, buildpackDir.Buildpack.API, la.logger)
 	la.logger.Debugf("Writing layer metadata for %q", layer.Identifier())
-	if err := layer.writeMetadata(metadata.LayerMetadataFile); err != nil {
+	if err := layer.WriteMetadata(metadata.LayerMetadataFile); err != nil {
 		return err
 	}
 	return layerSHAStore.add(buildpackID, metadata.SHA, layer)
 }
 
-func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+func RetrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
 	var cacheMeta platform.CacheMetadata
 	if cache != nil {

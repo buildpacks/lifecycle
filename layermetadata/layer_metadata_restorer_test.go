@@ -1,4 +1,4 @@
-package lifecycle_test
+package layermetadata_test
 
 import (
 	"encoding/json"
@@ -8,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/layermetadata"
+
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
@@ -21,14 +22,14 @@ import (
 )
 
 func TestLayerMetadataRestorer(t *testing.T) {
-	spec.Run(t, "LayerMetadataRestorer", testLayerMetadataRestorer, spec.Report(report.Terminal{}))
+	spec.Run(t, "MetaRestorer", testLayerMetadataRestorer, spec.Report(report.Terminal{}))
 }
 
 func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 	var (
 		layerDir              string
-		layerMetadataRestorer lifecycle.LayerMetadataRestorer
-		layerSHAStore         lifecycle.LayerSHAStore
+		layerMetadataRestorer layermetadata.MetaRestorer
+		layerSHAStore         layermetadata.LayerSHAStore
 		layersMetadata        platform.LayersMetadata
 		cacheMetadata         platform.CacheMetadata
 		buildpacks            []buildpack.GroupBuildpack
@@ -44,8 +45,8 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		useShaFiles = true // notice - the default for platform API >= 0.7 is false (it's set to false in some of the tests)
 		logger = log.Logger{Handler: &discard.Handler{}}
-		layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
-		layerSHAStore = lifecycle.NewLayerSHAStore(useShaFiles)
+		layerMetadataRestorer = layermetadata.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+		layerSHAStore = layermetadata.NewLayerSHAStore(useShaFiles)
 	})
 
 	it.After(func() {
@@ -74,7 +75,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		when("only app metadata is present", func() {
 			it.Before(func() {
-				layerMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
+				layerMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "app_metadata.json"))
 				h.AssertNil(t, json.Unmarshal(layerMetaDataJSON, &layersMetadata))
 			})
 
@@ -99,7 +100,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		when("only cache metadata is present", func() {
 			it.Before(func() {
-				cacheMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
+				cacheMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "cache_metadata.json"))
 				h.AssertNil(t, json.Unmarshal(cacheMetaDataJSON, &cacheMetadata))
 			})
 
@@ -118,10 +119,10 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 		when("app and cache metadata are present", func() {
 			it.Before(func() {
-				cacheMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
+				cacheMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "cache_metadata.json"))
 				h.AssertNil(t, json.Unmarshal(cacheMetaDataJSON, &cacheMetadata))
 
-				layerMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
+				layerMetaDataJSON := h.MustReadFile(t, filepath.Join("testdata", "app_metadata.json"))
 				h.AssertNil(t, json.Unmarshal(layerMetaDataJSON, &layersMetadata))
 			})
 
@@ -190,8 +191,8 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("restoring sha files is not needed", func() {
 				it.Before(func() {
 					useShaFiles = false
-					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
-					layerSHAStore = lifecycle.NewLayerSHAStore(useShaFiles)
+					layerMetadataRestorer = layermetadata.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+					layerSHAStore = layermetadata.NewLayerSHAStore(useShaFiles)
 				})
 
 				it("does not restore sha files", func() {
@@ -319,7 +320,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("app and cache metadata are inconsistent with each other", func() { // cache was manipulated or deleted
 				it.Before(func() {
-					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_inconsistent_metadata.json"))
+					metadata := h.MustReadFile(t, filepath.Join("testdata", "cache_inconsistent_metadata.json"))
 					h.AssertNil(t, json.Unmarshal(metadata, &cacheMetadata))
 				})
 
@@ -375,7 +376,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("skip layers is true", func() {
 				it.Before(func() {
 					skipLayers = true
-					layerMetadataRestorer = lifecycle.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
+					layerMetadataRestorer = layermetadata.NewLayerMetadataRestorer(&logger, layerDir, skipLayers)
 				})
 
 				it("does not write buildpack layer metadata", func() {
