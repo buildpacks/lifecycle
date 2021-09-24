@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func SetUmask(newMask int) (oldMask int) {
+func setUmask(newMask int) (oldMask int) {
 	return unix.Umask(newMask)
 }
 

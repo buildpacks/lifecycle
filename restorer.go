@@ -7,7 +7,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
@@ -41,8 +40,6 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 
 	var g errgroup.Group
-	umask := archive.SetUmask(0)
-	defer archive.SetUmask(umask)
 	for _, buildpack := range r.Buildpacks {
 		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 
