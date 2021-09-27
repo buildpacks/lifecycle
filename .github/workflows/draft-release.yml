@@ -22,7 +22,7 @@ jobs:
             exit 1
           fi
           echo "LIFECYCLE_VERSION=$version" >> $GITHUB_ENV
-      - name: Determine download urls for linux-x86-64, linux-arm64 and windows
+      - name: Determine download urls for linux-amd64, linux-arm64 and windows
         id: artifact-urls
         uses: actions/github-script@v3.0.0
         with:

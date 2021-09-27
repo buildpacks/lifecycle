@@ -133,12 +133,12 @@ jobs:
           make package
       - uses: actions/upload-artifact@v2
         with:
-          name: lifecycle-linux-x86-64
-          path: out/lifecycle-v*+linux.x86-64.tgz
+          name: lifecycle-linux-amd64
+          path: out/lifecycle-v*+linux.amd64.tgz
       - uses: actions/upload-artifact@v2
         with:
-          name: lifecycle-linux-x86-64-sha256
-          path: out/lifecycle-v*+linux.x86-64.tgz.sha256
+          name: lifecycle-linux-amd64-sha256
+          path: out/lifecycle-v*+linux.amd64.tgz.sha256
       - uses: actions/upload-artifact@v2
         with:
           name: lifecycle-linux-arm64
@@ -149,12 +149,12 @@ jobs:
           path: out/lifecycle-v*+linux.arm64.tgz.sha256
       - uses: actions/upload-artifact@v2
         with:
-          name: lifecycle-windows-x86-64
-          path: out/lifecycle-v*+windows.x86-64.tgz
+          name: lifecycle-windows-amd64
+          path: out/lifecycle-v*+windows.amd64.tgz
       - uses: actions/upload-artifact@v2
         with:
-          name: lifecycle-windows-x86-64-sha256
-          path: out/lifecycle-v*+windows.x86-64.tgz.sha256
+          name: lifecycle-windows-amd64-sha256
+          path: out/lifecycle-v*+windows.amd64.tgz.sha256
       - name: Generate SBOM JSON
         uses: CycloneDX/gh-gomod-generate-sbom@v0.3.0
         with:
@@ -204,17 +204,17 @@ jobs:
           DOCKER_CLI_EXPERIMENTAL=enabled
           LIFECYCLE_IMAGE_TAG=$(git describe --always --abbrev=7)
 
-          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64 | awk '{print $NF}')
+          LINUX_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.amd64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-amd64 | awk '{print $NF}')
           echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
 
           LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
           echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
 
-          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
+          WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.amd64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
-              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-amd64@${LINUX_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 
@@ -249,13 +249,13 @@ jobs:
           cat tag.txt >> $GITHUB_ENV
       - uses: actions/download-artifact@v2
         with:
-          name: lifecycle-linux-x86-64
+          name: lifecycle-linux-amd64
           path: pack
       - name: Run pack acceptance
         run: |
           cd pack
           git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
-          LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
+          LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.amd64.tgz" \
           LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
   pack-acceptance-windows:
@@ -311,13 +311,13 @@ jobs:
           cat tag.txt >> $env:GITHUB_ENV
       - uses: actions/download-artifact@v2
         with:
-          name: lifecycle-windows-x86-64
+          name: lifecycle-windows-amd64
           path: pack
       - name: Run pack acceptance
         run: |
           cd pack
           git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
-          $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
+          $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.amd64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
 

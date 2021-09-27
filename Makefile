@@ -47,7 +47,7 @@ build-linux-arm64: build-linux-arm64-lifecycle build-linux-arm64-symlinks build-
 build-windows-amd64: build-windows-amd64-lifecycle build-windows-amd64-symlinks build-windows-amd64-launcher
 
 build-image-linux-amd64: build-linux-amd64 package-linux-amd64
-build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
+build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.amd64.tgz
 build-image-linux-amd64:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -arch amd64 -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
@@ -57,7 +57,7 @@ build-image-linux-arm64:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -arch arm64 -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
 build-image-windows-amd64: build-windows-amd64 package-windows-amd64
-build-image-windows-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+windows.x86-64.tgz
+build-image-windows-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+windows.amd64.tgz
 build-image-windows-amd64:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os windows -arch amd64 -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
 
@@ -275,7 +275,7 @@ package: package-linux-amd64 package-linux-arm64 package-windows-amd64
 package-linux-amd64: GOOS:=linux
 package-linux-amd64: GOARCH:=amd64
 package-linux-amd64: INPUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
-package-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+package-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).amd64.tgz
 package-linux-amd64: PACKAGER=./tools/packager/main.go
 package-linux-amd64:
 	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."
@@ -293,7 +293,7 @@ package-linux-arm64:
 package-windows-amd64: GOOS:=windows
 package-windows-amd64: GOARCH:=amd64
 package-windows-amd64: INPUT_DIR:=$(BUILD_DIR)$/$(GOOS)-$(GOARCH)$/lifecycle
-package-windows-amd64: ARCHIVE_PATH=$(BUILD_DIR)$/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).x86-64.tgz
+package-windows-amd64: ARCHIVE_PATH=$(BUILD_DIR)$/lifecycle-v$(LIFECYCLE_VERSION)+$(GOOS).amd64.tgz
 package-windows-amd64: PACKAGER=.$/tools$/packager$/main.go
 package-windows-amd64:
 	@echo "> Packaging lifecycle for $(GOOS)/$(GOARCH)..."

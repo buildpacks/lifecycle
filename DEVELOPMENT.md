@@ -53,7 +53,7 @@ To test, build, and package binaries into an archive, simply run:
 ```bash
 $ make all
 ```
-This will create archives at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz` and `out/lifecycle-<LIFECYCLE_VERSION>+windows.x86-64.tgz`.
+This will create archives at `out/lifecycle-<LIFECYCLE_VERSION>+linux.amd64.tgz` and `out/lifecycle-<LIFECYCLE_VERSION>+windows.amd64.tgz`.
 
 `LIFECYCLE_VERSION` defaults to the value returned by `git describe --tags` if not on a release branch (for more information about the release process, see [RELEASE](RELEASE.md)). It can be changed by prepending `LIFECYCLE_VERSION=<some version>` to the
 `make` command. For example:
@@ -84,7 +84,7 @@ $ make build
 
 ### Package
 
-Creates archives at `out/lifecycle-<LIFECYCLE_VERSION>+linux.x86-64.tgz` and `out/lifecycle-<LIFECYCLE_VERSION>+windows.x86-64.tgz`, using the contents of the
+Creates archives at `out/lifecycle-<LIFECYCLE_VERSION>+linux.amd64.tgz` and `out/lifecycle-<LIFECYCLE_VERSION>+windows.amd64.tgz`, using the contents of the
 `out/linux/lifecycle/` directory, for the given (or default) `LIFECYCLE_VERSION`.
 
 ```bash
