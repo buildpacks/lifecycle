@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
+	"github.com/buildpacks/lifecycle/utils"
 )
 
 type buildCmd struct {
@@ -106,14 +107,14 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		return cmd.FailErrCode(err, ba.platform.CodeFor(common.BuildError), "build")
 	}
 
-	if err := buildpack.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
+	if err := utils.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write build metadata")
 	}
 	return nil
 }
 
 func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {
-	group, err := lifecycle.ReadGroup(b.groupPath)
+	group, err := buildpack.ReadGroup(b.groupPath)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}

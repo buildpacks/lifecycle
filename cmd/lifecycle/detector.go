@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
+	"github.com/buildpacks/lifecycle/utils"
 )
 
 type detectCmd struct {
@@ -79,7 +80,7 @@ func (d *detectCmd) Exec() error {
 }
 
 func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
-	order, err := lifecycle.ReadOrder(da.orderPath)
+	order, err := buildpack.ReadOrder(da.orderPath)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
@@ -142,11 +143,11 @@ func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
 }
 
 func (d *detectCmd) writeData(group buildpack.Group, plan platform.BuildPlan) error {
-	if err := buildpack.WriteTOML(d.groupPath, group); err != nil {
+	if err := utils.WriteTOML(d.groupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
 
-	if err := buildpack.WriteTOML(d.planPath, plan); err != nil {
+	if err := utils.WriteTOML(d.planPath, plan); err != nil {
 		return cmd.FailErr(err, "write detect plan")
 	}
 	return nil

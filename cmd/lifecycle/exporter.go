@@ -24,6 +24,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
+	"github.com/buildpacks/lifecycle/utils"
 )
 
 type exportCmd struct {
@@ -196,7 +197,7 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(e.groupPath)
+	group, err := buildpack.ReadGroup(e.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
@@ -310,7 +311,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	if err != nil {
 		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "export")
 	}
-	if err := buildpack.WriteTOML(ea.reportPath, &report); err != nil {
+	if err := utils.WriteTOML(ea.reportPath, &report); err != nil {
 		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "write export report")
 	}
 

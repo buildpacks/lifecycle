@@ -11,6 +11,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/utils"
 )
 
 type Rebaser struct {
@@ -24,7 +25,7 @@ type RebaseReport struct {
 
 func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
 	var origMetadata platform.LayersMetadataCompat
-	if err := DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
+	if err := utils.DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}
 
@@ -79,7 +80,7 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 	}
 
 	hasPrefix := func(l string) bool { return strings.HasPrefix(l, "io.buildpacks.stack.") }
-	if err := syncLabels(newBaseImage, appImage, hasPrefix); err != nil {
+	if err := utils.SyncLabels(newBaseImage, appImage, hasPrefix); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
 
@@ -100,18 +101,18 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 	var appImageMixins []string
 	var newBaseImageMixins []string
 
-	if err := DecodeLabel(appImg, platform.MixinsLabel, &appImageMixins); err != nil {
+	if err := utils.DecodeLabel(appImg, platform.MixinsLabel, &appImageMixins); err != nil {
 		return errors.Wrap(err, "get app image mixins")
 	}
 
-	if err := DecodeLabel(newBaseImg, platform.MixinsLabel, &newBaseImageMixins); err != nil {
+	if err := utils.DecodeLabel(newBaseImg, platform.MixinsLabel, &newBaseImageMixins); err != nil {
 		return errors.Wrap(err, "get run image mixins")
 	}
 
-	appImageMixins = removeStagePrefixes(appImageMixins)
-	newBaseImageMixins = removeStagePrefixes(newBaseImageMixins)
+	appImageMixins = utils.RemoveStagePrefixes(appImageMixins)
+	newBaseImageMixins = utils.RemoveStagePrefixes(newBaseImageMixins)
 
-	_, missing, _ := compare(newBaseImageMixins, appImageMixins)
+	_, missing, _ := utils.Compare(newBaseImageMixins, appImageMixins)
 
 	if len(missing) > 0 {
 		sort.Strings(missing)

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/utils"
 )
 
 func saveImage(image imgutil.Image, additionalNames []string, logger Logger) (platform.ImageReport, error) {
@@ -72,7 +73,7 @@ func (me *MultiError) Error() string {
 func shortID(identifier imgutil.Identifier) string {
 	switch v := identifier.(type) {
 	case local.IDIdentifier:
-		return TruncateSha(v.String())
+		return utils.TruncateSha(v.String())
 	case remote.DigestIdentifier:
 		return v.Digest.DigestStr()
 	default:

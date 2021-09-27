@@ -1,29 +1,15 @@
-package lifecycle
+package utils
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/lifecycle/buildpack"
 )
-
-func ReadGroup(path string) (buildpack.Group, error) {
-	var group buildpack.Group
-	_, err := toml.DecodeFile(path, &group)
-	return group, err
-}
-
-func ReadOrder(path string) (buildpack.Order, error) {
-	var order struct {
-		Order buildpack.Order `toml:"order"`
-	}
-	_, err := toml.DecodeFile(path, &order)
-	return order.Order, err
-}
 
 func TruncateSha(sha string) string {
 	rawSha := strings.TrimPrefix(sha, "sha256:")
@@ -50,7 +36,7 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 	return nil
 }
 
-func removeStagePrefixes(mixins []string) []string {
+func RemoveStagePrefixes(mixins []string) []string {
 	var result []string
 	for _, m := range mixins {
 		s := strings.SplitN(m, ":", 2)
@@ -68,7 +54,7 @@ func removeStagePrefixes(mixins []string) []string {
 // missing from `strings1`. `common` represents elements present in both slices. Since the input
 // slices are treated as sets, duplicates will be removed in any outputs.
 // from: https://github.com/buildpacks/pack/blob/main/internal/stringset/stringset.go
-func compare(strings1, strings2 []string) (extra []string, missing []string, common []string) {
+func Compare(strings1, strings2 []string) (extra []string, missing []string, common []string) {
 	set1 := map[string]struct{}{}
 	set2 := map[string]struct{}{}
 	for _, s := range strings1 {
@@ -95,7 +81,7 @@ func compare(strings1, strings2 []string) (extra []string, missing []string, com
 	return extra, missing, common
 }
 
-func syncLabels(sourceImg imgutil.Image, destImage imgutil.Image, test func(string) bool) error {
+func SyncLabels(sourceImg imgutil.Image, destImage imgutil.Image, test func(string) bool) error {
 	if err := removeLabels(destImage, test); err != nil {
 		return err
 	}
@@ -132,4 +118,16 @@ func copyLabels(fromImage imgutil.Image, destImage imgutil.Image, test func(stri
 		}
 	}
 	return nil
+}
+
+func WriteTOML(path string, data interface{}) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return toml.NewEncoder(f).Encode(data)
 }

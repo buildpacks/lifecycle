@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/utils"
 )
 
 type BuildEnv interface {
@@ -153,23 +154,11 @@ func preparePaths(bpID string, bpPlan Plan, layersDir, planDir string) (string, 
 		return "", "", err
 	}
 	bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-	if err := WriteTOML(bpPlanPath, bpPlan); err != nil {
+	if err := utils.WriteTOML(bpPlanPath, bpPlan); err != nil {
 		return "", "", err
 	}
 
 	return bpLayersDir, bpPlanPath, nil
-}
-
-func WriteTOML(path string, data interface{}) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
-		return err
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return toml.NewEncoder(f).Encode(data)
 }
 
 func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig, bpEnv BuildEnv) error {
