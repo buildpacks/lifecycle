@@ -6,9 +6,9 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/imageutils"
 	"github.com/buildpacks/lifecycle/layermetadata"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/utils"
 )
 
 type Platform interface {
@@ -42,7 +42,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 
 		// continue even if the label cannot be decoded
-		if err := utils.DecodeLabel(a.Image, platform.LayerMetadataLabel, &appMeta); err != nil {
+		if err := imageutils.DecodeLabel(a.Image, platform.LayerMetadataLabel, &appMeta); err != nil {
 			appMeta = platform.LayersMetadata{}
 		}
 	} else {

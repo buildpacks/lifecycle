@@ -16,12 +16,12 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/encoding"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/layermetadata"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
-	"github.com/buildpacks/lifecycle/utils"
 )
 
 type analyzeCmd struct {
@@ -207,7 +207,7 @@ func (a *analyzeCmd) Exec() error {
 		return err
 	}
 
-	if err := utils.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
+	if err := encoding.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
 		return errors.Wrap(err, "write analyzed.toml")
 	}
 

@@ -15,11 +15,12 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/encoding"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/imageutils"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
-	"github.com/buildpacks/lifecycle/utils"
 )
 
 type rebaseCmd struct {
@@ -124,7 +125,7 @@ func (r *rebaseCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "rebase")
 	}
-	if err := utils.WriteTOML(r.reportPath, &report); err != nil {
+	if err := encoding.WriteTOML(r.reportPath, &report); err != nil {
 		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "write rebase report")
 	}
 	return nil
@@ -168,7 +169,7 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	var md platform.LayersMetadata
-	if err := utils.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
+	if err := imageutils.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 

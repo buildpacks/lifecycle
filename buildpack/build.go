@@ -14,10 +14,10 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
+	"github.com/buildpacks/lifecycle/encoding"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/utils"
 )
 
 type BuildEnv interface {
@@ -154,7 +154,7 @@ func preparePaths(bpID string, bpPlan Plan, layersDir, planDir string) (string, 
 		return "", "", err
 	}
 	bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-	if err := utils.WriteTOML(bpPlanPath, bpPlan); err != nil {
+	if err := encoding.WriteTOML(bpPlanPath, bpPlan); err != nil {
 		return "", "", err
 	}
 

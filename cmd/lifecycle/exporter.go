@@ -19,12 +19,12 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/encoding"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
-	"github.com/buildpacks/lifecycle/utils"
 )
 
 type exportCmd struct {
@@ -311,7 +311,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	if err != nil {
 		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "export")
 	}
-	if err := utils.WriteTOML(ea.reportPath, &report); err != nil {
+	if err := encoding.WriteTOML(ea.reportPath, &report); err != nil {
 		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "write export report")
 	}
 
