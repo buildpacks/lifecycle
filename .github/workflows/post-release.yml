@@ -73,7 +73,7 @@ jobs:
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom \
-            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}${MANIFEST_SHA}
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
       - name: Retag lifecycle images & create manifest list - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
