@@ -51,19 +51,14 @@ jobs:
         run: |
           DOCKER_CLI_EXPERIMENTAL=enabled
 
-          LINUX_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-x86-64 2>&1 | cut -d' ' -f5)
-          echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
-
-          LINUX_ARM64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-arm64 2>&1 | cut -d' ' -f5)
-          echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
-
-          WINDOWS_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-windows 2>&1 | cut -d' ' -f5)
-          echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-x86-64
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} ${{ env.LIFECYCLE_VERSION }}-linux-arm64
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} ${{ env.LIFECYCLE_VERSION }}-windows
 
           docker manifest create buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }} \
-            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-x86-64@${LINUX_AMD64_SHA} \
-            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-arm64@${LINUX_ARM64_SHA} \
-            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows@${WINDOWS_AMD64_SHA}
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} \
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} \
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}-windows@${{ env.WINDOWS_AMD64_SHA }}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }})
           echo "MANIFEST_SHA: $MANIFEST_SHA"
@@ -75,30 +70,24 @@ jobs:
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
-          MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom \
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
-          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
+          cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
       - name: Retag lifecycle images & create manifest list - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
         run: |
           DOCKER_CLI_EXPERIMENTAL=enabled
 
-          LINUX_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} latest-linux-x86-64 2>&1 | cut -d' ' -f5)
-          echo "LINUX_AMD64_SHA: $LINUX_AMD64_SHA"
-
-          LINUX_ARM64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} latest-linux-arm64 2>&1 | cut -d' ' -f5)
-          echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
-
-          WINDOWS_AMD64_SHA=$(crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} latest-windows 2>&1 | cut -d' ' -f5)
-          echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-x86-64@${{ env.LINUX_AMD64_SHA }} latest-linux-x86-64
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-linux-arm64@${{ env.LINUX_ARM64_SHA }} latest-linux-arm64
+          crane tag buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}-windows@${{ env.WINDOWS_AMD64_SHA }} latest-windows
 
           docker manifest create buildpacksio/lifecycle:latest \
-            buildpacksio/lifecycle:latest-linux-x86-64@${LINUX_AMD64_SHA} \
-            buildpacksio/lifecycle:latest-linux-arm64@${LINUX_ARM64_SHA} \
-            buildpacksio/lifecycle:latest-windows@${WINDOWS_AMD64_SHA}
+            buildpacksio/lifecycle:latest-linux-x86-64@${{ env.LINUX_AMD64_SHA }} \
+            buildpacksio/lifecycle:latest-linux-arm64@${{ env.LINUX_ARM64_SHA }} \
+            buildpacksio/lifecycle:latest-windows@${{ env.WINDOWS_AMD64_SHA }}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:latest)
           echo "MANIFEST_SHA: $MANIFEST_SHA"
@@ -110,7 +99,6 @@ jobs:
           cosign verify -key cosign.pub -a tag=latest buildpacksio/lifecycle:latest
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:latest
-          MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom \
