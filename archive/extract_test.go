@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -196,10 +194,8 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 
 			foundUmask, err := archive.GetUmask()
 			h.AssertNil(t, err)
-			expectedUmask := unix.Umask(0)
-			defer unix.Umask(expectedUmask)
 
-			h.AssertEq(t, foundUmask, expectedUmask)
+			h.AssertEq(t, foundUmask, h.ExpectedUmask())
 		})
 	})
 }
