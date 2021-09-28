@@ -14,8 +14,8 @@ var systemUmask int
 
 func init() {
 	// Avoid umask from changing the file permissions in the tar file.
-	systemUmask = setUmask(0)
-	_ = setUmask(systemUmask)
+	systemUmask = SetUmask(0)
+	_ = SetUmask(systemUmask)
 }
 
 type PathMode struct {
@@ -25,6 +25,11 @@ type PathMode struct {
 
 // Extract reads all entries from TarReader and extracts them to the filesystem
 func Extract(tr TarReader) error {
+	currentUmask := SetUmask(0)
+	if currentUmask != 0 {
+		return errors.New("umask should be unset by the calling function")
+	}
+
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)
 
