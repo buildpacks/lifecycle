@@ -10,12 +10,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-var systemUmask int
+var SystemUmask int
 
 func init() {
 	// Avoid umask from changing the file permissions in the tar file.
-	systemUmask = SetUmask(0)
-	_ = SetUmask(systemUmask)
+	SystemUmask = SetUmask(0)
+	_ = SetUmask(SystemUmask)
 }
 
 type PathMode struct {
@@ -27,6 +27,7 @@ type PathMode struct {
 func Extract(tr TarReader) error {
 	currentUmask := SetUmask(0)
 	if currentUmask != 0 {
+		SetUmask(SystemUmask) // reset
 		return errors.New("umask should be unset by the calling function")
 	}
 
@@ -63,7 +64,7 @@ func Extract(tr TarReader) error {
 			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, systemUmask)); err != nil {
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, SystemUmask)); err != nil {
 						return errors.Wrapf(err, "failed to create parent dir %q for file %q", dirPath, hdr.Name)
 					}
 					dirsFound[dirPath] = true

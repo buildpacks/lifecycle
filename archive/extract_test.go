@@ -174,5 +174,18 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0777)
 			}
 		})
+
+		when("umask is set", func() {
+			it("errors", func() {
+				h.SkipIf(t, archive.SystemUmask == 0, "Extract will not error as expected if umask is unset")
+
+				err := archive.Extract(tr)
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "umask should be unset by the calling function")
+
+				old := archive.SetUmask(archive.SystemUmask)
+				h.AssertEq(t, old, archive.SystemUmask)
+			})
+		})
 	})
 }
