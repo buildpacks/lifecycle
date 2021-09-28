@@ -70,11 +70,10 @@ jobs:
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}
-          STRIPPED_MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom \
-            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@sha256-${STRIPPED_MANIFEST_SHA}
+            buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
       - name: Retag lifecycle images & create manifest list - latest
         if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
@@ -100,9 +99,8 @@ jobs:
           cosign verify -key cosign.pub -a tag=latest buildpacksio/lifecycle:latest
 
           cosign attach sbom -sbom ./*-bom.cdx.json -type cyclonedx buildpacksio/lifecycle:latest
-          STRIPPED_MANIFEST_SHA=${MANIFEST_SHA#"sha256:"}
           COSIGN_PASSWORD=${{ secrets.COSIGN_PASSWORD }} cosign sign -r \
             -key <(echo -n "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 --decode) \
             -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom \
-            buildpacksio/lifecycle:latest@sha256-${STRIPPED_MANIFEST_SHA}
+            buildpacksio/lifecycle:latest@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:latest@${MANIFEST_SHA}
