@@ -27,7 +27,7 @@ type PathMode struct {
 func Extract(tr TarReader) error {
 	currentUmask := SetUmask(0)
 	if currentUmask != 0 {
-		SetUmask(SystemUmask) // reset
+		_ = SetUmask(SystemUmask) // reset
 		return errors.New("umask should be unset by the calling function")
 	}
 
