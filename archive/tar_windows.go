@@ -24,7 +24,7 @@ func SetUmask(new int) (old int) {
 
 func GetUmask() (int, error) {
 	// Not implemented on Windows
-	return 0
+	return 0, nil
 }
 
 // createSymlink uses the file attributes in the PAX records to decide whether to make a directory or file type symlink.
