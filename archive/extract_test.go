@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -177,15 +179,27 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 
 		when("umask is set", func() {
 			it("errors", func() {
-				h.SkipIf(t, archive.SystemUmask == 0, "Extract will not error as expected if umask is unset")
+				currentMask, err := archive.GetUmask()
+				h.AssertNil(t, err)
+				h.SkipIf(t, currentMask == 0, "#Extract will not error as expected if umask is unset")
 
-				err := archive.Extract(tr)
+				err = archive.Extract(tr)
 				h.AssertNotNil(t, err)
 				h.AssertError(t, err, "umask should be unset by the calling function")
-
-				old := archive.SetUmask(archive.SystemUmask)
-				h.AssertEq(t, old, archive.SystemUmask)
 			})
+		})
+	})
+
+	when("#GetUmask", func() {
+		it("returns the umask for the process", func() {
+			h.SkipIf(t, runtime.GOOS == "windows", "#GetUmask not implemented for Windows")
+
+			foundUmask, err := archive.GetUmask()
+			h.AssertNil(t, err)
+			expectedUmask := unix.Umask(0)
+			defer unix.Umask(expectedUmask)
+
+			h.AssertEq(t, foundUmask, expectedUmask)
 		})
 	})
 }

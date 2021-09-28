@@ -9,8 +9,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func SetUmask(newMask int) (oldMask int) {
-	return unix.Umask(newMask)
+func SetUmask(new int) (old int) {
+	return unix.Umask(new)
 }
 
 func createSymlink(hdr *tar.Header) error {
