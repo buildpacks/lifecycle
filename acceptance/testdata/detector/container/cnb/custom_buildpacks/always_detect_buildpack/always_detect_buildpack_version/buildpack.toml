@@ -1,4 +1,4 @@
-api = "0.7"
+api = "0.6"
 [buildpack]
     id = "always_detect_buildpack"
     version = "always_detect_buildpack_version"
