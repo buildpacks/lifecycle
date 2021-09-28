@@ -10,6 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+var systemUmask int
+
+func init() {
+	var err error
+	systemUmask, err = GetUmask()
+	if err != nil {
+		panic(err)
+	}
+}
+
 type PathMode struct {
 	Path string
 	Mode os.FileMode
@@ -58,7 +68,7 @@ func Extract(tr TarReader) error {
 			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, currentUmask)); err != nil {
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, systemUmask)); err != nil {
 						return errors.Wrapf(err, "failed to create parent dir %q for file %q", dirPath, hdr.Name)
 					}
 					dirsFound[dirPath] = true

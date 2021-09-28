@@ -40,6 +40,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		}
 	}
 
+	// Avoid umask from changing the file permissions in the tar file.
 	old := archive.SetUmask(0)
 	defer archive.SetUmask(old)
 
