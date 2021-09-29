@@ -17,6 +17,10 @@ func Extract(r io.Reader, dest string, procUmask int) error {
 	return archive.Extract(tr, procUmask)
 }
 
+func SetUmask(newMask int) (oldMask int) {
+	return archive.SetUmask(newMask)
+}
+
 func tarReader(r io.Reader, dest string) archive.TarReader {
 	tr := archive.NewNormalizingTarReader(tar.NewReader(r))
 	if runtime.GOOS == "windows" {

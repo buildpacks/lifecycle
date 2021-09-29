@@ -7,7 +7,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/layers"
@@ -41,8 +40,8 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 
 	// Avoid umask from changing the file permissions in the tar file.
-	previousUmask := archive.SetUmask(0)
-	defer archive.SetUmask(previousUmask)
+	previousUmask := layers.SetUmask(0)
+	defer layers.SetUmask(previousUmask)
 
 	var g errgroup.Group
 	for _, buildpack := range r.Buildpacks {
