@@ -24,7 +24,7 @@ type Cache interface {
 	Commit() error
 }
 
-//go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle/layermetadata MetaRestorer
+//go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle/internal/layermetadata MetaRestorer
 type MetaRestorer interface {
 	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore LayerSHAStore) error
 }

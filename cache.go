@@ -3,7 +3,7 @@ package lifecycle
 import (
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/layermetadata"
+	"github.com/buildpacks/lifecycle/internal/layermetadata"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
