@@ -152,7 +152,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertNil(t, file.Close())
 
-			h.AssertError(t, archive.Extract(tr, 0), "failed to create directory")
+			h.AssertError(t, archive.Extract(tr, oldUmask), "failed to create directory")
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
