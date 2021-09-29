@@ -17,7 +17,7 @@ type PathMode struct {
 
 // Extract reads all entries from TarReader and extracts them to the filesystem.
 // The umask must be unset before calling this function on Unix, to ensure that files have the correct file mode.
-func Extract(tr TarReader, dirUmask int) error {
+func Extract(tr TarReader, procUmask int) error {
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)
 
@@ -51,7 +51,7 @@ func Extract(tr TarReader, dirUmask int) error {
 			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, dirUmask)); err != nil { // if there is no header for the parent directory in the tar, apply the provided umask
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, procUmask)); err != nil { // if there is no header for the parent directory in the tar, apply the provided umask
 						return errors.Wrapf(err, "failed to create parent dir %q for file %q", dirPath, hdr.Name)
 					}
 					dirsFound[dirPath] = true

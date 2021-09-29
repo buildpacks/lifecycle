@@ -27,7 +27,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		tmpDir                  string
 		tr                      *archive.NormalizingTarReader
 		ftr                     *fakeTarReader
-		systemUmask             int
+		procUmask               int
 		expectedModeNonExistDir os.FileMode
 	)
 
@@ -39,9 +39,9 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		tr = archive.NewNormalizingTarReader(ftr)
 		tr.PrependDir(tmpDir)
 		// determine the system umask by unsetting and resetting it
-		systemUmask = archive.SetUmask(0)
-		archive.SetUmask(systemUmask)
-		expectedModeNonExistDir = os.ModeDir + os.FileMode(int(os.ModePerm)&^systemUmask)
+		procUmask = archive.SetUmask(0)
+		archive.SetUmask(procUmask)
+		expectedModeNonExistDir = os.ModeDir + os.FileMode(int(os.ModePerm)&^procUmask)
 	})
 
 	it.After(func() {

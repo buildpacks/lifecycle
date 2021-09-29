@@ -12,9 +12,9 @@ import (
 // Contents of r should be an OCI layer.
 // If dest is an empty string files with be extracted to `/` or `c:\` on unix and windows filesystems respectively.
 // The umask must be unset before calling this function on Unix, to ensure that files have the correct file mode.
-func Extract(r io.Reader, dest string, dirUmask int) error {
+func Extract(r io.Reader, dest string, procUmask int) error {
 	tr := tarReader(r, dest)
-	return archive.Extract(tr, dirUmask)
+	return archive.Extract(tr, procUmask)
 }
 
 func tarReader(r io.Reader, dest string) archive.TarReader {

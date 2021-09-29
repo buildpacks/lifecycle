@@ -109,7 +109,7 @@ func (r *Restorer) restoresLayerMetadata() bool {
 	return api.MustParse(r.Platform.API()).AtLeast("0.7")
 }
 
-func (r *Restorer) restoreLayer(cache Cache, sha string, dirUmask int) error {
+func (r *Restorer) restoreLayer(cache Cache, sha string, procUmask int) error {
 	// Sanity check to prevent panic.
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
@@ -121,5 +121,5 @@ func (r *Restorer) restoreLayer(cache Cache, sha string, dirUmask int) error {
 	}
 	defer rc.Close()
 
-	return layers.Extract(rc, "", dirUmask)
+	return layers.Extract(rc, "", procUmask)
 }
