@@ -40,8 +40,12 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		tr.PrependDir(tmpDir)
 		// determine the system umask by unsetting and resetting it
 		procUmask = archive.SetUmask(0)
-		archive.SetUmask(procUmask)
-		expectedModeNonExistDir = os.ModeDir + os.FileMode(int(os.ModePerm)&^procUmask)
+		_ = archive.SetUmask(procUmask)
+		if runtime.GOOS == "windows" {
+			expectedModeNonExistDir = os.ModeDir + 0777
+		} else {
+			expectedModeNonExistDir = os.ModeDir + os.FileMode(int(os.ModePerm)&^procUmask)
+		}
 	})
 
 	it.After(func() {
