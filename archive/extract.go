@@ -25,7 +25,7 @@ func Extract(tr TarReader, dirUmask int) error {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			for _, pathMode := range pathModes { // change newly created `tar.TypeDir` directories to have the right permissions
+			for _, pathMode := range pathModes { // directories that are newly created and for which there is a header in the tar should have the right permissions
 				if err := os.Chmod(pathMode.Path, pathMode.Mode); err != nil {
 					return err
 				}
