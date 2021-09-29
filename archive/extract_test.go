@@ -24,9 +24,11 @@ func TestArchiveExtract(t *testing.T) {
 
 func testExtract(t *testing.T, when spec.G, it spec.S) {
 	var (
-		tmpDir string
-		tr     *archive.NormalizingTarReader
-		ftr    *fakeTarReader
+		tmpDir                  string
+		tr                      *archive.NormalizingTarReader
+		ftr                     *fakeTarReader
+		systemUmask             int
+		expectedModeNonExistDir os.FileMode
 	)
 
 	it.Before(func() {
@@ -36,6 +38,10 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		ftr = &fakeTarReader{}
 		tr = archive.NewNormalizingTarReader(ftr)
 		tr.PrependDir(tmpDir)
+		// determine the system umask by unsetting and resetting it
+		systemUmask = archive.SetUmask(0)
+		archive.SetUmask(systemUmask)
+		expectedModeNonExistDir = os.ModeDir + os.FileMode(int(os.ModePerm)&^systemUmask)
 	})
 
 	it.After(func() {
@@ -80,6 +86,11 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				Typeflag: tar.TypeSymlink,
 				Linkname: filepath.FromSlash("../not-in-archive-file"),
 				Mode:     int64(os.ModeSymlink | 0755),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/nonexistdirnotintar/somefile",
+				Typeflag: tar.TypeReg,
+				Mode:     int64(0644),
 			})
 			ftr.pushHeader(&tar.Header{
 				Name:     "root/standarddir/somefile",
@@ -135,13 +146,10 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, archive.Extract(tr, oldUmask))
 
 			for _, pathMode := range pathModes {
-				extractedFile := filepath.Join(tmpDir, pathMode.Path)
-
-				fileInfo, err := os.Lstat(extractedFile)
-				h.AssertNil(t, err)
-
-				h.AssertEq(t, fileInfo.Mode(), pathMode.Mode)
+				testPathPerms(t, tmpDir, pathMode.Path, pathMode.Mode)
 			}
+			// the expected mode for nonexistdirnotintar is set in it.Before, so it can't go in the pathModes map
+			testPathPerms(t, tmpDir, "root/nonexistdirnotintar", expectedModeNonExistDir)
 		})
 
 		it("fails if file exists where directory needs to be created", func() {
@@ -175,4 +183,13 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 	})
+}
+
+func testPathPerms(t *testing.T, parentDir, path string, expectedMode os.FileMode) {
+	extractedFile := filepath.Join(parentDir, path)
+
+	fileInfo, err := os.Lstat(extractedFile)
+	h.AssertNil(t, err)
+
+	h.AssertEq(t, fileInfo.Mode(), expectedMode)
 }
