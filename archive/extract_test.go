@@ -129,10 +129,10 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("extracts a tar file", func() {
-			old := archive.SetUmask(0)
-			defer archive.SetUmask(old)
+			oldUmask := archive.SetUmask(0)
+			defer archive.SetUmask(oldUmask)
 
-			h.AssertNil(t, archive.Extract(tr, 0))
+			h.AssertNil(t, archive.Extract(tr, oldUmask))
 
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
@@ -145,8 +145,8 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("fails if file exists where directory needs to be created", func() {
-			old := archive.SetUmask(0)
-			defer archive.SetUmask(old)
+			oldUmask := archive.SetUmask(0)
+			defer archive.SetUmask(oldUmask)
 
 			file, err := os.Create(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
@@ -156,14 +156,14 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
-			old := archive.SetUmask(0)
-			defer archive.SetUmask(old)
+			oldUmask := archive.SetUmask(0)
+			defer archive.SetUmask(oldUmask)
 
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "root"), 0744))
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
 
-			h.AssertNil(t, archive.Extract(tr, 0))
+			h.AssertNil(t, archive.Extract(tr, oldUmask))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
