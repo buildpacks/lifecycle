@@ -132,7 +132,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			old := archive.SetUmask(0)
 			defer archive.SetUmask(old)
 
-			h.AssertNil(t, archive.Extract(tr))
+			h.AssertNil(t, archive.Extract(tr, 0))
 
 			for _, pathMode := range pathModes {
 				extractedFile := filepath.Join(tmpDir, pathMode.Path)
@@ -152,7 +152,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertNil(t, file.Close())
 
-			h.AssertError(t, archive.Extract(tr), "failed to create directory")
+			h.AssertError(t, archive.Extract(tr, 0), "failed to create directory")
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
@@ -163,7 +163,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
 
-			h.AssertNil(t, archive.Extract(tr))
+			h.AssertNil(t, archive.Extract(tr, 0))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
@@ -173,29 +173,6 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				// Golang for Windows only implements owner permissions
 				h.AssertEq(t, fileInfo.Mode(), os.ModeDir+0777)
 			}
-		})
-
-		when("umask is set", func() {
-			it("errors", func() {
-				currentMask, err := archive.GetUmask()
-				h.AssertNil(t, err)
-				h.SkipIf(t, currentMask == 0, "#Extract will not error as expected if umask is unset")
-
-				err = archive.Extract(tr)
-				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "umask should be unset by the calling function")
-			})
-		})
-	})
-
-	when("#GetUmask", func() {
-		it("returns the umask for the process", func() {
-			h.SkipIf(t, runtime.GOOS == "windows", "#GetUmask not implemented for Windows")
-
-			foundUmask, err := archive.GetUmask()
-			h.AssertNil(t, err)
-
-			h.AssertEq(t, foundUmask, h.ExpectedUmask())
 		})
 	})
 }
