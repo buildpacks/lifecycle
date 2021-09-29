@@ -25,7 +25,7 @@ func Extract(tr TarReader, dirUmask int) error {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			for _, pathMode := range pathModes {
+			for _, pathMode := range pathModes { // change newly created `tar.TypeDir` directories to have the right permissions
 				if err := os.Chmod(pathMode.Path, pathMode.Mode); err != nil {
 					return err
 				}
@@ -51,7 +51,7 @@ func Extract(tr TarReader, dirUmask int) error {
 			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, dirUmask)); err != nil {
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, dirUmask)); err != nil { // if there is no header for the parent directory in the tar, apply the provided umask
 						return errors.Wrapf(err, "failed to create parent dir %q for file %q", dirPath, hdr.Name)
 					}
 					dirsFound[dirPath] = true
