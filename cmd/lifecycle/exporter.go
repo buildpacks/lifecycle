@@ -22,6 +22,7 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -57,7 +58,7 @@ type exportArgs struct {
 	useDaemon bool
 	uid, gid  int
 
-	platform cmd.Platform
+	platform Platform
 
 	//construct if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -307,10 +308,10 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(cmd.ExportError), "export")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "export")
 	}
 	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(cmd.ExportError), "write export report")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "write export report")
 	}
 
 	if cacheStore != nil {
