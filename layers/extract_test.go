@@ -1,11 +1,13 @@
 package layers_test
 
 import (
-	"github.com/buildpacks/lifecycle/layers"
-	h "github.com/buildpacks/lifecycle/testhelpers"
+	"testing"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"testing"
+
+	"github.com/buildpacks/lifecycle/layers"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestExtract(t *testing.T) {
