@@ -62,7 +62,7 @@ func testTarWindows(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("sets dir attribute on windows directory symlinks", func() {
-			h.AssertNil(t, archive.Extract(tr, 0))
+			h.AssertNil(t, archive.Extract(tr))
 
 			extractedFile := filepath.Join(tmpDir, "root", "symlinkdir")
 			t.Log("asserting on", extractedFile)
