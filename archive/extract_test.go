@@ -24,11 +24,9 @@ func TestArchiveExtract(t *testing.T) {
 
 func testExtract(t *testing.T, when spec.G, it spec.S) {
 	var (
-		tmpDir                  string
-		tr                      *archive.NormalizingTarReader
-		ftr                     *fakeTarReader
-		procUmask               int
-		expectedModeNonExistDir os.FileMode
+		tmpDir string
+		tr     *archive.NormalizingTarReader
+		ftr    *fakeTarReader
 	)
 
 	it.Before(func() {
@@ -38,14 +36,6 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		ftr = &fakeTarReader{}
 		tr = archive.NewNormalizingTarReader(ftr)
 		tr.PrependDir(tmpDir)
-		// determine the system umask by unsetting and resetting it
-		procUmask = archive.SetUmask(0)
-		_ = archive.SetUmask(procUmask)
-		if runtime.GOOS == "windows" {
-			expectedModeNonExistDir = os.ModeDir + 0777
-		} else {
-			expectedModeNonExistDir = os.ModeDir + os.FileMode(int(os.ModePerm)&^procUmask)
-		}
 	})
 
 	it.After(func() {
@@ -60,6 +50,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/standarddir", os.ModeDir + 0755},
 			{"root/standarddir/somefile", 0644},
+			{"root/nonexistdirnotintar", os.ModeDir + os.FileMode(int(os.ModePerm)&^h.ProvidedUmask)},
 			{"root/symlinkdir", os.ModeSymlink + 0777},  //symlink permissions are not preserved from archive
 			{"root/symlinkfile", os.ModeSymlink + 0777}, //symlink permissions are not preserved from archive
 		}
@@ -73,6 +64,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				{`root\readonly\readonlysub\somefile`, 0444},
 				{`root\standarddir`, os.ModeDir + 0777},
 				{`root\standarddir\somefile`, 0666},
+				{`root\nonexistdirnotintar`, os.ModeDir + 0777},
 				{`root\symlinkdir`, os.ModeSymlink + 0666},
 				{`root\symlinkfile`, os.ModeSymlink + 0666},
 			}
@@ -147,13 +139,11 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			oldUmask := archive.SetUmask(0)
 			defer archive.SetUmask(oldUmask)
 
-			h.AssertNil(t, archive.Extract(tr, oldUmask))
+			h.AssertNil(t, archive.Extract(tr, h.ProvidedUmask))
 
 			for _, pathMode := range pathModes {
 				testPathPerms(t, tmpDir, pathMode.Path, pathMode.Mode)
 			}
-			// the expected mode for nonexistdirnotintar is set in it.Before, so it can't go in the pathModes map
-			testPathPerms(t, tmpDir, "root/nonexistdirnotintar", expectedModeNonExistDir)
 		})
 
 		it("fails if file exists where directory needs to be created", func() {

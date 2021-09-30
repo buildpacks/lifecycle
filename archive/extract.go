@@ -16,7 +16,8 @@ type PathMode struct {
 }
 
 // Extract reads all entries from TarReader and extracts them to the filesystem.
-// The umask must be unset before calling this function on Unix, to ensure that files have the correct file mode.
+// The umask must be unset before calling this function on unix, to ensure that files have the correct file mode.
+// The provided umask will be applied to new directories that are created as parent directories of files in the tar, that do not themselves have headers in the tar.
 func Extract(tr TarReader, procUmask int) error {
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)

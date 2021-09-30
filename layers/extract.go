@@ -11,7 +11,8 @@ import (
 // Extract extracts entries from r to the dest directory
 // Contents of r should be an OCI layer.
 // If dest is an empty string files with be extracted to `/` or `c:\` on unix and windows filesystems respectively.
-// The umask must be unset before calling this function on Unix, to ensure that files have the correct file mode.
+// The umask must be unset before calling this function on unix, to ensure that files have the correct file mode.
+// The provided umask will be applied to new directories that are created as parent directories of files in the tar, that do not themselves have headers in the tar.
 func Extract(r io.Reader, dest string, procUmask int) error {
 	tr := tarReader(r, dest)
 	return archive.Extract(tr, procUmask)
