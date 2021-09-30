@@ -24,20 +24,20 @@ var (
 
 func setUmaskIfNeeded() {
 	umaskLock.Lock()
+	defer umaskLock.Unlock()
 	extractCounter++
 	if extractCounter == 1 {
 		originalUmask = setUmask(0)
 	}
-	umaskLock.Unlock()
 }
 
 func unsetUmaskIfNeeded() {
 	umaskLock.Lock()
+	defer umaskLock.Unlock()
 	extractCounter--
 	if extractCounter == 0 {
 		_ = setUmask(originalUmask)
 	}
-	umaskLock.Unlock()
 }
 
 // Extract reads all entries from TarReader and extracts them to the filesystem.
