@@ -10,21 +10,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-var systemUmask int
-
-func init() {
-	// Avoid umask from changing the file permissions in the tar file.
-	systemUmask = setUmask(0)
-	_ = setUmask(systemUmask)
-}
-
 type PathMode struct {
 	Path string
 	Mode os.FileMode
 }
 
-// Extract reads all entries from TarReader and extracts them to the filesystem
-func Extract(tr TarReader) error {
+// Extract reads all entries from TarReader and extracts them to the filesystem.
+// The umask must be unset before calling this function on unix, to ensure that files have the correct file mode. SetUmask can be used to set and unset the umask.
+// The provided umask will be applied to new directories that are created as parent directories of files in the tar, that do not themselves have headers in the tar.
+func Extract(tr TarReader, procUmask int) error {
 	buf := make([]byte, 32*32*1024)
 	dirsFound := make(map[string]bool)
 
@@ -32,7 +26,7 @@ func Extract(tr TarReader) error {
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
-			for _, pathMode := range pathModes {
+			for _, pathMode := range pathModes { // directories that are newly created and for which there is a header in the tar should have the right permissions
 				if err := os.Chmod(pathMode.Path, pathMode.Mode); err != nil {
 					return err
 				}
@@ -58,7 +52,7 @@ func Extract(tr TarReader) error {
 			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, systemUmask)); err != nil {
+					if err := os.MkdirAll(dirPath, applyUmask(os.ModePerm, procUmask)); err != nil { // if there is no header for the parent directory in the tar, apply the provided umask
 						return errors.Wrapf(err, "failed to create parent dir %q for file %q", dirPath, hdr.Name)
 					}
 					dirsFound[dirPath] = true

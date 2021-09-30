@@ -50,6 +50,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			{"root/readonly/readonlysub/somefile", 0444},
 			{"root/standarddir", os.ModeDir + 0755},
 			{"root/standarddir/somefile", 0644},
+			{"root/nonexistdirnotintar", os.ModeDir + os.FileMode(int(os.ModePerm)&^h.ProvidedUmask)},
 			{"root/symlinkdir", os.ModeSymlink + 0777},  //symlink permissions are not preserved from archive
 			{"root/symlinkfile", os.ModeSymlink + 0777}, //symlink permissions are not preserved from archive
 		}
@@ -63,6 +64,7 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				{`root\readonly\readonlysub\somefile`, 0444},
 				{`root\standarddir`, os.ModeDir + 0777},
 				{`root\standarddir\somefile`, 0666},
+				{`root\nonexistdirnotintar`, os.ModeDir + 0777},
 				{`root\symlinkdir`, os.ModeSymlink + 0666},
 				{`root\symlinkfile`, os.ModeSymlink + 0666},
 			}
@@ -80,6 +82,11 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				Typeflag: tar.TypeSymlink,
 				Linkname: filepath.FromSlash("../not-in-archive-file"),
 				Mode:     int64(os.ModeSymlink | 0755),
+			})
+			ftr.pushHeader(&tar.Header{
+				Name:     "root/nonexistdirnotintar/somefile",
+				Typeflag: tar.TypeReg,
+				Mode:     int64(0644),
 			})
 			ftr.pushHeader(&tar.Header{
 				Name:     "root/standarddir/somefile",
@@ -129,32 +136,36 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("extracts a tar file", func() {
-			h.AssertNil(t, archive.Extract(tr))
+			oldUmask := archive.SetUmask(0)
+			defer archive.SetUmask(oldUmask)
+
+			h.AssertNil(t, archive.Extract(tr, h.ProvidedUmask))
 
 			for _, pathMode := range pathModes {
-				extractedFile := filepath.Join(tmpDir, pathMode.Path)
-
-				fileInfo, err := os.Lstat(extractedFile)
-				h.AssertNil(t, err)
-
-				h.AssertEq(t, fileInfo.Mode(), pathMode.Mode)
+				testPathPerms(t, tmpDir, pathMode.Path, pathMode.Mode)
 			}
 		})
 
 		it("fails if file exists where directory needs to be created", func() {
+			oldUmask := archive.SetUmask(0)
+			defer archive.SetUmask(oldUmask)
+
 			file, err := os.Create(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 			h.AssertNil(t, file.Close())
 
-			h.AssertError(t, archive.Extract(tr), "failed to create directory")
+			h.AssertError(t, archive.Extract(tr, oldUmask), "failed to create directory")
 		})
 
 		it("doesn't alter permissions of existing folders", func() {
+			oldUmask := archive.SetUmask(0)
+			defer archive.SetUmask(oldUmask)
+
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "root"), 0744))
 			// Update permissions in case umask was applied.
 			h.AssertNil(t, os.Chmod(filepath.Join(tmpDir, "root"), 0744))
 
-			h.AssertNil(t, archive.Extract(tr))
+			h.AssertNil(t, archive.Extract(tr, oldUmask))
 			fileInfo, err := os.Stat(filepath.Join(tmpDir, "root"))
 			h.AssertNil(t, err)
 
@@ -166,4 +177,13 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 	})
+}
+
+func testPathPerms(t *testing.T, parentDir, path string, expectedMode os.FileMode) {
+	extractedFile := filepath.Join(parentDir, path)
+
+	fileInfo, err := os.Lstat(extractedFile)
+	h.AssertNil(t, err)
+
+	h.AssertEq(t, fileInfo.Mode(), expectedMode)
 }

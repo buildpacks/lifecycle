@@ -39,6 +39,10 @@ func (r *Restorer) Restore(cache Cache) error {
 		}
 	}
 
+	// Avoid umask from changing the file permissions in the tar file.
+	previousUmask := layers.SetUmask(0)
+	defer layers.SetUmask(previousUmask)
+
 	var g errgroup.Group
 	for _, buildpack := range r.Buildpacks {
 		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
@@ -89,7 +93,7 @@ func (r *Restorer) Restore(cache Cache) error {
 			} else {
 				r.Logger.Infof("Restoring data for %q from cache", bpLayer.Identifier())
 				g.Go(func() error {
-					return r.restoreLayer(cache, cachedLayer.SHA)
+					return r.restoreLayer(cache, cachedLayer.SHA, previousUmask)
 				})
 			}
 		}
@@ -104,7 +108,7 @@ func (r *Restorer) restoresLayerMetadata() bool {
 	return api.MustParse(r.Platform.API()).AtLeast("0.7")
 }
 
-func (r *Restorer) restoreLayer(cache Cache, sha string) error {
+func (r *Restorer) restoreLayer(cache Cache, sha string, procUmask int) error {
 	// Sanity check to prevent panic.
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
@@ -116,5 +120,5 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	}
 	defer rc.Close()
 
-	return layers.Extract(rc, "")
+	return layers.Extract(rc, "", procUmask)
 }
