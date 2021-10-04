@@ -6,14 +6,12 @@ import (
 )
 
 type v07Platform struct {
-	api              *api.Version
-	previousPlatform common.Platform
+	api *api.Version
 }
 
-func NewPlatform(previousPlatform common.Platform) common.Platform {
+func NewPlatform() common.Platform {
 	return &v07Platform{
-		api:              api.MustParse("0.7"),
-		previousPlatform: previousPlatform,
+		api: api.MustParse("0.7"),
 	}
 }
 

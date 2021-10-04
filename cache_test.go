@@ -58,14 +58,17 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
+
 			logHandler = memory.New()
+			level, err := log.ParseLevel("info")
+			h.AssertNil(t, err)
 
 			exporter = &lifecycle.Exporter{
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
 					{ID: "other.buildpack.id", API: api.Buildpack.Latest().String()},
 				},
-				Logger:       &log.Logger{Handler: logHandler},
+				Logger:       &log.Logger{Handler: logHandler, Level: level},
 				LayerFactory: layerFactory,
 			}
 		})
@@ -252,7 +255,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					AnyTimes()
 				layersDir = filepath.Join("testdata", "cacher", "invalid-layers")
 				h.AssertNil(t, exporter.Cache(layersDir, testCache))
-				h.AssertEq(t, len(logHandler.Entries), 4)
+				h.AssertEq(t, len(logHandler.Entries), 3)
 			})
 
 			it("warns when there is a cache=true layer without contents", func() {

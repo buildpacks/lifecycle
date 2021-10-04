@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -42,7 +43,7 @@ type analyzeArgs struct {
 	additionalTags cmd.StringSlice
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
-	platform       cmd.Platform
+	platform       Platform
 	platform06     analyzeArgsPlatform06
 }
 
@@ -232,7 +233,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze()
 	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(cmd.AnalyzeError), "analyzer")
+		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
 	}
 
 	return analyzedMD, nil

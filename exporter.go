@@ -154,6 +154,7 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
 	for _, bp := range e.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(opts.LayersDir, bp, e.Logger)
+		e.Logger.Debugf("Processing buildpack directory: %s", bpDir.path)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
@@ -165,6 +166,7 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 		}
 		for _, fsLayer := range bpDir.findLayers(forLaunch) {
 			fsLayer := fsLayer
+			e.Logger.Debugf("Processing launch layer: %s", fsLayer.path)
 			lmd, err := fsLayer.read()
 			if err != nil {
 				return errors.Wrapf(err, "reading '%s' metadata", fsLayer.Identifier())

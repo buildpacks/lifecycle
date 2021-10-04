@@ -42,7 +42,7 @@ type createCmd struct {
 	additionalTags cmd.StringSlice
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
-	platform       cmd.Platform
+	platform       Platform
 	stackMD        platform.StackMetadata
 }
 

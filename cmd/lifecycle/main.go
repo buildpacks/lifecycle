@@ -12,7 +12,13 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	lplatform "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/common"
 )
+
+type Platform interface {
+	API() string
+	CodeFor(errType common.LifecycleExitError) int
+}
 
 func main() {
 	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
