@@ -8,34 +8,74 @@ import (
 )
 
 type BOMValidator interface {
-	ValidateBOM([]BOMEntry) error
+	ValidateBOM(GroupBuildpack, []BOMEntry) ([]BOMEntry, error)
 }
 
 func NewBOMValidator(bpAPI string, logger Logger) BOMValidator {
 	switch {
 	case api.MustParse(bpAPI).LessThan("0.5"):
-		return &LegacyBOMValidator{}
+		return &legacyBOMValidator{}
 	case api.MustParse(bpAPI).LessThan("0.7"):
-		return &StrictBOMValidator{}
+		return &v05To06BOMValidator{}
 	default:
-		return &DefaultBOMValidator{Logger: logger}
+		return &defaultBOMValidator{logger: logger}
 	}
 }
 
-type DefaultBOMValidator struct {
-	Logger Logger
+type defaultBOMValidator struct {
+	logger Logger
 }
 
-func (v *DefaultBOMValidator) ValidateBOM(bom []BOMEntry) error {
+func (h *defaultBOMValidator) ValidateBOM(bp GroupBuildpack, bom []BOMEntry) ([]BOMEntry, error) {
+	if err := h.validateBOM(bom); err != nil {
+		return []BOMEntry{}, err
+	}
+	return h.processBOM(bp, bom), nil
+}
+
+func (h *defaultBOMValidator) validateBOM(bom []BOMEntry) error {
 	if len(bom) > 0 {
-		v.Logger.Warn("BOM table isn't supported in this buildpack api version. The BOM should be written to <layer>.bom.<ext>, launch.bom.<ext>, or build.bom.<ext>.")
+		h.logger.Warn("BOM table isn't supported in this buildpack api version. The BOM should be written to <layer>.bom.<ext>, launch.bom.<ext>, or build.bom.<ext>.")
 	}
 	return nil
 }
 
-type LegacyBOMValidator struct{}
+func (h *defaultBOMValidator) processBOM(_ GroupBuildpack, _ []BOMEntry) []BOMEntry {
+	return []BOMEntry{}
+}
 
-func (v *LegacyBOMValidator) ValidateBOM(bom []BOMEntry) error {
+type v05To06BOMValidator struct{}
+
+func (h *v05To06BOMValidator) ValidateBOM(bp GroupBuildpack, bom []BOMEntry) ([]BOMEntry, error) {
+	if err := h.validateBOM(bom); err != nil {
+		return []BOMEntry{}, err
+	}
+	return h.processBOM(bp, bom), nil
+}
+
+func (h *v05To06BOMValidator) validateBOM(bom []BOMEntry) error {
+	for _, entry := range bom {
+		if entry.Version != "" {
+			return fmt.Errorf("bom entry '%s' has a top level version which is not allowed. The buildpack should instead set metadata.version", entry.Name)
+		}
+	}
+	return nil
+}
+
+func (h *v05To06BOMValidator) processBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
+	return WithBuildpack(buildpack, bom)
+}
+
+type legacyBOMValidator struct{}
+
+func (h *legacyBOMValidator) ValidateBOM(bp GroupBuildpack, bom []BOMEntry) ([]BOMEntry, error) {
+	if err := h.validateBOM(bom); err != nil {
+		return []BOMEntry{}, err
+	}
+	return h.processBOM(bp, bom), nil
+}
+
+func (h *legacyBOMValidator) validateBOM(bom []BOMEntry) error {
 	for _, entry := range bom {
 		if version, ok := entry.Metadata["version"]; ok {
 			metadataVersion := fmt.Sprintf("%v", version)
@@ -47,50 +87,10 @@ func (v *LegacyBOMValidator) ValidateBOM(bom []BOMEntry) error {
 	return nil
 }
 
-type StrictBOMValidator struct{}
-
-func (v *StrictBOMValidator) ValidateBOM(bom []BOMEntry) error {
-	for _, entry := range bom {
-		if entry.Version != "" {
-			return fmt.Errorf("bom entry '%s' has a top level version which is not allowed. The buildpack should instead set metadata.version", entry.Name)
-		}
-	}
-	return nil
-}
-
-type BOMHandler interface {
-	HandleBOM(GroupBuildpack, []BOMEntry) []BOMEntry
-}
-
-func NewBOMHandler(bpAPI string) BOMHandler {
-	switch {
-	case api.MustParse(bpAPI).LessThan("0.5"):
-		return &LegacyBOMHandler{}
-	case api.MustParse(bpAPI).LessThan("0.7"):
-		return &StrictBOMHandler{}
-	default:
-		return &DefaultBOMHandler{}
-	}
-}
-
-type DefaultBOMHandler struct{}
-
-func (h *DefaultBOMHandler) HandleBOM(_ GroupBuildpack, _ []BOMEntry) []BOMEntry {
-	return []BOMEntry{}
-}
-
-type LegacyBOMHandler struct{}
-
-func (h *LegacyBOMHandler) HandleBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
+func (h *legacyBOMValidator) processBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
 	bom = WithBuildpack(buildpack, bom)
 	for i := range bom {
 		bom[i].convertVersionToMetadata()
 	}
 	return bom
-}
-
-type StrictBOMHandler struct{}
-
-func (h *StrictBOMHandler) HandleBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
-	return WithBuildpack(buildpack, bom)
 }
