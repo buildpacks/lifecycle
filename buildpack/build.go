@@ -250,8 +250,8 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	launchPath := filepath.Join(bpLayersDir, "launch.toml")
 
 	bomValidator := NewBOMValidator(b.API, logger)
-	bomHandler := NewBOMHandler(b.API)
 
+	var err error
 	if api.MustParse(b.API).LessThan("0.5") {
 		// read buildpack plan
 		var bpPlanOut Plan
@@ -260,10 +260,10 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 
 		// set BOM and MetRequires
-		if err := bomValidator.ValidateBOM(bpPlanOut.toBOM()); err != nil {
+		br.BOM, err = bomValidator.ValidateBOM(bpFromBpInfo, bpPlanOut.toBOM())
+		if err != nil {
 			return BuildResult{}, err
 		}
-		br.BOM = bomHandler.HandleBOM(bpFromBpInfo, bpPlanOut.toBOM())
 		br.MetRequires = names(bpPlanOut.Entries)
 
 		// read launch.toml, return if not exists
@@ -279,7 +279,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		if _, err := toml.DecodeFile(buildPath, &bpBuild); err != nil && !os.IsNotExist(err) {
 			return BuildResult{}, err
 		}
-		if err := bomValidator.ValidateBOM(bpBuild.BOM); err != nil {
+		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, bpBuild.BOM); err != nil {
 			return BuildResult{}, err
 		}
 
@@ -297,10 +297,10 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 
 		// set BOM
-		if err := bomValidator.ValidateBOM(launchTOML.BOM); err != nil {
+		br.BOM, err = bomValidator.ValidateBOM(bpFromBpInfo, launchTOML.BOM)
+		if err != nil {
 			return BuildResult{}, err
 		}
-		br.BOM = bomHandler.HandleBOM(bpFromBpInfo, launchTOML.BOM)
 	}
 
 	if err := overrideDefaultForOldBuildpacks(launchTOML.Processes, b.API, logger); err != nil {
