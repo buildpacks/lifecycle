@@ -11,7 +11,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/imageutils"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -74,7 +74,7 @@ func (c *ImageCache) SetMetadata(metadata platform.CacheMetadata) error {
 
 func (c *ImageCache) RetrieveMetadata() (platform.CacheMetadata, error) {
 	var meta platform.CacheMetadata
-	if err := imageutils.DecodeLabel(c.origImage, MetadataLabel, &meta); err != nil {
+	if err := image.DecodeLabel(c.origImage, MetadataLabel, &meta); err != nil {
 		return platform.CacheMetadata{}, nil
 	}
 	return meta, nil

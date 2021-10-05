@@ -1,4 +1,4 @@
-package imageutils_test
+package image
 
 import (
 	"io/ioutil"

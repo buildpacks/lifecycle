@@ -18,8 +18,8 @@ type Restorer struct {
 	Logger    Logger
 
 	Buildpacks            []buildpack.GroupBuildpack
-	LayerMetadataRestorer layermetadata.MetaRestorer   // Platform API >= 0.7
-	LayersMetadata        platform.LayersMetadata // Platform API >= 0.7
+	LayerMetadataRestorer layermetadata.MetaRestorer // Platform API >= 0.7
+	LayersMetadata        platform.LayersMetadata    // Platform API >= 0.7
 	Platform              Platform
 }
 

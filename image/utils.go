@@ -1,4 +1,4 @@
-package imageutils
+package image
 
 import (
 	"encoding/json"

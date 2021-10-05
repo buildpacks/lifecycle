@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/imageutils"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/str"
 )
@@ -26,7 +26,7 @@ type RebaseReport struct {
 
 func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
 	var origMetadata platform.LayersMetadataCompat
-	if err := imageutils.DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
+	if err := image.DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}
 
@@ -81,7 +81,7 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 	}
 
 	hasPrefix := func(l string) bool { return strings.HasPrefix(l, "io.buildpacks.stack.") }
-	if err := imageutils.SyncLabels(newBaseImage, appImage, hasPrefix); err != nil {
+	if err := image.SyncLabels(newBaseImage, appImage, hasPrefix); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
 
@@ -102,11 +102,11 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 	var appImageMixins []string
 	var newBaseImageMixins []string
 
-	if err := imageutils.DecodeLabel(appImg, platform.MixinsLabel, &appImageMixins); err != nil {
+	if err := image.DecodeLabel(appImg, platform.MixinsLabel, &appImageMixins); err != nil {
 		return errors.Wrap(err, "get app image mixins")
 	}
 
-	if err := imageutils.DecodeLabel(newBaseImg, platform.MixinsLabel, &newBaseImageMixins); err != nil {
+	if err := image.DecodeLabel(newBaseImg, platform.MixinsLabel, &newBaseImageMixins); err != nil {
 		return errors.Wrap(err, "get run image mixins")
 	}
 
