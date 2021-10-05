@@ -11,7 +11,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/encoding"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

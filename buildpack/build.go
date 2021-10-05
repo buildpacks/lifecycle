@@ -14,8 +14,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
-	"github.com/buildpacks/lifecycle/encoding"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
