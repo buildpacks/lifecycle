@@ -54,4 +54,38 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 	})
+
+	when(".ReadGroup", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+
+		it("should return a group of buildpacks", func() {
+			h.Mkfile(t, `group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`,
+				filepath.Join(tmpDir, "group.toml"),
+			)
+			actual, err := buildpack.ReadGroup(filepath.Join(tmpDir, "group.toml"))
+			if err != nil {
+				t.Fatalf("Unexpected error:\n%s\n", err)
+			}
+			if s := cmp.Diff(actual, buildpack.Group{
+				Group: []buildpack.GroupBuildpack{
+					{ID: "A", Version: "v1"},
+					{ID: "B", Optional: true},
+				},
+			}); s != "" {
+				t.Fatalf("Unexpected list:\n%s\n", s)
+			}
+		})
+	})
 }
