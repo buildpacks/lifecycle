@@ -160,11 +160,15 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				fakeAppImage.AddPreviousLayer("local-reusable-layer-digest", "")
 				fakeAppImage.AddPreviousLayer("launch-layer-no-local-dir-digest", "")
 				fakeAppImage.AddPreviousLayer("process-types-digest", "")
+				fakeAppImage.AddPreviousLayer("launch.sbom-digest", "") // buildpack.id:launch.sbom-digest
 				h.AssertNil(t, json.Unmarshal([]byte(`
 {
    "buildpacks": [
       {
          "key": "buildpack.id",
+         "bom": {
+             "sha": "launch.sbom-digest"
+         },
          "layers": {
             "launch-layer-no-local-dir": {
                "sha": "launch-layer-no-local-dir-digest",
@@ -232,8 +236,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					it("reuses bom layers if the sha matches the sha in the metadata", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-
-						// TODO
+						h.AssertContains(t, fakeAppImage.ReusedLayers(), "launch.sbom-digest")
+						assertReuseLayerLog(t, logHandler, "buildpack.id:launch.sbom")
 					})
 				})
 			})
@@ -340,7 +344,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				// 1. launcher layer
 				// 2. process-types layer
 				// 3-4. buildpack layers
-				h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 4)
+				// 5. BOM layer
+				h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 5)
 			})
 
 			it("saves lifecycle metadata with layer info", func() {
