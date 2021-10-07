@@ -19,7 +19,7 @@ import (
 )
 
 func readLayersConfigSBOM(layersDir string, bomType string, bp buildpack.GroupBuildpack, logger Logger) (*bpLayer, error) {
-	path := filepath.Join(layersDir, "config", "sbom", bomType, launch.EscapeID(bp.ID)) // TODO: this should include the merged boms also probably
+	path := filepath.Join(layersDir, "config", "sbom", bomType, launch.EscapeID(bp.ID)) // TODO: this may include a non-layer-specific launch.cdx/spdx.json that should probably be deleted by the restorer
 	_, err := ioutil.ReadDir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
