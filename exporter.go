@@ -163,6 +163,7 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 			Version: bp.Version,
 			Layers:  map[string]platform.BuildpackLayerMetadata{},
 			Store:   bpDir.store,
+			BOM:     &platform.LayerMetadata{},
 		}
 		for _, fsLayer := range bpDir.findLayers(forLaunch) {
 			fsLayer := fsLayer
@@ -210,8 +211,12 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 			if err != nil {
 				return errors.Wrapf(err, "creating layer")
 			}
-			origLayerMetadata := opts.OrigMetadata.MetadataForBuildpack(bp.ID)
-			bpMD.BOM.SHA, err = e.addOrReuseLayer(opts.WorkingImage, layer, origLayerMetadata.BOM.SHA)
+			var origBOMSHA string
+			origBOM := opts.OrigMetadata.MetadataForBuildpack(bp.ID).BOM
+			if origBOM != nil {
+				origBOMSHA = origBOM.SHA
+			}
+			bpMD.BOM.SHA, err = e.addOrReuseLayer(opts.WorkingImage, layer, origBOMSHA)
 			if err != nil {
 				return err
 			}

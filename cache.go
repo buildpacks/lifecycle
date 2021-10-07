@@ -27,6 +27,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			ID:      bp.ID,
 			Version: bp.Version,
 			Layers:  map[string]platform.BuildpackLayerMetadata{},
+			BOM:     &platform.LayerMetadata{},
 		}
 		for _, layer := range bpDir.findLayers(forCached) {
 			layer := layer
@@ -52,8 +53,12 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			return errors.Wrap(err, "failed to read layers config sbom")
 		}
 		if sbomLayer != nil {
-			origLayerMetadata := origMeta.MetadataForBuildpack(bp.ID)
-			bpMD.BOM.SHA, err = e.addOrReuseCacheLayer(cacheStore, sbomLayer, origLayerMetadata.BOM.SHA)
+			var origBOMSHA string
+			origBOM := origMeta.MetadataForBuildpack(bp.ID).BOM
+			if origBOM != nil {
+				origBOMSHA = origBOM.SHA
+			}
+			bpMD.BOM.SHA, err = e.addOrReuseCacheLayer(cacheStore, sbomLayer, origBOMSHA)
 			if err != nil {
 				return err
 			}

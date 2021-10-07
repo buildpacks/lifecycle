@@ -67,7 +67,7 @@ type BuildpackLayersMetadata struct {
 	Version string                            `json:"version" toml:"version"`
 	Layers  map[string]BuildpackLayerMetadata `json:"layers" toml:"layers"`
 	Store   *buildpack.StoreTOML              `json:"store,omitempty" toml:"store"`
-	BOM     LayerMetadata
+	BOM     *LayerMetadata                    `json:"bom,omitempty" toml:"bom,omitempty"`
 }
 
 type BuildpackLayerMetadata struct {
