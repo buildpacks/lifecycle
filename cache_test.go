@@ -122,7 +122,25 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 					matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
 					h.AssertNil(t, err)
-					h.AssertEq(t, len(matches), 3)
+					h.AssertEq(t, len(matches), 4) // TODO: enumerate
+				})
+
+				when("structured SBOM", func() { // TODO: only for platform 0.8+
+					when("there is a 'cache=true' layer with a bom.<ext> file", func() {
+						it("adds the bom.<ext> file to the cache", func() {
+							err := exporter.Cache(layersDir, testCache)
+							h.AssertNil(t, err)
+
+							metadata, err := testCache.RetrieveMetadata()
+							h.AssertNil(t, err)
+
+							t.Log("adds bom sha to metadata")
+							h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack.id")
+							h.AssertEq(t, metadata.Buildpacks[0].BOM.SHA, testLayerDigest("buildpack.id:cache.sbom"))
+
+							assertCacheHasLayer(t, testCache, "buildpack.id:cache.sbom")
+						})
+					})
 				})
 			})
 
@@ -230,7 +248,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 						matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
 						h.AssertNil(t, err)
-						h.AssertEq(t, len(matches), 3)
+						h.AssertEq(t, len(matches), 4) // TODO: enumerate
 
 						for _, m := range matches {
 							if strings.Contains(m, "some-layer.tar") {

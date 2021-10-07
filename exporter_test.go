@@ -227,6 +227,17 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("structured SBOM", func() { // TODO: only for platform 0.8+
+				when("there is a 'launch=true' layer with a bom.<ext> file", func() {
+					it("reuses bom layers if the sha matches the sha in the metadata", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						// TODO
+					})
+				})
+			})
+
 			it("creates app layer on Run image", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -793,6 +804,18 @@ version = "4.5.6"
 				})
 			})
 
+			when("structured SBOM", func() { // TODO: only for platform 0.8+
+				when("there is a 'launch=true' layer with a bom.<ext> file", func() {
+					it("creates bom layers on Run image", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						assertHasLayer(t, fakeAppImage, "buildpack.id:launch.sbom")
+						assertAddLayerLog(t, logHandler, "buildpack.id:launch.sbom")
+					})
+				})
+			})
+
 			it("creates app layer on Run image", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -857,7 +880,8 @@ version = "4.5.6"
 				// 3. config layer
 				// 4. process-types layer
 				// 5-6. buildpack layers
-				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), 6)
+				// 7. BOM layer
+				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), 7)
 			})
 
 			it("saves metadata with layer info", func() {

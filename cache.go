@@ -46,6 +46,18 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			}
 			bpMD.Layers[layer.name()] = lmd
 		}
+		// Look for SBOM cache layer
+		sbomLayer, err := readLayersConfigSBOM(layersDir, "cache", bp, e.Logger)
+		if err != nil {
+			return errors.Wrap(err, "failed to read layers config sbom")
+		}
+		if sbomLayer != nil {
+			origLayerMetadata := origMeta.MetadataForBuildpack(bp.ID)
+			bpMD.BOM.SHA, err = e.addOrReuseCacheLayer(cacheStore, sbomLayer, origLayerMetadata.BOM.SHA)
+			if err != nil {
+				return err
+			}
+		}
 		meta.Buildpacks = append(meta.Buildpacks, bpMD)
 	}
 

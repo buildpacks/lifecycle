@@ -18,6 +18,26 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
+func readLayersConfigSBOM(layersDir string, bomType string, bp buildpack.GroupBuildpack, logger Logger) (*bpLayer, error) {
+	path := filepath.Join(layersDir, "config", "sbom", bomType, launch.EscapeID(bp.ID)) // TODO: this should include the merged boms also probably
+	_, err := ioutil.ReadDir(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	logger.Debugf("Found BOM of type %s for buildpack %s at %s", bomType, bp, path)
+	return &bpLayer{
+		layer: layer{
+			path:       path,
+			identifier: fmt.Sprintf("%s:%s.sbom", bp.ID, bomType),
+		},
+		api:    bp.API, // TODO: is this needed?
+		logger: logger,
+	}, nil
+}
+
 type bpLayersDir struct {
 	path      string
 	layers    []bpLayer
@@ -150,7 +170,7 @@ func (bp *bpLayer) read() (platform.BuildpackLayerMetadata, error) {
 	return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: sha}, LayerMetadataFile: layerMetadataFile}, nil
 }
 
-func (bp *bpLayer) remove() error {
+func (bp *bpLayer) remove() error { // TODO: remove sbom
 	if err := os.RemoveAll(bp.path); err != nil && !os.IsNotExist(err) {
 		return err
 	}

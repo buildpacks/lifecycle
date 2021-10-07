@@ -200,6 +200,22 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 			}
 			bpMD.Layers[fsLayer.name()] = lmd
 		}
+		// Look for SBOM launch layer
+		sbomLayer, err := readLayersConfigSBOM(opts.LayersDir, "launch", bp, e.Logger)
+		if err != nil {
+			return errors.Wrap(err, "failed to read layers config sbom")
+		}
+		if sbomLayer != nil {
+			layer, err := e.LayerFactory.DirLayer(sbomLayer.Identifier(), sbomLayer.path)
+			if err != nil {
+				return errors.Wrapf(err, "creating layer")
+			}
+			origLayerMetadata := opts.OrigMetadata.MetadataForBuildpack(bp.ID)
+			bpMD.BOM.SHA, err = e.addOrReuseLayer(opts.WorkingImage, layer, origLayerMetadata.BOM.SHA)
+			if err != nil {
+				return err
+			}
+		}
 		meta.Buildpacks = append(meta.Buildpacks, bpMD)
 
 		if malformedLayers := bpDir.findLayers(forMalformed); len(malformedLayers) > 0 {
