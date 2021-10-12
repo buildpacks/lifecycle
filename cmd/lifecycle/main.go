@@ -52,27 +52,27 @@ func main() {
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
 		}
-		subcommand()
+		subcommand(platform)
 	}
 }
 
-func subcommand() {
+func subcommand(platform common.Platform) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cmd.Run(&detectCmd{}, true)
+		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, true)
 	case "analyze":
-		cmd.Run(&analyzeCmd{}, true)
+		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: platform}}, true)
 	case "restore":
-		cmd.Run(&restoreCmd{}, true)
+		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: platform}}, true)
 	case "build":
-		cmd.Run(&buildCmd{}, true)
+		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: platform}}, true)
 	case "export":
-		cmd.Run(&exportCmd{}, true)
+		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: platform}}, true)
 	case "rebase":
-		cmd.Run(&rebaseCmd{}, true)
+		cmd.Run(&rebaseCmd{platform: platform}, true)
 	case "create":
-		cmd.Run(&createCmd{}, true)
+		cmd.Run(&createCmd{platform: platform}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}
