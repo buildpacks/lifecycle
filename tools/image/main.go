@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/pkg/errors"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layer"
@@ -108,40 +110,54 @@ func main() {
 		}
 	}
 
-	layerPath := lifecycleLayer()
+	layerPath, err := lifecycleLayer()
+	if err != nil {
+		log.Print("Failed to get the lifecycle layer:", err)
+	}
 	if err := img.AddLayer(layerPath); err != nil {
 		log.Fatal("Failed to add layer:", err)
 	}
 	defer os.Remove(layerPath)
-	descriptor := readDescriptor()
+	descriptor, err := readDescriptor()
+	if err != nil {
+		log.Print("Failed to read descriptor:", err)
+		return
+	}
 	if err := img.SetLabel("io.buildpacks.lifecycle.apis", apisLabel(descriptor)); err != nil {
-		log.Fatal("Failed to set 'io.buildpacks.lifecycle.apis' label:", err)
+		log.Print("Failed to set 'io.buildpacks.lifecycle.apis' label:", err)
+		return
 	}
 	if err := img.SetLabel("io.buildpacks.lifecycle.version", descriptor.Lifecycle.Version); err != nil {
-		log.Fatal("Failed to set 'io.buildpacks.lifecycle.version' label:", err)
+		log.Print("Failed to set 'io.buildpacks.lifecycle.version' label:", err)
+		return
 	}
 	if err := img.SetLabel("io.buildpacks.builder.metadata", legacyLabel(descriptor)); err != nil {
-		log.Fatal("Failed to set 'io.buildpacks.builder.metadata' label:", err)
+		log.Print("Failed to set 'io.buildpacks.builder.metadata' label:", err)
+		return
 	}
 	workDir := "/layers"
 	if targetOS == "windows" {
 		workDir = `c:\layers`
 	}
 	if err := img.SetWorkingDir(workDir); err != nil {
-		log.Fatal("Failed to set working directory:", err)
+		log.Print("Failed to set working directory:", err)
+		return
 	}
 	if len(tags) > 1 {
 		if err := img.Save(tags[1:]...); err != nil {
-			log.Fatal("Failed to save image:", err)
+			log.Print("Failed to save image:", err)
+			return
 		}
 	} else {
 		if err := img.Save(); err != nil {
-			log.Fatal("Failed to save image:", err)
+			log.Print("Failed to save image:", err)
+			return
 		}
 	}
 	id, err := img.Identifier()
 	if err != nil {
-		log.Fatal("Failed to get image id:", err)
+		log.Print("Failed to get image id:", err)
+		return
 	}
 	switch v := id.(type) {
 	case local.IDIdentifier:
@@ -171,34 +187,34 @@ type APISet struct {
 	Supported  []string `toml:"supported" json:"supported"`
 }
 
-func readDescriptor() Descriptor {
+func readDescriptor() (Descriptor, error) {
 	descriptor := Descriptor{}
 	f, err := os.Open(lifecyclePath)
 	if err != nil {
-		log.Fatalf("Failed to open -lifecyclePath %s: %s", lifecyclePath, err)
+		return Descriptor{}, errors.Errorf("Failed to open -lifecyclePath %s: %s", lifecyclePath, err)
 	}
 	defer f.Close()
 	zr, err := gzip.NewReader(f)
 	if err != nil {
-		log.Fatalf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
+		return Descriptor{}, errors.Errorf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
 	for {
 		hdr, err := tr.Next()
 		if err != nil {
-			log.Fatalf("Failed to read descriptor from lifecycle tgz at path '%s': %s", lifecyclePath, err)
+			return Descriptor{}, errors.Errorf("Failed to read descriptor from lifecycle tgz at path '%s': %s", lifecyclePath, err)
 		}
 		if filepath.Base(hdr.Name) != "lifecycle.toml" {
 			continue
 		}
 		_, err = toml.DecodeReader(tr, &descriptor)
 		if err != nil {
-			log.Fatalf("Failed to read descriptor from lifecycle tgz at path '%s': %s", lifecyclePath, err)
+			return Descriptor{}, errors.Errorf("Failed to read descriptor from lifecycle tgz at path '%s': %s", lifecyclePath, err)
 		}
 		break
 	}
-	return descriptor
+	return descriptor, nil
 }
 
 type BuilderLabel struct {
@@ -234,15 +250,15 @@ func apisLabel(descriptor Descriptor) string {
 	return string(labelContents)
 }
 
-func lifecycleLayer() string {
+func lifecycleLayer() (string, error) {
 	f, err := os.Open(lifecyclePath)
 	if err != nil {
-		log.Fatalf("Failed to open -lifecyclePath %s: %s", lifecyclePath, err)
+		return "", errors.Errorf("Failed to open -lifecyclePath %s: %s", lifecyclePath, err)
 	}
 	defer f.Close()
 	zr, err := gzip.NewReader(f)
 	if err != nil {
-		log.Fatalf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
+		return "", errors.Errorf("Failed to create gzip reader from lifecyle at path %s: %s", lifecyclePath, err)
 	}
 	defer zr.Close()
 	tr := tar.NewReader(zr)
@@ -251,7 +267,7 @@ func lifecycleLayer() string {
 
 	lf, err := ioutil.TempFile("", "lifecycle-layer")
 	if err != nil {
-		log.Fatal("Failed to create temp layer file", err)
+		return "", errors.Errorf("Failed to create temp layer file: %s", err)
 	}
 	defer lf.Close()
 
@@ -267,8 +283,8 @@ func lifecycleLayer() string {
 
 	ntw.WithModTime(archive.NormalizedModTime)
 	if targetOS == "windows" {
-		ntw.WithUID(1) //gets translated to user permissions in windows writer
-		ntw.WithGID(1) //gets translated to user permissions in windows writer
+		ntw.WithUID(1) // gets translated to user permissions in windows writer
+		ntw.WithGID(1) // gets translated to user permissions in windows writer
 	} else {
 		ntw.WithUID(0)
 		ntw.WithGID(0)
@@ -278,7 +294,7 @@ func lifecycleLayer() string {
 		Name:     "/cnb",
 		Mode:     mode,
 	}); err != nil {
-		log.Fatalf("WriteHeader(/cnb): %v", err)
+		return "", errors.Errorf("WriteHeader(/cnb): %v", err)
 	}
 	for {
 		hdr, err := ntr.Next()
@@ -286,22 +302,22 @@ func lifecycleLayer() string {
 			break
 		}
 		if err != nil {
-			log.Fatal("Error reading tar header:", err)
+			return "", errors.Errorf("Error reading tar header: %s", err)
 		}
 		if err := ntw.WriteHeader(hdr); err != nil {
-			log.Fatal("Error writing tar header:", err)
+			return "", errors.Errorf("Error writing tar header: %s", err)
 		}
 		if hdr.Typeflag == tar.TypeReg {
 			_, err := io.Copy(ntw, ntr)
 			if err != nil {
-				log.Fatalf("Error writing contents for entry '%s': %s", hdr.Name, err)
+				return "", errors.Errorf("Error writing contents for entry '%s': %s", hdr.Name, err)
 			}
 		}
 	}
 	if err := ntw.Close(); err != nil {
-		log.Fatal("Error closing tar writer:", err)
+		return "", errors.Errorf("Error closing tar writer: %s", err)
 	}
-	return lf.Name()
+	return lf.Name(), nil
 }
 
 func pullImage(dockerCli dockercli.CommonAPIClient, ref string) error {

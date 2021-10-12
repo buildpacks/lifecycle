@@ -35,12 +35,12 @@ func Run(c Command, asSubcommand bool) {
 	c.DefineFlags()
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
-			//flagSet exits on error, we shouldn't get here
+			// flagSet exits on error, we shouldn't get here
 			Exit(err)
 		}
 	} else {
 		if err := flagSet.Parse(os.Args[1:]); err != nil {
-			//flagSet exits on error, we shouldn't get here
+			// flagSet exits on error, we shouldn't get here
 			Exit(err)
 		}
 	}

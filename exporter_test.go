@@ -1414,7 +1414,7 @@ func assertHasEntrypoint(t *testing.T, image *fakes.Image, entrypointPath string
 }
 
 func createTestLayer(id string, tmpDir string) (layers.Layer, error) {
-	tarPath := filepath.Join(tmpDir, "artifacts", strings.Replace(id, "/", "_", -1))
+	tarPath := filepath.Join(tmpDir, "artifacts", strings.ReplaceAll(id, "/", "_"))
 	f, err := os.Create(tarPath)
 	if err != nil {
 		return layers.Layer{}, err
