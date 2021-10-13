@@ -112,7 +112,7 @@ func main() {
 
 	layerPath, err := lifecycleLayer()
 	if err != nil {
-		log.Print("Failed to get the lifecycle layer:", err)
+		log.Fatal("Failed to get the lifecycle layer:", err)
 	}
 	if err := img.AddLayer(layerPath); err != nil {
 		log.Fatal("Failed to add layer:", err)
