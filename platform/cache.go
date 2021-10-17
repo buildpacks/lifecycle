@@ -1,6 +1,7 @@
 package platform
 
 type CacheMetadata struct {
+	BOM        LayerMetadata             `json:"bom"`
 	Buildpacks []BuildpackLayersMetadata `json:"buildpacks"`
 }
 

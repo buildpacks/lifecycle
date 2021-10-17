@@ -122,7 +122,23 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 					matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
 					h.AssertNil(t, err)
-					h.AssertEq(t, len(matches), 3)
+					h.AssertEq(t, len(matches), 4)
+				})
+			})
+
+			when("structured SBOM", func() { // TODO: only for platform 0.8+
+				when("there is a 'cache=true' layer with a bom.<ext> file", func() {
+					it("adds the bom.<ext> file to the cache", func() {
+						err := exporter.Cache(layersDir, testCache)
+						h.AssertNil(t, err)
+
+						metadata, err := testCache.RetrieveMetadata()
+						h.AssertNil(t, err)
+
+						t.Log("adds bom sha to metadata")
+						h.AssertEq(t, metadata.BOM.SHA, testLayerDigest("cache.bom"))
+						assertCacheHasLayer(t, testCache, "cache.bom")
+					})
 				})
 			})
 
@@ -230,7 +246,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 						matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
 						h.AssertNil(t, err)
-						h.AssertEq(t, len(matches), 3)
+						h.AssertEq(t, len(matches), 4)
 
 						for _, m := range matches {
 							if strings.Contains(m, "some-layer.tar") {

@@ -145,4 +145,37 @@ func testUtils(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 	})
+
+	when(".Copy", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+
+		it("should copy files", func() {
+			var (
+				src  = filepath.Join(tmpDir, "src.txt")
+				dest = filepath.Join(tmpDir, "dest.txt")
+			)
+
+			h.Mkfile(t, "some-file-content", src)
+
+			err := lifecycle.Copy(src, dest)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			result := h.MustReadFile(t, dest)
+			h.AssertEq(t, string(result), "some-file-content")
+		})
+	})
 }

@@ -96,6 +96,10 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 		return platform.ExportReport{}, err
 	}
 
+	if err := e.addSBOMLaunchLayer(opts, &meta); err != nil {
+		return platform.ExportReport{}, err
+	}
+
 	// app layers (split into 1 or more slices)
 	if err := e.addAppLayers(opts, buildMD.Slices, &meta); err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "exporting app layers")
@@ -222,6 +226,9 @@ func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.Build
 	if err != nil {
 		return errors.Wrap(err, "exporting launcher configLayer")
 	}
+	//TODO: Anthony: Need to remove other sBOM directories (build, cache)
+	//               So that the final app image doesn't get polluted
+	//               By the following line
 	configLayer, err := e.LayerFactory.DirLayer("config", filepath.Join(opts.LayersDir, "config"))
 	if err != nil {
 		return errors.Wrapf(err, "creating layer '%s'", configLayer.ID)
@@ -469,4 +476,26 @@ func (e *Exporter) makeBuildReport(layersDir string) (platform.BuildReport, erro
 		out = append(out, buildpack.WithBuildpack(bp, bpBuildReport.BOM)...)
 	}
 	return platform.BuildReport{BOM: out}, nil
+}
+
+func (e *Exporter) addSBOMLaunchLayer(opts ExportOptions, meta *platform.LayersMetadata) error {
+	// Look for sBOM launch layer
+	sbomLayer, err := readLayersConfigSBOM(opts.LayersDir, "launch", e.Logger)
+	if err != nil {
+		return errors.Wrap(err, "failed to read layers config sbom")
+	}
+
+	if sbomLayer != nil {
+		layer, err := e.LayerFactory.DirLayer(sbomLayer.Identifier(), sbomLayer.path)
+		if err != nil {
+			return errors.Wrapf(err, "creating layer")
+		}
+
+		meta.BOM.SHA, err = e.addOrReuseLayer(opts.WorkingImage, layer, opts.OrigMetadata.BOM.SHA)
+		if err != nil {
+			return errors.Wrapf(err, "exporting layer '%s'", layer.ID)
+		}
+	}
+
+	return nil
 }

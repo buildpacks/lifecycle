@@ -1,7 +1,12 @@
 package lifecycle
 
 import (
+	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -93,10 +98,22 @@ func (r *Restorer) Restore(cache Cache) error {
 			}
 		}
 	}
+
+	//TODO: Anthony: the bom layer _contents_ from the
+	//               previous image, also need to be restored
+	//
+
+	if cacheMeta.BOM.SHA != "" {
+		g.Go(func() error {
+			return r.restoreLayer(cache, cacheMeta.BOM.SHA)
+		})
+	}
+
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, "restoring data")
 	}
-	return nil
+
+	return r.restoreCacheSBOM()
 }
 
 func (r *Restorer) restoresLayerMetadata() bool {
@@ -116,4 +133,38 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	defer rc.Close()
 
 	return layers.Extract(rc, "")
+}
+
+func (r *Restorer) restoreCacheSBOM() error {
+	var (
+		dir      = filepath.Join(r.LayersDir, "config", "sbom", "cache")
+		bomRegex *regexp.Regexp
+	)
+
+	if runtime.GOOS == "windows" {
+		bomRegex = regexp.MustCompile(`cache\\(.+)\\(.+)\\(bom.+json)`)
+	} else {
+		bomRegex = regexp.MustCompile(`cache/(.+)/(.+)/(bom.+json)`)
+	}
+	defer os.RemoveAll(dir)
+
+	return filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+		if info != nil && info.IsDir() {
+			return nil
+		}
+
+		matches := bomRegex.FindStringSubmatch(path)
+		if len(matches) != 4 {
+			return nil
+		}
+
+		var (
+			buildpackID = matches[1]
+			layerName   = matches[2]
+			fileName    = matches[3]
+			dest        = filepath.Join(r.LayersDir, buildpackID, fmt.Sprintf("%s.%s", layerName, fileName))
+		)
+
+		return Copy(path, dest)
+	})
 }

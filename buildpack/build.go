@@ -37,6 +37,7 @@ type BuildConfig struct {
 
 type BuildResult struct {
 	BOM         []BOMEntry
+	BOMFiles    []BOMFile
 	Labels      []Label
 	MetRequires []string
 	Processes   []launch.Process
@@ -101,7 +102,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Bui
 	}
 
 	config.Logger.Debug("Reading output files")
-	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Logger)
+	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, pathToLayerMetadataFile, config.Logger)
 }
 
 func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, layerDir string) error {
@@ -241,7 +242,7 @@ func eachDir(dir, buildpackAPI string, fn func(path, api string) (layertypes.Lay
 	return pathToLayerMetadataFile, nil
 }
 
-func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, logger Logger) (BuildResult, error) {
+func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, logger Logger) (BuildResult, error) {
 	br := BuildResult{}
 	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
@@ -288,6 +289,13 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 			return BuildResult{}, err
 		}
 		br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
+
+		// set BOM files
+		// TODO: only for buildpack 0.8+
+		br.BOMFiles, err = processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, logger)
+		if err != nil {
+			return BuildResult{}, err
+		}
 
 		// read launch.toml, return if not exists
 		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {

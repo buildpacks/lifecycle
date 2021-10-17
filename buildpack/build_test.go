@@ -232,6 +232,58 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+				it("process any created BOM files", func() {
+					buildpackID := "A"
+					layerName := "some-layer"
+
+					h.Mkdir(t,
+						filepath.Join(layersDir, buildpackID))
+					h.Mkfile(t, `{"key": "some-bom-content"}`,
+						filepath.Join(layersDir, buildpackID, "launch.bom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, "build.bom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)),
+					)
+					h.Mkdir(t,
+						filepath.Join(layersDir, "A", layerName),
+					)
+					h.Mkfile(t, "[types]\n  cache = true",
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
+
+					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					h.AssertEq(t, buildpack.BuildResult{
+						BOMFiles: []buildpack.BOMFile{
+							{
+								BuildpackID: buildpackID,
+								LayerName:   "",
+								LayerType:   buildpack.LayerTypeBuild,
+								Path:        filepath.Join(layersDir, buildpackID, "build.bom.cdx.json"),
+							},
+							{
+								BuildpackID: buildpackID,
+								LayerName:   "",
+								LayerType:   buildpack.LayerTypeLaunch,
+								Path:        filepath.Join(layersDir, buildpackID, "launch.bom.cdx.json"),
+							},
+							{
+								BuildpackID: buildpackID,
+								LayerName:   layerName,
+								LayerType:   buildpack.LayerTypeBuild,
+								Path:        filepath.Join(layersDir, buildpackID, "some-layer.bom.cdx.json"),
+							},
+							{
+								BuildpackID: buildpackID,
+								LayerName:   layerName,
+								LayerType:   buildpack.LayerTypeCache,
+								Path:        filepath.Join(layersDir, buildpackID, "some-layer.bom.cdx.json"),
+							},
+						},
+					}, br)
+				})
+
 				it("should include labels", func() {
 					h.Mkfile(t,
 						"[[labels]]\n"+

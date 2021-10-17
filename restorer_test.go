@@ -221,6 +221,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					noGroupLayerSHA     string
 					cacheFalseLayerSHA  string
 					escapedLayerSHA     string
+					bomLayerSHA         string
 				)
 
 				it.Before(func() {
@@ -259,11 +260,19 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					escapedLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
+					layer, err = lf.DirLayer("cache.bom", filepath.Join(layersDir, "config", "sbom", "cache"))
+					h.AssertNil(t, err)
+					bomLayerSHA = layer.Digest
+					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
+
 					h.AssertNil(t, testCache.Commit())
 					h.AssertNil(t, os.RemoveAll(layersDir))
 					h.AssertNil(t, os.Mkdir(layersDir, 0777))
 
 					contents := fmt.Sprintf(`{
+    "bom": {
+  	  "sha": "%s"
+    },
     "buildpacks": [
         {
             "key": "buildpack.id",
@@ -309,7 +318,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
         }
     ]
 }
-`, cacheFalseLayerSHA, cacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
+`, bomLayerSHA, cacheFalseLayerSHA, cacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
 
 					err = ioutil.WriteFile(
 						filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
@@ -317,10 +326,20 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						0600,
 					)
 					h.AssertNil(t, err)
+
+					h.Mkdir(t, filepath.Join(layersDir, "bom-buildpack.id"))
 				})
 
 				it.After(func() {
 					h.AssertNil(t, os.RemoveAll(tarTempDir))
+				})
+
+				it("restores any BOM files to the correct locations", func() {
+					h.AssertNil(t, restorer.Restore(testCache))
+
+					got := h.MustReadFile(t, filepath.Join(layersDir, "bom-buildpack.id", "cache-true.bom.cdx.json"))
+					want := `{"key": "some-bom-content"}`
+					h.AssertEq(t, string(got), want)
 				})
 
 				when("there is a cache=true layer", func() {

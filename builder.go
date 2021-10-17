@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
@@ -56,6 +58,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	processMap := newProcessMap()
 	plan := b.Plan
 	var bom []buildpack.BOMEntry
+	var bomFiles []buildpack.BOMFile
 	var slices []layers.Slice
 	var labels []buildpack.Label
 
@@ -82,6 +85,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.PlatformAPI)
 
 		bom = append(bom, br.BOM...)
+		bomFiles = append(bomFiles, br.BOMFiles...)
 		labels = append(labels, br.Labels...)
 		plan = plan.Filter(br.MetRequires)
 
@@ -103,6 +107,12 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 	}
 
+	b.Logger.Debug("Copying BOM files")
+	err = b.copyBOMFiles(config.LayersDir, bomFiles)
+	if err != nil {
+		return nil, err
+	}
+
 	b.Logger.Debug("Listing processes")
 	procList := processMap.list()
 
@@ -115,6 +125,69 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		Slices:                      slices,
 		BuildpackDefaultProcessType: processMap.defaultType,
 	}, nil
+}
+
+func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) error {
+	var (
+		buildSBOMDir  = filepath.Join(layersDir, "config", "sbom", "build")
+		cacheSBOMDir  = filepath.Join(layersDir, "config", "sbom", "cache")
+		launchSBOMDir = filepath.Join(layersDir, "config", "sbom", "launch")
+	)
+
+	for _, bomFile := range bomFiles {
+		switch bomFile.LayerType {
+		case buildpack.LayerTypeBuild:
+			targetDir := filepath.Join(buildSBOMDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
+			err := os.MkdirAll(targetDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			name, ok := bomFile.Name()
+			if !ok {
+				return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
+			}
+
+			err = Copy(bomFile.Path, filepath.Join(targetDir, name))
+			if err != nil {
+				return err
+			}
+		case buildpack.LayerTypeCache:
+			targetDir := filepath.Join(cacheSBOMDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
+			err := os.MkdirAll(targetDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			name, ok := bomFile.Name()
+			if !ok {
+				return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
+			}
+
+			err = Copy(bomFile.Path, filepath.Join(targetDir, name))
+			if err != nil {
+				return err
+			}
+		case buildpack.LayerTypeLaunch:
+			targetDir := filepath.Join(launchSBOMDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
+			err := os.MkdirAll(targetDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			name, ok := bomFile.Name()
+			if !ok {
+				return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
+			}
+
+			err = Copy(bomFile.Path, filepath.Join(targetDir, name))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // we set default = true for web processes when platformAPI >= 0.6 and buildpackAPI < 0.6
