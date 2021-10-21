@@ -260,7 +260,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					escapedLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 
-					layer, err = lf.DirLayer("cache.bom", filepath.Join(layersDir, "config", "sbom", "cache"))
+					layer, err = lf.DirLayer("cache.bom", filepath.Join(layersDir, "sbom", "cache"))
 					h.AssertNil(t, err)
 					bomLayerSHA = layer.Digest
 					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))

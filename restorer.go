@@ -137,7 +137,7 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 
 func (r *Restorer) restoreCacheSBOM() error {
 	var (
-		dir      = filepath.Join(r.LayersDir, "config", "sbom", "cache")
+		dir      = filepath.Join(r.LayersDir, "sbom", "cache")
 		bomRegex *regexp.Regexp
 	)
 

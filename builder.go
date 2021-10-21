@@ -127,11 +127,32 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}, nil
 }
 
+// copyBOMFiles() copies any BOM files written by buildpacks during the Build() process
+// to their appropriate locations, in preparation for its final application layer.
+// This function handles both BOMs that are associated with a layer directory and BOMs that are not
+// associated with a layer directory, since "bomFile.LayerName" will be "" in the latter case.
+//
+// Before:
+// /layers
+// └── buildpack.id
+//     ├── A
+//     │   └── ...
+//     ├── A.bom.cdx.json
+//     └── launch.bom.cdx.json
+//
+// After:
+// /layers
+// └── sbom
+//     └── buildpack.id
+//         └── launch
+//             ├── A
+//             │   └── bom.cdx.json
+//             └── bom.cdx.json
 func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) error {
 	var (
-		buildSBOMDir  = filepath.Join(layersDir, "config", "sbom", "build")
-		cacheSBOMDir  = filepath.Join(layersDir, "config", "sbom", "cache")
-		launchSBOMDir = filepath.Join(layersDir, "config", "sbom", "launch")
+		buildSBOMDir  = filepath.Join(layersDir, "sbom", "build")
+		cacheSBOMDir  = filepath.Join(layersDir, "sbom", "cache")
+		launchSBOMDir = filepath.Join(layersDir, "sbom", "launch")
 	)
 
 	for _, bomFile := range bomFiles {

@@ -206,10 +206,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
-				result := h.MustReadFile(t, filepath.Join(layersDir, "config", "sbom", "launch", "A", "bom.cdx.json"))
+				result := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "A", "bom.cdx.json"))
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-a"}`)
 
-				result = h.MustReadFile(t, filepath.Join(layersDir, "config", "sbom", "build", "B", "layer-b", "bom.cdx.json"))
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "B", "layer-b", "bom.cdx.json"))
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-b"}`)
 			})
 

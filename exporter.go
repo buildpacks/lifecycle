@@ -226,9 +226,6 @@ func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.Build
 	if err != nil {
 		return errors.Wrap(err, "exporting launcher configLayer")
 	}
-	//TODO: Anthony: Need to remove other sBOM directories (build, cache)
-	//               So that the final app image doesn't get polluted
-	//               By the following line
 	configLayer, err := e.LayerFactory.DirLayer("config", filepath.Join(opts.LayersDir, "config"))
 	if err != nil {
 		return errors.Wrapf(err, "creating layer '%s'", configLayer.ID)

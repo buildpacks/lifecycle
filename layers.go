@@ -27,7 +27,7 @@ type bpLayersDir struct {
 }
 
 func readLayersConfigSBOM(layersDir string, bomType string, logger Logger) (*layer, error) {
-	path := filepath.Join(layersDir, "config", "sbom", bomType)
+	path := filepath.Join(layersDir, "sbom", bomType)
 	_, err := ioutil.ReadDir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
