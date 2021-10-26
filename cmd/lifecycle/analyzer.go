@@ -18,7 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/internal/layermetadata"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
@@ -232,7 +232,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		Platform:              aa.platform,
 		PreviousImage:         previousImage,
 		RunImage:              runImage,
-		LayerMetadataRestorer: layermetadata.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
+		LayerMetadataRestorer: layer.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")

@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/internal/layermetadata"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -18,21 +18,21 @@ type Restorer struct {
 	Logger    Logger
 
 	Buildpacks            []buildpack.GroupBuildpack
-	LayerMetadataRestorer layermetadata.MetaRestorer // Platform API >= 0.7
-	LayersMetadata        platform.LayersMetadata    // Platform API >= 0.7
+	LayerMetadataRestorer layer.MetaRestorer      // Platform API >= 0.7
+	LayersMetadata        platform.LayersMetadata // Platform API >= 0.7
 	Platform              Platform
 }
 
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
-	cacheMeta, err := layermetadata.RetrieveCacheMetadata(cache, r.Logger)
+	cacheMeta, err := layer.RetrieveCacheMetadata(cache, r.Logger)
 	if err != nil {
 		return err
 	}
 
 	useShaFiles := !r.restoresLayerMetadata()
-	layerSHAStore := layermetadata.NewLayerSHAStore(useShaFiles)
+	layerSHAStore := layer.NewLayerSHAStore(useShaFiles)
 	if r.restoresLayerMetadata() {
 		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
 			return err
@@ -43,11 +43,11 @@ func (r *Restorer) Restore(cache Cache) error {
 	for _, buildpack := range r.Buildpacks {
 		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
 
-		var cachedFn func(layermetadata.BpLayer) bool
+		var cachedFn func(layer.BpLayer) bool
 		if api.MustParse(buildpack.API).AtLeast("0.6") {
 			// On Buildpack API 0.6+, the <layer>.toml file never contains layer types information.
 			// The cache metadata is the only way to identify cache=true layers.
-			cachedFn = func(l layermetadata.BpLayer) bool {
+			cachedFn = func(l layer.BpLayer) bool {
 				layer, ok := cachedLayers[filepath.Base(l.Path())]
 				return ok && layer.Cache
 			}
@@ -56,10 +56,10 @@ func (r *Restorer) Restore(cache Cache) error {
 			// Prefer <layer>.toml file to cache metadata in case the cache was cleared between builds and
 			// the analyzer that wrote the files is on a previous version of the lifecycle, that doesn't cross-reference the cache metadata when writing the files.
 			// This allows the restorer to cleanup <layer>.toml files for layers that are not actually in the cache.
-			cachedFn = layermetadata.ForCached
+			cachedFn = layer.ForCached
 		}
 
-		buildpackDir, err := layermetadata.ReadBuildpackLayersDir(r.LayersDir, buildpack, r.Logger)
+		buildpackDir, err := layer.ReadBuildpackLayersDir(r.LayersDir, buildpack, r.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading buildpack layer directory")
 		}

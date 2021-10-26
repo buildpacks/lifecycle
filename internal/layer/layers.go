@@ -1,4 +1,4 @@
-package layermetadata
+package layer
 
 import (
 	"fmt"
@@ -201,7 +201,7 @@ func (l *layer) Path() string {
 	return l.path
 }
 
-type LayerDir interface {
+type Dir interface {
 	Identifier() string
 	Path() string
 }

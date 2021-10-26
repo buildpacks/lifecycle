@@ -20,7 +20,8 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/internal/layermetadata"
+	"github.com/buildpacks/lifecycle/internal/layer"
+	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -40,7 +41,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			tmpDir           string
 			analyzer         *lifecycle.Analyzer
 			image            *fakes.Image
-			metadataRestorer *testmock.MockMetaRestorer
+			metadataRestorer *ltestmock.MockMetaRestorer
 			mockCtrl         *gomock.Controller
 			testCache        lifecycle.Cache
 		)
@@ -67,7 +68,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			discardLogger := log.Logger{Handler: &discard.Handler{}}
 
 			mockCtrl = gomock.NewController(t)
-			metadataRestorer = testmock.NewMockMetaRestorer(mockCtrl)
+			metadataRestorer = ltestmock.NewMockMetaRestorer(mockCtrl)
 
 			p, err := platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
@@ -108,7 +109,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			expectRestoresLayerMetadataIfSupported := func() {
 				if api.MustParse(analyzer.Platform.API()).LessThan("0.7") {
 					useShaFiles := true
-					layerSHAStore := layermetadata.NewLayerSHAStore(useShaFiles)
+					layerSHAStore := layer.NewLayerSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)
 				}
 			}

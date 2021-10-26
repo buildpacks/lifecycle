@@ -1,4 +1,4 @@
-package layermetadata
+package layer
 
 type Logger interface {
 	Debug(msg string)

@@ -7,7 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/internal/layermetadata"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -24,7 +24,7 @@ type Analyzer struct {
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
 	Cache                 Cache
-	LayerMetadataRestorer layermetadata.MetaRestorer
+	LayerMetadataRestorer layer.MetaRestorer
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
@@ -59,13 +59,13 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.restoresLayerMetadata() {
-		cacheMeta, err = layermetadata.RetrieveCacheMetadata(a.Cache, a.Logger)
+		cacheMeta, err = layer.RetrieveCacheMetadata(a.Cache, a.Logger)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 
 		useShaFiles := true
-		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layermetadata.NewLayerSHAStore(useShaFiles)); err != nil {
+		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewLayerSHAStore(useShaFiles)); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}
