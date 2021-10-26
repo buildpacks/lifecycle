@@ -18,7 +18,7 @@ type Restorer struct {
 	Logger    Logger
 
 	Buildpacks            []buildpack.GroupBuildpack
-	LayerMetadataRestorer layer.MetaRestorer      // Platform API >= 0.7
+	LayerMetadataRestorer layer.MetadataRestorer  // Platform API >= 0.7
 	LayersMetadata        platform.LayersMetadata // Platform API >= 0.7
 	Platform              Platform
 }
@@ -26,13 +26,13 @@ type Restorer struct {
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
 func (r *Restorer) Restore(cache Cache) error {
-	cacheMeta, err := layer.RetrieveCacheMetadata(cache, r.Logger)
+	cacheMeta, err := RetrieveCacheMetadata(cache, r.Logger)
 	if err != nil {
 		return err
 	}
 
 	useShaFiles := !r.restoresLayerMetadata()
-	layerSHAStore := layer.NewLayerSHAStore(useShaFiles)
+	layerSHAStore := layer.NewSHAStore(useShaFiles)
 	if r.restoresLayerMetadata() {
 		if err := r.LayerMetadataRestorer.Restore(r.Buildpacks, r.LayersMetadata, cacheMeta, layerSHAStore); err != nil {
 			return err

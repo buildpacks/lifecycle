@@ -232,7 +232,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		Platform:              aa.platform,
 		PreviousImage:         previousImage,
 		RunImage:              runImage,
-		LayerMetadataRestorer: layer.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
+		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")

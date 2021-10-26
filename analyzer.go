@@ -24,7 +24,7 @@ type Analyzer struct {
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
 	Cache                 Cache
-	LayerMetadataRestorer layer.MetaRestorer
+	LayerMetadataRestorer layer.MetadataRestorer
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
@@ -59,13 +59,13 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.restoresLayerMetadata() {
-		cacheMeta, err = layer.RetrieveCacheMetadata(a.Cache, a.Logger)
+		cacheMeta, err = RetrieveCacheMetadata(a.Cache, a.Logger)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 
 		useShaFiles := true
-		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewLayerSHAStore(useShaFiles)); err != nil {
+		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewSHAStore(useShaFiles)); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}
@@ -94,4 +94,23 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
+}
+
+func RetrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta platform.CacheMetadata
+	if cache != nil {
+		var err error
+		if !cache.Exists() {
+			logger.Info("Layer cache not found")
+		}
+		cacheMeta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
+		}
+	} else {
+		logger.Debug("Usable cache not provided, using empty cache metadata")
+	}
+
+	return cacheMeta, nil
 }

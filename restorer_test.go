@@ -76,7 +76,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						{ID: "buildpack.id", API: buildpackAPI},
 						{ID: "escaped/buildpack/id", API: buildpackAPI},
 					},
-					LayerMetadataRestorer: layer.NewLayerMetadataRestorer(&logger, layersDir, skipLayers),
+					LayerMetadataRestorer: layer.NewMetadataRestorer(&logger, layersDir, skipLayers),
 					Platform:              p,
 				}
 			})
