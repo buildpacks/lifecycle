@@ -215,23 +215,12 @@ func (a *analyzeCmd) Exec() error {
 }
 
 func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
-	var (
-		img imgutil.Image
-		err error
-	)
-	if aa.useDaemon {
-		img, err = local.NewImage(
-			aa.previousImageRef,
-			aa.docker,
-			local.FromBaseImage(aa.previousImageRef),
-		)
-	} else {
-		img, err = remote.NewImage(
-			aa.previousImageRef,
-			aa.keychain,
-			remote.FromBaseImage(aa.previousImageRef),
-		)
+	previousImage, err := aa.localOrRemote(aa.previousImageRef)
+	if err != nil {
+		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
+
+	runImage, err := aa.localOrRemote(aa.runImageRef)
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
 	}
@@ -241,22 +230,31 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		Cache:                 aa.platform06.cache,
 		Logger:                cmd.DefaultLogger,
 		Platform:              aa.platform,
-		Image:                 img,
+		PreviousImage:         previousImage,
+		RunImage:              runImage,
 		LayerMetadataRestorer: layermetadata.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
 	}
 
-	if aa.runImageRef != "" {
-		ref, err := name.ParseReference(aa.runImageRef, name.WeakValidation)
-		if err != nil {
-			return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "parse reference for run image")
-		}
-		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: ref.String()}
+	return analyzedMD, nil
+}
+
+func (aa analyzeArgs) localOrRemote(fromImage string) (imgutil.Image, error) {
+	if aa.useDaemon {
+		return local.NewImage(
+			fromImage,
+			aa.docker,
+			local.FromBaseImage(fromImage),
+		)
 	}
 
-	return analyzedMD, nil
+	return remote.NewImage(
+		fromImage,
+		aa.keychain,
+		remote.FromBaseImage(fromImage),
+	)
 }
 
 func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {

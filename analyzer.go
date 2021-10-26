@@ -16,9 +16,10 @@ type Platform interface {
 }
 
 type Analyzer struct {
-	Image    imgutil.Image
-	Logger   Logger
-	Platform Platform
+	PreviousImage imgutil.Image
+	RunImage      imgutil.Image
+	Logger        Logger
+	Platform      Platform
 
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
@@ -29,24 +30,32 @@ type Analyzer struct {
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
-		appMeta   platform.LayersMetadata
-		cacheMeta platform.CacheMetadata
-		imageID   *platform.ImageIdentifier
-		err       error
+		appMeta         platform.LayersMetadata
+		cacheMeta       platform.CacheMetadata
+		previousImageID *platform.ImageIdentifier
+		runImageID      *platform.ImageIdentifier
+		err             error
 	)
 
-	if a.Image != nil { // Image is optional in Platform API >= 0.7
-		imageID, err = a.getImageIdentifier(a.Image)
+	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
+		previousImageID, err = a.getImageIdentifier(a.PreviousImage)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
 		}
 
 		// continue even if the label cannot be decoded
-		if err := image.DecodeLabel(a.Image, platform.LayerMetadataLabel, &appMeta); err != nil {
+		if err := image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
 			appMeta = platform.LayersMetadata{}
 		}
 	} else {
 		appMeta = platform.LayersMetadata{}
+	}
+
+	if a.RunImage != nil {
+		runImageID, err = a.getImageIdentifier(a.RunImage)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
+		}
 	}
 
 	if a.restoresLayerMetadata() {
@@ -62,8 +71,9 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	return platform.AnalyzedMetadata{
-		Image:    imageID,
-		Metadata: appMeta,
+		PreviousImage: previousImageID,
+		RunImage:      runImageID,
+		Metadata:      appMeta,
 	}, nil
 }
 
