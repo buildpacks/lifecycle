@@ -220,8 +220,8 @@ func (e *exportCmd) registryImages() []string {
 	if !e.useDaemon {
 		registryImages = append(registryImages, e.imageNames...)
 		registryImages = append(registryImages, e.runImageRef)
-		if e.analyzedMD.Image != nil {
-			registryImages = append(registryImages, e.analyzedMD.Image.Reference)
+		if e.analyzedMD.PreviousImage != nil {
+			registryImages = append(registryImages, e.analyzedMD.PreviousImage.Reference)
 		}
 	}
 	return registryImages
@@ -327,9 +327,9 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (i
 		local.FromBaseImage(ea.runImageRef),
 	}
 
-	if analyzedMD.Image != nil {
-		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.Image.Reference)
-		opts = append(opts, local.WithPreviousImage(analyzedMD.Image.Reference))
+	if analyzedMD.PreviousImage != nil {
+		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.PreviousImage.Reference)
+		opts = append(opts, local.WithPreviousImage(analyzedMD.PreviousImage.Reference))
 	}
 
 	var appImage imgutil.Image
@@ -362,17 +362,17 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 		remote.FromBaseImage(ea.runImageRef),
 	}
 
-	if analyzedMD.Image != nil {
-		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.Image.Reference)
+	if analyzedMD.PreviousImage != nil {
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImage.Reference)
 		// ensure previous image is on same registry as output image
-		analyzedRegistry, err := parseRegistry(analyzedMD.Image.Reference)
+		analyzedRegistry, err := parseRegistry(analyzedMD.PreviousImage.Reference)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "parse analyzed registry")
 		}
 		if analyzedRegistry != ea.targetRegistry {
 			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, ea.targetRegistry)
 		}
-		opts = append(opts, remote.WithPreviousImage(analyzedMD.Image.Reference))
+		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImage.Reference))
 	}
 
 	appImage, err := remote.NewImage(
