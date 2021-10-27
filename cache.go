@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-
 	"github.com/buildpacks/lifecycle/platform"
 )
 

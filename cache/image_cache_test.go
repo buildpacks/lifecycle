@@ -9,15 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/lifecycle/buildpack"
-
-	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
-
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"

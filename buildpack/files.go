@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
-
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
