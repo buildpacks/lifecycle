@@ -40,14 +40,14 @@ func (r *Restorer) Restore(cache Cache) error {
 	}
 
 	var g errgroup.Group
-	for _, buildpack := range r.Buildpacks {
-		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
+	for _, bp := range r.Buildpacks {
+		cachedLayers := cacheMeta.MetadataForBuildpack(bp.ID).Layers
 
-		var cachedFn func(layer.BpLayer) bool
-		if api.MustParse(buildpack.API).AtLeast("0.6") {
+		var cachedFn func(buildpack.Layer) bool
+		if api.MustParse(bp.API).AtLeast("0.6") {
 			// On Buildpack API 0.6+, the <layer>.toml file never contains layer types information.
 			// The cache metadata is the only way to identify cache=true layers.
-			cachedFn = func(l layer.BpLayer) bool {
+			cachedFn = func(l buildpack.Layer) bool {
 				layer, ok := cachedLayers[filepath.Base(l.Path())]
 				return ok && layer.Cache
 			}
@@ -56,10 +56,10 @@ func (r *Restorer) Restore(cache Cache) error {
 			// Prefer <layer>.toml file to cache metadata in case the cache was cleared between builds and
 			// the analyzer that wrote the files is on a previous version of the lifecycle, that doesn't cross-reference the cache metadata when writing the files.
 			// This allows the restorer to cleanup <layer>.toml files for layers that are not actually in the cache.
-			cachedFn = layer.ForCached
+			cachedFn = buildpack.MadeCached
 		}
 
-		buildpackDir, err := layer.ReadBuildpackLayersDir(r.LayersDir, buildpack, r.Logger)
+		buildpackDir, err := buildpack.ReadLayersDir(r.LayersDir, bp, r.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading buildpack layer directory")
 		}
@@ -75,7 +75,7 @@ func (r *Restorer) Restore(cache Cache) error {
 				continue
 			}
 
-			layerSha, err := layerSHAStore.Get(buildpack.ID, bpLayer)
+			layerSha, err := layerSHAStore.Get(bp.ID, bpLayer)
 			if err != nil {
 				return err
 			}

@@ -60,18 +60,18 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 		return nil
 	}
 
-	for _, buildpack := range buildpacks {
-		buildpackDir, err := ReadBuildpackLayersDir(r.layersDir, buildpack, r.logger)
+	for _, bp := range buildpacks {
+		buildpackDir, err := buildpack.ReadLayersDir(r.layersDir, bp, r.logger)
 		if err != nil {
 			return errors.Wrap(err, "reading buildpack layer directory")
 		}
 
 		// Restore metadata for launch=true layers.
 		// The restorer step will restore the layer data for cache=true layers if possible or delete the layer.
-		appLayers := appMeta.MetadataForBuildpack(buildpack.ID).Layers
-		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
+		appLayers := appMeta.MetadataForBuildpack(bp.ID).Layers
+		cachedLayers := cacheMeta.MetadataForBuildpack(bp.ID).Layers
 		for layerName, layer := range appLayers {
-			identifier := fmt.Sprintf("%s:%s", buildpack.ID, layerName)
+			identifier := fmt.Sprintf("%s:%s", bp.ID, layerName)
 			if !layer.Launch {
 				r.logger.Debugf("Not restoring metadata for %q, marked as launch=false", identifier)
 				continue
@@ -92,7 +92,7 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 				}
 			}
 			r.logger.Infof("Restoring metadata for %q from app image", identifier)
-			if err := r.writeLayerMetadata(layerSHAStore, buildpackDir, layerName, layer, buildpack.ID); err != nil {
+			if err := r.writeLayerMetadata(layerSHAStore, buildpackDir, layerName, layer, bp.ID); err != nil {
 				return err
 			}
 		}
@@ -100,7 +100,7 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 		// Restore metadata for cache=true layers.
 		// The restorer step will restore the layer data if possible or delete the layer.
 		for layerName, layer := range cachedLayers {
-			identifier := fmt.Sprintf("%s:%s", buildpack.ID, layerName)
+			identifier := fmt.Sprintf("%s:%s", bp.ID, layerName)
 			if !layer.Cache {
 				r.logger.Debugf("Not restoring %q from cache, marked as cache=false", identifier)
 				continue
@@ -111,7 +111,7 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 				continue
 			}
 			r.logger.Infof("Restoring metadata for %q from cache", identifier)
-			if err := r.writeLayerMetadata(layerSHAStore, buildpackDir, layerName, layer, buildpack.ID); err != nil {
+			if err := r.writeLayerMetadata(layerSHAStore, buildpackDir, layerName, layer, bp.ID); err != nil {
 				return err
 			}
 		}
@@ -119,8 +119,8 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 	return nil
 }
 
-func (r *DefaultMetadataRestorer) writeLayerMetadata(layerSHAStore SHAStore, buildpackDir BpLayersDir, layerName string, metadata buildpack.LayerMetadata, buildpackID string) error {
-	layer := buildpackDir.NewBPLayer(layerName, buildpackDir.Buildpack.API, r.logger)
+func (r *DefaultMetadataRestorer) writeLayerMetadata(layerSHAStore SHAStore, buildpackDir buildpack.LayersDir, layerName string, metadata buildpack.LayerMetadata, buildpackID string) error {
+	layer := buildpackDir.NewLayer(layerName, buildpackDir.Buildpack.API, r.logger)
 	r.logger.Debugf("Writing layer metadata for %q", layer.Identifier())
 	if err := layer.WriteMetadata(metadata.File); err != nil {
 		return err
@@ -129,8 +129,8 @@ func (r *DefaultMetadataRestorer) writeLayerMetadata(layerSHAStore SHAStore, bui
 }
 
 type SHAStore interface {
-	add(buildpackID, sha string, layer *BpLayer) error
-	Get(buildpackID string, layer BpLayer) (string, error)
+	add(buildpackID, sha string, layer *buildpack.Layer) error
+	Get(buildpackID string, layer buildpack.Layer) (string, error)
 }
 
 func NewSHAStore(useShaFiles bool) SHAStore {
@@ -142,11 +142,11 @@ func NewSHAStore(useShaFiles bool) SHAStore {
 
 type fileStore struct{}
 
-func (fs *fileStore) add(_, sha string, layer *BpLayer) error {
+func (fs *fileStore) add(_, sha string, layer *buildpack.Layer) error {
 	return layer.WriteSha(sha)
 }
 
-func (fs *fileStore) Get(_ string, layer BpLayer) (string, error) {
+func (fs *fileStore) Get(_ string, layer buildpack.Layer) (string, error) {
 	data, err := layer.Read()
 	if err != nil {
 		return "", errors.Wrapf(err, "reading layer")
@@ -162,12 +162,12 @@ type layerToSha struct {
 	layerToShaMap map[string]string
 }
 
-func (ms *memoryStore) add(buildpackID, sha string, layer *BpLayer) error {
+func (ms *memoryStore) add(buildpackID, sha string, layer *buildpack.Layer) error {
 	ms.addLayerToMap(buildpackID, layer.Name(), sha)
 	return nil
 }
 
-func (ms *memoryStore) Get(buildpackID string, layer BpLayer) (string, error) {
+func (ms *memoryStore) Get(buildpackID string, layer buildpack.Layer) (string, error) {
 	return ms.getShaByBuildpackLayer(buildpackID, layer.Name()), nil
 }
 

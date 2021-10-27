@@ -119,7 +119,7 @@ func renameLayerDirIfNeeded(layerMetadataFile layermetadata.File, layerDir strin
 func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]layermetadata.File, error) {
 	if api.MustParse(b.API).LessThan("0.6") {
 		return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layermetadata.File, error) {
-			layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
+			layerMetadataFile, msg, err := layermetadata.DecodeFile(path+".toml", buildpackAPI)
 			if err != nil {
 				return layermetadata.File{}, err
 			}
@@ -130,7 +130,7 @@ func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]
 		})
 	}
 	return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layermetadata.File, error) {
-		layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
+		layerMetadataFile, msg, err := layermetadata.DecodeFile(path+".toml", buildpackAPI)
 		if err != nil {
 			return layermetadata.File{}, err
 		}
@@ -185,7 +185,7 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
 
 	if err := cmd.Run(); err != nil {
-		return NewLifecycleError(err, ErrTypeBuildpack)
+		return NewError(err, ErrTypeBuildpack)
 	}
 	return nil
 }

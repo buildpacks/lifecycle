@@ -5,7 +5,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 
-	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -21,7 +20,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	meta := platform.CacheMetadata{}
 
 	for _, bp := range e.Buildpacks {
-		bpDir, err := layer.ReadBuildpackLayersDir(layersDir, bp, e.Logger)
+		bpDir, err := buildpack.ReadLayersDir(layersDir, bp, e.Logger)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
@@ -31,7 +30,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			Version: bp.Version,
 			Layers:  map[string]buildpack.LayerMetadata{},
 		}
-		for _, layer := range bpDir.FindLayers(layer.ForCached) {
+		for _, layer := range bpDir.FindLayers(buildpack.MadeCached) {
 			layer := layer
 			if !layer.HasLocalContents() {
 				e.Logger.Warnf("Failed to cache layer '%s' because it has no contents", layer.Identifier())
@@ -62,7 +61,12 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	return nil
 }
 
-func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir layer.Dir, previousSHA string) (string, error) {
+type Dir interface {
+	Identifier() string
+	Path() string
+}
+
+func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir Dir, previousSHA string) (string, error) {
 	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
 	if err != nil {
 		return "", errors.Wrapf(err, "creating layer '%s'", layerDir.Identifier())

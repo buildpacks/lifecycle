@@ -3,14 +3,10 @@
 package buildpack
 
 import (
-	"errors"
 	"fmt"
-	"os"
 
 	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
 
-	api05 "github.com/buildpacks/lifecycle/buildpack/v05"
-	api06 "github.com/buildpacks/lifecycle/buildpack/v06"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -208,54 +204,4 @@ type LayersMetadata struct {
 type LayerMetadata struct {
 	SHA string `json:"sha" toml:"sha"`
 	layermetadata.File
-}
-
-type EncoderDecoder interface {
-	IsSupported(buildpackAPI string) bool
-	Encode(file *os.File, lmf layermetadata.File) error
-	Decode(path string) (layermetadata.File, string, error)
-}
-
-func defaultEncodersDecoders() []EncoderDecoder {
-	return []EncoderDecoder{
-		// TODO: it's weird that api05 is relevant for buildpack APIs 0.2-0.5 and api06 is relevant for buildpack API 0.6 and up. We should work on it.
-		api05.NewEncoderDecoder(),
-		api06.NewEncoderDecoder(),
-	}
-}
-
-func EncodeLayerMetadataFile(lmf layermetadata.File, path, buildpackAPI string) error {
-	fh, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer fh.Close()
-
-	encoders := defaultEncodersDecoders()
-
-	for _, encoder := range encoders {
-		if encoder.IsSupported(buildpackAPI) {
-			return encoder.Encode(fh, lmf)
-		}
-	}
-	return errors.New("couldn't find an encoder")
-}
-
-func DecodeLayerMetadataFile(path, buildpackAPI string) (layermetadata.File, string, error) { // TODO: pass the logger and print the warning inside (instead of returning a message)
-	fh, err := os.Open(path)
-	if os.IsNotExist(err) {
-		return layermetadata.File{}, "", nil
-	} else if err != nil {
-		return layermetadata.File{}, "", err
-	}
-	defer fh.Close()
-
-	decoders := defaultEncodersDecoders()
-
-	for _, decoder := range decoders {
-		if decoder.IsSupported(buildpackAPI) {
-			return decoder.Decode(path)
-		}
-	}
-	return layermetadata.File{}, "", errors.New("couldn't find a decoder")
 }
