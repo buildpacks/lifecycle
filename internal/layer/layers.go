@@ -13,9 +13,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/buildpack/layertypes"
+	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 type BpLayersDir struct {
@@ -126,28 +125,28 @@ type BpLayer struct { // TODO: need to refactor so api and logger won't be part 
 	logger Logger
 }
 
-func (bp *BpLayer) Read() (platform.BuildpackLayerMetadata, error) {
+func (bp *BpLayer) Read() (buildpack.LayerMetadata, error) {
 	tomlPath := bp.Path() + ".toml"
 	layerMetadataFile, msg, err := buildpack.DecodeLayerMetadataFile(tomlPath, bp.api)
 	if err != nil {
-		return platform.BuildpackLayerMetadata{}, err
+		return buildpack.LayerMetadata{}, err
 	}
 	if msg != "" {
 		if api.MustParse(bp.api).LessThan("0.6") {
 			bp.logger.Warn(msg)
 		} else {
-			return platform.BuildpackLayerMetadata{}, errors.New(msg)
+			return buildpack.LayerMetadata{}, errors.New(msg)
 		}
 	}
 	var sha string
 	shaBytes, err := ioutil.ReadFile(bp.Path() + ".sha")
 	if err != nil && !os.IsNotExist(err) { // if the sha file doesn't exist, an empty sha will be returned
-		return platform.BuildpackLayerMetadata{}, err
+		return buildpack.LayerMetadata{}, err
 	}
 	if err == nil {
 		sha = string(shaBytes)
 	}
-	return platform.BuildpackLayerMetadata{LayerMetadata: platform.LayerMetadata{SHA: sha}, LayerMetadataFile: layerMetadataFile}, nil
+	return buildpack.LayerMetadata{SHA: sha, File: layerMetadataFile}, nil
 }
 
 func (bp *BpLayer) Remove() error {
@@ -163,7 +162,7 @@ func (bp *BpLayer) Remove() error {
 	return nil
 }
 
-func (bp *BpLayer) WriteMetadata(metadata layertypes.LayerMetadataFile) error {
+func (bp *BpLayer) WriteMetadata(metadata layermetadata.File) error {
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err

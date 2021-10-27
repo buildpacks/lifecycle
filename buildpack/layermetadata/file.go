@@ -1,6 +1,6 @@
-package layertypes
+package layermetadata
 
-type LayerMetadataFile struct {
+type File struct {
 	Data   interface{} `json:"data" toml:"metadata"`
 	Build  bool        `json:"build" toml:"build"`
 	Launch bool        `json:"launch" toml:"launch"`

@@ -159,10 +159,10 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
-		bpMD := platform.BuildpackLayersMetadata{
+		bpMD := buildpack.LayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]platform.BuildpackLayerMetadata{},
+			Layers:  map[string]buildpack.LayerMetadata{},
 			Store:   bpDir.Store,
 		}
 		for _, fsLayer := range bpDir.FindLayers(layer.ForLaunch) {

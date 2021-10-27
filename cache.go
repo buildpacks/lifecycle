@@ -3,6 +3,8 @@ package lifecycle
 import (
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/buildpack"
+
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -24,10 +26,10 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
 
-		bpMD := platform.BuildpackLayersMetadata{
+		bpMD := buildpack.LayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]platform.BuildpackLayerMetadata{},
+			Layers:  map[string]buildpack.LayerMetadata{},
 		}
 		for _, layer := range bpDir.FindLayers(layer.ForCached) {
 			layer := layer

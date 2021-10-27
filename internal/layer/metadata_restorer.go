@@ -119,10 +119,10 @@ func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, a
 	return nil
 }
 
-func (r *DefaultMetadataRestorer) writeLayerMetadata(layerSHAStore SHAStore, buildpackDir BpLayersDir, layerName string, metadata platform.BuildpackLayerMetadata, buildpackID string) error {
+func (r *DefaultMetadataRestorer) writeLayerMetadata(layerSHAStore SHAStore, buildpackDir BpLayersDir, layerName string, metadata buildpack.LayerMetadata, buildpackID string) error {
 	layer := buildpackDir.NewBPLayer(layerName, buildpackDir.Buildpack.API, r.logger)
 	r.logger.Debugf("Writing layer metadata for %q", layer.Identifier())
-	if err := layer.WriteMetadata(metadata.LayerMetadataFile); err != nil {
+	if err := layer.WriteMetadata(metadata.File); err != nil {
 		return err
 	}
 	return layerSHAStore.add(buildpackID, metadata.SHA, layer)

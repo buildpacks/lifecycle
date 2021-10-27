@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/buildpacks/lifecycle/buildpack/layertypes"
+	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
+
 	api05 "github.com/buildpacks/lifecycle/buildpack/v05"
 	api06 "github.com/buildpacks/lifecycle/buildpack/v06"
 	"github.com/buildpacks/lifecycle/launch"
@@ -197,10 +198,22 @@ func containsName(unmet []Unmet, name string) bool {
 
 // layer content metadata
 
+type LayersMetadata struct {
+	ID      string                   `json:"key" toml:"key"`
+	Version string                   `json:"version" toml:"version"`
+	Layers  map[string]LayerMetadata `json:"layers" toml:"layers"`
+	Store   *StoreTOML               `json:"store,omitempty" toml:"store"`
+}
+
+type LayerMetadata struct {
+	SHA string `json:"sha" toml:"sha"`
+	layermetadata.File
+}
+
 type EncoderDecoder interface {
 	IsSupported(buildpackAPI string) bool
-	Encode(file *os.File, lmf layertypes.LayerMetadataFile) error
-	Decode(path string) (layertypes.LayerMetadataFile, string, error)
+	Encode(file *os.File, lmf layermetadata.File) error
+	Decode(path string) (layermetadata.File, string, error)
 }
 
 func defaultEncodersDecoders() []EncoderDecoder {
@@ -211,7 +224,7 @@ func defaultEncodersDecoders() []EncoderDecoder {
 	}
 }
 
-func EncodeLayerMetadataFile(lmf layertypes.LayerMetadataFile, path, buildpackAPI string) error {
+func EncodeLayerMetadataFile(lmf layermetadata.File, path, buildpackAPI string) error {
 	fh, err := os.Create(path)
 	if err != nil {
 		return err
@@ -228,12 +241,12 @@ func EncodeLayerMetadataFile(lmf layertypes.LayerMetadataFile, path, buildpackAP
 	return errors.New("couldn't find an encoder")
 }
 
-func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadataFile, string, error) { // TODO: pass the logger and print the warning inside (instead of returning a message)
+func DecodeLayerMetadataFile(path, buildpackAPI string) (layermetadata.File, string, error) { // TODO: pass the logger and print the warning inside (instead of returning a message)
 	fh, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return layertypes.LayerMetadataFile{}, "", nil
+		return layermetadata.File{}, "", nil
 	} else if err != nil {
-		return layertypes.LayerMetadataFile{}, "", err
+		return layermetadata.File{}, "", err
 	}
 	defer fh.Close()
 
@@ -244,5 +257,5 @@ func DecodeLayerMetadataFile(path, buildpackAPI string) (layertypes.LayerMetadat
 			return decoder.Decode(path)
 		}
 	}
-	return layertypes.LayerMetadataFile{}, "", errors.New("couldn't find a decoder")
+	return layermetadata.File{}, "", errors.New("couldn't find a decoder")
 }
