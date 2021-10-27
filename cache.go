@@ -60,12 +60,12 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	return nil
 }
 
-type Dir interface {
+type LayerDir interface {
 	Identifier() string
 	Path() string
 }
 
-func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir Dir, previousSHA string) (string, error) {
+func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir LayerDir, previousSHA string) (string, error) {
 	layer, err := e.LayerFactory.DirLayer(layerDir.Identifier(), layerDir.Path())
 	if err != nil {
 		return "", errors.Wrapf(err, "creating layer '%s'", layerDir.Identifier())
