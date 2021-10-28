@@ -59,7 +59,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.restoresLayerMetadata() {
-		cacheMeta, err = RetrieveCacheMetadata(a.Cache, a.Logger)
+		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
@@ -96,7 +96,7 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	}, nil
 }
 
-func RetrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
 	var cacheMeta platform.CacheMetadata
 	if cache != nil {
