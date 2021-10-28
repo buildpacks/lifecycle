@@ -15,7 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/internal/layermetadata"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -154,18 +153,18 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 
 func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
 	for _, bp := range e.Buildpacks {
-		bpDir, err := layermetadata.ReadBuildpackLayersDir(opts.LayersDir, bp, e.Logger)
+		bpDir, err := buildpack.ReadLayersDir(opts.LayersDir, bp, e.Logger)
 		e.Logger.Debugf("Processing buildpack directory: %s", bpDir.Path)
 		if err != nil {
 			return errors.Wrapf(err, "reading layers for buildpack '%s'", bp.ID)
 		}
-		bpMD := platform.BuildpackLayersMetadata{
+		bpMD := buildpack.LayersMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]platform.BuildpackLayerMetadata{},
+			Layers:  map[string]buildpack.LayerMetadata{},
 			Store:   bpDir.Store,
 		}
-		for _, fsLayer := range bpDir.FindLayers(layermetadata.ForLaunch) {
+		for _, fsLayer := range bpDir.FindLayers(buildpack.MadeLaunch) {
 			fsLayer := fsLayer
 			e.Logger.Debugf("Processing launch layer: %s", fsLayer.Path())
 			lmd, err := fsLayer.Read()
@@ -203,7 +202,7 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 		}
 		meta.Buildpacks = append(meta.Buildpacks, bpMD)
 
-		if malformedLayers := bpDir.FindLayers(layermetadata.ForMalformed); len(malformedLayers) > 0 {
+		if malformedLayers := bpDir.FindLayers(buildpack.Malformed); len(malformedLayers) > 0 {
 			ids := make([]string, 0, len(malformedLayers))
 			for _, ml := range malformedLayers {
 				ids = append(ids, ml.Identifier())

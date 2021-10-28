@@ -278,9 +278,9 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "bad.buildpack.id", API: api.Buildpack.Latest().String()}}
 					fakeAppImage.AddPreviousLayer("bad-layer", "")
 					opts.OrigMetadata = platform.LayersMetadata{
-						Buildpacks: []platform.BuildpackLayersMetadata{{
+						Buildpacks: []buildpack.LayersMetadata{{
 							ID:     "bad.buildpack.id",
-							Layers: map[string]platform.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: platform.LayerMetadata{SHA: "bad-layer"}}},
+							Layers: map[string]buildpack.LayerMetadata{"bad-layer": {SHA: "bad-layer"}},
 						}},
 					}
 				})
@@ -692,7 +692,7 @@ version = "4.5.6"
 			when("previous image metadata is missing buildpack for reused layer", func() {
 				it.Before(func() {
 					opts.OrigMetadata = platform.LayersMetadata{
-						Buildpacks: []platform.BuildpackLayersMetadata{{}},
+						Buildpacks: []buildpack.LayersMetadata{{}},
 					}
 				})
 
@@ -709,9 +709,9 @@ version = "4.5.6"
 			when("previous image metadata is missing reused layer", func() {
 				it.Before(func() {
 					opts.OrigMetadata = platform.LayersMetadata{
-						Buildpacks: []platform.BuildpackLayersMetadata{{
+						Buildpacks: []buildpack.LayersMetadata{{
 							ID:     "buildpack.id",
-							Layers: map[string]platform.BuildpackLayerMetadata{},
+							Layers: map[string]buildpack.LayerMetadata{},
 						}},
 					}
 				})
@@ -1378,9 +1378,9 @@ version = "4.5.6"
 					it.Before(func() {
 						fakeAppImage.AddPreviousLayer("bad-layer-digest", "")
 						opts.OrigMetadata = platform.LayersMetadata{
-							Buildpacks: []platform.BuildpackLayersMetadata{{
+							Buildpacks: []buildpack.LayersMetadata{{
 								ID:     "old.buildpack.id",
-								Layers: map[string]platform.BuildpackLayerMetadata{"bad-layer": {LayerMetadata: platform.LayerMetadata{SHA: "bad-layer-digest"}}},
+								Layers: map[string]buildpack.LayerMetadata{"bad-layer": {SHA: "bad-layer-digest"}},
 							}},
 						}
 					})

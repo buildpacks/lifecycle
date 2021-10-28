@@ -20,7 +20,8 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/internal/layermetadata"
+	"github.com/buildpacks/lifecycle/internal/layer"
+	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -40,7 +41,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			tmpDir           string
 			analyzer         *lifecycle.Analyzer
 			image            *fakes.Image
-			metadataRestorer *testmock.MockMetaRestorer
+			metadataRestorer *ltestmock.MockMetadataRestorer
 			mockCtrl         *gomock.Controller
 			testCache        lifecycle.Cache
 		)
@@ -67,14 +68,14 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			discardLogger := log.Logger{Handler: &discard.Handler{}}
 
 			mockCtrl = gomock.NewController(t)
-			metadataRestorer = testmock.NewMockMetaRestorer(mockCtrl)
+			metadataRestorer = ltestmock.NewMockMetadataRestorer(mockCtrl)
 
 			p, err := platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
-				Image:    image,
-				Logger:   &discardLogger,
-				Platform: p,
+				PreviousImage: image,
+				Logger:        &discardLogger,
+				Platform:      p,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
@@ -108,7 +109,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			expectRestoresLayerMetadataIfSupported := func() {
 				if api.MustParse(analyzer.Platform.API()).LessThan("0.7") {
 					useShaFiles := true
-					layerSHAStore := layermetadata.NewLayerSHAStore(useShaFiles)
+					layerSHAStore := layer.NewSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)
 				}
 			}
@@ -131,7 +132,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, md.Image.Reference, "s0m3D1g3sT")
+					h.AssertEq(t, md.PreviousImage.Reference, "s0m3D1g3sT")
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
 				})
 
@@ -165,7 +166,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertNil(t, md.Image)
+					h.AssertNil(t, md.PreviousImage)
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
@@ -193,6 +194,21 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+				})
+			})
+
+			when("run image is provided", func() {
+				it.Before(func() {
+					analyzer.RunImage = image
+				})
+
+				it("returns the run image digest in the analyzed metadata", func() {
+					expectRestoresLayerMetadataIfSupported()
+
+					md, err := analyzer.Analyze()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
 				})
 			})
 		})

@@ -13,7 +13,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/buildpack/layertypes"
+	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
@@ -105,7 +105,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Bui
 	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Logger)
 }
 
-func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, layerDir string) error {
+func renameLayerDirIfNeeded(layerMetadataFile layermetadata.File, layerDir string) error {
 	// rename <layers>/<layer> to <layers>/<layer>.ignore if buildpack API >= 0.6 and all of the types flags are set to false
 	if !layerMetadataFile.Launch && !layerMetadataFile.Cache && !layerMetadataFile.Build {
 		if err := os.Rename(layerDir, layerDir+".ignore"); err != nil {
@@ -115,12 +115,12 @@ func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, laye
 	return nil
 }
 
-func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]layertypes.LayerMetadataFile, error) {
+func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]layermetadata.File, error) {
 	if api.MustParse(b.API).LessThan("0.6") {
-		return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layertypes.LayerMetadataFile, error) {
-			layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
+		return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layermetadata.File, error) {
+			layerMetadataFile, msg, err := layermetadata.DecodeFile(path+".toml", buildpackAPI)
 			if err != nil {
-				return layertypes.LayerMetadataFile{}, err
+				return layermetadata.File{}, err
 			}
 			if msg != "" {
 				logger.Warn(msg)
@@ -128,16 +128,16 @@ func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]
 			return layerMetadataFile, nil
 		})
 	}
-	return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layertypes.LayerMetadataFile, error) {
-		layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
+	return eachDir(layersDir, b.API, func(path, buildpackAPI string) (layermetadata.File, error) {
+		layerMetadataFile, msg, err := layermetadata.DecodeFile(path+".toml", buildpackAPI)
 		if err != nil {
-			return layertypes.LayerMetadataFile{}, err
+			return layermetadata.File{}, err
 		}
 		if msg != "" {
-			return layertypes.LayerMetadataFile{}, errors.New(msg)
+			return layermetadata.File{}, errors.New(msg)
 		}
 		if err := renameLayerDirIfNeeded(layerMetadataFile, path); err != nil {
-			return layertypes.LayerMetadataFile{}, err
+			return layermetadata.File{}, err
 		}
 		return layerMetadataFile, nil
 	})
@@ -184,12 +184,12 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
 
 	if err := cmd.Run(); err != nil {
-		return NewLifecycleError(err, ErrTypeBuildpack)
+		return NewError(err, ErrTypeBuildpack)
 	}
 	return nil
 }
 
-func (b *Descriptor) setupEnv(pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, buildEnv BuildEnv) error {
+func (b *Descriptor) setupEnv(pathToLayerMetadataFile map[string]layermetadata.File, buildEnv BuildEnv) error {
 	bpAPI := api.MustParse(b.API)
 	for path, layerMetadataFile := range pathToLayerMetadataFile {
 		if !layerMetadataFile.Build {
@@ -208,14 +208,14 @@ func (b *Descriptor) setupEnv(pathToLayerMetadataFile map[string]layertypes.Laye
 	return nil
 }
 
-func eachDir(dir, buildpackAPI string, fn func(path, api string) (layertypes.LayerMetadataFile, error)) (map[string]layertypes.LayerMetadataFile, error) {
+func eachDir(dir, buildpackAPI string, fn func(path, api string) (layermetadata.File, error)) (map[string]layermetadata.File, error) {
 	files, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
-		return map[string]layertypes.LayerMetadataFile{}, nil
+		return map[string]layermetadata.File{}, nil
 	} else if err != nil {
-		return map[string]layertypes.LayerMetadataFile{}, err
+		return map[string]layermetadata.File{}, err
 	}
-	pathToLayerMetadataFile := map[string]layertypes.LayerMetadataFile{}
+	pathToLayerMetadataFile := map[string]layermetadata.File{}
 	for _, f := range files {
 		if !f.IsDir() {
 			continue
@@ -223,7 +223,7 @@ func eachDir(dir, buildpackAPI string, fn func(path, api string) (layertypes.Lay
 		path := filepath.Join(dir, f.Name())
 		layerMetadataFile, err := fn(path, buildpackAPI)
 		if err != nil {
-			return map[string]layertypes.LayerMetadataFile{}, err
+			return map[string]layermetadata.File{}, err
 		}
 		pathToLayerMetadataFile[path] = layerMetadataFile
 	}

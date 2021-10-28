@@ -11,8 +11,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/str"
 )
 
 type Rebaser struct {
@@ -110,8 +110,8 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 		return errors.Wrap(err, "get run image mixins")
 	}
 
-	appImageMixins = str.RemoveStagePrefixes(appImageMixins)
-	newBaseImageMixins = str.RemoveStagePrefixes(newBaseImageMixins)
+	appImageMixins = RemoveStagePrefixes(appImageMixins)
+	newBaseImageMixins = RemoveStagePrefixes(newBaseImageMixins)
 
 	_, missing, _ := str.Compare(newBaseImageMixins, appImageMixins)
 
