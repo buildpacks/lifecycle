@@ -19,7 +19,7 @@ var dockerSocketMount = []string{
 	"--user", "ContainerAdministrator",
 }
 
-//ctrPath equivalent to path.Join but converts to Windows slashes and drive prefix when needed
+// ctrPath equivalent to path.Join but converts to Windows slashes and drive prefix when needed
 func ctrPath(unixPathParts ...string) string {
 	unixPath := path.Join(unixPathParts...)
 	windowsPath := filepath.FromSlash(unixPath)
