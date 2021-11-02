@@ -232,8 +232,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				it("process any created BOM files", func() {
-					buildpackID := "A"
+				it("includes any created BOM files", func() {
+					buildpackID := bpTOML.Buildpack.ID
 					layerName := "some-layer"
 
 					h.Mkdir(t,
@@ -241,11 +241,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.Mkfile(t, `{"key": "some-bom-content"}`,
 						filepath.Join(layersDir, buildpackID, "launch.bom.cdx.json"),
 						filepath.Join(layersDir, buildpackID, "build.bom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)),
-					)
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)))
+
 					h.Mkdir(t,
-						filepath.Join(layersDir, "A", layerName),
-					)
+						filepath.Join(layersDir, buildpackID, layerName))
 					h.Mkfile(t, "[types]\n  cache = true",
 						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
 
@@ -282,6 +281,31 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}, br)
+				})
+
+				it("does not include BOM files for old BP API versions", func() {
+					bpTOML.API = api.MustParse("0.2").String()
+					buildpackID := bpTOML.Buildpack.ID
+					layerName := "some-layer"
+
+					h.Mkdir(t,
+						filepath.Join(layersDir, buildpackID))
+					h.Mkfile(t, `{"key": "some-bom-content"}`,
+						filepath.Join(layersDir, buildpackID, "launch.bom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, "build.bom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)))
+
+					h.Mkdir(t,
+						filepath.Join(layersDir, buildpackID, layerName))
+					h.Mkfile(t, "[types]\n  cache = true",
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
+
+					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+					if err != nil {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+
+					h.AssertEq(t, len(br.BOMFiles), 0)
 				})
 
 				it("should include labels", func() {

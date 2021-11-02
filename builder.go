@@ -107,10 +107,12 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 	}
 
-	b.Logger.Debug("Copying BOM files")
-	err = b.copyBOMFiles(config.LayersDir, bomFiles)
-	if err != nil {
-		return nil, err
+	if b.PlatformAPI.AtLeast("0.8") {
+		b.Logger.Debug("Copying BOM files")
+		err = b.copyBOMFiles(config.LayersDir, bomFiles)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	b.Logger.Debug("Listing processes")

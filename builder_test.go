@@ -176,9 +176,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 
 				bomFilePath1 := filepath.Join(layersDir, "launch.bom.cdx.json")
-				bomFilePath2 := filepath.Join(layersDir, "layer-b.bom.cdx.json")
-				h.Mkfile(t, `{"key": "some-bom-content-a"}`, bomFilePath1)
-				h.Mkfile(t, `{"key": "some-bom-content-b"}`, bomFilePath2)
+				bomFilePath2 := filepath.Join(layersDir, "build.bom.cdx.json")
+				bomFilePath3 := filepath.Join(layersDir, "layer-b1.bom.cdx.json")
+				bomFilePath4 := filepath.Join(layersDir, "layer-b2.bom.cdx.json")
+				h.Mkfile(t, `{"key": "some-bom-content-1"}`, bomFilePath1)
+				h.Mkfile(t, `{"key": "some-bom-content-2"}`, bomFilePath2)
+				h.Mkfile(t, `{"key": "some-bom-content-3"}`, bomFilePath3)
+				h.Mkfile(t, `{"key": "some-bom-content-4"}`, bomFilePath4)
 
 				bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 					BOMFiles: []buildpack.BOMFile{
@@ -188,15 +192,33 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							LayerType:   buildpack.LayerTypeLaunch,
 							Path:        bomFilePath1,
 						},
+						{
+							BuildpackID: "A",
+							LayerName:   "",
+							LayerType:   buildpack.LayerTypeBuild,
+							Path:        bomFilePath2,
+						},
 					},
 				}, nil)
 				bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 					BOMFiles: []buildpack.BOMFile{
 						{
 							BuildpackID: "B",
-							LayerName:   "layer-b",
+							LayerName:   "layer-b1",
 							LayerType:   buildpack.LayerTypeBuild,
-							Path:        bomFilePath2,
+							Path:        bomFilePath3,
+						},
+						{
+							BuildpackID: "B",
+							LayerName:   "layer-b1",
+							LayerType:   buildpack.LayerTypeCache,
+							Path:        bomFilePath3,
+						},
+						{
+							BuildpackID: "B",
+							LayerName:   "layer-b2",
+							LayerType:   buildpack.LayerTypeLaunch,
+							Path:        bomFilePath4,
 						},
 					},
 				}, nil)
@@ -207,10 +229,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				result := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "A", "bom.cdx.json"))
-				h.AssertEq(t, string(result), `{"key": "some-bom-content-a"}`)
+				h.AssertEq(t, string(result), `{"key": "some-bom-content-1"}`)
 
-				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "B", "layer-b", "bom.cdx.json"))
-				h.AssertEq(t, string(result), `{"key": "some-bom-content-b"}`)
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "A", "bom.cdx.json"))
+				h.AssertEq(t, string(result), `{"key": "some-bom-content-2"}`)
+
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "B", "layer-b1", "bom.cdx.json"))
+				h.AssertEq(t, string(result), `{"key": "some-bom-content-3"}`)
+
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "cache", "B", "layer-b1", "bom.cdx.json"))
+				h.AssertEq(t, string(result), `{"key": "some-bom-content-3"}`)
+
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "B", "layer-b2", "bom.cdx.json"))
+				h.AssertEq(t, string(result), `{"key": "some-bom-content-4"}`)
 			})
 
 			it("returns an error for any unsupported BOM formats", func() {

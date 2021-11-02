@@ -22,6 +22,11 @@ type BOMFile struct {
 	Path        string
 }
 
+// Name() returns the destination filename for a given BOM file
+// cdx files should be renamed to "bom.cdx.json"
+// spdx files should be renamed to "bom.spdx.json"
+// If the BOM is neither cdx nor spdx, the 2nd return argument
+// will return "false" to represent an unsupported format
 func (b *BOMFile) Name() (string, bool) {
 	name := filepath.Base(b.Path)
 

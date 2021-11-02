@@ -49,8 +49,10 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 		meta.Buildpacks = append(meta.Buildpacks, bpMD)
 	}
 
-	if err := e.addSBOMCacheLayer(layersDir, cacheStore, origMeta, &meta); err != nil {
-		return err
+	if e.PlatformAPI.AtLeast("0.8") {
+		if err := e.addSBOMCacheLayer(layersDir, cacheStore, origMeta, &meta); err != nil {
+			return err
+		}
 	}
 
 	if err := cacheStore.SetMetadata(meta); err != nil {
@@ -79,16 +81,15 @@ func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir layerDir, previous
 }
 
 func (e *Exporter) addSBOMCacheLayer(layersDir string, cacheStore Cache, origMetadata platform.CacheMetadata, meta *platform.CacheMetadata) error {
-	// Look for sBOM cache layer
-	sbomLayer, err := readLayersConfigSBOM(layersDir, "cache", e.Logger)
+	sbomCacheDir, err := readLayersSBOM(layersDir, "cache", e.Logger)
 	if err != nil {
 		return errors.Wrap(err, "failed to read layers config sbom")
 	}
 
-	if sbomLayer != nil {
-		l, err := e.LayerFactory.DirLayer(sbomLayer.Identifier(), sbomLayer.path)
+	if sbomCacheDir != nil {
+		l, err := e.LayerFactory.DirLayer(sbomCacheDir.Identifier(), sbomCacheDir.path)
 		if err != nil {
-			return errors.Wrapf(err, "creating layer '%s', path: '%s'", sbomLayer.Identifier(), sbomLayer.path)
+			return errors.Wrapf(err, "creating layer '%s', path: '%s'", sbomCacheDir.Identifier(), sbomCacheDir.path)
 		}
 
 		lyr := &layer{path: l.TarPath, identifier: l.ID}

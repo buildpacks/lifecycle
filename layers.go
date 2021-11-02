@@ -26,7 +26,7 @@ type bpLayersDir struct {
 	store     *buildpack.StoreTOML
 }
 
-func readLayersConfigSBOM(layersDir string, bomType string, logger Logger) (*layer, error) {
+func readLayersSBOM(layersDir string, bomType string, logger Logger) (*layer, error) {
 	path := filepath.Join(layersDir, "sbom", bomType)
 	_, err := ioutil.ReadDir(path)
 	if err != nil {

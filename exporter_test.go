@@ -231,7 +231,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("structured SBOM", func() { // TODO: only for platform 0.8+
+			when("structured SBOM", func() {
 				when("there is a 'launch=true' layer with a bom.<ext> file", func() {
 					it("reuses bom layers if the sha matches the sha in the metadata", func() {
 						_, err := exporter.Export(opts)
@@ -809,7 +809,7 @@ version = "4.5.6"
 				})
 			})
 
-			when("structured SBOM", func() { // TODO: only for platform 0.8+
+			when("structured SBOM", func() {
 				when("there is a 'launch=true' layer with a bom.<ext> file", func() {
 					it("creates a bom layer on Run image", func() {
 						_, err := exporter.Export(opts)
@@ -817,6 +817,18 @@ version = "4.5.6"
 
 						assertHasLayer(t, fakeAppImage, "launch.bom")
 						assertAddLayerLog(t, logHandler, "launch.bom")
+
+						var result struct {
+							BOM struct {
+								SHA string `json:"sha"`
+							} `json:"bom"`
+						}
+
+						data, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, json.Unmarshal([]byte(data), &result))
+						h.AssertEq(t, result.BOM.SHA, "launch.bom-digest")
 					})
 				})
 			})

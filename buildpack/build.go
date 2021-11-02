@@ -291,10 +291,11 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
 
 		// set BOM files
-		// TODO: only for buildpack 0.8+
-		br.BOMFiles, err = processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, logger)
-		if err != nil {
-			return BuildResult{}, err
+		if api.MustParse(b.API).AtLeast("0.7") {
+			br.BOMFiles, err = processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, logger)
+			if err != nil {
+				return BuildResult{}, err
+			}
 		}
 
 		// read launch.toml, return if not exists

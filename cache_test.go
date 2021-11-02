@@ -64,6 +64,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			exporter = &lifecycle.Exporter{
+				PlatformAPI: api.Platform.Latest(),
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
 					{ID: "other.buildpack.id", API: api.Buildpack.Latest().String()},
@@ -126,7 +127,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("structured SBOM", func() { // TODO: only for platform 0.8+
+			when("structured SBOM", func() {
 				when("there is a 'cache=true' layer with a bom.<ext> file", func() {
 					it("adds the bom.<ext> file to the cache", func() {
 						err := exporter.Cache(layersDir, testCache)

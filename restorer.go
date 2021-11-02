@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"runtime"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -29,7 +30,7 @@ type Restorer struct {
 
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
-func (r *Restorer) Restore(cache Cache) error {
+func (r *Restorer) Restore(cache Cache, previousImage imgutil.Image) error {
 	cacheMeta, err := retrieveCacheMetadata(cache, r.Logger)
 	if err != nil {
 		return err
@@ -93,34 +94,57 @@ func (r *Restorer) Restore(cache Cache) error {
 			} else {
 				r.Logger.Infof("Restoring data for %q from cache", bpLayer.Identifier())
 				g.Go(func() error {
-					return r.restoreLayer(cache, cachedLayer.SHA)
+					return r.restoreCacheLayer(cache, cachedLayer.SHA)
 				})
 			}
 		}
 	}
 
-	//TODO: Anthony: the bom layer _contents_ from the
-	//               previous image, also need to be restored
-	//
+	if api.MustParse(r.Platform.API()).AtLeast("0.8") {
+		if r.LayersMetadata.BOM != nil && r.LayersMetadata.BOM.SHA != "" {
+			g.Go(func() error {
+				return r.restorePreviousLayer(r.LayersMetadata.BOM.SHA, previousImage)
+			})
+		}
 
-	if cacheMeta.BOM.SHA != "" {
-		g.Go(func() error {
-			return r.restoreLayer(cache, cacheMeta.BOM.SHA)
-		})
+		if cacheMeta.BOM.SHA != "" {
+			g.Go(func() error {
+				return r.restoreCacheLayer(cache, cacheMeta.BOM.SHA)
+			})
+		}
 	}
 
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, "restoring data")
 	}
 
-	return r.restoreCacheSBOM()
+	if api.MustParse(r.Platform.API()).AtLeast("0.8") {
+		return r.restoreSBOM()
+	}
+
+	return nil
 }
 
 func (r *Restorer) restoresLayerMetadata() bool {
 	return api.MustParse(r.Platform.API()).AtLeast("0.7")
 }
 
-func (r *Restorer) restoreLayer(cache Cache, sha string) error {
+func (r *Restorer) restorePreviousLayer(sha string, image imgutil.Image) error {
+	// Sanity check to prevent panic.
+	if image == nil {
+		return errors.Errorf("restoring layer: previous image not found for %q", sha)
+	}
+	r.Logger.Debugf("Retrieving previous image layer for %q", sha)
+	rc, err := image.GetLayer(sha)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	return layers.Extract(rc, "")
+}
+
+func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 	// Sanity check to prevent panic.
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
@@ -135,21 +159,38 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	return layers.Extract(rc, "")
 }
 
-func (r *Restorer) restoreCacheSBOM() error {
+func (r *Restorer) restoreSBOM() error {
 	var (
-		dir      = filepath.Join(r.LayersDir, "sbom", "cache")
-		bomRegex *regexp.Regexp
+		cacheDir  = filepath.Join(r.LayersDir, "sbom", "cache")
+		launchDir = filepath.Join(r.LayersDir, "sbom", "launch")
 	)
 
-	if runtime.GOOS == "windows" {
-		bomRegex = regexp.MustCompile(`cache\\(.+)\\(.+)\\(bom.+json)`)
-	} else {
-		bomRegex = regexp.MustCompile(`cache/(.+)/(.+)/(bom.+json)`)
-	}
-	defer os.RemoveAll(dir)
+	defer os.RemoveAll(filepath.Join(r.LayersDir, "sbom"))
 
-	return filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
-		if info != nil && info.IsDir() {
+	err := filepath.Walk(cacheDir, r.restoreSBOMFunc("cache"))
+	if err != nil {
+		return err
+	}
+
+	err = filepath.Walk(launchDir, r.restoreSBOMFunc("launch"))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Restorer) restoreSBOMFunc(bomType string) func(path string, info fs.FileInfo, err error) error {
+	var bomRegex *regexp.Regexp
+
+	if runtime.GOOS == "windows" {
+		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s\\(.+)\\(.+)\\(bom.+json)`, bomType))
+	} else {
+		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s/(.+)/(.+)/(bom.+json)`, bomType))
+	}
+
+	return func(path string, info fs.FileInfo, err error) error {
+		if info == nil || !info.Mode().IsRegular() {
 			return nil
 		}
 
@@ -165,6 +206,20 @@ func (r *Restorer) restoreCacheSBOM() error {
 			dest        = filepath.Join(r.LayersDir, buildpackID, fmt.Sprintf("%s.%s", layerName, fileName))
 		)
 
+		if !r.buildpackDetected(buildpackID) {
+			return nil
+		}
+
 		return Copy(path, dest)
-	})
+	}
+}
+
+func (r *Restorer) buildpackDetected(id string) bool {
+	for _, bp := range r.Buildpacks {
+		if bp.ID == id {
+			return true
+		}
+	}
+
+	return false
 }
