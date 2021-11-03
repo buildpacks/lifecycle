@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"runtime"
 
-	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -30,7 +29,7 @@ type Restorer struct {
 
 // Restore restores metadata for launch and cache layers into the layers directory and attempts to restore layer data for cache=true layers, removing the layer when unsuccessful.
 // If a usable cache is not provided, Restore will not restore any cache=true layer metadata.
-func (r *Restorer) Restore(cache Cache, previousImage imgutil.Image) error {
+func (r *Restorer) Restore(cache Cache) error {
 	cacheMeta, err := retrieveCacheMetadata(cache, r.Logger)
 	if err != nil {
 		return err
@@ -100,20 +99,6 @@ func (r *Restorer) Restore(cache Cache, previousImage imgutil.Image) error {
 		}
 	}
 
-	if api.MustParse(r.Platform.API()).AtLeast("0.8") {
-		if r.LayersMetadata.BOM != nil && r.LayersMetadata.BOM.SHA != "" {
-			g.Go(func() error {
-				return r.restorePreviousLayer(r.LayersMetadata.BOM.SHA, previousImage)
-			})
-		}
-
-		if cacheMeta.BOM.SHA != "" {
-			g.Go(func() error {
-				return r.restoreCacheLayer(cache, cacheMeta.BOM.SHA)
-			})
-		}
-	}
-
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, "restoring data")
 	}
@@ -127,21 +112,6 @@ func (r *Restorer) Restore(cache Cache, previousImage imgutil.Image) error {
 
 func (r *Restorer) restoresLayerMetadata() bool {
 	return api.MustParse(r.Platform.API()).AtLeast("0.7")
-}
-
-func (r *Restorer) restorePreviousLayer(sha string, image imgutil.Image) error {
-	// Sanity check to prevent panic.
-	if image == nil {
-		return errors.Errorf("restoring layer: previous image not found for %q", sha)
-	}
-	r.Logger.Debugf("Retrieving previous image layer for %q", sha)
-	rc, err := image.GetLayer(sha)
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-
-	return layers.Extract(rc, "")
 }
 
 func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {

@@ -5,10 +5,6 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
@@ -36,10 +32,8 @@ type restoreArgs struct {
 	layersDir  string
 	platform   Platform
 	skipLayers bool
-	useDaemon  bool
 
 	// construct if necessary before dropping privileges
-	docker   client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain authn.Keychain
 }
 
@@ -53,9 +47,6 @@ func (r *restoreCmd) DefineFlags() {
 	if r.restoresLayerMetadata() {
 		cmd.FlagAnalyzedPath(&r.analyzedPath)
 		cmd.FlagSkipLayers(&r.skipLayers)
-	}
-	if r.restoresSBOMLayer() {
-		cmd.FlagUseDaemon(&r.useDaemon)
 	}
 }
 
@@ -85,14 +76,6 @@ func (r *restoreCmd) Privileges() error {
 		return cmd.FailErr(err, "resolve keychain")
 	}
 
-	if r.useDaemon {
-		var err error
-		r.docker, err = priv.DockerClient()
-		if err != nil {
-			return cmd.FailErr(err, "initialize docker client")
-		}
-	}
-
 	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -115,23 +98,15 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var (
-		appMeta       platform.LayersMetadata
-		previousImage *platform.ImageIdentifier
-	)
-
+	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
 		var analyzedMd platform.AnalyzedMetadata
 		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMd); err == nil {
 			appMeta = analyzedMd.Metadata
-
-			if r.restoresSBOMLayer() {
-				previousImage = analyzedMd.PreviousImage
-			}
 		}
 	}
 
-	return r.restore(appMeta, previousImage, group, cacheStore)
+	return r.restore(appMeta, group, cacheStore)
 }
 
 func (r *restoreCmd) registryImages() []string {
@@ -141,16 +116,7 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, previousImageIdentifier *platform.ImageIdentifier, group buildpack.Group, cacheStore lifecycle.Cache) error {
-	var previousImage imgutil.Image
-	if r.restoresSBOMLayer() && previousImageIdentifier != nil {
-		var err error
-		previousImage, err = r.localOrRemote(previousImageIdentifier.Reference)
-		if err != nil {
-			return cmd.FailErrCode(err, r.platform.CodeFor(common.RestoreError), "restore")
-		}
-	}
-
+func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:             r.layersDir,
 		Buildpacks:            group.Group,
@@ -160,32 +126,12 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, previousImag
 		LayersMetadata:        layerMetadata,
 	}
 
-	if err := restorer.Restore(cacheStore, previousImage); err != nil {
+	if err := restorer.Restore(cacheStore); err != nil {
 		return cmd.FailErrCode(err, r.platform.CodeFor(common.RestoreError), "restore")
 	}
 	return nil
 }
 
-func (r restoreArgs) localOrRemote(fromImage string) (imgutil.Image, error) {
-	if r.useDaemon {
-		return local.NewImage(
-			fromImage,
-			r.docker,
-			local.FromBaseImage(fromImage),
-		)
-	}
-
-	return remote.NewImage(
-		fromImage,
-		r.keychain,
-		remote.FromBaseImage(fromImage),
-	)
-}
-
 func (r *restoreArgs) restoresLayerMetadata() bool {
 	return api.MustParse(r.platform.API()).AtLeast("0.7")
-}
-
-func (r *restoreArgs) restoresSBOMLayer() bool {
-	return api.MustParse(r.platform.API()).AtLeast("0.8")
 }
