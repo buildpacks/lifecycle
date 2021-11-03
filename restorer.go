@@ -13,6 +13,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -186,7 +187,7 @@ func (r *Restorer) restoreSBOMFunc(bomType string) func(path string, info fs.Fil
 
 func (r *Restorer) buildpackDetected(id string) bool {
 	for _, bp := range r.Buildpacks {
-		if bp.ID == id {
+		if launch.EscapeID(bp.ID) == id {
 			return true
 		}
 	}

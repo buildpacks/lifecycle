@@ -676,6 +676,16 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
                    "sha": "some-sha"
                }
            }
+       },
+       {
+           "key": "escaped/buildpack/id",
+           "layers": {
+               "launch-true": {
+                   "data": {},
+                   "launch": true,
+                   "sha": "some-sha"
+               }
+           }
        }
    ]
 }
@@ -693,6 +703,10 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 					got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "launch-true.bom.cdx.json"))
 					want = `{"key": "some-launch-bom-content"}`
+					h.AssertEq(t, string(got), want)
+
+					got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "launch-true.bom.cdx.json"))
+					want = `{"key": "some-escaped-launch-bom-content"}`
 					h.AssertEq(t, string(got), want)
 
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "undetected-buildpack.id", "launch-true.bom.cdx.json"))
