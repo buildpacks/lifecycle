@@ -185,7 +185,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					it("command and args become shell-parsed tokens in a script", func() {
 						var val2 string
 						if runtime.GOOS == "windows" {
-							val2 = `"val with space"` //windows values with spaces must contain quotes
+							val2 = `"val with space"` // windows values with spaces must contain quotes
 						} else {
 							val2 = "val with space"
 						}

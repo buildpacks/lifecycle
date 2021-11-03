@@ -47,7 +47,7 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 	}
 
 	if appStackID != newBaseStackID {
-		return RebaseReport{}, errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, appStackID))
+		return RebaseReport{}, fmt.Errorf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, appStackID)
 	}
 
 	if err := validateMixins(appImage, newBaseImage); err != nil {

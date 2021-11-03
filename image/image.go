@@ -1,8 +1,6 @@
 package image
 
 import (
-	"fmt"
-
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -57,7 +55,7 @@ func VerifyRegistryAccess(regInputs RegistryInputs, keychain authn.Keychain) err
 func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
 	img, _ := remote.NewImage(imageRef, keychain)
 	if !img.CheckReadAccess() {
-		return errors.New(fmt.Sprintf("ensure registry read access to %s", imageRef))
+		return errors.Errorf("ensure registry read access to %s", imageRef)
 	}
 	return nil
 }
@@ -65,7 +63,7 @@ func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
 func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
 	img, _ := remote.NewImage(imageRef, keychain)
 	if !img.CheckReadWriteAccess() {
-		return errors.New(fmt.Sprintf("ensure registry read/write access to %s", imageRef))
+		return errors.Errorf("ensure registry read/write access to %s", imageRef)
 	}
 	return nil
 }

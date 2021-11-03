@@ -57,8 +57,8 @@ func testExtract(t *testing.T, when spec.G, it spec.S) {
 				{"root/standarddir", os.ModeDir + 0755},
 				{"root/standarddir/somefile", 0644},
 				{"root/nonexistdirnotintar", os.ModeDir + os.FileMode(int(os.ModePerm)&^originalUmask)},
-				{"root/symlinkdir", os.ModeSymlink + 0777},  //symlink permissions are not preserved from archive
-				{"root/symlinkfile", os.ModeSymlink + 0777}, //symlink permissions are not preserved from archive
+				{"root/symlinkdir", os.ModeSymlink + 0777},  // symlink permissions are not preserved from archive
+				{"root/symlinkfile", os.ModeSymlink + 0777}, // symlink permissions are not preserved from archive
 			}
 		}
 	})
