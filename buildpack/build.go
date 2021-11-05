@@ -292,7 +292,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 
 		// set BOM files
 		if api.MustParse(b.API).AtLeast("0.7") {
-			br.BOMFiles, err = processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, logger)
+			br.BOMFiles, err = processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, b.Buildpack.SBOM)
 			if err != nil {
 				return BuildResult{}, err
 			}

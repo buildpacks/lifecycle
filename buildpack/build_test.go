@@ -234,6 +234,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				it("includes any created BOM files", func() {
 					buildpackID := bpTOML.Buildpack.ID
+					bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
 					layerName := "some-layer"
 
 					h.Mkdir(t,
@@ -281,6 +282,36 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}, br)
+				})
+
+				it("returns an error for any unsupported BOM formats", func() {
+					buildpackID := bpTOML.Buildpack.ID
+					bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json", "application/spdx+json", "application/vnd.syft+json"}
+					layerName := "some-layer"
+
+					h.Mkdir(t,
+						filepath.Join(layersDir, buildpackID, layerName))
+					h.Mkfile(t, `{"key": "some-bom-content"}`,
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.spdx.json", layerName)),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.syft.json", layerName)),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.some-unknown-format.json", layerName)))
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+					h.AssertError(t, err, fmt.Sprintf("unsupported bom format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.some-unknown-format.json", layerName))))
+				})
+
+				it("returns an error for any undeclared BOM media type", func() {
+					buildpackID := bpTOML.Buildpack.ID
+					bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+
+					h.Mkdir(t,
+						filepath.Join(layersDir, buildpackID))
+					h.Mkfile(t, `{"key": "some-bom-content"}`,
+						filepath.Join(layersDir, buildpackID, "launch.bom.spdx.json"))
+
+					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+					h.AssertError(t, err, "sbom type 'application/spdx+json' not declared for buildpack: 'A@v1'")
 				})
 
 				it("does not include BOM files for old BP API versions", func() {

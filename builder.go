@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/pkg/errors"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
@@ -155,56 +153,34 @@ func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) e
 		buildSBOMDir  = filepath.Join(layersDir, "sbom", "build")
 		cacheSBOMDir  = filepath.Join(layersDir, "sbom", "cache")
 		launchSBOMDir = filepath.Join(layersDir, "sbom", "launch")
+		copyBOMFileTo = func(bomFile buildpack.BOMFile, sbomDir string) error {
+			targetDir := filepath.Join(sbomDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
+			err := os.MkdirAll(targetDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			name, err := bomFile.Name()
+			if err != nil {
+				return err
+			}
+
+			return Copy(bomFile.Path, filepath.Join(targetDir, name))
+		}
 	)
 
 	for _, bomFile := range bomFiles {
 		switch bomFile.LayerType {
 		case buildpack.LayerTypeBuild:
-			targetDir := filepath.Join(buildSBOMDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
-			err := os.MkdirAll(targetDir, os.ModePerm)
-			if err != nil {
-				return err
-			}
-
-			name, ok := bomFile.Name()
-			if !ok {
-				return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
-			}
-
-			err = Copy(bomFile.Path, filepath.Join(targetDir, name))
-			if err != nil {
+			if err := copyBOMFileTo(bomFile, buildSBOMDir); err != nil {
 				return err
 			}
 		case buildpack.LayerTypeCache:
-			targetDir := filepath.Join(cacheSBOMDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
-			err := os.MkdirAll(targetDir, os.ModePerm)
-			if err != nil {
-				return err
-			}
-
-			name, ok := bomFile.Name()
-			if !ok {
-				return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
-			}
-
-			err = Copy(bomFile.Path, filepath.Join(targetDir, name))
-			if err != nil {
+			if err := copyBOMFileTo(bomFile, cacheSBOMDir); err != nil {
 				return err
 			}
 		case buildpack.LayerTypeLaunch:
-			targetDir := filepath.Join(launchSBOMDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
-			err := os.MkdirAll(targetDir, os.ModePerm)
-			if err != nil {
-				return err
-			}
-
-			name, ok := bomFile.Name()
-			if !ok {
-				return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
-			}
-
-			err = Copy(bomFile.Path, filepath.Join(targetDir, name))
-			if err != nil {
+			if err := copyBOMFileTo(bomFile, launchSBOMDir); err != nil {
 				return err
 			}
 		}

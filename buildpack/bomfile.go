@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 )
 
@@ -11,6 +13,13 @@ const (
 	LayerTypeBuild LayerType = iota
 	LayerTypeCache
 	LayerTypeLaunch
+)
+
+const (
+	mediaTypeCycloneDX   = "application/vnd.cyclonedx+json"
+	mediaTypeSPDX        = "application/spdx+json"
+	mediaTypeSyft        = "application/vnd.syft+json"
+	mediaTypeUnsupported = "unsupported"
 )
 
 type LayerType int
@@ -25,22 +34,63 @@ type BOMFile struct {
 // Name() returns the destination filename for a given BOM file
 // cdx files should be renamed to "bom.cdx.json"
 // spdx files should be renamed to "bom.spdx.json"
-// If the BOM is neither cdx nor spdx, the 2nd return argument
-// will return "false" to represent an unsupported format
-func (b *BOMFile) Name() (string, bool) {
+// syft files should be renamed to "bom.syft.json"
+// If the BOM is neither cdx, spdx, nor syft, the 2nd return argument
+// will return an error to indicate an unsupported format
+func (b *BOMFile) Name() (string, error) {
+	switch b.mediaType() {
+	case mediaTypeCycloneDX:
+		return "bom.cdx.json", nil
+	case mediaTypeSPDX:
+		return "bom.spdx.json", nil
+	case mediaTypeSyft:
+		return "bom.syft.json", nil
+	default:
+		return "", errors.Errorf("unsupported bom format: '%s'", b.Path)
+	}
+}
+
+func (b *BOMFile) mediaType() string {
 	name := filepath.Base(b.Path)
 
 	switch {
 	case strings.HasSuffix(name, "bom.cdx.json"):
-		return "bom.cdx.json", true
+		return mediaTypeCycloneDX
 	case strings.HasSuffix(name, "bom.spdx.json"):
-		return "bom.spdx.json", true
+		return mediaTypeSPDX
+	case strings.HasSuffix(name, "bom.syft.json"):
+		return mediaTypeSyft
 	default:
-		return "", false
+		return mediaTypeUnsupported
 	}
 }
 
-func processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, logger Logger) ([]BOMFile, error) {
+func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []string) error {
+	contains := func(vs []string, t string) bool {
+		for _, v := range vs {
+			if v == t {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, bomFile := range bomfiles {
+		mediaType := bomFile.mediaType()
+		switch mediaType {
+		case mediaTypeUnsupported:
+			return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
+		default:
+			if !contains(sbomMediaTypes, mediaType) {
+				return errors.Errorf("sbom type '%s' not declared for buildpack: '%s'", mediaType, bp.String())
+			}
+		}
+	}
+
+	return nil
+}
+
+func processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, sbomMediaTypes []string) ([]BOMFile, error) {
 	var (
 		layerGlob = filepath.Join(layersDir, "*.bom.*.json")
 		files     []BOMFile
@@ -106,5 +156,5 @@ func processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFil
 		}
 	}
 
-	return files, nil
+	return files, validateMediaTypes(bp, files, sbomMediaTypes)
 }
