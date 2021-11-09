@@ -1,6 +1,9 @@
 package api
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pkg/errors"
 )
 
@@ -10,8 +13,18 @@ var (
 )
 
 type APIs struct {
-	Supported  []*Version
-	Deprecated []*Version
+	Supported  List
+	Deprecated List
+}
+
+type List []*Version
+
+func (l List) String() string {
+	var els []string
+	for _, el := range l {
+		els = append(els, fmt.Sprintf("%q", el.String()))
+	}
+	return "[" + strings.Join(els, ", ") + "]"
 }
 
 // newApisMustParse calls NewApis and panics on error
