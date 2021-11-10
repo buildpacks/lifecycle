@@ -40,11 +40,11 @@ type BOMFile struct {
 func (b *BOMFile) Name() (string, error) {
 	switch b.mediaType() {
 	case mediaTypeCycloneDX:
-		return "bom.cdx.json", nil
+		return "sbom.cdx.json", nil
 	case mediaTypeSPDX:
-		return "bom.spdx.json", nil
+		return "sbom.spdx.json", nil
 	case mediaTypeSyft:
-		return "bom.syft.json", nil
+		return "sbom.syft.json", nil
 	default:
 		return "", errors.Errorf("unsupported bom format: '%s'", b.Path)
 	}
@@ -54,11 +54,11 @@ func (b *BOMFile) mediaType() string {
 	name := filepath.Base(b.Path)
 
 	switch {
-	case strings.HasSuffix(name, "bom.cdx.json"):
+	case strings.HasSuffix(name, ".sbom.cdx.json"):
 		return mediaTypeCycloneDX
-	case strings.HasSuffix(name, "bom.spdx.json"):
+	case strings.HasSuffix(name, ".sbom.spdx.json"):
 		return mediaTypeSPDX
-	case strings.HasSuffix(name, "bom.syft.json"):
+	case strings.HasSuffix(name, ".sbom.syft.json"):
 		return mediaTypeSyft
 	default:
 		return mediaTypeUnsupported
@@ -92,7 +92,7 @@ func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []
 
 func processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, sbomMediaTypes []string) ([]BOMFile, error) {
 	var (
-		layerGlob = filepath.Join(layersDir, "*.bom.*.json")
+		layerGlob = filepath.Join(layersDir, "*.sbom.*.json")
 		files     []BOMFile
 	)
 

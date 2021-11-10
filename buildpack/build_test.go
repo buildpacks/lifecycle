@@ -228,7 +228,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
-						assertLogEntry(t, logHandler, "BOM table isn't supported in this buildpack api version. The BOM should be written to <layer>.bom.<ext>, launch.bom.<ext>, or build.bom.<ext>.")
+						assertLogEntry(t, logHandler, "BOM table isn't supported in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
 					})
 				})
 
@@ -240,9 +240,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID))
 					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, "launch.bom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, "build.bom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)))
+						filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)))
 
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID, layerName))
@@ -260,25 +260,25 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								BuildpackID: buildpackID,
 								LayerName:   "",
 								LayerType:   buildpack.LayerTypeBuild,
-								Path:        filepath.Join(layersDir, buildpackID, "build.bom.cdx.json"),
+								Path:        filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
 							},
 							{
 								BuildpackID: buildpackID,
 								LayerName:   "",
 								LayerType:   buildpack.LayerTypeLaunch,
-								Path:        filepath.Join(layersDir, buildpackID, "launch.bom.cdx.json"),
+								Path:        filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
 							},
 							{
 								BuildpackID: buildpackID,
 								LayerName:   layerName,
 								LayerType:   buildpack.LayerTypeBuild,
-								Path:        filepath.Join(layersDir, buildpackID, "some-layer.bom.cdx.json"),
+								Path:        filepath.Join(layersDir, buildpackID, "some-layer.sbom.cdx.json"),
 							},
 							{
 								BuildpackID: buildpackID,
 								LayerName:   layerName,
 								LayerType:   buildpack.LayerTypeCache,
-								Path:        filepath.Join(layersDir, buildpackID, "some-layer.bom.cdx.json"),
+								Path:        filepath.Join(layersDir, buildpackID, "some-layer.sbom.cdx.json"),
 							},
 						},
 					}, br)
@@ -292,13 +292,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID, layerName))
 					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.spdx.json", layerName)),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.syft.json", layerName)),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.some-unknown-format.json", layerName)))
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.spdx.json", layerName)),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.syft.json", layerName)),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName)))
 
 					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					h.AssertError(t, err, fmt.Sprintf("unsupported bom format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.some-unknown-format.json", layerName))))
+					h.AssertError(t, err, fmt.Sprintf("unsupported bom format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
 				})
 
 				it("returns an error for any undeclared BOM media type", func() {
@@ -308,7 +308,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID))
 					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, "launch.bom.spdx.json"))
+						filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json"))
 
 					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					h.AssertError(t, err, "sbom type 'application/spdx+json' not declared for buildpack: 'A@v1'")
@@ -322,9 +322,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID))
 					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, "launch.bom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, "build.bom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.bom.cdx.json", layerName)))
+						filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)))
 
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID, layerName))

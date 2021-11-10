@@ -175,10 +175,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 				buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 
-				bomFilePath1 := filepath.Join(layersDir, "launch.bom.cdx.json")
-				bomFilePath2 := filepath.Join(layersDir, "build.bom.cdx.json")
-				bomFilePath3 := filepath.Join(layersDir, "layer-b1.bom.cdx.json")
-				bomFilePath4 := filepath.Join(layersDir, "layer-b2.bom.cdx.json")
+				bomFilePath1 := filepath.Join(layersDir, "launch.sbom.cdx.json")
+				bomFilePath2 := filepath.Join(layersDir, "build.sbom.cdx.json")
+				bomFilePath3 := filepath.Join(layersDir, "layer-b1.sbom.cdx.json")
+				bomFilePath4 := filepath.Join(layersDir, "layer-b2.sbom.cdx.json")
 				h.Mkfile(t, `{"key": "some-bom-content-1"}`, bomFilePath1)
 				h.Mkfile(t, `{"key": "some-bom-content-2"}`, bomFilePath2)
 				h.Mkfile(t, `{"key": "some-bom-content-3"}`, bomFilePath3)
@@ -228,19 +228,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
-				result := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "A", "bom.cdx.json"))
+				result := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "A", "sbom.cdx.json"))
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-1"}`)
 
-				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "A", "bom.cdx.json"))
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "A", "sbom.cdx.json"))
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-2"}`)
 
-				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "B", "layer-b1", "bom.cdx.json"))
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "build", "B", "layer-b1", "sbom.cdx.json"))
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-3"}`)
 
-				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "cache", "B", "layer-b1", "bom.cdx.json"))
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "cache", "B", "layer-b1", "sbom.cdx.json"))
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-3"}`)
 
-				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "B", "layer-b2", "bom.cdx.json"))
+				result = h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "B", "layer-b2", "sbom.cdx.json"))
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-4"}`)
 			})
 
@@ -250,8 +250,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 				buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 
-				bomFilePath1 := filepath.Join(layersDir, "launch.bom.cdx.json")
-				bomFilePath2 := filepath.Join(layersDir, "layer-b.bom.some-unknown-format.json")
+				bomFilePath1 := filepath.Join(layersDir, "launch.sbom.cdx.json")
+				bomFilePath2 := filepath.Join(layersDir, "layer-b.sbom.some-unknown-format.json")
 				h.Mkfile(t, `{"key": "some-bom-content-a"}`, bomFilePath1)
 				h.Mkfile(t, `{"key": "some-bom-content-b"}`, bomFilePath2)
 
