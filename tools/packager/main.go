@@ -16,6 +16,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/archive"
 )
 
@@ -65,7 +66,13 @@ func doPackage() error {
 		return errors.Wrap(err, fmt.Sprintf("Failed to read descriptor file %s", descriptorPath))
 	}
 
-	descriptorContents, err := fillTemplate(templateContents, map[string]interface{}{"lifecycle_version": version})
+	descriptorContents, err := fillTemplate(templateContents, map[string]interface{}{
+		"lifecycle_version":         version,
+		"apis_buildpack_supported":  api.Buildpack.Supported.String(),
+		"apis_buildpack_deprecated": api.Buildpack.Deprecated.String(),
+		"apis_platform_supported":   api.Platform.Supported.String(),
+		"apis_platform_deprecated":  api.Platform.Deprecated.String(),
+	})
 	if err != nil {
 		return errors.Wrap(err, "Failed to fill template")
 	}

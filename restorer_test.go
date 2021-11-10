@@ -638,6 +638,81 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					h.AssertNil(t, err)
 				})
 			})
+
+			when("there are BOM layers", func() {
+				it.Before(func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
+
+					h.AssertNil(t, os.MkdirAll(filepath.Join(layersDir, "sbom"), os.ModePerm))
+					h.RecursiveCopy(t,
+						filepath.Join("testdata", "restorer", "sbom"),
+						filepath.Join(layersDir, "sbom"))
+
+					appMetaContents := []byte(`{
+   "buildpacks": [
+       {
+           "key": "buildpack.id",
+           "layers": {
+               "cache-true": {
+                   "data": {
+                       "cache-key": "cache-val"
+				   },
+                   "cache": true,
+                   "sha": "some-sha"
+               },
+               "launch-true": {
+                   "data": {},
+                   "launch": true,
+                   "sha": "some-sha"
+               }
+           }
+       },
+       {
+           "key": "escaped/buildpack/id",
+           "layers": {
+               "launch-true": {
+                   "data": {},
+                   "launch": true,
+                   "sha": "some-sha"
+               }
+           }
+       },
+       {
+           "key": "escaped/buildpack/id",
+           "layers": {
+               "launch-true": {
+                   "data": {},
+                   "launch": true,
+                   "sha": "some-sha"
+               }
+           }
+       }
+   ]
+}
+`)
+
+					h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
+				})
+
+				it("restores the previous image SBOM layer", func() {
+					h.AssertNil(t, restorer.Restore(testCache))
+
+					got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-true.bom.cdx.json"))
+					want := `{"key": "some-cache-bom-content"}`
+					h.AssertEq(t, string(got), want)
+
+					got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "launch-true.bom.cdx.json"))
+					want = `{"key": "some-launch-bom-content"}`
+					h.AssertEq(t, string(got), want)
+
+					got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "launch-true.bom.cdx.json"))
+					want = `{"key": "some-escaped-launch-bom-content"}`
+					h.AssertEq(t, string(got), want)
+
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "undetected-buildpack.id", "launch-true.bom.cdx.json"))
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "sbom"))
+				})
+			})
 		})
 	}
 }

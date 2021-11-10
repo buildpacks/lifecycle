@@ -1,13 +1,19 @@
 package lifecycle
 
 import (
+	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -88,14 +94,20 @@ func (r *Restorer) Restore(cache Cache) error {
 			} else {
 				r.Logger.Infof("Restoring data for %q from cache", bpLayer.Identifier())
 				g.Go(func() error {
-					return r.restoreLayer(cache, cachedLayer.SHA)
+					return r.restoreCacheLayer(cache, cachedLayer.SHA)
 				})
 			}
 		}
 	}
+
 	if err := g.Wait(); err != nil {
 		return errors.Wrap(err, "restoring data")
 	}
+
+	if api.MustParse(r.Platform.API()).AtLeast("0.8") {
+		return r.restoreSBOM()
+	}
+
 	return nil
 }
 
@@ -103,7 +115,7 @@ func (r *Restorer) restoresLayerMetadata() bool {
 	return api.MustParse(r.Platform.API()).AtLeast("0.7")
 }
 
-func (r *Restorer) restoreLayer(cache Cache, sha string) error {
+func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {
 	// Sanity check to prevent panic.
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
@@ -116,4 +128,69 @@ func (r *Restorer) restoreLayer(cache Cache, sha string) error {
 	defer rc.Close()
 
 	return layers.Extract(rc, "")
+}
+
+func (r *Restorer) restoreSBOM() error {
+	var (
+		cacheDir  = filepath.Join(r.LayersDir, "sbom", "cache")
+		launchDir = filepath.Join(r.LayersDir, "sbom", "launch")
+	)
+
+	defer os.RemoveAll(filepath.Join(r.LayersDir, "sbom"))
+
+	err := filepath.Walk(cacheDir, r.restoreSBOMFunc("cache"))
+	if err != nil {
+		return err
+	}
+
+	err = filepath.Walk(launchDir, r.restoreSBOMFunc("launch"))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Restorer) restoreSBOMFunc(bomType string) func(path string, info fs.FileInfo, err error) error {
+	var bomRegex *regexp.Regexp
+
+	if runtime.GOOS == "windows" {
+		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s\\(.+)\\(.+)\\(bom.+json)`, bomType))
+	} else {
+		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s/(.+)/(.+)/(bom.+json)`, bomType))
+	}
+
+	return func(path string, info fs.FileInfo, err error) error {
+		if info == nil || !info.Mode().IsRegular() {
+			return nil
+		}
+
+		matches := bomRegex.FindStringSubmatch(path)
+		if len(matches) != 4 {
+			return nil
+		}
+
+		var (
+			buildpackID = matches[1]
+			layerName   = matches[2]
+			fileName    = matches[3]
+			dest        = filepath.Join(r.LayersDir, buildpackID, fmt.Sprintf("%s.%s", layerName, fileName))
+		)
+
+		if !r.buildpackDetected(buildpackID) {
+			return nil
+		}
+
+		return Copy(path, dest)
+	}
+}
+
+func (r *Restorer) buildpackDetected(id string) bool {
+	for _, bp := range r.Buildpacks {
+		if launch.EscapeID(bp.ID) == id {
+			return true
+		}
+	}
+
+	return false
 }

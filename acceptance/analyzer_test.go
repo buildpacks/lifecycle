@@ -357,6 +357,29 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						})
 					})
 				})
+
+				when("older platform", func() {
+					it("does not print log warnings", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 accepts run image")
+
+						output := h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							ctrPath("/layers/analyzed.toml"),
+							analyzeImage,
+							h.WithFlags(
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+analyzeRegAuthConfig,
+								"--env", "CNB_RUN_IMAGE="+analyzeRegFixtures.ReadOnlyRunImage,
+								"--network", analyzeRegNetwork,
+							),
+							h.WithArgs(ctrPath(analyzerPath), analyzeRegFixtures.SomeAppImage),
+						)
+
+						h.AssertStringDoesNotContain(t, output, `no stack metadata found at path ''`)
+						h.AssertStringDoesNotContain(t, output, `Previous image with name "" not found`)
+					})
+				})
 			})
 		})
 

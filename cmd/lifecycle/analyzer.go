@@ -120,17 +120,19 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		a.platform06.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
 	}
 
-	stackMD, err := readStack(a.stackPath)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
-	}
+	if a.supportsRunImage() {
+		stackMD, err := readStack(a.stackPath)
+		if err != nil {
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+		}
 
-	if err := a.validateRunImageInput(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
-	}
+		if err := a.validateRunImageInput(); err != nil {
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
+		}
 
-	if err := a.populateRunImage(stackMD, targetRegistry); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		if err := a.populateRunImage(stackMD, targetRegistry); err != nil {
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		}
 	}
 
 	return nil
@@ -240,6 +242,10 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 }
 
 func (aa analyzeArgs) localOrRemote(fromImage string) (imgutil.Image, error) {
+	if fromImage == "" {
+		return nil, nil
+	}
+
 	if aa.useDaemon {
 		return local.NewImage(
 			fromImage,

@@ -37,6 +37,7 @@ type BuildConfig struct {
 
 type BuildResult struct {
 	BOM         []BOMEntry
+	BOMFiles    []BOMFile
 	Labels      []Label
 	MetRequires []string
 	Processes   []launch.Process
@@ -101,7 +102,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Bui
 	}
 
 	config.Logger.Debug("Reading output files")
-	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, config.Logger)
+	return b.readOutputFiles(bpLayersDir, bpPlanPath, bpPlan, pathToLayerMetadataFile, config.Logger)
 }
 
 func renameLayerDirIfNeeded(layerMetadataFile layertypes.LayerMetadataFile, layerDir string) error {
@@ -241,7 +242,7 @@ func eachDir(dir, buildpackAPI string, fn func(path, api string) (layertypes.Lay
 	return pathToLayerMetadataFile, nil
 }
 
-func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, logger Logger) (BuildResult, error) {
+func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, logger Logger) (BuildResult, error) {
 	br := BuildResult{}
 	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
@@ -249,6 +250,9 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	var launchTOML LaunchTOML
 	launchPath := filepath.Join(bpLayersDir, "launch.toml")
 
+	bomValidator := NewBOMValidator(b.API, logger)
+
+	var err error
 	if api.MustParse(b.API).LessThan("0.5") {
 		// read buildpack plan
 		var bpPlanOut Plan
@@ -257,12 +261,9 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 
 		// set BOM and MetRequires
-		if err := validateBOM(bpPlanOut.toBOM(), b.API); err != nil {
+		br.BOM, err = bomValidator.ValidateBOM(bpFromBpInfo, bpPlanOut.toBOM())
+		if err != nil {
 			return BuildResult{}, err
-		}
-		br.BOM = WithBuildpack(bpFromBpInfo, bpPlanOut.toBOM())
-		for i := range br.BOM {
-			br.BOM[i].convertVersionToMetadata()
 		}
 		br.MetRequires = names(bpPlanOut.Entries)
 
@@ -279,7 +280,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		if _, err := toml.DecodeFile(buildPath, &bpBuild); err != nil && !os.IsNotExist(err) {
 			return BuildResult{}, err
 		}
-		if err := validateBOM(bpBuild.BOM, b.API); err != nil {
+		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, bpBuild.BOM); err != nil {
 			return BuildResult{}, err
 		}
 
@@ -289,6 +290,14 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 		br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
 
+		// set BOM files
+		if api.MustParse(b.API).AtLeast("0.7") {
+			br.BOMFiles, err = processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, b.Buildpack.SBOM)
+			if err != nil {
+				return BuildResult{}, err
+			}
+		}
+
 		// read launch.toml, return if not exists
 		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
 			return br, nil
@@ -297,10 +306,10 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 
 		// set BOM
-		if err := validateBOM(launchTOML.BOM, b.API); err != nil {
+		br.BOM, err = bomValidator.ValidateBOM(bpFromBpInfo, launchTOML.BOM)
+		if err != nil {
 			return BuildResult{}, err
 		}
-		br.BOM = WithBuildpack(bpFromBpInfo, launchTOML.BOM)
 	}
 
 	if err := overrideDefaultForOldBuildpacks(launchTOML.Processes, b.API, logger); err != nil {
@@ -347,26 +356,6 @@ func validateNoMultipleDefaults(processes []launch.Process) error {
 		}
 		if process.Default {
 			defaultType = process.Type
-		}
-	}
-	return nil
-}
-
-func validateBOM(bom []BOMEntry, bpAPI string) error {
-	if api.MustParse(bpAPI).LessThan("0.5") {
-		for _, entry := range bom {
-			if version, ok := entry.Metadata["version"]; ok {
-				metadataVersion := fmt.Sprintf("%v", version)
-				if entry.Version != "" && entry.Version != metadataVersion {
-					return errors.New("top level version does not match metadata version")
-				}
-			}
-		}
-	} else {
-		for _, entry := range bom {
-			if entry.Version != "" {
-				return fmt.Errorf("bom entry '%s' has a top level version which is not allowed. The buildpack should instead set metadata.version", entry.Name)
-			}
 		}
 	}
 	return nil

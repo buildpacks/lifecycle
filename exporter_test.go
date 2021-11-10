@@ -160,8 +160,12 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				fakeAppImage.AddPreviousLayer("local-reusable-layer-digest", "")
 				fakeAppImage.AddPreviousLayer("launch-layer-no-local-dir-digest", "")
 				fakeAppImage.AddPreviousLayer("process-types-digest", "")
+				fakeAppImage.AddPreviousLayer("launch.bom-digest", "")
 				h.AssertNil(t, json.Unmarshal([]byte(`
 {
+   "bom": {
+     "sha": "launch.bom-digest"
+   },
    "buildpacks": [
       {
          "key": "buildpack.id",
@@ -224,6 +228,17 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					h.AssertContains(t, fakeAppImage.ReusedLayers(), "slice-1-digest")
 					assertLogEntry(t, logHandler, "Reusing 1/3 app layer(s)")
 					assertLogEntry(t, logHandler, "Adding 2/3 app layer(s)")
+				})
+			})
+
+			when("structured SBOM", func() {
+				when("there is a 'launch=true' layer with a bom.<ext> file", func() {
+					it("reuses bom layers if the sha matches the sha in the metadata", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+						h.AssertContains(t, fakeAppImage.ReusedLayers(), "launch.bom-digest")
+						assertReuseLayerLog(t, logHandler, "launch.bom")
+					})
 				})
 			})
 
@@ -329,7 +344,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				// 1. launcher layer
 				// 2. process-types layer
 				// 3-4. buildpack layers
-				h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 4)
+				// 5. BOM layer
+				h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 5)
 			})
 
 			it("saves lifecycle metadata with layer info", func() {
@@ -793,6 +809,30 @@ version = "4.5.6"
 				})
 			})
 
+			when("structured SBOM", func() {
+				when("there is a 'launch=true' layer with a bom.<ext> file", func() {
+					it("creates a bom layer on Run image", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						assertHasLayer(t, fakeAppImage, "launch.bom")
+						assertAddLayerLog(t, logHandler, "launch.bom")
+
+						var result struct {
+							BOM struct {
+								SHA string `json:"sha"`
+							} `json:"bom"`
+						}
+
+						data, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, json.Unmarshal([]byte(data), &result))
+						h.AssertEq(t, result.BOM.SHA, "launch.bom-digest")
+					})
+				})
+			})
+
 			it("creates app layer on Run image", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
@@ -857,7 +897,8 @@ version = "4.5.6"
 				// 3. config layer
 				// 4. process-types layer
 				// 5-6. buildpack layers
-				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), 6)
+				// 7. BOM layer
+				h.AssertEq(t, fakeAppImage.NumberOfAddedLayers(), 7)
 			})
 
 			it("saves metadata with layer info", func() {
