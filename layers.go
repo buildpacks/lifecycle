@@ -26,6 +26,24 @@ type bpLayersDir struct {
 	store     *buildpack.StoreTOML
 }
 
+func readLayersSBOM(layersDir string, bomType string, logger Logger) (*layer, error) {
+	path := filepath.Join(layersDir, "sbom", bomType)
+	_, err := ioutil.ReadDir(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	logger.Debugf("Found BOM of type %s for at %s", bomType, path)
+	return &layer{
+		path:       path,
+		identifier: fmt.Sprintf("%s.bom", bomType),
+	}, nil
+}
+
 func readBuildpackLayersDir(layersDir string, bp buildpack.GroupBuildpack, logger Logger) (bpLayersDir, error) {
 	path := filepath.Join(layersDir, launch.EscapeID(bp.ID))
 	logger.Debugf("Reading buildpack directory: %s", path)

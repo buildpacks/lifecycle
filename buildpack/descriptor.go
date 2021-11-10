@@ -22,11 +22,12 @@ func (b *Descriptor) String() string {
 }
 
 type Info struct {
-	ClearEnv bool   `toml:"clear-env,omitempty"`
-	Homepage string `toml:"homepage,omitempty"`
-	ID       string `toml:"id"`
-	Name     string `toml:"name"`
-	Version  string `toml:"version"`
+	ClearEnv bool     `toml:"clear-env,omitempty"`
+	Homepage string   `toml:"homepage,omitempty"`
+	ID       string   `toml:"id"`
+	Name     string   `toml:"name"`
+	Version  string   `toml:"version"`
+	SBOM     []string `toml:"sbom,omitempty" json:"sbom,omitempty"`
 }
 
 type Order []Group

@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,6 +62,27 @@ func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
 	if err := json.Unmarshal([]byte(contents), v); err != nil {
 		return errors.Wrapf(err, "failed to unmarshal context of label '%s'", label)
 	}
+	return nil
+}
+
+func Copy(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

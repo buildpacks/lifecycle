@@ -56,6 +56,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	processMap := newProcessMap()
 	plan := b.Plan
 	var bom []buildpack.BOMEntry
+	var bomFiles []buildpack.BOMFile
 	var slices []layers.Slice
 	var labels []buildpack.Label
 
@@ -82,6 +83,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.PlatformAPI)
 
 		bom = append(bom, br.BOM...)
+		bomFiles = append(bomFiles, br.BOMFiles...)
 		labels = append(labels, br.Labels...)
 		plan = plan.Filter(br.MetRequires)
 
@@ -103,6 +105,14 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 	}
 
+	if b.PlatformAPI.AtLeast("0.8") {
+		b.Logger.Debug("Copying BOM files")
+		err = b.copyBOMFiles(config.LayersDir, bomFiles)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	b.Logger.Debug("Listing processes")
 	procList := processMap.list()
 
@@ -115,6 +125,68 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		Slices:                      slices,
 		BuildpackDefaultProcessType: processMap.defaultType,
 	}, nil
+}
+
+// copyBOMFiles() copies any BOM files written by buildpacks during the Build() process
+// to their appropriate locations, in preparation for its final application layer.
+// This function handles both BOMs that are associated with a layer directory and BOMs that are not
+// associated with a layer directory, since "bomFile.LayerName" will be "" in the latter case.
+//
+// Before:
+// /layers
+// └── buildpack.id
+//     ├── A
+//     │   └── ...
+//     ├── A.bom.cdx.json
+//     └── launch.bom.cdx.json
+//
+// After:
+// /layers
+// └── sbom
+//     └── buildpack.id
+//         └── launch
+//             ├── A
+//             │   └── bom.cdx.json
+//             └── bom.cdx.json
+func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) error {
+	var (
+		buildSBOMDir  = filepath.Join(layersDir, "sbom", "build")
+		cacheSBOMDir  = filepath.Join(layersDir, "sbom", "cache")
+		launchSBOMDir = filepath.Join(layersDir, "sbom", "launch")
+		copyBOMFileTo = func(bomFile buildpack.BOMFile, sbomDir string) error {
+			targetDir := filepath.Join(sbomDir, launch.EscapeID(bomFile.BuildpackID), bomFile.LayerName)
+			err := os.MkdirAll(targetDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
+			name, err := bomFile.Name()
+			if err != nil {
+				return err
+			}
+
+			return Copy(bomFile.Path, filepath.Join(targetDir, name))
+		}
+	)
+
+	for _, bomFile := range bomFiles {
+		switch bomFile.LayerType {
+		case buildpack.LayerTypeBuild:
+			if err := copyBOMFileTo(bomFile, buildSBOMDir); err != nil {
+				return err
+			}
+		case buildpack.LayerTypeCache:
+			if err := copyBOMFileTo(bomFile, cacheSBOMDir); err != nil {
+				return err
+			}
+		case buildpack.LayerTypeLaunch:
+			if err := copyBOMFileTo(bomFile, launchSBOMDir); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // we set default = true for web processes when platformAPI >= 0.6 and buildpackAPI < 0.6
