@@ -160,11 +160,11 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				fakeAppImage.AddPreviousLayer("local-reusable-layer-digest", "")
 				fakeAppImage.AddPreviousLayer("launch-layer-no-local-dir-digest", "")
 				fakeAppImage.AddPreviousLayer("process-types-digest", "")
-				fakeAppImage.AddPreviousLayer("launch.bom-digest", "")
+				fakeAppImage.AddPreviousLayer("launch.sbom-digest", "")
 				h.AssertNil(t, json.Unmarshal([]byte(`
 {
    "bom": {
-     "sha": "launch.bom-digest"
+     "sha": "launch.sbom-digest"
    },
    "buildpacks": [
       {
@@ -236,8 +236,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					it("reuses bom layers if the sha matches the sha in the metadata", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						h.AssertContains(t, fakeAppImage.ReusedLayers(), "launch.bom-digest")
-						assertReuseLayerLog(t, logHandler, "launch.bom")
+						h.AssertContains(t, fakeAppImage.ReusedLayers(), "launch.sbom-digest")
+						assertReuseLayerLog(t, logHandler, "launch.sbom")
 					})
 				})
 			})
@@ -815,8 +815,8 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						assertHasLayer(t, fakeAppImage, "launch.bom")
-						assertAddLayerLog(t, logHandler, "launch.bom")
+						assertHasLayer(t, fakeAppImage, "launch.sbom")
+						assertAddLayerLog(t, logHandler, "launch.sbom")
 
 						var result struct {
 							BOM struct {
@@ -828,7 +828,7 @@ version = "4.5.6"
 						h.AssertNil(t, err)
 
 						h.AssertNil(t, json.Unmarshal([]byte(data), &result))
-						h.AssertEq(t, result.BOM.SHA, "launch.bom-digest")
+						h.AssertEq(t, result.BOM.SHA, "launch.sbom-digest")
 					})
 				})
 			})
