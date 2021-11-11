@@ -137,8 +137,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						t.Log("adds bom sha to metadata")
-						h.AssertEq(t, metadata.BOM.SHA, testLayerDigest("cache.bom"))
-						assertCacheHasLayer(t, testCache, "cache.bom")
+						h.AssertEq(t, metadata.BOM.SHA, testLayerDigest("cache.sbom"))
+						assertCacheHasLayer(t, testCache, "cache.sbom")
 					})
 				})
 			})

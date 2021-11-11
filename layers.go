@@ -40,7 +40,7 @@ func readLayersSBOM(layersDir string, bomType string, logger Logger) (*layer, er
 	logger.Debugf("Found BOM of type %s for at %s", bomType, path)
 	return &layer{
 		path:       path,
-		identifier: fmt.Sprintf("%s.bom", bomType),
+		identifier: fmt.Sprintf("%s.sbom", bomType),
 	}, nil
 }
 
