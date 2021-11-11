@@ -153,7 +153,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						layer, err := factory.DirLayer("launch.bom", filepath.Join(layersDir, "sbom", "launch"))
 						h.AssertNil(t, err)
 						h.AssertNil(t, image.AddLayerWithDiffID(layer.TarPath, layer.Digest))
-						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"bom": {"sha":"%s"}}`, layer.Digest)))
+						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, layer.Digest)))
 
 						h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
 					})

@@ -697,19 +697,19 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				it("restores the previous image SBOM layer", func() {
 					h.AssertNil(t, restorer.Restore(testCache))
 
-					got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-true.bom.cdx.json"))
+					got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sbom.cdx.json"))
 					want := `{"key": "some-cache-bom-content"}`
 					h.AssertEq(t, string(got), want)
 
-					got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "launch-true.bom.cdx.json"))
+					got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "launch-true.sbom.cdx.json"))
 					want = `{"key": "some-launch-bom-content"}`
 					h.AssertEq(t, string(got), want)
 
-					got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "launch-true.bom.cdx.json"))
+					got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "launch-true.sbom.cdx.json"))
 					want = `{"key": "some-escaped-launch-bom-content"}`
 					h.AssertEq(t, string(got), want)
 
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "undetected-buildpack.id", "launch-true.bom.cdx.json"))
+					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "undetected-buildpack.id", "launch-true.sbom.cdx.json"))
 					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "sbom"))
 				})
 			})
