@@ -106,7 +106,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}
 
 	if b.PlatformAPI.AtLeast("0.8") {
-		b.Logger.Debug("Copying BOM files")
+		b.Logger.Debug("Copying sBOM files")
 		err = b.copyBOMFiles(config.LayersDir, bomFiles)
 		if err != nil {
 			return nil, err
@@ -137,8 +137,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 // └── buildpack.id
 //     ├── A
 //     │   └── ...
-//     ├── A.bom.cdx.json
-//     └── launch.bom.cdx.json
+//     ├── A.sbom.cdx.json
+//     └── launch.sbom.cdx.json
 //
 // After:
 // /layers
@@ -146,8 +146,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 //     └── buildpack.id
 //         └── launch
 //             ├── A
-//             │   └── bom.cdx.json
-//             └── bom.cdx.json
+//             │   └── sbom.cdx.json
+//             └── sbom.cdx.json
 func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) error {
 	var (
 		buildSBOMDir  = filepath.Join(layersDir, "sbom", "build")

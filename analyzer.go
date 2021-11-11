@@ -50,7 +50,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		if api.MustParse(a.Platform.API()).AtLeast("0.8") {
 			if appMeta.BOM != nil && appMeta.BOM.SHA != "" {
 				if err := a.restorePreviousLayer(appMeta.BOM.SHA); err != nil {
-					return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch BOM layer")
+					return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
 				}
 			}
 		}
@@ -80,7 +80,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	if api.MustParse(a.Platform.API()).AtLeast("0.8") {
 		if cacheMeta.BOM.SHA != "" {
 			if err := a.restoreCacheLayer(cacheMeta.BOM.SHA); err != nil {
-				return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving cache BOM layer")
+				return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving cache sBOM layer")
 			}
 		}
 	}

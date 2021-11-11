@@ -298,7 +298,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName)))
 
 					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					h.AssertError(t, err, fmt.Sprintf("unsupported bom format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
+					h.AssertError(t, err, fmt.Sprintf("unsupported sbom format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
 				})
 
 				it("returns an error for any undeclared BOM media type", func() {

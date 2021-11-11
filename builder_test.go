@@ -277,7 +277,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}, nil)
 
 				_, err := builder.Build()
-				h.AssertError(t, err, fmt.Sprintf("unsupported bom format: '%s'", bomFilePath2))
+				h.AssertError(t, err, fmt.Sprintf("unsupported sbom format: '%s'", bomFilePath2))
 			})
 
 			when("build metadata", func() {

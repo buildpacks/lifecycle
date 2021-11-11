@@ -163,7 +163,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				fakeAppImage.AddPreviousLayer("launch.bom-digest", "")
 				h.AssertNil(t, json.Unmarshal([]byte(`
 {
-   "bom": {
+   "sbom": {
      "sha": "launch.bom-digest"
    },
    "buildpacks": [
@@ -821,7 +821,7 @@ version = "4.5.6"
 						var result struct {
 							BOM struct {
 								SHA string `json:"sha"`
-							} `json:"bom"`
+							} `json:"sbom"`
 						}
 
 						data, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")

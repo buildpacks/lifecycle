@@ -32,9 +32,9 @@ type BOMFile struct {
 }
 
 // Name() returns the destination filename for a given BOM file
-// cdx files should be renamed to "bom.cdx.json"
-// spdx files should be renamed to "bom.spdx.json"
-// syft files should be renamed to "bom.syft.json"
+// cdx files should be renamed to "sbom.cdx.json"
+// spdx files should be renamed to "sbom.spdx.json"
+// syft files should be renamed to "sbom.syft.json"
 // If the BOM is neither cdx, spdx, nor syft, the 2nd return argument
 // will return an error to indicate an unsupported format
 func (b *BOMFile) Name() (string, error) {
@@ -46,7 +46,7 @@ func (b *BOMFile) Name() (string, error) {
 	case mediaTypeSyft:
 		return "sbom.syft.json", nil
 	default:
-		return "", errors.Errorf("unsupported bom format: '%s'", b.Path)
+		return "", errors.Errorf("unsupported sbom format: '%s'", b.Path)
 	}
 }
 
@@ -79,7 +79,7 @@ func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []
 		mediaType := bomFile.mediaType()
 		switch mediaType {
 		case mediaTypeUnsupported:
-			return errors.Errorf("unsupported bom format: '%s'", bomFile.Path)
+			return errors.Errorf("unsupported sbom format: '%s'", bomFile.Path)
 		default:
 			if !contains(sbomMediaTypes, mediaType) {
 				return errors.Errorf("sbom type '%s' not declared for buildpack: '%s'", mediaType, bp.String())
