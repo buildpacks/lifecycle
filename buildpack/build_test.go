@@ -206,7 +206,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("there is a bom in launch.toml", func() {
-					it("should warn", func() {
+					it("should return error", func() {
 						h.Mkfile(t,
 							"[[bom]]\n"+
 								`name = "some-dep"`+"\n"+
@@ -215,20 +215,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
 
-						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						if err != nil {
-							t.Fatalf("Unexpected error:\n%s\n", err)
-						}
-
-						if s := cmp.Diff(br, buildpack.BuildResult{
-							BOM:       []buildpack.BOMEntry{},
-							Labels:    []buildpack.Label{},
-							Processes: []launch.Process{},
-							Slices:    []layers.Slice{},
-						}); s != "" {
-							t.Fatalf("Unexpected:\n%s\n", s)
-						}
-						assertLogEntry(t, logHandler, "BOM table isn't supported in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						h.AssertError(t, err, "bom table isn't supported in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>")
 					})
 				})
 
