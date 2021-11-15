@@ -150,7 +150,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "launch", "some-file"))
 
 						factory := &layers.Factory{ArtifactsDir: artifactsDir}
-						layer, err := factory.DirLayer("launch.bom", filepath.Join(layersDir, "sbom", "launch"))
+						layer, err := factory.DirLayer("launch.sbom", filepath.Join(layersDir, "sbom", "launch"))
 						h.AssertNil(t, err)
 						h.AssertNil(t, image.AddLayerWithDiffID(layer.TarPath, layer.Digest))
 						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, layer.Digest)))
@@ -205,7 +205,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "cache", "some-file"))
 
 						factory := &layers.Factory{ArtifactsDir: artifactsDir}
-						layer, err := factory.DirLayer("cache.bom", filepath.Join(layersDir, "sbom", "cache"))
+						layer, err := factory.DirLayer("cache.sbom", filepath.Join(layersDir, "sbom", "cache"))
 						h.AssertNil(t, err)
 						h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
 						h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: layer.Digest}}))
