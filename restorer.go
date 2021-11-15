@@ -155,9 +155,9 @@ func (r *Restorer) restoreSBOMFunc(bomType string) func(path string, info fs.Fil
 	var bomRegex *regexp.Regexp
 
 	if runtime.GOOS == "windows" {
-		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s\\(.+)\\(.+)\\(bom.+json)`, bomType))
+		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s\\(.+)\\(.+)\\(sbom.+json)`, bomType))
 	} else {
-		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s/(.+)/(.+)/(bom.+json)`, bomType))
+		bomRegex = regexp.MustCompile(fmt.Sprintf(`%s/(.+)/(.+)/(sbom.+json)`, bomType))
 	}
 
 	return func(path string, info fs.FileInfo, err error) error {

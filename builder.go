@@ -106,7 +106,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}
 
 	if b.PlatformAPI.AtLeast("0.8") {
-		b.Logger.Debug("Copying BOM files")
+		b.Logger.Debug("Copying sBOM files")
 		err = b.copyBOMFiles(config.LayersDir, bomFiles)
 		if err != nil {
 			return nil, err
