@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 )
 
@@ -90,7 +91,7 @@ func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []
 	return nil
 }
 
-func processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, sbomMediaTypes []string) ([]BOMFile, error) {
+func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, logger Logger) ([]BOMFile, error) {
 	var (
 		layerGlob = filepath.Join(layersDir, "*.sbom.*.json")
 		files     []BOMFile
@@ -99,6 +100,14 @@ func processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFil
 	matches, err := filepath.Glob(layerGlob)
 	if err != nil {
 		return nil, err
+	}
+
+	if api.MustParse(b.API).LessThan("0.7") {
+		if len(matches) != 0 {
+			logger.Warnf("the following SBoM files will be ignored for buildpack api version < 0.7 [%s]", strings.Join(matches, ", "))
+		}
+
+		return nil, nil
 	}
 
 	for _, m := range matches {
@@ -156,5 +165,5 @@ func processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFil
 		}
 	}
 
-	return files, validateMediaTypes(bp, files, sbomMediaTypes)
+	return files, validateMediaTypes(bp, files, b.Buildpack.SBOM)
 }

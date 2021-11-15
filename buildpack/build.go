@@ -267,6 +267,12 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 		br.MetRequires = names(bpPlanOut.Entries)
 
+		// set BOM files
+		br.BOMFiles, err = b.processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, logger)
+		if err != nil {
+			return BuildResult{}, err
+		}
+
 		// read launch.toml, return if not exists
 		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
 			return br, nil
@@ -291,11 +297,9 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
 
 		// set BOM files
-		if api.MustParse(b.API).AtLeast("0.7") {
-			br.BOMFiles, err = processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, b.Buildpack.SBOM)
-			if err != nil {
-				return BuildResult{}, err
-			}
+		br.BOMFiles, err = b.processBOMFiles(bpLayersDir, bpFromBpInfo, pathToLayerMetadataFile, logger)
+		if err != nil {
+			return BuildResult{}, err
 		}
 
 		// read launch.toml, return if not exists

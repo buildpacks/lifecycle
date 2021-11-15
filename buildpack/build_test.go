@@ -238,9 +238,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
 
 					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
+					h.AssertNil(t, err)
 
 					h.AssertEq(t, buildpack.BuildResult{
 						BOMFiles: []buildpack.BOMFile{
@@ -320,11 +318,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
 
 					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
+					h.AssertNil(t, err)
 
 					h.AssertEq(t, len(br.BOMFiles), 0)
+					expected := "the following SBoM files will be ignored for buildpack api version < 0.7"
+					assertLogEntry(t, logHandler, expected)
 				})
 
 				it("should include labels", func() {
