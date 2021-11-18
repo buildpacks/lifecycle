@@ -143,8 +143,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 // After:
 // /layers
 // └── sbom
-//     └── buildpack.id
-//         └── launch
+//     └── launch
+//         └── buildpack.id
 //             ├── A
 //             │   └── sbom.cdx.json
 //             └── sbom.cdx.json
