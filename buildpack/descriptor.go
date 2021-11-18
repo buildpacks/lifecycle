@@ -27,7 +27,7 @@ type Info struct {
 	ID       string   `toml:"id"`
 	Name     string   `toml:"name"`
 	Version  string   `toml:"version"`
-	SBOM     []string `toml:"sbom,omitempty" json:"sbom,omitempty"`
+	SBOM     []string `toml:"sbom-formats,omitempty" json:"sbom-formats,omitempty"`
 }
 
 type Order []Group
