@@ -35,6 +35,8 @@ func main() {
 		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: p}}, false)
 	case "restorer":
 		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
+	case "extender":
+		cmd.Run(&extendCmd{extendArgs: extendArgs{platform: p}}, false)
 	case "builder":
 		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, false)
 	case "exporter":
@@ -63,6 +65,8 @@ func subcommand(platform Platform) {
 		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: platform}}, true)
 	case "restore":
 		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: platform}}, true)
+	case "extend":
+		cmd.Run(&extendCmd{extendArgs: extendArgs{platform: platform}}, true)
 	case "build":
 		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: platform}}, true)
 	case "export":

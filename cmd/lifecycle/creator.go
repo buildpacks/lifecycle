@@ -239,6 +239,14 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
+	cmd.DefaultLogger.Phase("EXTENDING")
+	err = extendArgs{
+		platform: c.platform,
+	}.extend()
+	if err != nil {
+		return err
+	}
+
 	// send pings to docker daemon while BUILDING to prevent connection closure
 	stopPinging := startPinging(c.docker)
 	cmd.DefaultLogger.Phase("BUILDING")

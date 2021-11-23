@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,8 +11,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
-	"github.com/pkg/errors"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -89,6 +88,11 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	buildMD := &platform.BuildMetadata{}
 	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(opts.LayersDir), buildMD); err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "read build metadata")
+	}
+
+	// extender layers
+	if err := e.addExtenderLayers(opts, &meta); err != nil {
+		return platform.ExportReport{}, err
 	}
 
 	// buildpack-provided layers
@@ -500,6 +504,53 @@ func (e *Exporter) addSBOMLaunchLayer(opts ExportOptions, meta *platform.LayersM
 		}
 
 		meta.BOM = &platform.LayerMetadata{SHA: sha}
+	}
+
+	return nil
+}
+
+func (e *Exporter) addExtenderLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
+	manifestPath := "/layers/kaniko/manifest.json"
+	var manifest []struct {
+		Layers []string `json:"Layers"`
+	}
+
+	f, err := os.Open(manifestPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	defer f.Close()
+
+	err = json.NewDecoder(f).Decode(&manifest)
+	if err != nil {
+		return err
+	}
+
+	if len(manifest) == 0 || len(manifest[0].Layers) == 0 {
+		return nil
+	}
+
+	// Iterate layers except first one (the base layer)
+	for _, layerName := range manifest[0].Layers[1:] {
+		dir := layerDir{
+			path:       "/layers/kaniko/" + strings.TrimSuffix(layerName, ".tar.gz"),
+			identifier: strings.TrimSuffix(layerName, ".tar.gz"),
+		}
+
+		layer, err := e.LayerFactory.DirLayer(dir.Identifier(), dir.Path())
+		if err != nil {
+			return errors.Wrapf(err, "creating layer")
+		}
+
+		_, err = e.addOrReuseLayer(opts.WorkingImage, layer, "")
+		if err != nil {
+			return errors.Wrapf(err, "exporting layer '%s'", layer.ID)
+		}
 	}
 
 	return nil
