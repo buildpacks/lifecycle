@@ -10,19 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 )
 
-type EncoderDecoder interface {
-	IsSupported(buildpackAPI string) bool
-	Encode(file *os.File, lmf File) error
-	Decode(path string) (File, string, error)
-}
-
-func supportedEncoderDecoders() []EncoderDecoder {
-	return []EncoderDecoder{
-		&DefaultEncoderDecoder{},
-		&LegacyEncoderDecoder{},
-	}
-}
-
 func EncodeFile(lmf File, path, buildpackAPI string) error {
 	fh, err := os.Create(path)
 	if err != nil {
@@ -59,13 +46,26 @@ func DecodeFile(path, buildpackAPI string) (File, string, error) { // TODO: pass
 	return File{}, "", errors.New("couldn't find a decoder")
 }
 
-type DefaultEncoderDecoder struct{}
+type encoderDecoder interface {
+	IsSupported(buildpackAPI string) bool
+	Encode(file *os.File, lmf File) error
+	Decode(path string) (File, string, error)
+}
 
-func (d *DefaultEncoderDecoder) IsSupported(buildpackAPI string) bool {
+func supportedEncoderDecoders() []encoderDecoder {
+	return []encoderDecoder{
+		&defaultEncoderDecoder{},
+		&legacyEncoderDecoder{},
+	}
+}
+
+type defaultEncoderDecoder struct{}
+
+func (d *defaultEncoderDecoder) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).AtLeast("0.6")
 }
 
-func (d *DefaultEncoderDecoder) Encode(file *os.File, lmf File) error {
+func (d *defaultEncoderDecoder) Encode(file *os.File, lmf File) error {
 	// omit the types table - all the flags are set to false
 	type dataTomlFile struct {
 		Data interface{} `toml:"metadata"`
@@ -74,7 +74,7 @@ func (d *DefaultEncoderDecoder) Encode(file *os.File, lmf File) error {
 	return toml.NewEncoder(file).Encode(dtf)
 }
 
-func (d *DefaultEncoderDecoder) Decode(path string) (File, string, error) {
+func (d *defaultEncoderDecoder) Decode(path string) (File, string, error) {
 	type typesTable struct {
 		Build  bool `toml:"build"`
 		Launch bool `toml:"launch"`
@@ -101,17 +101,17 @@ func typesInTopLevel(md toml.MetaData) bool {
 	return md.IsDefined("build") || md.IsDefined("launch") || md.IsDefined("cache")
 }
 
-type LegacyEncoderDecoder struct{}
+type legacyEncoderDecoder struct{}
 
-func (d *LegacyEncoderDecoder) IsSupported(buildpackAPI string) bool {
+func (d *legacyEncoderDecoder) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).LessThan("0.6")
 }
 
-func (d *LegacyEncoderDecoder) Encode(file *os.File, lmf File) error {
+func (d *legacyEncoderDecoder) Encode(file *os.File, lmf File) error {
 	return toml.NewEncoder(file).Encode(lmf)
 }
 
-func (d *LegacyEncoderDecoder) Decode(path string) (File, string, error) {
+func (d *legacyEncoderDecoder) Decode(path string) (File, string, error) {
 	var lmf File
 	md, err := toml.DecodeFile(path, &lmf)
 	if err != nil {
