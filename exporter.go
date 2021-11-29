@@ -96,6 +96,12 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 		return platform.ExportReport{}, err
 	}
 
+	if e.PlatformAPI.AtLeast("0.8") {
+		if err := e.addSBOMLaunchLayer(opts, &meta); err != nil {
+			return platform.ExportReport{}, err
+		}
+	}
+
 	// app layers (split into 1 or more slices)
 	if err := e.addAppLayers(opts, buildMD.Slices, &meta); err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "exporting app layers")
@@ -469,4 +475,32 @@ func (e *Exporter) makeBuildReport(layersDir string) (platform.BuildReport, erro
 		out = append(out, buildpack.WithBuildpack(bp, bpBuildReport.BOM)...)
 	}
 	return platform.BuildReport{BOM: out}, nil
+}
+
+func (e *Exporter) addSBOMLaunchLayer(opts ExportOptions, meta *platform.LayersMetadata) error {
+	sbomLaunchDir, err := readLayersSBOM(opts.LayersDir, "launch", e.Logger)
+	if err != nil {
+		return errors.Wrap(err, "failed to read layers config sbom")
+	}
+
+	if sbomLaunchDir != nil {
+		layer, err := e.LayerFactory.DirLayer(sbomLaunchDir.identifier, sbomLaunchDir.path)
+		if err != nil {
+			return errors.Wrapf(err, "creating layer")
+		}
+
+		var originalSHA string
+		if opts.OrigMetadata.BOM != nil {
+			originalSHA = opts.OrigMetadata.BOM.SHA
+		}
+
+		sha, err := e.addOrReuseLayer(opts.WorkingImage, layer, originalSHA)
+		if err != nil {
+			return errors.Wrapf(err, "exporting layer '%s'", layer.ID)
+		}
+
+		meta.BOM = &platform.LayerMetadata{SHA: sha}
+	}
+
+	return nil
 }

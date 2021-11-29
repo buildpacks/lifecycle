@@ -34,7 +34,7 @@ type rebaseCmd struct {
 
 	platform Platform
 
-	//set if necessary before dropping privileges
+	// set if necessary before dropping privileges
 	docker   client.CommonAPIClient
 	keychain authn.Keychain
 }

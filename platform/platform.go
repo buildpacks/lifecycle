@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform/legacy"
 	v06 "github.com/buildpacks/lifecycle/platform/v06"
 	v07 "github.com/buildpacks/lifecycle/platform/v07"
+	v08 "github.com/buildpacks/lifecycle/platform/v08"
 )
 
 func NewPlatform(apiStr string) (common.Platform, error) {
@@ -17,6 +18,8 @@ func NewPlatform(apiStr string) (common.Platform, error) {
 		return v06.NewPlatform(), nil
 	case "0.7":
 		return v07.NewPlatform(), nil
+	case "0.8":
+		return v08.NewPlatform(), nil
 	}
 	return nil, fmt.Errorf("unable to create platform for api %s: unknown api", apiStr)
 }

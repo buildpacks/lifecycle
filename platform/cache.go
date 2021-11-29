@@ -3,6 +3,7 @@ package platform
 import "github.com/buildpacks/lifecycle/buildpack"
 
 type CacheMetadata struct {
+	BOM        LayerMetadata              `json:"sbom"`
 	Buildpacks []buildpack.LayersMetadata `json:"buildpacks"`
 }
 

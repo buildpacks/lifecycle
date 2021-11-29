@@ -388,12 +388,12 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 					files, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack"))
 					h.AssertNil(t, err)
-					//expect 1 file b/c of store.toml
+					// expect 1 file b/c of store.toml
 					h.AssertEq(t, len(files), 1)
 
 					files, err = ioutil.ReadDir(filepath.Join(layerDir, "no.cache.buildpack"))
 					h.AssertNil(t, err)
-					//expect 1 file b/c of store.toml
+					// expect 1 file b/c of store.toml
 					h.AssertEq(t, len(files), 1)
 				})
 

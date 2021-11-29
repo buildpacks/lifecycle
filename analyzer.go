@@ -8,6 +8,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/layer"
+	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -47,6 +48,14 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		if err := image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
 			appMeta = platform.LayersMetadata{}
 		}
+
+		if api.MustParse(a.Platform.API()).AtLeast("0.8") {
+			if appMeta.BOM != nil && appMeta.BOM.SHA != "" {
+				if err := a.restorePreviousLayer(appMeta.BOM.SHA); err != nil {
+					return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
+				}
+			}
+		}
 	} else {
 		appMeta = platform.LayersMetadata{}
 	}
@@ -58,15 +67,23 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
-	if a.restoresLayerMetadata() {
-		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
-		if err != nil {
-			return platform.AnalyzedMetadata{}, err
-		}
+	cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
+	if err != nil {
+		return platform.AnalyzedMetadata{}, err
+	}
 
+	if a.restoresLayerMetadata() {
 		useShaFiles := true
 		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewSHAStore(useShaFiles)); err != nil {
 			return platform.AnalyzedMetadata{}, err
+		}
+	}
+
+	if api.MustParse(a.Platform.API()).AtLeast("0.8") {
+		if cacheMeta.BOM.SHA != "" {
+			if err := a.restoreCacheLayer(cacheMeta.BOM.SHA); err != nil {
+				return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving cache sBOM layer")
+			}
 		}
 	}
 
@@ -94,6 +111,36 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
+}
+
+func (a *Analyzer) restorePreviousLayer(sha string) error {
+	// Sanity check to prevent panic.
+	if a.PreviousImage == nil {
+		return errors.Errorf("restoring layer: previous image not found for %q", sha)
+	}
+	a.Logger.Debugf("Retrieving previous image layer for %q", sha)
+	rc, err := a.PreviousImage.GetLayer(sha)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	return layers.Extract(rc, "")
+}
+
+func (a *Analyzer) restoreCacheLayer(sha string) error {
+	// Sanity check to prevent panic.
+	if a.Cache == nil {
+		return errors.New("restoring layer: cache not provided")
+	}
+	a.Logger.Debugf("Retrieving data for %q", sha)
+	rc, err := a.Cache.RetrieveLayer(sha)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	return layers.Extract(rc, "")
 }
 
 func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {

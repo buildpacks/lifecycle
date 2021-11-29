@@ -61,7 +61,7 @@ type exportArgs struct {
 
 	platform Platform
 
-	//construct if necessary before dropping privileges
+	// construct if necessary before dropping privileges
 	docker   client.CommonAPIClient
 	keychain authn.Keychain
 }

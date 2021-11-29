@@ -27,6 +27,7 @@ type ImageIdentifier struct {
 // NOTE: This struct MUST be kept in sync with `LayersMetadataCompat`
 type LayersMetadata struct {
 	App          []LayerMetadata            `json:"app" toml:"app"`
+	BOM          *LayerMetadata             `json:"sbom,omitempty" toml:"sbom,omitempty"`
 	Buildpacks   []buildpack.LayersMetadata `json:"buildpacks" toml:"buildpacks"`
 	Config       LayerMetadata              `json:"config" toml:"config"`
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
@@ -40,6 +41,7 @@ type LayersMetadata struct {
 // guaranteed, yet the original struct data must be maintained.
 type LayersMetadataCompat struct {
 	App          interface{}                `json:"app" toml:"app"`
+	BOM          *LayerMetadata             `json:"sbom,omitempty" toml:"sbom,omitempty"`
 	Buildpacks   []buildpack.LayersMetadata `json:"buildpacks" toml:"buildpacks"`
 	Config       LayerMetadata              `json:"config" toml:"config"`
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`

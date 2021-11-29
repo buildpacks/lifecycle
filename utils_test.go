@@ -1,6 +1,9 @@
 package lifecycle_test
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -8,6 +11,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestStr(t *testing.T) {
@@ -37,6 +41,39 @@ func testStr(t *testing.T, when spec.G, it spec.S) {
 			if s := cmp.Diff(actual, "ed649d0a36b2"); s != "" {
 				t.Fatalf("Unexpected sha:\n%s\n", s)
 			}
+		})
+	})
+
+	when(".Copy", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+
+		it("should copy files", func() {
+			var (
+				src  = filepath.Join(tmpDir, "src.txt")
+				dest = filepath.Join(tmpDir, "dest.txt")
+			)
+
+			h.Mkfile(t, "some-file-content", src)
+
+			err := lifecycle.Copy(src, dest)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			result := h.MustReadFile(t, dest)
+			h.AssertEq(t, string(result), "some-file-content")
 		})
 	})
 }

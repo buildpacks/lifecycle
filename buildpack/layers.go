@@ -109,7 +109,7 @@ func Malformed(l Layer) bool {
 
 func (d *LayersDir) NewLayer(name, buildpackAPI string, logger Logger) *Layer {
 	return &Layer{
-		layer: layer{
+		layerDir: layerDir{
 			path:       filepath.Join(d.Path, name),
 			identifier: fmt.Sprintf("%s:%s", d.Buildpack.ID, name),
 		},
@@ -119,9 +119,32 @@ func (d *LayersDir) NewLayer(name, buildpackAPI string, logger Logger) *Layer {
 }
 
 type Layer struct { // TODO: need to refactor so api and logger won't be part of this struct
-	layer
+	layerDir
 	api    string
 	logger Logger
+}
+
+type layerDir struct {
+	identifier string
+	path       string
+}
+
+func (l *Layer) Name() string {
+	return filepath.Base(l.path)
+}
+
+func (l *Layer) HasLocalContents() bool {
+	_, err := ioutil.ReadDir(l.path)
+
+	return !os.IsNotExist(err)
+}
+
+func (l *Layer) Identifier() string {
+	return l.identifier
+}
+
+func (l *Layer) Path() string {
+	return l.path
 }
 
 func (l *Layer) Read() (LayerMetadata, error) {
@@ -169,32 +192,9 @@ func (l *Layer) WriteMetadata(metadata layermetadata.File) error {
 	return layermetadata.EncodeFile(metadata, path, l.api)
 }
 
-func (l *Layer) HasLocalContents() bool {
-	_, err := ioutil.ReadDir(l.path)
-
-	return !os.IsNotExist(err)
-}
-
 func (l *Layer) WriteSha(sha string) error {
 	if err := ioutil.WriteFile(l.path+".sha", []byte(sha), 0666); err != nil {
 		return err
 	} // #nosec G306
 	return nil
-}
-
-func (l *Layer) Name() string {
-	return filepath.Base(l.path)
-}
-
-type layer struct {
-	path       string
-	identifier string
-}
-
-func (l *layer) Identifier() string {
-	return l.identifier
-}
-
-func (l *layer) Path() string {
-	return l.path
 }

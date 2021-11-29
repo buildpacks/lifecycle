@@ -2,6 +2,7 @@ package lifecycle_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,6 +23,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
+	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -136,6 +138,42 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
 				})
 
+				when("when there is BOM information", func() {
+					var artifactsDir string
+
+					it.Before(func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
+
+						var err error
+						artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
+						h.AssertNil(t, err)
+
+						h.Mkdir(t, filepath.Join(layersDir, "sbom", "launch"))
+						h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "launch", "some-file"))
+
+						factory := &layers.Factory{ArtifactsDir: artifactsDir}
+						layer, err := factory.DirLayer("launch.sbom", filepath.Join(layersDir, "sbom", "launch"))
+						h.AssertNil(t, err)
+						h.AssertNil(t, image.AddLayerWithDiffID(layer.TarPath, layer.Digest))
+						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, layer.Digest)))
+
+						h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.RemoveAll(artifactsDir))
+					})
+
+					it("restores any BOM layers", func() {
+						_, err := analyzer.Analyze()
+						h.AssertNil(t, err)
+
+						got := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "some-file"))
+						want := `some-bom-data`
+						h.AssertEq(t, string(got), want)
+					})
+				})
+
 				when("cache exists", func() {
 					it.Before(func() {
 						metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "cache_metadata.json"))
@@ -152,6 +190,43 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, md.Metadata, expectedAppMetadata)
+					})
+				})
+
+				when("cache exists with BOM information", func() {
+					var artifactsDir string
+
+					it.Before(func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
+
+						var err error
+						artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
+						h.AssertNil(t, err)
+
+						h.Mkdir(t, filepath.Join(layersDir, "sbom", "cache"))
+						h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "cache", "some-file"))
+
+						factory := &layers.Factory{ArtifactsDir: artifactsDir}
+						layer, err := factory.DirLayer("cache.sbom", filepath.Join(layersDir, "sbom", "cache"))
+						h.AssertNil(t, err)
+						h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
+						h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: layer.Digest}}))
+						h.AssertNil(t, testCache.Commit())
+
+						h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.RemoveAll(artifactsDir))
+					})
+
+					it("restores any BOM layers", func() {
+						_, err := analyzer.Analyze()
+						h.AssertNil(t, err)
+
+						got := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "cache", "some-file"))
+						want := `some-bom-data`
+						h.AssertEq(t, string(got), want)
 					})
 				})
 			})

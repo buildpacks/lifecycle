@@ -64,6 +64,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			exporter = &lifecycle.Exporter{
+				PlatformAPI: api.Platform.Latest(),
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
 					{ID: "other.buildpack.id", API: api.Buildpack.Latest().String()},
@@ -122,7 +123,23 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 					matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
 					h.AssertNil(t, err)
-					h.AssertEq(t, len(matches), 3)
+					h.AssertEq(t, len(matches), 4)
+				})
+			})
+
+			when("structured SBOM", func() {
+				when("there is a 'cache=true' layer with a bom.<ext> file", func() {
+					it("adds the bom.<ext> file to the cache", func() {
+						err := exporter.Cache(layersDir, testCache)
+						h.AssertNil(t, err)
+
+						metadata, err := testCache.RetrieveMetadata()
+						h.AssertNil(t, err)
+
+						t.Log("adds bom sha to metadata")
+						h.AssertEq(t, metadata.BOM.SHA, testLayerDigest("cache.sbom"))
+						assertCacheHasLayer(t, testCache, "cache.sbom")
+					})
 				})
 			})
 
@@ -230,7 +247,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 						matches, err := filepath.Glob(filepath.Join(cacheDir, "committed", "*.tar"))
 						h.AssertNil(t, err)
-						h.AssertEq(t, len(matches), 3)
+						h.AssertEq(t, len(matches), 4)
 
 						for _, m := range matches {
 							if strings.Contains(m, "some-layer.tar") {
