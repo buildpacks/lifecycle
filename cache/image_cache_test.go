@@ -15,7 +15,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -81,7 +80,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 						Layers: map[string]buildpack.LayerMetadata{
 							"some-layer": {
 								SHA: "some-sha",
-								File: layermetadata.File{
+								LayerMetadataFile: buildpack.LayerMetadataFile{
 									Data:   "some-data",
 									Build:  true,
 									Launch: false,

@@ -1,4 +1,4 @@
-package layermetadata
+package buildpack
 
 import (
 	"errors"
@@ -10,7 +10,14 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 )
 
-func EncodeFile(lmf File, path, buildpackAPI string) error {
+type LayerMetadataFile struct {
+	Data   interface{} `json:"data" toml:"metadata"`
+	Build  bool        `json:"build" toml:"build"`
+	Launch bool        `json:"launch" toml:"launch"`
+	Cache  bool        `json:"cache" toml:"cache"`
+}
+
+func EncodeLayerMetadataFile(lmf LayerMetadataFile, path, buildpackAPI string) error {
 	fh, err := os.Create(path)
 	if err != nil {
 		return err
@@ -27,12 +34,12 @@ func EncodeFile(lmf File, path, buildpackAPI string) error {
 	return errors.New("couldn't find an encoder")
 }
 
-func DecodeFile(path, buildpackAPI string) (File, string, error) { // TODO: pass the logger and print the warning inside (instead of returning a message)
+func DecodeLayerMetadataFile(path, buildpackAPI string) (LayerMetadataFile, string, error) { // TODO: pass the logger and print the warning inside (instead of returning a message)
 	fh, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return File{}, "", nil
+		return LayerMetadataFile{}, "", nil
 	} else if err != nil {
-		return File{}, "", err
+		return LayerMetadataFile{}, "", err
 	}
 	defer fh.Close()
 
@@ -43,13 +50,13 @@ func DecodeFile(path, buildpackAPI string) (File, string, error) { // TODO: pass
 			return decoder.Decode(path)
 		}
 	}
-	return File{}, "", errors.New("couldn't find a decoder")
+	return LayerMetadataFile{}, "", errors.New("couldn't find a decoder")
 }
 
 type encoderDecoder interface {
 	IsSupported(buildpackAPI string) bool
-	Encode(file *os.File, lmf File) error
-	Decode(path string) (File, string, error)
+	Encode(file *os.File, lmf LayerMetadataFile) error
+	Decode(path string) (LayerMetadataFile, string, error)
 }
 
 func supportedEncoderDecoders() []encoderDecoder {
@@ -65,7 +72,7 @@ func (d *defaultEncoderDecoder) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).AtLeast("0.6")
 }
 
-func (d *defaultEncoderDecoder) Encode(file *os.File, lmf File) error {
+func (d *defaultEncoderDecoder) Encode(file *os.File, lmf LayerMetadataFile) error {
 	// omit the types table - all the flags are set to false
 	type dataTomlFile struct {
 		Data interface{} `toml:"metadata"`
@@ -74,7 +81,7 @@ func (d *defaultEncoderDecoder) Encode(file *os.File, lmf File) error {
 	return toml.NewEncoder(file).Encode(dtf)
 }
 
-func (d *defaultEncoderDecoder) Decode(path string) (File, string, error) {
+func (d *defaultEncoderDecoder) Decode(path string) (LayerMetadataFile, string, error) {
 	type typesTable struct {
 		Build  bool `toml:"build"`
 		Launch bool `toml:"launch"`
@@ -88,13 +95,13 @@ func (d *defaultEncoderDecoder) Decode(path string) (File, string, error) {
 	var lmtf layerMetadataTomlFile
 	md, err := toml.DecodeFile(path, &lmtf)
 	if err != nil {
-		return File{}, "", err
+		return LayerMetadataFile{}, "", err
 	}
 	msg := ""
 	if isWrongFormat := typesInTopLevel(md); isWrongFormat {
 		msg = fmt.Sprintf("the launch, cache and build flags should be in the types table of %s", path)
 	}
-	return File{Data: lmtf.Data, Build: lmtf.Types.Build, Launch: lmtf.Types.Launch, Cache: lmtf.Types.Cache}, msg, nil
+	return LayerMetadataFile{Data: lmtf.Data, Build: lmtf.Types.Build, Launch: lmtf.Types.Launch, Cache: lmtf.Types.Cache}, msg, nil
 }
 
 func typesInTopLevel(md toml.MetaData) bool {
@@ -107,15 +114,15 @@ func (d *legacyEncoderDecoder) IsSupported(buildpackAPI string) bool {
 	return api.MustParse(buildpackAPI).LessThan("0.6")
 }
 
-func (d *legacyEncoderDecoder) Encode(file *os.File, lmf File) error {
+func (d *legacyEncoderDecoder) Encode(file *os.File, lmf LayerMetadataFile) error {
 	return toml.NewEncoder(file).Encode(lmf)
 }
 
-func (d *legacyEncoderDecoder) Decode(path string) (File, string, error) {
-	var lmf File
+func (d *legacyEncoderDecoder) Decode(path string) (LayerMetadataFile, string, error) {
+	var lmf LayerMetadataFile
 	md, err := toml.DecodeFile(path, &lmf)
 	if err != nil {
-		return File{}, "", err
+		return LayerMetadataFile{}, "", err
 	}
 	msg := ""
 	if isWrongFormat := typesInTypesTable(md); isWrongFormat {

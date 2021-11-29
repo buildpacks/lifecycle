@@ -5,7 +5,6 @@ package buildpack
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -202,5 +201,5 @@ type LayersMetadata struct {
 
 type LayerMetadata struct {
 	SHA string `json:"sha" toml:"sha"`
-	layermetadata.File
+	LayerMetadataFile
 }

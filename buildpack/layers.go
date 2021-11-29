@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/buildpack/layermetadata"
 	"github.com/buildpacks/lifecycle/launch"
 )
 
@@ -149,7 +148,7 @@ func (l *Layer) Path() string {
 
 func (l *Layer) Read() (LayerMetadata, error) {
 	tomlPath := l.Path() + ".toml"
-	layerMetadataFile, msg, err := layermetadata.DecodeFile(tomlPath, l.api)
+	layerMetadataFile, msg, err := DecodeLayerMetadataFile(tomlPath, l.api)
 	if err != nil {
 		return LayerMetadata{}, err
 	}
@@ -168,7 +167,7 @@ func (l *Layer) Read() (LayerMetadata, error) {
 	if err == nil {
 		sha = string(shaBytes)
 	}
-	return LayerMetadata{SHA: sha, File: layerMetadataFile}, nil
+	return LayerMetadata{SHA: sha, LayerMetadataFile: layerMetadataFile}, nil
 }
 
 func (l *Layer) Remove() error {
@@ -184,12 +183,12 @@ func (l *Layer) Remove() error {
 	return nil
 }
 
-func (l *Layer) WriteMetadata(metadata layermetadata.File) error {
+func (l *Layer) WriteMetadata(metadata LayerMetadataFile) error {
 	path := filepath.Join(l.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
-	return layermetadata.EncodeFile(metadata, path, l.api)
+	return EncodeLayerMetadataFile(metadata, path, l.api)
 }
 
 func (l *Layer) WriteSha(sha string) error {
