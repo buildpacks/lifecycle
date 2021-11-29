@@ -484,7 +484,7 @@ func (e *Exporter) addSBOMLaunchLayer(opts ExportOptions, meta *platform.LayersM
 	}
 
 	if sbomLaunchDir != nil {
-		layer, err := e.LayerFactory.DirLayer(sbomLaunchDir.identifier, sbomLaunchDir.path)
+		layer, err := e.LayerFactory.DirLayer(sbomLaunchDir.Identifier(), sbomLaunchDir.Path())
 		if err != nil {
 			return errors.Wrapf(err, "creating layer")
 		}
