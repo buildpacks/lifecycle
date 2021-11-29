@@ -11,7 +11,7 @@ import (
 )
 
 type Platform interface {
-	API() string
+	API() *api.Version
 }
 
 type Analyzer struct {
@@ -47,7 +47,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 			appMeta = platform.LayersMetadata{}
 		}
 
-		if api.MustParse(a.Platform.API()).AtLeast("0.8") {
+		if a.Platform.API().AtLeast("0.8") {
 			if appMeta.BOM != nil && appMeta.BOM.SHA != "" {
 				if err := a.restorePreviousLayer(appMeta.BOM.SHA); err != nil {
 					return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
@@ -77,7 +77,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
-	if api.MustParse(a.Platform.API()).AtLeast("0.8") {
+	if a.Platform.API().AtLeast("0.8") {
 		if cacheMeta.BOM.SHA != "" {
 			if err := a.restoreCacheLayer(cacheMeta.BOM.SHA); err != nil {
 				return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving cache sBOM layer")
@@ -93,7 +93,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 }
 
 func (a *Analyzer) restoresLayerMetadata() bool {
-	return api.MustParse(a.Platform.API()).LessThan("0.7")
+	return a.Platform.API().LessThan("0.7")
 }
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {

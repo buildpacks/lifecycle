@@ -65,7 +65,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
-				p, err := platform.NewPlatform(platformAPI)
+				p := platform.NewPlatform(platformAPI)
 				h.AssertNil(t, err)
 
 				restorer = &lifecycle.Restorer{

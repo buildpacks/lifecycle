@@ -70,7 +70,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			mockCtrl = gomock.NewController(t)
 			metadataRestorer = testmock.NewMockLayerMetadataRestorer(mockCtrl)
 
-			p, err := platform.NewPlatform(platformAPI)
+			p := platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
 				PreviousImage: image,
@@ -107,7 +107,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			)
 
 			expectRestoresLayerMetadataIfSupported := func() {
-				if api.MustParse(analyzer.Platform.API()).LessThan("0.7") {
+				if analyzer.Platform.API().LessThan("0.7") {
 					useShaFiles := true
 					layerSHAStore := lifecycle.NewLayerSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)

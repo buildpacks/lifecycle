@@ -8,16 +8,16 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	lplatform "github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 type Platform interface {
-	API() string
-	CodeFor(errType common.LifecycleExitError) int
+	API() *api.Version
+	CodeFor(errType lplatform.LifecycleExitError) int
 }
 
 func main() {
@@ -26,25 +26,23 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	platform, err := lplatform.NewPlatform(platformAPI)
-	if err != nil {
-		cmd.Exit(err)
-	}
+	p := lplatform.NewPlatform(platformAPI)
+
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, false)
+		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: p}}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: platform}}, false)
+		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: p}}, false)
 	case "restorer":
-		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: platform}}, false)
+		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
 	case "builder":
-		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: platform}}, false)
+		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, false)
 	case "exporter":
-		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: platform}}, false)
+		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
 	case "rebaser":
-		cmd.Run(&rebaseCmd{platform: platform}, false)
+		cmd.Run(&rebaseCmd{platform: p}, false)
 	case "creator":
-		cmd.Run(&createCmd{platform: platform}, false)
+		cmd.Run(&createCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
@@ -52,11 +50,11 @@ func main() {
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
 		}
-		subcommand(platform)
+		subcommand(p)
 	}
 }
 
-func subcommand(platform common.Platform) {
+func subcommand(platform Platform) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":

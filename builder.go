@@ -37,7 +37,6 @@ type Builder struct {
 	LayersDir      string
 	PlatformDir    string
 	Platform       Platform
-	PlatformAPI    *api.Version // TODO: derive from platform
 	Group          buildpack.Group
 	Plan           platform.BuildPlan
 	Out, Err       io.Writer
@@ -80,7 +79,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 
 		b.Logger.Debug("Updating buildpack processes")
-		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.PlatformAPI)
+		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.Platform.API())
 
 		bom = append(bom, br.BOM...)
 		bomFiles = append(bomFiles, br.BOMFiles...)
@@ -98,14 +97,14 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debugf("Finished running build for buildpack %s", bp)
 	}
 
-	if b.PlatformAPI.LessThan("0.4") {
+	if b.Platform.API().LessThan("0.4") {
 		config.Logger.Debug("Updating BOM entries")
 		for i := range bom {
 			bom[i].ConvertMetadataToVersion()
 		}
 	}
 
-	if b.PlatformAPI.AtLeast("0.8") {
+	if b.Platform.API().AtLeast("0.8") {
 		b.Logger.Debug("Copying sBOM files")
 		err = b.copyBOMFiles(config.LayersDir, bomFiles)
 		if err != nil {
