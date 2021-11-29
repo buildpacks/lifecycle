@@ -14,11 +14,11 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestStr(t *testing.T) {
-	spec.Run(t, "Utils", testStr, spec.Report(report.Terminal{}))
+func TestUtils(t *testing.T) {
+	spec.Run(t, "Utils", testUtils, spec.Report(report.Terminal{}))
 }
 
-func testStr(t *testing.T, when spec.G, it spec.S) {
+func testUtils(t *testing.T, when spec.G, it spec.S) {
 	when(".TruncateSha", func() {
 		it("should truncate the sha", func() {
 			actual := lifecycle.TruncateSha("ed649d0a36b218c476b64d61f85027477ef5742045799f45c8c353562279065a")
