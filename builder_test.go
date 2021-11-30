@@ -808,9 +808,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.4", func() {
 			it.Before(func() {
-				var err error
 				builder.Platform = platform.NewPlatform("0.3")
-				h.AssertNil(t, err)
 			})
 
 			when("build metadata", func() {
