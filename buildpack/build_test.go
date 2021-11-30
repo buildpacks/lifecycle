@@ -224,18 +224,23 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					buildpackID := bpTOML.Buildpack.ID
 					bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
 					layerName := "some-layer"
+					otherLayerName := "some-launch-true-cache-false-layer"
 
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID))
 					h.Mkfile(t, `{"key": "some-bom-content"}`,
 						filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
 						filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)))
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", otherLayerName)), // layer directory does not exist
+					)
 
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID, layerName))
 					h.Mkfile(t, "[types]\n  cache = true",
 						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
+					h.Mkfile(t, "[types]\n  launch = true\n  cache = false",
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", otherLayerName)))
 
 					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
 					h.AssertNil(t, err)
@@ -253,6 +258,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								LayerName:   "",
 								LayerType:   buildpack.LayerTypeLaunch,
 								Path:        filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
+							},
+							{
+								BuildpackID: buildpackID,
+								LayerName:   otherLayerName,
+								LayerType:   buildpack.LayerTypeLaunch,
+								Path:        filepath.Join(layersDir, buildpackID, "some-launch-true-cache-false-layer.sbom.cdx.json"),
 							},
 							{
 								BuildpackID: buildpackID,
@@ -277,6 +288,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					h.Mkdir(t,
 						filepath.Join(layersDir, buildpackID, layerName))
+					h.Mkfile(t, "[types]\n  launch = true\n  cache = false",
+						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
 					h.Mkfile(t, `{"key": "some-bom-content"}`,
 						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
 						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.spdx.json", layerName)),
