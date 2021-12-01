@@ -639,7 +639,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				})
 			})
 
-			when("there are BOM layers", func() {
+			when("there are SBOM layers", func() {
 				it.Before(func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
 

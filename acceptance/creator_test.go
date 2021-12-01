@@ -4,6 +4,8 @@
 package acceptance
 
 import (
+	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os/exec"
 	"path/filepath"
@@ -55,11 +57,11 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var createdImageName string
 
-		it.After(func() {
-			h.DockerImageRemove(t, createdImageName)
-		})
-
 		when("daemon case", func() {
+			it.After(func() {
+				h.DockerImageRemove(t, createdImageName)
+			})
+
 			when("first build", func() {
 				when("app", func() {
 					it("is created", func() {
@@ -98,6 +100,10 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 		})
 
 		when("registry case", func() {
+			it.After(func() {
+				h.DockerImageRemove(t, createdImageName)
+			})
+
 			when("first build", func() {
 				when("app", func() {
 					it("is created", func() {
@@ -132,6 +138,98 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						h.AssertStringContains(t, output, "SOME_VAR=some-val") // set by buildpack
 					})
 				})
+			})
+		})
+
+		when.Focus("sbom", func() {
+			var cacheDir string
+
+			it.Before(func() {
+				var err error
+				cacheDir, err = ioutil.TempDir("", "creator-acceptance")
+				h.AssertNil(t, err)
+			})
+
+			it.After(func() {
+				//h.AssertNil(t, os.RemoveAll(cacheDir))
+				fmt.Println("cache dir: ", cacheDir)
+			})
+
+			it("is exported in the app image", func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Test needs to be adapted to work on Windows")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized sBOM")
+
+				createFlags := []string{"-daemon"}
+				createFlags = append(createFlags, []string{
+					"-run-image", createRegFixtures.ReadOnlyRunImage,
+					"-cache-dir", "/cache",
+					"-log-level", "debug",
+				}...)
+
+				createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
+				createdImageName = "some-created-image-" + h.RandString(10)
+				createArgs = append(createArgs, createdImageName)
+
+				// first build
+				output := h.DockerRun(t,
+					createImage,
+					h.WithFlags(append(
+						dockerSocketMount,
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
+						"--network", createRegNetwork,
+						"--volume", cacheDir+":/cache",
+					)...),
+					h.WithArgs(createArgs...),
+				)
+				h.AssertStringDoesNotContain(t, string(output), "restored with content")
+
+				// first run
+				output = h.DockerRun(t,
+					createdImageName,
+					h.WithFlags(
+						"--entrypoint", "/bin/bash",
+					),
+					h.WithArgs("-c", "ls -Rl /layers"),
+				)
+				h.AssertStringContains(t, string(output), "/layers/sbom/launch/samples_hello-world/some-launch-cache-layer")
+				h.AssertStringContains(t, string(output), "/layers/sbom/launch/samples_hello-world/some-layer")
+				h.AssertStringDoesNotContain(t, string(output), "some-cache-layer")
+				h.AssertStringDoesNotContain(t, string(output), "some-build-layer")
+				// TODO: check /layers in build container for build bom
+
+				// second build
+				output = h.DockerRun(t,
+					createImage,
+					h.WithFlags(append(
+						dockerSocketMount,
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
+						"--network", createRegNetwork,
+						"--volume", cacheDir+":/cache",
+					)...),
+					h.WithArgs(createArgs...),
+				)
+				h.AssertStringContains(t, string(output), "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
+				h.AssertStringContains(t, string(output), "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
+				h.AssertStringContains(t, string(output), "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
+				h.AssertStringContains(t, string(output), "Reusing layer 'launch.sbom'")
+
+				// second run
+				output = h.DockerRun(t,
+					createdImageName,
+					h.WithFlags(
+						"--entrypoint", "/bin/bash",
+					),
+					h.WithArgs("-c", "ls -Rl /layers"),
+				)
+				h.AssertStringContains(t, string(output), "/layers/sbom/launch/samples_hello-world/some-launch-cache-layer")
+				h.AssertStringContains(t, string(output), "/layers/sbom/launch/samples_hello-world/some-layer")
+				h.AssertStringDoesNotContain(t, string(output), "some-cache-layer")
+				h.AssertStringDoesNotContain(t, string(output), "some-build-layer")
+				// TODO: check /layers in build container for build bom
+
+				h.DockerImageRemove(t, createdImageName)
 			})
 		})
 	}
