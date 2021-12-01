@@ -640,7 +640,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 			when("there is a cache with BOM information", func() {
 				var (
-					tmpDir      string
+					tmpDir string
 				)
 
 				it.Before(func() {
