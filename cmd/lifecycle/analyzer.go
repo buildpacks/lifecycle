@@ -17,6 +17,8 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
@@ -187,7 +189,7 @@ func (a *analyzeCmd) Exec() error {
 		cacheStore lifecycle.Cache
 	)
 	if a.restoresLayerMetadata() {
-		group, err = lifecycle.ReadGroup(a.platform06.groupPath)
+		group, err = buildpack.ReadGroup(a.platform06.groupPath)
 		if err != nil {
 			return cmd.FailErr(err, "read buildpack group")
 		}
@@ -207,7 +209,7 @@ func (a *analyzeCmd) Exec() error {
 		return err
 	}
 
-	if err := lifecycle.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
+	if err := encoding.WriteTOML(a.analyzedPath, analyzedMD); err != nil {
 		return errors.Wrap(err, "write analyzed.toml")
 	}
 
@@ -232,7 +234,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		Platform:              aa.platform,
 		PreviousImage:         previousImage,
 		RunImage:              runImage,
-		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
+		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
