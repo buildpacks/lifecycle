@@ -141,7 +141,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			})
 		})
 
-		when.Focus("sbom", func() {
+		when("sbom", func() {
 			var (
 				cacheDir  string
 				layersDir string
