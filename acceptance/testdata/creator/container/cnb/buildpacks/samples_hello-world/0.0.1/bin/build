@@ -3,9 +3,6 @@ set -eo pipefail
 
 echo "---> Hello World buildpack"
 
-ls -Rl /layers
-ls -Rl /cache
-
 # INPUT ARGUMENTS
 platform_dir=$2
 env_dir=${platform_dir}/env
@@ -63,9 +60,28 @@ EOF
 # build=true layer
 mkdir -p ${layers_dir}/some-build-layer
 
+if test -f ${layers_dir}/some-build-layer.sbom.cdx.json; then
+  echo "${layers_dir}/some-build-layer.sbom.cdx.json" should never be restored
+  exit 1
+fi
+
 echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/some-build-layer.sbom.cdx.json
 
 cat <<EOF > "$layers_dir"/some-build-layer.toml
 [types]
   build = true
 EOF
+
+# launch bom
+if test -f ${layers_dir}/launch.sbom.cdx.json; then
+  echo "${layers_dir}/launch.sbom.cdx.json should never be restored"
+  exit 1
+fi
+echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/launch.sbom.cdx.json
+
+# build bom
+if test -f ${layers_dir}/build.sbom.cdx.json; then
+  echo "${layers_dir}/build.sbom.cdx.json should never be restored"
+  exit 1
+fi
+echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/build.sbom.cdx.json

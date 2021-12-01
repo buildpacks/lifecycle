@@ -67,12 +67,12 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
-	cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
-	if err != nil {
-		return platform.AnalyzedMetadata{}, err
-	}
-
 	if a.restoresLayerMetadata() {
+		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, err
+		}
+
 		useShaFiles := true
 		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewSHAStore(useShaFiles)); err != nil {
 			return platform.AnalyzedMetadata{}, err

@@ -125,6 +125,7 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		Platform:              r.platform,
 		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers),
 		LayersMetadata:        layerMetadata,
+		SBOMRestorer:          layer.NewSBOMRestorer(r.layersDir, cmd.DefaultLogger),
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

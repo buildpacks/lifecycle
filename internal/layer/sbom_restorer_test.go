@@ -166,5 +166,15 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "undetected-buildpack.id", "launch-true.sbom.cdx.json"))
 			h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "sbom"))
 		})
+
+		it("removes the layers/sbom directory", func() {
+			h.AssertNil(t, sbomRestorer.RestoreToBuildpackLayers(detectedBps))
+			h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "sbom"))
+		})
+
+		it("does not copy launch-level SBOM files", func() {
+			h.AssertNil(t, sbomRestorer.RestoreToBuildpackLayers(detectedBps))
+			h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "launch.sbom.cdx.json"))
+		})
 	})
 }
