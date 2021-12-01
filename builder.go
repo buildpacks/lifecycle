@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
+	io2 "github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -165,7 +166,7 @@ func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) e
 				return err
 			}
 
-			return Copy(bomFile.Path, filepath.Join(targetDir, name))
+			return io2.Copy(bomFile.Path, filepath.Join(targetDir, name))
 		}
 	)
 

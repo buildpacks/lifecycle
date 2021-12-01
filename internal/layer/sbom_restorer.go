@@ -1,33 +1,47 @@
-package lifecycle
+package layer
 
 import (
 	"fmt"
-	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/lifecycle/layers"
-	"github.com/pkg/errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 
+	"github.com/buildpacks/imgutil"
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/lifecycle/buildpack"
+	io2 "github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/layers"
 )
 
-type LayerSBOMRestorer struct {
-	layersDir string
-	logger    Logger
+//go:generate mockgen -package testmock -destination testmock/sbom_restorer.go github.com/buildpacks/lifecycle/internal/layer SBOMRestorer
+type SBOMRestorer interface {
+	RestoreFromPrevious(image imgutil.Image, layerDigest string) error
+	RestoreFromCache(cache Cache, layerDigest string) error
+	RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildpack) error
 }
 
-func NewLayerSBOMRestorer(layersDir string, logger Logger) *LayerSBOMRestorer {
-	return &LayerSBOMRestorer{
+type Cache interface {
+	RetrieveLayer(sha string) (io.ReadCloser, error)
+}
+
+func NewSBOMRestorer(layersDir string, logger Logger) SBOMRestorer {
+	return &DefaultSBOMRestorer{
 		layersDir: layersDir,
 		logger:    logger,
 	}
 }
 
-func (r *LayerSBOMRestorer) RestoreFromPrevious(image *fakes.Image, layerDigest string) error {
+type DefaultSBOMRestorer struct {
+	layersDir string
+	logger    Logger
+}
+
+func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDigest string) error {
 	// Sanity check to prevent panic.
 	if image == nil {
 		return errors.Errorf("restoring layer: previous image not found for %q", layerDigest)
@@ -43,7 +57,7 @@ func (r *LayerSBOMRestorer) RestoreFromPrevious(image *fakes.Image, layerDigest 
 	return layers.Extract(rc, "")
 }
 
-func (r *LayerSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) error {
+func (r *DefaultSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) error {
 	// Sanity check to prevent panic.
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
@@ -59,7 +73,7 @@ func (r *LayerSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) er
 	return layers.Extract(rc, "")
 }
 
-func (r *LayerSBOMRestorer) RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildpack) error {
+func (r *DefaultSBOMRestorer) RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildpack) error {
 	var (
 		cacheDir  = filepath.Join(r.layersDir, "sbom", "cache")
 		launchDir = filepath.Join(r.layersDir, "sbom", "launch")
@@ -73,7 +87,7 @@ func (r *LayerSBOMRestorer) RestoreToBuildpackLayers(detectedBps []buildpack.Gro
 	return filepath.Walk(launchDir, r.restoreSBOMFunc(detectedBps, "launch"))
 }
 
-func (r *LayerSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuildpack, bomType string) func(path string, info fs.FileInfo, err error) error {
+func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuildpack, bomType string) func(path string, info fs.FileInfo, err error) error {
 	var bomRegex *regexp.Regexp
 
 	if runtime.GOOS == "windows" {
@@ -103,11 +117,11 @@ func (r *LayerSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuildpa
 			return nil
 		}
 
-		return Copy(path, dest)
+		return io2.Copy(path, dest)
 	}
 }
 
-func (r *LayerSBOMRestorer) contains(detectedBps []buildpack.GroupBuildpack, id string) bool {
+func (r *DefaultSBOMRestorer) contains(detectedBps []buildpack.GroupBuildpack, id string) bool {
 	for _, bp := range detectedBps {
 		if launch.EscapeID(bp.ID) == id {
 			return true

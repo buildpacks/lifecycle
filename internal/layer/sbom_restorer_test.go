@@ -1,36 +1,38 @@
-package lifecycle_test
+package layer_test
 
 import (
 	"fmt"
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/discard"
-	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/lifecycle/cache"
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/discard"
+	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestLayerSBOMRestorer(t *testing.T) {
-	spec.Run(t, "LayerSBOMRestorer", testLayerSBOMRestorer, spec.Report(report.Terminal{}))
+func TestSBOMRestorer(t *testing.T) {
+	spec.Run(t, "SBOMRestorer", testSBOMRestorer, spec.Report(report.Terminal{}))
 }
 
-func testLayerSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
+func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 	var (
 		layersDir    string
-		sbomRestorer *lifecycle.LayerSBOMRestorer
+		sbomRestorer layer.SBOMRestorer
 		err          error
 	)
 
@@ -38,7 +40,7 @@ func testLayerSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		layersDir, err = ioutil.TempDir("", "lifecycle.layers-dir.")
 		h.AssertNil(t, err)
 
-		sbomRestorer = lifecycle.NewLayerSBOMRestorer(layersDir, &log.Logger{Handler: &discard.Handler{}})
+		sbomRestorer = layer.NewSBOMRestorer(layersDir, &log.Logger{Handler: &discard.Handler{}})
 	})
 
 	it.After(func() {
@@ -133,7 +135,7 @@ func testLayerSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			h.Mkdir(t, filepath.Join(layersDir, "sbom"))
 			h.RecursiveCopy(t,
-				filepath.Join("testdata", "restorer", "sbom"),
+				filepath.Join("testdata", "sbom"),
 				filepath.Join(layersDir, "sbom"))
 
 			buildpackAPI := api.Buildpack.Latest().String()
@@ -144,7 +146,6 @@ func testLayerSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			for _, bp := range detectedBps {
 				h.AssertNil(t, os.MkdirAll(filepath.Join(layersDir, launch.EscapeID(bp.ID)), 0755))
 			}
-
 		})
 
 		it("copies the SBOM files for detected buildpacks and removes the layers/sbom directory", func() {

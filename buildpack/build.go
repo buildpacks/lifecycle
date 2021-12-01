@@ -132,7 +132,6 @@ func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]
 		})
 	}
 	return eachLayer(layersDir, b.API, func(path, buildpackAPI string) (LayerMetadataFile, error) {
-
 		layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
 		if err != nil {
 			return LayerMetadataFile{}, err

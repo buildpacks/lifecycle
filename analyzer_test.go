@@ -45,6 +45,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			image            *fakes.Image
 			metadataRestorer *ltestmock.MockMetadataRestorer
 			mockCtrl         *gomock.Controller
+			sbomRestorer     *ltestmock.MockSBOMRestorer
 			testCache        lifecycle.Cache
 		)
 
@@ -72,6 +73,8 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			mockCtrl = gomock.NewController(t)
 			metadataRestorer = ltestmock.NewMockMetadataRestorer(mockCtrl)
 
+			sbomRestorer = ltestmock.NewMockSBOMRestorer(mockCtrl)
+
 			p, err := platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
@@ -85,6 +88,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				},
 				Cache:                 testCache,
 				LayerMetadataRestorer: metadataRestorer,
+				SBOMRestorer:          sbomRestorer,
 			}
 
 			if testing.Verbose() {
@@ -139,7 +143,10 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 
 				when("when there is BOM information", func() {
-					var artifactsDir string
+					var (
+						artifactsDir string
+						layerDigest  string
+					)
 
 					it.Before(func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
@@ -147,13 +154,13 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						var err error
 						artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
 						h.AssertNil(t, err)
-
 						h.Mkdir(t, filepath.Join(layersDir, "sbom", "launch"))
 						h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "launch", "some-file"))
-
 						factory := &layers.Factory{ArtifactsDir: artifactsDir}
 						layer, err := factory.DirLayer("launch.sbom", filepath.Join(layersDir, "sbom", "launch"))
 						h.AssertNil(t, err)
+						layerDigest = layer.Digest
+
 						h.AssertNil(t, image.AddLayerWithDiffID(layer.TarPath, layer.Digest))
 						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, layer.Digest)))
 
@@ -164,13 +171,10 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						h.AssertNil(t, os.RemoveAll(artifactsDir))
 					})
 
-					it("restores any BOM layers", func() {
+					it("restores the SBOM layer from the previous image", func() {
+						sbomRestorer.EXPECT().RestoreFromPrevious(image, layerDigest)
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
-
-						got := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "some-file"))
-						want := `some-bom-data`
-						h.AssertEq(t, string(got), want)
 					})
 				})
 
@@ -190,43 +194,6 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, md.Metadata, expectedAppMetadata)
-					})
-				})
-
-				when("cache exists with BOM information", func() {
-					var artifactsDir string
-
-					it.Before(func() {
-						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
-
-						var err error
-						artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
-						h.AssertNil(t, err)
-
-						h.Mkdir(t, filepath.Join(layersDir, "sbom", "cache"))
-						h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "cache", "some-file"))
-
-						factory := &layers.Factory{ArtifactsDir: artifactsDir}
-						layer, err := factory.DirLayer("cache.sbom", filepath.Join(layersDir, "sbom", "cache"))
-						h.AssertNil(t, err)
-						h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
-						h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: layer.Digest}}))
-						h.AssertNil(t, testCache.Commit())
-
-						h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
-					})
-
-					it.After(func() {
-						h.AssertNil(t, os.RemoveAll(artifactsDir))
-					})
-
-					it("restores any BOM layers", func() {
-						_, err := analyzer.Analyze()
-						h.AssertNil(t, err)
-
-						got := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "cache", "some-file"))
-						want := `some-bom-data`
-						h.AssertEq(t, string(got), want)
 					})
 				})
 			})
