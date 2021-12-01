@@ -6,6 +6,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -23,7 +25,7 @@ type Analyzer struct {
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
 	Cache                 Cache
-	LayerMetadataRestorer LayerMetadataRestorer
+	LayerMetadataRestorer layer.MetadataRestorer
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
@@ -43,7 +45,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 
 		// continue even if the label cannot be decoded
-		if err := DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
+		if err := image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
 			appMeta = platform.LayersMetadata{}
 		}
 
@@ -72,7 +74,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 	if a.restoresLayerMetadata() {
 		useShaFiles := true
-		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, NewLayerSHAStore(useShaFiles)); err != nil {
+		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewSHAStore(useShaFiles)); err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
 	}
@@ -139,4 +141,23 @@ func (a *Analyzer) restoreCacheLayer(sha string) error {
 	defer rc.Close()
 
 	return layers.Extract(rc, "")
+}
+
+func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta platform.CacheMetadata
+	if cache != nil {
+		var err error
+		if !cache.Exists() {
+			logger.Info("Layer cache not found")
+		}
+		cacheMeta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
+		}
+	} else {
+		logger.Debug("Usable cache not provided, using empty cache metadata")
+	}
+
+	return cacheMeta, nil
 }

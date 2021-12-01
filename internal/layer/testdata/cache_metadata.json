@@ -1,0 +1,76 @@
+{
+    "buildpacks": [
+        {
+            "key": "metadata.buildpack",
+            "layers": {
+                "cache": {
+                    "cache": true,
+                    "data": {
+                        "cache-key": "cache-value"
+                    },
+                    "sha": "cache-sha"
+                },
+                "cache-false": {
+                    "cache": false,
+                    "data": {
+                        "cache-false-key": "cache-false-value"
+                    },
+                    "sha": "cache-false-sha"
+                },
+                "launch-build-cache": {
+                    "build": true,
+                    "cache": true,
+                    "data": {
+                        "launch-build-cache-key": "cache-specific-value",
+                        "cache-only-key": "cache-only-value"
+                    },
+                    "launch": true,
+                    "sha": "launch-build-cache-old-sha"
+                },
+                "launch-cache": {
+                    "cache": true,
+                    "data": {
+                        "launch-cache-key": "cache-specific-value",
+                        "cache-only-key": "cache-only-value"
+                    },
+                    "launch": true,
+                    "sha": "launch-cache-old-sha"
+                },
+		"launch-cache-not-in-app": {
+                    "cache": true,
+                    "data": {
+                        "launch-cache-key": "cache-specific-value",
+                        "cache-only-key": "cache-only-value"
+                    },
+                    "launch": true,
+                    "sha": "launch-cache-not-in-app-sha"
+                }
+
+            }
+        },
+        {
+            "key": "no.group.buildpack",
+            "layers": {
+                "some-layer": {
+                    "cache": true,
+                    "data": {
+                        "some-layer-key": "some-layer-value"
+                    },
+                    "sha": "some-layer-sha"
+                }
+            }
+        },
+        {
+            "key": "escaped/buildpack/id",
+            "layers": {
+                "escaped-bp-layer": {
+                    "cache": true,
+                    "data": {
+                        "escaped-bp-layer-key": "escaped-bp-layer-value"
+                    },
+                    "sha": "escaped-bp-layer-sha"
+                }
+            }
+        }
+    ]
+}

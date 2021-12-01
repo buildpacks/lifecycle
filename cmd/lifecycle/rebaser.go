@@ -16,6 +16,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
@@ -123,7 +124,7 @@ func (r *rebaseCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "rebase")
 	}
-	if err := lifecycle.WriteTOML(r.reportPath, &report); err != nil {
+	if err := encoding.WriteTOML(r.reportPath, &report); err != nil {
 		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "write rebase report")
 	}
 	return nil
@@ -167,7 +168,7 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	var md platform.LayersMetadata
-	if err := lifecycle.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
+	if err := image.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 
