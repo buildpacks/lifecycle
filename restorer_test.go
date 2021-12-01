@@ -640,36 +640,26 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 			when("there is a cache with BOM information", func() {
 				var (
-					artifactsDir string
-					layerDigest  string
+					tmpDir      string
 				)
 
 				it.Before(func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
 
-					var err error
-					artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
+					tmpDir, err := ioutil.TempDir("", "")
 					h.AssertNil(t, err)
-					h.Mkdir(t, filepath.Join(layersDir, "sbom", "cache"))
-					h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "cache", "some-file"))
-					factory := &layers.Factory{ArtifactsDir: artifactsDir}
-					layer, err := factory.DirLayer("cache.sbom", filepath.Join(layersDir, "sbom", "cache"))
-					h.AssertNil(t, err)
-					layerDigest = layer.Digest
-
-					h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
-					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: layer.Digest}}))
+					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
+					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: "some-digest"}}))
 					h.AssertNil(t, testCache.Commit())
-
-					h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
 				})
 
 				it.After(func() {
-					h.AssertNil(t, os.RemoveAll(artifactsDir))
+					h.AssertNil(t, os.RemoveAll(tmpDir))
 				})
 
-				it("restores any BOM layers", func() {
-					sbomRestorer.EXPECT().RestoreFromCache(testCache, layerDigest)
+				it("restores the SBOM layer from the cache", func() {
+					sbomRestorer.EXPECT().RestoreFromCache(testCache, "some-digest")
 					sbomRestorer.EXPECT().RestoreToBuildpackLayers(restorer.Buildpacks)
 					err := restorer.Restore(testCache)
 					h.AssertNil(t, err)

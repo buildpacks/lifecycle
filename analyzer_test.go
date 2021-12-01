@@ -23,7 +23,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
-	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -143,36 +142,15 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 
 				when("when there is BOM information", func() {
-					var (
-						artifactsDir string
-						layerDigest  string
-					)
-
 					it.Before(func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
 
-						var err error
-						artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
-						h.AssertNil(t, err)
-						h.Mkdir(t, filepath.Join(layersDir, "sbom", "launch"))
-						h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "launch", "some-file"))
-						factory := &layers.Factory{ArtifactsDir: artifactsDir}
-						layer, err := factory.DirLayer("launch.sbom", filepath.Join(layersDir, "sbom", "launch"))
-						h.AssertNil(t, err)
-						layerDigest = layer.Digest
-
-						h.AssertNil(t, image.AddLayerWithDiffID(layer.TarPath, layer.Digest))
-						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, layer.Digest)))
-
-						h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
-					})
-
-					it.After(func() {
-						h.AssertNil(t, os.RemoveAll(artifactsDir))
+						h.AssertNil(t, image.AddLayerWithDiffID("", "some-digest"))
+						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, "some-digest")))
 					})
 
 					it("restores the SBOM layer from the previous image", func() {
-						sbomRestorer.EXPECT().RestoreFromPrevious(image, layerDigest)
+						sbomRestorer.EXPECT().RestoreFromPrevious(image, "some-digest")
 						_, err := analyzer.Analyze()
 						h.AssertNil(t, err)
 					})
