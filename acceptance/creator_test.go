@@ -187,7 +187,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				}
 				// remove temp dirs
 				for _, dir := range []string{dirCache, dirBuild1, dirRun1, dirBuild2, dirRun2} {
-					h.AssertNil(t, os.RemoveAll(dir))
+					_ = os.RemoveAll(dir)
 				}
 				// remove image
 				h.DockerImageRemove(t, imageName)
