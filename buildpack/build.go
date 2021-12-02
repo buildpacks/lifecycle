@@ -220,7 +220,7 @@ func eachLayer(bpLayersDir, buildpackAPI string, fn func(path, api string) (Laye
 	}
 	bpLayers := map[string]LayerMetadataFile{}
 	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), ".toml") {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".toml") {
 			continue
 		}
 		path := filepath.Join(bpLayersDir, strings.TrimSuffix(f.Name(), ".toml"))

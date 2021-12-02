@@ -165,7 +165,11 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				// create temp dirs
 				for _, dirPtr := range []*string{&dirCache, &dirBuild1, &dirRun1, &dirBuild2, &dirRun2} {
 					dir, err := ioutil.TempDir("", "creator-acceptance")
-					*dirPtr = dir
+					h.AssertNil(t, err)
+					h.AssertNil(t, os.Chmod(dir, 0777)) // Override umask
+
+					// Resolve temp dir so it can be properly mounted by the Docker daemon.
+					*dirPtr, err = filepath.EvalSymlinks(dir)
 					h.AssertNil(t, err)
 				}
 				// assign image name
