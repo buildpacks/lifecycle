@@ -143,84 +143,110 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 
 		when("sbom", func() {
 			var (
-				cacheDir        string
-				layersDir       string
-				secondLayersDir string
+				container1 string
+				container2 string
+				container3 string
+				container4 string
+				dirBuild1  string
+				dirBuild2  string
+				dirCache   string
+				dirRun1    string
+				dirRun2    string
+				imageName  string
 			)
 
 			it.Before(func() {
-				var err error
-				cacheDir, err = ioutil.TempDir("", "creator-acceptance")
-				h.AssertNil(t, err)
-				layersDir, err = ioutil.TempDir("", "creator-acceptance")
-				h.AssertNil(t, err)
-				secondLayersDir, err = ioutil.TempDir("", "creator-acceptance")
-				h.AssertNil(t, err)
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized sBOM")
+
+				// assign container names
+				for _, cPtr := range []*string{&container1, &container2, &container3, &container4} {
+					*cPtr = "test-container-" + h.RandString(10)
+				}
+				// create temp dirs
+				for _, dirPtr := range []*string{&dirCache, &dirBuild1, &dirRun1, &dirBuild2, &dirRun2} {
+					dir, err := ioutil.TempDir("", "creator-acceptance")
+					*dirPtr = dir
+					h.AssertNil(t, err)
+				}
+				// assign image name
+				imageName = "some-created-image-" + h.RandString(10)
 			})
 
 			it.After(func() {
-				h.AssertNil(t, os.RemoveAll(cacheDir))
-				h.AssertNil(t, os.RemoveAll(layersDir))
-				h.AssertNil(t, os.RemoveAll(secondLayersDir))
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized sBOM")
+
+				// remove containers if needed
+				for _, container := range []string{container1, container2, container3, container4} {
+					if h.DockerContainerExists(t, container) {
+						h.Run(t, exec.Command("docker", "rm", container))
+					}
+				}
+				// remove temp dirs
+				for _, dir := range []string{dirCache, dirBuild1, dirRun1, dirBuild2, dirRun2} {
+					h.AssertNil(t, os.RemoveAll(dir))
+				}
+				// remove image
+				h.DockerImageRemove(t, imageName)
 			})
 
 			it("is exported in the app image", func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Test needs to be adapted to work on Windows")
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized sBOM")
-
 				createFlags := []string{"-daemon"}
 				createFlags = append(createFlags, []string{
 					"-run-image", createRegFixtures.ReadOnlyRunImage,
-					"-cache-dir", "/cache",
+					"-cache-dir", ctrPath("/cache"),
 					"-log-level", "debug",
 				}...)
-
 				createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
-				createdImageName = "some-created-image-" + h.RandString(10)
-				createArgs = append(createArgs, createdImageName)
+				createArgs = append(createArgs, imageName)
 
 				// first build
-				output := h.DockerRun(t,
+				output := h.DockerRunAndCopy(t,
+					container1,
+					dirBuild1,
+					ctrPath("/layers"),
 					createImage,
 					h.WithFlags(append(
 						dockerSocketMount,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 						"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
 						"--network", createRegNetwork,
-						"--volume", cacheDir+":/cache",
-						"--volume", layersDir+":/layers",
+						"--volume", dirCache+":"+ctrPath("/cache"),
 					)...),
 					h.WithArgs(createArgs...),
 				)
 				h.AssertStringDoesNotContain(t, string(output), "restored with content")
-				h.AssertPathExists(t, filepath.Join(layersDir, "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
-				h.AssertPathExists(t, filepath.Join(layersDir, "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirBuild1, "layers", "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirBuild1, "layers", "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
 
 				// first run
-				output = h.DockerRun(t,
-					createdImageName,
+				output = h.DockerRunAndCopy(t,
+					container2,
+					dirRun1,
+					ctrPath("/layers"),
+					imageName,
 					h.WithFlags(
-						"--entrypoint", "/bin/bash",
+						"--entrypoint", "/cnb/lifecycle/launcher",
 					),
-					h.WithArgs("-c", "ls -Rl /layers && "+
-						"ls /layers/sbom/launch/samples_hello-world/sbom.cdx.json && "+
-						"ls /layers/sbom/launch/samples_hello-world/some-launch-cache-layer/sbom.cdx.json && "+
-						"ls /layers/sbom/launch/samples_hello-world/some-layer/sbom.cdx.json"),
+					h.WithArgs("env"),
 				)
-				h.AssertStringDoesNotContain(t, string(output), "/layers/sbom/build")
-				h.AssertStringDoesNotContain(t, string(output), "some-build-layer")
-				h.AssertStringDoesNotContain(t, string(output), "some-cache-layer")
+				h.AssertPathExists(t, filepath.Join(dirRun1, "layers", "sbom", "launch", "samples_hello-world", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirRun1, "layers", "sbom", "launch", "samples_hello-world", "some-launch-cache-layer", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirRun1, "layers", "sbom", "launch", "samples_hello-world", "some-layer", "sbom.cdx.json"))
+				h.AssertPathDoesNotExist(t, filepath.Join(dirRun1, "layers", "sbom", "build"))
+				h.AssertPathDoesNotExist(t, filepath.Join(dirRun1, "layers", "sbom", "cache"))
 
 				// second build
-				output = h.DockerRun(t,
+				output = h.DockerRunAndCopy(t,
+					container3,
+					dirBuild2,
+					ctrPath("/layers"),
 					createImage,
 					h.WithFlags(append(
 						dockerSocketMount,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
 						"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
 						"--network", createRegNetwork,
-						"--volume", cacheDir+":/cache",
-						"--volume", secondLayersDir+":/layers",
+						"--volume", dirCache+":/cache",
 					)...),
 					h.WithArgs(createArgs...),
 				)
@@ -228,25 +254,25 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				h.AssertStringContains(t, string(output), "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
 				h.AssertStringContains(t, string(output), "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
 				h.AssertStringContains(t, string(output), "Reusing layer 'launch.sbom'")
-				h.AssertPathExists(t, filepath.Join(secondLayersDir, "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
-				h.AssertPathExists(t, filepath.Join(secondLayersDir, "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirBuild2, "layers", "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirBuild2, "layers", "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
 
 				// second run
-				output = h.DockerRun(t,
-					createdImageName,
+				output = h.DockerRunAndCopy(t,
+					container4,
+					dirRun2,
+					ctrPath("/layers"),
+					imageName,
 					h.WithFlags(
-						"--entrypoint", "/bin/bash",
+						"--entrypoint", "/cnb/lifecycle/launcher",
 					),
-					h.WithArgs("-c", "ls -Rl /layers && "+
-						"ls /layers/sbom/launch/samples_hello-world/sbom.cdx.json && "+
-						"ls /layers/sbom/launch/samples_hello-world/some-launch-cache-layer/sbom.cdx.json && "+
-						"ls /layers/sbom/launch/samples_hello-world/some-layer/sbom.cdx.json"),
+					h.WithArgs("env"),
 				)
-				h.AssertStringDoesNotContain(t, string(output), "/layers/sbom/build")
-				h.AssertStringDoesNotContain(t, string(output), "some-build-layer")
-				h.AssertStringDoesNotContain(t, string(output), "some-cache-layer")
-
-				h.DockerImageRemove(t, createdImageName)
+				h.AssertPathExists(t, filepath.Join(dirRun1, "layers", "sbom", "launch", "samples_hello-world", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirRun1, "layers", "sbom", "launch", "samples_hello-world", "some-launch-cache-layer", "sbom.cdx.json"))
+				h.AssertPathExists(t, filepath.Join(dirRun1, "layers", "sbom", "launch", "samples_hello-world", "some-layer", "sbom.cdx.json"))
+				h.AssertPathDoesNotExist(t, filepath.Join(dirRun1, "layers", "sbom", "build"))
+				h.AssertPathDoesNotExist(t, filepath.Join(dirRun1, "layers", "sbom", "cache"))
 			})
 		})
 	}
