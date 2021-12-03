@@ -9,14 +9,84 @@ env_dir=${platform_dir}/env
 layers_dir=$1
 plan_path=$3
 
+if test -d /layers/sbom; then
+  echo "/layers/sbom should not exist during buildpack builds"
+  exit 1
+fi
+
 # LAYERS
 echo "     layers_dir: ${layers_dir}"
 
+# launch=true layer
 mkdir -p ${layers_dir}/some-layer/env
 
 echo -n "some-val" > ${layers_dir}/some-layer/env/SOME_VAR
+
+if test -f ${layers_dir}/some-layer.sbom.cdx.json; then
+  echo "${layers_dir}/some-layer.sbom.cdx.json restored with content: $(cat ${layers_dir}/some-layer.sbom.cdx.json)"
+fi
+
+echo -n "{\"key\": \"some-launch-true-bom-content\"}" > ${layers_dir}/some-layer.sbom.cdx.json
 
 cat <<EOF > "$layers_dir"/some-layer.toml
 [types]
   launch = true
 EOF
+
+# cache=true layer
+mkdir -p ${layers_dir}/some-cache-layer
+
+if test -f ${layers_dir}/some-cache-layer.sbom.cdx.json; then
+  echo "${layers_dir}/some-cache-layer.sbom.cdx.json restored with content: $(cat ${layers_dir}/some-cache-layer.sbom.cdx.json)"
+fi
+
+echo -n "{\"key\": \"some-cache-true-bom-content\"}" > ${layers_dir}/some-cache-layer.sbom.cdx.json
+
+cat <<EOF > "$layers_dir"/some-cache-layer.toml
+[types]
+  cache = true
+EOF
+
+# launch=true cache=true layer
+mkdir -p ${layers_dir}/some-launch-cache-layer
+
+if test -f ${layers_dir}/some-launch-cache-layer.sbom.cdx.json; then
+  echo "${layers_dir}/some-launch-cache-layer.sbom.cdx.json restored with content: $(cat ${layers_dir}/some-launch-cache-layer.sbom.cdx.json)"
+fi
+
+echo -n "{\"key\": \"some-launch-true-cache-true-bom-content\"}" > ${layers_dir}/some-launch-cache-layer.sbom.cdx.json
+
+cat <<EOF > "$layers_dir"/some-launch-cache-layer.toml
+[types]
+  launch = true
+  cache = true
+EOF
+
+# build=true layer
+mkdir -p ${layers_dir}/some-build-layer
+
+if test -f ${layers_dir}/some-build-layer.sbom.cdx.json; then
+  echo "${layers_dir}/some-build-layer.sbom.cdx.json" should never be restored
+  exit 1
+fi
+
+echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/some-build-layer.sbom.cdx.json
+
+cat <<EOF > "$layers_dir"/some-build-layer.toml
+[types]
+  build = true
+EOF
+
+# launch bom
+if test -f ${layers_dir}/launch.sbom.cdx.json; then
+  echo "${layers_dir}/launch.sbom.cdx.json should never be restored"
+  exit 1
+fi
+echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/launch.sbom.cdx.json
+
+# build bom
+if test -f ${layers_dir}/build.sbom.cdx.json; then
+  echo "${layers_dir}/build.sbom.cdx.json should never be restored"
+  exit 1
+fi
+echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/build.sbom.cdx.json

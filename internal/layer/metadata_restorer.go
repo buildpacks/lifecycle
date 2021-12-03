@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
-//go:generate mockgen -package testmock -destination testmock/layer_metadata_restorer.go github.com/buildpacks/lifecycle/internal/layer MetadataRestorer
+//go:generate mockgen -package testmock -destination testmock/metadata_restorer.go github.com/buildpacks/lifecycle/internal/layer MetadataRestorer
 type MetadataRestorer interface {
 	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error
 }

@@ -280,6 +280,24 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, err, fmt.Sprintf("unsupported sbom format: '%s'", bomFilePath2))
 			})
 
+			it("cleans the /layers/sbom directory before building", func() {
+				oldDir := filepath.Join(layersDir, "sbom", "launch", "undetected-buildpack")
+				h.Mkdir(t, oldDir)
+				oldFile := filepath.Join(oldDir, "launch.sbom.cdx.json")
+				h.Mkfile(t, `{"key": "some-bom-content"}`, oldFile)
+				bpA := testmock.NewMockBuildpack(mockCtrl)
+				bpB := testmock.NewMockBuildpack(mockCtrl)
+				buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+				buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
+				bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, nil)
+				bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, nil)
+
+				_, err := builder.Build()
+				h.AssertNil(t, err)
+
+				h.AssertPathDoesNotExist(t, oldFile)
+			})
+
 			when("build metadata", func() {
 				when("bom", func() {
 					it("should aggregate BOM from each buildpack", func() {

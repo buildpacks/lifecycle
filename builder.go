@@ -7,9 +7,12 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
+	io2 "github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -47,6 +50,11 @@ type Builder struct {
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Starting build")
+
+	// ensure layers sbom directory is removed
+	if err := os.RemoveAll(filepath.Join(b.LayersDir, "sbom")); err != nil {
+		return nil, errors.Wrap(err, "cleaning layers sbom directory")
+	}
 
 	config, err := b.BuildConfig()
 	if err != nil {
@@ -165,7 +173,7 @@ func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) e
 				return err
 			}
 
-			return Copy(bomFile.Path, filepath.Join(targetDir, name))
+			return io2.Copy(bomFile.Path, filepath.Join(targetDir, name))
 		}
 	)
 

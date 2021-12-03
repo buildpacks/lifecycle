@@ -1,11 +1,12 @@
 # Buildpack API version
-api = "0.6"
+api = "0.7"
 
 # Buildpack ID and metadata
 [buildpack]
 id = "samples/hello-world"
 version = "0.0.1"
 name = "Hello World Buildpack"
+sbom-formats = ["application/vnd.cyclonedx+json"]
 
 # Stacks that the buildpack will work with
 [[stacks]]
