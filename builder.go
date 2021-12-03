@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
@@ -48,6 +50,11 @@ type Builder struct {
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Starting build")
+
+	// ensure layers sbom directory is removed
+	if err := os.RemoveAll(filepath.Join(b.LayersDir, "sbom")); err != nil {
+		return nil, errors.Wrap(err, "cleaning layers sbom directory")
+	}
 
 	config, err := b.BuildConfig()
 	if err != nil {

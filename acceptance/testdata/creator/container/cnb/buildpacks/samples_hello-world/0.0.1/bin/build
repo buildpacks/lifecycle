@@ -9,6 +9,11 @@ env_dir=${platform_dir}/env
 layers_dir=$1
 plan_path=$3
 
+if test -d /layers/sbom; then
+  echo "/layers/sbom should not exist during buildpack builds"
+  exit 1
+fi
+
 # LAYERS
 echo "     layers_dir: ${layers_dir}"
 
