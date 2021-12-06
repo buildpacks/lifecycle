@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"sync/atomic"
 
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
@@ -37,9 +38,11 @@ func DockerClient() (*client.Client, error) {
 
 type unclosableConn struct {
 	net.Conn
+	inUse int32
 }
 
-func (*unclosableConn) Close() error {
+func (c *unclosableConn) Close() error {
+	atomic.StoreInt32(&c.inUse, 0)
 	// don't close a connection we won't have privileges to reopen
 	return nil
 }
@@ -50,7 +53,11 @@ func connectSockOpt(host *url.URL) (client.Opt, error) {
 	if err != nil {
 		return nil, err
 	}
+	c := &unclosableConn{Conn: socketConn, inUse: 0}
 	return client.WithDialContext(func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
-		return &unclosableConn{socketConn}, nil
+		if !atomic.CompareAndSwapInt32(&c.inUse, 0, 1) {
+			return nil, errors.New("singleton connection already in use")
+		}
+		return c, nil
 	}), nil
 }

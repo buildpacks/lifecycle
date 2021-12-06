@@ -10,6 +10,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
+	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -18,6 +19,8 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/internal/layer"
+	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -41,12 +44,14 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 	return func(t *testing.T, when spec.G, it spec.S) {
 		when("#Restore", func() {
 			var (
-				cacheDir   string
-				layersDir  string
-				logHandler *memory.Handler
-				skipLayers bool
-				testCache  lifecycle.Cache
-				restorer   *lifecycle.Restorer
+				cacheDir     string
+				layersDir    string
+				logHandler   *memory.Handler
+				skipLayers   bool
+				testCache    lifecycle.Cache
+				restorer     *lifecycle.Restorer
+				mockCtrl     *gomock.Controller
+				sbomRestorer *ltestmock.MockSBOMRestorer
 			)
 
 			it.Before(func() {
@@ -68,6 +73,9 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				p := platform.NewPlatform(platformAPI)
 				h.AssertNil(t, err)
 
+				mockCtrl = gomock.NewController(t)
+				sbomRestorer = ltestmock.NewMockSBOMRestorer(mockCtrl)
+
 				restorer = &lifecycle.Restorer{
 					LayersDir: layersDir,
 					Logger:    &logger,
@@ -75,7 +83,8 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						{ID: "buildpack.id", API: buildpackAPI},
 						{ID: "escaped/buildpack/id", API: buildpackAPI},
 					},
-					LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(&logger, layersDir, skipLayers),
+					LayerMetadataRestorer: layer.NewMetadataRestorer(&logger, layersDir, skipLayers),
+					SBOMRestorer:          sbomRestorer,
 					Platform:              p,
 				}
 			})
@@ -83,6 +92,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 			it.After(func() {
 				h.AssertNil(t, os.RemoveAll(layersDir))
 				h.AssertNil(t, os.RemoveAll(cacheDir))
+				mockCtrl.Finish()
 			})
 
 			when("there is no cache", func() {
@@ -628,6 +638,34 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				})
 			})
 
+			when("there is a cache with BOM information", func() {
+				var (
+					tmpDir string
+				)
+
+				it.Before(func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
+
+					tmpDir, err := ioutil.TempDir("", "")
+					h.AssertNil(t, err)
+					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
+					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: "some-digest"}}))
+					h.AssertNil(t, testCache.Commit())
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(tmpDir))
+				})
+
+				it("restores the SBOM layer from the cache", func() {
+					sbomRestorer.EXPECT().RestoreFromCache(testCache, "some-digest")
+					sbomRestorer.EXPECT().RestoreToBuildpackLayers(restorer.Buildpacks)
+					err := restorer.Restore(testCache)
+					h.AssertNil(t, err)
+				})
+			})
+
 			when("there is no app image metadata", func() {
 				it.Before(func() {
 					restorer.LayersMetadata = platform.LayersMetadata{}
@@ -636,81 +674,6 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				it("analyzes with no layer metadata", func() {
 					err := restorer.Restore(testCache)
 					h.AssertNil(t, err)
-				})
-			})
-
-			when("there are BOM layers", func() {
-				it.Before(func() {
-					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
-
-					h.AssertNil(t, os.MkdirAll(filepath.Join(layersDir, "sbom"), os.ModePerm))
-					h.RecursiveCopy(t,
-						filepath.Join("testdata", "restorer", "sbom"),
-						filepath.Join(layersDir, "sbom"))
-
-					appMetaContents := []byte(`{
-   "buildpacks": [
-       {
-           "key": "buildpack.id",
-           "layers": {
-               "cache-true": {
-                   "data": {
-                       "cache-key": "cache-val"
-				   },
-                   "cache": true,
-                   "sha": "some-sha"
-               },
-               "launch-true": {
-                   "data": {},
-                   "launch": true,
-                   "sha": "some-sha"
-               }
-           }
-       },
-       {
-           "key": "escaped/buildpack/id",
-           "layers": {
-               "launch-true": {
-                   "data": {},
-                   "launch": true,
-                   "sha": "some-sha"
-               }
-           }
-       },
-       {
-           "key": "escaped/buildpack/id",
-           "layers": {
-               "launch-true": {
-                   "data": {},
-                   "launch": true,
-                   "sha": "some-sha"
-               }
-           }
-       }
-   ]
-}
-`)
-
-					h.AssertNil(t, json.Unmarshal(appMetaContents, &restorer.LayersMetadata))
-				})
-
-				it("restores the previous image SBOM layer", func() {
-					h.AssertNil(t, restorer.Restore(testCache))
-
-					got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-true.sbom.cdx.json"))
-					want := `{"key": "some-cache-bom-content"}`
-					h.AssertEq(t, string(got), want)
-
-					got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "launch-true.sbom.cdx.json"))
-					want = `{"key": "some-launch-bom-content"}`
-					h.AssertEq(t, string(got), want)
-
-					got = h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "launch-true.sbom.cdx.json"))
-					want = `{"key": "some-escaped-launch-bom-content"}`
-					h.AssertEq(t, string(got), want)
-
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "undetected-buildpack.id", "launch-true.sbom.cdx.json"))
-					h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "sbom"))
 				})
 			})
 		})

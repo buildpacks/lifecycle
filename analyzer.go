@@ -6,7 +6,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -19,11 +20,12 @@ type Analyzer struct {
 	RunImage      imgutil.Image
 	Logger        Logger
 	Platform      Platform
+	SBOMRestorer  layer.SBOMRestorer
 
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
 	Cache                 Cache
-	LayerMetadataRestorer LayerMetadataRestorer
+	LayerMetadataRestorer layer.MetadataRestorer
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
@@ -43,13 +45,13 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 
 		// continue even if the label cannot be decoded
-		if err := DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
+		if err := image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
 			appMeta = platform.LayersMetadata{}
 		}
 
 		if a.Platform.API().AtLeast("0.8") {
 			if appMeta.BOM != nil && appMeta.BOM.SHA != "" {
-				if err := a.restorePreviousLayer(appMeta.BOM.SHA); err != nil {
+				if err := a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, appMeta.BOM.SHA); err != nil {
 					return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
 				}
 			}
@@ -65,23 +67,15 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
-	cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
-	if err != nil {
-		return platform.AnalyzedMetadata{}, err
-	}
-
 	if a.restoresLayerMetadata() {
-		useShaFiles := true
-		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, NewLayerSHAStore(useShaFiles)); err != nil {
+		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
+		if err != nil {
 			return platform.AnalyzedMetadata{}, err
 		}
-	}
 
-	if a.Platform.API().AtLeast("0.8") {
-		if cacheMeta.BOM.SHA != "" {
-			if err := a.restoreCacheLayer(cacheMeta.BOM.SHA); err != nil {
-				return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving cache sBOM layer")
-			}
+		useShaFiles := true
+		if err := a.LayerMetadataRestorer.Restore(a.Buildpacks, appMeta, cacheMeta, layer.NewSHAStore(useShaFiles)); err != nil {
+			return platform.AnalyzedMetadata{}, err
 		}
 	}
 
@@ -111,32 +105,21 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	}, nil
 }
 
-func (a *Analyzer) restorePreviousLayer(sha string) error {
-	// Sanity check to prevent panic.
-	if a.PreviousImage == nil {
-		return errors.Errorf("restoring layer: previous image not found for %q", sha)
+func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta platform.CacheMetadata
+	if cache != nil {
+		var err error
+		if !cache.Exists() {
+			logger.Info("Layer cache not found")
+		}
+		cacheMeta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
+		}
+	} else {
+		logger.Debug("Usable cache not provided, using empty cache metadata")
 	}
-	a.Logger.Debugf("Retrieving previous image layer for %q", sha)
-	rc, err := a.PreviousImage.GetLayer(sha)
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
 
-	return layers.Extract(rc, "")
-}
-
-func (a *Analyzer) restoreCacheLayer(sha string) error {
-	// Sanity check to prevent panic.
-	if a.Cache == nil {
-		return errors.New("restoring layer: cache not provided")
-	}
-	a.Logger.Debugf("Retrieving data for %q", sha)
-	rc, err := a.Cache.RetrieveLayer(sha)
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-
-	return layers.Extract(rc, "")
+	return cacheMeta, nil
 }

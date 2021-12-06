@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -84,7 +85,7 @@ func (r *restoreCmd) Privileges() error {
 }
 
 func (r *restoreCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(r.groupPath)
+	group, err := buildpack.ReadGroup(r.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
@@ -120,8 +121,9 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		Buildpacks:            group.Group,
 		Logger:                cmd.DefaultLogger,
 		Platform:              r.platform,
-		LayerMetadataRestorer: lifecycle.NewLayerMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers),
+		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers),
 		LayersMetadata:        layerMetadata,
+		SBOMRestorer:          layer.NewSBOMRestorer(r.layersDir, cmd.DefaultLogger),
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

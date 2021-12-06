@@ -19,6 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -194,7 +195,7 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, err := lifecycle.ReadGroup(e.groupPath)
+	group, err := buildpack.ReadGroup(e.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
@@ -308,7 +309,8 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	if err != nil {
 		return cmd.FailErrCode(err, ea.platform.CodeFor(platform.ExportError), "export")
 	}
-	if err := lifecycle.WriteTOML(ea.reportPath, &report); err != nil {
+
+	if err := encoding.WriteTOML(ea.reportPath, &report); err != nil {
 		return cmd.FailErrCode(err, ea.platform.CodeFor(platform.ExportError), "write export report")
 	}
 

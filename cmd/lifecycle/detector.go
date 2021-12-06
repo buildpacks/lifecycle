@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -78,7 +79,7 @@ func (d *detectCmd) Exec() error {
 }
 
 func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
-	order, err := lifecycle.ReadOrder(da.orderPath)
+	order, err := buildpack.ReadOrder(da.orderPath)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
@@ -141,11 +142,11 @@ func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
 }
 
 func (d *detectCmd) writeData(group buildpack.Group, plan platform.BuildPlan) error {
-	if err := lifecycle.WriteTOML(d.groupPath, group); err != nil {
+	if err := encoding.WriteTOML(d.groupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
 
-	if err := lifecycle.WriteTOML(d.planPath, plan); err != nil {
+	if err := encoding.WriteTOML(d.planPath, plan); err != nil {
 		return cmd.FailErr(err, "write detect plan")
 	}
 	return nil

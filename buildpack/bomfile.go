@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/buildpack/layertypes"
 )
 
 const (
@@ -91,7 +90,7 @@ func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []
 	return nil
 }
 
-func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, pathToLayerMetadataFile map[string]layertypes.LayerMetadataFile, logger Logger) ([]BOMFile, error) {
+func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, bpLayers map[string]LayerMetadataFile, logger Logger) ([]BOMFile, error) {
 	var (
 		layerGlob = filepath.Join(layersDir, "*.sbom.*.json")
 		files     []BOMFile
@@ -134,7 +133,7 @@ func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, pathTo
 			continue
 		}
 
-		meta, ok := pathToLayerMetadataFile[filepath.Join(layerDir, layerName)]
+		meta, ok := bpLayers[filepath.Join(layerDir, layerName)]
 		if !ok {
 			continue
 		}

@@ -235,6 +235,10 @@ jobs:
           path: 'pack'
           ref: 'main'
           fetch-depth: 0 # fetch all history for all branches and tags
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17'
       - uses: actions/download-artifact@v2
         with:
           name: version
@@ -267,6 +271,10 @@ jobs:
           path: 'pack'
           ref: 'main'
           fetch-depth: 0 # fetch all history for all branches and tags
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17'
       - name: Add runner IP to daemon insecure-registries and firewall
         shell: powershell
         run: |
