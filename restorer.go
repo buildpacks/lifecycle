@@ -96,7 +96,7 @@ func (r *Restorer) Restore(cache Cache) error {
 		}
 	}
 
-	if api.MustParse(r.Platform.API()).AtLeast("0.8") {
+	if r.Platform.API().AtLeast("0.8") {
 		g.Go(func() error {
 			if cacheMeta.BOM.SHA == "" {
 				return nil
@@ -116,7 +116,7 @@ func (r *Restorer) Restore(cache Cache) error {
 }
 
 func (r *Restorer) restoresLayerMetadata() bool {
-	return api.MustParse(r.Platform.API()).AtLeast("0.7")
+	return r.Platform.API().AtLeast("0.7")
 }
 
 func (r *Restorer) restoreCacheLayer(cache Cache, sha string) error {

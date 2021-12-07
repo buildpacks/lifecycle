@@ -13,7 +13,6 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 )
 
 func main() {
@@ -28,10 +27,7 @@ func runLaunch() error {
 		cmd.Exit(err)
 	}
 
-	platform, err := platform.NewPlatform(platformAPI)
-	if err != nil {
-		cmd.Exit(err)
-	}
+	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
 	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir)), &md); err != nil {
@@ -41,13 +37,13 @@ func runLaunch() error {
 		return err
 	}
 
-	defaultProcessType := defaultProcessType(api.MustParse(platform.API()), md)
+	defaultProcessType := defaultProcessType(p.API(), md)
 
 	launcher := &launch.Launcher{
 		DefaultProcessType: defaultProcessType,
 		LayersDir:          cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir),
 		AppDir:             cmd.EnvOrDefault(cmd.EnvAppDir, cmd.DefaultAppDir),
-		PlatformAPI:        api.MustParse(platform.API()),
+		PlatformAPI:        p.API(),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
 		Env:                env.NewLaunchEnv(os.Environ(), launch.ProcessDir, launch.LifecycleDir),
@@ -58,7 +54,7 @@ func runLaunch() error {
 	}
 
 	if err := launcher.Launch(os.Args[0], os.Args[1:]); err != nil {
-		return cmd.FailErrCode(err, platform.CodeFor(common.LaunchError), "launch")
+		return cmd.FailErrCode(err, p.CodeFor(platform.LaunchError), "launch")
 	}
 	return nil
 }

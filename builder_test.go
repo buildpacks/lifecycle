@@ -35,7 +35,6 @@ func TestBuilder(t *testing.T) {
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
 //go:generate mockgen -package testmock -destination testmock/buildpack_store.go github.com/buildpacks/lifecycle BuildpackStore
 //go:generate mockgen -package testmock -destination testmock/buildpack.go github.com/buildpacks/lifecycle Buildpack
-//go:generate mockgen -package testmock -destination testmock/platform.go github.com/buildpacks/lifecycle Platform
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
@@ -47,7 +46,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		platformDir    string
 		appDir         string
 		layersDir      string
-		platformInt    *testmock.MockPlatform
 		config         buildpack.BuildConfig
 		logHandler     = memory.New()
 	)
@@ -67,14 +65,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		appDir = filepath.Join(layersDir, "app")
 		h.Mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
-		platformInt = testmock.NewMockPlatform(mockCtrl)
-
 		builder = &lifecycle.Builder{
 			AppDir:      appDir,
 			LayersDir:   layersDir,
 			PlatformDir: platformDir,
-			Platform:    platformInt,
-			PlatformAPI: api.Platform.Latest(),
+			Platform:    platform.NewPlatform(api.Platform.Latest().String()),
 			Group: buildpack.Group{
 				Group: []buildpack.GroupBuildpack{
 					{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage"},
@@ -831,7 +826,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.4", func() {
 			it.Before(func() {
-				builder.PlatformAPI = api.MustParse("0.3")
+				builder.Platform = platform.NewPlatform("0.3")
 			})
 
 			when("build metadata", func() {
@@ -878,7 +873,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.6", func() {
 			it.Before(func() {
-				builder.PlatformAPI = api.MustParse("0.5")
+				builder.Platform = platform.NewPlatform("0.5")
 			})
 
 			when("there is a web process", func() {

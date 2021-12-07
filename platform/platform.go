@@ -1,25 +1,27 @@
 package platform
 
 import (
-	"fmt"
-
-	"github.com/buildpacks/lifecycle/platform/common"
-	"github.com/buildpacks/lifecycle/platform/legacy"
-	v06 "github.com/buildpacks/lifecycle/platform/v06"
-	v07 "github.com/buildpacks/lifecycle/platform/v07"
-	v08 "github.com/buildpacks/lifecycle/platform/v08"
+	"github.com/buildpacks/lifecycle/api"
 )
 
-func NewPlatform(apiStr string) (common.Platform, error) {
+type Platform struct {
+	Exiter
+	api *api.Version
+}
+
+func NewPlatform(apiStr string) *Platform {
+	platform := Platform{
+		api: api.MustParse(apiStr),
+	}
 	switch apiStr {
 	case "0.3", "0.4", "0.5":
-		return legacy.NewPlatform(apiStr), nil
-	case "0.6":
-		return v06.NewPlatform(), nil
-	case "0.7":
-		return v07.NewPlatform(), nil
-	case "0.8":
-		return v08.NewPlatform(), nil
+		platform.Exiter = &LegacyExiter{}
+	default:
+		platform.Exiter = &DefaultExiter{}
 	}
-	return nil, fmt.Errorf("unable to create platform for api %s: unknown api", apiStr)
+	return &platform
+}
+
+func (p *Platform) API() *api.Version {
+	return p.api
 }

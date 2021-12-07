@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -20,7 +19,6 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -115,11 +113,11 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 	}
 
 	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
-		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platform.API(), a.layersDir)
+		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platform.API().String(), a.layersDir)
 	}
 
 	if a.platform06.groupPath == cmd.PlaceholderGroupPath {
-		a.platform06.groupPath = cmd.DefaultGroupPath(a.platform.API(), a.layersDir)
+		a.platform06.groupPath = cmd.DefaultGroupPath(a.platform.API().String(), a.layersDir)
 	}
 
 	if a.supportsRunImage() {
@@ -238,7 +236,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		SBOMRestorer:          layer.NewSBOMRestorer(aa.layersDir, cmd.DefaultLogger),
 	}).Analyze()
 	if err != nil {
-		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(common.AnalyzeError), "analyzer")
+		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(platform.AnalyzeError), "analyzer")
 	}
 
 	return analyzedMD, nil
@@ -265,7 +263,7 @@ func (aa analyzeArgs) localOrRemote(fromImage string) (imgutil.Image, error) {
 }
 
 func (a *analyzeCmd) platformAPIVersionGreaterThan06() bool {
-	return api.MustParse(a.platform.API()).AtLeast("0.7")
+	return a.platform.API().AtLeast("0.7")
 }
 
 func (a *analyzeCmd) restoresLayerMetadata() bool {

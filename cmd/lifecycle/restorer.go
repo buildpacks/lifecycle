@@ -8,13 +8,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -60,11 +58,11 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 	}
 
 	if r.groupPath == cmd.PlaceholderGroupPath {
-		r.groupPath = cmd.DefaultGroupPath(r.platform.API(), r.layersDir)
+		r.groupPath = cmd.DefaultGroupPath(r.platform.API().String(), r.layersDir)
 	}
 
 	if r.analyzedPath == cmd.PlaceholderAnalyzedPath {
-		r.analyzedPath = cmd.DefaultAnalyzedPath(r.platform.API(), r.layersDir)
+		r.analyzedPath = cmd.DefaultAnalyzedPath(r.platform.API().String(), r.layersDir)
 	}
 
 	return nil
@@ -129,11 +127,11 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(common.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
 	}
 	return nil
 }
 
 func (r *restoreArgs) restoresLayerMetadata() bool {
-	return api.MustParse(r.platform.API()).AtLeast("0.7")
+	return r.platform.API().AtLeast("0.7")
 }

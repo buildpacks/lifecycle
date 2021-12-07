@@ -12,13 +12,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -66,11 +64,11 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 
 	if r.reportPath == cmd.PlaceholderReportPath {
-		r.reportPath = cmd.DefaultReportPath(r.platform.API(), "")
+		r.reportPath = cmd.DefaultReportPath(r.platform.API().String(), "")
 	}
 
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(common.RebaseError), "set app image")
+		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(platform.RebaseError), "set app image")
 	}
 
 	return nil
@@ -118,14 +116,15 @@ func (r *rebaseCmd) Exec() error {
 
 	rebaser := &lifecycle.Rebaser{
 		Logger:      cmd.DefaultLogger,
-		PlatformAPI: api.MustParse(r.platform.API()),
+		PlatformAPI: r.platform.API(),
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "rebase")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "rebase")
 	}
+
 	if err := encoding.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(common.RebaseError), "write rebase report")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "write rebase report")
 	}
 	return nil
 }

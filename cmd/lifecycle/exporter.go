@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
@@ -23,7 +22,6 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/common"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -111,19 +109,19 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
-		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platform.API(), e.layersDir)
+		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.groupPath == cmd.PlaceholderGroupPath {
-		e.groupPath = cmd.DefaultGroupPath(e.platform.API(), e.layersDir)
+		e.groupPath = cmd.DefaultGroupPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
-		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platform.API(), e.layersDir)
+		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.reportPath == cmd.PlaceholderReportPath {
-		e.reportPath = cmd.DefaultReportPath(e.platform.API(), e.layersDir)
+		e.reportPath = cmd.DefaultReportPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.deprecatedRunImageRef != "" {
@@ -170,7 +168,7 @@ func readStack(stackPath string) (platform.StackMetadata, error) {
 }
 
 func (e *exportCmd) supportsRunImage() bool {
-	return api.MustParse(e.platform.API()).LessThan("0.7")
+	return e.platform.API().LessThan("0.7")
 }
 
 func (e *exportCmd) Privileges() error {
@@ -282,7 +280,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 			Logger:       cmd.DefaultLogger,
 		},
 		Logger:      cmd.DefaultLogger,
-		PlatformAPI: api.MustParse(ea.platform.API()),
+		PlatformAPI: ea.platform.API(),
 	}
 
 	var appImage imgutil.Image
@@ -309,10 +307,11 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "export")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(platform.ExportError), "export")
 	}
+
 	if err := encoding.WriteTOML(ea.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(common.ExportError), "write export report")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(platform.ExportError), "write export report")
 	}
 
 	if cacheStore != nil {

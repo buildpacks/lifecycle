@@ -9,7 +9,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
@@ -95,15 +94,15 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if c.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
-		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platform.API(), c.layersDir)
+		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platform.API().String(), c.layersDir)
 	}
 
 	if c.reportPath == cmd.PlaceholderReportPath {
-		c.reportPath = cmd.DefaultReportPath(c.platform.API(), c.layersDir)
+		c.reportPath = cmd.DefaultReportPath(c.platform.API().String(), c.layersDir)
 	}
 
 	if c.orderPath == cmd.PlaceholderOrderPath {
-		c.orderPath = cmd.DefaultOrderPath(c.platform.API(), c.layersDir)
+		c.orderPath = cmd.DefaultOrderPath(c.platform.API().String(), c.layersDir)
 	}
 
 	var err error
@@ -166,7 +165,7 @@ func (c *createCmd) Exec() error {
 		group      buildpack.Group
 		plan       platform.BuildPlan
 	)
-	if api.MustParse(c.platform.API()).AtLeast("0.7") {
+	if c.platform.API().AtLeast("0.7") {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzedMD, err = analyzeArgs{
 			additionalTags:   c.additionalTags,
@@ -288,7 +287,7 @@ func (c *createCmd) registryImages() []string {
 }
 
 func (c *createCmd) platformAPIVersionGreaterThan06() bool {
-	return api.MustParse(c.platform.API()).AtLeast("0.7")
+	return c.platform.API().AtLeast("0.7")
 }
 
 func (c *createCmd) ReadableRegistryImages() []string {
