@@ -167,13 +167,10 @@ func (c *createCmd) Exec() error {
 	)
 	if c.platform.API().AtLeast("0.7") {
 		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzedMD, err = analyzeArgs{
-			additionalTags:   c.additionalTags,
-			cacheImageRef:    c.cacheImageRef,
+		analyzedMD, err = analyzeInputsForCreator{
 			docker:           c.docker,
 			keychain:         c.keychain,
 			layersDir:        c.layersDir,
-			outputImageRef:   c.outputImageRef,
 			platform:         c.platform,
 			previousImageRef: c.previousImageRef,
 			runImageRef:      c.runImageRef,
@@ -210,18 +207,16 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzedMD, err = analyzeArgs{
+		analyzedMD, err = analyzeInputsForCreator{
 			docker:           c.docker,
 			keychain:         c.keychain,
 			layersDir:        c.layersDir,
-			previousImageRef: c.previousImageRef,
+			legacyCache:      cacheStore,
+			legacyGroup:      group,
+			legacySkipLayers: c.skipRestore,
 			platform:         c.platform,
+			previousImageRef: c.previousImageRef,
 			useDaemon:        c.useDaemon,
-			platform06: analyzeArgsPlatform06{
-				skipLayers: c.skipRestore,
-				group:      group,
-				cache:      cacheStore,
-			},
 		}.analyze()
 		if err != nil {
 			return err

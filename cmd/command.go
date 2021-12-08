@@ -11,7 +11,7 @@ type Command interface {
 	// DefineFlags defines flags
 	DefineFlags()
 
-	// Args validates arguments and flags
+	// Args validates arguments and flags, and fills in default values
 	Args(nargs int, args []string) error
 
 	// Privileges validates the needed privileges
