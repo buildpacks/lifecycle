@@ -23,7 +23,15 @@ GOENV=GOARCH=$(GOARCH) CGO_ENABLED=0
 LIFECYCLE_DESCRIPTOR_PATH?=lifecycle.toml
 SCM_REPO?=github.com/buildpacks/lifecycle
 SCM_COMMIT?=$(PARSED_COMMIT)
+
+ifeq ($(DEBUG),true)
+LDFLAGS=
+GCFLAGS="all=-N -l"
+else
 LDFLAGS=-s -w
+GCFLAGS=""
+endif
+
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'
 LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
@@ -72,7 +80,7 @@ $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux-amd64/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+	$(GOENV) $(GOBUILD) -gcflags=$(GCFLAGS) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: export GOOS:=linux
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: export GOARCH:=arm64
@@ -81,7 +89,7 @@ $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle: $(GOFILES)
 $(BUILD_DIR)/linux-arm64/lifecycle/lifecycle:
 	@echo "> Building lifecycle/lifecycle for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
-	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
+	$(GOENV) $(GOBUILD) -gcflags=$(GCFLAGS) -o $(OUT_DIR)/lifecycle -a ./cmd/lifecycle
 
 build-linux-amd64-launcher: $(BUILD_DIR)/linux-amd64/lifecycle/launcher
 
@@ -93,7 +101,7 @@ $(BUILD_DIR)/linux-amd64/lifecycle/launcher:
 	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+	$(DEBUG)==true || test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 
 build-linux-arm64-launcher: $(BUILD_DIR)/linux-arm64/lifecycle/launcher
 
@@ -105,7 +113,7 @@ $(BUILD_DIR)/linux-arm64/lifecycle/launcher:
 	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
+	$(DEBUG)==true || test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 3
 
 build-linux-amd64-symlinks: export GOOS:=linux
 build-linux-amd64-symlinks: export GOARCH:=amd64
@@ -210,7 +218,7 @@ $(BUILD_DIR)/darwin-amd64/lifecycle/launcher:
 	@echo "> Building launcher for darwin/amd64..."
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
-	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
+	$(DEBUG)==true || test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 
 install-goimports:
 	@echo "> Installing goimports..."
