@@ -47,6 +47,7 @@ type createCmd struct {
 	stackMD        platform.StackMetadata
 }
 
+// DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
 	cmd.FlagAppDir(&c.appDir)
 	cmd.FlagBuildpacksDir(&c.buildpacksDir)
@@ -70,6 +71,7 @@ func (c *createCmd) DefineFlags() {
 	cmd.FlagProcessType(&c.processType)
 }
 
+// Args validates arguments and flags, and fills in default values.
 func (c *createCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
 		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
@@ -167,7 +169,7 @@ func (c *createCmd) Exec() error {
 	)
 	if c.platform.API().AtLeast("0.7") {
 		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzedMD, err = analyzeInputsForCreator{
+		analyzedMD, err = analyzeArgs{
 			docker:           c.docker,
 			keychain:         c.keychain,
 			layersDir:        c.layersDir,
@@ -207,7 +209,7 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzedMD, err = analyzeInputsForCreator{
+		analyzedMD, err = analyzeArgs{
 			docker:           c.docker,
 			keychain:         c.keychain,
 			layersDir:        c.layersDir,

@@ -37,6 +37,7 @@ type rebaseCmd struct {
 	keychain authn.Keychain
 }
 
+// DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *rebaseCmd) DefineFlags() {
 	cmd.FlagGID(&r.gid)
 	cmd.FlagReportPath(&r.reportPath)
@@ -47,6 +48,7 @@ func (r *rebaseCmd) DefineFlags() {
 	cmd.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
 }
 
+// Args validates arguments and flags, and fills in default values.
 func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")

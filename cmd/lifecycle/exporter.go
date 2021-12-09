@@ -64,6 +64,7 @@ type exportArgs struct {
 	keychain authn.Keychain
 }
 
+// DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&e.analyzedPath)
 	cmd.FlagAppDir(&e.appDir)
@@ -85,6 +86,7 @@ func (e *exportCmd) DefineFlags() {
 	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
 
+// Args validates arguments and flags, and fills in default values.
 func (e *exportCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")

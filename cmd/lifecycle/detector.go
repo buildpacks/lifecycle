@@ -32,6 +32,7 @@ type detectArgs struct {
 	platform Platform
 }
 
+// DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
 	cmd.FlagBuildpacksDir(&d.buildpacksDir)
 	cmd.FlagAppDir(&d.appDir)
@@ -42,6 +43,7 @@ func (d *detectCmd) DefineFlags() {
 	cmd.FlagPlanPath(&d.planPath)
 }
 
+// Args validates arguments and flags, and fills in default values.
 func (d *detectCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")

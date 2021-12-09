@@ -36,6 +36,7 @@ type restoreArgs struct {
 	keychain authn.Keychain
 }
 
+// DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
 	cmd.FlagCacheDir(&r.cacheDir)
 	cmd.FlagCacheImage(&r.cacheImageTag)
@@ -49,6 +50,7 @@ func (r *restoreCmd) DefineFlags() {
 	}
 }
 
+// Args validates arguments and flags, and fills in default values.
 func (r *restoreCmd) Args(nargs int, args []string) error {
 	if nargs > 0 {
 		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")

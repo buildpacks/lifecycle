@@ -23,7 +23,7 @@ import (
 )
 
 type analyzeCmd struct {
-	analyzeInputsForCreator
+	analyzeArgs
 	additionalTags  cmd.StringSlice
 	analyzedPath    string
 	cacheImageRef   string
@@ -34,8 +34,8 @@ type analyzeCmd struct {
 	uid, gid        int
 }
 
-// Inputs needed when run by creator
-type analyzeInputsForCreator struct {
+// analyzeArgs contains inputs needed when run by creator.
+type analyzeArgs struct {
 	layersDir        string
 	previousImageRef string
 	runImageRef      string
@@ -49,6 +49,7 @@ type analyzeInputsForCreator struct {
 	platform    Platform
 }
 
+// DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheImage(&a.cacheImageRef)
@@ -68,8 +69,9 @@ func (a *analyzeCmd) DefineFlags() {
 	}
 }
 
+// Args validates arguments and flags, and fills in default values.
 func (a *analyzeCmd) Args(nargs int, args []string) error {
-	// define args
+	// read args
 	if nargs != 1 {
 		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 	}
@@ -193,7 +195,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (aa analyzeInputsForCreator) analyze() (platform.AnalyzedMetadata, error) {
+func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	previousImage, err := aa.localOrRemote(aa.previousImageRef)
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
@@ -221,7 +223,7 @@ func (aa analyzeInputsForCreator) analyze() (platform.AnalyzedMetadata, error) {
 	return analyzedMD, nil
 }
 
-func (aa analyzeInputsForCreator) localOrRemote(fromImage string) (imgutil.Image, error) {
+func (aa analyzeArgs) localOrRemote(fromImage string) (imgutil.Image, error) {
 	if fromImage == "" {
 		return nil, nil
 	}
