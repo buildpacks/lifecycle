@@ -8,10 +8,10 @@ import (
 
 // Command defines the interface for running the lifecycle phases
 type Command interface {
-	// DefineFlags defines flags
+	// DefineFlags defines the flags that are considered valid and reads their values (if provided)
 	DefineFlags()
 
-	// Args validates arguments and flags
+	// Args validates arguments and flags, and fills in default values
 	Args(nargs int, args []string) error
 
 	// Privileges validates the needed privileges

@@ -23,88 +23,88 @@ import (
 )
 
 type analyzeCmd struct {
-	//flags: inputs
 	analyzeArgs
-	stackPath string
-	uid, gid  int
-
-	//flags: paths to write data
-	analyzedPath string
+	additionalTags  cmd.StringSlice
+	analyzedPath    string
+	cacheImageRef   string
+	legacyCacheDir  string
+	legacyGroupPath string
+	outputImageRef  string
+	stackPath       string
+	uid, gid        int
 }
 
+// analyzeArgs contains inputs needed when run by creator.
 type analyzeArgs struct {
-	cacheImageRef    string
 	layersDir        string
-	outputImageRef   string
 	previousImageRef string
 	runImageRef      string
+	legacySkipLayers bool
 	useDaemon        bool
 
-	additionalTags cmd.StringSlice
-	docker         client.CommonAPIClient // construct if necessary before dropping privileges
-	keychain       authn.Keychain
-	platform       Platform
-	platform06     analyzeArgsPlatform06
+	docker      client.CommonAPIClient // construct if necessary before dropping privileges
+	keychain    authn.Keychain         // construct if necessary before dropping privileges
+	legacyCache lifecycle.Cache
+	legacyGroup buildpack.Group
+	platform    Platform
 }
 
-type analyzeArgsPlatform06 struct {
-	cacheDir   string // not needed when run by creator
-	groupPath  string // not needed when run by creator
-	skipLayers bool
-	cache      lifecycle.Cache
-	group      buildpack.Group
-}
-
+// DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagAnalyzedPath(&a.analyzedPath)
 	cmd.FlagCacheImage(&a.cacheImageRef)
+	cmd.FlagGID(&a.gid)
 	cmd.FlagLayersDir(&a.layersDir)
+	cmd.FlagUID(&a.uid)
+	cmd.FlagUseDaemon(&a.useDaemon)
 	if a.platformAPIVersionGreaterThan06() {
 		cmd.FlagPreviousImage(&a.previousImageRef)
 		cmd.FlagRunImage(&a.runImageRef)
 		cmd.FlagStackPath(&a.stackPath)
 		cmd.FlagTags(&a.additionalTags)
 	} else {
-		cmd.FlagCacheDir(&a.platform06.cacheDir)
-		cmd.FlagGroupPath(&a.platform06.groupPath)
-		cmd.FlagSkipLayers(&a.platform06.skipLayers)
+		cmd.FlagCacheDir(&a.legacyCacheDir)
+		cmd.FlagGroupPath(&a.legacyGroupPath)
+		cmd.FlagSkipLayers(&a.legacySkipLayers)
 	}
-	cmd.FlagUseDaemon(&a.useDaemon)
-	cmd.FlagUID(&a.uid)
-	cmd.FlagGID(&a.gid)
 }
 
+// Args validates arguments and flags, and fills in default values.
 func (a *analyzeCmd) Args(nargs int, args []string) error {
+	// read args
 	if nargs != 1 {
 		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
 	}
-
-	if args[0] == "" {
-		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
-	}
 	a.outputImageRef = args[0]
 
-	if a.restoresLayerMetadata() {
-		if a.cacheImageRef == "" && a.platform06.cacheDir == "" {
-			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
-		}
+	// validate args
+	if a.outputImageRef == "" {
+		return cmd.FailErrCode(errors.New("image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	targetRegistry, err := parseRegistry(a.outputImageRef)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+	// fill in values
+	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
+		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platform.API().String(), a.layersDir)
+	}
+
+	if a.legacyGroupPath == cmd.PlaceholderGroupPath {
+		a.legacyGroupPath = cmd.DefaultGroupPath(a.platform.API().String(), a.layersDir)
 	}
 
 	if a.previousImageRef == "" {
 		a.previousImageRef = a.outputImageRef
-	} else if !a.useDaemon {
-		previousRegistry, err := parseRegistry(a.previousImageRef)
-		if err != nil {
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse previous registry")
+	}
+
+	// validate flags
+	if a.restoresLayerMetadata() {
+		if a.cacheImageRef == "" && a.legacyCacheDir == "" {
+			cmd.DefaultLogger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 		}
-		if previousRegistry != targetRegistry {
-			err := fmt.Errorf("previous image is on a different registry %s from the exported image %s", previousRegistry, targetRegistry)
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate registry")
+	}
+
+	if !a.useDaemon {
+		if err := a.ensurePreviousAndTargetHaveSameRegistry(); err != nil {
+			return errors.Wrap(err, "ensuring images are on same registry")
 		}
 	}
 
@@ -112,27 +112,8 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
 	}
 
-	if a.analyzedPath == cmd.PlaceholderAnalyzedPath {
-		a.analyzedPath = cmd.DefaultAnalyzedPath(a.platform.API().String(), a.layersDir)
-	}
-
-	if a.platform06.groupPath == cmd.PlaceholderGroupPath {
-		a.platform06.groupPath = cmd.DefaultGroupPath(a.platform.API().String(), a.layersDir)
-	}
-
-	if a.supportsRunImage() {
-		stackMD, err := readStack(a.stackPath)
-		if err != nil {
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
-		}
-
-		if err := a.validateRunImageInput(); err != nil {
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
-		}
-
-		if err := a.populateRunImage(stackMD, targetRegistry); err != nil {
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
-		}
+	if err := a.populateRunImageIfNeeded(); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -165,7 +146,7 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err)
 		}
 	}
-	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.platform06.cacheDir); err != nil {
+	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.legacyCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err := priv.RunAs(a.uid, a.gid); err != nil {
@@ -174,10 +155,10 @@ func (a *analyzeCmd) Privileges() error {
 	return nil
 }
 
-func (aa *analyzeArgs) registryImages() []string {
+func (a *analyzeCmd) registryImages() []string {
 	var registryImages []string
-	registryImages = append(registryImages, aa.ReadableRegistryImages()...)
-	return append(registryImages, aa.WriteableRegistryImages()...)
+	registryImages = append(registryImages, a.ReadableRegistryImages()...)
+	return append(registryImages, a.WriteableRegistryImages()...)
 }
 
 func (a *analyzeCmd) Exec() error {
@@ -187,19 +168,19 @@ func (a *analyzeCmd) Exec() error {
 		cacheStore lifecycle.Cache
 	)
 	if a.restoresLayerMetadata() {
-		group, err = buildpack.ReadGroup(a.platform06.groupPath)
+		group, err = buildpack.ReadGroup(a.legacyGroupPath)
 		if err != nil {
 			return cmd.FailErr(err, "read buildpack group")
 		}
 		if err := verifyBuildpackApis(group); err != nil {
 			return err
 		}
-		cacheStore, err = initCache(a.cacheImageRef, a.platform06.cacheDir, a.keychain)
+		cacheStore, err = initCache(a.cacheImageRef, a.legacyCacheDir, a.keychain)
 		if err != nil {
 			return cmd.FailErr(err, "initialize cache")
 		}
-		a.platform06.group = group
-		a.platform06.cache = cacheStore
+		a.legacyGroup = group
+		a.legacyCache = cacheStore
 	}
 
 	analyzedMD, err := a.analyze()
@@ -226,13 +207,13 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	analyzedMD, err := (&lifecycle.Analyzer{
-		Buildpacks:            aa.platform06.group.Group,
-		Cache:                 aa.platform06.cache,
+		Buildpacks:            aa.legacyGroup.Group,
+		Cache:                 aa.legacyCache,
 		Logger:                cmd.DefaultLogger,
 		Platform:              aa.platform,
 		PreviousImage:         previousImage,
 		RunImage:              runImage,
-		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.platform06.skipLayers),
+		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.legacySkipLayers),
 		SBOMRestorer:          layer.NewSBOMRestorer(aa.layersDir, cmd.DefaultLogger),
 	}).Analyze()
 	if err != nil {
@@ -274,39 +255,61 @@ func (a *analyzeCmd) supportsRunImage() bool {
 	return a.platformAPIVersionGreaterThan06()
 }
 
-func (a *analyzeCmd) validateRunImageInput() error {
-	if !a.supportsRunImage() && a.runImageRef != "" {
-		return errors.New("-run-image is unsupported")
-	}
-	return nil
-}
-
-func (a *analyzeCmd) populateRunImage(stackMD platform.StackMetadata, targetRegistry string) error {
+func (a *analyzeCmd) populateRunImageIfNeeded() error {
 	if !a.supportsRunImage() || a.runImageRef != "" {
 		return nil
 	}
 
-	var err error
+	targetRegistry, err := parseRegistry(a.outputImageRef)
+	if err != nil {
+		return err
+	}
+
+	stackMD, err := readStack(a.stackPath)
+	if err != nil {
+		return err
+	}
+
 	a.runImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
 	if err != nil {
 		return errors.New("-run-image is required when there is no stack metadata available")
 	}
+
 	return nil
 }
 
-func (aa *analyzeArgs) ReadableRegistryImages() []string {
+func (a *analyzeCmd) ensurePreviousAndTargetHaveSameRegistry() error {
+	if a.previousImageRef == a.outputImageRef {
+		return nil
+	}
+	targetRegistry, err := parseRegistry(a.outputImageRef)
+	if err != nil {
+		return err
+	}
+	previousRegistry, err := parseRegistry(a.previousImageRef)
+	if err != nil {
+		return err
+	}
+	if previousRegistry != targetRegistry {
+		return fmt.Errorf("previous image is on a different registry %s from the exported image %s", previousRegistry, targetRegistry)
+	}
+	return nil
+}
+
+func (a *analyzeCmd) ReadableRegistryImages() []string {
 	var readableImages []string
-	if !aa.useDaemon {
-		readableImages = appendNotEmpty(readableImages, aa.previousImageRef, aa.runImageRef)
+	if !a.useDaemon {
+		readableImages = appendNotEmpty(readableImages, a.previousImageRef, a.runImageRef)
 	}
 	return readableImages
 }
-func (aa *analyzeArgs) WriteableRegistryImages() []string {
+
+func (a *analyzeCmd) WriteableRegistryImages() []string {
 	var writeableImages []string
-	writeableImages = appendNotEmpty(writeableImages, aa.cacheImageRef)
-	if !aa.useDaemon {
-		writeableImages = appendNotEmpty(writeableImages, aa.outputImageRef)
-		writeableImages = appendNotEmpty(writeableImages, aa.additionalTags...)
+	writeableImages = appendNotEmpty(writeableImages, a.cacheImageRef)
+	if !a.useDaemon {
+		writeableImages = appendNotEmpty(writeableImages, a.outputImageRef)
+		writeableImages = appendNotEmpty(writeableImages, a.additionalTags...)
 	}
 	return writeableImages
 }
