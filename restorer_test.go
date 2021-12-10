@@ -27,8 +27,7 @@ import (
 )
 
 func TestRestorer(t *testing.T) {
-	for _, buildpackAPI := range api.Buildpack.Supported {
-		buildpackAPIStr := buildpackAPI.String()
+	for _, buildpackAPIStr := range []string{"0.5", api.Buildpack.Latest().String()} {
 		for _, platformAPI := range api.Platform.Supported {
 			platformAPIStr := platformAPI.String()
 			spec.Run(
