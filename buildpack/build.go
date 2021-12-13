@@ -35,13 +35,29 @@ type BuildConfig struct {
 	Logger      Logger
 }
 
+// TODO: move somewhere else maybe
 type BuildResult struct {
-	BOM         []BOMEntry
-	BOMFiles    []BOMFile
-	Labels      []Label
-	MetRequires []string
-	Processes   []launch.Process
-	Slices      []layers.Slice
+	BOM                 []BOMEntry
+	BOMFiles            []BOMFile
+	Dockerfiles         []Dockerfile
+	DockerfileBuildArgs []DockerfileBuildArg
+	Labels              []Label
+	MetRequires         []string
+	Processes           []launch.Process
+	Slices              []layers.Slice
+}
+
+type Dockerfile struct {
+	Path      string
+	Build     bool
+	Run       bool
+}
+
+type DockerfileBuildArg struct {
+	Key   string
+	Val   string
+	Build bool
+	Run   bool
 }
 
 func (bom *BOMEntry) ConvertMetadataToVersion() {
@@ -272,20 +288,20 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 	} else {
 		// read build.toml
-		var bpBuild BuildTOML
+		var buildTOML BuildTOML
 		buildPath := filepath.Join(bpLayersDir, "build.toml")
-		if _, err := toml.DecodeFile(buildPath, &bpBuild); err != nil && !os.IsNotExist(err) {
+		if _, err := toml.DecodeFile(buildPath, &buildTOML); err != nil && !os.IsNotExist(err) {
 			return BuildResult{}, err
 		}
-		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, bpBuild.BOM); err != nil {
+		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM); err != nil {
 			return BuildResult{}, err
 		}
 
 		// set MetRequires
-		if err := validateUnmet(bpBuild.Unmet, bpPlanIn); err != nil {
+		if err := validateUnmet(buildTOML.Unmet, bpPlanIn); err != nil {
 			return BuildResult{}, err
 		}
-		br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
+		br.MetRequires = names(bpPlanIn.filter(buildTOML.Unmet).Entries)
 
 		// set BOM files
 		br.BOMFiles, err = b.processBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)

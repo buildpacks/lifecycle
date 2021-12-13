@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +54,45 @@ func (e *Extension) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Buil
 		return BuildResult{}, err
 	}
 
-	config.Logger.Debug("Processing output directory")
 	config.Logger.Debug("Reading output files")
-	return BuildResult{}, nil
+	return e.readOutputFiles(bpOutputDir, bpPlan, config.Logger)
+}
+
+func (e *Extension) readOutputFiles(bpOutputDir string, bpPlanIn Plan, logger Logger) (BuildResult, error) {
+	br := BuildResult{}
+
+	// read build.toml
+	type extBuildTOML struct {
+		Unmet []Unmet `toml:"unmet"`
+	}
+	var bpBuild extBuildTOML
+	buildPath := filepath.Join(bpOutputDir, "build.toml")
+	if _, err := toml.DecodeFile(buildPath, &bpBuild); err != nil && !os.IsNotExist(err) {
+		return BuildResult{}, err
+	}
+
+	// set MetRequires
+	if err := validateUnmet(bpBuild.Unmet, bpPlanIn); err != nil {
+		return BuildResult{}, err
+	}
+	br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
+
+	// set BOM files
+	// br.BOMFiles, err = b.processBOMFiles(bpOutputDir, bpFromBpInfo, bpLayers, logger) // TODO: extract service
+	// if err != nil {
+	// 	return BuildResult{}, err
+	// }
+
+	// read launch.toml
+	type extLaunchTOML struct {
+		Args   []DockerfileBuildArg // TODO: fix
+		Labels []Label
+	}
+	var launchTOML extLaunchTOML
+	launchPath := filepath.Join(bpOutputDir, "launch.toml")
+	if _, err := toml.DecodeFile(launchPath, &launchTOML); !os.IsNotExist(err) {
+		return BuildResult{}, err
+	}
+
+	return br, nil
 }
