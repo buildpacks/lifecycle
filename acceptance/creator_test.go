@@ -143,16 +143,17 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 
 		when("sbom", func() {
 			var (
-				container1 string
-				container2 string
-				container3 string
-				container4 string
-				dirBuild1  string
-				dirBuild2  string
-				dirCache   string
-				dirRun1    string
-				dirRun2    string
-				imageName  string
+				container1     string
+				container2     string
+				container3     string
+				container4     string
+				dirBuild1      string
+				dirBuild2      string
+				dirCache       string
+				dirLaunchCache string
+				dirRun1        string
+				dirRun2        string
+				imageName      string
 			)
 
 			it.Before(func() {
@@ -163,7 +164,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 					*cPtr = "test-container-" + h.RandString(10)
 				}
 				// create temp dirs
-				for _, dirPtr := range []*string{&dirCache, &dirBuild1, &dirRun1, &dirBuild2, &dirRun2} {
+				for _, dirPtr := range []*string{&dirCache, &dirLaunchCache, &dirBuild1, &dirRun1, &dirBuild2, &dirRun2} {
 					dir, err := ioutil.TempDir("", "creator-acceptance")
 					h.AssertNil(t, err)
 					h.AssertNil(t, os.Chmod(dir, 0777)) // Override umask
@@ -186,7 +187,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 					}
 				}
 				// remove temp dirs
-				for _, dir := range []string{dirCache, dirBuild1, dirRun1, dirBuild2, dirRun2} {
+				for _, dir := range []string{dirCache, dirLaunchCache, dirBuild1, dirRun1, dirBuild2, dirRun2} {
 					_ = os.RemoveAll(dir)
 				}
 				// remove image
@@ -204,6 +205,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 					createFlags = append(createFlags, []string{
 						"-run-image", createRegFixtures.ReadOnlyRunImage,
 						"-cache-dir", ctrPath("/cache"),
+						"-launch-cache", ctrPath("/launch-cache"),
 						"-log-level", "debug",
 					}...)
 					createArgs = append([]string{ctrPath(creatorPath)}, createFlags...)
@@ -221,6 +223,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 							"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
 							"--network", createRegNetwork,
 							"--volume", dirCache+":"+ctrPath("/cache"),
+							"--volume", dirLaunchCache+":"+ctrPath("/launch-cache"),
 						)...),
 						h.WithArgs(createArgs...),
 					)
@@ -248,6 +251,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 
 				when("rebuild with cache", func() {
 					it("is exported in the app image", func() {
+						startTime := time.Now()
 						// second build
 						output := h.DockerRunAndCopy(t,
 							container3,
@@ -260,9 +264,16 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 								"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
 								"--network", createRegNetwork,
 								"--volume", dirCache+":/cache",
+								"--volume", dirLaunchCache+":"+ctrPath("/launch-cache"),
 							)...),
 							h.WithArgs(createArgs...),
 						)
+						// check that launch cache was used
+						duration := time.Now().Sub(startTime)
+						t.Logf("Build duration: %s", duration)
+						if duration > 3*time.Second {
+							t.Fatalf("Expected second build to complete in less than 3 seconds; took %s", duration)
+						}
 						h.AssertStringContains(t, string(output), "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
 						h.AssertStringContains(t, string(output), "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
 						h.AssertStringContains(t, string(output), "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
@@ -306,6 +317,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 								"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
 								"--network", createRegNetwork,
 								"--volume", dirCache+":/cache",
+								"--volume", dirLaunchCache+":"+ctrPath("/launch-cache"),
 							)...),
 							h.WithArgs(createArgs...),
 						)

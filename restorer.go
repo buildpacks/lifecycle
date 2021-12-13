@@ -101,6 +101,7 @@ func (r *Restorer) Restore(cache Cache) error {
 			if cacheMeta.BOM.SHA == "" {
 				return nil
 			}
+			r.Logger.Infof("Restoring data for sbom from cache")
 			if err := r.SBOMRestorer.RestoreFromCache(cache, cacheMeta.BOM.SHA); err != nil {
 				return err
 			}

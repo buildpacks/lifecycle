@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
@@ -36,6 +37,7 @@ type analyzeCmd struct {
 
 // analyzeArgs contains inputs needed when run by creator.
 type analyzeArgs struct {
+	launchCacheDir   string // creator-only in Platform API 0.8
 	layersDir        string
 	previousImageRef string
 	runImageRef      string
@@ -199,6 +201,13 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 	previousImage, err := aa.localOrRemote(aa.previousImageRef)
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErr(err, "get previous image")
+	}
+	if aa.useDaemon && aa.launchCacheDir != "" {
+		volumeCache, err := cache.NewVolumeCache(aa.launchCacheDir)
+		if err != nil {
+			return platform.AnalyzedMetadata{}, cmd.FailErr(err, "create launch cache")
+		}
+		previousImage = cache.NewCachingImage(previousImage, volumeCache)
 	}
 
 	runImage, err := aa.localOrRemote(aa.runImageRef)

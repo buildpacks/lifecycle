@@ -51,6 +51,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 		if a.Platform.API().AtLeast("0.8") {
 			if appMeta.BOM != nil && appMeta.BOM.SHA != "" {
+				a.Logger.Infof("Restoring data for sbom from previous image")
 				if err := a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, appMeta.BOM.SHA); err != nil {
 					return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
 				}
