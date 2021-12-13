@@ -173,6 +173,7 @@ func (c *createCmd) Exec() error {
 			docker:           c.docker,
 			keychain:         c.keychain,
 			layersDir:        c.layersDir,
+			launchCacheDir:   c.launchCacheForAnalyzer(),
 			platform:         c.platform,
 			previousImageRef: c.previousImageRef,
 			runImageRef:      c.runImageRef,
@@ -294,6 +295,7 @@ func (c *createCmd) ReadableRegistryImages() []string {
 	}
 	return readableImages
 }
+
 func (c *createCmd) WriteableRegistryImages() []string {
 	var writeableImages []string
 	writeableImages = appendNotEmpty(writeableImages, c.cacheImageRef)
@@ -315,6 +317,13 @@ func (c *createCmd) populateRunImage() error {
 		return errors.New("-run-image is required when there is no stack metadata available")
 	}
 	return nil
+}
+
+func (c *createCmd) launchCacheForAnalyzer() string {
+	if c.useDaemon && c.platform.API().AtLeast("0.8") {
+		return c.launchCacheDir
+	}
+	return ""
 }
 
 func startPinging(docker client.CommonAPIClient) (stopPinging func()) {
