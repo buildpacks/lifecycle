@@ -72,21 +72,15 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Bui
 		}
 	}
 
-	config.Logger.Debug("Creating plan directory")
-	planDir, err := ioutil.TempDir("", launch.EscapeID(b.Buildpack.ID)+"-")
-	if err != nil {
-		return BuildResult{}, err
-	}
-	defer os.RemoveAll(planDir)
-
 	config.Logger.Debug("Preparing paths")
-	bpLayersDir, bpPlanPath, err := preparePaths(b.Buildpack.ID, bpPlan, config.LayersDir, planDir)
+	bpPlanDir, bpLayersDir, bpPlanPath, err := prepareBuildPaths(config.LayersDir, b.Buildpack.ID, bpPlan)
+	defer os.RemoveAll(bpPlanDir)
 	if err != nil {
 		return BuildResult{}, err
 	}
 
 	config.Logger.Debug("Running build command")
-	if err := b.runBuildCmd(bpLayersDir, bpPlanPath, config, bpEnv); err != nil {
+	if err := runBuildCmd(b.Dir, bpLayersDir, bpPlanPath, config, bpEnv, b.Buildpack.ClearEnv); err != nil {
 		return BuildResult{}, err
 	}
 
@@ -146,28 +140,34 @@ func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]
 	})
 }
 
-func preparePaths(bpID string, bpPlan Plan, layersDir, planDir string) (string, string, error) {
+func prepareBuildPaths(outputParentDir, bpID string, bpPlan Plan) (bpPlanParentDir, bpOutputDir, bpPlanPath string, err error) {
+	// plan
+	if bpPlanParentDir, err = ioutil.TempDir("", launch.EscapeID(bpID)+"-"); err != nil {
+		return
+	}
 	bpDirName := launch.EscapeID(bpID)
-	bpLayersDir := filepath.Join(layersDir, bpDirName)
-	bpPlanDir := filepath.Join(planDir, bpDirName)
-	if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
-		return "", "", err
+	bpPlanDir := filepath.Join(bpPlanParentDir, bpDirName) // TODO: find out if this intermediate directory needs to exist
+	if err = os.MkdirAll(bpPlanDir, 0777); err != nil {
+		return
 	}
-	if err := os.MkdirAll(bpPlanDir, 0777); err != nil {
-		return "", "", err
-	}
-	bpPlanPath := filepath.Join(bpPlanDir, "plan.toml")
-	if err := encoding.WriteTOML(bpPlanPath, bpPlan); err != nil {
-		return "", "", err
+	bpPlanPath = filepath.Join(bpPlanDir, "plan.toml")
+	if err = encoding.WriteTOML(bpPlanPath, bpPlan); err != nil {
+		return
 	}
 
-	return bpLayersDir, bpPlanPath, nil
+	// output
+	bpOutputDir = filepath.Join(outputParentDir, bpDirName)
+	if err = os.MkdirAll(bpOutputDir, 0777); err != nil {
+		return
+	}
+
+	return bpPlanParentDir, bpOutputDir, bpPlanPath, nil
 }
 
-func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildConfig, bpEnv BuildEnv) error {
+func runBuildCmd(buildpackDir, outputDir, bpPlanPath string, config BuildConfig, bpEnv BuildEnv, clearEnv bool) error {
 	cmd := exec.Command(
-		filepath.Join(b.Dir, "bin", "build"),
-		bpLayersDir,
+		filepath.Join(buildpackDir, "bin", "build"),
+		outputDir,
 		config.PlatformDir,
 		bpPlanPath,
 	) // #nosec G204
@@ -176,7 +176,7 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 	cmd.Stderr = config.Err
 
 	var err error
-	if b.Buildpack.ClearEnv {
+	if clearEnv {
 		cmd.Env = bpEnv.List()
 	} else {
 		cmd.Env, err = bpEnv.WithPlatform(config.PlatformDir)
@@ -184,7 +184,7 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 			return err
 		}
 	}
-	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
+	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+buildpackDir)
 
 	if err := cmd.Run(); err != nil {
 		return NewError(err, ErrTypeBuildpack)

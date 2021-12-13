@@ -110,6 +110,10 @@ func (p *PlanSections) hasDoublySpecifiedVersions() bool {
 	return false
 }
 
+func (p *PlanSections) hasRequires() bool {
+	return len(p.Requires) > 0
+}
+
 func (p *PlanSections) hasTopLevelVersions() bool {
 	for _, req := range p.Requires {
 		if req.hasTopLevelVersions() {
@@ -133,6 +137,15 @@ func (p *planSectionsList) hasInconsistentVersions() bool {
 func (p *planSectionsList) hasDoublySpecifiedVersions() bool {
 	for _, planSection := range *p {
 		if planSection.hasDoublySpecifiedVersions() {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *planSectionsList) hasRequires() bool {
+	for _, planSection := range *p {
+		if planSection.hasRequires() {
 			return true
 		}
 	}
