@@ -62,7 +62,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		var exportedImageName string
 
 		it.After(func() {
-			h.DockerImageRemove(t, exportedImageName)
+			_, _, _ = h.RunE(exec.Command("docker", "rmi", exportedImageName)) // #nosec G204
 		})
 
 		when("daemon case", func() {
