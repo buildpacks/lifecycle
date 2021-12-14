@@ -8,26 +8,27 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 )
 
-type Buildpack interface {
+// TODO: does store belong in this package?
+type Buildpack interface { // TODO: rename to Buildable maybe
 	Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error)
 	ConfigFile() *Descriptor
 	Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun
 }
 
-type DirBuildpackStore struct {
+type BpStore struct {
 	Dir string
 }
 
-func NewBuildpackStore(dir string) (*DirBuildpackStore, error) {
+func NewBuildpackStore(dir string) (*BpStore, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
-	return &DirBuildpackStore{Dir: dir}, nil
+	return &BpStore{Dir: dir}, nil
 }
 
-func (f *DirBuildpackStore) Lookup(bpID, bpVersion string) (Buildpack, error) {
-	bpTOML := Descriptor{}
+func (f *BpStore) Lookup(bpID, bpVersion string) (Buildpack, error) {
+	var bpTOML Descriptor
 	bpPath := filepath.Join(f.Dir, launch.EscapeID(bpID), bpVersion)
 	tomlPath := filepath.Join(bpPath, "buildpack.toml")
 	if _, err := toml.DecodeFile(tomlPath, &bpTOML); err != nil {
@@ -35,4 +36,27 @@ func (f *DirBuildpackStore) Lookup(bpID, bpVersion string) (Buildpack, error) {
 	}
 	bpTOML.Dir = bpPath
 	return &bpTOML, nil
+}
+
+type ExtensionStore struct {
+	Dir string
+}
+
+func NewExtensionStore(dir string) (*ExtensionStore, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	return &ExtensionStore{Dir: dir}, nil
+}
+
+func (f *ExtensionStore) Lookup(extID, extVersion string) (Buildpack, error) {
+	var extTOML Extension
+	extPath := filepath.Join(f.Dir, launch.EscapeID(extID), extVersion)
+	tomlPath := filepath.Join(extPath, "extension.toml")
+	if _, err := toml.DecodeFile(tomlPath, &extTOML); err != nil {
+		return nil, err
+	}
+	extTOML.Dir = extPath
+	return &extTOML, nil
 }

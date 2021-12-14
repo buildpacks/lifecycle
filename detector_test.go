@@ -47,7 +47,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			detector.Resolver = resolver
 
 			buildpackStore = testmock.NewMockBuildpackStore(mockCtrl)
-			detector.Store = buildpackStore
+			detector.BuildpackStore = buildpackStore
 
 			detector.Platform = platform.NewPlatform(api.Platform.Latest().String())
 		})
@@ -76,7 +76,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				API: "0.2",
 				Order: []buildpack.Group{
 					{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupBuildable{
 							{ID: "A", Version: "v1"},
 							{ID: "F", Version: "v1"},
 							{ID: "B", Version: "v1"},
@@ -93,13 +93,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpF1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
 				API: "0.2",
 				Order: []buildpack.Group{
-					{Group: []buildpack.GroupBuildpack{
+					{Group: []buildpack.GroupBuildable{
 						{ID: "C", Version: "v1"},
 					}},
-					{Group: []buildpack.GroupBuildpack{
+					{Group: []buildpack.GroupBuildable{
 						{ID: "G", Version: "v1", Optional: true},
 					}},
-					{Group: []buildpack.GroupBuildpack{
+					{Group: []buildpack.GroupBuildable{
 						{ID: "D", Version: "v1"},
 					}},
 				},
@@ -113,7 +113,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-			firstGroup := []buildpack.GroupBuildpack{
+			firstGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "C", Version: "v1", API: "0.2"},
 				{ID: "B", Version: "v1", API: "0.2"},
@@ -122,7 +122,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				firstGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			)
@@ -132,13 +132,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				API: "0.2",
 				Order: []buildpack.Group{
 					{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupBuildable{
 							{ID: "A", Version: "v2"},
 							{ID: "B", Version: "v2"},
 						},
 					},
 					{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupBuildable{
 							{ID: "C", Version: "v2"},
 							{ID: "D", Version: "v2"},
 						},
@@ -150,7 +150,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpB2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 			bpB2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-			secondGroup := []buildpack.GroupBuildpack{
+			secondGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v2", API: "0.2"},
 			}
@@ -158,7 +158,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				secondGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(firstResolve)
@@ -174,7 +174,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			buildpackStore.EXPECT().Lookup("B", "v1").Return(bpB1, nil)
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 
-			thirdGroup := []buildpack.GroupBuildpack{
+			thirdGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "C", Version: "v2", API: "0.2"},
 				{ID: "D", Version: "v2", API: "0.2"},
@@ -184,7 +184,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				thirdGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(secondResolve)
@@ -192,7 +192,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			buildpackStore.EXPECT().Lookup("B", "v1").Return(bpB1, nil)
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 
-			fourthGroup := []buildpack.GroupBuildpack{
+			fourthGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
@@ -200,7 +200,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				fourthGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(thirdResolve)
@@ -212,7 +212,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			buildpackStore.EXPECT().Lookup("B", "v1").Return(bpB1, nil)
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 
-			fifthGroup := []buildpack.GroupBuildpack{
+			fifthGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "D", Version: "v1", API: "0.2"},
 				{ID: "B", Version: "v1", API: "0.2"},
@@ -221,13 +221,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				fifthGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(fourthResolve)
 
 			order := buildpack.Order{
-				{Group: []buildpack.GroupBuildpack{{ID: "E", Version: "v1"}}},
+				{Group: []buildpack.GroupBuildable{{ID: "E", Version: "v1"}}},
 			}
 			_, _, err := detector.Detect(order)
 			if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
@@ -254,7 +254,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				API: "0.2",
 				Order: []buildpack.Group{
 					{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupBuildable{
 							{ID: "A", Version: "v1"},
 							{ID: "F", Version: "v1"},
 							{ID: "B", Version: "v1"},
@@ -274,13 +274,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpF1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
 				API: "0.2",
 				Order: []buildpack.Group{
-					{Group: []buildpack.GroupBuildpack{
+					{Group: []buildpack.GroupBuildable{
 						{ID: "C", Version: "v1"},
 					}},
-					{Group: []buildpack.GroupBuildpack{
+					{Group: []buildpack.GroupBuildable{
 						{ID: "G", Version: "v1", Optional: true},
 					}},
-					{Group: []buildpack.GroupBuildpack{
+					{Group: []buildpack.GroupBuildable{
 						{ID: "D", Version: "v1"},
 					}},
 				},
@@ -294,7 +294,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-			firstGroup := []buildpack.GroupBuildpack{
+			firstGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "C", Version: "v1", API: "0.2"},
 				{ID: "B", Version: "v1", API: "0.2"},
@@ -303,7 +303,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				firstGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			)
@@ -313,13 +313,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				API: "0.2",
 				Order: []buildpack.Group{
 					{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupBuildable{
 							{ID: "A", Version: "v2"},
 							{ID: "B", Version: "v2"},
 						},
 					},
 					{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupBuildable{
 							{ID: "C", Version: "v2"},
 							{ID: "D", Version: "v2"},
 						},
@@ -331,7 +331,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpB2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 			bpB2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-			secondGroup := []buildpack.GroupBuildpack{
+			secondGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "B", Version: "v2", API: "0.2"},
 			}
@@ -339,7 +339,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				secondGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(firstResolve)
@@ -355,7 +355,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			buildpackStore.EXPECT().Lookup("B", "v1").Return(bpB1, nil)
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 
-			thirdGroup := []buildpack.GroupBuildpack{
+			thirdGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "C", Version: "v2", API: "0.2"},
 				{ID: "D", Version: "v2", API: "0.2"},
@@ -365,7 +365,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				thirdGroup,
 				detector.Runs,
 			).Return(
-				[]buildpack.GroupBuildpack{},
+				[]buildpack.GroupBuildable{},
 				[]platform.BuildPlanEntry{},
 				lifecycle.ErrFailedDetection,
 			).After(secondResolve)
@@ -373,7 +373,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			buildpackStore.EXPECT().Lookup("B", "v1").Return(bpB1, nil)
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 
-			fourthGroup := []buildpack.GroupBuildpack{
+			fourthGroup := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
@@ -387,7 +387,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			).After(thirdResolve)
 
 			order := buildpack.Order{
-				{Group: []buildpack.GroupBuildpack{{ID: "E", Version: "v1"}}},
+				{Group: []buildpack.GroupBuildable{{ID: "E", Version: "v1"}}},
 			}
 			group, plan, err := detector.Detect(order)
 			if err != nil {
@@ -395,7 +395,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			if s := cmp.Diff(group, buildpack.Group{
-				Group: []buildpack.GroupBuildpack{
+				Group: []buildpack.GroupBuildable{
 					{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 					{ID: "B", Version: "v1", API: "0.2"},
 				},
@@ -419,13 +419,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
 			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []platform.BuildPlanEntry{
 				{
-					Providers: []buildpack.GroupBuildpack{
+					Providers: []buildpack.GroupBuildable{
 						{ID: "A", Version: "v1"},
 					},
 					Requires: []buildpack.Require{
@@ -436,7 +436,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 				{
-					Providers: []buildpack.GroupBuildpack{
+					Providers: []buildpack.GroupBuildable{
 						{ID: "B", Version: "v1"},
 					},
 					Requires: []buildpack.Require{
@@ -460,7 +460,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			if !hasEntries(plan.Entries, []platform.BuildPlanEntry{
 				{
-					Providers: []buildpack.GroupBuildpack{
+					Providers: []buildpack.GroupBuildable{
 						{ID: "A", Version: "v1"},
 					},
 					Requires: []buildpack.Require{
@@ -468,7 +468,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 				{
-					Providers: []buildpack.GroupBuildpack{
+					Providers: []buildpack.GroupBuildable{
 						{ID: "B", Version: "v1"},
 					},
 					Requires: []buildpack.Require{
@@ -511,7 +511,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				Err:    bpBerror,
 			})
 
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3"},
 				{ID: "B", Version: "v1", API: "0.2"},
 			}
@@ -567,11 +567,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
 					bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-					group := []buildpack.GroupBuildpack{
+					group := []buildpack.GroupBuildable{
 						{ID: "A", Version: "v1", API: "0.3"},
 					}
 					resolver.EXPECT().Resolve(group, detector.Runs).Return(
-						[]buildpack.GroupBuildpack{},
+						[]buildpack.GroupBuildable{},
 						[]platform.BuildPlanEntry{},
 						lifecycle.ErrBuildpack,
 					)
@@ -590,11 +590,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
 					bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-					group := []buildpack.GroupBuildpack{
+					group := []buildpack.GroupBuildable{
 						{ID: "A", Version: "v1", API: "0.3"},
 					}
 					resolver.EXPECT().Resolve(group, detector.Runs).Return(
-						[]buildpack.GroupBuildpack{},
+						[]buildpack.GroupBuildable{},
 						[]platform.BuildPlanEntry{},
 						lifecycle.ErrFailedDetection,
 					)
@@ -622,7 +622,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail if the group is empty", func() {
-			_, _, err := resolver.Resolve([]buildpack.GroupBuildpack{}, &sync.Map{})
+			_, _, err := resolver.Resolve([]buildpack.GroupBuildable{}, &sync.Map{})
 			if err != lifecycle.ErrFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
@@ -637,7 +637,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail if the group has no viable buildpacks, even if no required buildpacks fail", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", Optional: true},
 				{ID: "B", Version: "v1", Optional: true},
 			}
@@ -667,7 +667,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail with specific error if any bp detect fails in an unexpected way", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", Optional: false},
 				{ID: "B", Version: "v1", Optional: false},
 			}
@@ -695,7 +695,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should not output detect pass and fail as info level", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", Optional: false},
 				{ID: "B", Version: "v1", Optional: false},
 			}
@@ -721,7 +721,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should output detect errors as info level", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", Optional: false},
 				{ID: "B", Version: "v1", Optional: false},
 			}
@@ -753,7 +753,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should return a build plan with matched dependencies", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "C", Version: "v2", API: "0.2"},
 				{ID: "D", Version: "v2", API: "0.2"},
@@ -819,14 +819,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			if !hasEntries(entries, []platform.BuildPlanEntry{
 				{
-					Providers: []buildpack.GroupBuildpack{
+					Providers: []buildpack.GroupBuildable{
 						{ID: "A", Version: "v1"},
 						{ID: "C", Version: "v2"},
 					},
 					Requires: []buildpack.Require{{Name: "dep1"}, {Name: "dep1"}},
 				},
 				{
-					Providers: []buildpack.GroupBuildpack{
+					Providers: []buildpack.GroupBuildable{
 						{ID: "A", Version: "v1"},
 						{ID: "C", Version: "v2"},
 						{ID: "D", Version: "v2"},
@@ -854,7 +854,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail if all requires are not provided first", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", Optional: true},
 				{ID: "B", Version: "v1"},
 				{ID: "C", Version: "v1"},
@@ -911,7 +911,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fail if all provides are not required after", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1"},
 				{ID: "B", Version: "v1"},
 				{ID: "C", Version: "v1", Optional: true},
@@ -968,7 +968,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should succeed if unmet provides/requires are optional", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", Optional: true},
 				{ID: "B", Version: "v1", API: "0.2"},
 				{ID: "C", Version: "v1", Optional: true},
@@ -1011,7 +1011,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := cmp.Diff(found, []buildpack.GroupBuildpack{
+			if s := cmp.Diff(found, []buildpack.GroupBuildable{
 				{ID: "B", Version: "v1", API: "0.2"},
 			}); s != "" {
 				t.Fatalf("Unexpected group:\n%s\n", s)
@@ -1019,7 +1019,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			if !hasEntries(entries, []platform.BuildPlanEntry{
 				{
-					Providers: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}},
+					Providers: []buildpack.GroupBuildable{{ID: "B", Version: "v1"}},
 					Requires:  []buildpack.Require{{Name: "dep-present"}},
 				},
 			}) {
@@ -1042,7 +1042,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should fallback to alternate build plans", func() {
-			group := []buildpack.GroupBuildpack{
+			group := []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", Optional: true, API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "B", Version: "v1", Optional: true, API: "0.2"},
 				{ID: "C", Version: "v1", API: "0.2"},
@@ -1132,7 +1132,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := cmp.Diff(found, []buildpack.GroupBuildpack{
+			if s := cmp.Diff(found, []buildpack.GroupBuildable{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "B", Version: "v1", API: "0.2"},
 				{ID: "C", Version: "v1", API: "0.2"},
@@ -1142,11 +1142,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			if !hasEntries(entries, []platform.BuildPlanEntry{
 				{
-					Providers: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}},
+					Providers: []buildpack.GroupBuildable{{ID: "A", Version: "v1"}},
 					Requires:  []buildpack.Require{{Name: "dep1-present"}},
 				},
 				{
-					Providers: []buildpack.GroupBuildpack{{ID: "C", Version: "v1"}},
+					Providers: []buildpack.GroupBuildable{{ID: "C", Version: "v1"}},
 					Requires:  []buildpack.Require{{Name: "dep6-present"}},
 				},
 			}) {

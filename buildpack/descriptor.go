@@ -35,7 +35,7 @@ type Info struct {
 type Order []Group
 
 type Group struct {
-	Group []GroupBuildpack `toml:"group"`
+	Group []GroupBuildable `toml:"group"`
 }
 
 func ReadGroup(path string) (Group, error) {
@@ -59,31 +59,32 @@ func (bg Group) Append(group ...Group) Group {
 	return bg
 }
 
-// A GroupBuildpack represents a buildpack referenced in a buildpack.toml's [[order.group]].
-// It may be a regular buildpack, or a meta buildpack.
-type GroupBuildpack struct {
-	API      string `toml:"api,omitempty" json:"-"`
-	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty"`
-	ID       string `toml:"id" json:"id"`
-	Optional bool   `toml:"optional,omitempty" json:"optional,omitempty"`
-	Version  string `toml:"version" json:"version"`
+// A GroupBuildable represents a buildpack or extension referenced in a buildpack.toml's [[order.group]].
+// A GroupBuildable buildpack may be a regular buildpack, or a meta buildpack.
+type GroupBuildable struct {
+	API       string `toml:"api,omitempty" json:"-"`
+	Homepage  string `toml:"homepage,omitempty" json:"homepage,omitempty"`
+	ID        string `toml:"id" json:"id"`
+	Version   string `toml:"version" json:"version"`
+	Extension bool   `toml:"extension,omitempty" json:"extension,omitempty"` // TODO: check if this is okay, suggested to RFC
+	Optional  bool   `toml:"optional,omitempty" json:"optional,omitempty"`
 }
 
-func (bp GroupBuildpack) String() string {
-	return bp.ID + "@" + bp.Version
+func (b GroupBuildable) String() string {
+	return b.ID + "@" + b.Version
 }
 
-func (bp GroupBuildpack) NoOpt() GroupBuildpack {
-	bp.Optional = false
-	return bp
+func (b GroupBuildable) NoOpt() GroupBuildable {
+	b.Optional = false
+	return b
 }
 
-func (bp GroupBuildpack) NoAPI() GroupBuildpack {
-	bp.API = ""
-	return bp
+func (b GroupBuildable) NoAPI() GroupBuildable {
+	b.API = ""
+	return b
 }
 
-func (bp GroupBuildpack) NoHomepage() GroupBuildpack {
-	bp.Homepage = ""
-	return bp
+func (b GroupBuildable) NoHomepage() GroupBuildable {
+	b.Homepage = ""
+	return b
 }

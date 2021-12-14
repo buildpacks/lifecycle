@@ -23,31 +23,40 @@ var (
 )
 
 type Resolver interface {
-	Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error)
+	Resolve(done []buildpack.GroupBuildable, detectRuns *sync.Map) ([]buildpack.GroupBuildable, []platform.BuildPlanEntry, error)
 }
 
 type Detector struct {
 	buildpack.DetectConfig
-	Platform Platform
-	Resolver Resolver
-	Runs     *sync.Map
-	Store    BuildpackStore
+	Platform       Platform
+	Resolver       Resolver
+	Runs           *sync.Map
+	BuildpackStore BuildpackStore
+	ExtensionStore BuildpackStore
 }
 
-func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform Platform) (*Detector, error) {
+func NewDetector(config buildpack.DetectConfig, buildpacksDir string, extensionsDir string, platform Platform) (*Detector, error) {
 	resolver := &DefaultResolver{
 		Logger: config.Logger,
 	}
-	store, err := buildpack.NewBuildpackStore(buildpacksDir)
+	bpStore, err := buildpack.NewBuildpackStore(buildpacksDir)
 	if err != nil {
 		return nil, err
 	}
+	var extStore BuildpackStore
+	if extensionsDir != "" {
+		extStore, err = buildpack.NewExtensionStore(extensionsDir)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &Detector{
-		DetectConfig: config,
-		Platform:     platform,
-		Resolver:     resolver,
-		Runs:         &sync.Map{},
-		Store:        store,
+		DetectConfig:   config,
+		Platform:       platform,
+		Resolver:       resolver,
+		Runs:           &sync.Map{},
+		BuildpackStore: bpStore,
+		ExtensionStore: extStore,
 	}, nil
 }
 
@@ -70,7 +79,7 @@ func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform
 	return buildpack.Group{Group: bps}, platform.BuildPlan{Entries: entries}, err
 }
 
-func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupBuildpack, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupBuildable, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupBuildable, []platform.BuildPlanEntry, error) {
 	ngroup := buildpack.Group{Group: next}
 	buildpackErr := false
 	for _, group := range order {
@@ -95,38 +104,53 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 	return nil, nil, ErrFailedDetection
 }
 
-func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuildpack, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
-	for i, groupBp := range group.Group {
-		key := groupBp.String()
-		if hasID(done, groupBp.ID) {
+func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuildable, wg *sync.WaitGroup) ([]buildpack.GroupBuildable, []platform.BuildPlanEntry, error) {
+	for i, groupBuildable := range group.Group {
+		key := groupBuildable.String()
+		if hasID(done, groupBuildable.ID) {
 			continue
 		}
 
-		bp, err := d.Store.Lookup(groupBp.ID, groupBp.Version)
+		var (
+			buildable buildpack.Buildpack
+			err       error
+		)
+		if groupBuildable.Extension {
+			if !groupBuildable.Optional {
+				// TODO: warn or error?
+				groupBuildable.Optional = true
+			}
+			buildable, err = d.ExtensionStore.Lookup(groupBuildable.ID, groupBuildable.Version)
+		} else {
+			buildable, err = d.BuildpackStore.Lookup(groupBuildable.ID, groupBuildable.Version)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
 
-		bpDesc := bp.ConfigFile()
-		groupBp.API = bpDesc.API
-		groupBp.Homepage = bpDesc.Buildpack.Homepage
+		bpDesc := buildable.ConfigFile()
+		groupBuildable.API = bpDesc.API
+		groupBuildable.Homepage = bpDesc.Buildpack.Homepage
 
 		if bpDesc.IsMetaBuildpack() {
+			if groupBuildable.Extension {
+				return nil, nil, fmt.Errorf(`extension %s contains an "order" definition which is not allowed`, groupBuildable.ID)
+			}
 			// TODO: double-check slice safety here
 			// FIXME: cyclical references lead to infinite recursion
-			return d.detectOrder(bpDesc.Order, done, group.Group[i+1:], groupBp.Optional, wg)
+			return d.detectOrder(bpDesc.Order, done, group.Group[i+1:], groupBuildable.Optional, wg)
 		}
 
 		bpEnv := env.NewBuildEnv(os.Environ())
 
-		done = append(done, groupBp)
+		done = append(done, groupBuildable)
 		wg.Add(1)
 		go func(key string, bp Buildpack) {
 			if _, ok := d.Runs.Load(key); !ok {
 				d.Runs.Store(key, bp.Detect(&d.DetectConfig, bpEnv))
 			}
 			wg.Done()
-		}(key, bp)
+		}(key, buildable)
 	}
 
 	wg.Wait()
@@ -134,7 +158,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 	return d.Resolver.Resolve(done, d.Runs)
 }
 
-func hasID(bps []buildpack.GroupBuildpack, id string) bool {
+func hasID(bps []buildpack.GroupBuildable, id string) bool {
 	for _, bp := range bps {
 		if bp.ID == id {
 			return true
@@ -149,7 +173,7 @@ type DefaultResolver struct {
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
 // If any required buildpack in the group failed detection or a build plan cannot be resolved, it returns an error.
-func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildable, detectRuns *sync.Map) ([]buildpack.GroupBuildable, []platform.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectRun
 	for _, bp := range done {
 		t, ok := detectRuns.Load(bp.String())
@@ -238,9 +262,9 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildpack, detectRuns *s
 		r.Logger.Infof(f, t.ID, t.Version)
 	}
 
-	var found []buildpack.GroupBuildpack
+	var found []buildpack.GroupBuildable
 	for _, r := range trial {
-		found = append(found, r.GroupBuildpack.NoOpt())
+		found = append(found, r.GroupBuildable.NoOpt())
 	}
 	var plan []platform.BuildPlanEntry
 	for _, dep := range deps {
@@ -258,7 +282,7 @@ func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTria
 		retry = false
 		deps = newDepMap(trial)
 
-		if err := deps.eachUnmetRequire(func(name string, bp buildpack.GroupBuildpack) error {
+		if err := deps.eachUnmetRequire(func(name string, bp buildpack.GroupBuildable) error {
 			retry = true
 			if !bp.Optional {
 				r.Logger.Debugf("fail: %s requires %s", bp, name)
@@ -271,7 +295,7 @@ func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTria
 			return nil, nil, err
 		}
 
-		if err := deps.eachUnmetProvide(func(name string, bp buildpack.GroupBuildpack) error {
+		if err := deps.eachUnmetProvide(func(name string, bp buildpack.GroupBuildable) error {
 			retry = true
 			if !bp.Optional {
 				r.Logger.Debugf("fail: %s provides unused %s", bp, name)
@@ -293,14 +317,14 @@ func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTria
 }
 
 type detectResult struct {
-	buildpack.GroupBuildpack
+	buildpack.GroupBuildable
 	buildpack.DetectRun
 }
 
 func (r *detectResult) options() []detectOption {
 	var out []detectOption
 	for i, sections := range append([]buildpack.PlanSections{r.PlanSections}, r.Or...) {
-		bp := r.GroupBuildpack
+		bp := r.GroupBuildable
 		bp.Optional = bp.Optional && i == len(r.Or)
 		out = append(out, detectOption{bp, sections})
 	}
@@ -308,6 +332,7 @@ func (r *detectResult) options() []detectOption {
 }
 
 type detectResults []detectResult
+
 type trialFunc func(detectTrial) (depMap, detectTrial, error)
 
 func (rs detectResults) runTrials(f trialFunc) (depMap, detectTrial, error) {
@@ -332,16 +357,16 @@ func (rs detectResults) runTrialsFrom(prefix detectTrial, f trialFunc) (depMap, 
 }
 
 type detectOption struct {
-	buildpack.GroupBuildpack
+	buildpack.GroupBuildable
 	buildpack.PlanSections
 }
 
 type detectTrial []detectOption
 
-func (ts detectTrial) remove(bp buildpack.GroupBuildpack) detectTrial {
+func (ts detectTrial) remove(bp buildpack.GroupBuildable) detectTrial {
 	var out detectTrial
 	for _, t := range ts {
-		if t.GroupBuildpack != bp {
+		if t.GroupBuildable != bp {
 			out = append(out, t)
 		}
 	}
@@ -350,8 +375,8 @@ func (ts detectTrial) remove(bp buildpack.GroupBuildpack) detectTrial {
 
 type depEntry struct {
 	platform.BuildPlanEntry
-	earlyRequires []buildpack.GroupBuildpack
-	extraProvides []buildpack.GroupBuildpack
+	earlyRequires []buildpack.GroupBuildable
+	extraProvides []buildpack.GroupBuildable
 }
 
 type depMap map[string]depEntry
@@ -360,22 +385,22 @@ func newDepMap(trial detectTrial) depMap {
 	m := depMap{}
 	for _, option := range trial {
 		for _, p := range option.Provides {
-			m.provide(option.GroupBuildpack, p)
+			m.provide(option.GroupBuildable, p)
 		}
 		for _, r := range option.Requires {
-			m.require(option.GroupBuildpack, r)
+			m.require(option.GroupBuildable, r)
 		}
 	}
 	return m
 }
 
-func (m depMap) provide(bp buildpack.GroupBuildpack, provide buildpack.Provide) {
+func (m depMap) provide(bp buildpack.GroupBuildable, provide buildpack.Provide) {
 	entry := m[provide.Name]
 	entry.extraProvides = append(entry.extraProvides, bp)
 	m[provide.Name] = entry
 }
 
-func (m depMap) require(bp buildpack.GroupBuildpack, require buildpack.Require) {
+func (m depMap) require(bp buildpack.GroupBuildable, require buildpack.Require) {
 	entry := m[require.Name]
 	entry.Providers = append(entry.Providers, entry.extraProvides...)
 	entry.extraProvides = nil
@@ -388,7 +413,7 @@ func (m depMap) require(bp buildpack.GroupBuildpack, require buildpack.Require) 
 	m[require.Name] = entry
 }
 
-func (m depMap) eachUnmetProvide(f func(name string, bp buildpack.GroupBuildpack) error) error {
+func (m depMap) eachUnmetProvide(f func(name string, bp buildpack.GroupBuildable) error) error {
 	for name, entry := range m {
 		if len(entry.extraProvides) != 0 {
 			for _, bp := range entry.extraProvides {
@@ -401,7 +426,7 @@ func (m depMap) eachUnmetProvide(f func(name string, bp buildpack.GroupBuildpack
 	return nil
 }
 
-func (m depMap) eachUnmetRequire(f func(name string, bp buildpack.GroupBuildpack) error) error {
+func (m depMap) eachUnmetRequire(f func(name string, bp buildpack.GroupBuildable) error) error {
 	for name, entry := range m {
 		if len(entry.earlyRequires) != 0 {
 			for _, bp := range entry.earlyRequires {

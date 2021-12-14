@@ -65,7 +65,7 @@ func (b *BOMFile) mediaType() string {
 	}
 }
 
-func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []string) error {
+func validateMediaTypes(bp GroupBuildable, bomfiles []BOMFile, sbomMediaTypes []string) error {
 	contains := func(vs []string, t string) bool {
 		for _, v := range vs {
 			if v == t {
@@ -90,7 +90,7 @@ func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []
 	return nil
 }
 
-func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, bpLayers map[string]LayerMetadataFile, logger Logger) ([]BOMFile, error) {
+func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildable, bpLayers map[string]LayerMetadataFile, logger Logger) ([]BOMFile, error) {
 	var (
 		layerGlob = filepath.Join(layersDir, "*.sbom.*.json")
 		files     []BOMFile

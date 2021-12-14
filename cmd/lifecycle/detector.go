@@ -25,6 +25,7 @@ type detectArgs struct {
 	// inputs needed when run by creator
 	buildpacksDir string
 	appDir        string
+	extensionsDir string
 	layersDir     string
 	platformDir   string
 	orderPath     string
@@ -34,13 +35,14 @@ type detectArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
-	cmd.FlagBuildpacksDir(&d.buildpacksDir)
 	cmd.FlagAppDir(&d.appDir)
-	cmd.FlagLayersDir(&d.layersDir)
-	cmd.FlagPlatformDir(&d.platformDir)
-	cmd.FlagOrderPath(&d.orderPath)
+	cmd.FlagBuildpacksDir(&d.buildpacksDir)
+	cmd.FlagExtensionsDir(&d.extensionsDir)
 	cmd.FlagGroupPath(&d.groupPath)
+	cmd.FlagLayersDir(&d.layersDir)
+	cmd.FlagOrderPath(&d.orderPath)
 	cmd.FlagPlanPath(&d.planPath)
+	cmd.FlagPlatformDir(&d.platformDir)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -85,19 +87,15 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
-	if err := da.verifyBuildpackApis(order); err != nil {
+	if err := da.verifyBuildableApis(order); err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, err
 	}
 
-	detector, err := lifecycle.NewDetector(
-		buildpack.DetectConfig{
-			AppDir:      da.appDir,
-			PlatformDir: da.platformDir,
-			Logger:      cmd.DefaultLogger,
-		},
-		da.buildpacksDir,
-		da.platform,
-	)
+	detector, err := lifecycle.NewDetector(buildpack.DetectConfig{
+		AppDir:      da.appDir,
+		PlatformDir: da.platformDir,
+		Logger:      cmd.DefaultLogger,
+	}, da.buildpacksDir, da.extensionsDir, da.platform)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "initialize detector")
 	}
@@ -124,18 +122,33 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 	return group, plan, nil
 }
 
-func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
-	store, err := buildpack.NewBuildpackStore(da.buildpacksDir)
+func (da detectArgs) verifyBuildableApis(order buildpack.Order) error {
+	bpStore, err := buildpack.NewBuildpackStore(da.buildpacksDir)
 	if err != nil {
 		return err
 	}
+	var extStore *buildpack.ExtensionStore
+	if da.extensionsDir != "" {
+		extStore, err = buildpack.NewExtensionStore(da.extensionsDir) // TODO: maybe factory could return nil if passed blank
+		if err != nil {
+			return err
+		}
+	}
 	for _, group := range order {
 		for _, groupBp := range group.Group {
-			buildpack, err := store.Lookup(groupBp.ID, groupBp.Version)
-			if err != nil {
-				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", groupBp.String()))
+			var buildable buildpack.Buildpack
+			if groupBp.Extension {
+				buildable, err = extStore.Lookup(groupBp.ID, groupBp.Version)
+				if err != nil {
+					return cmd.FailErr(err, fmt.Sprintf("lookup extension.toml for extension '%s'", groupBp.String()))
+				}
+			} else {
+				buildable, err = bpStore.Lookup(groupBp.ID, groupBp.Version)
+				if err != nil {
+					return cmd.FailErr(err, fmt.Sprintf("lookup buildable.toml for buildpack '%s'", groupBp.String()))
+				}
 			}
-			if err := cmd.VerifyBuildpackAPI(groupBp.String(), buildpack.ConfigFile().API); err != nil {
+			if err := cmd.VerifyBuildpackAPI(groupBp.String(), buildable.ConfigFile().API); err != nil {
 				return err
 			}
 		}

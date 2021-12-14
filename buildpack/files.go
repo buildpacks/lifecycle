@@ -20,7 +20,7 @@ type LaunchTOML struct {
 
 type BOMEntry struct {
 	Require
-	Buildpack GroupBuildpack `toml:"buildpack" json:"buildpack"`
+	Buildpack GroupBuildable `toml:"buildpack" json:"buildpack"`
 }
 
 type Require struct {

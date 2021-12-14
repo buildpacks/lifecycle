@@ -19,11 +19,11 @@ type LayersDir struct {
 	Path      string
 	layers    []Layer
 	name      string
-	Buildpack GroupBuildpack
+	Buildpack GroupBuildable
 	Store     *StoreTOML
 }
 
-func ReadLayersDir(layersDir string, bp GroupBuildpack, logger Logger) (LayersDir, error) {
+func ReadLayersDir(layersDir string, bp GroupBuildable, logger Logger) (LayersDir, error) {
 	path := filepath.Join(layersDir, launch.EscapeID(bp.ID))
 	logger.Debugf("Reading buildpack directory: %s", path)
 	bpDir := LayersDir{

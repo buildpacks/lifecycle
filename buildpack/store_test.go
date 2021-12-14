@@ -12,11 +12,11 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	spec.Run(t, "Store", testStore, spec.Report(report.Terminal{}))
+	spec.Run(t, "BuildpackStore", testStore, spec.Report(report.Terminal{}))
 }
 
 func testStore(t *testing.T, when spec.G, it spec.S) {
-	var store *buildpack.DirBuildpackStore
+	var store *buildpack.BpStore
 
 	it.Before(func() {
 		var err error

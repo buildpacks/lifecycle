@@ -71,7 +71,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			PlatformDir: platformDir,
 			Platform:    platform.NewPlatform(api.Platform.Latest().String()),
 			Group: buildpack.Group{
-				Group: []buildpack.GroupBuildpack{
+				Group: []buildpack.GroupBuildable{
 					{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage"},
 					{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 				},
@@ -99,7 +99,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				builder.Plan = platform.BuildPlan{
 					Entries: []platform.BuildPlanEntry{
 						{
-							Providers: []buildpack.GroupBuildpack{
+							Providers: []buildpack.GroupBuildable{
 								{ID: "A", Version: "v1"},
 								{ID: "B", Version: "v2"},
 							},
@@ -108,7 +108,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 						{
-							Providers: []buildpack.GroupBuildpack{
+							Providers: []buildpack.GroupBuildable{
 								{ID: "A", Version: "v1"},
 								{ID: "B", Version: "v2"},
 							},
@@ -117,7 +117,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 						{
-							Providers: []buildpack.GroupBuildpack{
+							Providers: []buildpack.GroupBuildable{
 								{ID: "B", Version: "v2"},
 							},
 							Requires: []buildpack.Require{
@@ -296,7 +296,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("build metadata", func() {
 				when("bom", func() {
 					it("should aggregate BOM from each buildpack", func() {
-						builder.Group.Group = []buildpack.GroupBuildpack{
+						builder.Group.Group = []buildpack.GroupBuildable{
 							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: "0.2"},
 						}
@@ -310,7 +310,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 										Name:     "dep1",
 										Metadata: map[string]interface{}{"version": "v1"},
 									},
-									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+									Buildpack: buildpack.GroupBuildable{ID: "A", Version: "v1"},
 								},
 							},
 						}, nil)
@@ -323,7 +323,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 										Name:     "dep2",
 										Metadata: map[string]interface{}{"version": "v1"},
 									},
-									Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
+									Buildpack: buildpack.GroupBuildable{ID: "B", Version: "v2"},
 								},
 							},
 						}, nil)
@@ -339,7 +339,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Version:  "",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								Buildpack: buildpack.GroupBuildable{ID: "A", Version: "v1"},
 							},
 							{
 								Require: buildpack.Require{
@@ -347,7 +347,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Version:  "",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
+								Buildpack: buildpack.GroupBuildable{ID: "B", Version: "v2"},
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -368,7 +368,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						if err != nil {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
-						if s := cmp.Diff(metadata.Buildpacks, []buildpack.GroupBuildpack{
+						if s := cmp.Diff(metadata.Buildpacks, []buildpack.GroupBuildable{
 							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 						}); s != "" {
@@ -488,7 +488,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("multiple default process types", func() {
 						it.Before(func() {
-							builder.Group.Group = []buildpack.GroupBuildpack{
+							builder.Group.Group = []buildpack.GroupBuildable{
 								{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
 								{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 								{ID: "C", Version: "v3", API: api.Buildpack.Latest().String()},
@@ -568,7 +568,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("overriding default process type, with a non-default process type", func() {
 						it.Before(func() {
-							builder.Group.Group = []buildpack.GroupBuildpack{
+							builder.Group.Group = []buildpack.GroupBuildable{
 								{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
 								{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 								{ID: "C", Version: "v3", API: api.Buildpack.Latest().String()},
@@ -653,7 +653,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("there is a web process", func() {
 						when("buildpack API >= 0.6", func() {
 							it.Before(func() {
-								builder.Group.Group = []buildpack.GroupBuildpack{
+								builder.Group.Group = []buildpack.GroupBuildable{
 									{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
 								}
 							})
@@ -696,7 +696,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						when("buildpack api < 0.6", func() {
 							it.Before(func() {
-								builder.Group.Group = []buildpack.GroupBuildpack{
+								builder.Group.Group = []buildpack.GroupBuildable{
 									{ID: "A", Version: "v1", API: "0.5"},
 								}
 							})
@@ -841,7 +841,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 										Name:     "dep1",
 										Metadata: map[string]interface{}{"version": string("v1")},
 									},
-									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+									Buildpack: buildpack.GroupBuildable{ID: "A", Version: "v1"},
 								},
 							},
 						}, nil)
@@ -861,7 +861,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Version:  "v1",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
-								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								Buildpack: buildpack.GroupBuildable{ID: "A", Version: "v1"},
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -879,7 +879,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("there is a web process", func() {
 				when("buildpack API >= 0.6", func() {
 					it.Before(func() {
-						builder.Group.Group = []buildpack.GroupBuildpack{
+						builder.Group.Group = []buildpack.GroupBuildable{
 							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
 						}
 					})
@@ -923,7 +923,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("buildpack api < 0.6", func() {
 					it.Before(func() {
-						builder.Group.Group = []buildpack.GroupBuildpack{
+						builder.Group.Group = []buildpack.GroupBuildable{
 							{ID: "A", Version: "v1", API: "0.5"},
 						}
 					})

@@ -9,13 +9,22 @@ import (
 )
 
 type Extension struct {
-	API       string `toml:"api"`
-	Buildpack Info   `toml:"buildpack"`
-	Dir       string `toml:"-"`
+	API        string `toml:"api"`
+	Buildpack  Info   `toml:"extension"`
+	Dir        string `toml:"-"`
+	Descriptor *Descriptor
 }
 
-func (e *Extension) ConfigFile() *Extension {
-	return e
+func (e *Extension) ConfigFile() *Descriptor {
+	if e.Descriptor == nil {
+		e.Descriptor = &Descriptor{
+			API:       e.API,
+			Buildpack: e.Buildpack,
+			Order:     nil, // TODO: check
+			Dir:       e.Dir,
+		}
+	}
+	return e.Descriptor
 }
 
 func (e *Extension) IsMetaBuildpack() bool {
@@ -42,6 +51,12 @@ func (e *Extension) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 func (e *Extension) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error) {
 	config.Logger.Debugf("Running build for extension %s", e)
 
+	if _, err := os.Stat(filepath.Join(e.Dir, "bin", "build")); os.IsNotExist(err) {
+		config.Logger.Debugf("Passing build due to missing %s", filepath.Join("bin", "build"))
+		config.Logger.Debug("Reading pre-populated files")
+		return e.readPrePopulatedFiles(e.Dir, config.Logger)
+	}
+
 	config.Logger.Debug("Preparing paths")
 	bpPlanDir, bpOutputDir, bpPlanPath, err := prepareBuildPaths(config.LayersDir, e.Buildpack.ID, bpPlan)
 	defer os.RemoveAll(bpPlanDir)
@@ -59,23 +74,23 @@ func (e *Extension) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Buil
 }
 
 func (e *Extension) readOutputFiles(bpOutputDir string, bpPlanIn Plan, logger Logger) (BuildResult, error) {
-	br := BuildResult{}
+	br := &BuildResult{}
 
-	// read build.toml
-	type extBuildTOML struct {
-		Unmet []Unmet `toml:"unmet"`
-	}
-	var bpBuild extBuildTOML
-	buildPath := filepath.Join(bpOutputDir, "build.toml")
-	if _, err := toml.DecodeFile(buildPath, &bpBuild); err != nil && !os.IsNotExist(err) {
-		return BuildResult{}, err
+	err := readExtBuildTOML(filepath.Join(bpOutputDir, "build.toml"), br, bpPlanIn)
+	if err != nil {
+		return BuildResult{}, errors.Wrap(err, "reading build.toml")
 	}
 
-	// set MetRequires
-	if err := validateUnmet(bpBuild.Unmet, bpPlanIn); err != nil {
-		return BuildResult{}, err
+	err = readExtLaunchTOML(filepath.Join(bpOutputDir, "launch.toml"), br)
+	if err != nil {
+		return BuildResult{}, errors.Wrap(err, "reading launch.toml")
 	}
-	br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
+
+	dockerfiles, err := processDockerfiles(bpOutputDir)
+	if err != nil {
+		return BuildResult{}, errors.Wrap(err, "processing Dockerfiles")
+	}
+	br.Dockerfiles = dockerfiles
 
 	// set BOM files
 	// br.BOMFiles, err = b.processBOMFiles(bpOutputDir, bpFromBpInfo, bpLayers, logger) // TODO: extract service
@@ -83,16 +98,53 @@ func (e *Extension) readOutputFiles(bpOutputDir string, bpPlanIn Plan, logger Lo
 	// 	return BuildResult{}, err
 	// }
 
-	// read launch.toml
+	return *br, nil
+}
+
+func (e *Extension) readPrePopulatedFiles(bpOutputDir string, logger Logger) (BuildResult, error) {
+	br := &BuildResult{}
+
+	dockerfiles, err := processDockerfiles(bpOutputDir)
+	if err != nil {
+		return BuildResult{}, errors.Wrap(err, "processing Dockerfiles")
+	}
+	br.Dockerfiles = dockerfiles
+
+	// set BOM files
+	// br.BOMFiles, err = b.processBOMFiles(bpOutputDir, bpFromBpInfo, bpLayers, logger) // TODO: extract service
+	// if err != nil {
+	// 	return BuildResult{}, err
+	// }
+
+	return *br, nil
+}
+
+func readExtBuildTOML(path string, br *BuildResult, bpPlanIn Plan) error {
+	type extBuildTOML struct {
+		Args  []DockerfileArg `toml:"args"`
+		Unmet []Unmet         `toml:"unmet"`
+	}
+	var buildTOML extBuildTOML
+	if _, err := toml.DecodeFile(path, &buildTOML); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	br.DockerfileArgsForBuildExt = buildTOML.Args
+	if err := validateUnmet(buildTOML.Unmet, bpPlanIn); err != nil {
+		return err
+	}
+	br.MetRequires = names(bpPlanIn.filter(buildTOML.Unmet).Entries)
+	return nil
+}
+
+func readExtLaunchTOML(path string, br *BuildResult) error {
 	type extLaunchTOML struct {
-		Args   []DockerfileBuildArg // TODO: fix
-		Labels []Label
+		Args   []DockerfileArg `toml:"args"`
+		Labels []Label         `toml:"labels"`
 	}
 	var launchTOML extLaunchTOML
-	launchPath := filepath.Join(bpOutputDir, "launch.toml")
-	if _, err := toml.DecodeFile(launchPath, &launchTOML); !os.IsNotExist(err) {
-		return BuildResult{}, err
+	if _, err := toml.DecodeFile(path, &launchTOML); err != nil && !os.IsNotExist(err) {
+		return err
 	}
-
-	return br, nil
+	br.DockerfileArgsForRunExt = launchTOML.Args
+	return nil
 }

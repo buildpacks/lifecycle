@@ -37,27 +37,21 @@ type BuildConfig struct {
 
 // TODO: move somewhere else maybe
 type BuildResult struct {
-	BOM                 []BOMEntry
-	BOMFiles            []BOMFile
-	Dockerfiles         []Dockerfile
-	DockerfileBuildArgs []DockerfileBuildArg
-	Labels              []Label
-	MetRequires         []string
-	Processes           []launch.Process
-	Slices              []layers.Slice
+	BOM                       []BOMEntry
+	BOMFiles                  []BOMFile
+	Dockerfiles               []Dockerfile
+	DockerfileArgsForBuildExt []DockerfileArg
+	DockerfileArgsForRunExt   []DockerfileArg
+	Labels                    []Label
+	MetRequires               []string
+	Processes                 []launch.Process
+	Slices                    []layers.Slice
 }
 
-type Dockerfile struct {
-	Path      string
-	Build     bool
-	Run       bool
-}
-
-type DockerfileBuildArg struct {
-	Key   string
-	Val   string
-	Build bool
-	Run   bool
+// TODO: move somewhere else maybe
+type DockerfileArg struct {
+	Key   string `toml:"key"`
+	Value string `toml:"value"`
 }
 
 func (bom *BOMEntry) ConvertMetadataToVersion() {
@@ -251,7 +245,7 @@ func eachLayer(bpLayersDir, buildpackAPI string, fn func(path, api string) (Laye
 
 func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger Logger) (BuildResult, error) {
 	br := BuildResult{}
-	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
+	bpFromBpInfo := GroupBuildable{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
 	// setup launch.toml
 	var launchTOML LaunchTOML
@@ -399,7 +393,7 @@ func names(requires []Require) []string {
 	return out
 }
 
-func WithBuildpack(bp GroupBuildpack, bom []BOMEntry) []BOMEntry {
+func WithBuildpack(bp GroupBuildable, bom []BOMEntry) []BOMEntry {
 	var out []BOMEntry
 	for _, entry := range bom {
 		entry.Buildpack = bp.NoAPI().NoHomepage()

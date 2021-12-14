@@ -66,7 +66,7 @@ func (mr *MockSBOMRestorerMockRecorder) RestoreFromPrevious(arg0, arg1 interface
 }
 
 // RestoreToBuildpackLayers mocks base method.
-func (m *MockSBOMRestorer) RestoreToBuildpackLayers(arg0 []buildpack.GroupBuildpack) error {
+func (m *MockSBOMRestorer) RestoreToBuildpackLayers(arg0 []buildpack.GroupBuildable) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RestoreToBuildpackLayers", arg0)
 	ret0, _ := ret[0].(error)

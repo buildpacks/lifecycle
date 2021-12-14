@@ -31,7 +31,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		layerSHAStore         layer.SHAStore
 		layersMetadata        platform.LayersMetadata
 		cacheMetadata         platform.CacheMetadata
-		buildpacks            []buildpack.GroupBuildpack
+		buildpacks            []buildpack.GroupBuildable
 		skipLayers            bool
 		useShaFiles           bool
 		logger                log.Logger
@@ -54,7 +54,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Restore", func() {
 		it.Before(func() {
-			buildpacks = []buildpack.GroupBuildpack{
+			buildpacks = []buildpack.GroupBuildable{
 				{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 				{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 				{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()},
@@ -147,7 +147,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("buildpack api < 0.6", func() {
 				it("restores layer metadata and preserves the values of the launch, build and cache flags in top level", func() {
-					buildpacks = []buildpack.GroupBuildpack{
+					buildpacks = []buildpack.GroupBuildable{
 						{ID: "metadata.buildpack", API: "0.5"},
 						{ID: "no.cache.buildpack", API: "0.5"},
 					}
@@ -167,7 +167,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("buildpack api >= 0.6", func() {
 				it("restores layer metadata without the launch, build and cache flags", func() {
-					buildpacks = []buildpack.GroupBuildpack{
+					buildpacks = []buildpack.GroupBuildable{
 						{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 						{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 					}
@@ -337,7 +337,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("subset of buildpacks are detected", func() {
 				it.Before(func() {
-					buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()}}
+					buildpacks = []buildpack.GroupBuildable{{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()}}
 				})
 
 				it("restores layers for detected buildpacks", func() {
@@ -361,7 +361,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("there are no buildpacks are detected", func() {
 				it.Before(func() {
-					buildpacks = []buildpack.GroupBuildpack{}
+					buildpacks = []buildpack.GroupBuildable{}
 				})
 
 				it("does not restore layers for any buildpacks", func() {

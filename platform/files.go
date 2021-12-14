@@ -72,7 +72,7 @@ type RunImageMetadata struct {
 
 type BuildMetadata struct {
 	BOM                         []buildpack.BOMEntry       `toml:"bom" json:"bom"`
-	Buildpacks                  []buildpack.GroupBuildpack `toml:"buildpacks" json:"buildpacks"`
+	Buildpacks                  []buildpack.GroupBuildable `toml:"buildpacks" json:"buildpacks"`
 	Labels                      []buildpack.Label          `toml:"labels" json:"-"`
 	Launcher                    LauncherMetadata           `toml:"-" json:"launcher"`
 	Processes                   []launch.Process           `toml:"processes" json:"processes"`
@@ -149,12 +149,12 @@ func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
 }
 
 type BuildPlanEntry struct {
-	Providers []buildpack.GroupBuildpack `toml:"providers"`
+	Providers []buildpack.GroupBuildable `toml:"providers"`
 	Requires  []buildpack.Require        `toml:"requires"`
 }
 
 func (be BuildPlanEntry) NoOpt() BuildPlanEntry {
-	var out []buildpack.GroupBuildpack
+	var out []buildpack.GroupBuildable
 	for _, p := range be.Providers {
 		out = append(out, p.NoOpt().NoAPI().NoHomepage())
 	}

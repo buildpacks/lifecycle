@@ -22,7 +22,7 @@ import (
 type SBOMRestorer interface {
 	RestoreFromPrevious(image imgutil.Image, layerDigest string) error
 	RestoreFromCache(cache Cache, layerDigest string) error
-	RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildpack) error
+	RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildable) error
 }
 
 type Cache interface {
@@ -73,7 +73,7 @@ func (r *DefaultSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) 
 	return layers.Extract(rc, "")
 }
 
-func (r *DefaultSBOMRestorer) RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildpack) error {
+func (r *DefaultSBOMRestorer) RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildable) error {
 	var (
 		cacheDir  = filepath.Join(r.layersDir, "sbom", "cache")
 		launchDir = filepath.Join(r.layersDir, "sbom", "launch")
@@ -87,7 +87,7 @@ func (r *DefaultSBOMRestorer) RestoreToBuildpackLayers(detectedBps []buildpack.G
 	return filepath.Walk(launchDir, r.restoreSBOMFunc(detectedBps, "launch"))
 }
 
-func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuildpack, bomType string) func(path string, info fs.FileInfo, err error) error {
+func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuildable, bomType string) func(path string, info fs.FileInfo, err error) error {
 	var bomRegex *regexp.Regexp
 
 	if runtime.GOOS == "windows" {
@@ -121,7 +121,7 @@ func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuild
 	}
 }
 
-func (r *DefaultSBOMRestorer) contains(detectedBps []buildpack.GroupBuildpack, id string) bool {
+func (r *DefaultSBOMRestorer) contains(detectedBps []buildpack.GroupBuildable, id string) bool {
 	for _, bp := range detectedBps {
 		if launch.EscapeID(bp.ID) == id {
 			return true

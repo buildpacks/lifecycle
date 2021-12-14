@@ -47,8 +47,8 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 			if s := cmp.Diff(actual, buildpack.Order{
-				{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
-				{Group: []buildpack.GroupBuildpack{{ID: "C"}, {}}},
+				{Group: []buildpack.GroupBuildable{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
+				{Group: []buildpack.GroupBuildable{{ID: "C"}, {}}},
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
@@ -79,7 +79,7 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 			if s := cmp.Diff(actual, buildpack.Group{
-				Group: []buildpack.GroupBuildpack{
+				Group: []buildpack.GroupBuildable{
 					{ID: "A", Version: "v1"},
 					{ID: "B", Optional: true},
 				},

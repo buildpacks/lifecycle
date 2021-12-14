@@ -80,7 +80,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				PreviousImage: image,
 				Logger:        &discardLogger,
 				Platform:      p,
-				Buildpacks: []buildpack.GroupBuildpack{
+				Buildpacks: []buildpack.GroupBuildable{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.metadata.buildpack", API: api.Buildpack.Latest().String()},
@@ -163,7 +163,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 						h.AssertNil(t, testCache.SetMetadata(expectedCacheMetadata))
 						h.AssertNil(t, testCache.Commit())
 
-						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
+						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildable{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
 						expectRestoresLayerMetadataIfSupported()
 					})
 
