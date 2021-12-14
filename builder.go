@@ -45,6 +45,7 @@ type Builder struct {
 	Out, Err       io.Writer
 	Logger         Logger
 	BuildpackStore BuildpackStore
+	ExtensionStore BuildpackStore
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -66,28 +67,35 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	var bomFiles []buildpack.BOMFile
 	var slices []layers.Slice
 	var labels []buildpack.Label
+	var dockerfiles []buildpack.Dockerfile
 
 	bpEnv := env.NewBuildEnv(os.Environ())
 
-	for _, bp := range b.Group.Group {
-		b.Logger.Debugf("Running build for buildpack %s", bp)
+	for _, groupBuildable := range b.Group.Group { // TODO: execute extensions in parallel
+		b.Logger.Debugf("Running build for buildpack %s", groupBuildable)
 
-		b.Logger.Debug("Looking up buildpack")
-		bpTOML, err := b.BuildpackStore.Lookup(bp.ID, bp.Version)
+		var buildable buildpack.Buildpack
+		if groupBuildable.Extension {
+			b.Logger.Debug("Looking up extension")
+			buildable, err = b.ExtensionStore.Lookup(groupBuildable.ID, groupBuildable.Version)
+		} else {
+			b.Logger.Debug("Looking up buildpack")
+			buildable, err = b.BuildpackStore.Lookup(groupBuildable.ID, groupBuildable.Version)
+		}
 		if err != nil {
 			return nil, err
 		}
 
 		b.Logger.Debug("Finding plan")
-		bpPlan := plan.Find(bp.ID)
+		bpPlan := plan.Find(groupBuildable.ID)
 
-		br, err := bpTOML.Build(bpPlan, config, bpEnv)
+		br, err := buildable.Build(bpPlan, config, bpEnv)
 		if err != nil {
 			return nil, err
 		}
 
 		b.Logger.Debug("Updating buildpack processes")
-		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.Platform.API())
+		updateDefaultProcesses(br.Processes, api.MustParse(groupBuildable.API), b.Platform.API())
 
 		bom = append(bom, br.BOM...)
 		bomFiles = append(bomFiles, br.BOMFiles...)
@@ -101,8 +109,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 
 		slices = append(slices, br.Slices...)
-
-		b.Logger.Debugf("Finished running build for buildpack %s", bp)
+		dockerfiles = append(dockerfiles, br.Dockerfiles...) // TODO: error if buildpack outputs Dockerfiles?
+		b.Logger.Debugf("Finished running build for buildpack %s", groupBuildable)
 	}
 
 	if b.Platform.API().LessThan("0.4") {
@@ -126,11 +134,12 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Finished build")
 	return &platform.BuildMetadata{
 		BOM:                         bom,
+		BuildpackDefaultProcessType: processMap.defaultType,
 		Buildpacks:                  b.Group.Group,
+		Dockerfiles:                 dockerfiles,
 		Labels:                      labels,
 		Processes:                   procList,
 		Slices:                      slices,
-		BuildpackDefaultProcessType: processMap.defaultType,
 	}, nil
 }
 

@@ -5,13 +5,19 @@ import (
 )
 
 type Dockerfile struct {
-	// ExtensionID   string // TODO: see if this is needed
-	Path  string
-	Build bool
-	Run   bool
+	ExtensionID string
+	Path        string
+	Build       bool
+	Run         bool
+	Args        []DockerfileArg
 }
 
-func processDockerfiles(bpOutputDir string) ([]Dockerfile, error) {
+type DockerfileArg struct {
+	Key   string `toml:"key"`
+	Value string `toml:"value"`
+}
+
+func processDockerfiles(bpOutputDir, extID string, buildArgs, runArgs []DockerfileArg) ([]Dockerfile, error) {
 	var (
 		dockerfileGlob = filepath.Join(bpOutputDir, "*Dockerfile")
 		dockerfiles    []Dockerfile
@@ -27,25 +33,31 @@ func processDockerfiles(bpOutputDir string) ([]Dockerfile, error) {
 
 		if filename == "run.Dockerfile" {
 			dockerfiles = append(dockerfiles, Dockerfile{
-				Path: m,
-				Run:  true,
+				ExtensionID: extID,
+				Path:        m,
+				Run:         true,
+				Args:        runArgs,
 			})
 			continue
 		}
 
 		if filename == "build.Dockerfile" {
 			dockerfiles = append(dockerfiles, Dockerfile{
-				Path:  m,
-				Build: true,
+				ExtensionID: extID,
+				Path:        m,
+				Build:       true,
+				Args:        buildArgs,
 			})
 			continue
 		}
 
 		if filename == "Dockerfile" {
 			dockerfiles = append(dockerfiles, Dockerfile{
-				Path:  m,
-				Build: true,
-				Run:   true,
+				ExtensionID: extID,
+				Path:        m,
+				Build:       true,
+				Run:         true,
+				Args:        append(buildArgs, runArgs...),
 			})
 			continue
 		}

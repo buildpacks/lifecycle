@@ -72,7 +72,8 @@ type RunImageMetadata struct {
 
 type BuildMetadata struct {
 	BOM                         []buildpack.BOMEntry       `toml:"bom" json:"bom"`
-	Buildpacks                  []buildpack.GroupBuildable `toml:"buildpacks" json:"buildpacks"`
+	Buildpacks                  []buildpack.GroupBuildable `toml:"buildpacks" json:"buildpacks"` // TODO: extensions should be listed separately probably
+	Dockerfiles                 []buildpack.Dockerfile     `toml:"dockerfiles,omitempty" json:"dockerfiles,omitempty"`
 	Labels                      []buildpack.Label          `toml:"labels" json:"-"`
 	Launcher                    LauncherMetadata           `toml:"-" json:"launcher"`
 	Processes                   []launch.Process           `toml:"processes" json:"processes"`

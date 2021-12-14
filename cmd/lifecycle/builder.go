@@ -24,6 +24,7 @@ type buildCmd struct {
 type buildArgs struct {
 	// inputs needed when run by creator
 	buildpacksDir string
+	extensionsDir string // TODO: not valid for creator YET
 	layersDir     string
 	appDir        string
 	platformDir   string
@@ -33,11 +34,12 @@ type buildArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (b *buildCmd) DefineFlags() {
-	cmd.FlagBuildpacksDir(&b.buildpacksDir)
-	cmd.FlagGroupPath(&b.groupPath)
-	cmd.FlagPlanPath(&b.planPath)
-	cmd.FlagLayersDir(&b.layersDir)
 	cmd.FlagAppDir(&b.appDir)
+	cmd.FlagBuildpacksDir(&b.buildpacksDir)
+	cmd.FlagExtensionsDir(&b.extensionsDir)
+	cmd.FlagGroupPath(&b.groupPath)
+	cmd.FlagLayersDir(&b.layersDir)
+	cmd.FlagPlanPath(&b.planPath)
 	cmd.FlagPlatformDir(&b.platformDir)
 }
 
@@ -82,6 +84,10 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	if err != nil {
 		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
+	extensionStore, err := buildpack.NewExtensionStore(ba.extensionsDir)
+	if err != nil {
+		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
+	}
 
 	builder := &lifecycle.Builder{
 		AppDir:         ba.appDir,
@@ -94,6 +100,7 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		Err:            cmd.Stderr,
 		Logger:         cmd.DefaultLogger,
 		BuildpackStore: buildpackStore,
+		ExtensionStore: extensionStore,
 	}
 	md, err := builder.Build()
 

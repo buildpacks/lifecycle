@@ -37,21 +37,13 @@ type BuildConfig struct {
 
 // TODO: move somewhere else maybe
 type BuildResult struct {
-	BOM                       []BOMEntry
-	BOMFiles                  []BOMFile
-	Dockerfiles               []Dockerfile
-	DockerfileArgsForBuildExt []DockerfileArg
-	DockerfileArgsForRunExt   []DockerfileArg
-	Labels                    []Label
-	MetRequires               []string
-	Processes                 []launch.Process
-	Slices                    []layers.Slice
-}
-
-// TODO: move somewhere else maybe
-type DockerfileArg struct {
-	Key   string `toml:"key"`
-	Value string `toml:"value"`
+	BOM         []BOMEntry
+	BOMFiles    []BOMFile
+	Dockerfiles []Dockerfile
+	Labels      []Label
+	MetRequires []string
+	Processes   []launch.Process
+	Slices      []layers.Slice
 }
 
 func (bom *BOMEntry) ConvertMetadataToVersion() {
@@ -166,7 +158,7 @@ func prepareBuildPaths(outputParentDir, bpID string, bpPlan Plan) (bpPlanParentD
 	}
 
 	// output
-	bpOutputDir = filepath.Join(outputParentDir, bpDirName)
+	bpOutputDir = filepath.Join(outputParentDir, bpDirName) // TODO: use of this function by extensions assumes that extensions do NOT create a layer.toml file for their output directory (otherwise it might be included in the image); it would be safer to pass extensions a directory that is a child of another directory (maybe layers/config)
 	if err = os.MkdirAll(bpOutputDir, 0777); err != nil {
 		return
 	}
