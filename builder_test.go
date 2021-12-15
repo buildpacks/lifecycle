@@ -33,7 +33,7 @@ func TestBuilder(t *testing.T) {
 }
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
-//go:generate mockgen -package testmock -destination testmock/buildpack_store.go github.com/buildpacks/lifecycle BuildpackStore
+//go:generate mockgen -package testmock -destination testmock/buildpack_store.go github.com/buildpacks/lifecycle BuildableStore
 //go:generate mockgen -package testmock -destination testmock/buildpack.go github.com/buildpacks/lifecycle Buildpack
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
@@ -79,7 +79,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			Out:            stdout,
 			Err:            stderr,
 			Logger:         &log.Logger{Handler: logHandler},
-			BuildpackStore: buildpackStore,
+			BuildableStore: buildpackStore,
 		}
 
 		config, err = builder.BuildConfig()

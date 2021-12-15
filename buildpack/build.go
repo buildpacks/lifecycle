@@ -35,7 +35,6 @@ type BuildConfig struct {
 	Logger      Logger
 }
 
-// TODO: move somewhere else maybe
 type BuildResult struct {
 	BOM         []BOMEntry
 	BOMFiles    []BOMFile
@@ -158,7 +157,7 @@ func prepareBuildPaths(outputParentDir, bpID string, bpPlan Plan) (bpPlanParentD
 	}
 
 	// output
-	bpOutputDir = filepath.Join(outputParentDir, bpDirName) // TODO: use of this function by extensions assumes that extensions do NOT create a layer.toml file for their output directory (otherwise it might be included in the image); it would be safer to pass extensions a directory that is a child of another directory (maybe layers/config)
+	bpOutputDir = filepath.Join(outputParentDir, bpDirName)
 	if err = os.MkdirAll(bpOutputDir, 0777); err != nil {
 		return
 	}

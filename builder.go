@@ -44,8 +44,7 @@ type Builder struct {
 	Plan           platform.BuildPlan
 	Out, Err       io.Writer
 	Logger         Logger
-	BuildpackStore BuildpackStore
-	ExtensionStore BuildpackStore
+	BuildableStore BuildpackStore
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -69,47 +68,39 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	var labels []buildpack.Label
 	var dockerfiles []buildpack.Dockerfile
 
-	bpEnv := env.NewBuildEnv(os.Environ())
+	bEnv := env.NewBuildEnv(os.Environ())
 
 	for _, groupBuildable := range b.Group.Group { // TODO: execute extensions in parallel
 		b.Logger.Debugf("Running build for buildpack %s", groupBuildable)
 
-		var buildable buildpack.Buildpack
-		if groupBuildable.Extension {
-			b.Logger.Debug("Looking up extension")
-			buildable, err = b.ExtensionStore.Lookup(groupBuildable.ID, groupBuildable.Version)
-		} else {
-			b.Logger.Debug("Looking up buildpack")
-			buildable, err = b.BuildpackStore.Lookup(groupBuildable.ID, groupBuildable.Version)
-		}
+		b.Logger.Debug("Looking up buildable") // TODO: better comment
+		buildable, err := b.BuildableStore.Lookup(groupBuildable.ID, groupBuildable.Version)
 		if err != nil {
 			return nil, err
 		}
 
 		b.Logger.Debug("Finding plan")
-		bpPlan := plan.Find(groupBuildable.ID)
+		bPlan := plan.Find(groupBuildable.ID)
 
-		br, err := buildable.Build(bpPlan, config, bpEnv)
+		br, err := buildable.Build(bPlan, config, bEnv)
 		if err != nil {
 			return nil, err
 		}
 
-		b.Logger.Debug("Updating buildpack processes")
+		b.Logger.Debug("Updating processes")
 		updateDefaultProcesses(br.Processes, api.MustParse(groupBuildable.API), b.Platform.API())
-
-		bom = append(bom, br.BOM...)
-		bomFiles = append(bomFiles, br.BOMFiles...)
-		labels = append(labels, br.Labels...)
-		plan = plan.Filter(br.MetRequires)
-
-		b.Logger.Debug("Updating process list")
 		warning := processMap.add(br.Processes)
 		if warning != "" {
 			b.Logger.Warn(warning)
 		}
 
+		bom = append(bom, br.BOM...)
+		bomFiles = append(bomFiles, br.BOMFiles...)
+		labels = append(labels, br.Labels...)
+		plan = plan.Filter(br.MetRequires)
 		slices = append(slices, br.Slices...)
 		dockerfiles = append(dockerfiles, br.Dockerfiles...) // TODO: error if buildpack outputs Dockerfiles?
+
 		b.Logger.Debugf("Finished running build for buildpack %s", groupBuildable)
 	}
 

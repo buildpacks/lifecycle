@@ -65,7 +65,8 @@ const (
 	EnvSkipRestore         = "CNB_SKIP_RESTORE"        // defaults to false
 	EnvStackPath           = "CNB_STACK_PATH"
 	EnvUID                 = "CNB_USER_ID"
-	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
+	EnvUseDaemon           = "CNB_USE_DAEMON"     // defaults to false
+	EnvUseExtensions       = "CNB_USE_EXTENSIONS" // defaults to false
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -196,6 +197,10 @@ func FlagUID(uid *int) {
 
 func FlagUseDaemon(use *bool) {
 	flagSet.BoolVar(use, "daemon", BoolEnv(EnvUseDaemon), "export to docker daemon")
+}
+
+func FlagUseExtensions(use *bool) {
+	flagSet.BoolVar(use, "daemon", BoolEnv(EnvUseExtensions), "run build for extensions")
 }
 
 func FlagVersion(version *bool) {

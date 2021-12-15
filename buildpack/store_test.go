@@ -12,7 +12,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	spec.Run(t, "BuildpackStore", testStore, spec.Report(report.Terminal{}))
+	spec.Run(t, "BuildableStore", testStore, spec.Report(report.Terminal{}))
 }
 
 func testStore(t *testing.T, when spec.G, it spec.S) {

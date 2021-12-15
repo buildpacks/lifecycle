@@ -38,6 +38,23 @@ type Group struct {
 	Group []GroupBuildable `toml:"group"`
 }
 
+func (bg Group) Append(group ...Group) Group {
+	for _, g := range group {
+		bg.Group = append(bg.Group, g.Group...)
+	}
+	return bg
+}
+
+func (bg Group) Filter(useExtensions bool) Group {
+	ret := Group{Group: []GroupBuildable{}}
+	for _, gb := range bg.Group {
+		if gb.Extension == useExtensions {
+			ret.Group = append(ret.Group, gb)
+		}
+	}
+	return ret
+}
+
 func ReadGroup(path string) (Group, error) {
 	var group Group
 	_, err := toml.DecodeFile(path, &group)
@@ -50,13 +67,6 @@ func ReadOrder(path string) (Order, error) {
 	}
 	_, err := toml.DecodeFile(path, &order)
 	return order.Order, err
-}
-
-func (bg Group) Append(group ...Group) Group {
-	for _, g := range group {
-		bg.Group = append(bg.Group, g.Group...)
-	}
-	return bg
 }
 
 // A GroupBuildable represents a buildpack or extension referenced in a buildpack.toml's [[order.group]].

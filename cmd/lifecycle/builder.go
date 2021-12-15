@@ -28,6 +28,7 @@ type buildArgs struct {
 	layersDir     string
 	appDir        string
 	platformDir   string
+	useExtensions bool // TODO: not valid for creator YET
 
 	platform Platform
 }
@@ -41,6 +42,7 @@ func (b *buildCmd) DefineFlags() {
 	cmd.FlagLayersDir(&b.layersDir)
 	cmd.FlagPlanPath(&b.planPath)
 	cmd.FlagPlatformDir(&b.platformDir)
+	cmd.FlagUseExtensions(&b.useExtensions)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -80,27 +82,30 @@ func (b *buildCmd) Exec() error {
 }
 
 func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
-	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
-	if err != nil {
-		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
+	var (
+		bStore lifecycle.BuildpackStore
+		err    error
+	)
+	if ba.useExtensions {
+		bStore, err = buildpack.NewExtensionStore(ba.extensionsDir)
+	} else {
+		bStore, err = buildpack.NewBuildpackStore(ba.buildpacksDir)
 	}
-	extensionStore, err := buildpack.NewExtensionStore(ba.extensionsDir)
 	if err != nil {
 		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
 		AppDir:         ba.appDir,
-		LayersDir:      ba.layersDir,
+		LayersDir:      ba.layersDir, // TODO: when there are extensions, this should default to something other than /layers - maybe /layers/config/ext
 		PlatformDir:    ba.platformDir,
 		Platform:       ba.platform,
-		Group:          group,
+		Group:          group.Filter(ba.useExtensions),
 		Plan:           plan,
 		Out:            cmd.Stdout,
 		Err:            cmd.Stderr,
 		Logger:         cmd.DefaultLogger,
-		BuildpackStore: buildpackStore,
-		ExtensionStore: extensionStore,
+		BuildableStore: bStore,
 	}
 	md, err := builder.Build()
 

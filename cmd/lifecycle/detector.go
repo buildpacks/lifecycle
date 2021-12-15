@@ -129,7 +129,7 @@ func (da detectArgs) verifyBuildableApis(order buildpack.Order) error {
 	}
 	var extStore *buildpack.ExtensionStore
 	if da.extensionsDir != "" {
-		extStore, err = buildpack.NewExtensionStore(da.extensionsDir) // TODO: maybe factory could return nil if passed blank
+		extStore, err = buildpack.NewExtensionStore(da.extensionsDir)
 		if err != nil {
 			return err
 		}
