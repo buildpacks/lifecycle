@@ -195,12 +195,12 @@ func FlagUID(uid *int) {
 	flagSet.IntVar(uid, "uid", intEnv(EnvUID), "UID of user in the stack's build and run images")
 }
 
-func FlagUseDaemon(use *bool) {
-	flagSet.BoolVar(use, "daemon", BoolEnv(EnvUseDaemon), "export to docker daemon")
+func FlagUseDaemon(useDaemon *bool) {
+	flagSet.BoolVar(useDaemon, "daemon", BoolEnv(EnvUseDaemon), "export to docker daemon")
 }
 
-func FlagUseExtensions(use *bool) {
-	flagSet.BoolVar(use, "daemon", BoolEnv(EnvUseExtensions), "run build for extensions")
+func FlagUseExtensions(useExtensions *bool) {
+	flagSet.BoolVar(useExtensions, "use-extensions", BoolEnv(EnvUseExtensions), "run build for extensions")
 }
 
 func FlagVersion(version *bool) {

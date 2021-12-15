@@ -5,15 +5,15 @@ import (
 )
 
 type Dockerfile struct {
-	ExtensionID string
-	Path        string
-	Build       bool
-	Run         bool
-	Args        []DockerfileArg
+	ExtensionID string          `toml:"extension_id"` // TODO: nest [[dockerfiles]] under [[extensions]]?
+	Path        string          `toml:"path"`
+	Build       bool            `toml:"build"`
+	Run         bool            `toml:"run"`
+	Args        []DockerfileArg `toml:"args"`
 }
 
 type DockerfileArg struct {
-	Key   string `toml:"key"`
+	Key   string `toml:"name"` // TODO: which do we want?
 	Value string `toml:"value"`
 }
 
