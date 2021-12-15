@@ -31,8 +31,8 @@ type Detector struct {
 	Platform       Platform
 	Resolver       Resolver
 	Runs           *sync.Map
-	BuildpackStore BuildpackStore
-	ExtensionStore BuildpackStore
+	BuildpackStore BuildableStore
+	ExtensionStore BuildableStore
 }
 
 func NewDetector(config buildpack.DetectConfig, buildpacksDir string, extensionsDir string, platform Platform) (*Detector, error) {
@@ -43,7 +43,7 @@ func NewDetector(config buildpack.DetectConfig, buildpacksDir string, extensions
 	if err != nil {
 		return nil, err
 	}
-	var extStore BuildpackStore
+	var extStore BuildableStore
 	if extensionsDir != "" {
 		extStore, err = buildpack.NewExtensionStore(extensionsDir)
 		if err != nil {
@@ -112,7 +112,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 		}
 
 		var (
-			buildable buildpack.Buildpack
+			buildable buildpack.Buildable
 			err       error
 		)
 		if groupBuildable.Extension {
@@ -145,7 +145,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 
 		done = append(done, groupBuildable)
 		wg.Add(1)
-		go func(key string, bp Buildpack) {
+		go func(key string, bp Buildable) {
 			if _, ok := d.Runs.Load(key); !ok {
 				d.Runs.Store(key, bp.Detect(&d.DetectConfig, bpEnv))
 			}

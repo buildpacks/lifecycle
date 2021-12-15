@@ -36,10 +36,10 @@ func (m *MockBuildpackStore) EXPECT() *MockBuildpackStoreMockRecorder {
 }
 
 // Lookup mocks base method.
-func (m *MockBuildpackStore) Lookup(arg0, arg1 string) (buildpack.Buildpack, error) {
+func (m *MockBuildpackStore) Lookup(arg0, arg1 string) (buildpack.Buildable, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Lookup", arg0, arg1)
-	ret0, _ := ret[0].(buildpack.Buildpack)
+	ret0, _ := ret[0].(buildpack.Buildable)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

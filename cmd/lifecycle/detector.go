@@ -136,7 +136,7 @@ func (da detectArgs) verifyBuildableApis(order buildpack.Order) error {
 	}
 	for _, group := range order {
 		for _, groupBp := range group.Group {
-			var buildable buildpack.Buildpack
+			var buildable buildpack.Buildable
 			if groupBp.Extension {
 				buildable, err = extStore.Lookup(groupBp.ID, groupBp.Version)
 				if err != nil {

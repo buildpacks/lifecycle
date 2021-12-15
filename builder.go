@@ -25,11 +25,11 @@ type BuildEnv interface {
 	List() []string
 }
 
-type BuildpackStore interface {
-	Lookup(bpID, bpVersion string) (buildpack.Buildpack, error)
+type BuildableStore interface {
+	Lookup(bpID, bpVersion string) (buildpack.Buildable, error)
 }
 
-type Buildpack interface {
+type Buildable interface {
 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
 	ConfigFile() *buildpack.Descriptor
 	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
@@ -44,7 +44,7 @@ type Builder struct {
 	Plan           platform.BuildPlan
 	Out, Err       io.Writer
 	Logger         Logger
-	BuildableStore BuildpackStore
+	BuildableStore BuildableStore
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {

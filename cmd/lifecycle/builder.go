@@ -83,7 +83,7 @@ func (b *buildCmd) Exec() error {
 
 func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
 	var (
-		bStore lifecycle.BuildpackStore
+		bStore lifecycle.BuildableStore
 		err    error
 	)
 	if ba.useExtensions {
