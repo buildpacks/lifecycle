@@ -69,6 +69,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// MacOS temp dir can live under a symlink, which throws off checks.
+		tmpDir, err = filepath.EvalSymlinks(tmpDir)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "app"), 0755); err != nil {
 			t.Fatal(err)
 		}
@@ -135,6 +140,40 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 						setPath = v
 					}
 					return nil
+				}
+			})
+
+			it("should set the working directory to app dir by default", func() {
+				h.AssertNil(t, launcher.LaunchProcess("", process))
+				if len(syscallExecArgsColl) != 1 {
+					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
+				}
+				expectedwd, err := filepath.Abs(launcher.AppDir)
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				actualwd, err := os.Getwd()
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				if actualwd != expectedwd {
+					t.Fatalf("expected working directory to be\n  %s\nactual\n  %s\n", expectedwd, actualwd)
+				}
+			})
+
+			it("should set the working directory as configured", func() {
+				expectedwd := tmpDir
+				process.WorkingDirectory = expectedwd
+				h.AssertNil(t, launcher.LaunchProcess("", process))
+				if len(syscallExecArgsColl) != 1 {
+					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
+				}
+				actualwd, err := os.Getwd()
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				if actualwd != expectedwd {
+					t.Fatalf("expected working directory to be\n  %s\nactual\n  %s\n", expectedwd, actualwd)
 				}
 			})
 

@@ -7,12 +7,13 @@ import (
 )
 
 type Process struct {
-	Type        string   `toml:"type" json:"type"`
-	Command     string   `toml:"command" json:"command"`
-	Args        []string `toml:"args" json:"args"`
-	Direct      bool     `toml:"direct" json:"direct"`
-	Default     bool     `toml:"default,omitempty" json:"default,omitempty"`
-	BuildpackID string   `toml:"buildpack-id" json:"buildpackID"`
+	Type             string   `toml:"type" json:"type"`
+	Command          string   `toml:"command" json:"command"`
+	Args             []string `toml:"args" json:"args"`
+	WorkingDirectory string   `toml:"working-directory" json:"working-directory,omitempty"`
+	Direct           bool     `toml:"direct" json:"direct"`
+	Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
+	BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
 }
 
 func (p Process) NoDefault() Process {

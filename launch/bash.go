@@ -2,6 +2,7 @@ package launch
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 )
@@ -31,6 +32,9 @@ func (b *BashShell) Launch(proc ShellProcess) error {
 		bashCommand = bashCommandWithTokens(len(proc.Args) + 1)
 	}
 	launcher += bashCommand
+	if err := os.Chdir(proc.WorkingDirectory); err != nil {
+		return errors.Wrap(err, "change to working directory")
+	}
 	if err := b.Exec("/bin/bash", append([]string{
 		"bash", "-c",
 		launcher, proc.Caller, proc.Command,

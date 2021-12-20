@@ -21,14 +21,17 @@ func TestBash(t *testing.T) {
 
 func testBash(t *testing.T, when spec.G, it spec.S) {
 	var (
-		shell  launch.Shell
-		tmpDir string
+		shell      launch.Shell
+		tmpDir     string
+		workingDir string
 	)
 
 	it.Before(func() {
 		h.SkipIf(t, runtime.GOOS == "windows", "skip bash tests on windows")
 		var err error
 		tmpDir, err = ioutil.TempDir("", "shell-test")
+		h.AssertNil(t, err)
+		workingDir, err = os.Getwd()
 		h.AssertNil(t, err)
 		shell = &launch.BashShell{Exec: hl.SyscallExecWithStdout(t, tmpDir)}
 	})
@@ -50,6 +53,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 						Env: []string{
 							"SOME_VAR=some-val",
 						},
+						WorkingDirectory: workingDir,
 					}
 					process.Profiles = []string{
 						filepath.Join("testdata", "profiles", "print_argv0"),
@@ -100,6 +104,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 					Env: []string{
 						"SOME_VAR=some-val",
 					},
+					WorkingDirectory: workingDir,
 				}
 				err := shell.Launch(process)
 				h.AssertNil(t, err)
@@ -120,6 +125,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 					Env: []string{
 						"SOME_VAR=some-val",
 					},
+					WorkingDirectory: workingDir,
 				}
 				err := shell.Launch(process)
 				h.AssertNil(t, err)
@@ -151,6 +157,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 					Env: []string{
 						"SOME_VAR=some-val",
 					},
+					WorkingDirectory: workingDir,
 				}
 				err := shell.Launch(process)
 				h.AssertNil(t, err)
@@ -174,6 +181,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 						Env: []string{
 							"SOME_VAR=some-val",
 						},
+						WorkingDirectory: workingDir,
 					}
 					process.Profiles = []string{
 						filepath.Join("testdata", "profiles", "print_argv0"),
@@ -225,6 +233,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 					Env: []string{
 						"SOME_VAR=some-val",
 					},
+					WorkingDirectory: workingDir,
 				}
 				err := shell.Launch(process)
 				h.AssertNil(t, err)

@@ -68,6 +68,9 @@ func (l *Launcher) LaunchProcess(self string, proc Process) error {
 	if err := l.doExecD(proc.Type); err != nil {
 		return errors.Wrap(err, "exec.d")
 	}
+	if proc.WorkingDirectory == "" {
+		proc.WorkingDirectory = l.AppDir
+	}
 
 	if proc.Direct {
 		return l.launchDirect(proc)
@@ -82,6 +85,10 @@ func (l *Launcher) launchDirect(proc Process) error {
 	binary, err := exec.LookPath(proc.Command)
 	if err != nil {
 		return errors.Wrap(err, "path lookup")
+	}
+
+	if err := os.Chdir(proc.WorkingDirectory); err != nil {
+		return errors.Wrap(err, "change to working directory")
 	}
 
 	if err := l.Exec(binary,
