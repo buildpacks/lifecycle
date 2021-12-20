@@ -184,7 +184,7 @@ func (l *Layer) Remove() error {
 }
 
 func (l *Layer) WriteMetadata(metadata LayerMetadataFile) error {
-	path := filepath.Join(l.path + ".toml")
+	path := l.path + ".toml"
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}

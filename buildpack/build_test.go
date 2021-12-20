@@ -161,7 +161,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1")),
-					filepath.Join(bpTOML.Dir),
+					bpTOML.Dir,
 				); s != "" {
 					t.Fatalf("Unexpected CNB_BUILDPACK_DIR:\n%s\n", s)
 				}
