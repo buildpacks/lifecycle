@@ -49,7 +49,7 @@ func NewVolumeCache(dir string) (*VolumeCache, error) {
 }
 
 func (c *VolumeCache) Exists() bool {
-	if _, err := os.Stat(filepath.Join(c.committedDir)); err != nil {
+	if _, err := os.Stat(c.committedDir); err != nil {
 		return false
 	}
 	return true

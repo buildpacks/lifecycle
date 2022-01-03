@@ -52,6 +52,7 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			}
 			path = filepath.Join(tmpDir, "execd"+exe)
 
+			//#nosec G204
 			cmd := exec.Command("go", "build",
 				"-o", path,
 				filepath.Join(wd, "testdata", "cmd", "execd"),

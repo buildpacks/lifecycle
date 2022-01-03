@@ -34,6 +34,7 @@ func SyscallExecWithStdout(t *testing.T, tmpDir string) launch.ExecFunc {
 		defer fstdin.Close()
 		defer fstdout.Close()
 		defer fstderr.Close()
+		//#nosec G204
 		pid, err := syscall.ForkExec(argv0, argv, &syscall.ProcAttr{
 			Env:   envv,
 			Files: []uintptr{fstdin.Fd(), fstdout.Fd(), fstderr.Fd()},
