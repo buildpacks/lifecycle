@@ -25,19 +25,24 @@ func TestCmd(t *testing.T) {
 
 func testCmd(t *testing.T, when spec.G, it spec.S) {
 	var (
-		shell  launch.Shell
-		tmpDir string
+		shell   launch.Shell
+		tmpDir  string
+		origDir string
 	)
 
 	it.Before(func() {
 		h.SkipIf(t, runtime.GOOS != "windows", "skip cmd tests on unix")
 		var err error
+		origDir, err = os.Getwd()
+		h.AssertNil(t, err)
 		tmpDir, err = ioutil.TempDir("", "shell-test")
 		h.AssertNil(t, err)
 		shell = &launch.CmdShell{Exec: hl.SyscallExecWithStdout(t, tmpDir)}
 	})
 
 	it.After(func() {
+		err := os.Chdir(origDir)
+		h.AssertNil(t, err)
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
@@ -45,6 +50,28 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 		var process launch.ShellProcess
 
 		when("is not script", func() {
+			when("there are no profiles", func() {
+				it("sets the working directory as configured", func() {
+					process = launch.ShellProcess{
+						Script:  false,
+						Command: "echo",
+						Args:    []string{"profile env: '!PROFILE_VAR!'"},
+						Env: []string{
+							"SOME_VAR=some-val",
+						},
+						WorkingDirectory: tmpDir,
+					}
+					err := shell.Launch(process)
+					h.AssertNil(t, err)
+					actualwd, err := os.Getwd()
+					if err != nil {
+						t.Fatalf("Error: %s\n", err)
+					}
+					if actualwd != tmpDir {
+						t.Fatalf("expected working directory to be\n  %s\nactual\n  %s\n", tmpDir, actualwd)
+					}
+				})
+			})
 			when("there are profiles", func() {
 				it.Before(func() {
 					process = launch.ShellProcess{
@@ -54,6 +81,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 						Env: []string{
 							"SOME_VAR=some-val",
 						},
+						WorkingDirectory: origDir,
 					}
 					process.Profiles = []string{
 						filepath.Join("testdata", "profiles", "print_argv0.bat"),
@@ -104,6 +132,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 					Env: []string{
 						"SOME_VAR=some-val",
 					},
+					WorkingDirectory: origDir,
 				}
 				err := shell.Launch(process)
 				h.AssertNil(t, err)

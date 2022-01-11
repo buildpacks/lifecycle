@@ -1,6 +1,8 @@
 package launch
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
 )
 
@@ -16,6 +18,9 @@ func (c *CmdShell) Launch(proc ShellProcess) error {
 	}
 	commandTokens = append(commandTokens, proc.Command)
 	commandTokens = append(commandTokens, proc.Args...)
+	if err := os.Chdir(proc.WorkingDirectory); err != nil {
+		return errors.Wrap(err, "change to working directory")
+	}
 	if err := c.Exec("cmd",
 		append([]string{"cmd", "/q", "/v:on", "/s", "/c"}, commandTokens...), proc.Env,
 	); err != nil {
