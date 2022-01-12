@@ -46,7 +46,14 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 
 		when("is not script", func() {
 			when("there are profiles", func() {
+				var (
+					err        error
+					defaultDir string
+				)
+
 				it.Before(func() {
+					defaultDir, err = os.Getwd()
+					h.AssertNil(t, err)
 					process = launch.ShellProcess{
 						Script:  false,
 						Command: "echo",
@@ -60,6 +67,41 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join("testdata", "profiles", "print_env.bat"),
 						filepath.Join("testdata", "profiles", "set_env.bat"),
 					}
+				})
+
+				it("runs the profiles from the default directory", func() {
+					process.Profiles = []string{
+						filepath.Join("testdata", "profiles", "pwd.bat"),
+					}
+					err = shell.Launch(process)
+					h.AssertNil(t, err)
+					stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
+					h.AssertStringContains(t, stdout, fmt.Sprintf("profile directory: %s\r\n", defaultDir))
+				})
+
+				it("runs the command from the working directory", func() {
+					process.WorkingDirectory = tmpDir
+					// This use of `for` is a hack to get backquotes in cmd.exe.
+					// See https://stackoverflow.com/a/2768660/906238
+					// Cannot use %CD% because it is evaluated before changing directories.
+					process.Command = "for"
+					process.Args = []string{
+						"/f",
+						"usebackq tokens=*",
+						"%a",
+						"in",
+						"(`cd`)",
+						"do",
+						"echo",
+						"process",
+						"working",
+						"directory:",
+						"%a",
+					}
+					err = shell.Launch(process)
+					h.AssertNil(t, err)
+					stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
+					h.AssertStringContains(t, stdout, fmt.Sprintf("process working directory: %s\r\n", tmpDir))
 				})
 
 				it("sets argv0 for profile scripts to profile script path", func() {
