@@ -208,7 +208,7 @@ func readDescriptor() (Descriptor, error) {
 		if filepath.Base(hdr.Name) != "lifecycle.toml" {
 			continue
 		}
-		_, err = toml.DecodeReader(tr, &descriptor)
+		_, err = toml.NewDecoder(tr).Decode(&descriptor)
 		if err != nil {
 			return Descriptor{}, errors.Errorf("Failed to read descriptor from lifecycle tgz at path '%s': %s", lifecyclePath, err)
 		}
