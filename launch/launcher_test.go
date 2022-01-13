@@ -69,6 +69,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// MacOS can have temp dir in a symlink, which breaks path comparisons.
+		tmpDir, err = filepath.EvalSymlinks(tmpDir)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "app"), 0755); err != nil {
 			t.Fatal(err)
 		}
@@ -111,8 +116,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			process = launch.Process{
-				Command: "command",
-				Args:    []string{"arg1", "arg2"},
+				Command:          "command",
+				Args:             []string{"arg1", "arg2"},
+				WorkingDirectory: launcher.AppDir,
 			}
 		})
 
@@ -178,6 +184,14 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 				}
 				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
+			})
+
+			it("should execute in the specified working directory", func() {
+				process.WorkingDirectory = tmpDir
+				h.AssertNil(t, launcher.LaunchProcess("", process))
+				actualDir, err := os.Getwd()
+				h.AssertNil(t, err)
+				h.AssertEq(t, actualDir, tmpDir)
 			})
 
 			when("buildpacks have provided layer directories that could affect the environment", func() {

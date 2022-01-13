@@ -53,6 +53,7 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
 	}
+	proc.WorkingDirectory = getProcessWorkingDirectory(proc, l.AppDir)
 	return l.LaunchProcess(self, proc)
 }
 
@@ -83,7 +84,9 @@ func (l *Launcher) launchDirect(proc Process) error {
 	if err != nil {
 		return errors.Wrap(err, "path lookup")
 	}
-
+	if err = os.Chdir(proc.WorkingDirectory); err != nil {
+		return errors.Wrap(err, "change directory")
+	}
 	if err := l.Exec(binary,
 		append([]string{proc.Command}, proc.Args...),
 		l.Env.List(),
