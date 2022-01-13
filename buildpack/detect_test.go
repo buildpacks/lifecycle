@@ -155,7 +155,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, detectRun.Code, -1)
 			h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
 			err := detectRun.Err
-			h.AssertEq(t, err.Error(), `Near line 2 (last key parsed 'bad'): expected value but found "toml" instead`)
+			h.AssertEq(t, err.Error(), `toml: line 2 (last key "bad"): expected value but found "toml" instead`)
 		})
 
 		it("should fail if buildpacks have both a top level version and a metadata version", func() {
