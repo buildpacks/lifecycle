@@ -398,6 +398,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected metadata:\n%s\n", s)
 						}
 					})
+
+					it("should set the working directory", func() {
+						h.Mkfile(t,
+							"[[processes]]\n"+
+								`working-directory = "/working-directory"`,
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(br.Processes), 1)
+						h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
+					})
 				})
 
 				it("should include slices", func() {
@@ -1094,6 +1106,27 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotNil(t, err)
 				expected := "top level version which is not allowed"
 				h.AssertStringContains(t, err.Error(), expected)
+			})
+		})
+
+		when("buildpack api < 0.8", func() {
+			it.Before(func() {
+				bpTOML.API = "0.7"
+			})
+
+			it("should ignore process working directory and warn", func() {
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+				h.Mkfile(t,
+					"[[processes]]\n"+
+						`working-directory = "/working-directory"`+"\n"+
+						`type = "some-type"`+"\n",
+					filepath.Join(appDir, "launch-A-v1.toml"),
+				)
+				br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(br.Processes), 1)
+				h.AssertEq(t, br.Processes[0].WorkingDirectory, "")
+				assertLogEntry(t, logHandler, "Warning: process working directory isn't supported in this buildpack api version. Ignoring working directory for process 'some-type'")
 			})
 		})
 	})
