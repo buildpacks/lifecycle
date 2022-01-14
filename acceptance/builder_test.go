@@ -191,7 +191,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to read buildpack group: Near line 1 (last key parsed '')"
+					expected := "failed to read buildpack group: toml: line 1: expected '.' or '=', but got 'a' instead"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
@@ -270,7 +270,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to parse detect plan: Near line 1 (last key parsed '')"
+					expected := "failed to parse detect plan: toml: line 1: expected '.' or '=', but got 'a' instead"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
