@@ -25,13 +25,16 @@ func TestCmd(t *testing.T) {
 
 func testCmd(t *testing.T, when spec.G, it spec.S) {
 	var (
-		shell  launch.Shell
-		tmpDir string
+		shell      launch.Shell
+		tmpDir     string
+		defaultDir string
+		err        error
 	)
 
 	it.Before(func() {
+		defaultDir, err = os.Getwd()
+		h.AssertNil(t, err)
 		h.SkipIf(t, runtime.GOOS != "windows", "skip cmd tests on unix")
-		var err error
 		tmpDir, err = ioutil.TempDir("", "shell-test")
 		h.AssertNil(t, err)
 		shell = &launch.CmdShell{Exec: hl.SyscallExecWithStdout(t, tmpDir)}
@@ -46,13 +49,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 
 		when("is not script", func() {
 			when("there are profiles", func() {
-				var (
-					err        error
-					defaultDir string
-				)
-
 				it.Before(func() {
-					defaultDir, err = os.Getwd()
 					h.AssertNil(t, err)
 					process = launch.ShellProcess{
 						Script:  false,
@@ -61,6 +58,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 						Env: []string{
 							"SOME_VAR=some-val",
 						},
+						WorkingDirectory: defaultDir,
 					}
 					process.Profiles = []string{
 						filepath.Join("testdata", "profiles", "print_argv0.bat"),
@@ -137,6 +135,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 					Env: []string{
 						"SOME_VAR=some-val",
 					},
+					WorkingDirectory: defaultDir,
 				}
 				err := shell.Launch(process)
 				h.AssertNil(t, err)
