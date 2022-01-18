@@ -6,6 +6,8 @@ ARG cnb_gid=1000
 ENV CNB_USER_ID=${cnb_uid}
 ENV CNB_GROUP_ID=${cnb_gid}
 
+RUN apt-get update && apt-get install -y ca-certificates
+
 COPY ./container/ /
 
 RUN groupadd cnb --gid ${cnb_gid} && \
@@ -13,6 +15,9 @@ RUN groupadd cnb --gid ${cnb_gid} && \
 
 # chown the directories so the tests do not have to run as root
 RUN chown -R "${cnb_uid}:${cnb_gid}" "/layers"
+RUN chown -R "${cnb_uid}:${cnb_gid}" "/workspace"
+# ensure docker config directory is root owned and NOT world readable
+RUN chown -R root /docker-config; chmod -R 700 /docker-config
 
 WORKDIR /layers
 

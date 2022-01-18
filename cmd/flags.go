@@ -21,6 +21,7 @@ var (
 	DefaultPlatformDir     = filepath.Join(rootDir, "platform")
 	DefaultProcessType     = "web"
 	DefaultStackPath       = filepath.Join(rootDir, "cnb", "stack.toml")
+	DefaultLayoutDir       = filepath.Join(DefaultLayersDir, "image")
 
 	DefaultAnalyzedFile        = "analyzed.toml"
 	DefaultGroupFile           = "group.toml"
@@ -64,6 +65,8 @@ const (
 	EnvStackPath           = "CNB_STACK_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
+	EnvUseLayout           = "CNB_USE_LAYOUT" // defaults to false
+	EnvLayoutDir           = "CNB_LAYOUT_DIR"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -190,6 +193,10 @@ func FlagUID(uid *int) {
 
 func FlagUseDaemon(use *bool) {
 	flagSet.BoolVar(use, "daemon", BoolEnv(EnvUseDaemon), "export to docker daemon")
+}
+
+func FlagUseLayout(use *bool) {
+	flagSet.BoolVar(use, "layout", BoolEnv(EnvUseLayout), "export to OIC layout")
 }
 
 func FlagVersion(version *bool) {

@@ -15,4 +15,7 @@ require (
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 )
 
+replace (
+	github.com/buildpacks/imgutil => github.com/jjbustamante/imgutil v0.0.0-20211004224548-c09454a8fbae
+)
 go 1.16

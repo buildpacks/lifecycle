@@ -39,6 +39,7 @@ type createCmd struct {
 	uid, gid            int
 	skipRestore         bool
 	useDaemon           bool
+	useLayout           bool
 
 	additionalTags cmd.StringSlice
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
@@ -69,6 +70,7 @@ func (c *createCmd) DefineFlags() {
 	cmd.FlagTags(&c.additionalTags)
 	cmd.FlagProjectMetadataPath(&c.projectMetadataPath)
 	cmd.FlagProcessType(&c.processType)
+	cmd.FlagUseLayout(&c.useLayout)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -178,6 +180,7 @@ func (c *createCmd) Exec() error {
 			previousImageRef: c.previousImageRef,
 			runImageRef:      c.runImageRef,
 			useDaemon:        c.useDaemon,
+			useLayout:        c.useLayout,
 		}.analyze()
 		if err != nil {
 			return err
@@ -275,6 +278,7 @@ func (c *createCmd) Exec() error {
 		targetRegistry:      c.targetRegistry,
 		uid:                 c.uid,
 		useDaemon:           c.useDaemon,
+		useLayout:           c.useLayout,
 	}.export(group, cacheStore, analyzedMD)
 }
 

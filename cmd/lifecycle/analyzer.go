@@ -11,6 +11,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/layout"
+
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -39,10 +41,12 @@ type analyzeCmd struct {
 type analyzeArgs struct {
 	launchCacheDir   string // creator-only in Platform API 0.8
 	layersDir        string
+	layoutDir        string
 	previousImageRef string
 	runImageRef      string
 	legacySkipLayers bool
 	useDaemon        bool
+	useLayout        bool
 
 	docker      client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain    authn.Keychain         // construct if necessary before dropping privileges
@@ -69,6 +73,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cmd.FlagGroupPath(&a.legacyGroupPath)
 		cmd.FlagSkipLayers(&a.legacySkipLayers)
 	}
+	cmd.FlagUseLayout(&a.useLayout)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -116,6 +121,10 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 
 	if err := a.populateRunImageIfNeeded(); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+	}
+
+	if a.useLayout {
+		a.layoutDir = cmd.EnvOrDefault(cmd.EnvLayoutDir, cmd.DefaultLayoutDir)
 	}
 
 	return nil
@@ -235,6 +244,10 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 func (aa analyzeArgs) localOrRemote(fromImage string) (imgutil.Image, error) {
 	if fromImage == "" {
 		return nil, nil
+	}
+
+	if aa.useLayout {
+		return layout.NewImage(aa.layoutDir, layout.WithPreviousImage(aa.layoutDir))
 	}
 
 	if aa.useDaemon {

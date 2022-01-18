@@ -200,6 +200,7 @@ $(BUILD_DIR)/darwin-amd64/lifecycle/lifecycle:
 	ln -sf lifecycle $(OUT_DIR)/builder
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
+	ln -sf lifecycle $(OUT_DIR)/creator
 
 build-darwin-amd64-launcher: $(BUILD_DIR)/darwin-amd64/lifecycle/launcher
 $(BUILD_DIR)/darwin-amd64/lifecycle/launcher: export GOOS:=darwin

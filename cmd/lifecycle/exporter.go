@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/layout"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -45,6 +46,7 @@ type exportArgs struct {
 	launchCacheDir      string
 	launcherPath        string
 	layersDir           string
+	layoutDir           string
 	processType         string
 	projectMetadataPath string
 	reportPath          string
@@ -53,9 +55,9 @@ type exportArgs struct {
 	targetRegistry      string
 	imageNames          []string
 	stackMD             platform.StackMetadata
-
-	useDaemon bool
-	uid, gid  int
+	useDaemon           bool
+	useLayout           bool
+	uid, gid            int
 
 	platform Platform
 
@@ -82,6 +84,7 @@ func (e *exportCmd) DefineFlags() {
 	cmd.FlagStackPath(&e.stackPath)
 	cmd.FlagUID(&e.uid)
 	cmd.FlagUseDaemon(&e.useDaemon)
+	cmd.FlagUseLayout(&e.useLayout)
 
 	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
@@ -93,8 +96,8 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	e.imageNames = args
-	if e.launchCacheDir != "" && !e.useDaemon {
-		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
+	if e.launchCacheDir != "" && (!e.useDaemon || !e.useLayout) {
+		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon or -layout")
 		e.launchCacheDir = ""
 	}
 
@@ -150,6 +153,9 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
 	}
 
+	if e.useLayout {
+		e.layoutDir = cmd.EnvOrDefault(cmd.EnvLayoutDir, cmd.DefaultLayoutDir)
+	}
 	return nil
 }
 
@@ -287,9 +293,13 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 
 	var appImage imgutil.Image
 	var runImageID string
-	if ea.useDaemon {
+
+	switch {
+	case ea.useLayout:
+		appImage, runImageID, err = ea.initLayoutAppImage(analyzedMD)
+	case ea.useDaemon:
 		appImage, runImageID, err = ea.initDaemonAppImage(analyzedMD)
-	} else {
+	default:
 		appImage, runImageID, err = ea.initRemoteAppImage(analyzedMD)
 	}
 	if err != nil {
@@ -355,6 +365,19 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (i
 			return nil, "", cmd.FailErr(err, "create launch cache")
 		}
 		appImage = cache.NewCachingImage(appImage, volumeCache)
+	}
+	return appImage, runImageID.String(), nil
+}
+
+func (ea exportArgs) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+	appImage, _ := layout.NewImage(ea.layoutDir, layout.FromRemoteBaseImage(ea.keychain, ea.runImageRef))
+	runImage, err := remote.NewImage(ea.runImageRef, ea.keychain, remote.FromBaseImage(ea.runImageRef))
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "access run image")
+	}
+	runImageID, err := runImage.Identifier()
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "get run image reference")
 	}
 	return appImage, runImageID.String(), nil
 }
