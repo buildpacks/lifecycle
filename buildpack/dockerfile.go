@@ -7,8 +7,7 @@ import (
 type Dockerfile struct {
 	ExtensionID string          `toml:"extension_id"` // TODO: nest [[dockerfiles]] under [[extensions]]?
 	Path        string          `toml:"path"`
-	Build       bool            `toml:"build"`
-	Run         bool            `toml:"run"`
+	Type        string          `toml:"type"`
 	Args        []DockerfileArg `toml:"args"`
 }
 
@@ -35,7 +34,7 @@ func processDockerfiles(bpOutputDir, extID string, buildArgs, runArgs []Dockerfi
 			dockerfiles = append(dockerfiles, Dockerfile{
 				ExtensionID: extID,
 				Path:        m,
-				Run:         true,
+				Type:        "run",
 				Args:        runArgs,
 			})
 			continue
@@ -45,20 +44,27 @@ func processDockerfiles(bpOutputDir, extID string, buildArgs, runArgs []Dockerfi
 			dockerfiles = append(dockerfiles, Dockerfile{
 				ExtensionID: extID,
 				Path:        m,
-				Build:       true,
+				Type:        "build",
 				Args:        buildArgs,
 			})
 			continue
 		}
 
 		if filename == "Dockerfile" {
-			dockerfiles = append(dockerfiles, Dockerfile{
-				ExtensionID: extID,
-				Path:        m,
-				Build:       true,
-				Run:         true,
-				Args:        append(buildArgs, runArgs...),
-			})
+			dockerfiles = append(dockerfiles,
+				Dockerfile{
+					ExtensionID: extID,
+					Path:        m,
+					Type:        "run",
+					Args:        runArgs,
+				},
+				Dockerfile{
+					ExtensionID: extID,
+					Path:        m,
+					Type:        "build",
+					Args:        buildArgs,
+				},
+			)
 			continue
 		}
 		// ignore other glob matches e.g., some-random.Dockerfile
