@@ -35,13 +35,20 @@ func (v *defaultBOMValidator) ValidateBOM(bp GroupBuildpack, bom []BOMEntry) ([]
 
 func (v *defaultBOMValidator) validateBOM(bom []BOMEntry) error {
 	if len(bom) > 0 {
-		return errors.New("bom table isn't supported in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>")
+		v.logger.Warn("BOM table is deprecated in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
 	}
+
+	for _, entry := range bom {
+		if entry.Version != "" {
+			return fmt.Errorf("bom entry '%s' has a top level version which is not allowed. The buildpack should instead set metadata.version", entry.Name)
+		}
+	}
+
 	return nil
 }
 
-func (v *defaultBOMValidator) processBOM(_ GroupBuildpack, _ []BOMEntry) []BOMEntry {
-	return []BOMEntry{}
+func (v *defaultBOMValidator) processBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
+	return WithBuildpack(buildpack, bom)
 }
 
 type v05To06BOMValidator struct{}
