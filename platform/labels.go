@@ -6,4 +6,5 @@ const (
 	ProjectMetadataLabel = "io.buildpacks.project.metadata"
 	StackIDLabel         = "io.buildpacks.stack.id"
 	MixinsLabel          = "io.buildpacks.stack.mixins"
+	BaseImageTargetLabel = "io.buildpacks.id"
 )

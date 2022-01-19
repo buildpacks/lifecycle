@@ -230,6 +230,23 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 					h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
 				})
+
+				when("run image has io.buildpacks.id label", func() {
+					it.Before(func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "Platform API < 0.9 does not support io.buildpacks.id")
+						h.AssertNil(t, image.SetLabel("io.buildpacks.id", "minimal"))
+					})
+
+					it("returns the run image io.buildpacks.id label value in the analyzed metadata", func() {
+						expectRestoresLayerMetadataIfSupported()
+
+						md, err := analyzer.Analyze()
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
+						h.AssertEq(t, md.RunImage.TargetID, "minimal")
+					})
+				})
 			})
 		})
 	}

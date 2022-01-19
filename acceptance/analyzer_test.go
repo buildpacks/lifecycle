@@ -295,6 +295,28 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
 					h.AssertStringContains(t, analyzedMD.RunImage.Reference, analyzeRegFixtures.ReadOnlyRunImage+"@sha256:")
 				})
+
+				when("has io.buildpacks.id value", func() {
+					it("is recorded in analyzed.toml", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "Platform API < 0.9 does not accept run image io.buildpacks.id")
+
+						h.DockerRunAndCopy(t,
+							containerName,
+							copyDir,
+							ctrPath("/layers/analyzed.toml"),
+							analyzeImage,
+							h.WithFlags(
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+analyzeRegAuthConfig,
+								"--network", analyzeRegNetwork,
+							),
+							h.WithArgs(ctrPath(analyzerPath), "-run-image", analyzeRegFixtures.ReadOnlyRunImage, analyzeRegFixtures.SomeAppImage),
+						)
+
+						analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+						h.AssertStringContains(t, analyzedMD.RunImage.TargetID, "minimal")
+					})
+				})
 			})
 
 			when("not provided", func() {

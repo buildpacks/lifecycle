@@ -34,7 +34,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		appMeta         platform.LayersMetadata
 		cacheMeta       platform.CacheMetadata
 		previousImageID *platform.ImageIdentifier
-		runImageID      *platform.ImageIdentifier
+		runImageMeta    *platform.RunImageAnalyzedMetadata
 		err             error
 	)
 
@@ -62,9 +62,9 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.RunImage != nil {
-		runImageID, err = a.getImageIdentifier(a.RunImage)
+		runImageMeta, err = a.getRunImageMetadata(a.RunImage)
 		if err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
+			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving run image metadata")
 		}
 	}
 
@@ -82,7 +82,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 	return platform.AnalyzedMetadata{
 		PreviousImage: previousImageID,
-		RunImage:      runImageID,
+		RunImage:      runImageMeta,
 		Metadata:      appMeta,
 	}, nil
 }
@@ -103,6 +103,31 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	a.Logger.Debugf("Analyzing image %q", identifier.String())
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
+	}, nil
+}
+
+func (a *Analyzer) getRunImageMetadata(runImage imgutil.Image) (*platform.RunImageAnalyzedMetadata, error) {
+	runImageID, err := a.getImageIdentifier(runImage)
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieving image identifier")
+	}
+
+	if runImageID == nil {
+		return nil, nil // no run image
+	}
+
+	var targetID string
+
+	if a.Platform.API().AtLeast("0.9") {
+		targetID, err = runImage.Label(platform.BaseImageTargetLabel)
+		if err != nil {
+			return nil, errors.Wrap(err, "retrieving base image target label")
+		}
+	}
+
+	return &platform.RunImageAnalyzedMetadata{
+		ImageIdentifier: *runImageID,
+		TargetID:        targetID,
 	}, nil
 }
 
