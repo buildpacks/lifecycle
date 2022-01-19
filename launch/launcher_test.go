@@ -116,9 +116,8 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			process = launch.Process{
-				Command:          "command",
-				Args:             []string{"arg1", "arg2"},
-				WorkingDirectory: launcher.AppDir,
+				Command: "command",
+				Args:    []string{"arg1", "arg2"},
 			}
 		})
 
@@ -410,6 +409,28 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
 				h.AssertEq(t, shell.nCalls, 1)
 				h.AssertEq(t, shell.process.Env, envList)
+			})
+
+			when("process specific working directory", func() {
+				it.Before(func() {
+					process.WorkingDirectory = "/some-dir"
+				})
+
+				it("sets the working directory on the shell process", func() {
+					h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+					h.AssertEq(t, shell.process.WorkingDirectory, "/some-dir")
+				})
+			})
+
+			when("no specified working directory", func() {
+				it.Before(func() {
+					process.WorkingDirectory = ""
+				})
+
+				it("sets the working directory to the app directory", func() {
+					h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+					h.AssertEq(t, shell.process.WorkingDirectory, launcher.AppDir)
+				})
 			})
 
 			when("buildpack have provided profile scripts", func() {

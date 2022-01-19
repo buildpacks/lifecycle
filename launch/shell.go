@@ -35,12 +35,13 @@ func (l *Launcher) launchWithShell(self string, proc Process) error {
 		return err
 	}
 	return l.Shell.Launch(ShellProcess{
-		Script:   script,
-		Caller:   self,
-		Command:  proc.Command,
-		Args:     proc.Args,
-		Profiles: profs,
-		Env:      l.Env.List(),
+		Script:           script,
+		Caller:           self,
+		Command:          proc.Command,
+		Args:             proc.Args,
+		Profiles:         profs,
+		Env:              l.Env.List(),
+		WorkingDirectory: proc.WorkingDirectory,
 	})
 }
 

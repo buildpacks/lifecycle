@@ -53,7 +53,6 @@ func (l *Launcher) Launch(self string, cmd []string) error {
 	if err != nil {
 		return errors.Wrap(err, "determine start command")
 	}
-	proc.WorkingDirectory = getProcessWorkingDirectory(proc, l.AppDir)
 	return l.LaunchProcess(self, proc)
 }
 
@@ -69,6 +68,7 @@ func (l *Launcher) LaunchProcess(self string, proc Process) error {
 	if err := l.doExecD(proc.Type); err != nil {
 		return errors.Wrap(err, "exec.d")
 	}
+	proc.WorkingDirectory = getProcessWorkingDirectory(proc, l.AppDir)
 
 	if proc.Direct {
 		return l.launchDirect(proc)
