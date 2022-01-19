@@ -241,7 +241,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	var launchTOML LaunchTOML
 	launchPath := filepath.Join(bpLayersDir, "launch.toml")
 
-	bomValidator := NewBOMValidator(b.API, logger)
+	bomValidator := NewBOMValidator(b.API, bpLayersDir, logger)
 
 	var err error
 	if api.MustParse(b.API).LessThan("0.5") {

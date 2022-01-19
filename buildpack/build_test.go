@@ -236,7 +236,72 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
-						assertLogEntry(t, logHandler, "BOM table is deprecated in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+						assertLogEntry(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+					})
+				})
+
+				when("there is a bom in launch.toml and sbom files", func() {
+					it("should not warn and produce BOM", func() {
+						h.Mkfile(t,
+							"[[bom]]\n"+
+								`name = "some-dep"`+"\n"+
+								"[bom.metadata]\n"+
+								`version = "some-version"`+"\n",
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+
+						buildpackID := bpTOML.Buildpack.ID
+						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+
+						h.Mkdir(t,
+							filepath.Join(layersDir, buildpackID))
+						h.Mkfile(t, `{"key": "some-bom-content"}`,
+							filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"))
+
+						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+
+						if s := cmp.Diff(br, buildpack.BuildResult{
+							BOM: []buildpack.BOMEntry{
+								{
+									Require: buildpack.Require{
+										Name:     "some-dep",
+										Metadata: map[string]interface{}{"version": "some-version"},
+									},
+									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+								},
+							},
+							Labels:    []buildpack.Label{},
+							Processes: []launch.Process{},
+							Slices:    []layers.Slice{},
+							BOMFiles: []buildpack.BOMFile{
+								{
+									BuildpackID: buildpackID,
+									LayerName:   "",
+									LayerType:   buildpack.LayerTypeLaunch,
+									Path:        filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
+								},
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+						assertLogEntryNotContains(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+					})
+				})
+
+				when("there is a bom in launch.toml with a top-level version", func() {
+					it("should return an error", func() {
+						h.Mkfile(t,
+							"[[bom]]\n"+
+								`name = "some-dep"`+"\n"+
+								`version = "some-version"`+"\n",
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						h.AssertError(t, err, "bom entry 'some-dep' has a top level version which is not allowed. The buildpack should instead set metadata.version")
 					})
 				})
 
@@ -1159,5 +1224,18 @@ func assertLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
 			return
 		}
 	}
-	t.Fatalf("Expected log entries %+v to contain %s", messages, expected)
+	fmtMessage := "\n" + strings.Join(messages, "\n") + "\n"
+	t.Fatalf("Expected log entries: %s to contain \n'%s'", fmtMessage, expected)
+}
+
+func assertLogEntryNotContains(t *testing.T, logHandler *memory.Handler, expected string) {
+	t.Helper()
+	var messages []string
+	for _, le := range logHandler.Entries {
+		messages = append(messages, le.Message)
+		if strings.Contains(le.Message, expected) {
+			fmtMessage := "\n" + strings.Join(messages, "\n") + "\n"
+			t.Fatalf("Expected log entries: %s not to contain \n'%s'", fmtMessage, expected)
+		}
+	}
 }
