@@ -114,6 +114,7 @@ func doKaniko(kind, baseimage string) {
 	fmt.Printf("Reading dir content of: %s\n", b.KanikoDir)
 	util.ReadFilesFromPath(b.KanikoDir)
 
+	// TODO: caching doesn't seem to be working at the moment. Need to investigate...
 	// Copy the tgz layer file to the Cache dir
 	srcPath := path.Join("/", b.LayerTarFileName)
 	dstPath := path.Join(b.CacheDir, b.LayerTarFileName)
