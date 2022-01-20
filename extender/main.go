@@ -77,6 +77,7 @@ func doKaniko(kind, baseimage string) {
 		panic(err)
 	}
 
+	// TODO: make args specific to build/run phase
 	toMultiArg := func(args []DockerfileArg) []string {
 		var result []string
 		for _, arg := range args {
@@ -87,7 +88,7 @@ func doKaniko(kind, baseimage string) {
 		return result
 	}
 
-	for _, d := range meta.Dockerfiles {
+	for i, d := range meta.Dockerfiles {
 		// Define opts
 		opts := config.KanikoOptions{
 			BuildArgs:          toMultiArg(d.Args),
@@ -109,70 +110,81 @@ func doKaniko(kind, baseimage string) {
 		if err != nil {
 			panic(err)
 		}
-	}
 
-	// Log the content of the Kaniko dir
-	fmt.Printf("Reading dir content of: %s\n", b.KanikoDir)
-	util.ReadFilesFromPath(b.KanikoDir)
+		// Log the content of the Kaniko dir
+		fmt.Printf("Reading dir content of: %s\n", b.KanikoDir)
+		util.ReadFilesFromPath(b.KanikoDir)
 
-	// TODO: caching doesn't seem to be working at the moment. Need to investigate...
-	// Copy the tgz layer file to the Cache dir
-	srcPath := path.Join("/", b.LayerTarFileName)
-	dstPath := path.Join(b.CacheDir, b.LayerTarFileName)
+		// TODO: caching doesn't seem to be working at the moment. Need to investigate...
+		// Copy the tgz layer file to the Cache dir
+		srcPath := path.Join("/", b.LayerTarFileName)
+		// TODO: use something else besides the index so we can cache even if order changes
+		dstPath := path.Join(b.CacheDir, fmt.Sprintf("%d.tar", i))
 
-	// Ensure cache directory exists
-	fmt.Printf("Creating %s dir ...\n", b.CacheDir)
-	err = os.MkdirAll(b.CacheDir, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Copy the %s file to the %s dir ...\n", srcPath, dstPath)
-	err = util.File(srcPath, dstPath)
-	if err != nil {
-		panic(err)
-	}
-
-	if kind == "build" {
-		fmt.Printf("Extract the content of the tarball file %s under the cache %s\n", b.Opts.TarPath, b.Opts.CacheDir)
-		err = untar(dstPath, b.CacheDir)
+		// Ensure cache directory exists
+		fmt.Printf("Creating %s dir ...\n", b.CacheDir)
+		err = os.MkdirAll(b.CacheDir, os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
 
-		layerFiles, err := layerTarfiles()
+		fmt.Printf("Copy the %s file to the %s dir ...\n", srcPath, dstPath)
+		err = util.File(srcPath, dstPath)
 		if err != nil {
 			panic(err)
 		}
 
-		// We're in "build" mode, untar layers to root filesystem: /
-		for _, layerFile := range layerFiles {
-			workingDirectory := "/"
-			tarPath := "/layers/kaniko/" + layerFile
+		extractPath := path.Join(b.CacheDir, fmt.Sprintf("%d", i))
+		err = os.MkdirAll(extractPath, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Extract the content of the tarball file %s under the cache %s\n", dstPath, extractPath)
+		err = untar(dstPath, extractPath)
+		if err != nil {
+			panic(err)
+		}
 
-			err = untar(tarPath, workingDirectory)
+		if kind == "build" {
+			// TODO: Why are we doing this for build? Executing the commands is enough right? Do we need to extract over the same files?
+			//
+			// manifestPath := path.Join(b.CacheDir, fmt.Sprintf("%d", i), "manifest.json")
+			// fmt.Printf("Untaring layers to root filesystem for %s", manifestPath)
+			// layerFiles, err := layerTarfiles(manifestPath)
+			// if err != nil {
+			// 	panic(err)
+			// }
+
+			// // We're in "build" mode, untar layers to root filesystem: /
+			// for _, layerFile := range layerFiles {
+			// 	workingDirectory := "/"
+			// 	tarPath := "/layers/kaniko/" + layerFile
+
+			// 	err = untar(tarPath, workingDirectory)
+			// 	if err != nil {
+			// 		panic(err)
+			// 	}
+			// }
+
+			// Run the build for buildpacks with lowered privileges.
+			// We must assume that this extender is run as root.
+			cmd := exec.Command("/cnb/lifecycle/builder", "-app", "/workspace", "-log-level", "debug")
+			cmd.Env = append(cmd.Env, "CNB_PLATFORM_API=0.8")
+			cmd.SysProcAttr = &syscall.SysProcAttr{}
+			cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err = cmd.Run()
 			if err != nil {
 				panic(err)
 			}
 		}
 
-		// Run the build for buildpacks with lowered privileges.
-		// We must assume that this extender is run as root.
-		cmd := exec.Command("/cnb/lifecycle/builder", "-app", "/workspace", "-log-level", "debug")
-		cmd.Env = append(cmd.Env, "CNB_PLATFORM_API=0.8")
-		cmd.SysProcAttr = &syscall.SysProcAttr{}
-		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Run()
-		if err != nil {
-			panic(err)
+		if kind == "run" {
+			// We're in "run" mode, leave the layer tar files for exporter to collect later.
+			// TODO: do we do anything else? Or is kaniko snapshot tar output all we need?
+			// TODO: I think we can cleanup the 0.tar files
 		}
-	}
-
-	if kind == "run" {
-		// We're in "run" mode, leave the layer tar files for exporter to collect later.
-		// TODO: do we do anything else? Or is kaniko snapshot tar output all we need?
 	}
 }
 
@@ -183,8 +195,8 @@ func untar(tarPath, workingDirectory string) error {
 	return command.Run()
 }
 
-func layerTarfiles() ([]string, error) {
-	manifestPath := "/layers/kaniko/manifest.json"
+func layerTarfiles(manifestPath string) ([]string, error) {
+	// manifestPath := "/layers/kaniko/manifest.json"
 	var manifest []struct {
 		Layers []string `json:"Layers"`
 	}

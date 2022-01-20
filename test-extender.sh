@@ -96,5 +96,6 @@ docker run \
   /cnb/lifecycle/exporter -run-image ubuntu:bionic -log-level debug $IMAGE_TAG
 
 echo ">>>>>>>>>> Validate app image..."
-# TODO: this fails because curl is not on there
+docker pull $IMAGE_TAG
+# TODO: this fails because "error while loading shared libraries: libnghttp2.so.14: cannot open shared object file: No such file or directory"
 docker run --rm --entrypoint bash -it $IMAGE_TAG -- curl google.com

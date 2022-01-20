@@ -292,42 +292,59 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 
 func (e *Exporter) addExtenderLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
 	e.Logger.Info("Adding extender layers")
-	manifestPath := "/layers-run/kaniko/manifest.json"
-	var manifest []struct {
-		Layers []string `json:"Layers"`
-	}
 
-	f, err := os.Open(manifestPath)
+	path := filepath.Join("/layers-run/kaniko")
+	dirs, err := ioutil.ReadDir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-
 		return err
 	}
 
-	defer f.Close()
+	for _, dir := range dirs {
+		if !dir.IsDir() {
+			continue
+		}
 
-	contents, _ := ioutil.ReadAll(f)
-	e.Logger.Infof("kaniko manifest: %s", string(contents))
-	f.Seek(0, 0)
+		e.Logger.Infof("Adding extender layers for %s", dir.Name())
+		manifestPath := filepath.Join(path, dir.Name(), "manifest.json")
+		var manifest []struct {
+			Layers []string `json:"Layers"`
+		}
 
-	err = json.NewDecoder(f).Decode(&manifest)
-	if err != nil {
-		return err
-	}
-
-	if len(manifest) == 0 || len(manifest[0].Layers) == 0 {
-		return nil
-	}
-
-	// Iterate layers except first one (the base layer)
-	for _, layerName := range manifest[0].Layers {
-		tarPath := "/layers-run/kaniko/" + layerName
-		e.Logger.Infof("Adding extended layer '%s'", tarPath)
-		err := opts.WorkingImage.AddLayer(tarPath)
+		f, err := os.Open(manifestPath)
 		if err != nil {
-			return errors.Wrapf(err, "creating ext layer")
+			if os.IsNotExist(err) {
+				return nil
+			}
+
+			return err
+		}
+
+		defer f.Close()
+
+		contents, _ := ioutil.ReadAll(f)
+		e.Logger.Infof("kaniko manifest: %s", string(contents))
+		f.Seek(0, 0)
+
+		err = json.NewDecoder(f).Decode(&manifest)
+		if err != nil {
+			return err
+		}
+
+		if len(manifest) == 0 || len(manifest[0].Layers) == 0 {
+			return nil
+		}
+
+		// Iterate layers except first one (the base layer)
+		for _, layerName := range manifest[0].Layers[1:] {
+			tarPath := filepath.Join(path, dir.Name(), layerName)
+			e.Logger.Infof("Adding extended layer '%s'", tarPath)
+			err := opts.WorkingImage.AddLayer(tarPath)
+			if err != nil {
+				return errors.Wrapf(err, "creating ext layer")
+			}
 		}
 	}
 
