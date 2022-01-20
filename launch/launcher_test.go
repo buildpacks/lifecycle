@@ -185,6 +185,14 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
 			})
 
+			it("should default the working directory to the app directory", func() {
+				process.WorkingDirectory = ""
+				h.AssertNil(t, launcher.LaunchProcess("", process))
+				actualDir, err := os.Getwd()
+				h.AssertNil(t, err)
+				h.AssertEq(t, actualDir, launcher.AppDir)
+			})
+
 			it("should execute in the specified working directory", func() {
 				process.WorkingDirectory = tmpDir
 				h.AssertNil(t, launcher.LaunchProcess("", process))
