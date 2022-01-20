@@ -3,15 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/GoogleContainerTools/kaniko/pkg/config"
-	cfg "github.com/redhat-buildpacks/poc/kaniko/buildpackconfig"
-	"github.com/redhat-buildpacks/poc/kaniko/util"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"syscall"
+
+	"github.com/BurntSushi/toml"
+	"github.com/GoogleContainerTools/kaniko/pkg/config"
+	cfg "github.com/redhat-buildpacks/poc/kaniko/buildpackconfig"
+	"github.com/redhat-buildpacks/poc/kaniko/util"
 )
 
 type BuildMetadata struct {
@@ -108,6 +109,12 @@ func doKaniko(kind, baseimage string) {
 		if err != nil {
 			panic(err)
 		}
+
+		// make sure the child processes are done
+		err = reapChildProcesses()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Log the content of the Kaniko dir
@@ -132,18 +139,18 @@ func doKaniko(kind, baseimage string) {
 		panic(err)
 	}
 
-	fmt.Printf("Extract the content of the tarball file %s under the cache %s\n", b.Opts.TarPath, b.Opts.CacheDir)
-	err = untar(dstPath, b.CacheDir)
-	if err != nil {
-		panic(err)
-	}
-
-	layerFiles, err := layerTarfiles()
-	if err != nil {
-		panic(err)
-	}
-
 	if kind == "build" {
+		fmt.Printf("Extract the content of the tarball file %s under the cache %s\n", b.Opts.TarPath, b.Opts.CacheDir)
+		err = untar(dstPath, b.CacheDir)
+		if err != nil {
+			panic(err)
+		}
+
+		layerFiles, err := layerTarfiles()
+		if err != nil {
+			panic(err)
+		}
+
 		// We're in "build" mode, untar layers to root filesystem: /
 		for _, layerFile := range layerFiles {
 			workingDirectory := "/"
@@ -167,6 +174,11 @@ func doKaniko(kind, baseimage string) {
 		if err != nil {
 			panic(err)
 		}
+	}
+
+	if kind == "run" {
+		// We're in "run" mode, leave the layer tar files for exporter to collect later.
+		// TODO: do we do anything else? Or is kaniko snapshot tar output all we need?
 	}
 }
 

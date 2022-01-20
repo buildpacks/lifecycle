@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,6 +90,11 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	buildMD := &platform.BuildMetadata{}
 	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(opts.LayersDir), buildMD); err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "read build metadata")
+	}
+
+	// extender layers
+	if err := e.addExtenderLayers(opts, &meta); err != nil {
+		return platform.ExportReport{}, err
 	}
 
 	// buildpack-provided layers
@@ -281,6 +287,50 @@ func (e *Exporter) addAppLayers(opts ExportOptions, slices []layers.Slice, meta 
 	if delta != 0 {
 		e.Logger.Infof("Adding %d/%d app layer(s)\n", delta, len(sliceLayers))
 	}
+	return nil
+}
+
+func (e *Exporter) addExtenderLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
+	e.Logger.Info("Adding extender layers")
+	manifestPath := "/layers-run/kaniko/manifest.json"
+	var manifest []struct {
+		Layers []string `json:"Layers"`
+	}
+
+	f, err := os.Open(manifestPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	defer f.Close()
+
+	contents, _ := ioutil.ReadAll(f)
+	e.Logger.Infof("kaniko manifest: %s", string(contents))
+	f.Seek(0, 0)
+
+	err = json.NewDecoder(f).Decode(&manifest)
+	if err != nil {
+		return err
+	}
+
+	if len(manifest) == 0 || len(manifest[0].Layers) == 0 {
+		return nil
+	}
+
+	// Iterate layers except first one (the base layer)
+	for _, layerName := range manifest[0].Layers {
+		tarPath := "/layers-run/kaniko/" + layerName
+		e.Logger.Infof("Adding extended layer '%s'", tarPath)
+		err := opts.WorkingImage.AddLayer(tarPath)
+		if err != nil {
+			return errors.Wrapf(err, "creating ext layer")
+		}
+	}
+
 	return nil
 }
 
