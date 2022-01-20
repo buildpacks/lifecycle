@@ -109,12 +109,6 @@ func doKaniko(kind, baseimage string) {
 		if err != nil {
 			panic(err)
 		}
-
-		// make sure the child processes are done
-		err = reapChildProcesses()
-		if err != nil {
-			panic(err)
-		}
 	}
 
 	// Log the content of the Kaniko dir
