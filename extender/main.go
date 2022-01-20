@@ -19,12 +19,12 @@ type BuildMetadata struct {
 }
 
 type DockerfileArg struct {
-	Key   string `toml:"name"` // TODO: which do we want?
+	Key   string `toml:"name"`
 	Value string `toml:"value"`
 }
 
 type Dockerfile struct {
-	ExtensionID string          `toml:"extension_id"` // TODO: nest [[dockerfiles]] under [[extensions]]?
+	ExtensionID string          `toml:"extension_id"`
 	Path        string          `toml:"path"`
 	Type        string          `toml:"type"`
 	Args        []DockerfileArg `toml:"args"`
@@ -53,6 +53,7 @@ func main() {
 	}
 }
 
+// TODO: this only knows how to extend the build image (in container). Extension for run image will be added later.
 func doKaniko(kind, baseimage string) {
 	fmt.Println("Starting the Kaniko application to process a Dockerfile ...")
 
@@ -117,6 +118,7 @@ func doKaniko(kind, baseimage string) {
 	srcPath := path.Join("/", b.LayerTarFileName)
 	dstPath := path.Join(b.CacheDir, b.LayerTarFileName)
 
+	// Ensure cache directory exists
 	fmt.Printf("Creating %s dir ...\n", b.CacheDir)
 	err = os.MkdirAll(b.CacheDir, os.ModePerm)
 	if err != nil {
@@ -129,19 +131,6 @@ func doKaniko(kind, baseimage string) {
 		panic(err)
 	}
 
-	// ANTHONY: everything below just isn't working...
-	// b.ExtractImageTarFile(dstPath)
-
-	// 	fmt.Println("Extract the layer file(s)")
-	//	descriptor, err := b.LoadDescriptorAndConfig()
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//
-	//	fmt.Printf("%+v\n", descriptor)
-	//	layers := descriptor[0].Layers
-	//	b.ExtractTarGZFilesWithoutBaseImage(layers[0])
-
 	fmt.Printf("Extract the content of the tarball file %s under the cache %s\n", b.Opts.TarPath, b.Opts.CacheDir)
 	err = untar(dstPath, b.CacheDir)
 	if err != nil {
@@ -153,28 +142,30 @@ func doKaniko(kind, baseimage string) {
 		panic(err)
 	}
 
-	// We're in "build" mode, untar layers to root filesystem: /
-	for _, layerFile := range layerFiles {
-		workingDirectory := "/"
-		tarPath := "/layers/kaniko/" + layerFile
+	if kind == "build" {
+		// We're in "build" mode, untar layers to root filesystem: /
+		for _, layerFile := range layerFiles {
+			workingDirectory := "/"
+			tarPath := "/layers/kaniko/" + layerFile
 
-		err = untar(tarPath, workingDirectory)
+			err = untar(tarPath, workingDirectory)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		// Run the build for buildpacks with lowered privileges.
+		// We must assume that this extender is run as root.
+		cmd := exec.Command("/cnb/lifecycle/builder", "-app", "/workspace", "-log-level", "debug")
+		cmd.Env = append(cmd.Env, "CNB_PLATFORM_API=0.8")
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
 		if err != nil {
 			panic(err)
 		}
-	}
-
-	// Run the build with lowered privileges.
-	// We must assume that this extender is run as root
-	cmd := exec.Command("/cnb/lifecycle/builder", "-app", "/workspace", "-log-level", "debug")
-	cmd.Env = append(cmd.Env, "CNB_PLATFORM_API=0.8")
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: 1000, Gid: 1000}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		panic(err)
 	}
 }
 
