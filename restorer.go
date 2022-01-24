@@ -98,12 +98,11 @@ func (r *Restorer) Restore(cache Cache) error {
 
 	if r.Platform.API().AtLeast("0.8") {
 		g.Go(func() error {
-			if cacheMeta.BOM.SHA == "" {
-				return nil
-			}
-			r.Logger.Infof("Restoring data for sbom from cache")
-			if err := r.SBOMRestorer.RestoreFromCache(cache, cacheMeta.BOM.SHA); err != nil {
-				return err
+			if cacheMeta.BOM.SHA != "" {
+				r.Logger.Infof("Restoring data for sbom from cache")
+				if err := r.SBOMRestorer.RestoreFromCache(cache, cacheMeta.BOM.SHA); err != nil {
+					return err
+				}
 			}
 			return r.SBOMRestorer.RestoreToBuildpackLayers(r.Buildpacks)
 		})

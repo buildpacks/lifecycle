@@ -74,6 +74,9 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 				mockCtrl = gomock.NewController(t)
 				sbomRestorer = ltestmock.NewMockSBOMRestorer(mockCtrl)
+				if api.MustParse(platformAPI).AtLeast("0.8") {
+					sbomRestorer.EXPECT().RestoreToBuildpackLayers(gomock.Any()).AnyTimes()
+				}
 
 				restorer = &lifecycle.Restorer{
 					LayersDir: layersDir,
@@ -659,7 +662,6 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 				it("restores the SBOM layer from the cache", func() {
 					sbomRestorer.EXPECT().RestoreFromCache(testCache, "some-digest")
-					sbomRestorer.EXPECT().RestoreToBuildpackLayers(restorer.Buildpacks)
 					err := restorer.Restore(testCache)
 					h.AssertNil(t, err)
 				})
