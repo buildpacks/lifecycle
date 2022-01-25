@@ -97,25 +97,29 @@ func doKaniko(kind, baseimage string) {
 
 		if kind == "build" {
 			// TODO: execute all but the FROM clauses in the Dockerfile?
-
 			// Define opts
 			opts := config.KanikoOptions{
 				BuildArgs:      toMultiArg(d.Args),
 				DockerfilePath: d.Path,
-				// Cache:          true,
+				Cache:          true,
 				// CacheOptions: config.CacheOptions{
 				// 	CacheDir: b.CacheDir,
 				// },
-				// IgnoreVarRun: true,
+				IgnoreVarRun: true,
 				NoPush:       true,
 				SrcContext:   b.WorkspaceDir,
 				SnapshotMode: "full",
+				// OCILayoutPath:       "/layers/kaniko",
+				// ImageNameDigestFile: fmt.Sprintf("/layers/kaniko/idk%s", b.Destination),
+				RegistryOptions: config.RegistryOptions{
+					SkipTLSVerify: true,
+				},
 				// IgnorePaths:  b.IgnorePaths,
 				// TODO: we can not output a tar for intermediate images, we only need the last one
 				// TarPath:      "/layers/kaniko/new_base.tar",
 				// Destinations: []string{b.Destination},
 				// ForceBuildMetadata: true,
-				// Cleanup:            true,
+				Cleanup: false,
 			}
 
 			// Build the Dockerfile
@@ -138,20 +142,25 @@ func doKaniko(kind, baseimage string) {
 		opts := config.KanikoOptions{
 			BuildArgs:      toMultiArg(d.Args),
 			DockerfilePath: d.Path,
-			// Cache:          true,
+			Cache:          true,
 			// CacheOptions: config.CacheOptions{
 			// 	CacheDir: b.CacheDir,
 			// },
-			// IgnoreVarRun: true,
+			IgnoreVarRun: true,
 			// NoPush:       true,
 			SrcContext:   b.WorkspaceDir,
 			SnapshotMode: "full",
+			// OCILayoutPath:       "/layers/kaniko",
+			// ImageNameDigestFile: fmt.Sprintf("/layers/kaniko/idk%s", b.Destination),
 			// IgnorePaths:  b.IgnorePaths,
 			// TODO: we can not output a tar for intermediate images, we only need the last one
-			TarPath:      "/layers/kaniko/new_base.tar",
+			// TarPath:      "/layers/kaniko/new_base.tar",
 			Destinations: []string{b.Destination},
 			// ForceBuildMetadata: true,
-			// Cleanup: true,
+			Cleanup: true,
+			RegistryOptions: config.RegistryOptions{
+				SkipTLSVerify: true,
+			},
 		}
 
 		// Build the Dockerfile

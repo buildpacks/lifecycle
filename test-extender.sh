@@ -20,6 +20,15 @@ EOF
 docker build -t $REGISTRY_HOST/test-builder .
 docker push $REGISTRY_HOST/test-builder
 
+cat << EOF > Dockerfile.extender
+FROM scratch
+COPY ./lifecycle /cnb/lifecycle
+ENTRYPOINT /cnb/lifecycle/extender
+EOF
+
+docker build -f Dockerfile.extender -t $REGISTRY_HOST/extender .
+docker push $REGISTRY_HOST/extender
+
 cd $SAMPLES_REPO_PATH
 
 rm -rf $SAMPLES_REPO_PATH/kaniko
@@ -79,18 +88,13 @@ docker run \
   -v $PWD/kaniko-run/:/kaniko \
   -v $PWD/layers-run/:/layers \
   -v $PWD/cnb/ext/:/cnb/ext \
-  -u root \
   -e REGISTRY_HOST=$REGISTRY_HOST \
-  $REGISTRY_HOST/test-builder \
-  /cnb/lifecycle/extender kaniko run cnbs/sample-stack-run:bionic
+  --entrypoint /cnb/lifecycle/extender \
+  $REGISTRY_HOST/extender \
+  kaniko run cnbs/sample-stack-run:bionic
   #              args:    <kaniko|buildah> <build|run> <base-image>
 
-echo ">>>>>>>>>> Validate extended run image..."
-docker load -i $PWD/layers-run/kaniko/new_base.tar
-docker run --rm -it $REGISTRY_HOST/extended/runimage cat /opt/arg.txt
-# docker run --rm -it $REGISTRY_HOST/extended/runimage curl google.com
-
-# echo ">>>>>>>>>> Exporting final app image..."
+echo ">>>>>>>>>> Exporting final app image..."
 
 docker run \
   -v $PWD/workspace/:/workspace \
@@ -106,5 +110,4 @@ docker run \
 # echo ">>>>>>>>>> Validate app image..."
 docker pull $REGISTRY_HOST/appimage
 docker run --rm --entrypoint cat -it $REGISTRY_HOST/appimage /opt/arg.txt
-# # TODO: this fails because "error while loading shared libraries: libnghttp2.so.14: cannot open shared object file: No such file or directory"
-# docker run --rm --entrypoint curl -it $REGISTRY_HOST/appimage google.com
+docker run --rm --entrypoint curl -it $REGISTRY_HOST/appimage google.com
