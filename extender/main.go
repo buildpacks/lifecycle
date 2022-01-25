@@ -101,7 +101,7 @@ func doKaniko(kind, baseimage string) {
 			opts := config.KanikoOptions{
 				BuildArgs:      toMultiArg(d.Args),
 				DockerfilePath: d.Path,
-				Cache:          true,
+				// Cache:          true,
 				// CacheOptions: config.CacheOptions{
 				// 	CacheDir: b.CacheDir,
 				// },
@@ -142,7 +142,7 @@ func doKaniko(kind, baseimage string) {
 		opts := config.KanikoOptions{
 			BuildArgs:      toMultiArg(d.Args),
 			DockerfilePath: d.Path,
-			Cache:          true,
+			// Cache:          true,
 			// CacheOptions: config.CacheOptions{
 			// 	CacheDir: b.CacheDir,
 			// },
