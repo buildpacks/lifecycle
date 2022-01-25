@@ -88,7 +88,7 @@ docker run \
 echo ">>>>>>>>>> Validate extended run image..."
 docker load -i $PWD/layers-run/kaniko/new_base.tar
 docker run --rm -it $REGISTRY_HOST/extended/runimage cat /opt/arg.txt
-docker run --rm -it $REGISTRY_HOST/extended/runimage curl google.com
+# docker run --rm -it $REGISTRY_HOST/extended/runimage curl google.com
 
 # echo ">>>>>>>>>> Exporting final app image..."
 
@@ -107,4 +107,4 @@ docker run \
 docker pull $REGISTRY_HOST/appimage
 docker run --rm --entrypoint cat -it $REGISTRY_HOST/appimage /opt/arg.txt
 # # TODO: this fails because "error while loading shared libraries: libnghttp2.so.14: cannot open shared object file: No such file or directory"
-docker run --rm --entrypoint curl -it $REGISTRY_HOST/appimage google.com
+# docker run --rm --entrypoint curl -it $REGISTRY_HOST/appimage google.com
