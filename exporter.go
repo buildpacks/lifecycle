@@ -93,9 +93,10 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	}
 
 	// extender layers
-	if err := e.addExtenderLayers(opts, &meta); err != nil {
-		return platform.ExportReport{}, err
-	}
+	// the new base is currently being referenced via run-image
+	// if err := e.addExtenderLayers(opts, &meta); err != nil {
+	// 	return platform.ExportReport{}, err
+	// }
 
 	// buildpack-provided layers
 	if err := e.addBuildpackLayers(opts, &meta); err != nil {
