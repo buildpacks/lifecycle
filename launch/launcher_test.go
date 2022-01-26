@@ -69,6 +69,11 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// MacOS can have temp dir in a symlink, which breaks path comparisons.
+		tmpDir, err = filepath.EvalSymlinks(tmpDir)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := os.MkdirAll(filepath.Join(tmpDir, "launch", "app"), 0755); err != nil {
 			t.Fatal(err)
 		}
@@ -178,6 +183,22 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("expected syscall.Exec to be called once: actual %v\n", syscallExecArgsColl)
 				}
 				h.AssertEq(t, syscallExecArgsColl[0].envv, envList)
+			})
+
+			it("should default the working directory to the app directory", func() {
+				process.WorkingDirectory = ""
+				h.AssertNil(t, launcher.LaunchProcess("", process))
+				actualDir, err := os.Getwd()
+				h.AssertNil(t, err)
+				h.AssertEq(t, actualDir, launcher.AppDir)
+			})
+
+			it("should execute in the specified working directory", func() {
+				process.WorkingDirectory = tmpDir
+				h.AssertNil(t, launcher.LaunchProcess("", process))
+				actualDir, err := os.Getwd()
+				h.AssertNil(t, err)
+				h.AssertEq(t, actualDir, tmpDir)
 			})
 
 			when("buildpacks have provided layer directories that could affect the environment", func() {
@@ -396,6 +417,28 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
 				h.AssertEq(t, shell.nCalls, 1)
 				h.AssertEq(t, shell.process.Env, envList)
+			})
+
+			when("process specific working directory", func() {
+				it.Before(func() {
+					process.WorkingDirectory = "/some-dir"
+				})
+
+				it("sets the working directory on the shell process", func() {
+					h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+					h.AssertEq(t, shell.process.WorkingDirectory, "/some-dir")
+				})
+			})
+
+			when("no specified working directory", func() {
+				it.Before(func() {
+					process.WorkingDirectory = ""
+				})
+
+				it("sets the working directory to the app directory", func() {
+					h.AssertNil(t, launcher.LaunchProcess("/path/to/launcher", process))
+					h.AssertEq(t, shell.process.WorkingDirectory, launcher.AppDir)
+				})
 			})
 
 			when("buildpack have provided profile scripts", func() {

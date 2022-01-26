@@ -25,13 +25,16 @@ func TestCmd(t *testing.T) {
 
 func testCmd(t *testing.T, when spec.G, it spec.S) {
 	var (
-		shell  launch.Shell
-		tmpDir string
+		shell      launch.Shell
+		tmpDir     string
+		defaultDir string
+		err        error
 	)
 
 	it.Before(func() {
+		defaultDir, err = os.Getwd()
+		h.AssertNil(t, err)
 		h.SkipIf(t, runtime.GOOS != "windows", "skip cmd tests on unix")
-		var err error
 		tmpDir, err = ioutil.TempDir("", "shell-test")
 		h.AssertNil(t, err)
 		shell = &launch.CmdShell{Exec: hl.SyscallExecWithStdout(t, tmpDir)}
@@ -47,6 +50,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 		when("is not script", func() {
 			when("there are profiles", func() {
 				it.Before(func() {
+					h.AssertNil(t, err)
 					process = launch.ShellProcess{
 						Script:  false,
 						Command: "echo",
@@ -54,12 +58,39 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 						Env: []string{
 							"SOME_VAR=some-val",
 						},
+						WorkingDirectory: defaultDir,
 					}
 					process.Profiles = []string{
 						filepath.Join("testdata", "profiles", "print_argv0.bat"),
 						filepath.Join("testdata", "profiles", "print_env.bat"),
 						filepath.Join("testdata", "profiles", "set_env.bat"),
 					}
+				})
+
+				it("runs the profiles from the default directory", func() {
+					process.Profiles = []string{
+						filepath.Join("testdata", "profiles", "pwd.bat"),
+					}
+					err = shell.Launch(process)
+					h.AssertNil(t, err)
+					stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
+					h.AssertStringContains(t, stdout, fmt.Sprintf("profile directory: %s\r\n", defaultDir))
+				})
+
+				it("runs the command from the working directory", func() {
+					process.WorkingDirectory = tmpDir
+					process.Command = "echo"
+					process.Args = []string{
+						"process",
+						"working",
+						"directory:",
+						"&&",
+						"cd",
+					}
+					err = shell.Launch(process)
+					h.AssertNil(t, err)
+					stdout := rdfile(t, filepath.Join(tmpDir, "stdout"))
+					h.AssertStringContains(t, stdout, fmt.Sprintf("process working directory: \r\n%s\r\n", tmpDir))
 				})
 
 				it("sets argv0 for profile scripts to profile script path", func() {
@@ -104,6 +135,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 					Env: []string{
 						"SOME_VAR=some-val",
 					},
+					WorkingDirectory: defaultDir,
 				}
 				err := shell.Launch(process)
 				h.AssertNil(t, err)

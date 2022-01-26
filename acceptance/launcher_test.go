@@ -230,9 +230,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		it("respects CNB_APP_DIR and CNB_LAYERS_DIR environment variables", func() {
 			cmd := exec.Command("docker", "run", "--rm",
-				"--env", "CNB_APP_DIR=/other-app",
+				"--env", "CNB_APP_DIR="+ctrPath("/other-app"),
 				"--env", "CNB_LAYERS_DIR=/other-layers",
-				launchImage)
+				launchImage) // #nosec G204
 			assertOutput(t, cmd, "sourced other app profile\nExecuting other-layers web process-type")
 		})
 
@@ -259,7 +259,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					append(
 						[]string{
 							"run", "--rm",
-							"--env", "CNB_APP_DIR=/workspace",
+							"--env", "CNB_APP_DIR=" + ctrPath("/workspace"),
 							"--env", "SOME_USER_VAR=some-user-val",
 							"--env", "OTHER_VAR=other-user-val",
 							launchImage,
