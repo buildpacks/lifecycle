@@ -236,7 +236,7 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 			LayersDir: aa.layersDir,
 			Logger:    cmd.DefaultLogger,
 			Nop:       aa.skipLayers,
-		}),
+		}, aa.platform.API()),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(platform.AnalyzeError), "analyzer")

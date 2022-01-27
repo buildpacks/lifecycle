@@ -49,12 +49,9 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 			appMeta = platform.LayersMetadata{}
 		}
 
-		if a.Platform.API().AtLeast("0.8") {
-			if appMeta.BOM != nil && appMeta.BOM.SHA != "" {
-				a.Logger.Infof("Restoring data for sbom from previous image")
-				if err := a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, appMeta.BOM.SHA); err != nil {
-					return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
-				}
+		if bomSHA(appMeta) != "" {
+			if err := a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
+				return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
 			}
 		}
 	} else {
@@ -104,6 +101,13 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
+}
+
+func bomSHA(appMeta platform.LayersMetadata) string {
+	if appMeta.BOM == nil {
+		return ""
+	}
+	return appMeta.BOM.SHA
 }
 
 func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {

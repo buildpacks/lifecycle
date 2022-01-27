@@ -43,7 +43,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		sbomRestorer = layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 			LayersDir: layersDir,
 			Logger:    &log.Logger{Handler: &discard.Handler{}},
-		})
+		}, api.Platform.Latest())
 	})
 
 	it.After(func() {
@@ -55,7 +55,16 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			it("returns a NopSBOMRestorer", func() {
 				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 					Nop: true,
-				})
+				}, api.Platform.Latest())
+				_, ok := r.(*layer.NopSBOMRestorer)
+				h.AssertEq(t, ok, true)
+			})
+		})
+		when("not supported by the platform", func() {
+			it("returns a NopSBOMRestorer", func() {
+				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+					Nop: true,
+				}, api.MustParse("0.7"))
 				_, ok := r.(*layer.NopSBOMRestorer)
 				h.AssertEq(t, ok, true)
 			})
@@ -65,7 +74,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 					LayersDir: "some-dir",
 					Logger:    &log.Logger{Handler: &discard.Handler{}},
-				})
+				}, api.Platform.Latest())
 				_, ok := r.(*layer.DefaultSBOMRestorer)
 				h.AssertEq(t, ok, true)
 			})

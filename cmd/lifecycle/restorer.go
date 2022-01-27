@@ -128,7 +128,7 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		SBOMRestorer: layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 			LayersDir: r.layersDir,
 			Logger:    cmd.DefaultLogger,
-		}),
+		}, r.platform.API()),
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {

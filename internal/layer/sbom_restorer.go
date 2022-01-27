@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	io2 "github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/launch"
@@ -35,8 +36,8 @@ type SBOMRestorerOpts struct {
 	Nop       bool
 }
 
-func NewSBOMRestorer(opts SBOMRestorerOpts) SBOMRestorer {
-	if opts.Nop {
+func NewSBOMRestorer(opts SBOMRestorerOpts, platformAPI *api.Version) SBOMRestorer {
+	if opts.Nop || platformAPI.LessThan("0.8") {
 		return &NopSBOMRestorer{}
 	}
 	return &DefaultSBOMRestorer{
@@ -51,6 +52,8 @@ type DefaultSBOMRestorer struct {
 }
 
 func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDigest string) error {
+	r.logger.Infof("Restoring data for sbom from previous image")
+
 	// Sanity check to prevent panic.
 	if image == nil {
 		return errors.Errorf("restoring layer: previous image not found for %q", layerDigest)
