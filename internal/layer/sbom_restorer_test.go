@@ -40,11 +40,36 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		layersDir, err = ioutil.TempDir("", "lifecycle.layers-dir.")
 		h.AssertNil(t, err)
 
-		sbomRestorer = layer.NewSBOMRestorer(layersDir, &log.Logger{Handler: &discard.Handler{}})
+		sbomRestorer = layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+			LayersDir: layersDir,
+			Logger:    &log.Logger{Handler: &discard.Handler{}},
+		})
 	})
 
 	it.After(func() {
 		h.AssertNil(t, os.RemoveAll(layersDir))
+	})
+
+	when("#NewSBOMRestorer", func() {
+		when("nop option is provided", func() {
+			it("returns a NopSBOMRestorer", func() {
+				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+					Nop: true,
+				})
+				_, ok := r.(*layer.NopSBOMRestorer)
+				h.AssertEq(t, ok, true)
+			})
+		})
+		when("nop option is not provided", func() {
+			it("returns a DefaultSBOMRestorer", func() {
+				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+					LayersDir: "some-dir",
+					Logger:    &log.Logger{Handler: &discard.Handler{}},
+				})
+				_, ok := r.(*layer.DefaultSBOMRestorer)
+				h.AssertEq(t, ok, true)
+			})
+		})
 	})
 
 	when("#RestoreFromPrevious", func() {

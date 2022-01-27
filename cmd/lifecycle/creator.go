@@ -216,7 +216,7 @@ func (c *createCmd) Exec() error {
 			layersDir:        c.layersDir,
 			legacyCache:      cacheStore,
 			legacyGroup:      group,
-			legacySkipLayers: c.skipRestore,
+			skipLayers:       c.skipRestore,
 			platform:         c.platform,
 			previousImageRef: c.previousImageRef,
 			useDaemon:        c.useDaemon,

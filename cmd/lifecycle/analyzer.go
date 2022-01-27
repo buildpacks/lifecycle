@@ -37,11 +37,11 @@ type analyzeCmd struct {
 
 // analyzeArgs contains inputs needed when run by creator.
 type analyzeArgs struct {
-	launchCacheDir   string // creator-only in Platform API 0.8
+	launchCacheDir   string
 	layersDir        string
 	previousImageRef string
 	runImageRef      string
-	legacySkipLayers bool
+	skipLayers       bool
 	useDaemon        bool
 
 	docker      client.CommonAPIClient // construct if necessary before dropping privileges
@@ -59,6 +59,10 @@ func (a *analyzeCmd) DefineFlags() {
 	cmd.FlagLayersDir(&a.layersDir)
 	cmd.FlagUID(&a.uid)
 	cmd.FlagUseDaemon(&a.useDaemon)
+	if a.platform.API().AtLeast("0.9") {
+		cmd.FlagLaunchCacheDir(&a.launchCacheDir)
+		cmd.FlagSkipLayers(&a.skipLayers)
+	}
 	if a.platformAPIVersionGreaterThan06() {
 		cmd.FlagPreviousImage(&a.previousImageRef)
 		cmd.FlagRunImage(&a.runImageRef)
@@ -67,7 +71,7 @@ func (a *analyzeCmd) DefineFlags() {
 	} else {
 		cmd.FlagCacheDir(&a.legacyCacheDir)
 		cmd.FlagGroupPath(&a.legacyGroupPath)
-		cmd.FlagSkipLayers(&a.legacySkipLayers)
+		cmd.FlagSkipLayers(&a.skipLayers)
 	}
 }
 
@@ -108,6 +112,11 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		if err := a.ensurePreviousAndTargetHaveSameRegistry(); err != nil {
 			return errors.Wrap(err, "ensuring images are on same registry")
 		}
+	}
+
+	if a.launchCacheDir != "" && !a.useDaemon {
+		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
+		a.launchCacheDir = ""
 	}
 
 	if err := image.ValidateDestinationTags(a.useDaemon, append(a.additionalTags, a.outputImageRef)...); err != nil {
@@ -222,8 +231,12 @@ func (aa analyzeArgs) analyze() (platform.AnalyzedMetadata, error) {
 		Platform:              aa.platform,
 		PreviousImage:         previousImage,
 		RunImage:              runImage,
-		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.legacySkipLayers),
-		SBOMRestorer:          layer.NewSBOMRestorer(aa.layersDir, cmd.DefaultLogger),
+		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, aa.layersDir, aa.skipLayers),
+		SBOMRestorer: layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+			LayersDir: aa.layersDir,
+			Logger:    cmd.DefaultLogger,
+			Nop:       aa.skipLayers,
+		}),
 	}).Analyze()
 	if err != nil {
 		return platform.AnalyzedMetadata{}, cmd.FailErrCode(err, aa.platform.CodeFor(platform.AnalyzeError), "analyzer")

@@ -29,10 +29,19 @@ type Cache interface {
 	RetrieveLayer(sha string) (io.ReadCloser, error)
 }
 
-func NewSBOMRestorer(layersDir string, logger Logger) SBOMRestorer {
+type SBOMRestorerOpts struct {
+	LayersDir string
+	Logger    Logger
+	Nop       bool
+}
+
+func NewSBOMRestorer(opts SBOMRestorerOpts) SBOMRestorer {
+	if opts.Nop {
+		return &NopSBOMRestorer{}
+	}
 	return &DefaultSBOMRestorer{
-		layersDir: layersDir,
-		logger:    logger,
+		layersDir: opts.LayersDir,
+		logger:    opts.Logger,
 	}
 }
 
@@ -128,4 +137,18 @@ func (r *DefaultSBOMRestorer) contains(detectedBps []buildpack.GroupBuildpack, i
 		}
 	}
 	return false
+}
+
+type NopSBOMRestorer struct{}
+
+func (r *NopSBOMRestorer) RestoreFromPrevious(_ imgutil.Image, _ string) error {
+	return nil
+}
+
+func (r *NopSBOMRestorer) RestoreFromCache(_ Cache, _ string) error {
+	return nil
+}
+
+func (r *NopSBOMRestorer) RestoreToBuildpackLayers(_ []buildpack.GroupBuildpack) error {
+	return nil
 }
