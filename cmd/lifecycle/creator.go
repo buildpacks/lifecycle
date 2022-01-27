@@ -177,6 +177,7 @@ func (c *createCmd) Exec() error {
 			platform:         c.platform,
 			previousImageRef: c.previousImageRef,
 			runImageRef:      c.runImageRef,
+			skipLayers:       c.skipRestore,
 			useDaemon:        c.useDaemon,
 		}.analyze()
 		if err != nil {
