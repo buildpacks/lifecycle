@@ -102,7 +102,6 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 				ImageID: "s0m3D1g3sT",
 			})
 			h.AssertNil(t, image.AddLayerWithDiffID(layer.TarPath, layer.Digest))
-			h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, layer.Digest)))
 
 			h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
 		})
@@ -125,6 +124,16 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 					sbomRestorer.RestoreFromPrevious(nil, layerDigest),
 					fmt.Sprintf("restoring layer: previous image not found for \"%s\"", layerDigest),
 				)
+			})
+		})
+
+		when("image is not found", func() {
+			it.Before(func() {
+				h.AssertNil(t, image.Delete())
+			})
+
+			it("does not error", func() {
+				h.AssertNil(t, sbomRestorer.RestoreFromPrevious(image, "s0m3D1g3sT"))
 			})
 		})
 

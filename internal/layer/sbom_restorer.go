@@ -52,17 +52,17 @@ type DefaultSBOMRestorer struct {
 }
 
 func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDigest string) error {
-	if layerDigest == "" {
-		return nil
-	}
-	r.logger.Infof("Restoring data for sbom from previous image")
-
 	// Sanity check to prevent panic.
 	if image == nil {
 		return errors.Errorf("restoring layer: previous image not found for %q", layerDigest)
 	}
-	r.logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
 
+	if !image.Found() || layerDigest == "" {
+		return nil
+	}
+	r.logger.Infof("Restoring data for sbom from previous image")
+
+	r.logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
 	rc, err := image.GetLayer(layerDigest)
 	if err != nil {
 		return err
