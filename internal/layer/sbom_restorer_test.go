@@ -118,6 +118,21 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			want := `some-bom-data`
 			h.AssertEq(t, string(got), want)
 		})
+
+		when("image is empty", func() {
+			it("errors", func() {
+				h.AssertError(t,
+					sbomRestorer.RestoreFromPrevious(nil, layerDigest),
+					fmt.Sprintf("restoring layer: previous image not found for \"%s\"", layerDigest),
+				)
+			})
+		})
+
+		when("layer digest is empty", func() {
+			it("does not error", func() {
+				h.AssertNil(t, sbomRestorer.RestoreFromPrevious(image, ""))
+			})
+		})
 	})
 
 	when("#RestoreFromCache", func() {
