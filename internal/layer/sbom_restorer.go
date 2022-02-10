@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	io2 "github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/launch"
@@ -29,10 +30,19 @@ type Cache interface {
 	RetrieveLayer(sha string) (io.ReadCloser, error)
 }
 
-func NewSBOMRestorer(layersDir string, logger Logger) SBOMRestorer {
+type SBOMRestorerOpts struct {
+	LayersDir string
+	Logger    Logger
+	Nop       bool
+}
+
+func NewSBOMRestorer(opts SBOMRestorerOpts, platformAPI *api.Version) SBOMRestorer {
+	if opts.Nop || platformAPI.LessThan("0.8") {
+		return &NopSBOMRestorer{}
+	}
 	return &DefaultSBOMRestorer{
-		layersDir: layersDir,
-		logger:    logger,
+		layersDir: opts.LayersDir,
+		logger:    opts.Logger,
 	}
 }
 
@@ -46,8 +56,13 @@ func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDige
 	if image == nil {
 		return errors.Errorf("restoring layer: previous image not found for %q", layerDigest)
 	}
-	r.logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
 
+	if !image.Found() || layerDigest == "" {
+		return nil
+	}
+	r.logger.Infof("Restoring data for sbom from previous image")
+
+	r.logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
 	rc, err := image.GetLayer(layerDigest)
 	if err != nil {
 		return err
@@ -128,4 +143,18 @@ func (r *DefaultSBOMRestorer) contains(detectedBps []buildpack.GroupBuildpack, i
 		}
 	}
 	return false
+}
+
+type NopSBOMRestorer struct{}
+
+func (r *NopSBOMRestorer) RestoreFromPrevious(_ imgutil.Image, _ string) error {
+	return nil
+}
+
+func (r *NopSBOMRestorer) RestoreFromCache(_ Cache, _ string) error {
+	return nil
+}
+
+func (r *NopSBOMRestorer) RestoreToBuildpackLayers(_ []buildpack.GroupBuildpack) error {
+	return nil
 }

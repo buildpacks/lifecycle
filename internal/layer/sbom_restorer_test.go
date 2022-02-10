@@ -40,11 +40,45 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		layersDir, err = ioutil.TempDir("", "lifecycle.layers-dir.")
 		h.AssertNil(t, err)
 
-		sbomRestorer = layer.NewSBOMRestorer(layersDir, &log.Logger{Handler: &discard.Handler{}})
+		sbomRestorer = layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+			LayersDir: layersDir,
+			Logger:    &log.Logger{Handler: &discard.Handler{}},
+		}, api.Platform.Latest())
 	})
 
 	it.After(func() {
 		h.AssertNil(t, os.RemoveAll(layersDir))
+	})
+
+	when("#NewSBOMRestorer", func() {
+		when("nop option is provided", func() {
+			it("returns a NopSBOMRestorer", func() {
+				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+					Nop: true,
+				}, api.Platform.Latest())
+				_, ok := r.(*layer.NopSBOMRestorer)
+				h.AssertEq(t, ok, true)
+			})
+		})
+		when("not supported by the platform", func() {
+			it("returns a NopSBOMRestorer", func() {
+				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+					Nop: true,
+				}, api.MustParse("0.7"))
+				_, ok := r.(*layer.NopSBOMRestorer)
+				h.AssertEq(t, ok, true)
+			})
+		})
+		when("nop option is not provided", func() {
+			it("returns a DefaultSBOMRestorer", func() {
+				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
+					LayersDir: "some-dir",
+					Logger:    &log.Logger{Handler: &discard.Handler{}},
+				}, api.Platform.Latest())
+				_, ok := r.(*layer.DefaultSBOMRestorer)
+				h.AssertEq(t, ok, true)
+			})
+		})
 	})
 
 	when("#RestoreFromPrevious", func() {
@@ -68,7 +102,6 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 				ImageID: "s0m3D1g3sT",
 			})
 			h.AssertNil(t, image.AddLayerWithDiffID(layer.TarPath, layer.Digest))
-			h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, layer.Digest)))
 
 			h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))
 		})
@@ -83,6 +116,31 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			got := h.MustReadFile(t, filepath.Join(layersDir, "sbom", "launch", "some-file"))
 			want := `some-bom-data`
 			h.AssertEq(t, string(got), want)
+		})
+
+		when("image is empty", func() {
+			it("errors", func() {
+				h.AssertError(t,
+					sbomRestorer.RestoreFromPrevious(nil, layerDigest),
+					fmt.Sprintf("restoring layer: previous image not found for \"%s\"", layerDigest),
+				)
+			})
+		})
+
+		when("image is not found", func() {
+			it.Before(func() {
+				h.AssertNil(t, image.Delete())
+			})
+
+			it("does not error", func() {
+				h.AssertNil(t, sbomRestorer.RestoreFromPrevious(image, "s0m3D1g3sT"))
+			})
+		})
+
+		when("layer digest is empty", func() {
+			it("does not error", func() {
+				h.AssertNil(t, sbomRestorer.RestoreFromPrevious(image, ""))
+			})
 		})
 	})
 
