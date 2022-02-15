@@ -24,6 +24,7 @@ var (
 	DefaultStackPath       = filepath.Join(rootDir, "cnb", "stack.toml")
 
 	DefaultAnalyzedFile        = "analyzed.toml"
+	DefaultConfigFile          = "config.toml"
 	DefaultGroupFile           = "group.toml"
 	DefaultOrderFile           = "order.toml"
 	DefaultPlanFile            = "plan.toml"
@@ -31,6 +32,7 @@ var (
 	DefaultReportFile          = "report.toml"
 
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
+	PlaceholderExtendConfigPath    = filepath.Join("<work-dir>", DefaultConfigFile)
 	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
 	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
 	PlaceholderProjectMetadataPath = filepath.Join("<layers>", DefaultProjectMetadataFile)
@@ -45,6 +47,9 @@ const (
 	EnvCacheDir            = "CNB_CACHE_DIR"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
+	EnvExtendConfigPath    = "CNB_EXTEND_CONFIG_PATH"
+	EnvExtendIgnorePaths   = "CNB_EXTEND_IGNORE_PATHS"
+	EnvExtendWorkDir       = "CNB_EXTEND_WORK_DIR"
 	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGroupPath           = "CNB_GROUP_PATH"
@@ -109,6 +114,23 @@ func FlagGroupPath(groupPath *string) {
 
 func DefaultGroupPath(platformAPI, layersDir string) string {
 	return defaultPath(DefaultGroupFile, platformAPI, layersDir)
+}
+
+func FlagExtendConfigPath(path *string) {
+	// TODO: fill in placeholder
+	flagSet.StringVar(path, "config", EnvOrDefault(EnvExtendConfigPath, PlaceholderExtendConfigPath), "path to config.toml")
+}
+
+func FlagExtendIgnorePaths(paths *string) {
+	flagSet.StringVar(paths, "ignore-paths", os.Getenv(EnvExtendIgnorePaths), "paths to ignore")
+}
+
+func FlagExtendKind(kind *string) {
+	flagSet.StringVar(kind, "kind", "build", "type of base image to extend (build or run)")
+}
+
+func FlagExtendWorkDir(workDir *string) {
+	flagSet.StringVar(workDir, "work-dir", os.Getenv(EnvExtendWorkDir), "path to working directory")
 }
 
 func FlagLaunchCacheDir(launchCacheDir *string) {

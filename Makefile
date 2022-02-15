@@ -44,7 +44,7 @@ build: build-linux-amd64 build-linux-arm64 build-windows-amd64
 
 build-linux-amd64: build-linux-amd64-lifecycle build-linux-amd64-symlinks build-linux-amd64-launcher build-linux-amd64-extender
 build-linux-arm64: build-linux-arm64-lifecycle build-linux-arm64-symlinks build-linux-arm64-launcher build-linux-arm64-extender
-build-windows-amd64: build-windows-amd64-lifecycle build-windows-amd64-symlinks build-windows-amd64-launcher build-windows-amd64-extender
+build-windows-amd64: build-windows-amd64-lifecycle build-windows-amd64-symlinks build-windows-amd64-launcher
 
 build-image-linux-amd64: build-linux-amd64 package-linux-amd64
 build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
@@ -116,7 +116,7 @@ $(BUILD_DIR)/linux-amd64/lifecycle/extender: $(GOFILES)
 $(BUILD_DIR)/linux-amd64/lifecycle/extender:
 	@echo "> Building lifecycle/extender for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
-	cd ./extender && $(GOENV) $(GOBUILD) -o $(OUT_DIR)/extender -a .
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/extender -a ./cmd/extender
 
 build-linux-arm64-extender: $(BUILD_DIR)/linux-arm64/lifecycle/extender
 
@@ -127,7 +127,7 @@ $(BUILD_DIR)/linux-arm64/lifecycle/extender: $(GOFILES)
 $(BUILD_DIR)/linux-arm64/lifecycle/extender:
 	@echo "> Building lifecycle/extender for $(GOOS)/$(GOARCH)..."
 	mkdir -p $(OUT_DIR)
-	cd ./extender && $(GOENV) $(GOBUILD) -o $(OUT_DIR)/extender -a .
+	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/extender -a ./cmd/extender
 
 build-linux-amd64-symlinks: export GOOS:=linux
 build-linux-amd64-symlinks: export GOARCH:=amd64
@@ -174,18 +174,6 @@ $(BUILD_DIR)/windows-amd64/lifecycle/launcher.exe: $(GOFILES)
 $(BUILD_DIR)/windows-amd64/lifecycle/launcher.exe:
 	@echo "> Building lifecycle/launcher for $(GOOS)/$(GOARCH)..."
 	$(GOBUILD) -o $(OUT_DIR)$/launcher.exe -a .$/cmd$/launcher
-
-# ANTHONY: The following (build extender for windows) does not work
-#          Someone should get back to this
-build-windows-amd64-extender: $(BUILD_DIR)/windows-amd64/lifecycle/extender.exe
-
-$(BUILD_DIR)/windows-amd64/lifecycle/extender.exe: export GOOS:=windows
-$(BUILD_DIR)/windows-amd64/lifecycle/extender.exe: export GOARCH:=amd64
-$(BUILD_DIR)/windows-amd64/lifecycle/extender.exe: OUT_DIR?=$(BUILD_DIR)$/$(GOOS)-$(GOARCH)$/lifecycle
-$(BUILD_DIR)/windows-amd64/lifecycle/extender.exe: $(GOFILES)
-$(BUILD_DIR)/windows-amd64/lifecycle/extender.exe:
-	@echo "> Building lifecycle/extender for $(GOOS)/$(GOARCH)..."
-	cd .$/extender && $(GOBUILD) -o $(OUT_DIR)$/extender.exe -a .
 
 build-windows-amd64-symlinks: export GOOS:=windows
 build-windows-amd64-symlinks: export GOARCH:=amd64
