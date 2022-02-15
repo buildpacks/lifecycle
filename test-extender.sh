@@ -93,7 +93,8 @@ docker run \
   -kind build \
   -log-level debug \
   -work-dir /kaniko \
-  "$REGISTRY_HOST/test-builder"
+  $REGISTRY_HOST/test-builder \
+  $REGISTRY_HOST/extended/buildimage
 
 docker pull $REGISTRY_HOST/extended/buildimage
 
@@ -114,7 +115,8 @@ docker run \
   -kind run \
   -log-level debug \
   -work-dir /kaniko \
-  cnbs/sample-stack-run:bionic
+  cnbs/sample-stack-run:bionic \
+  $REGISTRY_HOST/extended/runimage
 
 docker pull $REGISTRY_HOST/extended/runimage
 

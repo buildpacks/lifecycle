@@ -19,50 +19,28 @@ type DockerfileApplier struct {
 	cacheDir   string
 	contextDir string
 	workDir    string
-
-	logger Logger
 }
 
-type Logger interface {
-	Debug(msg string)
-	Debugf(fmt string, v ...interface{})
-
-	Info(msg string)
-	Infof(fmt string, v ...interface{})
-
-	Warn(msg string)
-	Warnf(fmt string, v ...interface{})
-
-	Error(msg string)
-	Errorf(fmt string, v ...interface{})
-}
-
-func NewDockerfileApplier(cacheDir, contextDir, workDir string, logger Logger) *DockerfileApplier {
+func NewDockerfileApplier(cacheDir, contextDir, workDir string) *DockerfileApplier {
 	return &DockerfileApplier{
 		cacheDir:   cacheDir,
 		contextDir: contextDir,
-		logger:     logger,
 		workDir:    workDir,
 	}
 }
 
-func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, image string, ignorePaths []string) error {
-	registryHost := os.Getenv("REGISTRY_HOST") // TODO: formalize this in the "spec"
-
-	destination := fmt.Sprintf("%s/extended/buildimage", registryHost)
-	a.logger.Debugf("Destination Image: %s", destination)
-
-	currentBaseImage := image
+func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, baseImageRef, targetImageRef string, ignorePaths []string, logger extender.Logger) error {
+	fromImageRef := baseImageRef
 	for idx, dockerfile := range dockerfiles {
 		if dockerfile.Type != buildKind {
-			a.logger.Debugf("Skipping Dockerfile %s of wrong kind...", dockerfile.Path)
+			logger.Infof("Skipping Dockerfile %s of wrong kind...", dockerfile.Path)
 			continue
 		}
 
 		opts := config.KanikoOptions{
-			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, currentBaseImage)),
-			Cleanup:         idx < len(dockerfiles)-1, // cleanup for all but the last dockerfile
-			Destinations:    []string{destination},
+			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, fromImageRef)),
+			Cleanup:         idx < len(dockerfiles)-1, // cleanup after all but the last dockerfile
+			Destinations:    []string{targetImageRef},
 			DockerfilePath:  dockerfile.Path,
 			IgnoreVarRun:    true,                                        // TODO: add ignore paths
 			RegistryOptions: config.RegistryOptions{SkipTLSVerify: true}, // TODO: remove eventually
@@ -70,46 +48,28 @@ func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, image 
 			SrcContext:      a.workDir,
 		}
 
-		// TODO: link to kaniko code to show why this is necessary
-		if err := os.Chdir("/"); err != nil {
-			panic(err)
-		}
-
-		a.logger.Debugf("Applying the Dockerfile at %s...", dockerfile.Path)
-		a.logger.Debugf("Options used: %+v", opts)
-		newImage, err := executor.DoBuild(&opts)
-		if err != nil {
-			return err
-		}
-		a.logger.Debug("Pushing the image to its destination...")
-		err = executor.DoPush(newImage, &opts)
-		if err != nil {
+		if err := doKaniko(dockerfile.Path, opts, logger); err != nil {
 			return err
 		}
 
 		// The base image for the next Dockerfile should be the one we just built
-		currentBaseImage = destination // TODO: use digest instead
+		fromImageRef = targetImageRef // TODO: use digest instead
 	}
 	return nil
 }
 
-func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, image string, ignorePaths []string) error {
-	registryHost := os.Getenv("REGISTRY_HOST") // TODO: formalize this in the "spec"
-
-	destination := fmt.Sprintf("%s/extended/runimage", registryHost)
-	a.logger.Debugf("Destination Image: %s", destination)
-
-	currentBaseImage := image
+func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, baseImageRef string, targetImageRef string, ignorePaths []string, logger extender.Logger) error {
+	fromImageRef := baseImageRef
 	for _, dockerfile := range dockerfiles {
 		if dockerfile.Type != runKind {
-			a.logger.Debugf("Skipping Dockerfile %s of wrong kind...", dockerfile.Path)
+			logger.Infof("Skipping Dockerfile %s of wrong kind...", dockerfile.Path)
 			continue
 		}
 
 		opts := config.KanikoOptions{
-			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, currentBaseImage)),
+			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, fromImageRef)),
 			Cleanup:         true,
-			Destinations:    []string{destination},
+			Destinations:    []string{targetImageRef},
 			DockerfilePath:  dockerfile.Path,
 			IgnoreVarRun:    true,                                        // TODO: add ignore paths
 			RegistryOptions: config.RegistryOptions{SkipTLSVerify: true}, // TODO: remove eventually
@@ -117,28 +77,32 @@ func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, image st
 			SrcContext:      a.workDir,
 		}
 
-		// TODO: link to kaniko code to show why this is necessary
-		if err := os.Chdir("/"); err != nil {
-			panic(err)
-		}
-
-		a.logger.Debugf("Applying the Dockerfile at %s...", dockerfile.Path)
-		a.logger.Debugf("Options used: %+v", opts)
-		newImage, err := executor.DoBuild(&opts)
-		if err != nil {
-			return err
-		}
-		a.logger.Debug("Pushing the image to its destination...")
-		err = executor.DoPush(newImage, &opts)
-		if err != nil {
+		if err := doKaniko(dockerfile.Path, opts, logger); err != nil {
 			return err
 		}
 
 		// The base image for the next Dockerfile should be the one we just built
-		currentBaseImage = destination // TODO: use digest instead
+		fromImageRef = targetImageRef // TODO: use digest instead
 	}
-	a.logger.Debug("Done")
+	logger.Debug("Done")
 	return nil
+}
+
+func doKaniko(path string, opts config.KanikoOptions, logger extender.Logger) error {
+	// kaniko does this here: https://github.com/GoogleContainerTools/kaniko/blob/09e70e44d9e9a3fecfcf70cb809a654445837631/cmd/executor/cmd/root.go#L140-L142
+	if err := os.Chdir("/"); err != nil {
+		return err
+	}
+
+	logger.Debugf("Applying the Dockerfile at %s...", path)
+	logger.Debugf("Options used: %+v", opts)
+	newImage, err := executor.DoBuild(&opts)
+	if err != nil {
+		return err
+	}
+
+	logger.Debug("Pushing the image to its destination...")
+	return executor.DoPush(newImage, &opts)
 }
 
 func toMultiArg(args []extender.DockerfileArg) []string {
