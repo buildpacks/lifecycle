@@ -1,0 +1,18 @@
+[[group]]
+  api = "0.7"
+  homepage = "https://github.com/buildpacks/samples/tree/main/extensions/curl"
+  id = "samples/curl"
+  version = "0.0.1"
+  extension = true
+
+[[group]]
+  api = "0.7"
+  homepage = "https://github.com/buildpacks/samples/tree/main/extensions/rebasable"
+  id = "samples/rebasable"
+  version = "0.0.1"
+  extension = true
+
+[[group]]
+  api = "0.7"
+  id = "samples/use_curl"
+  version = "0.0.1"
