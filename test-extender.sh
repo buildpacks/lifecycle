@@ -5,7 +5,7 @@ LIFECYCLE_REPO_PATH=$PWD
 echo ">>>>>>>>>> Preparing registry..."
 
 if [ -z "$REGISTRY_HOST" ]; then
-  REGISTRY_HOST="localhost:6000"
+  REGISTRY_HOST="localhost:5000"
 fi
 echo "REGISTRY_HOST: $REGISTRY_HOST"
 
