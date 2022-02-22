@@ -6,6 +6,7 @@ import (
 
 	"github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/GoogleContainerTools/kaniko/pkg/executor"
+	"github.com/containerd/containerd/platforms"
 
 	"github.com/buildpacks/lifecycle/extender"
 )
@@ -46,6 +47,7 @@ func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, baseIm
 			RegistryOptions: config.RegistryOptions{SkipTLSVerify: true}, // TODO: remove eventually
 			SnapshotMode:    "full",
 			SrcContext:      a.workDir,
+			CustomPlatform:  platforms.DefaultString(),
 		}
 
 		if err := doKaniko(dockerfile.Path, opts, logger); err != nil {
@@ -75,6 +77,7 @@ func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, baseImag
 			RegistryOptions: config.RegistryOptions{SkipTLSVerify: true}, // TODO: remove eventually
 			SnapshotMode:    "full",
 			SrcContext:      a.workDir,
+			CustomPlatform:  platforms.DefaultString(),
 		}
 
 		if err := doKaniko(dockerfile.Path, opts, logger); err != nil {
