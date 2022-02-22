@@ -41,8 +41,8 @@ func main() {
 		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
 	case "rebaser":
 		cmd.Run(&rebaseCmd{platform: p}, false)
-	// case "creator":
-	//	cmd.Run(&createCmd{platform: p}, false)
+	case "creator":
+		cmd.Run(&createCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
@@ -69,8 +69,8 @@ func subcommand(platform Platform) {
 		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: platform}}, true)
 	case "rebase":
 		cmd.Run(&rebaseCmd{platform: platform}, true)
-	// case "create":
-	//	cmd.Run(&createCmd{platform: platform}, true)
+	case "create":
+		cmd.Run(&createCmd{platform: platform}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}

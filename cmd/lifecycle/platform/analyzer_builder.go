@@ -1,15 +1,14 @@
 package platform
 
 import (
-	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/imgutil"
-
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
@@ -31,6 +30,8 @@ type AnalyzerOpts struct {
 	PreviousImageRef string
 	RunImageRef      string
 	SkipLayers       bool
+
+	LegacyGroup buildpack.Group // for creator
 }
 
 func (ab *AnalyzerBuilder) NewAnalyzer(opts AnalyzerOpts, docker client.CommonAPIClient, keychain authn.Keychain, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
@@ -41,7 +42,7 @@ func (ab *AnalyzerBuilder) NewAnalyzer(opts AnalyzerOpts, docker client.CommonAP
 
 	// TODO: validate registry here?
 
-	buildpacks, err := ab.initBuildpacks(opts.LegacyGroupPath)
+	buildpacks, err := ab.initBuildpacks(opts.LegacyGroup, opts.LegacyGroupPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading buildpack group")
 	}
@@ -74,9 +75,12 @@ func (ab *AnalyzerBuilder) NewAnalyzer(opts AnalyzerOpts, docker client.CommonAP
 	}, nil
 }
 
-func (ab *AnalyzerBuilder) initBuildpacks(path string) ([]buildpack.GroupBuildpack, error) {
+func (ab *AnalyzerBuilder) initBuildpacks(group buildpack.Group, path string) ([]buildpack.GroupBuildpack, error) {
 	if ab.PlatformAPI.AtLeast("0.7") {
 		return nil, nil
+	}
+	if len(group.Group) > 0 {
+		return group.Group, nil
 	}
 	group, err := buildpack.ReadGroup(path)
 	if err != nil {

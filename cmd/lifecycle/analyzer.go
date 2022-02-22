@@ -108,8 +108,8 @@ func (a *analyzeCmd) Exec() error {
 		return errors.Wrap(err, "initializing analyzer")
 	}
 
-	var analyzedMD platform.AnalyzedMetadata
-	if analyzedMD, err = analyzer.Analyze(); err != nil {
+	analyzedMD, err := analyzer.Analyze()
+	if err != nil {
 		return cmd.FailErrCode(err, a.platform.CodeFor(platform.AnalyzeError), "analyzer") // TODO: move CodeFor into newplat
 	}
 
