@@ -41,14 +41,14 @@ func NewSBOMRestorer(opts SBOMRestorerOpts, platformAPI *api.Version) SBOMRestor
 		return &NopSBOMRestorer{}
 	}
 	return &DefaultSBOMRestorer{
-		layersDir: opts.LayersDir,
-		logger:    opts.Logger,
+		LayersDir: opts.LayersDir,
+		Logger:    opts.Logger,
 	}
 }
 
 type DefaultSBOMRestorer struct {
-	layersDir string
-	logger    Logger
+	LayersDir string
+	Logger    Logger
 }
 
 func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDigest string) error {
@@ -60,9 +60,9 @@ func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDige
 	if !image.Found() || layerDigest == "" {
 		return nil
 	}
-	r.logger.Infof("Restoring data for sbom from previous image")
+	r.Logger.Infof("Restoring data for sbom from previous image")
 
-	r.logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
+	r.Logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
 	rc, err := image.GetLayer(layerDigest)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (r *DefaultSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) 
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
 	}
-	r.logger.Debugf("Retrieving sbom layer data for %q", layerDigest)
+	r.Logger.Debugf("Retrieving sbom layer data for %q", layerDigest)
 
 	rc, err := cache.RetrieveLayer(layerDigest)
 	if err != nil {
@@ -90,10 +90,10 @@ func (r *DefaultSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) 
 
 func (r *DefaultSBOMRestorer) RestoreToBuildpackLayers(detectedBps []buildpack.GroupBuildpack) error {
 	var (
-		cacheDir  = filepath.Join(r.layersDir, "sbom", "cache")
-		launchDir = filepath.Join(r.layersDir, "sbom", "launch")
+		cacheDir  = filepath.Join(r.LayersDir, "sbom", "cache")
+		launchDir = filepath.Join(r.LayersDir, "sbom", "launch")
 	)
-	defer os.RemoveAll(filepath.Join(r.layersDir, "sbom"))
+	defer os.RemoveAll(filepath.Join(r.LayersDir, "sbom"))
 
 	if err := filepath.Walk(cacheDir, r.restoreSBOMFunc(detectedBps, "cache")); err != nil {
 		return err
@@ -125,7 +125,7 @@ func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuild
 			bpID      = matches[1]
 			layerName = matches[2]
 			fileName  = matches[3]
-			dest      = filepath.Join(r.layersDir, bpID, fmt.Sprintf("%s.%s", layerName, fileName))
+			dest      = filepath.Join(r.LayersDir, bpID, fmt.Sprintf("%s.%s", layerName, fileName))
 		)
 
 		if !r.contains(detectedBps, bpID) {

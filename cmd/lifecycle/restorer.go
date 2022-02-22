@@ -33,7 +33,7 @@ type restoreArgs struct {
 	skipLayers bool
 
 	// construct if necessary before dropping privileges
-	keychain authn.Keychain
+	keychain authn.Keychain // nolint:structcheck
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).

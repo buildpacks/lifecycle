@@ -25,7 +25,7 @@ type detectArgs struct {
 	// inputs needed when run by creator
 	buildpacksDir string
 	appDir        string
-	layersDir     string
+	layersDir     string // nolint:structcheck
 	platformDir   string
 	orderPath     string
 

@@ -32,7 +32,7 @@ func main() {
 	case "detector":
 		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: p}}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: p}}, false)
+		cmd.Run(&analyzeCmd{platform: p}, false)
 	case "restorer":
 		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
 	case "builder":
@@ -41,8 +41,8 @@ func main() {
 		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
 	case "rebaser":
 		cmd.Run(&rebaseCmd{platform: p}, false)
-	case "creator":
-		cmd.Run(&createCmd{platform: p}, false)
+	// case "creator":
+	//	cmd.Run(&createCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
@@ -60,7 +60,7 @@ func subcommand(platform Platform) {
 	case "detect":
 		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, true)
 	case "analyze":
-		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: platform}}, true)
+		cmd.Run(&analyzeCmd{platform: platform}, true)
 	case "restore":
 		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: platform}}, true)
 	case "build":
@@ -69,8 +69,8 @@ func subcommand(platform Platform) {
 		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: platform}}, true)
 	case "rebase":
 		cmd.Run(&rebaseCmd{platform: platform}, true)
-	case "create":
-		cmd.Run(&createCmd{platform: platform}, true)
+	// case "create":
+	//	cmd.Run(&createCmd{platform: platform}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
 	}

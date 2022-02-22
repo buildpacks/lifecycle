@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -49,7 +50,7 @@ type exportArgs struct {
 	projectMetadataPath string
 	reportPath          string
 	runImageRef         string
-	stackPath           string
+	stackPath           string // nolint:structcheck
 	targetRegistry      string
 	imageNames          []string
 	stackMD             platform.StackMetadata
@@ -426,4 +427,12 @@ func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMet
 	}
 
 	return analyzedMD, nil
+}
+
+func parseRegistry(providedRef string) (string, error) {
+	ref, err := name.ParseReference(providedRef, name.WeakValidation)
+	if err != nil {
+		return "", err
+	}
+	return ref.Context().RegistryStr(), nil
 }

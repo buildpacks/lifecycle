@@ -383,7 +383,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("the provided destination tags are on different registries", func() {
+		when.Pend("the provided destination tags are on different registries", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept destination tags")
 

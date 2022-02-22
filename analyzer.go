@@ -39,17 +39,18 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	)
 
 	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
-		previousImageID, err = a.getImageIdentifier(a.PreviousImage)
-		if err != nil {
+		if previousImageID, err = a.getImageIdentifier(a.PreviousImage); err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
 		}
 
 		// continue even if the label cannot be decoded
-		if err := image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
+		if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
 			appMeta = platform.LayersMetadata{}
 		}
 
-		if err := a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
+		if a.SBOMRestorer == nil {
+			// nop
+		} else if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
 		}
 	} else {
