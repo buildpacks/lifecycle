@@ -93,7 +93,7 @@ func (a *analyzeCmd) registryImages() []string {
 }
 
 func (a *analyzeCmd) Exec() error {
-	builder := &newplat.AnalyzerBuilder{PlatformAPI: a.platform.API()}
+	builder := &newplat.AnalyzerBuilder{PlatformAPI: a.platform.API(), ImageHandler: newplat.NewImageHandler(a.docker, a.keychain)}
 	analyzer, err := builder.NewAnalyzer(newplat.AnalyzerOpts{
 		CacheImageRef:    a.CacheImageRef,
 		LaunchCacheDir:   a.LaunchCacheDir,
@@ -103,7 +103,7 @@ func (a *analyzeCmd) Exec() error {
 		PreviousImageRef: a.PreviousImageRef,
 		RunImageRef:      a.RunImageRef,
 		SkipLayers:       a.SkipLayers,
-	}, a.docker, a.keychain, cmd.DefaultLogger)
+	}, cmd.DefaultLogger)
 	if err != nil {
 		return errors.Wrap(err, "initializing analyzer")
 	}

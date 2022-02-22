@@ -16,7 +16,13 @@ import (
 
 type AnalyzerBuilder struct {
 	PlatformAPI  *api.Version
-	imageHandler imageHandler
+	ImageHandler ImageHandler
+}
+
+type ImageHandler interface {
+	InitImage(imageRef string) (imgutil.Image, error)
+	Docker() client.CommonAPIClient
+	Keychain() authn.Keychain
 }
 
 // AnalyzerOpts holds the inputs needed to construct a new lifecycle.Analyzer.
@@ -34,12 +40,7 @@ type AnalyzerOpts struct {
 	LegacyGroup buildpack.Group // for creator
 }
 
-func (ab *AnalyzerBuilder) NewAnalyzer(opts AnalyzerOpts, docker client.CommonAPIClient, keychain authn.Keychain, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
-	ab.imageHandler = imageHandler{ // TODO: see where this goes - constructor?
-		docker:   docker,
-		keychain: keychain,
-	}
-
+func (ab *AnalyzerBuilder) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
 	// TODO: validate registry here?
 
 	buildpacks, err := ab.initBuildpacks(opts.LegacyGroup, opts.LegacyGroupPath)
@@ -94,7 +95,7 @@ func (ab *AnalyzerBuilder) initCache(cacheImageRef, cacheDir string) (lifecycle.
 	if ab.PlatformAPI.AtLeast("0.7") {
 		return nil, nil
 	}
-	return initCache(cacheImageRef, cacheDir, ab.imageHandler.keychain)
+	return initCache(cacheImageRef, cacheDir, ab.ImageHandler.Keychain())
 }
 
 func (ab *AnalyzerBuilder) initLayerMetadataRestorer(layersDir string, skipLayers bool, logger lifecycle.Logger) layer.MetadataRestorer {
@@ -112,11 +113,11 @@ func (ab *AnalyzerBuilder) initPrevious(imageRef string, launchCacheDir string) 
 	if imageRef == "" {
 		return nil, nil
 	}
-	image, err := ab.imageHandler.initImage(imageRef)
+	image, err := ab.ImageHandler.InitImage(imageRef)
 	if err != nil {
 		return nil, err
 	}
-	if ab.imageHandler.docker == nil || launchCacheDir == "" {
+	if ab.ImageHandler.Docker() == nil || launchCacheDir == "" {
 		return image, nil
 	}
 
@@ -128,7 +129,7 @@ func (ab *AnalyzerBuilder) initPrevious(imageRef string, launchCacheDir string) 
 }
 
 func (ab *AnalyzerBuilder) initRun(imageRef string) (imgutil.Image, error) {
-	return ab.imageHandler.initImage(imageRef)
+	return ab.ImageHandler.InitImage(imageRef)
 }
 
 func (ab *AnalyzerBuilder) initSBOMRestorer(layersDir string, logger lifecycle.Logger) layer.SBOMRestorer {

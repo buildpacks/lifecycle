@@ -170,7 +170,7 @@ func (c *createCmd) Exec() error {
 		plan       platform.BuildPlan
 	)
 	if c.platform.API().AtLeast("0.7") {
-		builder := &newplat.AnalyzerBuilder{PlatformAPI: c.platform.API()}
+		builder := &newplat.AnalyzerBuilder{PlatformAPI: c.platform.API(), ImageHandler: newplat.NewImageHandler(c.docker, c.keychain)}
 		analyzer, err := builder.NewAnalyzer(newplat.AnalyzerOpts{
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,
@@ -178,7 +178,7 @@ func (c *createCmd) Exec() error {
 			PreviousImageRef: c.previousImageRef,
 			RunImageRef:      c.runImageRef,
 			SkipLayers:       c.skipRestore,
-		}, c.docker, c.keychain, cmd.DefaultLogger)
+		}, cmd.DefaultLogger)
 		if err != nil {
 			return errors.Wrap(err, "initializing analyzer")
 		}
@@ -214,7 +214,7 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		builder := &newplat.AnalyzerBuilder{PlatformAPI: c.platform.API()}
+		builder := &newplat.AnalyzerBuilder{PlatformAPI: c.platform.API(), ImageHandler: newplat.NewImageHandler(c.docker, c.keychain)}
 		analyzer, err := builder.NewAnalyzer(newplat.AnalyzerOpts{
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,
@@ -224,7 +224,7 @@ func (c *createCmd) Exec() error {
 			PreviousImageRef: c.previousImageRef,
 			RunImageRef:      c.runImageRef,
 			SkipLayers:       c.skipRestore,
-		}, c.docker, c.keychain, cmd.DefaultLogger)
+		}, cmd.DefaultLogger)
 		if err != nil {
 			return errors.Wrap(err, "initializing analyzer")
 		}

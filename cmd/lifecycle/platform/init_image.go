@@ -8,12 +8,19 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 )
 
-type imageHandler struct {
+type DefaultImageHandler struct {
 	docker   client.CommonAPIClient
 	keychain authn.Keychain
 }
 
-func (h *imageHandler) initImage(imageRef string) (imgutil.Image, error) {
+func NewImageHandler(docker client.CommonAPIClient, keychain authn.Keychain) *DefaultImageHandler {
+	return &DefaultImageHandler{
+		docker:   docker,
+		keychain: keychain,
+	}
+}
+
+func (h *DefaultImageHandler) InitImage(imageRef string) (imgutil.Image, error) {
 	if imageRef == "" {
 		return nil, nil
 	}
@@ -31,4 +38,12 @@ func (h *imageHandler) initImage(imageRef string) (imgutil.Image, error) {
 		h.keychain,
 		remote.FromBaseImage(imageRef),
 	)
+}
+
+func (h *DefaultImageHandler) Docker() client.CommonAPIClient {
+	return h.docker
+}
+
+func (h *DefaultImageHandler) Keychain() authn.Keychain {
+	return h.keychain
 }
