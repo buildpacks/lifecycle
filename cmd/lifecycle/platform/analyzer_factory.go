@@ -55,6 +55,9 @@ func (af *AnalyzerFactory) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logge
 
 	buildpacks, err := af.initBuildpacks(opts.LegacyGroup, opts.LegacyGroupPath)
 	if err != nil {
+		if err, ok := err.(*cmd.ErrorFail); ok {
+			return nil, err
+		}
 		return nil, errors.Wrap(err, "reading buildpack group")
 	}
 
@@ -98,7 +101,7 @@ func (af *AnalyzerFactory) initBuildpacks(group buildpack.Group, path string) ([
 		return []buildpack.GroupBuildpack{}, err
 	}
 	if err := verifyBuildpackApis(group); err != nil {
-		return nil, err // TODO: ensure this flows through to main without being wrapped
+		return nil, err
 	}
 	return group.Group, nil
 }

@@ -69,7 +69,7 @@ func (a *analyzeCmd) Args(_ int, args []string) error {
 	resolver := &newplat.AnalyzeInputsResolver{PlatformAPI: a.platform.API()}
 	resolvedInputs, err := resolver.Resolve(a.AnalyzeInputs, args, cmd.DefaultLogger)
 	if err != nil {
-		return cmd.FailErr(err, "resolve inputs")
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "resolve inputs")
 	}
 	a.AnalyzeInputs = resolvedInputs
 	return nil
@@ -121,6 +121,9 @@ func (a *analyzeCmd) Exec() error {
 		SkipLayers:       a.SkipLayers,
 	}, cmd.DefaultLogger)
 	if err != nil {
+		if err, ok := err.(*cmd.ErrorFail); ok {
+			return err
+		}
 		return errors.Wrap(err, "initializing analyzer")
 	}
 
@@ -130,7 +133,7 @@ func (a *analyzeCmd) Exec() error {
 	}
 
 	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
-		return errors.Wrap(err, "writing analyzed.toml") // TODO: should this be cmd.FailErrCode ?
+		return errors.Wrap(err, "writing analyzed.toml")
 	}
 	return nil
 }
