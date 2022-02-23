@@ -31,13 +31,13 @@ type AnalyzeInputs struct {
 	UseDaemon        bool
 }
 
-type AnalyzeInputsValidator struct {
+type AnalyzeInputsResolver struct {
 	PlatformAPI *api.Version
 }
 
 // Resolve accepts AnalyzeInputs with flags filled in, and args.
 // It returns AnalyzeInputs with default values filled in, or an error if the provided inputs are not valid.
-func (av *AnalyzeInputsValidator) Resolve(inputs AnalyzeInputs, cmdArgs []string, logger lifecycle.Logger) (AnalyzeInputs, error) {
+func (av *AnalyzeInputsResolver) Resolve(inputs AnalyzeInputs, cmdArgs []string, logger lifecycle.Logger) (AnalyzeInputs, error) {
 	resolvedInputs := inputs
 
 	nargs := len(cmdArgs)
@@ -56,7 +56,7 @@ func (av *AnalyzeInputsValidator) Resolve(inputs AnalyzeInputs, cmdArgs []string
 	return resolvedInputs, nil
 }
 
-func (av *AnalyzeInputsValidator) fillDefaults(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
+func (av *AnalyzeInputsResolver) fillDefaults(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
 	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
 		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, av.PlatformAPI)
 	}
@@ -72,7 +72,7 @@ func (av *AnalyzeInputsValidator) fillDefaults(inputs *AnalyzeInputs, logger lif
 	return av.fillRunImage(inputs, logger)
 }
 
-func (av *AnalyzeInputsValidator) fillRunImage(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
+func (av *AnalyzeInputsResolver) fillRunImage(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
 	if av.PlatformAPI.LessThan("0.7") || inputs.RunImageRef != "" {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (av *AnalyzeInputsValidator) fillRunImage(inputs *AnalyzeInputs, logger lif
 	return nil
 }
 
-func (av *AnalyzeInputsValidator) validate(inputs AnalyzeInputs, logger lifecycle.Logger) error {
+func (av *AnalyzeInputsResolver) validate(inputs AnalyzeInputs, logger lifecycle.Logger) error {
 	if inputs.OutputImageRef == "" {
 		return errors.New("image argument is required")
 	}

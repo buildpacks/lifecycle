@@ -50,8 +50,8 @@ func (a *analyzeCmd) DefineFlags() {
 
 // Args validates arguments and flags, and fills in default values.
 func (a *analyzeCmd) Args(_ int, args []string) error {
-	validator := &newplat.AnalyzeInputsValidator{PlatformAPI: a.platform.API()}
-	resolvedInputs, err := validator.Resolve(a.AnalyzeInputs, args, cmd.DefaultLogger)
+	resolver := &newplat.AnalyzeInputsResolver{PlatformAPI: a.platform.API()}
+	resolvedInputs, err := resolver.Resolve(a.AnalyzeInputs, args, cmd.DefaultLogger)
 	if err != nil {
 		return cmd.FailErr(err, "resolve inputs")
 	}
@@ -93,8 +93,8 @@ func (a *analyzeCmd) registryImages() []string {
 }
 
 func (a *analyzeCmd) Exec() error {
-	builder := &newplat.AnalyzerBuilder{PlatformAPI: a.platform.API(), ImageHandler: newplat.NewImageHandler(a.docker, a.keychain)}
-	analyzer, err := builder.NewAnalyzer(newplat.AnalyzerOpts{
+	factory := &newplat.AnalyzerFactory{PlatformAPI: a.platform.API(), ImageHandler: newplat.NewImageHandler(a.docker, a.keychain)}
+	analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
 		CacheImageRef:    a.CacheImageRef,
 		LaunchCacheDir:   a.LaunchCacheDir,
 		LayersDir:        a.LayersDir,

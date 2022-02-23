@@ -17,7 +17,6 @@ type MetadataRestorer interface {
 	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error
 }
 
-// TODO: remove
 func NewMetadataRestorer(logger Logger, layersDir string, skipLayers bool) MetadataRestorer {
 	return &DefaultMetadataRestorer{
 		Logger:     logger,

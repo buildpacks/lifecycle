@@ -25,12 +25,12 @@ func TestAnalyzeInputs(t *testing.T) {
 func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
-			av         *platform.AnalyzeInputsValidator
+			av         *platform.AnalyzeInputsResolver
 			logHandler *memory.Handler
 			logger     lifecycle.Logger
 		)
 		it.Before(func() {
-			av = &platform.AnalyzeInputsValidator{PlatformAPI: api.MustParse(platformAPI)}
+			av = &platform.AnalyzeInputsResolver{PlatformAPI: api.MustParse(platformAPI)}
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}
 		})
@@ -44,7 +44,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			})
 		})
 
-		when("platform api >= 0.7", func() {
+		when("latest platform api(s)", func() {
 			it.Before(func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "")
 			})
