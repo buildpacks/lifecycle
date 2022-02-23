@@ -2,6 +2,8 @@ package platform
 
 import (
 	"github.com/buildpacks/imgutil"
+	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -18,6 +20,15 @@ type AnalyzerFactory struct {
 	CacheHandler      CacheHandler
 	ImageHandler      ImageHandler
 	RegistryValidator RegistryValidator
+}
+
+func NewAnalyzerFactory(platformAPI *api.Version, docker client.CommonAPIClient, keychain authn.Keychain) *AnalyzerFactory {
+	return &AnalyzerFactory{
+		PlatformAPI:       platformAPI,
+		CacheHandler:      NewCacheHandler(keychain),
+		ImageHandler:      NewImageHandler(docker, keychain),
+		RegistryValidator: NewRegistryValidator(keychain),
+	}
 }
 
 // AnalyzerOpts holds the inputs needed to construct a new lifecycle.Analyzer.

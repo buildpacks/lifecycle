@@ -109,7 +109,7 @@ func (a *analyzeCmd) registryImages() []string {
 }
 
 func (a *analyzeCmd) Exec() error {
-	factory := &newplat.AnalyzerFactory{PlatformAPI: a.platform.API(), ImageHandler: newplat.NewImageHandler(a.docker, a.keychain)}
+	factory := newplat.NewAnalyzerFactory(a.platform.API(), a.docker, a.keychain)
 	analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
 		CacheImageRef:    a.CacheImageRef,
 		LaunchCacheDir:   a.LaunchCacheDir,

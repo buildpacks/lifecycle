@@ -170,7 +170,7 @@ func (c *createCmd) Exec() error {
 		plan       platform.BuildPlan
 	)
 	if c.platform.API().AtLeast("0.7") {
-		factory := &newplat.AnalyzerFactory{PlatformAPI: c.platform.API(), ImageHandler: newplat.NewImageHandler(c.docker, c.keychain)}
+		factory := newplat.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
 		analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,
@@ -214,7 +214,7 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		factory := &newplat.AnalyzerFactory{PlatformAPI: c.platform.API(), ImageHandler: newplat.NewImageHandler(c.docker, c.keychain)}
+		factory := newplat.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
 		analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,

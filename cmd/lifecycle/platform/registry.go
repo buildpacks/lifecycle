@@ -21,6 +21,12 @@ type DefaultRegistryValidator struct {
 	keychain authn.Keychain
 }
 
+func NewRegistryValidator(keychain authn.Keychain) *DefaultRegistryValidator {
+	return &DefaultRegistryValidator{
+		keychain: keychain,
+	}
+}
+
 func (rv *DefaultRegistryValidator) ValidateReadAccess(imageRefs []string) error {
 	for _, imageRef := range imageRefs {
 		if err := verifyReadAccess(imageRef, rv.keychain); err != nil {
