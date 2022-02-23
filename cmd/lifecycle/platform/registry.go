@@ -85,7 +85,7 @@ func ensureSameRegistry(firstRef string, secondRef string) error {
 		return err
 	}
 	if firstRegistry != secondRegistry {
-		return fmt.Errorf("registries are different: %s, %s", firstRegistry, secondRegistry)
+		return fmt.Errorf("writing to multiple registries is unsupported: %s, %s", firstRegistry, secondRegistry)
 	}
 	return nil
 }

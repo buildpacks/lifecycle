@@ -110,7 +110,7 @@ func (av *AnalyzeInputsResolver) validate(inputs AnalyzeInputs, logger lifecycle
 	}
 
 	if err := image.ValidateDestinationTags(inputs.UseDaemon, append(inputs.AdditionalTags, inputs.OutputImageRef)...); err != nil {
-		return errors.New("validating image tag(s)")
+		return errors.Wrap(err, "validating image tag(s)")
 	}
 
 	if av.PlatformAPI.AtLeast("0.7") {
