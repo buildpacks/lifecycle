@@ -122,21 +122,3 @@ func (av *AnalyzeInputsResolver) validate(inputs AnalyzeInputs, logger lifecycle
 	}
 	return nil
 }
-
-func ensureSameRegistry(firstRef string, secondRef string) error { // TODO: move probably
-	if firstRef == secondRef {
-		return nil
-	}
-	firstRegistry, err := parseRegistry(firstRef)
-	if err != nil {
-		return err
-	}
-	secondRegistry, err := parseRegistry(secondRef)
-	if err != nil {
-		return err
-	}
-	if firstRegistry != secondRegistry {
-		return fmt.Errorf("registries are different: %s, %s", firstRegistry, secondRegistry)
-	}
-	return nil
-}

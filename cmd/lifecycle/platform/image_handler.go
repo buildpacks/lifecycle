@@ -8,6 +8,12 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 )
 
+//go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle/cmd/lifecycle/platform ImageHandler
+type ImageHandler interface {
+	InitImage(imageRef string) (imgutil.Image, error)
+	Docker() bool
+}
+
 type DefaultImageHandler struct {
 	docker   client.CommonAPIClient
 	keychain authn.Keychain

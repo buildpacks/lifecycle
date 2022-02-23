@@ -33,30 +33,30 @@ func (m *MockRegistryValidator) EXPECT() *MockRegistryValidatorMockRecorder {
 	return m.recorder
 }
 
-// ReadableRegistryImages mocks base method.
-func (m *MockRegistryValidator) ReadableRegistryImages() []string {
+// ValidateReadAccess mocks base method.
+func (m *MockRegistryValidator) ValidateReadAccess(arg0 []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadableRegistryImages")
-	ret0, _ := ret[0].([]string)
+	ret := m.ctrl.Call(m, "ValidateReadAccess", arg0)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ReadableRegistryImages indicates an expected call of ReadableRegistryImages.
-func (mr *MockRegistryValidatorMockRecorder) ReadableRegistryImages() *gomock.Call {
+// ValidateReadAccess indicates an expected call of ValidateReadAccess.
+func (mr *MockRegistryValidatorMockRecorder) ValidateReadAccess(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadableRegistryImages", reflect.TypeOf((*MockRegistryValidator)(nil).ReadableRegistryImages))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateReadAccess", reflect.TypeOf((*MockRegistryValidator)(nil).ValidateReadAccess), arg0)
 }
 
-// WriteableRegistryImages mocks base method.
-func (m *MockRegistryValidator) WriteableRegistryImages() []string {
+// ValidateWriteAccess mocks base method.
+func (m *MockRegistryValidator) ValidateWriteAccess(arg0 []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WriteableRegistryImages")
-	ret0, _ := ret[0].([]string)
+	ret := m.ctrl.Call(m, "ValidateWriteAccess", arg0)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// WriteableRegistryImages indicates an expected call of WriteableRegistryImages.
-func (mr *MockRegistryValidatorMockRecorder) WriteableRegistryImages() *gomock.Call {
+// ValidateWriteAccess indicates an expected call of ValidateWriteAccess.
+func (mr *MockRegistryValidatorMockRecorder) ValidateWriteAccess(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteableRegistryImages", reflect.TypeOf((*MockRegistryValidator)(nil).WriteableRegistryImages))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateWriteAccess", reflect.TypeOf((*MockRegistryValidator)(nil).ValidateWriteAccess), arg0)
 }

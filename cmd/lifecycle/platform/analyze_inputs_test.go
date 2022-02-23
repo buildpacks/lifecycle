@@ -2,7 +2,6 @@ package platform_test
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/apex/log"
@@ -85,7 +84,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 					_, err := av.Resolve(platform.AnalyzeInputs{}, []string{"some-image"}, logger)
 					h.AssertNil(t, err)
 					expected := "Not restoring cached layer metadata, no cache flag specified."
-					assertLogEntry(t, logHandler, expected)
+					h.AssertLogEntry(t, logHandler, expected)
 				})
 			})
 
@@ -97,8 +96,8 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 						}
 						_, err := av.Resolve(inputs, []string{"some-image"}, logger)
 						h.AssertNil(t, err)
-						assertLogEntryNotContains(t, logHandler, `no stack metadata found at path ''`)
-						assertLogEntryNotContains(t, logHandler, `Previous image with name "" not found`)
+						h.AssertNoLogEntry(t, logHandler, `no stack metadata found at path ''`)
+						h.AssertNoLogEntry(t, logHandler, `Previous image with name "" not found`)
 					})
 				})
 			})
@@ -142,31 +141,5 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 				})
 			})
 		})
-	}
-}
-
-// TODO: put in some common place
-func assertLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
-	t.Helper()
-	var messages []string
-	for _, le := range logHandler.Entries {
-		messages = append(messages, le.Message)
-		if strings.Contains(le.Message, expected) {
-			return
-		}
-	}
-	t.Fatalf("Expected log entries %+v to contain %s", messages, expected)
-}
-
-// TODO: put in some common place
-func assertLogEntryNotContains(t *testing.T, logHandler *memory.Handler, expected string) {
-	t.Helper()
-	var messages []string
-	for _, le := range logHandler.Entries {
-		messages = append(messages, le.Message)
-		if strings.Contains(le.Message, expected) {
-			fmtMessage := "\n" + strings.Join(messages, "\n") + "\n"
-			t.Fatalf("Expected log entries: %s not to contain \n'%s'", fmtMessage, expected)
-		}
 	}
 }

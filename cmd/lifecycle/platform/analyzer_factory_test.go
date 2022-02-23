@@ -32,6 +32,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
 			af                    *platform.AnalyzerFactory
+			fakeCacheHandler      *testmock.MockCacheHandler
 			fakeImageHandler      *testmock.MockImageHandler
 			fakeRegistryValidator *testmock.MockRegistryValidator
 			logHandler            *memory.Handler
@@ -39,12 +40,15 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			mockController        *gomock.Controller
 			tempDir               string
 		)
+
 		it.Before(func() {
 			mockController = gomock.NewController(t)
+			fakeCacheHandler = testmock.NewMockCacheHandler(mockController)
 			fakeImageHandler = testmock.NewMockImageHandler(mockController)
 			fakeRegistryValidator = testmock.NewMockRegistryValidator(mockController)
 			af = &platform.AnalyzerFactory{
 				PlatformAPI:       api.MustParse(platformAPI),
+				CacheHandler:      fakeCacheHandler,
 				ImageHandler:      fakeImageHandler,
 				RegistryValidator: fakeRegistryValidator,
 			}
@@ -62,6 +66,12 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			os.RemoveAll(tempDir)
 		})
 
+		var expectImageAccess = func() {
+			fakeImageHandler.EXPECT().Docker().AnyTimes()
+			fakeRegistryValidator.EXPECT().ValidateReadAccess(gomock.Any()).AnyTimes()
+			fakeRegistryValidator.EXPECT().ValidateWriteAccess(gomock.Any()).AnyTimes()
+		}
+
 		// TODO: test logger
 
 		when("latest platform api(s)", func() {
@@ -69,13 +79,65 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "")
 			})
 
-			when("provided a group", func() {
-				it.Before(func() {
-					fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-					fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
+			when("registry images", func() {
+				when("exporting to a daemon", func() {
+					it.Before(func() {
+						fakeImageHandler.EXPECT().Docker().Return(true).AnyTimes()
+						fakeImageHandler.EXPECT().InitImage(gomock.Any()).AnyTimes()
+					})
+
+					it("validates access", func() {
+						opts := platform.AnalyzerOpts{
+							AdditionalTags:   []string{"some-additional-tag"},
+							CacheImageRef:    "some-cache-image-ref",
+							OutputImageRef:   "some-output-image-ref",
+							PreviousImageRef: "some-previous-image-ref",
+							RunImageRef:      "some-run-image-ref",
+						}
+						var none []string
+						fakeRegistryValidator.EXPECT().ValidateReadAccess(none)
+						fakeRegistryValidator.EXPECT().ValidateWriteAccess([]string{"some-cache-image-ref"})
+
+						_, err := af.NewAnalyzer(opts, logger)
+						h.AssertNil(t, err)
+					})
 				})
 
+				when("exporting to a registry", func() {
+					it.Before(func() {
+						fakeImageHandler.EXPECT().Docker().Return(false).AnyTimes()
+						fakeImageHandler.EXPECT().InitImage(gomock.Any()).AnyTimes()
+					})
+
+					it("validates access", func() {
+						opts := platform.AnalyzerOpts{
+							AdditionalTags:   []string{"some-additional-tag"},
+							CacheImageRef:    "some-cache-image-ref",
+							OutputImageRef:   "some-output-image-ref",
+							PreviousImageRef: "some-previous-image-ref",
+							RunImageRef:      "some-run-image-ref",
+						}
+						expectedReadImages := []string{
+							"some-previous-image-ref",
+							"some-run-image-ref",
+						}
+						expectedWriteImages := []string{
+							"some-output-image-ref",
+							"some-additional-tag",
+							"some-cache-image-ref",
+						}
+						fakeRegistryValidator.EXPECT().ValidateReadAccess(expectedReadImages)
+						fakeRegistryValidator.EXPECT().ValidateWriteAccess(expectedWriteImages)
+
+						_, err := af.NewAnalyzer(opts, logger)
+						h.AssertNil(t, err)
+					})
+				})
+			})
+
+			when("provided a group", func() {
 				it("ignores it", func() {
+					expectImageAccess()
 					opts := platform.AnalyzerOpts{
 						LegacyGroup: buildpack.Group{
 							Group: []buildpack.GroupBuildpack{{ID: "some-buildpack-id"}},
@@ -88,19 +150,9 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 			})
 
-			when("provided a cache image", func() {
-				it("validates registry access", func() {
-					// TODO
-				})
-			})
-
 			when("provided a cache directory", func() {
-				it.Before(func() {
-					fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-					fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
-				})
-
 				it("ignores it", func() {
+					expectImageAccess()
 					opts := platform.AnalyzerOpts{
 						LegacyCacheDir: "some-cache-dir",
 					}
@@ -112,18 +164,13 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			when("previous image", func() {
-				it.Before(func() {
-					fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-					fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
-				})
-
 				it("provides it to the analyzer", func() {
+					expectImageAccess()
 					opts := platform.AnalyzerOpts{
 						PreviousImageRef: "some-previous-image-ref",
 					}
 					previousImage := fakes.NewImage(opts.PreviousImageRef, "", nil)
 					fakeImageHandler.EXPECT().InitImage(opts.PreviousImageRef).Return(previousImage, nil)
-					fakeImageHandler.EXPECT().Docker() // ignore
 
 					analyzer, err := af.NewAnalyzer(opts, logger)
 					h.AssertNil(t, err)
@@ -131,6 +178,12 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 
 				when("daemon case", func() {
+					it.Before(func() {
+						fakeImageHandler.EXPECT().Docker().Return(true).AnyTimes()
+						fakeRegistryValidator.EXPECT().ValidateReadAccess(gomock.Any()).AnyTimes()
+						fakeRegistryValidator.EXPECT().ValidateWriteAccess(gomock.Any()).AnyTimes()
+					})
+
 					when("provided a launch cache dir", func() {
 						it("previous image is a caching image", func() {
 							opts := platform.AnalyzerOpts{
@@ -139,7 +192,6 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 							}
 							previousImage := fakes.NewImage(opts.PreviousImageRef, "", nil)
 							fakeImageHandler.EXPECT().InitImage(opts.PreviousImageRef).Return(previousImage, nil)
-							fakeImageHandler.EXPECT().Docker().Return(true)
 
 							analyzer, err := af.NewAnalyzer(opts, logger)
 							h.AssertNil(t, err)
@@ -154,12 +206,8 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			when("run image", func() {
-				it.Before(func() {
-					fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-					fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
-				})
-
 				it("provides it to the analyzer", func() {
+					expectImageAccess()
 					opts := platform.AnalyzerOpts{
 						RunImageRef: "some-run-image-ref",
 					}
@@ -173,9 +221,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			it("does not restore layer metadata", func() {
-				fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-				fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
-
+				expectImageAccess()
 				opts := platform.AnalyzerOpts{
 					LayersDir: "some-layers-dir",
 				}
@@ -186,9 +232,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			it("restores sbom layers from the previous image", func() {
-				fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-				fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
-
+				expectImageAccess()
 				opts := platform.AnalyzerOpts{
 					LayersDir: "some-layers-dir",
 				}
@@ -204,14 +248,10 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 		when("platform api < 0.8", func() {
 			it.Before(func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.8"), "")
+				expectImageAccess()
 			})
 
 			when("previous image", func() {
-				it.Before(func() {
-					fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-					fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
-				})
-
 				it("provides it to the analyzer", func() {
 					opts := platform.AnalyzerOpts{
 						LegacyGroup: buildpack.Group{
@@ -221,7 +261,6 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 					}
 					previousImage := fakes.NewImage(opts.PreviousImageRef, "", nil)
 					fakeImageHandler.EXPECT().InitImage(opts.PreviousImageRef).Return(previousImage, nil)
-					fakeImageHandler.EXPECT().Docker() // ignore
 
 					analyzer, err := af.NewAnalyzer(opts, logger)
 					h.AssertNil(t, err)
@@ -230,9 +269,6 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			it("does not restore sbom layers from the previous image", func() {
-				fakeRegistryValidator.EXPECT().ReadableRegistryImages().AnyTimes()  // ignore
-				fakeRegistryValidator.EXPECT().WriteableRegistryImages().AnyTimes() // ignore
-
 				opts := platform.AnalyzerOpts{
 					LayersDir: "some-layers-dir",
 					LegacyGroup: buildpack.Group{
@@ -249,6 +285,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 		when("platform api < 0.7", func() {
 			it.Before(func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "")
+				fakeImageHandler.EXPECT().Docker().AnyTimes()
 			})
 
 			when("provided a group", func() {
@@ -264,9 +301,9 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 					})
 				})
 
-				it.Pend("validates buildpack apis", func() {
+				it("validates buildpack apis", func() {
 					opts := platform.AnalyzerOpts{
-						LegacyGroupPath: filepath.Join("testdata", "layers", "group.toml"),
+						LegacyGroupPath: filepath.Join("testdata", "layers", "bad-group.toml"),
 					}
 
 					_, err := af.NewAnalyzer(opts, logger)
@@ -276,15 +313,25 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 
 			when("provided a cache image", func() {
 				it("provides it to the analyzer", func() {
-					// opts := platform.AnalyzerOpts{
-					//	CacheImageRef: "some-cache-image",
-					// }
-					// cacheImage := fakes.NewImage(opts.CacheImageRef, "", nil)
-					// TODO: make cache factory
+					opts := platform.AnalyzerOpts{
+						CacheImageRef: "some-cache-image",
+						LegacyGroup: buildpack.Group{
+							Group: []buildpack.GroupBuildpack{{ID: "some-buildpack-id"}},
+						}, // ignore
+					}
+					cacheImage := &cache.ImageCache{}
+					fakeCacheHandler.EXPECT().InitImageCache(opts.CacheImageRef).Return(cacheImage, nil)
+
+					_, err := af.NewAnalyzer(opts, logger)
+					h.AssertNil(t, err)
 				})
 			})
 
 			when("provided a cache directory", func() {
+				it.Before(func() {
+					af.CacheHandler = platform.NewCacheHandler(nil)
+				})
+
 				it("provides it to the analyzer", func() {
 					opts := platform.AnalyzerOpts{
 						LegacyCacheDir: filepath.Join(tempDir, "cache"),
@@ -292,7 +339,6 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 							Group: []buildpack.GroupBuildpack{{ID: "some-buildpack-id"}},
 						}, // ignore
 					}
-					fakeImageHandler.EXPECT().Keychain() // ignore
 
 					analyzer, err := af.NewAnalyzer(opts, logger)
 					h.AssertNil(t, err)
@@ -312,7 +358,6 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 					}
 					previousImage := fakes.NewImage(opts.PreviousImageRef, "", nil)
 					fakeImageHandler.EXPECT().InitImage(opts.PreviousImageRef).Return(previousImage, nil)
-					fakeImageHandler.EXPECT().Docker() // ignore
 
 					analyzer, err := af.NewAnalyzer(opts, logger)
 					h.AssertNil(t, err)

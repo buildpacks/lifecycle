@@ -9,7 +9,6 @@ import (
 
 	imgutil "github.com/buildpacks/imgutil"
 	gomock "github.com/golang/mock/gomock"
-	authn "github.com/google/go-containerregistry/pkg/authn"
 )
 
 // MockImageHandler is a mock of ImageHandler interface.
@@ -62,18 +61,4 @@ func (m *MockImageHandler) InitImage(arg0 string) (imgutil.Image, error) {
 func (mr *MockImageHandlerMockRecorder) InitImage(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitImage", reflect.TypeOf((*MockImageHandler)(nil).InitImage), arg0)
-}
-
-// Keychain mocks base method.
-func (m *MockImageHandler) Keychain() authn.Keychain {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Keychain")
-	ret0, _ := ret[0].(authn.Keychain)
-	return ret0
-}
-
-// Keychain indicates an expected call of Keychain.
-func (mr *MockImageHandlerMockRecorder) Keychain() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Keychain", reflect.TypeOf((*MockImageHandler)(nil).Keychain))
 }

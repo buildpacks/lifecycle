@@ -17,7 +17,7 @@ import (
 )
 
 type analyzeCmd struct {
-	platform Platform // TODO: see if this can be removed
+	platform Platform
 
 	newplat.AnalyzeInputs
 	docker   client.CommonAPIClient // construct if necessary before dropping privileges
@@ -26,25 +26,41 @@ type analyzeCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
-	cmd.FlagAnalyzedPath(&a.AnalyzedPath)
-	cmd.FlagCacheImage(&a.CacheImageRef)
-	cmd.FlagGID(&a.GID)
-	cmd.FlagLayersDir(&a.LayersDir)
-	cmd.FlagUID(&a.UID)
-	cmd.FlagUseDaemon(&a.UseDaemon)
-	if a.platform.API().AtLeast("0.9") {
+	switch {
+	case a.platform.API().AtLeast("0.9"):
+		cmd.FlagAnalyzedPath(&a.AnalyzedPath)
+		cmd.FlagCacheImage(&a.CacheImageRef)
+		cmd.FlagGID(&a.GID)
 		cmd.FlagLaunchCacheDir(&a.LaunchCacheDir)
+		cmd.FlagLayersDir(&a.LayersDir)
+		cmd.FlagPreviousImage(&a.PreviousImageRef)
+		cmd.FlagRunImage(&a.RunImageRef)
 		cmd.FlagSkipLayers(&a.SkipLayers)
-	}
-	if a.platform.API().AtLeast("0.7") { // TODO: cleanup
+		cmd.FlagStackPath(&a.StackPath)
+		cmd.FlagTags(&a.AdditionalTags)
+		cmd.FlagUID(&a.UID)
+		cmd.FlagUseDaemon(&a.UseDaemon)
+	case a.platform.API().AtLeast("0.7"):
+		cmd.FlagAnalyzedPath(&a.AnalyzedPath)
+		cmd.FlagCacheImage(&a.CacheImageRef)
+		cmd.FlagGID(&a.GID)
+		cmd.FlagLayersDir(&a.LayersDir)
 		cmd.FlagPreviousImage(&a.PreviousImageRef)
 		cmd.FlagRunImage(&a.RunImageRef)
 		cmd.FlagStackPath(&a.StackPath)
 		cmd.FlagTags(&a.AdditionalTags)
-	} else {
+		cmd.FlagUID(&a.UID)
+		cmd.FlagUseDaemon(&a.UseDaemon)
+	default:
+		cmd.FlagAnalyzedPath(&a.AnalyzedPath)
 		cmd.FlagCacheDir(&a.LegacyCacheDir)
+		cmd.FlagCacheImage(&a.CacheImageRef)
+		cmd.FlagGID(&a.GID)
 		cmd.FlagGroupPath(&a.LegacyGroupPath)
+		cmd.FlagLayersDir(&a.LayersDir)
 		cmd.FlagSkipLayers(&a.SkipLayers)
+		cmd.FlagUID(&a.UID)
+		cmd.FlagUseDaemon(&a.UseDaemon)
 	}
 }
 
@@ -110,7 +126,7 @@ func (a *analyzeCmd) Exec() error {
 
 	analyzedMD, err := analyzer.Analyze()
 	if err != nil {
-		return cmd.FailErrCode(err, a.platform.CodeFor(platform.AnalyzeError), "analyzer") // TODO: move CodeFor into newplat
+		return cmd.FailErrCode(err, a.platform.CodeFor(platform.AnalyzeError), "analyzer")
 	}
 
 	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
