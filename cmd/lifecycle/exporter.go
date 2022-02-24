@@ -50,7 +50,7 @@ type exportArgs struct {
 	projectMetadataPath string
 	reportPath          string
 	runImageRef         string
-	stackPath           string // nolint:structcheck
+	stackPath           string
 	targetRegistry      string
 	imageNames          []string
 	stackMD             platform.StackMetadata
