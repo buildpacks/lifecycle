@@ -49,7 +49,3 @@ func (h *DefaultImageHandler) InitImage(imageRef string) (imgutil.Image, error) 
 func (h *DefaultImageHandler) Docker() bool {
 	return h.docker != nil
 }
-
-func (h *DefaultImageHandler) Keychain() authn.Keychain {
-	return h.keychain
-}

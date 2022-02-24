@@ -130,12 +130,12 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 					inputs := platform.AnalyzeInputs{
 						AnalyzedPath:    platform.PlaceholderAnalyzedPath,
 						LegacyGroupPath: platform.PlaceholderGroupPath,
-						LayersDir:       filepath.Join("testdata", "other-layers"),
+						LayersDir:       "some-layers-dir",
 					}
 					ret, err := av.Resolve(inputs, []string{"some-image"}, logger)
 					h.AssertNil(t, err)
-					h.AssertEq(t, ret.LegacyGroupPath, filepath.Join("testdata", "other-layers", "group.toml"))
-					h.AssertEq(t, ret.AnalyzedPath, filepath.Join("testdata", "other-layers", "analyzed.toml"))
+					h.AssertEq(t, ret.LegacyGroupPath, filepath.Join("some-layers-dir", "group.toml"))
+					h.AssertEq(t, ret.AnalyzedPath, filepath.Join("some-layers-dir", "analyzed.toml"))
 				})
 			})
 		})
