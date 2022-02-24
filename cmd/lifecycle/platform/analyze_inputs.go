@@ -13,7 +13,7 @@ import (
 
 // AnalyzeInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
-type AnalyzeInputs struct {
+type AnalyzeInputs struct { // TODO: make "to AnalyzerOpts" method? Do these structs need to be different?
 	AdditionalTags   str.Slice
 	AnalyzedPath     string
 	CacheImageRef    string

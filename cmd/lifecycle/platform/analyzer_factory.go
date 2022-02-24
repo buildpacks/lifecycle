@@ -172,12 +172,12 @@ func (af *AnalyzerFactory) validateRegistryAccess(opts AnalyzerOpts) error {
 	}
 
 	var readImages, writeImages []string
+	writeImages = appendNotEmpty(writeImages, opts.CacheImageRef)
 	if !af.ImageHandler.Docker() {
 		readImages = appendNotEmpty(readImages, opts.PreviousImageRef, opts.RunImageRef)
 		writeImages = appendNotEmpty(writeImages, opts.OutputImageRef)
 		writeImages = appendNotEmpty(writeImages, opts.AdditionalTags...)
 	}
-	writeImages = appendNotEmpty(writeImages, opts.CacheImageRef)
 
 	if err := af.RegistryValidator.ValidateReadAccess(readImages); err != nil {
 		return errors.Wrap(err, "validating registry read access")

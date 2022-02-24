@@ -172,9 +172,11 @@ func (c *createCmd) Exec() error {
 	if c.platform.API().AtLeast("0.7") {
 		factory := newplat.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
 		analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
+			AdditionalTags:   c.additionalTags,
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,
 			LayersDir:        c.layersDir,
+			OutputImageRef:   c.outputImageRef,
 			PreviousImageRef: c.previousImageRef,
 			RunImageRef:      c.runImageRef,
 			SkipLayers:       c.skipRestore,
@@ -216,11 +218,13 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		factory := newplat.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
 		analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
+			AdditionalTags:   c.additionalTags,
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,
 			LayersDir:        c.layersDir,
 			LegacyCacheDir:   c.cacheDir,
 			LegacyGroup:      group,
+			OutputImageRef:   c.outputImageRef,
 			PreviousImageRef: c.previousImageRef,
 			RunImageRef:      c.runImageRef,
 			SkipLayers:       c.skipRestore,

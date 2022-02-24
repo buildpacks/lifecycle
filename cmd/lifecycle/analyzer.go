@@ -10,7 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
 	newplat "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -88,11 +87,6 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if a.platform.API().AtLeast("0.7") {
-		if err := image.VerifyRegistryAccess(a, a.keychain); err != nil {
-			return cmd.FailErr(err)
-		}
-	}
 	if err := priv.EnsureOwner(a.UID, a.GID, a.LayersDir, a.LegacyCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -102,7 +96,7 @@ func (a *analyzeCmd) Privileges() error {
 	return nil
 }
 
-func (a *analyzeCmd) registryImages() []string {
+func (a *analyzeCmd) registryImages() []string { // TODO: make this a method on AnalyzeInputs
 	var registryImages []string
 	registryImages = append(registryImages, a.ReadableRegistryImages()...)
 	return append(registryImages, a.WriteableRegistryImages()...)
@@ -111,11 +105,13 @@ func (a *analyzeCmd) registryImages() []string {
 func (a *analyzeCmd) Exec() error {
 	factory := newplat.NewAnalyzerFactory(a.platform.API(), a.docker, a.keychain)
 	analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
+		AdditionalTags:   a.AdditionalTags,
 		CacheImageRef:    a.CacheImageRef,
 		LaunchCacheDir:   a.LaunchCacheDir,
 		LayersDir:        a.LayersDir,
 		LegacyCacheDir:   a.LegacyCacheDir,
 		LegacyGroupPath:  a.LegacyGroupPath,
+		OutputImageRef:   a.OutputImageRef,
 		PreviousImageRef: a.PreviousImageRef,
 		RunImageRef:      a.RunImageRef,
 		SkipLayers:       a.SkipLayers,
@@ -138,7 +134,7 @@ func (a *analyzeCmd) Exec() error {
 	return nil
 }
 
-func (a *analyzeCmd) ReadableRegistryImages() []string {
+func (a *analyzeCmd) ReadableRegistryImages() []string { // TODO: remove
 	var readableImages []string
 	if !a.UseDaemon {
 		readableImages = appendNotEmpty(readableImages, a.PreviousImageRef, a.RunImageRef)
@@ -146,7 +142,7 @@ func (a *analyzeCmd) ReadableRegistryImages() []string {
 	return readableImages
 }
 
-func (a *analyzeCmd) WriteableRegistryImages() []string {
+func (a *analyzeCmd) WriteableRegistryImages() []string { // TODO: remove
 	var writeableImages []string
 	writeableImages = appendNotEmpty(writeableImages, a.CacheImageRef)
 	if !a.UseDaemon {
