@@ -122,9 +122,9 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 							"some-run-image-ref",
 						}
 						expectedWriteImages := []string{
+							"some-cache-image-ref",
 							"some-output-image-ref",
 							"some-additional-tag",
-							"some-cache-image-ref",
 						}
 						fakeRegistryValidator.EXPECT().ValidateReadAccess(expectedReadImages)
 						fakeRegistryValidator.EXPECT().ValidateWriteAccess(expectedWriteImages)
