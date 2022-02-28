@@ -3,10 +3,12 @@ package kaniko
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/GoogleContainerTools/kaniko/pkg/executor"
 	"github.com/containerd/containerd/platforms"
+	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/extender"
 )
@@ -38,6 +40,14 @@ func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, baseIm
 			continue
 		}
 
+		destRef, err := name.NewTag(targetImageRef, name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("failed to parse target image ref %s: %w", targetImageRef, err)
+		}
+
+		// default to registry/dest/cache
+		cacheRef := fmt.Sprintf("%s/cache", destRef)
+
 		opts := config.KanikoOptions{
 			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, fromImageRef)),
 			Cleanup:         idx < len(dockerfiles)-1, // cleanup after all but the last dockerfile
@@ -48,6 +58,12 @@ func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, baseIm
 			SnapshotMode:    "full",
 			SrcContext:      a.workDir,
 			CustomPlatform:  platforms.DefaultString(),
+
+			Cache:     true,
+			CacheRepo: cacheRef,
+			CacheOptions: config.CacheOptions{
+				CacheTTL: 14 * (24 * time.Hour),
+			},
 		}
 
 		if err := doKaniko(dockerfile.Path, opts, logger); err != nil {
@@ -68,6 +84,14 @@ func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, baseImag
 			continue
 		}
 
+		destRef, err := name.NewTag(targetImageRef, name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("failed to parse target image ref %s: %w", targetImageRef, err)
+		}
+
+		// default to registry/dest/cache
+		cacheRef := fmt.Sprintf("%s/cache", destRef)
+
 		opts := config.KanikoOptions{
 			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, fromImageRef)),
 			Cleanup:         true,
@@ -78,6 +102,12 @@ func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, baseImag
 			SnapshotMode:    "full",
 			SrcContext:      a.workDir,
 			CustomPlatform:  platforms.DefaultString(),
+
+			Cache:     true,
+			CacheRepo: cacheRef,
+			CacheOptions: config.CacheOptions{
+				CacheTTL: 14 * (24 * time.Hour),
+			},
 		}
 
 		if err := doKaniko(dockerfile.Path, opts, logger); err != nil {
