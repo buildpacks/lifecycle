@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/platform"
@@ -115,7 +116,11 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 			buildable buildpack.Buildable
 			err       error
 		)
-		if groupBuildable.Extension {
+		if len(groupBuildable.OrderExt) > 0 {
+			// lookup won't return anything, because "order-ext" is defined in order.toml only (no buildpack.toml exists)
+			groupBuildable.API = api.Buildpack.Latest().String() // TODO: fix
+			return d.detectOrder(groupBuildable.OrderExt, done, group.Group[i+1:], groupBuildable.Optional, wg)
+		} else if groupBuildable.Extension {
 			if !groupBuildable.Optional {
 				// TODO: warn or error?
 				groupBuildable.Optional = true
@@ -366,7 +371,7 @@ type detectTrial []detectOption
 func (ts detectTrial) remove(bp buildpack.GroupBuildable) detectTrial {
 	var out detectTrial
 	for _, t := range ts {
-		if t.GroupBuildable != bp {
+		if t.GroupBuildable.ID != bp.ID || t.GroupBuildable.Version != bp.Version { // TODO: confirm if this works
 			out = append(out, t)
 		}
 	}

@@ -61,23 +61,28 @@ func ReadGroup(path string) (Group, error) {
 	return group, err
 }
 
-func ReadOrder(path string) (Order, error) {
-	var order struct {
-		Order Order `toml:"order"`
+func ReadOrder(path string) (Order, Order, error) {
+	var order struct { // TODO: move this maybe
+		Order    Order `toml:"order"`
+		OrderExt Order `toml:"order-ext"`
 	}
 	_, err := toml.DecodeFile(path, &order)
-	return order.Order, err
+	return order.Order, order.OrderExt, err
 }
+
+// TODO: GroupElement is probably a better name for this
+// TODO: this struct is the amalgamation of all fields from order.toml & group.toml, which is a bit confusing and ties the code together in weird ways
 
 // A GroupBuildable represents a buildpack or extension referenced in a buildpack.toml's [[order.group]].
 // A GroupBuildable buildpack may be a regular buildpack, or a meta buildpack.
 type GroupBuildable struct {
-	API       string `toml:"api,omitempty" json:"-"`
-	Homepage  string `toml:"homepage,omitempty" json:"homepage,omitempty"`
+	API       string `toml:"api,omitempty" json:"-"`                       // group.toml
+	Homepage  string `toml:"homepage,omitempty" json:"homepage,omitempty"` // group.toml
 	ID        string `toml:"id" json:"id"`
 	Version   string `toml:"version" json:"version"`
-	Extension bool   `toml:"extension,omitempty" json:"extension,omitempty"` // TODO: check if this is okay, suggested to RFC
-	Optional  bool   `toml:"optional,omitempty" json:"optional,omitempty"`
+	Extension bool   `toml:"extension" json:"extension"`                   // group.toml
+	Optional  bool   `toml:"optional,omitempty" json:"optional,omitempty"` // order.toml
+	OrderExt  Order  `toml:"-" json:"-"`                                   // only for use by the Detector
 }
 
 func (b GroupBuildable) String() string {
