@@ -11,7 +11,6 @@ echo "REGISTRY_HOST: $REGISTRY_HOST"
 
 # Remove output images from daemon - note that they STILL EXIST in the local registry
 docker image rm $REGISTRY_HOST/test-builder --force
-docker image rm $REGISTRY_HOST/extended/buildimage --force # build image to extend
 docker image rm $REGISTRY_HOST/extended/runimage --force   # run image to extend
 docker image rm $REGISTRY_HOST/appimage --force
 
@@ -20,14 +19,18 @@ echo ">>>>>>>>>> Building lifecycle..."
 make clean build-linux-amd64
 cd $LIFECYCLE_REPO_PATH/out/linux-amd64
 
-echo ">>>>>>>>>> Building build base image..."
+# SKIP_BUILD_IMAGE is needed if you want to test build cache being used in subsequent build extension runs
+if [ -z "$SKIP_BUILD_IMAGE" ]; then
+  docker image rm $REGISTRY_HOST/extended/buildimage --force # build image to extend
+  echo ">>>>>>>>>> Building build base image..."
 
-cat <<EOF >Dockerfile
-FROM cnbs/sample-builder:bionic
-COPY ./lifecycle /cnb/lifecycle
+  cat <<EOF >Dockerfile
+  FROM cnbs/sample-builder:bionic
+  COPY ./lifecycle /cnb/lifecycle
 EOF
-docker build -t $REGISTRY_HOST/test-builder .
-docker push $REGISTRY_HOST/test-builder
+  docker build -t $REGISTRY_HOST/test-builder .
+  docker push $REGISTRY_HOST/test-builder
+fi
 
 echo ">>>>>>>>>> Building extender minimal image..."
 
