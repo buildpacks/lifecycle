@@ -167,6 +167,35 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should set CNB_LAYERS_DIR", func() {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-layers-dir-A-v1"))
+				h.AssertEq(t, actual, filepath.Join(layersDir, "A"))
+			})
+
+			it("should set CNB_PLATFORM_DIR", func() {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-platform-dir-A-v1"))
+				h.AssertEq(t, actual, platformDir)
+			})
+
+			it("should set CNB_BP_PLAN_PATH", func() {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-bp-plan-path-A-v1"))
+				if actual == "unset" {
+					t.Fatal("Expected CNB_BP_PLAN_PATH to be set")
+				}
+			})
+
 			it("should connect stdout and stdin to the terminal", func() {
 				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
@@ -1197,6 +1226,24 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		when("buildpack api < 0.8", func() {
 			it.Before(func() {
 				bpTOML.API = "0.7"
+			})
+
+			it("should not set environment variables for positional arguments", func() {
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+
+				_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+
+				h.AssertNil(t, err)
+				for _, file := range []string{
+					"build-env-cnb-layers-dir-A-v1",
+					"build-env-cnb-platform-dir-A-v1",
+					"build-env-cnb-bp-plan-path-A-v1",
+				} {
+					contents := h.Rdfile(t, filepath.Join(appDir, file))
+					if contents != "unset" {
+						t.Fatalf("Expected %s to be unset; got %s", file, contents)
+					}
+				}
 			})
 
 			it("should ignore process working directory and warn", func() {
