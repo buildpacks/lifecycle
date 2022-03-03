@@ -48,7 +48,7 @@ jobs:
           make format || true
           make test
   test-windows:
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
       - name: Set git to use LF and symlinks
         run: |
@@ -263,7 +263,7 @@ jobs:
   pack-acceptance-windows:
     if: github.event_name == 'push'
     needs: build-and-publish
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
       - uses: actions/checkout@v2
         with:
