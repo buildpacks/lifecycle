@@ -92,6 +92,7 @@ docker run \
   $REGISTRY_HOST/extender \
   /cnb/lifecycle/extender \
   -app /workspace \
+  -cache-image $REGISTRY_HOST/extended/buildimage/cache \
   -config /layers/config/metadata.toml \
   -kind build \
   -log-level debug \
@@ -114,6 +115,7 @@ docker run \
   $REGISTRY_HOST/extender \
   /cnb/lifecycle/extender \
   -app /workspace \
+  -cache-image $REGISTRY_HOST/extended/runimage/cache \
   -config /layers/config/extend-metadata.toml \
   -kind run \
   -log-level debug \

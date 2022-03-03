@@ -8,7 +8,6 @@ import (
 	"github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/GoogleContainerTools/kaniko/pkg/executor"
 	"github.com/containerd/containerd/platforms"
-	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/extender"
 )
@@ -19,16 +18,16 @@ const (
 )
 
 type DockerfileApplier struct {
-	cacheDir   string
-	contextDir string
-	workDir    string
+	cacheImageRef string
+	contextDir    string
+	workDir       string
 }
 
-func NewDockerfileApplier(cacheDir, contextDir, workDir string) *DockerfileApplier {
+func NewDockerfileApplier(cacheImageRef, contextDir, workDir string) *DockerfileApplier {
 	return &DockerfileApplier{
-		cacheDir:   cacheDir,
-		contextDir: contextDir,
-		workDir:    workDir,
+		cacheImageRef: cacheImageRef,
+		contextDir:    contextDir,
+		workDir:       workDir,
 	}
 }
 
@@ -39,14 +38,6 @@ func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, baseIm
 			logger.Infof("Skipping Dockerfile %s of wrong kind...", dockerfile.Path)
 			continue
 		}
-
-		destRef, err := name.NewTag(targetImageRef, name.WeakValidation)
-		if err != nil {
-			return fmt.Errorf("failed to parse target image ref %s: %w", targetImageRef, err)
-		}
-
-		// default to registry/dest/cache
-		cacheRef := fmt.Sprintf("%s/cache", destRef)
 
 		opts := config.KanikoOptions{
 			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, fromImageRef)),
@@ -60,9 +51,9 @@ func (a *DockerfileApplier) ApplyBuild(dockerfiles []extender.Dockerfile, baseIm
 			CustomPlatform:  platforms.DefaultString(),
 
 			Cache:     true,
-			CacheRepo: cacheRef,
+			CacheRepo: a.cacheImageRef,
 			CacheOptions: config.CacheOptions{
-				CacheTTL: 14 * (24 * time.Hour),
+				CacheTTL: 14 * (24 * time.Hour), // TODO: should this be configurable?
 			},
 		}
 
@@ -84,14 +75,6 @@ func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, baseImag
 			continue
 		}
 
-		destRef, err := name.NewTag(targetImageRef, name.WeakValidation)
-		if err != nil {
-			return fmt.Errorf("failed to parse target image ref %s: %w", targetImageRef, err)
-		}
-
-		// default to registry/dest/cache
-		cacheRef := fmt.Sprintf("%s/cache", destRef)
-
 		opts := config.KanikoOptions{
 			BuildArgs:       append(toMultiArg(dockerfile.Args), fmt.Sprintf(`base_image=%s`, fromImageRef)),
 			Cleanup:         true,
@@ -104,9 +87,9 @@ func (a *DockerfileApplier) ApplyRun(dockerfiles []extender.Dockerfile, baseImag
 			CustomPlatform:  platforms.DefaultString(),
 
 			Cache:     true,
-			CacheRepo: cacheRef,
+			CacheRepo: a.cacheImageRef,
 			CacheOptions: config.CacheOptions{
-				CacheTTL: 14 * (24 * time.Hour),
+				CacheTTL: 14 * (24 * time.Hour), // TODO: should this be configurable?
 			},
 		}
 

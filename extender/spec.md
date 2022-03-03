@@ -8,6 +8,7 @@ Usage:
 /cnb/lifecycle/extender \
   [-app <app>] \
   [-cache-dir <cache-dir>] \
+  [-cache-image <cache-image>] \
   [-config <config> ] \
   [-ignore-paths <ignore-paths>] \
   [-kind <kind>] \
@@ -23,6 +24,7 @@ Usage:
 |------------------|---------------------------|--------------------------|-----------------------------------------------------------------|
 | `<app>`          | `CNB_APP_DIR`             | `/workspace`             | Path to application directory                                   |
 | `<cache-dir>`    | `CNB_CACHE_DIR`           |                          | Path to a cache directory                                       |
+| `<cache-image>`  | `CNB_CACHE_IMAGE`         |                          | Reference to a cache image in an OCI image registry             |
 | `<config>`       | `CNB_EXTEND_CONFIG_PATH`  | `<work-dir>/config.toml` | Path to a config file (see [`config.toml`](#extend-config-toml) |
 | `<ignore-paths>` | `CNB_EXTEND_IGNORE_PATHS` |                          | Comma separated list of paths to ignore                         |
 | `<base-image>`   |                           |                          | Base image to extend                                            |

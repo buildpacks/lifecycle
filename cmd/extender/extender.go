@@ -16,12 +16,13 @@ import (
 
 type extendCmd struct {
 	// flags
-	appDir      string
-	cacheDir    string
-	ignorePaths string
-	kind        string
-	configPath  string
-	workDir     string
+	appDir        string
+	cacheDir      string
+	cacheImageRef string
+	ignorePaths   string
+	kind          string
+	configPath    string
+	workDir       string
 
 	// flags for builder subcommand
 	// appDir
@@ -42,7 +43,8 @@ type extendCmd struct {
 
 func (e *extendCmd) DefineFlags() {
 	cmd.FlagAppDir(&e.appDir)
-	cmd.FlagCacheDir(&e.cacheDir)
+	cmd.FlagCacheDir(&e.cacheDir) // TODO: will this ever be used by kaniko? Should we remove it?
+	cmd.FlagCacheImage(&e.cacheImageRef)
 	cmd.FlagExtendIgnorePaths(&e.ignorePaths)
 	cmd.FlagExtendKind(&e.kind)
 	cmd.FlagExtendConfigPath(&e.configPath)
@@ -77,7 +79,7 @@ func (e *extendCmd) Privileges() error {
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
-	// TODO: verify registry read access to base image
+	// TODO: verify registry read access to base image, read/write access to cache image
 	return nil
 }
 

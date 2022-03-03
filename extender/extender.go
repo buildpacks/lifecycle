@@ -23,7 +23,7 @@ type Opts struct {
 
 	Applier     DockerfileApplier
 	Dockerfiles []Dockerfile
-	IgnorePaths []string
+	IgnorePaths []string // TODO: should this go in kaniko constructor?
 
 	BuilderOpts
 }
