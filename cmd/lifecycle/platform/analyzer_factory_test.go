@@ -47,10 +47,12 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			fakeImageHandler = testmock.NewMockImageHandler(mockController)
 			fakeRegistryValidator = testmock.NewMockRegistryValidator(mockController)
 			af = &platform.AnalyzerFactory{
-				PlatformAPI:       api.MustParse(platformAPI),
-				CacheHandler:      fakeCacheHandler,
-				ImageHandler:      fakeImageHandler,
-				RegistryValidator: fakeRegistryValidator,
+				PlatformAPI: api.MustParse(platformAPI),
+				AnalyzerOpsManager: &platform.DefaultAnalyzerOpsManager{
+					CacheHandler:      fakeCacheHandler,
+					ImageHandler:      fakeImageHandler,
+					RegistryValidator: fakeRegistryValidator,
+				},
 			}
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}
@@ -329,7 +331,14 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 
 			when("provided a cache directory", func() {
 				it.Before(func() {
-					af.CacheHandler = platform.NewCacheHandler(nil)
+					af = &platform.AnalyzerFactory{
+						PlatformAPI: api.MustParse(platformAPI),
+						AnalyzerOpsManager: &platform.DefaultAnalyzerOpsManager{
+							CacheHandler:      platform.NewCacheHandler(nil), // use a real cache handler
+							ImageHandler:      fakeImageHandler,
+							RegistryValidator: fakeRegistryValidator,
+						},
+					}
 				})
 
 				it("provides it to the analyzer", func() {

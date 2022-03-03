@@ -1,7 +1,6 @@
 package platform
 
 import (
-	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -16,19 +15,37 @@ import (
 )
 
 type AnalyzerFactory struct {
-	PlatformAPI       *api.Version
-	CacheHandler      CacheHandler
-	ImageHandler      ImageHandler
-	RegistryValidator RegistryValidator
+	PlatformAPI *api.Version
+	AnalyzerOpsManager
 }
+
+type AnalyzerOpsManager interface {
+	EnsureRegistryAccess(opts AnalyzerOpts) AnalyzerOp
+	WithBuildpacks(group buildpack.Group, path string) AnalyzerOp
+	WithCache(cacheImageRef, cacheDir string) AnalyzerOp
+	WithLayerMetadataRestorer(layersDir string, skipLayers bool, logger lifecycle.Logger) AnalyzerOp
+	WithPrevious(imageRef string, launchCacheDir string) AnalyzerOp
+	WithRun(imageRef string) AnalyzerOp
+	WithSBOMRestorer(layersDir string, logger lifecycle.Logger) AnalyzerOp
+}
+
+type AnalyzerOp func(*lifecycle.Analyzer) error
 
 func NewAnalyzerFactory(platformAPI *api.Version, docker client.CommonAPIClient, keychain authn.Keychain) *AnalyzerFactory {
 	return &AnalyzerFactory{
-		PlatformAPI:       platformAPI,
-		CacheHandler:      NewCacheHandler(keychain),
-		ImageHandler:      NewImageHandler(docker, keychain),
-		RegistryValidator: NewRegistryValidator(keychain),
+		PlatformAPI: platformAPI,
+		AnalyzerOpsManager: &DefaultAnalyzerOpsManager{
+			CacheHandler:      NewCacheHandler(keychain),
+			ImageHandler:      NewImageHandler(docker, keychain),
+			RegistryValidator: NewRegistryValidator(keychain),
+		},
 	}
+}
+
+type DefaultAnalyzerOpsManager struct {
+	CacheHandler      CacheHandler
+	ImageHandler      ImageHandler
+	RegistryValidator RegistryValidator
 }
 
 // AnalyzerOpts holds the inputs needed to construct a new lifecycle.Analyzer.
@@ -49,143 +66,147 @@ type AnalyzerOpts struct {
 }
 
 func (af *AnalyzerFactory) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
-	if err := af.validateRegistryAccess(opts); err != nil {
-		return nil, err
-	}
-
-	buildpacks, err := af.initBuildpacks(opts.LegacyGroup, opts.LegacyGroupPath)
-	if err != nil {
-		if err, ok := err.(*cmd.ErrorFail); ok {
-			return nil, err
-		}
-		return nil, errors.Wrap(err, "reading buildpack group")
-	}
-
-	cacheStore, err := af.initCache(opts.CacheImageRef, opts.LegacyCacheDir)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing cache")
-	}
-
-	previousImage, err := af.initPrevious(opts.PreviousImageRef, opts.LaunchCacheDir)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing previous image")
-	}
-
-	runImage, err := af.initRun(opts.RunImageRef)
-	if err != nil {
-		return nil, errors.Wrap(err, "initializing run image")
-	}
-
-	return &lifecycle.Analyzer{
+	analyzer := &lifecycle.Analyzer{
 		Platform: platform.NewPlatform(af.PlatformAPI.String()),
 		Logger:   logger,
+	}
 
-		Buildpacks:            buildpacks,
-		Cache:                 cacheStore,
-		LayerMetadataRestorer: af.initLayerMetadataRestorer(opts.LayersDir, opts.SkipLayers, logger),
-		PreviousImage:         previousImage,
-		RunImage:              runImage,
-		SBOMRestorer:          af.initSBOMRestorer(opts.LayersDir, logger),
-	}, nil
+	var ops []AnalyzerOp
+	switch {
+	case af.PlatformAPI.AtLeast("0.8"):
+		ops = append(ops,
+			af.EnsureRegistryAccess(opts),
+			af.WithPrevious(opts.PreviousImageRef, opts.LaunchCacheDir),
+			af.WithRun(opts.RunImageRef),
+			af.WithSBOMRestorer(opts.LayersDir, logger),
+		)
+	case af.PlatformAPI.AtLeast("0.7"):
+		ops = append(ops,
+			af.EnsureRegistryAccess(opts),
+			af.WithPrevious(opts.PreviousImageRef, opts.LaunchCacheDir),
+			af.WithRun(opts.RunImageRef),
+		)
+	default:
+		ops = append(ops,
+			af.WithBuildpacks(opts.LegacyGroup, opts.LegacyGroupPath),
+			af.WithCache(opts.CacheImageRef, opts.LegacyCacheDir),
+			af.WithLayerMetadataRestorer(opts.LayersDir, opts.SkipLayers, logger),
+			af.WithPrevious(opts.PreviousImageRef, opts.LaunchCacheDir),
+		)
+	}
+
+	var err error
+	for _, op := range ops {
+		if err = op(analyzer); err != nil {
+			return nil, errors.Wrap(err, "initializing analyzer")
+		}
+	}
+	return analyzer, nil
 }
 
-func (af *AnalyzerFactory) initBuildpacks(group buildpack.Group, path string) ([]buildpack.GroupBuildpack, error) {
-	if af.PlatformAPI.AtLeast("0.7") {
-		return nil, nil
-	}
-	if len(group.Group) > 0 {
-		return group.Group, nil
-	}
-	group, err := buildpack.ReadGroup(path)
-	if err != nil {
-		return []buildpack.GroupBuildpack{}, err
-	}
-	if err := verifyBuildpackApis(group); err != nil {
-		return nil, err
-	}
-	return group.Group, nil
-}
+func (om *DefaultAnalyzerOpsManager) EnsureRegistryAccess(opts AnalyzerOpts) AnalyzerOp {
+	return func(_ *lifecycle.Analyzer) error {
+		var readImages, writeImages []string
+		writeImages = appendNotEmpty(writeImages, opts.CacheImageRef)
+		if !om.ImageHandler.Docker() {
+			readImages = appendNotEmpty(readImages, opts.PreviousImageRef, opts.RunImageRef)
+			writeImages = appendNotEmpty(writeImages, opts.OutputImageRef)
+			writeImages = appendNotEmpty(writeImages, opts.AdditionalTags...)
+		}
 
-func (af *AnalyzerFactory) initCache(cacheImageRef, cacheDir string) (lifecycle.Cache, error) {
-	if af.PlatformAPI.AtLeast("0.7") {
-		return nil, nil
-	}
-	if cacheImageRef != "" {
-		return af.CacheHandler.InitImageCache(cacheImageRef)
-	}
-	if cacheDir != "" {
-		return af.CacheHandler.InitVolumeCache(cacheDir)
-	}
-	return nil, nil
-}
-
-func (af *AnalyzerFactory) initLayerMetadataRestorer(layersDir string, skipLayers bool, logger lifecycle.Logger) layer.MetadataRestorer {
-	if af.PlatformAPI.AtLeast("0.7") {
+		if err := om.RegistryValidator.ValidateReadAccess(readImages); err != nil {
+			return errors.Wrap(err, "validating registry read access")
+		}
+		if err := om.RegistryValidator.ValidateWriteAccess(writeImages); err != nil {
+			return errors.Wrap(err, "validating registry write access")
+		}
 		return nil
 	}
-	return &layer.DefaultMetadataRestorer{
-		LayersDir:  layersDir,
-		SkipLayers: skipLayers,
-		Logger:     logger,
-	}
 }
 
-func (af *AnalyzerFactory) initPrevious(imageRef string, launchCacheDir string) (imgutil.Image, error) {
-	if imageRef == "" {
-		return nil, nil
-	}
-	image, err := af.ImageHandler.InitImage(imageRef)
-	if err != nil {
-		return nil, err
-	}
-	if !af.ImageHandler.Docker() || launchCacheDir == "" {
-		return image, nil
-	}
-
-	volumeCache, err := cache.NewVolumeCache(launchCacheDir)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating launch cache")
-	}
-	return cache.NewCachingImage(image, volumeCache), nil
-}
-
-func (af *AnalyzerFactory) initRun(imageRef string) (imgutil.Image, error) {
-	if af.PlatformAPI.LessThan("0.7") || imageRef == "" {
-		return nil, nil
-	}
-	return af.ImageHandler.InitImage(imageRef)
-}
-
-func (af *AnalyzerFactory) initSBOMRestorer(layersDir string, logger lifecycle.Logger) layer.SBOMRestorer {
-	if af.PlatformAPI.LessThan("0.8") {
+func (om *DefaultAnalyzerOpsManager) WithBuildpacks(group buildpack.Group, path string) AnalyzerOp {
+	return func(analyzer *lifecycle.Analyzer) error {
+		if len(group.Group) > 0 {
+			return nil
+		}
+		group, err := buildpack.ReadGroup(path)
+		if err != nil {
+			return err
+		}
+		if err := verifyBuildpackApis(group); err != nil {
+			return err
+		}
+		analyzer.Buildpacks = group.Group
 		return nil
 	}
-	return &layer.DefaultSBOMRestorer{
-		LayersDir: layersDir,
-		Logger:    logger,
+}
+
+func (om *DefaultAnalyzerOpsManager) WithCache(cacheImageRef, cacheDir string) AnalyzerOp {
+	return func(analyzer *lifecycle.Analyzer) error {
+		var err error
+		if cacheImageRef != "" {
+			analyzer.Cache, err = om.CacheHandler.InitImageCache(cacheImageRef)
+		}
+		if cacheDir != "" {
+			analyzer.Cache, err = om.CacheHandler.InitVolumeCache(cacheDir)
+		}
+		return err
 	}
 }
 
-func (af *AnalyzerFactory) validateRegistryAccess(opts AnalyzerOpts) error {
-	if af.PlatformAPI.LessThan("0.7") {
+func (om *DefaultAnalyzerOpsManager) WithLayerMetadataRestorer(layersDir string, skipLayers bool, logger lifecycle.Logger) AnalyzerOp {
+	return func(analyzer *lifecycle.Analyzer) error {
+		analyzer.LayerMetadataRestorer = &layer.DefaultMetadataRestorer{
+			LayersDir:  layersDir,
+			SkipLayers: skipLayers,
+			Logger:     logger,
+		}
 		return nil
 	}
+}
 
-	var readImages, writeImages []string
-	writeImages = appendNotEmpty(writeImages, opts.CacheImageRef)
-	if !af.ImageHandler.Docker() {
-		readImages = appendNotEmpty(readImages, opts.PreviousImageRef, opts.RunImageRef)
-		writeImages = appendNotEmpty(writeImages, opts.OutputImageRef)
-		writeImages = appendNotEmpty(writeImages, opts.AdditionalTags...)
-	}
+func (om *DefaultAnalyzerOpsManager) WithPrevious(imageRef string, launchCacheDir string) AnalyzerOp {
+	return func(analyzer *lifecycle.Analyzer) error {
+		if imageRef == "" {
+			return nil
+		}
+		var err error
+		analyzer.PreviousImage, err = om.ImageHandler.InitImage(imageRef)
+		if err != nil {
+			return err
+		}
+		if !om.ImageHandler.Docker() || launchCacheDir == "" {
+			return nil
+		}
 
-	if err := af.RegistryValidator.ValidateReadAccess(readImages); err != nil {
-		return errors.Wrap(err, "validating registry read access")
+		volumeCache, err := cache.NewVolumeCache(launchCacheDir)
+		if err != nil {
+			return errors.Wrap(err, "creating launch cache")
+		}
+		analyzer.PreviousImage = cache.NewCachingImage(analyzer.PreviousImage, volumeCache)
+		return nil
 	}
-	if err := af.RegistryValidator.ValidateWriteAccess(writeImages); err != nil {
-		return errors.Wrap(err, "validating registry write access")
+}
+
+func (om *DefaultAnalyzerOpsManager) WithRun(imageRef string) AnalyzerOp {
+	return func(analyzer *lifecycle.Analyzer) error {
+		if imageRef == "" {
+			return nil
+		}
+		var err error
+		analyzer.RunImage, err = om.ImageHandler.InitImage(imageRef)
+		return err
 	}
-	return nil
+}
+
+func (om *DefaultAnalyzerOpsManager) WithSBOMRestorer(layersDir string, logger lifecycle.Logger) AnalyzerOp {
+	return func(analyzer *lifecycle.Analyzer) error {
+		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{
+			LayersDir: layersDir,
+			Logger:    logger,
+		}
+		return nil
+	}
 }
 
 func verifyBuildpackApis(group buildpack.Group) error {
