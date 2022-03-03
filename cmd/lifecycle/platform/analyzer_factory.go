@@ -19,6 +19,7 @@ type AnalyzerFactory struct {
 	AnalyzerOpsManager
 }
 
+//go:generate mockgen -package testmock -destination testmock/analyzer_ops_manager.go github.com/buildpacks/lifecycle/cmd/lifecycle/platform AnalyzerOpsManager
 type AnalyzerOpsManager interface {
 	EnsureRegistryAccess(opts AnalyzerOpts) AnalyzerOp
 	WithBuildpacks(group buildpack.Group, path string) AnalyzerOp
@@ -175,7 +176,7 @@ func (om *DefaultAnalyzerOpsManager) WithPrevious(imageRef string, launchCacheDi
 		if err != nil {
 			return err
 		}
-		if !om.ImageHandler.Docker() || launchCacheDir == "" {
+		if launchCacheDir == "" || !om.ImageHandler.Docker() {
 			return nil
 		}
 
