@@ -42,7 +42,7 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 					`group = [{id = "C"}, {}]`+"\n",
 				filepath.Join(tmpDir, "order.toml"),
 			)
-			actual, err := buildpack.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+			actual, _, err := buildpack.ReadOrder(filepath.Join(tmpDir, "order.toml"))
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}

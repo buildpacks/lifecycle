@@ -83,14 +83,43 @@ func (d *detectCmd) Exec() error {
 }
 
 func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
-	order, err := buildpack.ReadOrder(da.orderPath)
+	order, orderExt, err := buildpack.ReadOrder(da.orderPath)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
 	}
 	if err := da.verifyBuildableApis(order); err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, err
 	}
-
+	// TODO: this is pretty horrible, but it "works"
+	if len(orderExt) > 0 {
+		// update `Extension` for each group element, as this field is not defined in order.toml
+		for i, extGroup := range orderExt {
+			for j, el := range extGroup.Group {
+				el.Extension = true
+				extGroup.Group[j] = el
+			}
+			orderExt[i] = buildpack.Group{
+				Group: extGroup.Group,
+			}
+		}
+		// create group element to hold `order-ext`
+		extGroupElement := buildpack.GroupBuildable{
+			ID:       "some-order-ext-id",
+			Version:  "some-order-ext-version",
+			Optional: true, // TODO: should this always be true, for the whole order?
+			OrderExt: orderExt,
+		}
+		// add `orderExt` as a "metabuildpack" inside each group
+		for i, group := range order {
+			order[i] = buildpack.Group{
+				Group: append([]buildpack.GroupBuildable{extGroupElement}, group.Group...),
+			}
+		}
+		cmd.DefaultLogger.Infof("XXXXXXXXXX New order: %+v", order)
+	}
+	if err := da.verifyBuildableApis(orderExt); err != nil {
+		return buildpack.Group{}, platform.BuildPlan{}, err
+	}
 	detector, err := lifecycle.NewDetector(buildpack.DetectConfig{
 		AppDir:      da.appDir,
 		PlatformDir: da.platformDir,
