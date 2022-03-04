@@ -128,6 +128,12 @@ func (r *DefaultMetadataRestorer) writeLayerMetadata(layerSHAStore SHAStore, bui
 	return layerSHAStore.add(buildpackID, metadata.SHA, layer)
 }
 
+type NopMetadataRestorer struct{}
+
+func (r *NopMetadataRestorer) Restore(_ []buildpack.GroupBuildpack, _ platform.LayersMetadata, _ platform.CacheMetadata, _ SHAStore) error {
+	return nil
+}
+
 type SHAStore interface {
 	add(buildpackID, sha string, layer *buildpack.Layer) error
 	Get(buildpackID string, layer buildpack.Layer) (string, error)

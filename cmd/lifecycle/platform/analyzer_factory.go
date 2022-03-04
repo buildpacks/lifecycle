@@ -51,8 +51,10 @@ type DefaultAnalyzerOpsManager struct {
 
 func (af *AnalyzerFactory) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
 	analyzer := &lifecycle.Analyzer{
-		Platform: platform.NewPlatform(af.PlatformAPI.String()),
-		Logger:   logger,
+		Platform:              platform.NewPlatform(af.PlatformAPI.String()),
+		Logger:                logger,
+		SBOMRestorer:          &layer.NopSBOMRestorer{},
+		LayerMetadataRestorer: &layer.NopMetadataRestorer{},
 	}
 
 	var ops []AnalyzerOp

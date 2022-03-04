@@ -48,9 +48,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 			appMeta = platform.LayersMetadata{}
 		}
 
-		if a.SBOMRestorer == nil {
-			// nop
-		} else if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
+		if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
 		}
 	} else {
