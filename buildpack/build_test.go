@@ -487,7 +487,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					it("should set the working directory", func() {
 						h.Mkfile(t,
 							"[[processes]]\n"+
-								`working-directory = "/working-directory"`,
+								`working-dir = "/working-directory"`,
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
 						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
@@ -1203,7 +1203,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				h.Mkfile(t,
 					"[[processes]]\n"+
-						`working-directory = "/working-directory"`+"\n"+
+						`working-dir = "/working-directory"`+"\n"+
 						`type = "some-type"`+"\n",
 					filepath.Join(appDir, "launch-A-v1.toml"),
 				)
