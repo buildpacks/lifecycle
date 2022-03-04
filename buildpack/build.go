@@ -19,6 +19,11 @@ import (
 	"github.com/buildpacks/lifecycle/layers"
 )
 
+const (
+	EnvLayersDir  = "CNB_LAYERS_DIR"
+	EnvBpPlanPath = "CNB_BP_PLAN_PATH"
+)
+
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
@@ -185,6 +190,13 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 		}
 	}
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
+	if api.MustParse(b.API).AtLeast("0.8") {
+		cmd.Env = append(cmd.Env,
+			EnvLayersDir+"="+bpLayersDir,
+			EnvPlatformDir+"="+config.PlatformDir,
+			EnvBpPlanPath+"="+bpPlanPath,
+		)
+	}
 
 	if err := cmd.Run(); err != nil {
 		return NewError(err, ErrTypeBuildpack)
