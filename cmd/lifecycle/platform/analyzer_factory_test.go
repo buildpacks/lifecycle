@@ -67,8 +67,6 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 		os.RemoveAll(tempDir)
 	})
 
-	// TODO: test logger
-
 	when("EnsureRegistryAccess", func() {
 		when("exporting to a daemon", func() {
 			it.Before(func() {
@@ -285,6 +283,22 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 
 		it.After(func() {
 			mockController.Finish()
+		})
+
+		it("provides platform and logger to the analyzer", func() {
+			opts := platform.AnalyzerOpts{}
+			om.EXPECT().EnsureRegistryAccess(opts).Return(wasCalled).AnyTimes()
+			om.EXPECT().WithBuildpacks(opts.LegacyGroup, opts.LegacyGroupPath).Return(wasCalled).AnyTimes()
+			om.EXPECT().WithCache(opts.CacheImageRef, opts.LegacyCacheDir).Return(wasCalled).AnyTimes()
+			om.EXPECT().WithLayerMetadataRestorer(opts.LayersDir, opts.SkipLayers, logger).Return(wasCalled).AnyTimes()
+			om.EXPECT().WithPrevious(opts.PreviousImageRef, opts.LaunchCacheDir).Return(wasCalled).AnyTimes()
+			om.EXPECT().WithRun(opts.RunImageRef).Return(wasCalled).AnyTimes()
+			om.EXPECT().WithSBOMRestorer(opts.LayersDir, logger).Return(wasCalled).AnyTimes()
+
+			analyzer, err := af.NewAnalyzer(opts, logger)
+			h.AssertNil(t, err)
+			h.AssertEq(t, analyzer.Platform.API().String(), af.PlatformAPI.String())
+			h.AssertEq(t, analyzer.Logger, logger)
 		})
 
 		when("latest platform api(s)", func() {

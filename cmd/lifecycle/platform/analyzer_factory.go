@@ -49,23 +49,6 @@ type DefaultAnalyzerOpsManager struct {
 	RegistryValidator RegistryValidator
 }
 
-// AnalyzerOpts holds the inputs needed to construct a new lifecycle.Analyzer.
-// Fields are the cumulative total of inputs across all supported platform APIs.
-type AnalyzerOpts struct {
-	AdditionalTags   []string
-	CacheImageRef    string
-	LaunchCacheDir   string
-	LayersDir        string
-	LegacyCacheDir   string
-	LegacyGroupPath  string
-	OutputImageRef   string
-	PreviousImageRef string
-	RunImageRef      string
-	SkipLayers       bool
-
-	LegacyGroup buildpack.Group // for creator
-}
-
 func (af *AnalyzerFactory) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
 	analyzer := &lifecycle.Analyzer{
 		Platform: platform.NewPlatform(af.PlatformAPI.String()),
@@ -99,6 +82,9 @@ func (af *AnalyzerFactory) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logge
 	var err error
 	for _, op := range ops {
 		if err = op(analyzer); err != nil {
+			if err, ok := err.(*cmd.ErrorFail); ok {
+				return nil, err
+			}
 			return nil, errors.Wrap(err, "initializing analyzer")
 		}
 	}
@@ -132,7 +118,7 @@ func (om *DefaultAnalyzerOpsManager) WithBuildpacks(group buildpack.Group, path 
 		}
 		group, err := buildpack.ReadGroup(path)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "reading buildpack group")
 		}
 		if err := verifyBuildpackApis(group); err != nil {
 			return err
@@ -174,7 +160,7 @@ func (om *DefaultAnalyzerOpsManager) WithPrevious(imageRef string, launchCacheDi
 		var err error
 		analyzer.PreviousImage, err = om.ImageHandler.InitImage(imageRef)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "getting previous image")
 		}
 		if launchCacheDir == "" || !om.ImageHandler.Docker() {
 			return nil
@@ -196,7 +182,10 @@ func (om *DefaultAnalyzerOpsManager) WithRun(imageRef string) AnalyzerOp {
 		}
 		var err error
 		analyzer.RunImage, err = om.ImageHandler.InitImage(imageRef)
-		return err
+		if err != nil {
+			return errors.Wrap(err, "getting run image")
+		}
+		return nil
 	}
 }
 

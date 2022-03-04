@@ -9,8 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO: add tests for registry validator
-
 //go:generate mockgen -package testmock -destination testmock/registry_validator.go github.com/buildpacks/lifecycle/cmd/lifecycle/platform RegistryValidator
 type RegistryValidator interface {
 	ValidateReadAccess(imageRefs []string) error

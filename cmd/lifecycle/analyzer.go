@@ -76,7 +76,7 @@ func (a *analyzeCmd) Args(_ int, args []string) error {
 
 func (a *analyzeCmd) Privileges() error {
 	var err error
-	a.keychain, err = auth.DefaultKeychain(a.registryImages()...)
+	a.keychain, err = auth.DefaultKeychain(a.RegistryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
@@ -96,12 +96,6 @@ func (a *analyzeCmd) Privileges() error {
 	return nil
 }
 
-func (a *analyzeCmd) registryImages() []string { // TODO: make this a method on AnalyzeInputs
-	var registryImages []string
-	registryImages = append(registryImages, a.ReadableRegistryImages()...)
-	return append(registryImages, a.WriteableRegistryImages()...)
-}
-
 func (a *analyzeCmd) Exec() error {
 	factory := newplat.NewAnalyzerFactory(a.platform.API(), a.docker, a.keychain)
 	analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
@@ -117,10 +111,7 @@ func (a *analyzeCmd) Exec() error {
 		SkipLayers:       a.SkipLayers,
 	}, cmd.DefaultLogger)
 	if err != nil {
-		if err, ok := err.(*cmd.ErrorFail); ok {
-			return err
-		}
-		return errors.Wrap(err, "initializing analyzer")
+		return err
 	}
 
 	analyzedMD, err := analyzer.Analyze()
@@ -132,22 +123,4 @@ func (a *analyzeCmd) Exec() error {
 		return errors.Wrap(err, "writing analyzed.toml")
 	}
 	return nil
-}
-
-func (a *analyzeCmd) ReadableRegistryImages() []string { // TODO: remove
-	var readableImages []string
-	if !a.UseDaemon {
-		readableImages = appendNotEmpty(readableImages, a.PreviousImageRef, a.RunImageRef)
-	}
-	return readableImages
-}
-
-func (a *analyzeCmd) WriteableRegistryImages() []string { // TODO: remove
-	var writeableImages []string
-	writeableImages = appendNotEmpty(writeableImages, a.CacheImageRef)
-	if !a.UseDaemon {
-		writeableImages = appendNotEmpty(writeableImages, a.OutputImageRef)
-		writeableImages = appendNotEmpty(writeableImages, a.AdditionalTags...)
-	}
-	return writeableImages
 }

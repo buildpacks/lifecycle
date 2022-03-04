@@ -7,15 +7,27 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
 )
 
 // AnalyzeInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
-type AnalyzeInputs struct { // TODO: make "to AnalyzerOpts" method? Do these structs need to be different?
+type AnalyzeInputs struct {
+	AnalyzedPath string
+	StackPath    string
+	UID          int
+	GID          int
+	UseDaemon    bool
+
+	AnalyzerOpts
+}
+
+// AnalyzerOpts holds the inputs needed to construct a new lifecycle.Analyzer.
+// Fields are the cumulative total of inputs across all supported platform APIs.
+type AnalyzerOpts struct {
 	AdditionalTags   str.Slice
-	AnalyzedPath     string
 	CacheImageRef    string
 	LaunchCacheDir   string
 	LayersDir        string
@@ -24,11 +36,19 @@ type AnalyzeInputs struct { // TODO: make "to AnalyzerOpts" method? Do these str
 	OutputImageRef   string
 	PreviousImageRef string
 	RunImageRef      string
-	StackPath        string
-	UID              int
-	GID              int
 	SkipLayers       bool
-	UseDaemon        bool
+
+	LegacyGroup buildpack.Group // for creator
+}
+
+func (a AnalyzeInputs) RegistryImages() []string {
+	var images []string
+	images = appendNotEmpty(images, a.CacheImageRef)
+	if !a.UseDaemon {
+		images = appendNotEmpty(images, a.PreviousImageRef, a.RunImageRef, a.OutputImageRef)
+		images = appendNotEmpty(images, a.AdditionalTags...)
+	}
+	return images
 }
 
 type AnalyzeInputsResolver struct {

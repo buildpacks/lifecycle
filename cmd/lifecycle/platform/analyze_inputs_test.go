@@ -77,12 +77,14 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			when("provided destination tags are on different registries", func() {
 				it("errors", func() {
 					inputs := platform.AnalyzeInputs{
-						AdditionalTags: str.Slice{
-							"some-registry.io/some-namespace/some-image:tag",
-							"some-other-registry.io/some-namespace/some-image",
+						AnalyzerOpts: platform.AnalyzerOpts{
+							AdditionalTags: str.Slice{
+								"some-registry.io/some-namespace/some-image:tag",
+								"some-other-registry.io/some-namespace/some-image",
+							},
+							OutputImageRef: "some-registry.io/some-namespace/some-image",
+							RunImageRef:    "some-run-image-ref", // ignore
 						},
-						OutputImageRef: "some-registry.io/some-namespace/some-image",
-						RunImageRef:    "some-run-image-ref", // ignore
 					}
 					_, err := av.Resolve(inputs, []string{"some-image"}, logger)
 					h.AssertNotNil(t, err)
@@ -128,9 +130,11 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 					)
 
 					inputs := platform.AnalyzeInputs{
-						AnalyzedPath:    platform.PlaceholderAnalyzedPath,
-						LegacyGroupPath: platform.PlaceholderGroupPath,
-						LayersDir:       "some-layers-dir",
+						AnalyzedPath: platform.PlaceholderAnalyzedPath,
+						AnalyzerOpts: platform.AnalyzerOpts{
+							LegacyGroupPath: platform.PlaceholderGroupPath,
+							LayersDir:       "some-layers-dir",
+						},
 					}
 					ret, err := av.Resolve(inputs, []string{"some-image"}, logger)
 					h.AssertNil(t, err)
@@ -148,9 +152,11 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			when("layers path is provided", func() {
 				it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
 					inputs := platform.AnalyzeInputs{
-						AnalyzedPath:    filepath.Join(".", "analyzed.toml"),
-						LegacyGroupPath: filepath.Join(".", "group.toml"),
-						LayersDir:       filepath.Join("testdata", "other-layers"),
+						AnalyzedPath: filepath.Join(".", "analyzed.toml"),
+						AnalyzerOpts: platform.AnalyzerOpts{
+							LegacyGroupPath: filepath.Join(".", "group.toml"),
+							LayersDir:       filepath.Join("testdata", "other-layers"),
+						},
 					}
 					ret, err := av.Resolve(inputs, []string{"some-image"}, logger)
 					h.AssertNil(t, err)
