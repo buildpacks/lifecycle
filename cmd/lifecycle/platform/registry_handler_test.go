@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	ih "github.com/buildpacks/imgutil/testhelpers"
@@ -28,9 +29,10 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	var (
-		registryValidator *platform.DefaultRegistryValidator
-		dockerConfigDir   string
-		registry          *ih.DockerRegistry
+		registryValidator  *platform.DefaultRegistryValidator
+		dockerConfigDir    string
+		registry           *ih.DockerRegistry
+		containerBaseImage string
 	)
 
 	it.Before(func() {
@@ -48,7 +50,12 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 		keychain, err := auth.DefaultKeychain(registry.RepoName("some-image"))
 		h.AssertNil(t, err)
 
-		createFixtures(t, registry, imageReadOnly, imageReadWrite, imageInaccessible)
+		if runtime.GOOS == "windows" {
+			containerBaseImage = "mcr.microsoft.com/windows/nanoserver:1809"
+		} else {
+			containerBaseImage = "scratch"
+		}
+		createFixtures(t, registry, containerBaseImage, imageReadOnly, imageReadWrite, imageInaccessible)
 		registry.SetReadOnly(imageReadOnly)
 		registry.SetReadWrite(imageReadWrite)
 		registry.SetInaccessible(imageInaccessible)
@@ -92,16 +99,16 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func createFixtures(t *testing.T, registry *ih.DockerRegistry, imageNames ...string) {
+func createFixtures(t *testing.T, registry *ih.DockerRegistry, baseImage string, imageNames ...string) {
 	for _, imageName := range imageNames {
-		buildRegistryImage(t, imageName, filepath.Join("testdata", "registry"), registry)
+		buildRegistryImage(t, imageName, filepath.Join("testdata", "registry"), registry, "--build-arg", "base_image="+baseImage)
 	}
 }
 
-func buildRegistryImage(t *testing.T, repoName, context string, registry *ih.DockerRegistry) string {
+func buildRegistryImage(t *testing.T, repoName, context string, registry *ih.DockerRegistry, buildArgs ...string) string {
 	// Build image
 	regRepoName := registry.RepoName(repoName)
-	h.DockerBuild(t, regRepoName, context)
+	h.DockerBuild(t, regRepoName, context, h.WithArgs(buildArgs...))
 
 	// Push image
 	h.AssertNil(t, h.PushImage(h.DockerCli(t), regRepoName, registry.EncodedLabeledAuth()))
