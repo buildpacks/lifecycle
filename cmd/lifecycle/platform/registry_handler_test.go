@@ -90,7 +90,6 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-
 }
 
 func createFixtures(t *testing.T, registry *ih.DockerRegistry, imageNames ...string) {
