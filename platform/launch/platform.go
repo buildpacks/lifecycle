@@ -1,4 +1,4 @@
-package platform
+package launch
 
 import (
 	"github.com/buildpacks/lifecycle/api"

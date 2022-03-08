@@ -1,4 +1,4 @@
-package platform_test
+package launch_test
 
 import (
 	"fmt"
@@ -7,20 +7,20 @@ import (
 	"github.com/sclevine/spec"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
+	platform "github.com/buildpacks/lifecycle/platform/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestPlatform(t *testing.T) {
-	spec.Run(t, "Test Platform", testPlatform)
+func TestExiter(t *testing.T) {
+	spec.Run(t, "Test Exiter", testExiter)
 }
 
-func testPlatform(t *testing.T, when spec.G, it spec.S) {
-	type expectedPlatform struct {
+func testExiter(t *testing.T, when spec.G, it spec.S) {
+	type expected struct {
 		version string
 		exiter  interface{}
 	}
-	toTest := []expectedPlatform{
+	toTest := []expected{
 		{
 			version: "0.3",
 			exiter:  &platform.LegacyExiter{},
@@ -47,18 +47,13 @@ func testPlatform(t *testing.T, when spec.G, it spec.S) {
 		},
 	}
 	for _, apiVersion := range api.Platform.Supported {
-		for _, expectedPlatform := range toTest {
-			if expectedPlatform.version == apiVersion.String() {
-				when(fmt.Sprintf("platform %s", expectedPlatform.version), func() {
-					it("is configured correctly", func() {
-						testedPlatform := platform.NewPlatform(expectedPlatform.version)
+		for _, expected := range toTest {
+			if expected.version == apiVersion.String() {
+				when(fmt.Sprintf("NewExiter for platform %s", expected.version), func() {
+					it("returns the right type", func() {
+						foundExiter := platform.NewExiter(expected.version)
 
-						// api version
-						h.AssertEq(t, testedPlatform.API().String(), expectedPlatform.version)
-
-						// exiter
-						foundExiter := testedPlatform.Exiter
-						switch expectedPlatform.exiter.(type) {
+						switch expected.exiter.(type) {
 						case *platform.DefaultExiter:
 							_, ok := foundExiter.(*platform.DefaultExiter)
 							h.AssertEq(t, ok, true)

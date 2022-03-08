@@ -1,4 +1,4 @@
-package platform
+package inputs
 
 import (
 	"fmt"
@@ -12,21 +12,21 @@ import (
 	"github.com/buildpacks/lifecycle/internal/str"
 )
 
-// AnalyzeInputs holds the values of command-line flags and args.
+// Analyze holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
-type AnalyzeInputs struct {
+type Analyze struct {
 	AnalyzedPath string
 	StackPath    string
 	UID          int
 	GID          int
 	UseDaemon    bool
 
-	AnalyzerOpts
+	ForAnalyzer
 }
 
-// AnalyzerOpts holds the inputs needed to construct a new lifecycle.Analyzer.
+// ForAnalyzer holds the inputs needed to construct a new lifecycle.Analyzer.
 // Fields are the cumulative total of inputs across all supported platform APIs.
-type AnalyzerOpts struct {
+type ForAnalyzer struct {
 	AdditionalTags   str.Slice
 	CacheImageRef    string
 	LaunchCacheDir   string
@@ -41,7 +41,7 @@ type AnalyzerOpts struct {
 	LegacyGroup buildpack.Group // for creator
 }
 
-func (a AnalyzeInputs) RegistryImages() []string {
+func (a Analyze) RegistryImages() []string {
 	var images []string
 	images = appendNotEmpty(images, a.CacheImageRef)
 	if !a.UseDaemon {
@@ -51,32 +51,32 @@ func (a AnalyzeInputs) RegistryImages() []string {
 	return images
 }
 
-type AnalyzeInputsResolver struct {
+type AnalyzeResolver struct {
 	PlatformAPI *api.Version
 }
 
 // Resolve accepts AnalyzeInputs with flags filled in, and args.
 // It returns AnalyzeInputs with default values filled in, or an error if the provided inputs are not valid.
-func (av *AnalyzeInputsResolver) Resolve(inputs AnalyzeInputs, cmdArgs []string, logger lifecycle.Logger) (AnalyzeInputs, error) {
+func (av *AnalyzeResolver) Resolve(inputs Analyze, cmdArgs []string, logger lifecycle.Logger) (Analyze, error) {
 	resolvedInputs := inputs
 
 	nargs := len(cmdArgs)
 	if nargs != 1 {
-		return AnalyzeInputs{}, fmt.Errorf("failed to parse arguments: received %d arguments, but expected 1", nargs)
+		return Analyze{}, fmt.Errorf("failed to parse arguments: received %d arguments, but expected 1", nargs)
 	}
 	resolvedInputs.OutputImageRef = cmdArgs[0]
 
 	if err := av.fillDefaults(&resolvedInputs, logger); err != nil {
-		return AnalyzeInputs{}, err
+		return Analyze{}, err
 	}
 
 	if err := av.validate(resolvedInputs, logger); err != nil {
-		return AnalyzeInputs{}, err
+		return Analyze{}, err
 	}
 	return resolvedInputs, nil
 }
 
-func (av *AnalyzeInputsResolver) fillDefaults(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
+func (av *AnalyzeResolver) fillDefaults(inputs *Analyze, logger lifecycle.Logger) error {
 	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
 		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, av.PlatformAPI)
 	}
@@ -92,7 +92,7 @@ func (av *AnalyzeInputsResolver) fillDefaults(inputs *AnalyzeInputs, logger life
 	return av.fillRunImage(inputs, logger)
 }
 
-func (av *AnalyzeInputsResolver) fillRunImage(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
+func (av *AnalyzeResolver) fillRunImage(inputs *Analyze, logger lifecycle.Logger) error {
 	if av.PlatformAPI.LessThan("0.7") || inputs.RunImageRef != "" {
 		return nil
 	}
@@ -114,7 +114,7 @@ func (av *AnalyzeInputsResolver) fillRunImage(inputs *AnalyzeInputs, logger life
 	return nil
 }
 
-func (av *AnalyzeInputsResolver) validate(inputs AnalyzeInputs, logger lifecycle.Logger) error {
+func (av *AnalyzeResolver) validate(inputs Analyze, logger lifecycle.Logger) error {
 	if inputs.OutputImageRef == "" {
 		return errors.New("image argument is required")
 	}

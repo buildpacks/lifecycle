@@ -1,4 +1,4 @@
-package platform_test
+package inputs_test
 
 import (
 	"io/ioutil"
@@ -18,9 +18,9 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform/testmock"
 	"github.com/buildpacks/lifecycle/internal/layer"
+	"github.com/buildpacks/lifecycle/platform/inputs"
+	"github.com/buildpacks/lifecycle/platform/inputs/testmock"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -33,25 +33,25 @@ func TestAnalyzerFactory(t *testing.T) {
 
 func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 	var (
-		om                    *platform.DefaultAnalyzerOpsManager
-		fakeCacheHandler      *testmock.MockCacheHandler
-		fakeImageHandler      *testmock.MockImageHandler
-		fakeRegistryValidator *testmock.MockRegistryValidator
-		logHandler            *memory.Handler
-		logger                *log.Logger
-		mockController        *gomock.Controller
-		tempDir               string
+		om                  *inputs.DefaultAnalyzerOpsManager
+		fakeCacheHandler    *testmock.MockCacheHandler
+		fakeImageHandler    *testmock.MockImageHandler
+		fakeRegistryHandler *testmock.MockRegistryHandler
+		logHandler          *memory.Handler
+		logger              *log.Logger
+		mockController      *gomock.Controller
+		tempDir             string
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		fakeCacheHandler = testmock.NewMockCacheHandler(mockController)
 		fakeImageHandler = testmock.NewMockImageHandler(mockController)
-		fakeRegistryValidator = testmock.NewMockRegistryValidator(mockController)
-		om = &platform.DefaultAnalyzerOpsManager{
-			CacheHandler:      fakeCacheHandler,
-			ImageHandler:      fakeImageHandler,
-			RegistryValidator: fakeRegistryValidator,
+		fakeRegistryHandler = testmock.NewMockRegistryHandler(mockController)
+		om = &inputs.DefaultAnalyzerOpsManager{
+			CacheHandler:    fakeCacheHandler,
+			ImageHandler:    fakeImageHandler,
+			RegistryHandler: fakeRegistryHandler,
 		}
 		logHandler = memory.New()
 		logger = &log.Logger{Handler: logHandler}
@@ -75,7 +75,7 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("validates access", func() {
-				opts := platform.AnalyzerOpts{
+				opts := inputs.ForAnalyzer{
 					AdditionalTags:   []string{"some-additional-tag"},
 					CacheImageRef:    "some-cache-image-ref",
 					OutputImageRef:   "some-output-image-ref",
@@ -83,8 +83,8 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 					RunImageRef:      "some-run-image-ref",
 				}
 				var none []string
-				fakeRegistryValidator.EXPECT().ValidateReadAccess(none)
-				fakeRegistryValidator.EXPECT().ValidateWriteAccess([]string{"some-cache-image-ref"})
+				fakeRegistryHandler.EXPECT().EnsureReadAccess(none)
+				fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref"})
 
 				h.AssertNil(t, om.EnsureRegistryAccess(opts)(&lifecycle.Analyzer{}))
 			})
@@ -97,7 +97,7 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("validates access", func() {
-				opts := platform.AnalyzerOpts{
+				opts := inputs.ForAnalyzer{
 					AdditionalTags:   []string{"some-additional-tag"},
 					CacheImageRef:    "some-cache-image-ref",
 					OutputImageRef:   "some-output-image-ref",
@@ -113,8 +113,8 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 					"some-output-image-ref",
 					"some-additional-tag",
 				}
-				fakeRegistryValidator.EXPECT().ValidateReadAccess(expectedReadImages)
-				fakeRegistryValidator.EXPECT().ValidateWriteAccess(expectedWriteImages)
+				fakeRegistryHandler.EXPECT().EnsureReadAccess(expectedReadImages)
+				fakeRegistryHandler.EXPECT().EnsureWriteAccess(expectedWriteImages)
 
 				h.AssertNil(t, om.EnsureRegistryAccess(opts)(&lifecycle.Analyzer{}))
 			})
@@ -157,7 +157,7 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 
 		when("provided a cache directory", func() {
 			it.Before(func() {
-				om.CacheHandler = platform.NewCacheHandler(nil) // use a real cache handler
+				om.CacheHandler = inputs.NewCacheHandler(nil) // use a real cache handler
 			})
 
 			it("provides it to the analyzer", func() {
@@ -196,8 +196,8 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 		when("daemon case", func() {
 			it.Before(func() {
 				fakeImageHandler.EXPECT().Docker().Return(true).AnyTimes()
-				fakeRegistryValidator.EXPECT().ValidateReadAccess(gomock.Any()).AnyTimes()
-				fakeRegistryValidator.EXPECT().ValidateWriteAccess(gomock.Any()).AnyTimes()
+				fakeRegistryHandler.EXPECT().EnsureReadAccess(gomock.Any()).AnyTimes()
+				fakeRegistryHandler.EXPECT().EnsureWriteAccess(gomock.Any()).AnyTimes()
 			})
 
 			when("provided a launch cache dir", func() {
@@ -260,7 +260,7 @@ func testAnalyzerOpsManager(t *testing.T, when spec.G, it spec.S) {
 func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
-			af             *platform.AnalyzerFactory
+			af             *inputs.AnalyzerFactory
 			om             *testmock.MockAnalyzerOpsManager
 			logger         *log.Logger
 			callCount      int
@@ -274,7 +274,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
 			om = testmock.NewMockAnalyzerOpsManager(mockController)
-			af = &platform.AnalyzerFactory{
+			af = &inputs.AnalyzerFactory{
 				PlatformAPI:        api.MustParse(platformAPI),
 				AnalyzerOpsManager: om,
 			}
@@ -286,7 +286,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 		})
 
 		it("provides platform and logger to the analyzer", func() {
-			opts := platform.AnalyzerOpts{}
+			opts := inputs.ForAnalyzer{}
 			om.EXPECT().EnsureRegistryAccess(opts).Return(wasCalled).AnyTimes()
 			om.EXPECT().WithBuildpacks(opts.LegacyGroup, opts.LegacyGroupPath).Return(wasCalled).AnyTimes()
 			om.EXPECT().WithCache(opts.CacheImageRef, opts.LegacyCacheDir).Return(wasCalled).AnyTimes()
@@ -307,7 +307,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			it("calls the expected operations", func() {
-				opts := platform.AnalyzerOpts{
+				opts := inputs.ForAnalyzer{
 					LaunchCacheDir:   "some-launch-cache-dir",
 					LayersDir:        "some-layers-dir",
 					LegacyCacheDir:   "some-ignored-cache-dir",
@@ -333,7 +333,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			it("calls the expected operations", func() {
-				opts := platform.AnalyzerOpts{
+				opts := inputs.ForAnalyzer{
 					LayersDir:        "some-layers-dir",
 					LegacyCacheDir:   "some-ignored-cache-dir",
 					LegacyGroupPath:  "some-ignored-group.toml",
@@ -356,7 +356,7 @@ func testAnalyzerFactory(platformAPI string) func(t *testing.T, when spec.G, it 
 			})
 
 			it("calls the expected operations", func() {
-				opts := platform.AnalyzerOpts{
+				opts := inputs.ForAnalyzer{
 					LayersDir:        "some-layers-dir",
 					LegacyCacheDir:   "some-cache-dir",
 					LegacyGroupPath:  "some-group.toml",

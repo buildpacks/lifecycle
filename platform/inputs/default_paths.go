@@ -1,4 +1,4 @@
-package platform
+package inputs
 
 import (
 	"os"

@@ -1,4 +1,4 @@
-package platform_test
+package inputs_test
 
 import (
 	"path/filepath"
@@ -11,8 +11,8 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/str"
+	"github.com/buildpacks/lifecycle/platform/inputs"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -25,19 +25,19 @@ func TestAnalyzeInputs(t *testing.T) {
 func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
-			av         *platform.AnalyzeInputsResolver
+			av         *inputs.AnalyzeResolver
 			logHandler *memory.Handler
 			logger     lifecycle.Logger
 		)
 		it.Before(func() {
-			av = &platform.AnalyzeInputsResolver{PlatformAPI: api.MustParse(platformAPI)}
+			av = &inputs.AnalyzeResolver{PlatformAPI: api.MustParse(platformAPI)}
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}
 		})
 
 		when("called without an app image", func() {
 			it("errors", func() {
-				_, err := av.Resolve(platform.AnalyzeInputs{}, []string{}, logger)
+				_, err := av.Resolve(inputs.Analyze{}, []string{}, logger)
 				h.AssertNotNil(t, err)
 				expected := "failed to parse arguments: received 0 arguments, but expected 1"
 				h.AssertStringContains(t, err.Error(), expected)
@@ -52,7 +52,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			when("run image", func() {
 				when("not provided", func() {
 					it("falls back to stack.toml", func() {
-						inputs := platform.AnalyzeInputs{
+						inputs := inputs.Analyze{
 							StackPath: filepath.Join("testdata", "layers", "stack.toml"),
 						}
 						ret, err := av.Resolve(inputs, []string{"some-image"}, logger)
@@ -62,7 +62,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 
 					when("stack.toml not present", func() {
 						it("errors", func() {
-							inputs := platform.AnalyzeInputs{
+							inputs := inputs.Analyze{
 								StackPath: "not-exist-stack.toml",
 							}
 							_, err := av.Resolve(inputs, []string{"some-image"}, logger)
@@ -76,8 +76,8 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 
 			when("provided destination tags are on different registries", func() {
 				it("errors", func() {
-					inputs := platform.AnalyzeInputs{
-						AnalyzerOpts: platform.AnalyzerOpts{
+					inputs := inputs.Analyze{
+						ForAnalyzer: inputs.ForAnalyzer{
 							AdditionalTags: str.Slice{
 								"some-registry.io/some-namespace/some-image:tag",
 								"some-other-registry.io/some-namespace/some-image",
@@ -101,7 +101,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 
 			when("cache image tag and cache directory are both blank", func() {
 				it("warns", func() {
-					_, err := av.Resolve(platform.AnalyzeInputs{}, []string{"some-image"}, logger)
+					_, err := av.Resolve(inputs.Analyze{}, []string{"some-image"}, logger)
 					h.AssertNil(t, err)
 					expected := "Not restoring cached layer metadata, no cache flag specified."
 					h.AssertLogEntry(t, logHandler, expected)
@@ -111,7 +111,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			when("run image", func() {
 				when("not provided", func() {
 					it("does not warn", func() {
-						inputs := platform.AnalyzeInputs{
+						inputs := inputs.Analyze{
 							StackPath: "not-exist-stack.toml",
 						}
 						_, err := av.Resolve(inputs, []string{"some-image"}, logger)
@@ -129,10 +129,10 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 						"Platform API < 0.5 reads and writes to the working directory",
 					)
 
-					inputs := platform.AnalyzeInputs{
-						AnalyzedPath: platform.PlaceholderAnalyzedPath,
-						AnalyzerOpts: platform.AnalyzerOpts{
-							LegacyGroupPath: platform.PlaceholderGroupPath,
+					inputs := inputs.Analyze{
+						AnalyzedPath: inputs.PlaceholderAnalyzedPath,
+						ForAnalyzer: inputs.ForAnalyzer{
+							LegacyGroupPath: inputs.PlaceholderGroupPath,
 							LayersDir:       "some-layers-dir",
 						},
 					}
@@ -151,9 +151,9 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 
 			when("layers path is provided", func() {
 				it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
-					inputs := platform.AnalyzeInputs{
+					inputs := inputs.Analyze{
 						AnalyzedPath: filepath.Join(".", "analyzed.toml"),
-						AnalyzerOpts: platform.AnalyzerOpts{
+						ForAnalyzer: inputs.ForAnalyzer{
 							LegacyGroupPath: filepath.Join(".", "group.toml"),
 							LayersDir:       filepath.Join("testdata", "other-layers"),
 						},

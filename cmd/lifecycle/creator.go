@@ -12,10 +12,10 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	newplat "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/inputs"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -170,8 +170,8 @@ func (c *createCmd) Exec() error {
 		plan       platform.BuildPlan
 	)
 	if c.platform.API().AtLeast("0.7") {
-		factory := newplat.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
-		analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
+		factory := inputs.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
+		analyzer, err := factory.NewAnalyzer(inputs.ForAnalyzer{
 			AdditionalTags:   c.additionalTags,
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,
@@ -216,8 +216,8 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		factory := newplat.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
-		analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
+		factory := inputs.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
+		analyzer, err := factory.NewAnalyzer(inputs.ForAnalyzer{
 			AdditionalTags:   c.additionalTags,
 			CacheImageRef:    c.cacheImageRef,
 			LaunchCacheDir:   c.launchCacheDir,

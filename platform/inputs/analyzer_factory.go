@@ -1,4 +1,4 @@
-package platform
+package inputs
 
 import (
 	"github.com/docker/docker/client"
@@ -19,9 +19,9 @@ type AnalyzerFactory struct {
 	AnalyzerOpsManager
 }
 
-//go:generate mockgen -package testmock -destination testmock/analyzer_ops_manager.go github.com/buildpacks/lifecycle/cmd/lifecycle/platform AnalyzerOpsManager
+//go:generate mockgen -package testmock -destination testmock/analyzer_ops_manager.go github.com/buildpacks/lifecycle/platform/inputs AnalyzerOpsManager
 type AnalyzerOpsManager interface {
-	EnsureRegistryAccess(opts AnalyzerOpts) AnalyzerOp
+	EnsureRegistryAccess(opts ForAnalyzer) AnalyzerOp
 	WithBuildpacks(group buildpack.Group, path string) AnalyzerOp
 	WithCache(cacheImageRef, cacheDir string) AnalyzerOp
 	WithLayerMetadataRestorer(layersDir string, skipLayers bool, logger lifecycle.Logger) AnalyzerOp
@@ -36,22 +36,22 @@ func NewAnalyzerFactory(platformAPI *api.Version, docker client.CommonAPIClient,
 	return &AnalyzerFactory{
 		PlatformAPI: platformAPI,
 		AnalyzerOpsManager: &DefaultAnalyzerOpsManager{
-			CacheHandler:      NewCacheHandler(keychain),
-			ImageHandler:      NewImageHandler(docker, keychain),
-			RegistryValidator: NewRegistryValidator(keychain),
+			CacheHandler:    NewCacheHandler(keychain),
+			ImageHandler:    NewImageHandler(docker, keychain),
+			RegistryHandler: NewRegistryHandler(keychain),
 		},
 	}
 }
 
 type DefaultAnalyzerOpsManager struct {
-	CacheHandler      CacheHandler
-	ImageHandler      ImageHandler
-	RegistryValidator RegistryValidator
+	CacheHandler    CacheHandler
+	ImageHandler    ImageHandler
+	RegistryHandler RegistryHandler
 }
 
-func (af *AnalyzerFactory) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
+func (af *AnalyzerFactory) NewAnalyzer(opts ForAnalyzer, logger lifecycle.Logger) (*lifecycle.Analyzer, error) {
 	analyzer := &lifecycle.Analyzer{
-		Platform:              platform.NewPlatform(af.PlatformAPI.String()),
+		Platform:              platform.NewPlatform(af.PlatformAPI.String()), // TODO: this should be removed eventually in favor of just passing the api
 		Logger:                logger,
 		SBOMRestorer:          &layer.NopSBOMRestorer{},
 		LayerMetadataRestorer: &layer.NopMetadataRestorer{},
@@ -93,7 +93,7 @@ func (af *AnalyzerFactory) NewAnalyzer(opts AnalyzerOpts, logger lifecycle.Logge
 	return analyzer, nil
 }
 
-func (om *DefaultAnalyzerOpsManager) EnsureRegistryAccess(opts AnalyzerOpts) AnalyzerOp {
+func (om *DefaultAnalyzerOpsManager) EnsureRegistryAccess(opts ForAnalyzer) AnalyzerOp {
 	return func(_ *lifecycle.Analyzer) error {
 		var readImages, writeImages []string
 		writeImages = appendNotEmpty(writeImages, opts.CacheImageRef)
@@ -103,10 +103,10 @@ func (om *DefaultAnalyzerOpsManager) EnsureRegistryAccess(opts AnalyzerOpts) Ana
 			writeImages = appendNotEmpty(writeImages, opts.AdditionalTags...)
 		}
 
-		if err := om.RegistryValidator.ValidateReadAccess(readImages); err != nil {
+		if err := om.RegistryHandler.EnsureReadAccess(readImages); err != nil {
 			return errors.Wrap(err, "validating registry read access")
 		}
-		if err := om.RegistryValidator.ValidateWriteAccess(writeImages); err != nil {
+		if err := om.RegistryHandler.EnsureWriteAccess(writeImages); err != nil {
 			return errors.Wrap(err, "validating registry write access")
 		}
 		return nil

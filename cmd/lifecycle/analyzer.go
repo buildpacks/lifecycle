@@ -9,16 +9,16 @@ import (
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
-	newplat "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/inputs"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type analyzeCmd struct {
 	platform Platform
 
-	newplat.AnalyzeInputs
+	inputs.Analyze
 	docker   client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain authn.Keychain         // construct if necessary before dropping privileges
 }
@@ -65,12 +65,12 @@ func (a *analyzeCmd) DefineFlags() {
 
 // Args validates arguments and flags, and fills in default values.
 func (a *analyzeCmd) Args(_ int, args []string) error {
-	resolver := &newplat.AnalyzeInputsResolver{PlatformAPI: a.platform.API()}
-	resolvedInputs, err := resolver.Resolve(a.AnalyzeInputs, args, cmd.DefaultLogger)
+	resolver := &inputs.AnalyzeResolver{PlatformAPI: a.platform.API()}
+	resolvedInputs, err := resolver.Resolve(a.Analyze, args, cmd.DefaultLogger)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "resolve inputs")
 	}
-	a.AnalyzeInputs = resolvedInputs
+	a.Analyze = resolvedInputs
 	return nil
 }
 
@@ -97,8 +97,8 @@ func (a *analyzeCmd) Privileges() error {
 }
 
 func (a *analyzeCmd) Exec() error {
-	factory := newplat.NewAnalyzerFactory(a.platform.API(), a.docker, a.keychain)
-	analyzer, err := factory.NewAnalyzer(newplat.AnalyzerOpts{
+	factory := inputs.NewAnalyzerFactory(a.platform.API(), a.docker, a.keychain)
+	analyzer, err := factory.NewAnalyzer(inputs.ForAnalyzer{
 		AdditionalTags:   a.AdditionalTags,
 		CacheImageRef:    a.CacheImageRef,
 		LaunchCacheDir:   a.LaunchCacheDir,

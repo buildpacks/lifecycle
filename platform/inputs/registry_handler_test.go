@@ -1,4 +1,4 @@
-package platform_test
+package inputs_test
 
 import (
 	"io/ioutil"
@@ -13,7 +13,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/inputs"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -29,7 +29,7 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	var (
-		registryValidator  *platform.DefaultRegistryValidator
+		registryHandler    *inputs.DefaultRegistryHandler
 		dockerConfigDir    string
 		registry           *ih.DockerRegistry
 		containerBaseImage string
@@ -60,7 +60,7 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 		registry.SetReadWrite(imageReadWrite)
 		registry.SetInaccessible(imageInaccessible)
 
-		registryValidator = platform.NewRegistryValidator(keychain)
+		registryHandler = inputs.NewRegistryHandler(keychain)
 	})
 
 	it.After(func() {
@@ -70,30 +70,30 @@ func testRegistryHandler(t *testing.T, when spec.G, it spec.S) {
 		removeFixtures(t, imageReadOnly, imageReadWrite, imageInaccessible)
 	})
 
-	when("ValidateReadAccess", func() {
+	when("EnsureReadAccess", func() {
 		when("image is readable", func() {
 			it("returns nil", func() {
-				h.AssertNil(t, registryValidator.ValidateReadAccess([]string{registry.RepoName(imageReadOnly)}))
+				h.AssertNil(t, registryHandler.EnsureReadAccess([]string{registry.RepoName(imageReadOnly)}))
 			})
 		})
 
 		when("image is not readable", func() {
 			it("returns an error", func() {
-				h.AssertNotNil(t, registryValidator.ValidateReadAccess([]string{registry.RepoName(imageInaccessible)}))
+				h.AssertNotNil(t, registryHandler.EnsureReadAccess([]string{registry.RepoName(imageInaccessible)}))
 			})
 		})
 	})
 
-	when("ValidateWriteAccess", func() {
+	when("EnsureWriteAccess", func() {
 		when("image is writable", func() {
 			it("returns nil", func() {
-				h.AssertNil(t, registryValidator.ValidateWriteAccess([]string{registry.RepoName(imageReadWrite)}))
+				h.AssertNil(t, registryHandler.EnsureWriteAccess([]string{registry.RepoName(imageReadWrite)}))
 			})
 		})
 
 		when("image is not writable", func() {
 			it("returns an error", func() {
-				h.AssertNotNil(t, registryValidator.ValidateWriteAccess([]string{registry.RepoName(imageReadOnly)}))
+				h.AssertNotNil(t, registryHandler.EnsureWriteAccess([]string{registry.RepoName(imageReadOnly)}))
 			})
 		})
 	})

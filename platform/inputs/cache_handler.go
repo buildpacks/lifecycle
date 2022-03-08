@@ -1,4 +1,4 @@
-package platform
+package inputs
 
 import (
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -8,7 +8,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 )
 
-//go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle/cmd/lifecycle/platform CacheHandler
+//go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle/platform/inputs CacheHandler
 type CacheHandler interface {
 	InitImageCache(cacheImageRef string) (lifecycle.Cache, error)
 	InitVolumeCache(cacheDir string) (lifecycle.Cache, error)

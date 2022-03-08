@@ -1,4 +1,4 @@
-package platform
+package inputs
 
 import (
 	"fmt"
@@ -9,23 +9,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate mockgen -package testmock -destination testmock/registry_validator.go github.com/buildpacks/lifecycle/cmd/lifecycle/platform RegistryValidator
-type RegistryValidator interface {
-	ValidateReadAccess(imageRefs []string) error
-	ValidateWriteAccess(imageRefs []string) error
+//go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle/platform/inputs RegistryHandler
+type RegistryHandler interface {
+	EnsureReadAccess(imageRefs []string) error
+	EnsureWriteAccess(imageRefs []string) error
 }
 
-type DefaultRegistryValidator struct {
+type DefaultRegistryHandler struct {
 	keychain authn.Keychain
 }
 
-func NewRegistryValidator(keychain authn.Keychain) *DefaultRegistryValidator {
-	return &DefaultRegistryValidator{
+func NewRegistryHandler(keychain authn.Keychain) *DefaultRegistryHandler {
+	return &DefaultRegistryHandler{
 		keychain: keychain,
 	}
 }
 
-func (rv *DefaultRegistryValidator) ValidateReadAccess(imageRefs []string) error {
+func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs []string) error {
 	for _, imageRef := range imageRefs {
 		if err := verifyReadAccess(imageRef, rv.keychain); err != nil {
 			return err
@@ -34,7 +34,7 @@ func (rv *DefaultRegistryValidator) ValidateReadAccess(imageRefs []string) error
 	return nil
 }
 
-func (rv *DefaultRegistryValidator) ValidateWriteAccess(imageRefs []string) error {
+func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs []string) error {
 	for _, imageRef := range imageRefs {
 		if err := verifyReadWriteAccess(imageRef, rv.keychain); err != nil {
 			return err
