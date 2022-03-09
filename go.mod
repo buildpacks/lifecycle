@@ -16,3 +16,5 @@ require (
 )
 
 go 1.16
+
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.10
