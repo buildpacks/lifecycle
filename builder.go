@@ -2,7 +2,7 @@ package lifecycle
 
 import (
 	"fmt"
-	"io"
+	goio "io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,7 +12,8 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
-	io2 "github.com/buildpacks/lifecycle/internal/io"
+	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -42,7 +43,7 @@ type Builder struct {
 	Platform       Platform
 	Group          buildpack.Group
 	Plan           platform.BuildPlan
-	Out, Err       io.Writer
+	Out, Err       goio.Writer
 	Logger         Logger
 	BuildpackStore BuildpackStore
 }
@@ -62,7 +63,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 	processMap := newProcessMap()
 	plan := b.Plan
-	var bom []buildpack.BOMEntry
+	var buildBOM []buildpack.BOMEntry
+	var launchBOM []buildpack.BOMEntry
 	var bomFiles []buildpack.BOMFile
 	var slices []layers.Slice
 	var labels []buildpack.Label
@@ -89,7 +91,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debug("Updating buildpack processes")
 		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.Platform.API())
 
-		bom = append(bom, br.BOM...)
+		buildBOM = append(buildBOM, br.BuildBOM...)
+		launchBOM = append(launchBOM, br.LaunchBOM...)
 		bomFiles = append(bomFiles, br.BOMFiles...)
 		labels = append(labels, br.Labels...)
 		plan = plan.Filter(br.MetRequires)
@@ -107,8 +110,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 	if b.Platform.API().LessThan("0.4") {
 		config.Logger.Debug("Updating BOM entries")
-		for i := range bom {
-			bom[i].ConvertMetadataToVersion()
+		for i := range launchBOM {
+			launchBOM[i].ConvertMetadataToVersion()
 		}
 	}
 
@@ -120,12 +123,23 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 	}
 
+	if b.Platform.API().AtLeast("0.9") {
+		b.Logger.Debug("Creating sBOM files for legacy BOM")
+		if err := encoding.WriteJSON(filepath.Join(b.LayersDir, "sbom", "launch", "sbom.legacy.json"), launchBOM); err != nil {
+			return nil, errors.Wrap(err, "encoding launch bom")
+		}
+		launchBOM = []buildpack.BOMEntry{} // zero out bom in <layers>/config/metadata.toml
+		if err := encoding.WriteJSON(filepath.Join(b.LayersDir, "sbom", "build", "sbom.legacy.json"), buildBOM); err != nil {
+			return nil, errors.Wrap(err, "encoding build bom")
+		}
+	}
+
 	b.Logger.Debug("Listing processes")
 	procList := processMap.list()
 
 	b.Logger.Debug("Finished build")
 	return &platform.BuildMetadata{
-		BOM:                         bom,
+		BOM:                         launchBOM,
 		Buildpacks:                  b.Group.Group,
 		Labels:                      labels,
 		Processes:                   procList,
@@ -172,7 +186,7 @@ func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) e
 				return err
 			}
 
-			return io2.Copy(bomFile.Path, filepath.Join(targetDir, name))
+			return io.Copy(bomFile.Path, filepath.Join(targetDir, name))
 		}
 	)
 

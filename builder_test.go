@@ -2,6 +2,7 @@ package lifecycle_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -295,7 +296,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("build metadata", func() {
 				when("bom", func() {
-					it("should aggregate BOM from each buildpack", func() {
+					it("should be empty", func() {
 						builder.Group.Group = []buildpack.GroupBuildpack{
 							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: "0.2"},
@@ -304,10 +305,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
-							BOM: []buildpack.BOMEntry{
+							BuildBOM: []buildpack.BOMEntry{
 								{
 									Require: buildpack.Require{
-										Name:     "dep1",
+										Name:     "build-dep1",
+										Metadata: map[string]interface{}{"version": "v1"},
+									},
+									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								},
+							},
+							LaunchBOM: []buildpack.BOMEntry{
+								{
+									Require: buildpack.Require{
+										Name:     "launch-dep1",
 										Metadata: map[string]interface{}{"version": "v1"},
 									},
 									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
@@ -317,10 +327,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpB := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
-							BOM: []buildpack.BOMEntry{
+							BuildBOM: []buildpack.BOMEntry{
 								{
 									Require: buildpack.Require{
-										Name:     "dep2",
+										Name:     "build-dep2",
+										Metadata: map[string]interface{}{"version": "v1"},
+									},
+									Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
+								},
+							},
+							LaunchBOM: []buildpack.BOMEntry{
+								{
+									Require: buildpack.Require{
+										Name:     "launch-dep2",
 										Metadata: map[string]interface{}{"version": "v1"},
 									},
 									Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
@@ -332,10 +351,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						if err != nil {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
-						if s := cmp.Diff(metadata.BOM, []buildpack.BOMEntry{
+						if s := cmp.Diff(metadata.BOM, []buildpack.BOMEntry{}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+
+						t.Log("saves the aggregated legacy launch bom to <layers>/sbom/launch/sbom.legacy.json")
+						var foundLaunch []buildpack.BOMEntry
+						launchContents, err := ioutil.ReadFile(filepath.Join(builder.LayersDir, "sbom", "launch", "sbom.legacy.json"))
+						h.AssertNil(t, err)
+						h.AssertNil(t, json.Unmarshal(launchContents, &foundLaunch))
+						expectedLaunch := []buildpack.BOMEntry{
 							{
 								Require: buildpack.Require{
-									Name:     "dep1",
+									Name:     "launch-dep1",
 									Version:  "",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
@@ -343,15 +371,39 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 							{
 								Require: buildpack.Require{
-									Name:     "dep2",
+									Name:     "launch-dep2",
 									Version:  "",
 									Metadata: map[string]interface{}{"version": string("v1")},
 								},
 								Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
 							},
-						}); s != "" {
-							t.Fatalf("Unexpected:\n%s\n", s)
 						}
+						h.AssertEq(t, foundLaunch, expectedLaunch)
+
+						t.Log("saves the aggregated legacy build bom to <layers>/sbom/build/sbom.legacy.json")
+						var foundBuild []buildpack.BOMEntry
+						buildContents, err := ioutil.ReadFile(filepath.Join(builder.LayersDir, "sbom", "build", "sbom.legacy.json"))
+						h.AssertNil(t, err)
+						h.AssertNil(t, json.Unmarshal(buildContents, &foundBuild))
+						expectedBuild := []buildpack.BOMEntry{
+							{
+								Require: buildpack.Require{
+									Name:     "build-dep1",
+									Version:  "",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+							},
+							{
+								Require: buildpack.Require{
+									Name:     "build-dep2",
+									Version:  "",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
+							},
+						}
+						h.AssertEq(t, foundBuild, expectedBuild)
 					})
 				})
 
@@ -835,7 +887,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpA := testmock.NewMockBuildpack(mockCtrl)
 						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
-							BOM: []buildpack.BOMEntry{
+							LaunchBOM: []buildpack.BOMEntry{
 								{
 									Require: buildpack.Require{
 										Name:     "dep1",
@@ -962,6 +1014,80 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
 						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
+					})
+				})
+			})
+		})
+
+		when("platform api < 0.9", func() {
+			it.Before(func() {
+				builder.Platform = platform.NewPlatform("0.8")
+			})
+			when("build metadata", func() {
+				when("bom", func() {
+					it("returns the aggregated boms from each buildpack", func() {
+						builder.Group.Group = []buildpack.GroupBuildpack{
+							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
+							{ID: "B", Version: "v2", API: "0.2"},
+						}
+
+						bpA := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
+							LaunchBOM: []buildpack.BOMEntry{
+								{
+									Require: buildpack.Require{
+										Name:     "dep1",
+										Metadata: map[string]interface{}{"version": "v1"},
+									},
+									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								},
+							},
+						}, nil)
+						bpB := testmock.NewMockBuildpack(mockCtrl)
+						buildpackStore.EXPECT().Lookup("B", "v2").Return(bpB, nil)
+						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
+							LaunchBOM: []buildpack.BOMEntry{
+								{
+									Require: buildpack.Require{
+										Name:     "dep2",
+										Metadata: map[string]interface{}{"version": "v1"},
+									},
+									Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
+								},
+							},
+						}, nil)
+
+						metadata, err := builder.Build()
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+						if s := cmp.Diff(metadata.BOM, []buildpack.BOMEntry{
+							{
+								Require: buildpack.Require{
+									Name:     "dep1",
+									Version:  "",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+							},
+							{
+								Require: buildpack.Require{
+									Name:     "dep2",
+									Version:  "",
+									Metadata: map[string]interface{}{"version": string("v1")},
+								},
+								Buildpack: buildpack.GroupBuildpack{ID: "B", Version: "v2"},
+							},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+
+						t.Log("it does not save the aggregated legacy launch bom to <layers>/sbom/launch/sbom.legacy.json")
+						h.AssertPathDoesNotExist(t, filepath.Join(builder.LayersDir, "sbom", "launch", "sbom.legacy.json"))
+
+						t.Log("it does not save the aggregated legacy build bom to <layers>/sbom/build/sbom.legacy.json")
+						h.AssertPathDoesNotExist(t, filepath.Join(builder.LayersDir, "sbom", "build", "sbom.legacy.json"))
 					})
 				})
 			})

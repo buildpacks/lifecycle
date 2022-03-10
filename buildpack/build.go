@@ -41,7 +41,8 @@ type BuildConfig struct {
 }
 
 type BuildResult struct {
-	BOM         []BOMEntry
+	BuildBOM    []BOMEntry
+	LaunchBOM   []BOMEntry
 	BOMFiles    []BOMFile
 	Labels      []Label
 	MetRequires []string
@@ -264,7 +265,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 
 		// set BOM and MetRequires
-		br.BOM, err = bomValidator.ValidateBOM(bpFromBpInfo, bpPlanOut.toBOM())
+		br.LaunchBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, bpPlanOut.toBOM())
 		if err != nil {
 			return BuildResult{}, err
 		}
@@ -284,20 +285,24 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 	} else {
 		// read build.toml
-		var bpBuild BuildTOML
+		var buildTOML BuildTOML
 		buildPath := filepath.Join(bpLayersDir, "build.toml")
-		if _, err := toml.DecodeFile(buildPath, &bpBuild); err != nil && !os.IsNotExist(err) {
+		if _, err := toml.DecodeFile(buildPath, &buildTOML); err != nil && !os.IsNotExist(err) {
 			return BuildResult{}, err
 		}
-		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, bpBuild.BOM); err != nil {
+		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM); err != nil {
+			return BuildResult{}, err
+		}
+		br.BuildBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM)
+		if err != nil {
 			return BuildResult{}, err
 		}
 
 		// set MetRequires
-		if err := validateUnmet(bpBuild.Unmet, bpPlanIn); err != nil {
+		if err := validateUnmet(buildTOML.Unmet, bpPlanIn); err != nil {
 			return BuildResult{}, err
 		}
-		br.MetRequires = names(bpPlanIn.filter(bpBuild.Unmet).Entries)
+		br.MetRequires = names(bpPlanIn.filter(buildTOML.Unmet).Entries)
 
 		// set BOM files
 		br.BOMFiles, err = b.processBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
@@ -313,7 +318,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 		}
 
 		// set BOM
-		br.BOM, err = bomValidator.ValidateBOM(bpFromBpInfo, launchTOML.BOM)
+		br.LaunchBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, launchTOML.BOM)
 		if err != nil {
 			return BuildResult{}, err
 		}
