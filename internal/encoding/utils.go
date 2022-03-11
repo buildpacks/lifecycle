@@ -9,7 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-func MarshalJSON(v interface{}) ([]byte, error) { // TODO: test
+func MarshalTOML(v interface{}) ([]byte, error) { // TODO: test
 	buf := new(bytes.Buffer)
 	encoder := toml.NewEncoder(buf)
 	if err := encoder.Encode(v); err != nil {

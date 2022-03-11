@@ -105,10 +105,10 @@ func (md *BuildMetadata) MarshalJSON() ([]byte, error) { // TODO: test
 func (md *BuildMetadata) MarshalTOML() ([]byte, error) { // TODO: test
 	type BuildMetadataSerializer BuildMetadata
 	if md.PlatformAPI == nil {
-		return encoding.MarshalJSON(*md)
+		return encoding.MarshalTOML(*md)
 	}
 	if md.PlatformAPI.AtLeast("0.9") {
-		return encoding.MarshalJSON(&struct {
+		return encoding.MarshalTOML(&struct {
 			*BuildMetadataSerializer
 			BOM []buildpack.BOMEntry `json:"toml,omitempty"`
 		}{
@@ -116,7 +116,7 @@ func (md *BuildMetadata) MarshalTOML() ([]byte, error) { // TODO: test
 			BOM:                     []buildpack.BOMEntry{},
 		})
 	}
-	return encoding.MarshalJSON(*md)
+	return encoding.MarshalTOML(*md)
 }
 
 func (md BuildMetadata) ToLaunchMD() launch.Metadata {
