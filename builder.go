@@ -128,7 +128,6 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		if err := encoding.WriteJSON(filepath.Join(b.LayersDir, "sbom", "launch", "sbom.legacy.json"), launchBOM); err != nil {
 			return nil, errors.Wrap(err, "encoding launch bom")
 		}
-		launchBOM = []buildpack.BOMEntry{} // zero out bom in <layers>/config/metadata.toml
 		if err := encoding.WriteJSON(filepath.Join(b.LayersDir, "sbom", "build", "sbom.legacy.json"), buildBOM); err != nil {
 			return nil, errors.Wrap(err, "encoding build bom")
 		}

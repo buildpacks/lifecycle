@@ -1,12 +1,22 @@
 package encoding
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
+
+func MarshalJSON(v interface{}) ([]byte, error) { // TODO: test
+	buf := new(bytes.Buffer)
+	encoder := toml.NewEncoder(buf)
+	if err := encoder.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
 
 func WriteJSON(path string, data interface{}) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {

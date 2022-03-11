@@ -106,6 +106,7 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
+	md.PlatformAPI = ba.platform.API() // TODO: test
 	if err := encoding.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write build metadata")
 	}

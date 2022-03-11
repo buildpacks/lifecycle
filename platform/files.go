@@ -3,10 +3,14 @@
 package platform
 
 import (
+	"encoding/json"
+
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -78,6 +82,54 @@ type BuildMetadata struct {
 	Processes                   []launch.Process           `toml:"processes" json:"processes"`
 	Slices                      []layers.Slice             `toml:"slices" json:"-"`
 	BuildpackDefaultProcessType string                     `toml:"buildpack-default-process-type,omitempty" json:"buildpack-default-process-type,omitempty"`
+	PlatformAPI                 *api.Version               `toml:"-" json:"-"`
+}
+
+func (md *BuildMetadata) MarshalJSON() ([]byte, error) { // TODO: test
+	type BuildMetadataSerializer BuildMetadata
+	if md.PlatformAPI == nil {
+		return json.Marshal(*md)
+	}
+	if md.PlatformAPI.AtLeast("0.9") {
+		return json.Marshal(&struct {
+			*BuildMetadataSerializer
+			BOM []buildpack.BOMEntry `json:"bom,omitempty"`
+		}{
+			BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
+			BOM:                     []buildpack.BOMEntry{},
+		})
+	}
+	return json.Marshal(*md)
+}
+
+func (md *BuildMetadata) MarshalTOML() ([]byte, error) { // TODO: test
+	type BuildMetadataSerializer BuildMetadata
+	if md.PlatformAPI == nil {
+		return encoding.MarshalJSON(*md)
+	}
+	if md.PlatformAPI.AtLeast("0.9") {
+		return encoding.MarshalJSON(&struct {
+			*BuildMetadataSerializer
+			BOM []buildpack.BOMEntry `json:"toml,omitempty"`
+		}{
+			BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
+			BOM:                     []buildpack.BOMEntry{},
+		})
+	}
+	return encoding.MarshalJSON(*md)
+}
+
+func (md BuildMetadata) ToLaunchMD() launch.Metadata {
+	lmd := launch.Metadata{
+		Processes: md.Processes,
+	}
+	for _, bp := range md.Buildpacks {
+		lmd.Buildpacks = append(lmd.Buildpacks, launch.Buildpack{
+			API: bp.API,
+			ID:  bp.ID,
+		})
+	}
+	return lmd
 }
 
 type LauncherMetadata struct {
@@ -92,19 +144,6 @@ type SourceMetadata struct {
 type GitMetadata struct {
 	Repository string `json:"repository"`
 	Commit     string `json:"commit"`
-}
-
-func (md BuildMetadata) ToLaunchMD() launch.Metadata {
-	lmd := launch.Metadata{
-		Processes: md.Processes,
-	}
-	for _, bp := range md.Buildpacks {
-		lmd.Buildpacks = append(lmd.Buildpacks, launch.Buildpack{
-			API: bp.API,
-			ID:  bp.ID,
-		})
-	}
-	return lmd
 }
 
 // plan.toml

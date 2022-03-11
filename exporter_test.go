@@ -411,9 +411,60 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
 			})
 
-			when("metadata.toml is missing bom and has empty process list", func() {
-				it.Before(func() {
-					err := ioutil.WriteFile(filepath.Join(opts.LayersDir, "config", "metadata.toml"), []byte(`
+			when("build metadata", func() {
+				when("platform api >= 0.9", func() {
+					it("bom is omitted in the build label", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+						h.AssertNil(t, err)
+
+						expectedJSON := `{
+  "buildpacks": [
+    {
+      "id": "buildpack.id",
+      "version": "1.2.3",
+      "homepage": "buildpack homepage"
+    },
+    {
+      "id": "other.buildpack.id",
+      "version": "4.5.6",
+      "homepage": "other buildpack homepage"
+    }
+  ],
+  "launcher": {
+    "version": "1.2.3",
+    "source": {
+      "git": {
+        "repository": "github.com/buildpacks/lifecycle",
+        "commit": "asdf1234"
+      }
+    }
+  },
+  "processes": [
+    {
+      "type": "some-process-type",
+      "direct": true,
+      "command": "/some/command",
+      "args": ["some", "command", "args"],
+      "buildpackID": "buildpack.id"
+    }
+  ]
+}
+`
+						h.AssertJSONEq(t, expectedJSON, metadataJSON)
+					})
+				})
+
+				when("platform api < 0.9", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.8")
+					})
+
+					when("metadata.toml is missing bom and has empty process list", func() {
+						it.Before(func() {
+							err := ioutil.WriteFile(filepath.Join(opts.LayersDir, "config", "metadata.toml"), []byte(`
 processes = []
 
 [[buildpacks]]
@@ -424,19 +475,19 @@ version = "1.2.3"
 id = "other.buildpack.id"
 version = "4.5.6"
 `),
-						os.ModePerm,
-					)
-					h.AssertNil(t, err)
-				})
+								os.ModePerm,
+							)
+							h.AssertNil(t, err)
+						})
 
-				it("BOM is null and processes is an empty array in the label", func() {
-					_, err := exporter.Export(opts)
-					h.AssertNil(t, err)
+						it("bom is null and processes is an empty array in the build label", func() {
+							_, err := exporter.Export(opts)
+							h.AssertNil(t, err)
 
-					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
-					h.AssertNil(t, err)
+							metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+							h.AssertNil(t, err)
 
-					expectedJSON := `
+							expectedJSON := `
 {
   "bom": null,
   "buildpacks": [
@@ -461,18 +512,18 @@ version = "4.5.6"
   "processes": []
 }
 `
-					h.AssertJSONEq(t, expectedJSON, metadataJSON)
-				})
-			})
+							h.AssertJSONEq(t, expectedJSON, metadataJSON)
+						})
+					})
 
-			it("combines metadata.toml with launcher config to create build label", func() {
-				_, err := exporter.Export(opts)
-				h.AssertNil(t, err)
+					it("combines metadata.toml with launcher config to create the build label", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
 
-				metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
-				h.AssertNil(t, err)
+						metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+						h.AssertNil(t, err)
 
-				expectedJSON := `{
+						expectedJSON := `{
   "bom": [
     {
       "name": "Spring Auto-reconfiguration",
@@ -528,7 +579,9 @@ version = "4.5.6"
   ]
 }
 `
-				h.AssertJSONEq(t, expectedJSON, metadataJSON)
+						h.AssertJSONEq(t, expectedJSON, metadataJSON)
+					})
+				})
 			})
 
 			when("there is project metadata", func() {
@@ -1171,7 +1224,7 @@ version = "4.5.6"
 		})
 
 		when("report.toml", func() {
-			when("checking the image manifest", func() {
+			when("manifest size", func() {
 				var fakeRemoteManifestSize int64
 				it.Before(func() {
 					opts.LayersDir = filepath.Join("testdata", "exporter", "empty-metadata", "layers")
@@ -1265,6 +1318,7 @@ version = "4.5.6"
 				it.Before(func() {
 					opts.LayersDir = filepath.Join("testdata", "exporter", "empty-metadata", "layers")
 				})
+
 				it("outputs the imageID", func() {
 					_, err := exporter.Export(opts)
 					h.AssertNil(t, err)
@@ -1279,46 +1333,60 @@ version = "4.5.6"
 					h.AssertEq(t, report.Image.ImageID, "some-image-id")
 				})
 			})
-		})
 
-		when("build.toml", func() {
-			when("platform api >= 0.5", func() {
-				when("valid", func() {
-					it.Before(func() {
-						opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "layers")
-					})
+			when("build bom", func() {
+				it.Before(func() {
+					opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "layers")
+				})
 
-					it("adds build bom entries to the report", func() {
+				when("platform api >= 0.9", func() {
+					it("does not add build bom entries to the report", func() {
 						report, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						h.AssertEq(t, report.Build.BOM, []buildpack.BOMEntry{
-							{
-								Require: buildpack.Require{
-									Name:     "dep1",
-									Metadata: map[string]interface{}{"version": string("v1")},
-								},
-								Buildpack: buildpack.GroupBuildpack{ID: "buildpack.id", Version: "1.2.3"},
-							},
-							{
-								Require: buildpack.Require{
-									Name:     "dep2",
-									Metadata: map[string]interface{}{"version": string("v1")},
-								},
-								Buildpack: buildpack.GroupBuildpack{ID: "other.buildpack.id", Version: "4.5.6"},
-							},
-						})
+						var empty []buildpack.BOMEntry
+						h.AssertEq(t, report.Build.BOM, empty)
 					})
 				})
 
-				when("invalid", func() {
+				when("platform api 0.5 to 0.8", func() {
 					it.Before(func() {
-						opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "bad-layers")
+						exporter.PlatformAPI = api.MustParse("0.8")
 					})
 
-					it("returns an error", func() {
-						_, err := exporter.Export(opts)
-						h.AssertError(t, err, "toml")
+					when("valid", func() {
+						it("adds build bom entries to the report", func() {
+							report, err := exporter.Export(opts)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, report.Build.BOM, []buildpack.BOMEntry{
+								{
+									Require: buildpack.Require{
+										Name:     "dep1",
+										Metadata: map[string]interface{}{"version": string("v1")},
+									},
+									Buildpack: buildpack.GroupBuildpack{ID: "buildpack.id", Version: "1.2.3"},
+								},
+								{
+									Require: buildpack.Require{
+										Name:     "dep2",
+										Metadata: map[string]interface{}{"version": string("v1")},
+									},
+									Buildpack: buildpack.GroupBuildpack{ID: "other.buildpack.id", Version: "4.5.6"},
+								},
+							})
+						})
+					})
+
+					when("invalid", func() {
+						it.Before(func() {
+							opts.LayersDir = filepath.Join("testdata", "exporter", "build-metadata", "bad-layers")
+						})
+
+						it("returns an error", func() {
+							_, err := exporter.Export(opts)
+							h.AssertError(t, err, "toml")
+						})
 					})
 				})
 			})

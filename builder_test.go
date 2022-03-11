@@ -296,7 +296,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("build metadata", func() {
 				when("bom", func() {
-					it("should be empty", func() {
+					it("saves the aggregated legacy boms to <layers>/sbom/", func() {
 						builder.Group.Group = []buildpack.GroupBuildpack{
 							{ID: "A", Version: "v1", API: "0.5", Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: "0.2"},
@@ -347,12 +347,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						}, nil)
 
-						metadata, err := builder.Build()
+						_, err := builder.Build()
 						if err != nil {
 							t.Fatalf("Unexpected error:\n%s\n", err)
-						}
-						if s := cmp.Diff(metadata.BOM, []buildpack.BOMEntry{}); s != "" {
-							t.Fatalf("Unexpected:\n%s\n", s)
 						}
 
 						t.Log("saves the aggregated legacy launch bom to <layers>/sbom/launch/sbom.legacy.json")
