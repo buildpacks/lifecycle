@@ -10,7 +10,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -75,7 +74,7 @@ type RunImageMetadata struct {
 // metadata.toml
 
 type BuildMetadata struct {
-	BOM                         []buildpack.BOMEntry       `toml:"bom" json:"bom"`
+	BOM                         []buildpack.BOMEntry       `toml:"bom,omitempty" json:"bom"`
 	Buildpacks                  []buildpack.GroupBuildpack `toml:"buildpacks" json:"buildpacks"`
 	Labels                      []buildpack.Label          `toml:"labels" json:"-"`
 	Launcher                    LauncherMetadata           `toml:"-" json:"launcher"`
@@ -85,38 +84,18 @@ type BuildMetadata struct {
 	PlatformAPI                 *api.Version               `toml:"-" json:"-"`
 }
 
-func (md *BuildMetadata) MarshalJSON() ([]byte, error) { // TODO: test
+func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
 	type BuildMetadataSerializer BuildMetadata
-	if md.PlatformAPI == nil {
+	if md.PlatformAPI == nil || md.PlatformAPI.LessThan("0.9") {
 		return json.Marshal(*md)
 	}
-	if md.PlatformAPI.AtLeast("0.9") {
-		return json.Marshal(&struct {
-			*BuildMetadataSerializer
-			BOM []buildpack.BOMEntry `json:"bom,omitempty"`
-		}{
-			BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
-			BOM:                     []buildpack.BOMEntry{},
-		})
-	}
-	return json.Marshal(*md)
-}
-
-func (md *BuildMetadata) MarshalTOML() ([]byte, error) { // TODO: test
-	type BuildMetadataSerializer BuildMetadata
-	if md.PlatformAPI == nil {
-		return encoding.MarshalTOML(*md)
-	}
-	if md.PlatformAPI.AtLeast("0.9") {
-		return encoding.MarshalTOML(&struct {
-			*BuildMetadataSerializer
-			BOM []buildpack.BOMEntry `json:"toml,omitempty"`
-		}{
-			BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
-			BOM:                     []buildpack.BOMEntry{},
-		})
-	}
-	return encoding.MarshalTOML(*md)
+	return json.Marshal(&struct {
+		*BuildMetadataSerializer
+		BOM []buildpack.BOMEntry `json:"bom,omitempty"`
+	}{
+		BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
+		BOM:                     []buildpack.BOMEntry{},
+	})
 }
 
 func (md BuildMetadata) ToLaunchMD() launch.Metadata {

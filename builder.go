@@ -131,6 +131,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		if err := encoding.WriteJSON(filepath.Join(b.LayersDir, "sbom", "build", "sbom.legacy.json"), buildBOM); err != nil {
 			return nil, errors.Wrap(err, "encoding build bom")
 		}
+		launchBOM = []buildpack.BOMEntry{}
 	}
 
 	b.Logger.Debug("Listing processes")

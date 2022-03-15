@@ -3,8 +3,11 @@ package platform_test
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 
+	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -69,6 +72,81 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 				name, err := stackMD.BestRunImageMirror("gcr.io")
 				h.AssertNil(t, err)
 				h.AssertEq(t, name, "gcr.io/myorg/myrepo")
+			})
+		})
+	})
+
+	when("MarshalJSON", func() {
+		var (
+			buildMD    *platform.BuildMetadata
+			buildpacks []buildpack.GroupBuildpack
+		)
+
+		it.Before(func() {
+			buildpacks = []buildpack.GroupBuildpack{
+				{ID: "A", Version: "v1"},
+			}
+			buildMD = &platform.BuildMetadata{
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
+						Name: "some-dep",
+					},
+					Buildpack: buildpack.GroupBuildpack{
+						ID: "A", Version: "v1",
+					},
+				}},
+				Buildpacks:  buildpacks,
+				PlatformAPI: api.Platform.Latest(),
+			}
+		})
+
+		it("omits bom", func() {
+			b, err := buildMD.MarshalJSON()
+			h.AssertNil(t, err)
+			if s := cmp.Diff(string(b),
+				`{"buildpacks":[{"id":"A","version":"v1"}],`+
+					`"launcher":{"version":"","source":{"git":{"repository":"","commit":""}}},`+
+					`"processes":null}`,
+			); s != "" {
+				t.Fatalf("Unexpected JSON:\n%s\n", s)
+			}
+		})
+
+		when("platform api < 0.9", func() {
+			it.Before(func() {
+				buildMD.PlatformAPI = api.MustParse("0.8")
+			})
+
+			it("does not omit bom", func() {
+				b, err := buildMD.MarshalJSON()
+				h.AssertNil(t, err)
+				if s := cmp.Diff(string(b),
+					`{"bom":[{"name":"some-dep","metadata":null,"buildpack":{"id":"A","version":"v1"}}],`+
+						`"buildpacks":[{"id":"A","version":"v1"}],`+
+						`"launcher":{"version":"","source":{"git":{"repository":"","commit":""}}},`+
+						`"processes":null}`,
+				); s != "" {
+					t.Fatalf("Unexpected JSON:\n%s\n", s)
+				}
+			})
+		})
+
+		when("missing platform", func() {
+			it.Before(func() {
+				buildMD.PlatformAPI = nil
+			})
+
+			it("does not omit bom", func() {
+				b, err := buildMD.MarshalJSON()
+				h.AssertNil(t, err)
+				if s := cmp.Diff(string(b),
+					`{"bom":[{"name":"some-dep","metadata":null,"buildpack":{"id":"A","version":"v1"}}],`+
+						`"buildpacks":[{"id":"A","version":"v1"}],`+
+						`"launcher":{"version":"","source":{"git":{"repository":"","commit":""}}},`+
+						`"processes":null}`,
+				); s != "" {
+					t.Fatalf("Unexpected JSON:\n%s\n", s)
+				}
 			})
 		})
 	})
