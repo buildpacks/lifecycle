@@ -269,7 +269,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 
-					when("there is a bom in build.toml and sbom files", func() {
+					when("there is a bom in build.toml and SBOM files", func() {
 						it("should not warn and should include the bom", func() {
 							h.Mkfile(t,
 								"[[bom]]\n"+
@@ -354,7 +354,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 
-					when("there is a bom in launch.toml and sbom files", func() {
+					when("there is a bom in launch.toml and SBOM files", func() {
 						it("should not warn and should include the bom", func() {
 							h.Mkfile(t,
 								"[[bom]]\n"+
@@ -498,7 +498,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName)))
 
 						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						h.AssertError(t, err, fmt.Sprintf("unsupported sbom format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
+						h.AssertError(t, err, fmt.Sprintf("unsupported SBOM format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
 					})
 
 					it("should error if there are undeclared media types", func() {
@@ -511,7 +511,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json"))
 
 						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						h.AssertError(t, err, "sbom type 'application/spdx+json' not declared for buildpack: 'A@v1'")
+						h.AssertError(t, err, "SBOM type 'application/spdx+json' not declared for buildpack: 'A@v1'")
 					})
 
 					when("buildpack api < 0.7", func() {
@@ -536,7 +536,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, len(br.BOMFiles), 0)
-							expected := "the following SBoM files will be ignored for buildpack api version < 0.7"
+							expected := "the following SBOM files will be ignored for buildpack api version < 0.7"
 							assertLogEntry(t, logHandler, expected)
 						})
 					})

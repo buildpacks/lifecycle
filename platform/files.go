@@ -85,10 +85,10 @@ type BuildMetadata struct {
 }
 
 func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
-	type BuildMetadataSerializer BuildMetadata
 	if md.PlatformAPI == nil || md.PlatformAPI.LessThan("0.9") {
 		return json.Marshal(*md)
 	}
+	type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
 	return json.Marshal(&struct {
 		*BuildMetadataSerializer
 		BOM []buildpack.BOMEntry `json:"bom,omitempty"`

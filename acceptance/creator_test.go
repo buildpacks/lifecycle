@@ -141,7 +141,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			})
 		})
 
-		when("sbom", func() {
+		when("SBOM", func() {
 			var (
 				container1     string
 				container2     string
@@ -157,7 +157,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			)
 
 			it.Before(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized sBOM")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized SBOM")
 
 				// assign container names
 				for _, cPtr := range []*string{&container1, &container2, &container3, &container4} {
@@ -178,7 +178,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			})
 
 			it.After(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized sBOM")
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized SBOM")
 
 				// remove containers if needed
 				for _, container := range []string{container1, container2, container3, container4} {

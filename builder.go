@@ -51,9 +51,9 @@ type Builder struct {
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Starting build")
 
-	// ensure layers sbom directory is removed
+	// ensure layers SBOM directory is removed
 	if err := os.RemoveAll(filepath.Join(b.LayersDir, "sbom")); err != nil {
-		return nil, errors.Wrap(err, "cleaning layers sbom directory")
+		return nil, errors.Wrap(err, "cleaning layers SBOM directory")
 	}
 
 	config, err := b.BuildConfig()
@@ -116,7 +116,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}
 
 	if b.Platform.API().AtLeast("0.8") {
-		b.Logger.Debug("Copying sBOM files")
+		b.Logger.Debug("Copying SBOM files")
 		err = b.copyBOMFiles(config.LayersDir, bomFiles)
 		if err != nil {
 			return nil, err
@@ -124,7 +124,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}
 
 	if b.Platform.API().AtLeast("0.9") {
-		b.Logger.Debug("Creating sBOM files for legacy BOM")
+		b.Logger.Debug("Creating SBOM files for legacy BOM")
 		if err := encoding.WriteJSON(filepath.Join(b.LayersDir, "sbom", "launch", "sbom.legacy.json"), launchBOM); err != nil {
 			return nil, errors.Wrap(err, "encoding launch bom")
 		}

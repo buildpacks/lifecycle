@@ -240,7 +240,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, string(result), `{"key": "some-bom-content-4"}`)
 			})
 
-			it("returns an error for any unsupported BOM formats", func() {
+			it("returns an error for any unsupported SBOM formats", func() {
 				bpA := testmock.NewMockBuildpack(mockCtrl)
 				bpB := testmock.NewMockBuildpack(mockCtrl)
 				buildpackStore.EXPECT().Lookup("A", "v1").Return(bpA, nil)
@@ -273,7 +273,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				}, nil)
 
 				_, err := builder.Build()
-				h.AssertError(t, err, fmt.Sprintf("unsupported sbom format: '%s'", bomFilePath2))
+				h.AssertError(t, err, fmt.Sprintf("unsupported SBOM format: '%s'", bomFilePath2))
 			})
 
 			it("cleans the /layers/sbom directory before building", func() {
