@@ -65,10 +65,11 @@ func (b *BOMFile) mediaType() string {
 	}
 }
 
-func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []string) error {
-	contains := func(vs []string, t string) bool {
-		for _, v := range vs {
-			if v == t {
+func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, declaredTypes []string) error {
+	contains := func(declaredTypes []string, foundType string) bool {
+		for _, declaredType := range declaredTypes {
+			parts := strings.Split(declaredType, ";")
+			if foundType == parts[0] {
 				return true
 			}
 		}
@@ -76,13 +77,13 @@ func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []
 	}
 
 	for _, bomFile := range bomfiles {
-		mediaType := bomFile.mediaType()
-		switch mediaType {
+		foundType := bomFile.mediaType()
+		switch foundType {
 		case mediaTypeUnsupported:
 			return errors.Errorf("unsupported SBOM format: '%s'", bomFile.Path)
 		default:
-			if !contains(sbomMediaTypes, mediaType) {
-				return errors.Errorf("SBOM type '%s' not declared for buildpack: '%s'", mediaType, bp.String())
+			if !contains(declaredTypes, foundType) {
+				return errors.Errorf("SBOM type '%s' not declared for buildpack: '%s'", foundType, bp.String())
 			}
 		}
 	}

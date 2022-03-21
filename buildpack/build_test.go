@@ -423,7 +423,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				when("bom files", func() {
 					it("should include any bom files", func() {
 						buildpackID := bpTOML.Buildpack.ID
-						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json;version=1.3"}
 						layerName := "some-layer"
 						otherLayerName := "some-launch-true-cache-false-layer"
 
