@@ -124,11 +124,12 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				ref.EXPECT().Name().AnyTimes()
 			})
 
-			when("image exists", func() {
+			when("previous image exists", func() {
 				it.Before(func() {
 					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
 					h.AssertNil(t, json.Unmarshal(metadata, &expectedAppMetadata))
+					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 				})
 
 				it("returns the analyzed metadata", func() {
@@ -139,21 +140,6 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 					h.AssertEq(t, md.PreviousImage.Reference, "s0m3D1g3sT")
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
-				})
-
-				when("when there is BOM information", func() {
-					it.Before(func() {
-						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
-
-						h.AssertNil(t, image.AddLayerWithDiffID("", "some-digest"))
-						h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, "some-digest")))
-					})
-
-					it("restores the SBOM layer from the previous image", func() {
-						sbomRestorer.EXPECT().RestoreFromPrevious(image, "some-digest")
-						_, err := analyzer.Analyze()
-						h.AssertNil(t, err)
-					})
 				})
 
 				when("cache exists", func() {
@@ -176,9 +162,10 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 			})
 
-			when("image not found", func() {
+			when("previous image not found", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.Delete())
+					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 					expectRestoresLayerMetadataIfSupported()
 				})
 
@@ -191,9 +178,10 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 			})
 
-			when("image does not have metadata label", func() {
+			when("previous image does not have metadata label", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
+					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 					expectRestoresLayerMetadataIfSupported()
 				})
 
@@ -204,9 +192,10 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				})
 			})
 
-			when("image has incompatible metadata", func() {
+			when("previous image has incompatible metadata", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
+					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 					expectRestoresLayerMetadataIfSupported()
 				})
 
@@ -214,17 +203,32 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+				})
+			})
+
+			when("previous image has an SBOM layer digest in the analyzed metadata", func() {
+				it.Before(func() {
+					metadata := fmt.Sprintf(`{"sbom": {"sha":"%s"}}`, "some-digest")
+					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", metadata))
+					h.AssertNil(t, json.Unmarshal([]byte(metadata), &expectedAppMetadata))
+					expectRestoresLayerMetadataIfSupported()
+				})
+
+				it("calls the SBOM restorer with the SBOM layer digest", func() {
+					sbomRestorer.EXPECT().RestoreFromPrevious(image, "some-digest")
+					_, err := analyzer.Analyze()
+					h.AssertNil(t, err)
 				})
 			})
 
 			when("run image is provided", func() {
 				it.Before(func() {
 					analyzer.RunImage = image
+					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
+					expectRestoresLayerMetadataIfSupported()
 				})
 
 				it("returns the run image digest in the analyzed metadata", func() {
-					expectRestoresLayerMetadataIfSupported()
-
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 

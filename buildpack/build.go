@@ -19,6 +19,11 @@ import (
 	"github.com/buildpacks/lifecycle/layers"
 )
 
+const (
+	EnvLayersDir  = "CNB_LAYERS_DIR"
+	EnvBpPlanPath = "CNB_BP_PLAN_PATH"
+)
+
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
@@ -185,6 +190,13 @@ func (b *Descriptor) runBuildCmd(bpLayersDir, bpPlanPath string, config BuildCon
 		}
 	}
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
+	if api.MustParse(b.API).AtLeast("0.8") {
+		cmd.Env = append(cmd.Env,
+			EnvLayersDir+"="+bpLayersDir,
+			EnvPlatformDir+"="+config.PlatformDir,
+			EnvBpPlanPath+"="+bpPlanPath,
+		)
+	}
 
 	if err := cmd.Run(); err != nil {
 		return NewError(err, ErrTypeBuildpack)
@@ -319,6 +331,12 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	br.Labels = append([]Label{}, launchTOML.Labels...)
 	for i := range launchTOML.Processes {
 		launchTOML.Processes[i].BuildpackID = b.Buildpack.ID
+		if api.MustParse(b.API).LessThan("0.8") {
+			if launchTOML.Processes[i].WorkingDirectory != "" {
+				logger.Warn(fmt.Sprintf("Warning: process working directory isn't supported in this buildpack api version. Ignoring working directory for process '%s'", launchTOML.Processes[i].Type))
+				launchTOML.Processes[i].WorkingDirectory = ""
+			}
+		}
 	}
 	br.Processes = append([]launch.Process{}, launchTOML.Processes...)
 	br.Slices = append([]layers.Slice{}, launchTOML.Slices...)

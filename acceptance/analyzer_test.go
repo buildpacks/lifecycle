@@ -112,7 +112,9 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called with skip layers", func() {
 			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 accepts a -skip-layers flag")
+				h.SkipIf(t,
+					api.MustParse(platformAPI).LessThan("0.7") || api.MustParse(platformAPI).AtLeast("0.9"),
+					"Platform API < 0.7 or Platform API > 0.9 accepts a -skip-layers flag")
 				cmd := exec.Command(
 					"docker", "run", "--rm",
 					"--env", "CNB_PLATFORM_API="+platformAPI,

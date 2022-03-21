@@ -5,6 +5,7 @@ package acceptance
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/encoding"
@@ -90,8 +93,38 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
-						assertImageOSAndArch(t, exportedImageName, exportTest)
+						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
+				})
+			})
+			when("SOURCE_DATE_EPOCH is set", func() {
+				it("Image CreatedAt is set to SOURCE_DATE_EPOCH", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "SOURCE_DATE_EPOCH support added in 0.9")
+					expectedTime := time.Date(2022, 1, 5, 5, 5, 5, 0, time.UTC)
+
+					exportFlags := []string{"-daemon"}
+					if api.MustParse(platformAPI).LessThan("0.7") {
+						exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
+					}
+
+					exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+					exportedImageName = "some-exported-image-" + h.RandString(10)
+					exportArgs = append(exportArgs, exportedImageName)
+
+					output := h.DockerRun(t,
+						exportImage,
+						h.WithFlags(append(
+							dockerSocketMount,
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+							"--env", "SOURCE_DATE_EPOCH="+fmt.Sprintf("%d", expectedTime.Unix()),
+							"--network", exportRegNetwork,
+						)...),
+						h.WithArgs(exportArgs...),
+					)
+					h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+					assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, expectedTime)
 				})
 			})
 		})
@@ -121,7 +154,37 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
 						h.Run(t, exec.Command("docker", "pull", exportedImageName))
-						assertImageOSAndArch(t, exportedImageName, exportTest)
+						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
+					})
+				})
+				when("SOURCE_DATE_EPOCH is set", func() {
+					it("Image CreatedAt is set to SOURCE_DATE_EPOCH", func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "SOURCE_DATE_EPOCH support added in 0.9")
+						expectedTime := time.Date(2022, 1, 5, 5, 5, 5, 0, time.UTC)
+
+						var exportFlags []string
+						if api.MustParse(platformAPI).LessThan("0.7") {
+							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
+						}
+
+						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
+						exportArgs = append(exportArgs, exportedImageName)
+
+						output := h.DockerRun(t,
+							exportImage,
+							h.WithFlags(
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+								"--env", "SOURCE_DATE_EPOCH="+fmt.Sprintf("%d", expectedTime.Unix()),
+								"--network", exportRegNetwork,
+							),
+							h.WithArgs(exportArgs...),
+						)
+						h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+						h.Run(t, exec.Command("docker", "pull", exportedImageName))
+						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, expectedTime)
 					})
 				})
 				when("cache", func() {
@@ -149,7 +212,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
 							h.Run(t, exec.Command("docker", "pull", exportedImageName))
-							assertImageOSAndArch(t, exportedImageName, exportTest)
+							assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 						})
 					})
 				})
@@ -163,6 +226,14 @@ func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) 
 	h.AssertNil(t, err)
 	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
 	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
+}
+
+func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest *PhaseTest, expectedCreatedAt time.Time) {
+	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+	h.AssertNil(t, err)
+	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
+	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
+	h.AssertEq(t, inspect.Created, expectedCreatedAt.Format(time.RFC3339))
 }
 
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {

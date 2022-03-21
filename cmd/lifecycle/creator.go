@@ -177,6 +177,7 @@ func (c *createCmd) Exec() error {
 			platform:         c.platform,
 			previousImageRef: c.previousImageRef,
 			runImageRef:      c.runImageRef,
+			skipLayers:       c.skipRestore,
 			useDaemon:        c.useDaemon,
 		}.analyze()
 		if err != nil {
@@ -216,7 +217,7 @@ func (c *createCmd) Exec() error {
 			layersDir:        c.layersDir,
 			legacyCache:      cacheStore,
 			legacyGroup:      group,
-			legacySkipLayers: c.skipRestore,
+			skipLayers:       c.skipRestore,
 			platform:         c.platform,
 			previousImageRef: c.previousImageRef,
 			useDaemon:        c.useDaemon,

@@ -17,8 +17,15 @@ for /f "tokens=* USEBACKQ" %%F in (`type %bp_dir%\buildpack.toml ^| yj -t ^| jq 
 echo build out: %bp_id%@%bp_version%
 echo build err: %bp_id%@%bp_version%>&2
 
+if not defined CNB_LAYERS_DIR ( set CNB_LAYERS_DIR="unset" )
+if not defined CNB_PLATFORM_DIR ( set CNB_PLATFORM_DIR="unset" )
+if not defined CNB_BP_PLAN_PATH ( set CNB_BP_PLAN_PATH="unset" )
+
 echo TEST_ENV: %TEST_ENV%> build-info-%bp_id%-%bp_version%
 call :echon %CNB_BUILDPACK_DIR%> build-env-cnb-buildpack-dir-%bp_id%-%bp_version%
+call :echon %CNB_LAYERS_DIR%> build-env-cnb-layers-dir-%bp_id%-%bp_version%
+call :echon %CNB_PLATFORM_DIR%> build-env-cnb-platform-dir-%bp_id%-%bp_version%
+call :echon %CNB_BP_PLAN_PATH%> build-env-cnb-bp-plan-path-%bp_id%-%bp_version%
 
 mkdir build-env-%bp_id%-%bp_version%
 xcopy /e /q %platform_dir%\env build-env-%bp_id%-%bp_version% >nul
