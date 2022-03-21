@@ -125,14 +125,20 @@ func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuild
 			bpID      = matches[1]
 			layerName = matches[2]
 			fileName  = matches[3]
-			dest      = filepath.Join(r.layersDir, bpID, fmt.Sprintf("%s.%s", layerName, fileName))
+			destDir   = filepath.Join(r.layersDir, bpID)
 		)
+
+		// don't try to restore sbom files when the bp layers directory doesn't exist
+		// this can happen when there are sbom files for launch but the cache is empty
+		if _, err := os.Stat(destDir); os.IsNotExist(err) {
+			return nil
+		}
 
 		if !r.contains(detectedBps, bpID) {
 			return nil
 		}
 
-		return io2.Copy(path, dest)
+		return io2.Copy(path, filepath.Join(destDir, fmt.Sprintf("%s.%s", layerName, fileName)))
 	}
 }
 
