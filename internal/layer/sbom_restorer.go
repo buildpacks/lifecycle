@@ -60,9 +60,9 @@ func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDige
 	if !image.Found() || layerDigest == "" {
 		return nil
 	}
-	r.logger.Infof("Restoring data for sbom from previous image")
+	r.logger.Infof("Restoring data for SBOM from previous image")
 
-	r.logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
+	r.logger.Debugf("Retrieving previous image SBOM layer for %q", layerDigest)
 	rc, err := image.GetLayer(layerDigest)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (r *DefaultSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) 
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
 	}
-	r.logger.Debugf("Retrieving sbom layer data for %q", layerDigest)
+	r.logger.Debugf("Retrieving SBOM layer data for %q", layerDigest)
 
 	rc, err := cache.RetrieveLayer(layerDigest)
 	if err != nil {

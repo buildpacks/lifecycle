@@ -50,7 +50,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 
 		if err := a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
+			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch SBOM layer")
 		}
 	} else {
 		appMeta = platform.LayersMetadata{}

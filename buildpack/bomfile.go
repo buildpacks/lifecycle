@@ -46,7 +46,7 @@ func (b *BOMFile) Name() (string, error) {
 	case mediaTypeSyft:
 		return "sbom.syft.json", nil
 	default:
-		return "", errors.Errorf("unsupported sbom format: '%s'", b.Path)
+		return "", errors.Errorf("unsupported SBOM format: '%s'", b.Path)
 	}
 }
 
@@ -79,10 +79,10 @@ func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, sbomMediaTypes []
 		mediaType := bomFile.mediaType()
 		switch mediaType {
 		case mediaTypeUnsupported:
-			return errors.Errorf("unsupported sbom format: '%s'", bomFile.Path)
+			return errors.Errorf("unsupported SBOM format: '%s'", bomFile.Path)
 		default:
 			if !contains(sbomMediaTypes, mediaType) {
-				return errors.Errorf("sbom type '%s' not declared for buildpack: '%s'", mediaType, bp.String())
+				return errors.Errorf("SBOM type '%s' not declared for buildpack: '%s'", mediaType, bp.String())
 			}
 		}
 	}
@@ -108,7 +108,7 @@ func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, bpLaye
 
 	if api.MustParse(b.API).LessThan("0.7") {
 		if len(matches) != 0 {
-			logger.Warnf("the following SBoM files will be ignored for buildpack api version < 0.7 [%s]", strings.Join(matches, ", "))
+			logger.Warnf("the following SBOM files will be ignored for buildpack api version < 0.7 [%s]", strings.Join(matches, ", "))
 		}
 
 		return nil, nil

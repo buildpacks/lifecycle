@@ -646,7 +646,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				)
 
 				it.Before(func() {
-					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore sBOM")
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore SBOM")
 
 					tmpDir, err := ioutil.TempDir("", "")
 					h.AssertNil(t, err)
