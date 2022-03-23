@@ -423,7 +423,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				when("bom files", func() {
 					it("should include any bom files", func() {
 						buildpackID := bpTOML.Buildpack.ID
-						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json;version=1.3"}
 						layerName := "some-layer"
 						otherLayerName := "some-launch-true-cache-false-layer"
 
@@ -498,7 +498,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName)))
 
 						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						h.AssertError(t, err, fmt.Sprintf("unsupported SBOM format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
+						h.AssertError(t, err, fmt.Sprintf("unsupported SBOM file format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
 					})
 
 					it("should error if there are undeclared media types", func() {
@@ -511,7 +511,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json"))
 
 						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						h.AssertError(t, err, "SBOM type 'application/spdx+json' not declared for buildpack: 'A@v1'")
+						h.AssertError(t, err, fmt.Sprintf("validating SBOM file '%s' for buildpack: 'A@v1': undeclared SBOM media type: 'application/spdx+json'", filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json")))
 					})
 
 					when("buildpack api < 0.7", func() {
