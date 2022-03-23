@@ -1,6 +1,8 @@
 package buildpack
 
 import (
+	"fmt"
+	"mime"
 	"path/filepath"
 	"strings"
 
@@ -66,24 +68,27 @@ func (b *BOMFile) mediaType() string {
 }
 
 func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, declaredTypes []string) error {
-	contains := func(declaredTypes []string, foundType string) bool {
+	ensureDeclared := func(declaredTypes []string, foundType string) error {
 		for _, declaredType := range declaredTypes {
-			parts := strings.Split(declaredType, ";")
-			if foundType == parts[0] {
-				return true
+			dType, _, err := mime.ParseMediaType(declaredType)
+			if err != nil {
+				return errors.Wrap(err, "parsing declared media type")
+			}
+			if foundType == dType {
+				return nil
 			}
 		}
-		return false
+		return errors.Errorf("undeclared SBOM media type: '%s'", foundType)
 	}
 
 	for _, bomFile := range bomfiles {
-		foundType := bomFile.mediaType()
-		switch foundType {
+		fileType := bomFile.mediaType()
+		switch fileType {
 		case mediaTypeUnsupported:
-			return errors.Errorf("unsupported SBOM format: '%s'", bomFile.Path)
+			return errors.Errorf("unsupported SBOM file format: '%s'", bomFile.Path)
 		default:
-			if !contains(declaredTypes, foundType) {
-				return errors.Errorf("SBOM type '%s' not declared for buildpack: '%s'", foundType, bp.String())
+			if err := ensureDeclared(declaredTypes, fileType); err != nil {
+				return errors.Wrap(err, fmt.Sprintf("validating SBOM file '%s' for buildpack: '%s'", bomFile.Path, bp.String()))
 			}
 		}
 	}
