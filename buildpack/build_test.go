@@ -205,20 +205,20 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 
-				when("there is a bom in launch.toml", func() {
-					it("should return error", func() {
-						h.Mkfile(t,
-							"[[bom]]\n"+
-								`name = "some-dep"`+"\n"+
-								"[bom.metadata]\n"+
-								`version = "some-version"`+"\n",
-							filepath.Join(appDir, "launch-A-v1.toml"),
-						)
-
-						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						h.AssertError(t, err, "bom table isn't supported in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>")
-					})
-				})
+				//when("there is a bom in launch.toml", func() {
+				//	it("should return error", func() {
+				//		h.Mkfile(t,
+				//			"[[bom]]\n"+
+				//				`name = "some-dep"`+"\n"+
+				//				"[bom.metadata]\n"+
+				//				`version = "some-version"`+"\n",
+				//			filepath.Join(appDir, "launch-A-v1.toml"),
+				//		)
+				//
+				//		_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+				//		h.AssertError(t, err, "bom table isn't supported in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>")
+				//	})
+				//})
 
 				it("includes any created BOM files", func() {
 					buildpackID := bpTOML.Buildpack.ID

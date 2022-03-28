@@ -34,9 +34,6 @@ func (v *defaultBOMValidator) ValidateBOM(bp GroupBuildable, bom []BOMEntry) ([]
 }
 
 func (v *defaultBOMValidator) validateBOM(bom []BOMEntry) error {
-	if len(bom) > 0 {
-		return errors.New("bom table isn't supported in this buildpack api version. The BOM should be written to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>")
-	}
 	return nil
 }
 

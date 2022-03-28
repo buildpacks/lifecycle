@@ -5,6 +5,7 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.7.1-0.20220214025711-99a09a7153a3
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20220124210926-14fe798ec25a
+	github.com/containerd/containerd v1.5.9
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.7
@@ -49,7 +50,6 @@ require (
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20220119192733-fe33c00cee21 // indirect
 	github.com/cilium/ebpf v0.8.1 // indirect
 	github.com/containerd/cgroups v1.0.2 // indirect
-	github.com/containerd/containerd v1.5.9 // indirect
 	github.com/containerd/continuity v0.2.2 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.10.1 // indirect
