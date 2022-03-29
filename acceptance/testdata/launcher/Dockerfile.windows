@@ -1,14 +1,14 @@
-FROM golang:1.16-nanoserver-1809
+FROM golang:1.17-nanoserver-1809
 
 COPY exec.d/ /go/src/exec.d
-WORKDIR /go/src
-RUN go build -o helper.exe exec.d
+WORKDIR /go/src/exec.d
+RUN go build -o helper.exe
 
 COPY windows/container /
 
 RUN mkdir c:\layers\0.6_buildpack\some_layer\exec.d\exec.d-checker
-RUN copy helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\helper.exe
-RUN copy helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\exec.d-checker\helper.exe
+RUN copy c:\go\src\exec.d\helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\helper.exe
+RUN copy c:\go\src\exec.d\helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\exec.d-checker\helper.exe
 
 ENV PATH="c:\cnb\process;c:\cnb\lifecycle;C:\Windows\system32;C:\Windows;"
 
