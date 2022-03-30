@@ -60,9 +60,9 @@ func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDige
 	if !image.Found() || layerDigest == "" {
 		return nil
 	}
-	r.Logger.Infof("Restoring data for sbom from previous image")
+	r.Logger.Infof("Restoring data for SBOM from previous image")
 
-	r.Logger.Debugf("Retrieving previous image sbom layer for %q", layerDigest)
+	r.Logger.Debugf("Retrieving previous image SBOM layer for %q", layerDigest)
 	rc, err := image.GetLayer(layerDigest)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (r *DefaultSBOMRestorer) RestoreFromCache(cache Cache, layerDigest string) 
 	if cache == nil {
 		return errors.New("restoring layer: cache not provided")
 	}
-	r.Logger.Debugf("Retrieving sbom layer data for %q", layerDigest)
+	r.Logger.Debugf("Retrieving SBOM layer data for %q", layerDigest)
 
 	rc, err := cache.RetrieveLayer(layerDigest)
 	if err != nil {
@@ -125,14 +125,20 @@ func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuild
 			bpID      = matches[1]
 			layerName = matches[2]
 			fileName  = matches[3]
-			dest      = filepath.Join(r.LayersDir, bpID, fmt.Sprintf("%s.%s", layerName, fileName))
+			destDir   = filepath.Join(r.LayersDir, bpID)
 		)
+
+		// don't try to restore sbom files when the bp layers directory doesn't exist
+		// this can happen when there are sbom files for launch but the cache is empty
+		if _, err := os.Stat(destDir); os.IsNotExist(err) {
+			return nil
+		}
 
 		if !r.contains(detectedBps, bpID) {
 			return nil
 		}
 
-		return io2.Copy(path, dest)
+		return io2.Copy(path, filepath.Join(destDir, fmt.Sprintf("%s.%s", layerName, fileName)))
 	}
 }
 

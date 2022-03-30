@@ -13,7 +13,7 @@ type Process struct {
 	Direct           bool     `toml:"direct" json:"direct"`
 	Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
 	BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
-	WorkingDirectory string   `toml:"working-directory,omitempty" json:"working-directory,omitempty"`
+	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
 }
 
 func (p Process) NoDefault() Process {

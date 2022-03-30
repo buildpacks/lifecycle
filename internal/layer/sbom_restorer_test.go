@@ -234,5 +234,16 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, sbomRestorer.RestoreToBuildpackLayers(detectedBps))
 			h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "buildpack.id", "launch.sbom.cdx.json"))
 		})
+
+		when("the bp layers directory doesn't exist", func() {
+			it.Before(func() {
+				os.RemoveAll(filepath.Join(layersDir, "buildpack.id"))
+				os.RemoveAll(filepath.Join(layersDir, "escaped_buildpack_id"))
+			})
+
+			it("does not error", func() {
+				h.AssertNil(t, sbomRestorer.RestoreToBuildpackLayers(detectedBps))
+			})
+		})
 	})
 }

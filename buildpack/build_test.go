@@ -167,6 +167,35 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("should set CNB_LAYERS_DIR", func() {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-layers-dir-A-v1"))
+				h.AssertEq(t, actual, filepath.Join(layersDir, "A"))
+			})
+
+			it("should set CNB_PLATFORM_DIR", func() {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-platform-dir-A-v1"))
+				h.AssertEq(t, actual, platformDir)
+			})
+
+			it("should set CNB_BP_PLAN_PATH", func() {
+				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				actual := h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-bp-plan-path-A-v1"))
+				if actual == "unset" {
+					t.Fatal("Expected CNB_BP_PLAN_PATH to be set")
+				}
+			})
+
 			it("should connect stdout and stdin to the terminal", func() {
 				if _, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv); err != nil {
 					t.Fatalf("Unexpected error:\n%s\n", err)
@@ -180,277 +209,369 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("build result", func() {
-				it("should get unmet requires from build.toml", func() {
-					bpPlan := buildpack.Plan{
-						Entries: []buildpack.Require{
-							{Name: "some-dep"}, {Name: "some-other-dep"}, {Name: "some-unmet-dep"},
-						},
-					}
+				when("met requires", func() {
+					it("should derive from build.toml", func() {
+						bpPlan := buildpack.Plan{
+							Entries: []buildpack.Require{
+								{Name: "some-dep"}, {Name: "some-other-dep"}, {Name: "some-unmet-dep"},
+							},
+						}
 
-					h.Mkfile(t,
-						"[[unmet]]\n"+
-							`name = "some-unmet-dep"`+"\n",
-						filepath.Join(appDir, "build-A-v1.toml"),
-					)
-
-					br, err := bpTOML.Build(bpPlan, config, mockEnv)
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-
-					if s := cmp.Diff(br, buildpack.BuildResult{
-						MetRequires: []string{"some-dep", "some-other-dep"},
-					}); s != "" {
-						t.Fatalf("Unexpected:\n%s\n", s)
-					}
-				})
-
-				when("there is a bom in launch.toml", func() {
-					it("should warn and produce BOM", func() {
 						h.Mkfile(t,
-							"[[bom]]\n"+
-								`name = "some-dep"`+"\n"+
-								"[bom.metadata]\n"+
-								`version = "some-version"`+"\n",
-							filepath.Join(appDir, "launch-A-v1.toml"),
+							"[[unmet]]\n"+
+								`name = "some-unmet-dep"`+"\n",
+							filepath.Join(appDir, "build-A-v1.toml"),
 						)
 
-						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						br, err := bpTOML.Build(bpPlan, config, mockEnv)
 						if err != nil {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
 
 						if s := cmp.Diff(br, buildpack.BuildResult{
-							BOM: []buildpack.BOMEntry{
-								{
-									Require: buildpack.Require{
-										Name:     "some-dep",
-										Metadata: map[string]interface{}{"version": "some-version"},
-									},
-									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
-								},
-							},
-							Labels:    []buildpack.Label{},
-							Processes: []launch.Process{},
-							Slices:    []layers.Slice{},
+							MetRequires: []string{"some-dep", "some-other-dep"},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
-						assertLogEntry(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
 					})
 				})
 
-				when("there is a bom in launch.toml and sbom files", func() {
-					it("should not warn and produce BOM", func() {
-						h.Mkfile(t,
-							"[[bom]]\n"+
-								`name = "some-dep"`+"\n"+
-								"[bom.metadata]\n"+
-								`version = "some-version"`+"\n",
-							filepath.Join(appDir, "launch-A-v1.toml"),
-						)
+				when("build bom", func() {
+					when("there is a bom in build.toml", func() {
+						it("should warn and include the bom", func() {
+							h.Mkfile(t,
+								"[[bom]]\n"+
+									`name = "some-dep"`+"\n"+
+									"[bom.metadata]\n"+
+									`version = "some-version"`+"\n",
+								filepath.Join(appDir, "build-A-v1.toml"),
+							)
 
+							br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+							if err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							if s := cmp.Diff(br, buildpack.BuildResult{
+								BuildBOM: []buildpack.BOMEntry{
+									{
+										Require: buildpack.Require{
+											Name:     "some-dep",
+											Metadata: map[string]interface{}{"version": "some-version"},
+										},
+										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+									},
+								},
+							}); s != "" {
+								t.Fatalf("Unexpected:\n%s\n", s)
+							}
+							assertLogEntry(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+						})
+					})
+
+					when("there is a bom in build.toml and SBOM files", func() {
+						it("should not warn and should include the bom", func() {
+							h.Mkfile(t,
+								"[[bom]]\n"+
+									`name = "some-dep"`+"\n"+
+									"[bom.metadata]\n"+
+									`version = "some-version"`+"\n",
+								filepath.Join(appDir, "build-A-v1.toml"),
+							)
+
+							buildpackID := bpTOML.Buildpack.ID
+							bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+
+							h.Mkdir(t,
+								filepath.Join(layersDir, buildpackID))
+							h.Mkfile(t, `{"key": "some-bom-content"}`,
+								filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"))
+
+							br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+							if err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							if s := cmp.Diff(br, buildpack.BuildResult{
+								BuildBOM: []buildpack.BOMEntry{
+									{
+										Require: buildpack.Require{
+											Name:     "some-dep",
+											Metadata: map[string]interface{}{"version": "some-version"},
+										},
+										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+									},
+								},
+								BOMFiles: []buildpack.BOMFile{
+									{
+										BuildpackID: buildpackID,
+										LayerName:   "",
+										LayerType:   buildpack.LayerTypeBuild,
+										Path:        filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
+									},
+								},
+							}); s != "" {
+								t.Fatalf("Unexpected:\n%s\n", s)
+							}
+							assertLogEntryNotContains(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+						})
+					})
+				})
+
+				when("launch bom", func() {
+					when("there is a bom in launch.toml", func() {
+						it("should warn and include the bom", func() {
+							h.Mkfile(t,
+								"[[bom]]\n"+
+									`name = "some-dep"`+"\n"+
+									"[bom.metadata]\n"+
+									`version = "some-version"`+"\n",
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+
+							br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+							if err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							if s := cmp.Diff(br, buildpack.BuildResult{
+								LaunchBOM: []buildpack.BOMEntry{
+									{
+										Require: buildpack.Require{
+											Name:     "some-dep",
+											Metadata: map[string]interface{}{"version": "some-version"},
+										},
+										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+									},
+								},
+								Labels:    []buildpack.Label{},
+								Processes: []launch.Process{},
+								Slices:    []layers.Slice{},
+							}); s != "" {
+								t.Fatalf("Unexpected:\n%s\n", s)
+							}
+							assertLogEntry(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+						})
+					})
+
+					when("there is a bom in launch.toml and SBOM files", func() {
+						it("should not warn and should include the bom", func() {
+							h.Mkfile(t,
+								"[[bom]]\n"+
+									`name = "some-dep"`+"\n"+
+									"[bom.metadata]\n"+
+									`version = "some-version"`+"\n",
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+
+							buildpackID := bpTOML.Buildpack.ID
+							bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+
+							h.Mkdir(t,
+								filepath.Join(layersDir, buildpackID))
+							h.Mkfile(t, `{"key": "some-bom-content"}`,
+								filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"))
+
+							br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+							if err != nil {
+								t.Fatalf("Unexpected error:\n%s\n", err)
+							}
+
+							if s := cmp.Diff(br, buildpack.BuildResult{
+								LaunchBOM: []buildpack.BOMEntry{
+									{
+										Require: buildpack.Require{
+											Name:     "some-dep",
+											Metadata: map[string]interface{}{"version": "some-version"},
+										},
+										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+									},
+								},
+								Labels:    []buildpack.Label{},
+								Processes: []launch.Process{},
+								Slices:    []layers.Slice{},
+								BOMFiles: []buildpack.BOMFile{
+									{
+										BuildpackID: buildpackID,
+										LayerName:   "",
+										LayerType:   buildpack.LayerTypeLaunch,
+										Path:        filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
+									},
+								},
+							}); s != "" {
+								t.Fatalf("Unexpected:\n%s\n", s)
+							}
+							assertLogEntryNotContains(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+						})
+					})
+
+					when("there is a bom in launch.toml with a top-level version", func() {
+						it("should error", func() {
+							h.Mkfile(t,
+								"[[bom]]\n"+
+									`name = "some-dep"`+"\n"+
+									`version = "some-version"`+"\n",
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+
+							_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+							h.AssertError(t, err, "bom entry 'some-dep' has a top level version which is not allowed. The buildpack should instead set metadata.version")
+						})
+					})
+				})
+
+				when("bom files", func() {
+					it("should include any bom files", func() {
 						buildpackID := bpTOML.Buildpack.ID
-						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json;version=1.3"}
+						layerName := "some-layer"
+						otherLayerName := "some-launch-true-cache-false-layer"
 
 						h.Mkdir(t,
 							filepath.Join(layersDir, buildpackID))
 						h.Mkfile(t, `{"key": "some-bom-content"}`,
-							filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"))
+							filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
+							filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", otherLayerName)), // layer directory does not exist
+						)
+
+						h.Mkdir(t,
+							filepath.Join(layersDir, buildpackID, layerName))
+						h.Mkfile(t, "[types]\n  cache = true",
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
+						h.Mkfile(t, "[types]\n  launch = true\n  cache = false",
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", otherLayerName)))
 
 						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						if err != nil {
-							t.Fatalf("Unexpected error:\n%s\n", err)
-						}
+						h.AssertNil(t, err)
 
-						if s := cmp.Diff(br, buildpack.BuildResult{
-							BOM: []buildpack.BOMEntry{
-								{
-									Require: buildpack.Require{
-										Name:     "some-dep",
-										Metadata: map[string]interface{}{"version": "some-version"},
-									},
-									Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
-								},
-							},
-							Labels:    []buildpack.Label{},
-							Processes: []launch.Process{},
-							Slices:    []layers.Slice{},
+						h.AssertEq(t, buildpack.BuildResult{
 							BOMFiles: []buildpack.BOMFile{
+								{
+									BuildpackID: buildpackID,
+									LayerName:   "",
+									LayerType:   buildpack.LayerTypeBuild,
+									Path:        filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
+								},
 								{
 									BuildpackID: buildpackID,
 									LayerName:   "",
 									LayerType:   buildpack.LayerTypeLaunch,
 									Path:        filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
 								},
+								{
+									BuildpackID: buildpackID,
+									LayerName:   otherLayerName,
+									LayerType:   buildpack.LayerTypeLaunch,
+									Path:        filepath.Join(layersDir, buildpackID, "some-launch-true-cache-false-layer.sbom.cdx.json"),
+								},
+								{
+									BuildpackID: buildpackID,
+									LayerName:   layerName,
+									LayerType:   buildpack.LayerTypeBuild,
+									Path:        filepath.Join(layersDir, buildpackID, "some-layer.sbom.cdx.json"),
+								},
+								{
+									BuildpackID: buildpackID,
+									LayerName:   layerName,
+									LayerType:   buildpack.LayerTypeCache,
+									Path:        filepath.Join(layersDir, buildpackID, "some-layer.sbom.cdx.json"),
+								},
 							},
-						}); s != "" {
-							t.Fatalf("Unexpected:\n%s\n", s)
-						}
-						assertLogEntryNotContains(t, logHandler, "BOM table is deprecated in this buildpack api version, though it remains supported for backwards compatibility. Buildpack authors should write BOM information to <layer>.sbom.<ext>, launch.sbom.<ext>, or build.sbom.<ext>.")
+						}, br)
+					})
+
+					it("should error if there are unsupported extensions", func() {
+						buildpackID := bpTOML.Buildpack.ID
+						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json", "application/spdx+json", "application/vnd.syft+json"}
+						layerName := "some-layer"
+
+						h.Mkdir(t,
+							filepath.Join(layersDir, buildpackID, layerName))
+						h.Mkfile(t, "[types]\n  launch = true\n  cache = false",
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
+						h.Mkfile(t, `{"key": "some-bom-content"}`,
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.spdx.json", layerName)),
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.syft.json", layerName)),
+							filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName)))
+
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						h.AssertError(t, err, fmt.Sprintf("unsupported SBOM file format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
+					})
+
+					it("should error if there are undeclared media types", func() {
+						buildpackID := bpTOML.Buildpack.ID
+						bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
+
+						h.Mkdir(t,
+							filepath.Join(layersDir, buildpackID))
+						h.Mkfile(t, `{"key": "some-bom-content"}`,
+							filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json"))
+
+						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						h.AssertError(t, err, fmt.Sprintf("validating SBOM file '%s' for buildpack: 'A@v1': undeclared SBOM media type: 'application/spdx+json'", filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json")))
+					})
+
+					when("buildpack api < 0.7", func() {
+						it("should not include any bom files", func() {
+							bpTOML.API = api.MustParse("0.6").String()
+							buildpackID := bpTOML.Buildpack.ID
+							layerName := "some-layer"
+
+							h.Mkdir(t,
+								filepath.Join(layersDir, buildpackID))
+							h.Mkfile(t, `{"key": "some-bom-content"}`,
+								filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
+								filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
+								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)))
+
+							h.Mkdir(t,
+								filepath.Join(layersDir, buildpackID, layerName))
+							h.Mkfile(t, "[types]\n  cache = true",
+								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
+
+							br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, len(br.BOMFiles), 0)
+							expected := "the following SBOM files will be ignored for buildpack api version < 0.7"
+							assertLogEntry(t, logHandler, expected)
+						})
 					})
 				})
 
-				when("there is a bom in launch.toml with a top-level version", func() {
-					it("should return an error", func() {
+				when("labels", func() {
+					it("should include labels", func() {
 						h.Mkfile(t,
-							"[[bom]]\n"+
-								`name = "some-dep"`+"\n"+
-								`version = "some-version"`+"\n",
+							"[[labels]]\n"+
+								`key = "some-key"`+"\n"+
+								`value = "some-value"`+"\n"+
+								"[[labels]]\n"+
+								`key = "some-other-key"`+"\n"+
+								`value = "some-other-value"`+"\n",
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
 
-						_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-						h.AssertError(t, err, "bom entry 'some-dep' has a top level version which is not allowed. The buildpack should instead set metadata.version")
+						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
+
+						if s := cmp.Diff(br, buildpack.BuildResult{
+							LaunchBOM: nil,
+							Labels: []buildpack.Label{
+								{Key: "some-key", Value: "some-value"},
+								{Key: "some-other-key", Value: "some-other-value"},
+							},
+							MetRequires: nil,
+							Processes:   []launch.Process{},
+							Slices:      []layers.Slice{},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
 					})
-				})
-
-				it("includes any created BOM files", func() {
-					buildpackID := bpTOML.Buildpack.ID
-					bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
-					layerName := "some-layer"
-					otherLayerName := "some-launch-true-cache-false-layer"
-
-					h.Mkdir(t,
-						filepath.Join(layersDir, buildpackID))
-					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", otherLayerName)), // layer directory does not exist
-					)
-
-					h.Mkdir(t,
-						filepath.Join(layersDir, buildpackID, layerName))
-					h.Mkfile(t, "[types]\n  cache = true",
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
-					h.Mkfile(t, "[types]\n  launch = true\n  cache = false",
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", otherLayerName)))
-
-					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, buildpack.BuildResult{
-						BOMFiles: []buildpack.BOMFile{
-							{
-								BuildpackID: buildpackID,
-								LayerName:   "",
-								LayerType:   buildpack.LayerTypeBuild,
-								Path:        filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
-							},
-							{
-								BuildpackID: buildpackID,
-								LayerName:   "",
-								LayerType:   buildpack.LayerTypeLaunch,
-								Path:        filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
-							},
-							{
-								BuildpackID: buildpackID,
-								LayerName:   otherLayerName,
-								LayerType:   buildpack.LayerTypeLaunch,
-								Path:        filepath.Join(layersDir, buildpackID, "some-launch-true-cache-false-layer.sbom.cdx.json"),
-							},
-							{
-								BuildpackID: buildpackID,
-								LayerName:   layerName,
-								LayerType:   buildpack.LayerTypeBuild,
-								Path:        filepath.Join(layersDir, buildpackID, "some-layer.sbom.cdx.json"),
-							},
-							{
-								BuildpackID: buildpackID,
-								LayerName:   layerName,
-								LayerType:   buildpack.LayerTypeCache,
-								Path:        filepath.Join(layersDir, buildpackID, "some-layer.sbom.cdx.json"),
-							},
-						},
-					}, br)
-				})
-
-				it("returns an error for any unsupported BOM formats", func() {
-					buildpackID := bpTOML.Buildpack.ID
-					bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json", "application/spdx+json", "application/vnd.syft+json"}
-					layerName := "some-layer"
-
-					h.Mkdir(t,
-						filepath.Join(layersDir, buildpackID, layerName))
-					h.Mkfile(t, "[types]\n  launch = true\n  cache = false",
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
-					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.spdx.json", layerName)),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.syft.json", layerName)),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName)))
-
-					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					h.AssertError(t, err, fmt.Sprintf("unsupported sbom format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
-				})
-
-				it("returns an error for any undeclared BOM media type", func() {
-					buildpackID := bpTOML.Buildpack.ID
-					bpTOML.Buildpack.SBOM = []string{"application/vnd.cyclonedx+json"}
-
-					h.Mkdir(t,
-						filepath.Join(layersDir, buildpackID))
-					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json"))
-
-					_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					h.AssertError(t, err, "sbom type 'application/spdx+json' not declared for buildpack: 'A@v1'")
-				})
-
-				it("does not include BOM files for old BP API versions", func() {
-					bpTOML.API = api.MustParse("0.2").String()
-					buildpackID := bpTOML.Buildpack.ID
-					layerName := "some-layer"
-
-					h.Mkdir(t,
-						filepath.Join(layersDir, buildpackID))
-					h.Mkfile(t, `{"key": "some-bom-content"}`,
-						filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"),
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.cdx.json", layerName)))
-
-					h.Mkdir(t,
-						filepath.Join(layersDir, buildpackID, layerName))
-					h.Mkfile(t, "[types]\n  cache = true",
-						filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
-
-					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, len(br.BOMFiles), 0)
-					expected := "the following SBoM files will be ignored for buildpack api version < 0.7"
-					assertLogEntry(t, logHandler, expected)
-				})
-
-				it("should include labels", func() {
-					h.Mkfile(t,
-						"[[labels]]\n"+
-							`key = "some-key"`+"\n"+
-							`value = "some-value"`+"\n"+
-							"[[labels]]\n"+
-							`key = "some-other-key"`+"\n"+
-							`value = "some-other-value"`+"\n",
-						filepath.Join(appDir, "launch-A-v1.toml"),
-					)
-
-					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-
-					if s := cmp.Diff(br, buildpack.BuildResult{
-						BOM: nil,
-						Labels: []buildpack.Label{
-							{Key: "some-key", Value: "some-value"},
-							{Key: "some-other-key", Value: "some-other-value"},
-						},
-						MetRequires: nil,
-						Processes:   []launch.Process{},
-						Slices:      []layers.Slice{},
-					}); s != "" {
-						t.Fatalf("Unexpected:\n%s\n", s)
-					}
 				})
 
 				when("processes", func() {
@@ -471,7 +592,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
 						if s := cmp.Diff(br, buildpack.BuildResult{
-							BOM:         nil,
+							LaunchBOM:   nil,
 							Labels:      []buildpack.Label{},
 							MetRequires: nil,
 							Processes: []launch.Process{
@@ -487,7 +608,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					it("should set the working directory", func() {
 						h.Mkfile(t,
 							"[[processes]]\n"+
-								`working-directory = "/working-directory"`,
+								`working-dir = "/working-directory"`,
 							filepath.Join(appDir, "launch-A-v1.toml"),
 						)
 						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
@@ -497,27 +618,29 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				it("should include slices", func() {
-					h.Mkfile(t,
-						"[[slices]]\n"+
-							`paths = ["some-path", "some-other-path"]`+"\n",
-						filepath.Join(appDir, "launch-A-v1.toml"),
-					)
+				when("slices", func() {
+					it("should include slices", func() {
+						h.Mkfile(t,
+							"[[slices]]\n"+
+								`paths = ["some-path", "some-other-path"]`+"\n",
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
 
-					br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
-					if err != nil {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
+						br, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+						if err != nil {
+							t.Fatalf("Unexpected error:\n%s\n", err)
+						}
 
-					if s := cmp.Diff(br, buildpack.BuildResult{
-						BOM:         nil,
-						Labels:      []buildpack.Label{},
-						MetRequires: nil,
-						Processes:   []launch.Process{},
-						Slices:      []layers.Slice{{Paths: []string{"some-path", "some-other-path"}}},
-					}); s != "" {
-						t.Fatalf("Unexpected:\n%s\n", s)
-					}
+						if s := cmp.Diff(br, buildpack.BuildResult{
+							LaunchBOM:   nil,
+							Labels:      []buildpack.Label{},
+							MetRequires: nil,
+							Processes:   []launch.Process{},
+							Slices:      []layers.Slice{{Paths: []string{"some-path", "some-other-path"}}},
+						}); s != "" {
+							t.Fatalf("Unexpected:\n%s\n", s)
+						}
+					})
 				})
 			})
 
@@ -898,7 +1021,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					if s := cmp.Diff(br, buildpack.BuildResult{
-						BOM: []buildpack.BOMEntry{
+						LaunchBOM: []buildpack.BOMEntry{
 							{
 								Require: buildpack.Require{
 									Name:     "some-deprecated-bp-dep",
@@ -964,7 +1087,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 
-					if s := cmp.Diff(br.BOM, []buildpack.BOMEntry{
+					if s := cmp.Diff(br.LaunchBOM, []buildpack.BOMEntry{
 						{
 							Require: buildpack.Require{
 								Name:     "dep-1",
@@ -1043,7 +1166,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 				if s := cmp.Diff(br, buildpack.BuildResult{
-					BOM:         nil,
+					LaunchBOM:   nil,
 					Labels:      []buildpack.Label{},
 					MetRequires: nil,
 					Processes: []launch.Process{
@@ -1133,7 +1256,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				if s := cmp.Diff(br, buildpack.BuildResult{
-					BOM: []buildpack.BOMEntry{
+					LaunchBOM: []buildpack.BOMEntry{
 						{
 							Require: buildpack.Require{
 								Name:     "some-deprecated-bp-replace-version-dep",
@@ -1199,11 +1322,29 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				bpTOML.API = "0.7"
 			})
 
+			it("should not set environment variables for positional arguments", func() {
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+
+				_, err := bpTOML.Build(buildpack.Plan{}, config, mockEnv)
+
+				h.AssertNil(t, err)
+				for _, file := range []string{
+					"build-env-cnb-layers-dir-A-v1",
+					"build-env-cnb-platform-dir-A-v1",
+					"build-env-cnb-bp-plan-path-A-v1",
+				} {
+					contents := h.Rdfile(t, filepath.Join(appDir, file))
+					if contents != "unset" {
+						t.Fatalf("Expected %s to be unset; got %s", file, contents)
+					}
+				}
+			})
+
 			it("should ignore process working directory and warn", func() {
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 				h.Mkfile(t,
 					"[[processes]]\n"+
-						`working-directory = "/working-directory"`+"\n"+
+						`working-dir = "/working-directory"`+"\n"+
 						`type = "some-type"`+"\n",
 					filepath.Join(appDir, "launch-A-v1.toml"),
 				)

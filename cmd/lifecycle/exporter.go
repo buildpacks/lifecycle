@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -335,6 +337,10 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (i
 		opts = append(opts, local.WithPreviousImage(analyzedMD.PreviousImage.Reference))
 	}
 
+	if !ea.customSourceDateEpoch().IsZero() {
+		opts = append(opts, local.WithCreatedAt(ea.customSourceDateEpoch()))
+	}
+
 	var appImage imgutil.Image
 	appImage, err := local.NewImage(
 		ea.imageNames[0],
@@ -376,6 +382,10 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 			return nil, "", fmt.Errorf("analyzed image is on a different registry %s from the exported image %s", analyzedRegistry, ea.targetRegistry)
 		}
 		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImage.Reference))
+	}
+
+	if !ea.customSourceDateEpoch().IsZero() {
+		opts = append(opts, remote.WithCreatedAt(ea.customSourceDateEpoch()))
 	}
 
 	appImage, err := remote.NewImage(
@@ -435,4 +445,20 @@ func parseRegistry(providedRef string) (string, error) {
 		return "", err
 	}
 	return ref.Context().RegistryStr(), nil
+}
+
+func (ea exportArgs) customSourceDateEpoch() time.Time {
+	if ea.platform.API().LessThan("0.9") {
+		return time.Time{}
+	}
+
+	if epoch := os.Getenv("SOURCE_DATE_EPOCH"); epoch != "" {
+		seconds, err := strconv.ParseInt(epoch, 10, 64)
+		if err != nil {
+			cmd.DefaultLogger.Warn("Ignoring invalid SOURCE_DATE_EPOCH")
+			return time.Time{}
+		}
+		return time.Unix(seconds, 0)
+	}
+	return time.Time{}
 }

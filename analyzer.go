@@ -31,11 +31,11 @@ type Analyzer struct {
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
+		err             error
 		appMeta         platform.LayersMetadata
 		cacheMeta       platform.CacheMetadata
 		previousImageID *platform.ImageIdentifier
 		runImageID      *platform.ImageIdentifier
-		err             error
 	)
 
 	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
@@ -49,7 +49,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 
 		if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch sBOM layer")
+			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch SBOM layer")
 		}
 	} else {
 		appMeta = platform.LayersMetadata{}

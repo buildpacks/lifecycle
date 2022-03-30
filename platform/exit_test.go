@@ -45,6 +45,10 @@ func testExiter(t *testing.T, when spec.G, it spec.S) {
 			version: "0.8",
 			exiter:  &platform.DefaultExiter{},
 		},
+		{
+			version: "0.9",
+			exiter:  &platform.DefaultExiter{},
+		},
 	}
 	for _, apiVersion := range api.Platform.Supported {
 		for _, expected := range toTest {

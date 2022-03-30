@@ -145,6 +145,48 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		it("should set CNB_PLATFORM_DIR in the environment", func() {
+			mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+
+			bpTOML.Detect(&detectConfig, mockEnv)
+
+			env := rdappfile("detect-env-cnb-platform-dir-A-v1")
+			h.AssertEq(t, env, platformDir)
+		})
+
+		it("should set CNB_BUILD_PLAN_PATH in the environment", func() {
+			mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+
+			bpTOML.Detect(&detectConfig, mockEnv)
+
+			env := rdappfile("detect-env-cnb-build-plan-path-A-v1")
+			if env == "unset" {
+				t.Fatal("expected CNB_BUILD_PLAN_PATH to be set")
+			}
+		})
+
+		when("buildpack api < 0.8", func() {
+			it.Before(func() {
+				bpTOML.API = "0.7"
+			})
+
+			it("should not set environment variables for positional arguments", func() {
+				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+
+				bpTOML.Detect(&detectConfig, mockEnv)
+
+				for _, file := range []string{
+					"detect-env-cnb-platform-dir-A-v1",
+					"detect-env-cnb-build-plan-path-A-v1",
+				} {
+					contents := rdappfile(file)
+					if contents != "unset" {
+						t.Fatalf("Expected %s to be unset; got %s", file, contents)
+					}
+				}
+			})
+		})
+
 		it("should fail and print the output if the buildpack plan file has a bad format", func() {
 			mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
 

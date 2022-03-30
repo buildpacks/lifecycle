@@ -1,7 +1,8 @@
-FROM golang:1.16-nanoserver-1809
+FROM golang:1.17-nanoserver-1809
 
 COPY exec.d/ /go/src/exec.d
 WORKDIR /go/src
+ENV GO111MODULE=off
 RUN go build -o helper.exe exec.d
 
 COPY windows/container /
