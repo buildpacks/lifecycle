@@ -76,6 +76,7 @@ type BuildMetadata struct {
 	Dockerfiles                 []buildpack.Dockerfile     `toml:"dockerfiles,omitempty" json:"dockerfiles,omitempty"`
 	Labels                      []buildpack.Label          `toml:"labels" json:"-"`
 	Launcher                    LauncherMetadata           `toml:"-" json:"launcher"`
+	Plan                        BuildPlan                  `toml:"-" json:"-"`
 	Processes                   []launch.Process           `toml:"processes" json:"processes"`
 	Slices                      []layers.Slice             `toml:"slices" json:"-"`
 	BuildpackDefaultProcessType string                     `toml:"buildpack-default-process-type,omitempty" json:"buildpack-default-process-type,omitempty"`
