@@ -4,16 +4,40 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/pkg/errors"
 )
 
 func Extend(opts Opts, logger Logger) error {
 	if opts.Kind == "build" {
 		if err := opts.Applier.ApplyBuild(opts.Dockerfiles, opts.BaseImageRef, opts.TargetImageRef, opts.IgnorePaths, logger); err != nil {
-			return err
+			return errors.Wrap(err, "applying dockerfiles")
 		}
-		return newBuildCmd(opts.BuilderOpts).Run()
+		extendedEnv, err := getImageConfigEnv(opts.TargetImageRef)
+		if err != nil {
+			return errors.Wrap(err, "getting extended environment")
+		}
+		return newBuildCmd(opts.BuilderOpts, extendedEnv).Run()
 	}
 	return opts.Applier.ApplyRun(opts.Dockerfiles, opts.BaseImageRef, opts.TargetImageRef, opts.IgnorePaths, logger)
+}
+
+func getImageConfigEnv(imageName string) ([]string, error) {
+	ref, err := name.ParseReference(imageName)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing reference")
+	}
+	image, err := remote.Image(ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting image")
+	}
+	config, err := image.ConfigFile()
+	if err != nil || config == nil {
+		return nil, errors.Wrap(err, "getting image config")
+	}
+	return config.Config.Env, nil
 }
 
 type Opts struct {
@@ -69,7 +93,7 @@ type Logger interface {
 	Errorf(fmt string, v ...interface{})
 }
 
-func newBuildCmd(opts BuilderOpts) *exec.Cmd {
+func newBuildCmd(opts BuilderOpts, env []string) *exec.Cmd {
 	// TODO: use the priv package to drop privileges and call lifecycle/cmd.Run(buildCmd)
 	cmd := exec.Command(
 		"/cnb/lifecycle/builder",
@@ -81,7 +105,7 @@ func newBuildCmd(opts BuilderOpts) *exec.Cmd {
 		"-plan", opts.PlanPath,
 		"-platform", opts.PlatformDir,
 	)
-	cmd.Env = append(cmd.Env, "CNB_PLATFORM_API=0.8")
+	cmd.Env = append(env, "CNB_PLATFORM_API=0.8")
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 1000, Gid: 1000}}
