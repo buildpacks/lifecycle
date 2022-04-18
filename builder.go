@@ -129,6 +129,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		Buildpacks:                  b.Group.Group,
 		Dockerfiles:                 dockerfiles,
 		Labels:                      labels,
+		Plan:                        plan,
 		Processes:                   procList,
 		Slices:                      slices,
 	}, nil

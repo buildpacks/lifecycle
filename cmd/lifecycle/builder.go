@@ -17,7 +17,7 @@ import (
 type buildCmd struct {
 	// flags: inputs
 	groupPath string
-	planPath  string
+
 	buildArgs
 }
 
@@ -29,6 +29,9 @@ type buildArgs struct {
 	appDir        string
 	platformDir   string
 	useExtensions bool // TODO: not valid for creator YET
+
+	// inputs needed when running extensions
+	planPath string
 
 	platform Platform
 }
@@ -120,6 +123,13 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 
 	if err := encoding.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write build metadata")
+	}
+
+	if ba.useExtensions {
+		// overwrite build plan to remove extension-provided deps
+		if err := encoding.WriteTOML(ba.planPath, md.Plan); err != nil {
+			return cmd.FailErr(err, "write build plan")
+		}
 	}
 	return nil
 }
