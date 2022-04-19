@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/inputs"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -78,22 +79,22 @@ func (b *buildCmd) Exec() error {
 }
 
 func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
-	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
+	execStore, err := inputs.NewExecStore(ba.buildpacksDir, "")
 	if err != nil {
 		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
-		AppDir:         ba.appDir,
-		LayersDir:      ba.layersDir,
-		PlatformDir:    ba.platformDir,
-		Platform:       ba.platform,
-		Group:          group,
-		Plan:           plan,
-		Out:            cmd.Stdout,
-		Err:            cmd.Stderr,
-		Logger:         cmd.DefaultLogger,
-		BuildpackStore: buildpackStore,
+		AppDir:      ba.appDir,
+		LayersDir:   ba.layersDir,
+		PlatformDir: ba.platformDir,
+		Platform:    ba.platform,
+		Group:       group,
+		Plan:        plan,
+		Out:         cmd.Stdout,
+		Err:         cmd.Stderr,
+		Logger:      cmd.DefaultLogger,
+		ExecStore:   execStore,
 	}
 	md, err := builder.Build()
 

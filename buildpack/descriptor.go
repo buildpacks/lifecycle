@@ -6,7 +6,8 @@ import "github.com/BurntSushi/toml"
 
 type Descriptor struct {
 	API       string `toml:"api"`
-	Buildpack Info   `toml:"buildpack"`
+	Buildpack Info   `toml:"buildpack"` // exactly one of 'buildpack' or 'extension' must be populated
+	Extension Info   `toml:"extension"` // exactly one of 'buildpack' or 'extension' must be populated
 	Order     Order  `toml:"order"`
 	Dir       string `toml:"-"`
 }

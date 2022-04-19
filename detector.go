@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/inputs"
 )
 
 const (
@@ -28,17 +29,17 @@ type Resolver interface {
 
 type Detector struct {
 	buildpack.DetectConfig
-	Platform Platform
-	Resolver Resolver
-	Runs     *sync.Map
-	Store    BuildpackStore
+	Platform  Platform
+	Resolver  Resolver
+	Runs      *sync.Map
+	ExecStore ExecStore
 }
 
 func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform Platform) (*Detector, error) {
 	resolver := &DefaultResolver{
 		Logger: config.Logger,
 	}
-	store, err := buildpack.NewBuildpackStore(buildpacksDir)
+	execStore, err := inputs.NewExecStore(buildpacksDir, "")
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +48,7 @@ func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform P
 		Platform:     platform,
 		Resolver:     resolver,
 		Runs:         &sync.Map{},
-		Store:        store,
+		ExecStore:    execStore,
 	}, nil
 }
 
@@ -102,7 +103,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 			continue
 		}
 
-		bp, err := d.Store.Lookup(groupBp.ID, groupBp.Version)
+		bp, err := d.ExecStore.LookupBp(groupBp.ID, groupBp.Version)
 		if err != nil {
 			return nil, nil, err
 		}

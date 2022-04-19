@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/inputs"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -125,13 +126,13 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 }
 
 func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
-	store, err := buildpack.NewBuildpackStore(da.buildpacksDir)
+	execStore, err := inputs.NewExecStore(da.buildpacksDir, "")
 	if err != nil {
 		return err
 	}
 	for _, group := range order {
 		for _, groupBp := range group.Group {
-			buildpack, err := store.Lookup(groupBp.ID, groupBp.Version)
+			buildpack, err := execStore.LookupBp(groupBp.ID, groupBp.Version)
 			if err != nil {
 				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", groupBp.String()))
 			}
