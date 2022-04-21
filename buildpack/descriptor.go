@@ -16,8 +16,16 @@ func (b *Descriptor) ConfigFile() *Descriptor {
 	return b
 }
 
+func (b *Descriptor) IsBuildpack() bool {
+	return b.Buildpack.ID != ""
+}
+
+func (b *Descriptor) IsExtension() bool {
+	return b.Extension.ID != ""
+}
+
 func (b *Descriptor) IsMetaBuildpack() bool {
-	return b.Order != nil
+	return len(b.Order) > 0
 }
 
 func (b *Descriptor) String() string {
@@ -45,12 +53,13 @@ func ReadGroup(path string) (Group, error) {
 	return group, err
 }
 
-func ReadOrder(path string) (Order, error) {
+func ReadOrder(path string) (Order, Order, error) {
 	var order struct {
-		Order Order `toml:"order"`
+		Order    Order `toml:"order"`
+		OrderExt Order `toml:"order-ext"`
 	}
 	_, err := toml.DecodeFile(path, &order)
-	return order.Order, err
+	return order.Order, order.OrderExt, err
 }
 
 func (bg Group) Append(group ...Group) Group {

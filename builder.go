@@ -28,7 +28,8 @@ type BuildEnv interface {
 }
 
 type ExecStore interface {
-	LookupBp(bpID, bpVersion string) (inputs.Buildpack, error)
+	LookupBp(id, version string) (inputs.Buildpack, error)  // TODO: check
+	LookupExt(id, version string) (inputs.Buildpack, error) // TODO: check
 }
 
 type Buildpack interface {

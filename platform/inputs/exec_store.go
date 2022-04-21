@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 )
 
+// TODO: is this needed?
 type Buildpack interface {
 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
 	ConfigFile() *buildpack.Descriptor

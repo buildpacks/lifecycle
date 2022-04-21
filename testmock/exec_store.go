@@ -49,3 +49,18 @@ func (mr *MockExecStoreMockRecorder) LookupBp(arg0, arg1 interface{}) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookupBp", reflect.TypeOf((*MockExecStore)(nil).LookupBp), arg0, arg1)
 }
+
+// LookupExt mocks base method.
+func (m *MockExecStore) LookupExt(arg0, arg1 string) (inputs.Buildpack, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LookupExt", arg0, arg1)
+	ret0, _ := ret[0].(inputs.Buildpack)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LookupExt indicates an expected call of LookupExt.
+func (mr *MockExecStoreMockRecorder) LookupExt(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookupExt", reflect.TypeOf((*MockExecStore)(nil).LookupExt), arg0, arg1)
+}

@@ -10,7 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/inputs"
 )
 
 const (
@@ -29,30 +28,24 @@ type Resolver interface {
 
 type Detector struct {
 	buildpack.DetectConfig
-	Platform  Platform
 	Resolver  Resolver
 	Runs      *sync.Map
 	ExecStore ExecStore
 }
 
-func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform Platform) (*Detector, error) {
+func NewDetector(config buildpack.DetectConfig, execStore ExecStore) *Detector {
 	resolver := &DefaultResolver{
 		Logger: config.Logger,
 	}
-	execStore, err := inputs.NewExecStore(buildpacksDir, "")
-	if err != nil {
-		return nil, err
-	}
 	return &Detector{
 		DetectConfig: config,
-		Platform:     platform,
 		Resolver:     resolver,
 		Runs:         &sync.Map{},
 		ExecStore:    execStore,
-	}, nil
+	}
 }
 
-func (d *Detector) Detect(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
+func (d *Detector) Detect(order buildpack.Order, orderExt buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
 	return d.DetectOrder(order)
 }
 

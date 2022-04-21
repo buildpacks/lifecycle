@@ -14,6 +14,7 @@ var (
 	DefaultAppDir          = filepath.Join(rootDir, "workspace")
 	DefaultBuildpacksDir   = filepath.Join(rootDir, "cnb", "buildpacks")
 	DefaultDeprecationMode = DeprecationModeWarn
+	DefaultExtensionsDir   = filepath.Join(rootDir, "cnb", "extensions")
 	DefaultLauncherPath    = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
 	DefaultLayersDir       = filepath.Join(rootDir, "layers")
 	DefaultLogLevel        = "info"
@@ -44,6 +45,7 @@ const (
 	EnvCacheDir            = "CNB_CACHE_DIR"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
+	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
@@ -90,6 +92,10 @@ func FlagCacheDir(cacheDir *string) {
 
 func FlagCacheImage(cacheImage *string) {
 	flagSet.StringVar(cacheImage, "cache-image", os.Getenv(EnvCacheImage), "cache image tag name")
+}
+
+func FlagExtensionsDir(extensionsDir *string) {
+	flagSet.StringVar(extensionsDir, "extensions", EnvOrDefault(EnvExtensionsDir, DefaultExtensionsDir), "path to extensions directory")
 }
 
 func FlagGID(gid *int) {
