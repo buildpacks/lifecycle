@@ -157,7 +157,7 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err)
 		}
 	}
-	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.legacyCacheDir); err != nil {
+	if err := priv.EnsureOwner(a.uid, a.gid, a.layersDir, a.legacyCacheDir, a.launchCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err := priv.RunAs(a.uid, a.gid); err != nil {
