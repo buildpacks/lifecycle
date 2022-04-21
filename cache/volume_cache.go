@@ -2,7 +2,7 @@ package cache
 
 import (
 	"encoding/json"
-	"io"
+	goio "io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -111,7 +112,7 @@ func (c *VolumeCache) AddLayerFile(tarPath string, diffID string) error {
 	return nil
 }
 
-func (c *VolumeCache) AddLayer(rc io.ReadCloser, diffID string) error {
+func (c *VolumeCache) AddLayer(rc goio.ReadCloser, diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -122,7 +123,7 @@ func (c *VolumeCache) AddLayer(rc io.ReadCloser, diffID string) error {
 	}
 	defer fh.Close()
 
-	if _, err := io.Copy(fh, rc); err != nil {
+	if _, err := goio.Copy(fh, rc); err != nil {
 		return errors.Wrap(err, "copying layer to tar file")
 	}
 	return nil
@@ -138,7 +139,7 @@ func (c *VolumeCache) ReuseLayer(diffID string) error {
 	return nil
 }
 
-func (c *VolumeCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
+func (c *VolumeCache) RetrieveLayer(diffID string) (goio.ReadCloser, error) {
 	path, err := c.RetrieveLayerFile(diffID)
 	if err != nil {
 		return nil, err
@@ -176,8 +177,13 @@ func (c *VolumeCache) Commit() error {
 		return errCacheCommitted
 	}
 	c.committed = true
-	if err := os.Rename(c.committedDir, c.backupDir); err != nil {
-		return errors.Wrap(err, "backing up cache")
+
+	// Test to see if copying and removing the cache can "fix" https://github.com/buildpacks/pack/issues/1423
+	if err := io.RecursiveCopy(c.committedDir, c.backupDir); err != nil {
+		return errors.Wrap(err, "copying committed directory")
+	}
+	if err := os.RemoveAll(c.committedDir); err != nil {
+		return errors.Wrap(err, "removing committed directory")
 	}
 	defer os.RemoveAll(c.backupDir)
 
@@ -219,7 +225,7 @@ func copyFile(from, to string) error {
 	}
 	defer out.Close()
 
-	_, err = io.Copy(out, in)
+	_, err = goio.Copy(out, in)
 
 	return err
 }
