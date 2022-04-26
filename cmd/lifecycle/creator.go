@@ -9,13 +9,13 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/inputs"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -170,17 +170,27 @@ func (c *createCmd) Exec() error {
 		plan       platform.BuildPlan
 	)
 	if c.platform.API().AtLeast("0.7") {
-		factory := inputs.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
-		analyzer, err := factory.NewAnalyzer(inputs.ForAnalyzer{
-			AdditionalTags:   c.additionalTags,
-			CacheImageRef:    c.cacheImageRef,
-			LaunchCacheDir:   c.launchCacheDir,
-			LayersDir:        c.layersDir,
-			OutputImageRef:   c.outputImageRef,
-			PreviousImageRef: c.previousImageRef,
-			RunImageRef:      c.runImageRef,
-			SkipLayers:       c.skipRestore,
-		}, cmd.DefaultLogger)
+		factory := lifecycle.NewAnalyzerFactory(
+			c.platform.API(),
+			NewCacheHandler(c.keychain),
+			NewConfigHandler(),
+			NewImageHandler(c.docker, c.keychain),
+			NewRegistryHandler(c.keychain),
+		)
+		analyzer, err := factory.NewAnalyzer(
+			c.additionalTags,
+			c.cacheImageRef,
+			c.launchCacheDir,
+			c.layersDir,
+			"",
+			buildpack.Group{},
+			"",
+			c.outputImageRef,
+			c.previousImageRef,
+			c.runImageRef,
+			c.skipRestore,
+			cmd.DefaultLogger,
+		)
 		if err != nil {
 			return errors.Wrap(err, "initializing analyzer")
 		}
@@ -216,19 +226,27 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		factory := inputs.NewAnalyzerFactory(c.platform.API(), c.docker, c.keychain)
-		analyzer, err := factory.NewAnalyzer(inputs.ForAnalyzer{
-			AdditionalTags:   c.additionalTags,
-			CacheImageRef:    c.cacheImageRef,
-			LaunchCacheDir:   c.launchCacheDir,
-			LayersDir:        c.layersDir,
-			LegacyCacheDir:   c.cacheDir,
-			LegacyGroup:      group,
-			OutputImageRef:   c.outputImageRef,
-			PreviousImageRef: c.previousImageRef,
-			RunImageRef:      c.runImageRef,
-			SkipLayers:       c.skipRestore,
-		}, cmd.DefaultLogger)
+		factory := lifecycle.NewAnalyzerFactory(
+			c.platform.API(),
+			NewCacheHandler(c.keychain),
+			NewConfigHandler(),
+			NewImageHandler(c.docker, c.keychain),
+			NewRegistryHandler(c.keychain),
+		)
+		analyzer, err := factory.NewAnalyzer(
+			c.additionalTags,
+			c.cacheImageRef,
+			c.launchCacheDir,
+			c.layersDir,
+			c.cacheDir,
+			group,
+			"",
+			c.outputImageRef,
+			c.previousImageRef,
+			c.runImageRef,
+			c.skipRestore,
+			cmd.DefaultLogger,
+		)
 		if err != nil {
 			return errors.Wrap(err, "initializing analyzer")
 		}

@@ -12,35 +12,36 @@ import (
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
-	"github.com/sclevine/spec"
+	testspec "github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/layer"
-	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
+	spec "github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestRestorer(t *testing.T) {
 	for _, buildpackAPIStr := range []string{"0.5", api.Buildpack.Latest().String()} {
 		for _, platformAPI := range api.Platform.Supported {
 			platformAPIStr := platformAPI.String()
-			spec.Run(
+			testspec.Run(
 				t,
 				"unit-restorer/buildpack-"+buildpackAPIStr+"/platform-"+platformAPIStr,
-				testRestorerBuilder(buildpackAPIStr, platformAPIStr), spec.Report(report.Terminal{}),
+				testRestorer(buildpackAPIStr, platformAPIStr), testspec.Report(report.Terminal{}),
 			)
 		}
 	}
 }
 
-func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
-	return func(t *testing.T, when spec.G, it spec.S) {
+func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when testspec.G, it testspec.S) {
+	return func(t *testing.T, when testspec.G, it testspec.S) {
 		when("#Restore", func() {
 			var (
 				cacheDir     string
@@ -50,7 +51,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				testCache    lifecycle.Cache
 				restorer     *lifecycle.Restorer
 				mockCtrl     *gomock.Controller
-				sbomRestorer *ltestmock.MockSBOMRestorer
+				sbomRestorer *testmock.MockSBOMRestorer
 			)
 
 			it.Before(func() {
@@ -73,7 +74,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				h.AssertNil(t, err)
 
 				mockCtrl = gomock.NewController(t)
-				sbomRestorer = ltestmock.NewMockSBOMRestorer(mockCtrl)
+				sbomRestorer = testmock.NewMockSBOMRestorer(mockCtrl)
 				if api.MustParse(platformAPI).AtLeast("0.8") {
 					sbomRestorer.EXPECT().RestoreToBuildpackLayers(gomock.Any()).AnyTimes()
 				}
@@ -652,7 +653,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 					h.AssertNil(t, err)
 					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
 					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
-					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: "some-digest"}}))
+					h.AssertNil(t, testCache.SetMetadata(spec.CacheMetadata{BOM: spec.LayerMetadata{SHA: "some-digest"}}))
 					h.AssertNil(t, testCache.Commit())
 				})
 
@@ -669,7 +670,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 
 			when("there is no app image metadata", func() {
 				it.Before(func() {
-					restorer.LayersMetadata = platform.LayersMetadata{}
+					restorer.LayersMetadata = spec.LayersMetadata{}
 				})
 
 				it("analyzes with no layer metadata", func() {

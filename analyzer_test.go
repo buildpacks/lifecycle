@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
+	testspec "github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
@@ -22,29 +22,325 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/layer"
-	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
-	"github.com/buildpacks/lifecycle/platform"
+	spec "github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestAnalyzer(t *testing.T) {
 	for _, api := range api.Platform.Supported {
-		spec.Run(t, "unit-analyzer/"+api.String(), testAnalyzerBuilder(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
+		testspec.Run(t, "unit-analyzer/"+api.String(), testAnalyzer(api.String()), testspec.Parallel(), testspec.Report(report.Terminal{}))
 	}
+	testspec.Run(t, "unit-new-analyzer", testAnalyzerFactory, testspec.Parallel(), testspec.Report(report.Terminal{}))
 }
 
-func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
-	return func(t *testing.T, when spec.G, it spec.S) {
+func testAnalyzerFactory(t *testing.T, when testspec.G, it testspec.S) {
+	when("#NewAnalyzer", func() {
+		var (
+			analyzerFactory     *lifecycle.AnalyzerFactory
+			fakeCacheHandler    *testmock.MockCacheHandler
+			fakeConfigHandler   *testmock.MockConfigHandler
+			fakeImageHandler    *testmock.MockImageHandler
+			fakeRegistryHandler *testmock.MockRegistryHandler
+			logger              *log.Logger
+			mockController      *gomock.Controller
+			tempDir             string
+		)
+
+		it.Before(func() {
+			mockController = gomock.NewController(t)
+			fakeCacheHandler = testmock.NewMockCacheHandler(mockController)
+			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
+			fakeImageHandler = testmock.NewMockImageHandler(mockController)
+			fakeRegistryHandler = testmock.NewMockRegistryHandler(mockController)
+			logger = &log.Logger{Handler: &discard.Handler{}}
+			var err error
+			tempDir, err = ioutil.TempDir("", "")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			mockController.Finish()
+			os.RemoveAll(tempDir)
+		})
+
+		when("platform api >= 0.8", func() {
+			it.Before(func() {
+				analyzerFactory = lifecycle.NewAnalyzerFactory(
+					api.Platform.Latest(),
+					fakeCacheHandler,
+					fakeConfigHandler,
+					fakeImageHandler,
+					fakeRegistryHandler,
+				)
+			})
+
+			it("configures the analyzer", func() {
+				previousImage := fakes.NewImage("some-previous-image-ref", "", nil)
+				runImage := fakes.NewImage("some-run-image-ref", "", nil)
+
+				t.Log("ensures registry access")
+				fakeImageHandler.EXPECT().Docker().Return(false)
+				fakeRegistryHandler.EXPECT().EnsureReadAccess([]string{"some-previous-image-ref", "some-run-image-ref"})
+				fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref", "some-output-image-ref", "some-additional-tag"})
+
+				t.Log("does not process cache")
+
+				t.Log("processes previous image")
+				fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
+				fakeImageHandler.EXPECT().Docker().Return(false)
+
+				t.Log("processes run image")
+				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
+
+				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				h.AssertNil(t, err)
+				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
+				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
+
+				t.Log("restores sbom data")
+				sbomRestorer, ok := analyzer.SBOMRestorer.(*layer.DefaultSBOMRestorer)
+				h.AssertEq(t, ok, true)
+				h.AssertEq(t, sbomRestorer.LayersDir, "some-layers-dir")
+				h.AssertEq(t, sbomRestorer.Logger, logger)
+
+				t.Log("does not restore layer metadata")
+				_, ok = analyzer.LayerMetadataRestorer.(*layer.NopMetadataRestorer)
+				h.AssertEq(t, ok, true)
+
+				t.Log("sets logger")
+				h.AssertEq(t, analyzer.Logger, logger)
+			})
+
+			when("daemon case", func() {
+				it("configures the analyzer", func() {
+					previousImage := fakes.NewImage("some-previous-image-ref", "", nil)
+					runImage := fakes.NewImage("some-run-image-ref", "", nil)
+
+					t.Log("ensures registry access")
+					fakeImageHandler.EXPECT().Docker().Return(true)
+					fakeRegistryHandler.EXPECT().EnsureReadAccess()
+					fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref"})
+
+					t.Log("processes previous image")
+					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
+					fakeImageHandler.EXPECT().Docker().Return(true)
+
+					t.Log("processes run image")
+					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
+
+					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
+					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					h.AssertNil(t, err)
+					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
+					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
+
+					t.Log("uses the provided launch cache")
+					_, ok := analyzer.PreviousImage.(*cache.CachingImage)
+					h.AssertEq(t, ok, true)
+					h.AssertPathExists(t, filepath.Join(launchCacheDir, "committed"))
+					h.AssertPathExists(t, filepath.Join(launchCacheDir, "staging"))
+				})
+			})
+
+			when("skip layers", func() {
+				it("does not restore sbom data", func() {
+					fakeImageHandler.EXPECT().Docker()
+					fakeRegistryHandler.EXPECT().EnsureReadAccess(gomock.Any())
+					fakeRegistryHandler.EXPECT().EnsureWriteAccess(gomock.Any())
+					fakeImageHandler.EXPECT().InitImage(gomock.Any())
+					fakeImageHandler.EXPECT().Docker()
+					fakeImageHandler.EXPECT().InitImage(gomock.Any())
+
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", true, nil)
+					h.AssertNil(t, err)
+
+					_, ok := analyzer.SBOMRestorer.(*layer.NopSBOMRestorer)
+					h.AssertEq(t, ok, true)
+				})
+			})
+		})
+
+		when("platform api = 0.7", func() {
+			it.Before(func() {
+				analyzerFactory = lifecycle.NewAnalyzerFactory(
+					api.MustParse("0.7"),
+					fakeCacheHandler,
+					fakeConfigHandler,
+					fakeImageHandler,
+					fakeRegistryHandler,
+				)
+			})
+
+			it("configures the analyzer", func() {
+				previousImage := fakes.NewImage("some-previous-image-ref", "", nil)
+				runImage := fakes.NewImage("some-run-image-ref", "", nil)
+
+				t.Log("ensures registry access")
+				fakeImageHandler.EXPECT().Docker().Return(false)
+				fakeRegistryHandler.EXPECT().EnsureReadAccess([]string{"some-previous-image-ref", "some-run-image-ref"})
+				fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref", "some-output-image-ref", "some-additional-tag"})
+
+				t.Log("processes previous image")
+				fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
+				fakeImageHandler.EXPECT().Docker().Return(false)
+
+				t.Log("processes run image")
+				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
+
+				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				h.AssertNil(t, err)
+				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
+				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
+
+				t.Log("does not restore sbom data")
+				_, ok := analyzer.SBOMRestorer.(*layer.NopSBOMRestorer)
+				h.AssertEq(t, ok, true)
+
+				t.Log("does not restore layer metadata")
+				_, ok = analyzer.LayerMetadataRestorer.(*layer.NopMetadataRestorer)
+				h.AssertEq(t, ok, true)
+
+				t.Log("sets logger")
+				h.AssertEq(t, analyzer.Logger, logger)
+			})
+
+			when("daemon case", func() {
+				it("configures the analyzer", func() {
+					previousImage := fakes.NewImage("some-previous-image-ref", "", nil)
+					runImage := fakes.NewImage("some-run-image-ref", "", nil)
+
+					t.Log("ensures registry access")
+					fakeImageHandler.EXPECT().Docker().Return(true)
+					fakeRegistryHandler.EXPECT().EnsureReadAccess()
+					fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref"})
+
+					t.Log("processes previous image")
+					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
+					fakeImageHandler.EXPECT().Docker().Return(true)
+
+					t.Log("processes run image")
+					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
+
+					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
+					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					h.AssertNil(t, err)
+					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
+					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
+				})
+			})
+		})
+
+		when("platform api < 0.7", func() {
+			it.Before(func() {
+				analyzerFactory = lifecycle.NewAnalyzerFactory(
+					api.MustParse("0.6"),
+					fakeCacheHandler,
+					fakeConfigHandler,
+					fakeImageHandler,
+					fakeRegistryHandler,
+				)
+			})
+
+			it("configures the analyzer", func() {
+				previousImage := fakes.NewImage("some-previous-image-ref", "", nil)
+				runImage := fakes.NewImage("some-run-image-ref", "", nil)
+
+				t.Log("does not ensure registry access")
+
+				t.Log("processes group")
+				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path")
+
+				t.Log("processes cache")
+				fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")
+
+				t.Log("processes previous image")
+				fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
+				fakeImageHandler.EXPECT().Docker().Return(false)
+
+				t.Log("processes run image")
+				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
+
+				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				h.AssertNil(t, err)
+				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
+				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
+
+				t.Log("does not restore sbom data")
+				_, ok := analyzer.SBOMRestorer.(*layer.NopSBOMRestorer)
+				h.AssertEq(t, ok, true)
+
+				t.Log("restores layer metadata")
+				metadataRestorer, ok := analyzer.LayerMetadataRestorer.(*layer.DefaultMetadataRestorer)
+				h.AssertEq(t, ok, true)
+				h.AssertEq(t, metadataRestorer.LayersDir, "some-layers-dir")
+				h.AssertEq(t, metadataRestorer.Logger, logger)
+				h.AssertEq(t, metadataRestorer.SkipLayers, false)
+
+				t.Log("sets logger")
+				h.AssertEq(t, analyzer.Logger, logger)
+			})
+
+			when("daemon case", func() {
+				it("configures the analyzer", func() {
+					previousImage := fakes.NewImage("some-previous-image-ref", "", nil)
+					runImage := fakes.NewImage("some-run-image-ref", "", nil)
+
+					t.Log("does not ensure registry access")
+
+					t.Log("processes group")
+					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path")
+
+					t.Log("processes cache")
+					fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")
+
+					t.Log("processes previous image")
+					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
+					fakeImageHandler.EXPECT().Docker().Return(true)
+
+					t.Log("processes run image")
+					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
+
+					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
+					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					h.AssertNil(t, err)
+					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
+					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
+				})
+			})
+
+			when("buildpack group is provided", func() {
+				it("uses the provided group", func() {
+					fakeCacheHandler.EXPECT().InitCache(gomock.Any(), gomock.Any())
+					fakeImageHandler.EXPECT().InitImage(gomock.Any())
+					fakeImageHandler.EXPECT().Docker()
+					fakeImageHandler.EXPECT().InitImage(gomock.Any())
+
+					providedGroup := buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "some-buildpack-id"}}}
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", providedGroup, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, analyzer.Buildpacks, providedGroup.Group)
+				})
+			})
+		})
+	})
+}
+
+func testAnalyzer(platformAPI string) func(t *testing.T, when testspec.G, it testspec.S) {
+	return func(t *testing.T, when testspec.G, it testspec.S) {
 		var (
 			cacheDir         string
 			layersDir        string
 			tmpDir           string
 			analyzer         *lifecycle.Analyzer
 			image            *fakes.Image
-			metadataRestorer *ltestmock.MockMetadataRestorer
+			metadataRestorer *testmock.MockMetadataRestorer
 			mockCtrl         *gomock.Controller
-			sbomRestorer     *ltestmock.MockSBOMRestorer
+			sbomRestorer     *testmock.MockSBOMRestorer
 			testCache        lifecycle.Cache
 		)
 
@@ -70,16 +366,15 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 			discardLogger := log.Logger{Handler: &discard.Handler{}}
 
 			mockCtrl = gomock.NewController(t)
-			metadataRestorer = ltestmock.NewMockMetadataRestorer(mockCtrl)
+			metadataRestorer = testmock.NewMockMetadataRestorer(mockCtrl)
 
-			sbomRestorer = ltestmock.NewMockSBOMRestorer(mockCtrl)
+			sbomRestorer = testmock.NewMockSBOMRestorer(mockCtrl)
 
-			p := platform.NewPlatform(platformAPI)
 			h.AssertNil(t, err)
 			analyzer = &lifecycle.Analyzer{
 				PreviousImage: image,
 				Logger:        &discardLogger,
-				Platform:      p,
+				SBOMRestorer:  sbomRestorer,
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
@@ -87,7 +382,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				},
 				Cache:                 testCache,
 				LayerMetadataRestorer: metadataRestorer,
-				SBOMRestorer:          sbomRestorer,
+				RestoresLayerMetadata: api.MustParse(platformAPI).LessThan("0.7"),
 			}
 
 			if testing.Verbose() {
@@ -106,13 +401,13 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 
 		when("#Analyze", func() {
 			var (
-				expectedAppMetadata   platform.LayersMetadata
-				expectedCacheMetadata platform.CacheMetadata
+				expectedAppMetadata   spec.LayersMetadata
+				expectedCacheMetadata spec.CacheMetadata
 				ref                   *testmock.MockReference
 			)
 
 			expectRestoresLayerMetadataIfSupported := func() {
-				if analyzer.Platform.API().LessThan("0.7") {
+				if api.MustParse(platformAPI).LessThan("0.7") {
 					useShaFiles := true
 					layerSHAStore := layer.NewSHAStore(useShaFiles)
 					metadataRestorer.EXPECT().Restore(analyzer.Buildpacks, expectedAppMetadata, expectedCacheMetadata, layerSHAStore)
@@ -174,7 +469,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.PreviousImage)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, spec.LayersMetadata{})
 				})
 			})
 
@@ -188,7 +483,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, spec.LayersMetadata{})
 				})
 			})
 
@@ -202,7 +497,7 @@ func testAnalyzerBuilder(platformAPI string) func(t *testing.T, when spec.G, it 
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, spec.LayersMetadata{})
 				})
 			})
 

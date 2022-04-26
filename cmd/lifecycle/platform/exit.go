@@ -20,8 +20,8 @@ type Exiter interface {
 	CodeFor(errType LifecycleExitError) int
 }
 
-func NewExiter(apiStr string) Exiter {
-	switch apiStr {
+func NewExiter(platformAPI string) Exiter {
+	switch platformAPI {
 	case "0.3", "0.4", "0.5":
 		return &LegacyExiter{}
 	default:

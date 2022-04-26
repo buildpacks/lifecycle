@@ -21,15 +21,16 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
+	spec "github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type exportCmd struct {
-	analyzedMD platform.AnalyzedMetadata
+	analyzedMD spec.AnalyzedMetadata
 
 	//flags: inputs
 	cacheDir              string
@@ -55,7 +56,7 @@ type exportArgs struct {
 	stackPath           string
 	targetRegistry      string
 	imageNames          []string
-	stackMD             platform.StackMetadata
+	stackMD             spec.StackMetadata
 
 	useDaemon bool
 	uid, gid  int
@@ -156,16 +157,16 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	return nil
 }
 
-func readStack(stackPath string) (platform.StackMetadata, error) {
+func readStack(stackPath string) (spec.StackMetadata, error) {
 	var (
-		stackMD platform.StackMetadata
+		stackMD spec.StackMetadata
 	)
 
 	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
 		if os.IsNotExist(err) {
 			cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
 		} else {
-			return platform.StackMetadata{}, err
+			return spec.StackMetadata{}, err
 		}
 	}
 
@@ -260,14 +261,14 @@ func (e *exportCmd) validateRunImageInput() error {
 	}
 }
 
-func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
+func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD spec.AnalyzedMetadata) error {
 	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(artifactsDir)
 
-	var projectMD platform.ProjectMetadata
+	var projectMD spec.ProjectMetadata
 	_, err = toml.DecodeFile(ea.projectMetadataPath, &projectMD)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -327,7 +328,7 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	return nil
 }
 
-func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initDaemonAppImage(analyzedMD spec.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []local.ImageOption{
 		local.FromBaseImage(ea.runImageRef),
 	}
@@ -366,7 +367,7 @@ func (ea exportArgs) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (i
 	return appImage, runImageID.String(), nil
 }
 
-func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+func (ea exportArgs) initRemoteAppImage(analyzedMD spec.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(ea.runImageRef),
 	}
@@ -411,10 +412,10 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	return lifecycle.LauncherConfig{
 		Path: launcherPath,
-		Metadata: platform.LauncherMetadata{
+		Metadata: spec.LauncherMetadata{
 			Version: cmd.Version,
-			Source: platform.SourceMetadata{
-				Git: platform.GitMetadata{
+			Source: spec.SourceMetadata{
+				Git: spec.GitMetadata{
 					Repository: cmd.SCMRepository,
 					Commit:     cmd.SCMCommit,
 				},
@@ -423,17 +424,17 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	}
 }
 
-func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
-	var analyzedMD platform.AnalyzedMetadata
+func parseAnalyzedMD(logger lifecycle.Logger, path string) (spec.AnalyzedMetadata, error) {
+	var analyzedMD spec.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Warnf("Warning: analyzed TOML file not found at '%s'", path)
-			return platform.AnalyzedMetadata{}, nil
+			return spec.AnalyzedMetadata{}, nil
 		}
 
-		return platform.AnalyzedMetadata{}, err
+		return spec.AnalyzedMetadata{}, err
 	}
 
 	return analyzedMD, nil

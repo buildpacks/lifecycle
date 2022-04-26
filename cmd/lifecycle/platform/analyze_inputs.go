@@ -1,20 +1,17 @@
-package inputs
+package platform
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
 )
 
-// Analyze holds the values of command-line flags and args.
+// AnalyzeInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
-type Analyze struct {
+type AnalyzeInputs struct {
 	AnalyzedPath string
 	StackPath    string
 	UID          int
@@ -37,11 +34,11 @@ type ForAnalyzer struct {
 	PreviousImageRef string
 	RunImageRef      string
 	SkipLayers       bool
-
-	LegacyGroup buildpack.Group // for creator
+	LegacyGroup      buildpack.Group // for creator only
 }
 
-func (a Analyze) RegistryImages() []string {
+// RegistryImages returns the inputs that are images in a registry.
+func (a AnalyzeInputs) RegistryImages() []string {
 	var images []string
 	images = appendNotEmpty(images, a.CacheImageRef)
 	if !a.UseDaemon {
@@ -51,49 +48,39 @@ func (a Analyze) RegistryImages() []string {
 	return images
 }
 
-type AnalyzeResolver struct {
-	PlatformAPI *api.Version
-}
-
-// Resolve accepts AnalyzeInputs with flags filled in, and args.
-// It returns AnalyzeInputs with default values filled in, or an error if the provided inputs are not valid.
-func (av *AnalyzeResolver) Resolve(inputs Analyze, cmdArgs []string, logger lifecycle.Logger) (Analyze, error) {
+// ResolveAnalyze accepts an AnalyzeInputs and returns a new AnalyzeInputs with default values filled in,
+// or an error if the provided inputs are not valid.
+func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger lifecycle.Logger) (AnalyzeInputs, error) {
 	resolvedInputs := inputs
 
-	nargs := len(cmdArgs)
-	if nargs != 1 {
-		return Analyze{}, fmt.Errorf("failed to parse arguments: received %d arguments, but expected 1", nargs)
-	}
-	resolvedInputs.OutputImageRef = cmdArgs[0]
-
-	if err := av.fillDefaults(&resolvedInputs, logger); err != nil {
-		return Analyze{}, err
+	if err := r.fillDefaults(&resolvedInputs, logger); err != nil {
+		return AnalyzeInputs{}, err
 	}
 
-	if err := av.validate(resolvedInputs, logger); err != nil {
-		return Analyze{}, err
+	if err := r.validate(resolvedInputs, logger); err != nil {
+		return AnalyzeInputs{}, err
 	}
 	return resolvedInputs, nil
 }
 
-func (av *AnalyzeResolver) fillDefaults(inputs *Analyze, logger lifecycle.Logger) error {
+func (r *InputsResolver) fillDefaults(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
 	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
-		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, av.PlatformAPI)
+		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, r.platformAPI)
 	}
 
 	if inputs.LegacyGroupPath == PlaceholderGroupPath {
-		inputs.LegacyGroupPath = defaultPath(PlaceholderGroupPath, inputs.LayersDir, av.PlatformAPI)
+		inputs.LegacyGroupPath = defaultPath(PlaceholderGroupPath, inputs.LayersDir, r.platformAPI)
 	}
 
 	if inputs.PreviousImageRef == "" {
 		inputs.PreviousImageRef = inputs.OutputImageRef
 	}
 
-	return av.fillRunImage(inputs, logger)
+	return r.fillRunImage(inputs, logger)
 }
 
-func (av *AnalyzeResolver) fillRunImage(inputs *Analyze, logger lifecycle.Logger) error {
-	if av.PlatformAPI.LessThan("0.7") || inputs.RunImageRef != "" {
+func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
+	if r.platformAPI.LessThan("0.7") || inputs.RunImageRef != "" {
 		return nil
 	}
 
@@ -114,7 +101,7 @@ func (av *AnalyzeResolver) fillRunImage(inputs *Analyze, logger lifecycle.Logger
 	return nil
 }
 
-func (av *AnalyzeResolver) validate(inputs Analyze, logger lifecycle.Logger) error {
+func (r *InputsResolver) validate(inputs AnalyzeInputs, logger lifecycle.Logger) error {
 	if inputs.OutputImageRef == "" {
 		return errors.New("image argument is required")
 	}
@@ -133,7 +120,7 @@ func (av *AnalyzeResolver) validate(inputs Analyze, logger lifecycle.Logger) err
 		return errors.Wrap(err, "validating image tag(s)")
 	}
 
-	if av.PlatformAPI.AtLeast("0.7") {
+	if r.platformAPI.AtLeast("0.7") {
 		return nil
 	}
 

@@ -7,18 +7,18 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/inputs"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type analyzeCmd struct {
 	platform Platform
+	platform.AnalyzeInputs
 
-	inputs.Analyze
 	docker   client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain authn.Keychain         // construct if necessary before dropping privileges
 }
@@ -64,16 +64,22 @@ func (a *analyzeCmd) DefineFlags() {
 }
 
 // Args validates arguments and flags, and fills in default values.
-func (a *analyzeCmd) Args(_ int, args []string) error {
-	resolver := &inputs.AnalyzeResolver{PlatformAPI: a.platform.API()}
-	resolvedInputs, err := resolver.Resolve(a.Analyze, args, cmd.DefaultLogger)
+func (a *analyzeCmd) Args(nargs int, args []string) error {
+	if nargs != 1 {
+		err := fmt.Errorf("received %d arguments, but expected 1", nargs)
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
+	}
+	a.AnalyzeInputs.OutputImageRef = args[0]
+
+	var err error
+	a.AnalyzeInputs, err = a.platform.ResolveAnalyze(a.AnalyzeInputs, cmd.DefaultLogger)
 	if err != nil {
 		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "resolve inputs")
 	}
-	a.Analyze = resolvedInputs
 	return nil
 }
 
+// Privileges validates the needed privileges
 func (a *analyzeCmd) Privileges() error {
 	var err error
 	a.keychain, err = auth.DefaultKeychain(a.RegistryImages()...)
@@ -96,20 +102,29 @@ func (a *analyzeCmd) Privileges() error {
 	return nil
 }
 
+// Exec executes the command
 func (a *analyzeCmd) Exec() error {
-	factory := inputs.NewAnalyzerFactory(a.platform.API(), a.docker, a.keychain)
-	analyzer, err := factory.NewAnalyzer(inputs.ForAnalyzer{
-		AdditionalTags:   a.AdditionalTags,
-		CacheImageRef:    a.CacheImageRef,
-		LaunchCacheDir:   a.LaunchCacheDir,
-		LayersDir:        a.LayersDir,
-		LegacyCacheDir:   a.LegacyCacheDir,
-		LegacyGroupPath:  a.LegacyGroupPath,
-		OutputImageRef:   a.OutputImageRef,
-		PreviousImageRef: a.PreviousImageRef,
-		RunImageRef:      a.RunImageRef,
-		SkipLayers:       a.SkipLayers,
-	}, cmd.DefaultLogger)
+	factory := lifecycle.NewAnalyzerFactory(
+		a.platform.API(),
+		NewCacheHandler(a.keychain),
+		NewConfigHandler(),
+		NewImageHandler(a.docker, a.keychain),
+		NewRegistryHandler(a.keychain),
+	)
+	analyzer, err := factory.NewAnalyzer(
+		a.ForAnalyzer.AdditionalTags,
+		a.ForAnalyzer.CacheImageRef,
+		a.ForAnalyzer.LaunchCacheDir,
+		a.ForAnalyzer.LayersDir,
+		a.ForAnalyzer.LegacyCacheDir,
+		a.ForAnalyzer.LegacyGroup,
+		a.ForAnalyzer.LegacyGroupPath,
+		a.ForAnalyzer.OutputImageRef,
+		a.ForAnalyzer.PreviousImageRef,
+		a.ForAnalyzer.RunImageRef,
+		a.ForAnalyzer.SkipLayers,
+		cmd.DefaultLogger,
+	)
 	if err != nil {
 		return err
 	}

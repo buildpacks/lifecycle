@@ -1,24 +1,21 @@
-package inputs
+package platform
 
 import (
-	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
-
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
-var (
+const (
 	DefaultAnalyzedFile        = "analyzed.toml"
 	DefaultGroupFile           = "group.toml"
 	DefaultOrderFile           = "order.toml"
 	DefaultPlanFile            = "plan.toml"
 	DefaultProjectMetadataFile = "project-metadata.toml"
 	DefaultReportFile          = "report.toml"
+)
 
+var (
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
 	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
 	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
@@ -35,16 +32,4 @@ func defaultPath(placeholderPath, layersDir string, platformAPI *api.Version) st
 		return filepath.Join(".", filename)
 	}
 	return filepath.Join(layersDir, filename)
-}
-
-func readStack(stackPath string, logger lifecycle.Logger) (platform.StackMetadata, error) {
-	var stackMD platform.StackMetadata
-	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
-		if os.IsNotExist(err) {
-			logger.Infof("no stack metadata found at path '%s'\n", stackPath)
-		} else {
-			return platform.StackMetadata{}, err
-		}
-	}
-	return stackMD, nil
 }

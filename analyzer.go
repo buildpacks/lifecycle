@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
@@ -15,17 +16,163 @@ type Platform interface {
 	API() *api.Version
 }
 
+type AnalyzerFactory struct {
+	platformAPI     *api.Version
+	cacheHandler    CacheHandler
+	configHandler   ConfigHandler
+	imageHandler    ImageHandler
+	registryHandler RegistryHandler
+}
+
+func NewAnalyzerFactory(platformAPI *api.Version, cacheHandler CacheHandler, configHandler ConfigHandler, imageHandler ImageHandler, registryHandler RegistryHandler) *AnalyzerFactory {
+	return &AnalyzerFactory{
+		platformAPI:     platformAPI,
+		cacheHandler:    cacheHandler,
+		configHandler:   configHandler,
+		imageHandler:    imageHandler,
+		registryHandler: registryHandler,
+	}
+}
+
 type Analyzer struct {
 	PreviousImage imgutil.Image
 	RunImage      imgutil.Image
 	Logger        Logger
-	Platform      Platform
 	SBOMRestorer  layer.SBOMRestorer
 
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupBuildpack
 	Cache                 Cache
 	LayerMetadataRestorer layer.MetadataRestorer
+	RestoresLayerMetadata bool
+}
+
+func (f *AnalyzerFactory) NewAnalyzer(
+	additionalTags []string,
+	cacheImageRef string,
+	launchCacheDir string,
+	layersDir string,
+	legacyCacheDir string,
+	legacyGroup buildpack.Group,
+	legacyGroupPath string,
+	outputImageRef string,
+	previousImageRef string,
+	runImageRef string,
+	skipLayers bool,
+	logger Logger,
+) (*Analyzer, error) {
+	analyzer := &Analyzer{
+		LayerMetadataRestorer: &layer.NopMetadataRestorer{},
+		Logger:                logger,
+		SBOMRestorer:          &layer.NopSBOMRestorer{},
+	}
+
+	if f.platformAPI.AtLeast("0.7") {
+		if err := f.ensureRegistryAccess(additionalTags, cacheImageRef, outputImageRef, runImageRef, previousImageRef); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := f.setBuildpacks(analyzer, legacyGroup, legacyGroupPath); err != nil {
+			return nil, err
+		}
+
+		if err := f.setCache(analyzer, cacheImageRef, legacyCacheDir); err != nil {
+			return nil, err
+		}
+
+		analyzer.LayerMetadataRestorer = &layer.DefaultMetadataRestorer{
+			LayersDir:  layersDir,
+			Logger:     logger,
+			SkipLayers: skipLayers,
+		}
+		analyzer.RestoresLayerMetadata = true
+	}
+	if f.platformAPI.AtLeast("0.8") && !skipLayers {
+		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{
+			LayersDir: layersDir,
+			Logger:    logger,
+		}
+	}
+	if err := f.setPrevious(analyzer, previousImageRef, launchCacheDir); err != nil {
+		return nil, err
+	}
+	if err := f.setRun(analyzer, runImageRef); err != nil {
+		return nil, err
+	}
+	return analyzer, nil
+}
+
+func (f *AnalyzerFactory) ensureRegistryAccess(
+	additionalTags []string,
+	cacheImageRef string,
+	outputImageRef string,
+	runImageRef string,
+	previousImageRef string,
+) error {
+	var readImages, writeImages []string
+	writeImages = append(writeImages, cacheImageRef)
+	if !f.imageHandler.Docker() {
+		readImages = append(readImages, previousImageRef, runImageRef)
+		writeImages = append(writeImages, outputImageRef)
+		writeImages = append(writeImages, additionalTags...)
+	}
+
+	if err := f.registryHandler.EnsureReadAccess(readImages...); err != nil {
+		return errors.Wrap(err, "validating registry read access")
+	}
+	if err := f.registryHandler.EnsureWriteAccess(writeImages...); err != nil {
+		return errors.Wrap(err, "validating registry write access")
+	}
+	return nil
+}
+
+func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Group, path string) error {
+	if len(group.Group) > 0 {
+		analyzer.Buildpacks = group.Group
+		return nil
+	}
+	var err error
+	analyzer.Buildpacks, err = f.configHandler.ReadGroup(path)
+	return err
+}
+
+func (f *AnalyzerFactory) setCache(analyzer *Analyzer, imageRef string, dir string) error {
+	var err error
+	analyzer.Cache, err = f.cacheHandler.InitCache(imageRef, dir)
+	return err
+}
+
+func (f *AnalyzerFactory) setPrevious(analyzer *Analyzer, imageRef string, launchCacheDir string) error {
+	if imageRef == "" {
+		return nil
+	}
+	var err error
+	analyzer.PreviousImage, err = f.imageHandler.InitImage(imageRef)
+	if err != nil {
+		return errors.Wrap(err, "getting previous image")
+	}
+	if launchCacheDir == "" || !f.imageHandler.Docker() {
+		return nil
+	}
+
+	volumeCache, err := cache.NewVolumeCache(launchCacheDir)
+	if err != nil {
+		return errors.Wrap(err, "creating launch cache")
+	}
+	analyzer.PreviousImage = cache.NewCachingImage(analyzer.PreviousImage, volumeCache)
+	return nil
+}
+
+func (f *AnalyzerFactory) setRun(analyzer *Analyzer, imageRef string) error {
+	if imageRef == "" {
+		return nil
+	}
+	var err error
+	analyzer.RunImage, err = f.imageHandler.InitImage(imageRef)
+	if err != nil {
+		return errors.Wrap(err, "getting run image")
+	}
+	return nil
 }
 
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
@@ -62,7 +209,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		}
 	}
 
-	if a.restoresLayerMetadata() {
+	if a.RestoresLayerMetadata {
 		cacheMeta, err = retrieveCacheMetadata(a.Cache, a.Logger)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, err
@@ -79,10 +226,6 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		RunImage:      runImageID,
 		Metadata:      appMeta,
 	}, nil
-}
-
-func (a *Analyzer) restoresLayerMetadata() bool {
-	return a.Platform.API().LessThan("0.7")
 }
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {

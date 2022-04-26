@@ -14,9 +14,10 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	platform "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/platform"
+	spec "github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -168,8 +169,8 @@ func (r *rebaseCmd) setAppImage() error {
 		return cmd.FailErr(err, "access image to rebase")
 	}
 
-	var md platform.LayersMetadata
-	if err := image.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
+	var md spec.LayersMetadata
+	if err := image.DecodeLabel(r.appImage, spec.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 

@@ -337,7 +337,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 						h.AssertNotNil(t, err)
 
-						h.AssertStringContains(t, string(output), "initializing analyzer: validating registry read access: ensure registry read access to some-run-image") // TODO: update some-run-image to have explicit permissions when https://github.com/buildpacks/lifecycle/pull/685 is merged
+						h.AssertStringContains(t, string(output), "validating registry read access: ensure registry read access to some-run-image") // TODO: update some-run-image to have explicit permissions when https://github.com/buildpacks/lifecycle/pull/685 is merged
 					})
 
 					when("stack.toml not present", func() {
@@ -933,7 +933,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "initializing analyzer: validating registry read access: ensure registry read access to " + analyzeRegFixtures.InaccessibleImage
+						expected := "validating registry read access: ensure registry read access to " + analyzeRegFixtures.InaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
@@ -1033,7 +1033,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							output, err := cmd.CombinedOutput()
 
 							h.AssertNotNil(t, err)
-							expected := "initializing analyzer: validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.ReadOnlyCacheImage
+							expected := "validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.ReadOnlyCacheImage
 							h.AssertStringContains(t, string(output), expected)
 						})
 					})
@@ -1106,7 +1106,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "initializing analyzer: validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.InaccessibleImage
+						expected := "validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.InaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
