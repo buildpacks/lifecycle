@@ -45,7 +45,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		useShaFiles = true // notice - the default for platform API >= 0.7 is false (it's set to false in some of the tests)
 		logger = log.Logger{Handler: &discard.Handler{}}
-		layerMetadataRestorer = layer.NewMetadataRestorer(&logger, layerDir, skipLayers)
+		layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger)
 		layerSHAStore = layer.NewSHAStore(useShaFiles)
 	})
 
@@ -191,7 +191,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("restoring sha files is not needed", func() {
 				it.Before(func() {
 					useShaFiles = false
-					layerMetadataRestorer = layer.NewMetadataRestorer(&logger, layerDir, skipLayers)
+					layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger)
 					layerSHAStore = layer.NewSHAStore(useShaFiles)
 				})
 
@@ -376,7 +376,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("skip layers is true", func() {
 				it.Before(func() {
 					skipLayers = true
-					layerMetadataRestorer = layer.NewMetadataRestorer(&logger, layerDir, skipLayers)
+					layerMetadataRestorer = layer.NewDefaultMetadataRestorer(layerDir, skipLayers, &logger)
 				})
 
 				it("does not write buildpack layer metadata", func() {

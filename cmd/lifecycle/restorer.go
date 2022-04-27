@@ -123,7 +123,7 @@ func (r restoreArgs) restore(layerMetadata spec.LayersMetadata, group buildpack.
 		Buildpacks:            group.Group,
 		Logger:                cmd.DefaultLogger,
 		Platform:              r.platform,
-		LayerMetadataRestorer: layer.NewMetadataRestorer(cmd.DefaultLogger, r.layersDir, r.skipLayers),
+		LayerMetadataRestorer: layer.NewDefaultMetadataRestorer(r.layersDir, r.skipLayers, cmd.DefaultLogger),
 		LayersMetadata:        layerMetadata,
 		SBOMRestorer: layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 			LayersDir: r.layersDir,

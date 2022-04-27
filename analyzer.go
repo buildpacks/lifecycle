@@ -75,24 +75,20 @@ func (f *AnalyzerFactory) NewAnalyzer(
 		if err := f.setBuildpacks(analyzer, legacyGroup, legacyGroupPath); err != nil {
 			return nil, err
 		}
-
 		if err := f.setCache(analyzer, cacheImageRef, legacyCacheDir); err != nil {
 			return nil, err
 		}
-
-		analyzer.LayerMetadataRestorer = &layer.DefaultMetadataRestorer{
-			LayersDir:  layersDir,
-			Logger:     logger,
-			SkipLayers: skipLayers,
-		}
+		analyzer.LayerMetadataRestorer = layer.NewDefaultMetadataRestorer(layersDir, skipLayers, logger)
 		analyzer.RestoresLayerMetadata = true
 	}
+
 	if f.platformAPI.AtLeast("0.8") && !skipLayers {
-		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{
+		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{ // TODO: eventually layer.NewSBOMRestorer should always return the default one, and then we can use the constructor
 			LayersDir: layersDir,
 			Logger:    logger,
 		}
 	}
+
 	if err := f.setPrevious(analyzer, previousImageRef, launchCacheDir); err != nil {
 		return nil, err
 	}
