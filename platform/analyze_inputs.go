@@ -3,7 +3,6 @@ package platform
 import (
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
 )
@@ -11,19 +10,8 @@ import (
 // AnalyzeInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
 type AnalyzeInputs struct {
-	AnalyzedPath string
-	StackPath    string
-	UID          int
-	GID          int
-	UseDaemon    bool
-
-	ForAnalyzer
-}
-
-// ForAnalyzer holds the inputs needed to construct a new lifecycle.Analyzer.
-// Fields are the cumulative total of inputs across all supported platform APIs.
-type ForAnalyzer struct {
 	AdditionalTags   str.Slice
+	AnalyzedPath     string
 	CacheImageRef    string
 	LaunchCacheDir   string
 	LayersDir        string
@@ -32,8 +20,11 @@ type ForAnalyzer struct {
 	OutputImageRef   string
 	PreviousImageRef string
 	RunImageRef      string
+	StackPath        string
+	UID              int
+	GID              int
 	SkipLayers       bool
-	LegacyGroup      buildpack.Group // for creator only
+	UseDaemon        bool
 }
 
 // RegistryImages returns the inputs that are images in a registry.

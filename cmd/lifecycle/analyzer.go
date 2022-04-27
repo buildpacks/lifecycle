@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
@@ -112,17 +113,17 @@ func (a *analyzeCmd) Exec() error {
 		NewRegistryHandler(a.keychain),
 	)
 	analyzer, err := factory.NewAnalyzer(
-		a.ForAnalyzer.AdditionalTags,
-		a.ForAnalyzer.CacheImageRef,
-		a.ForAnalyzer.LaunchCacheDir,
-		a.ForAnalyzer.LayersDir,
-		a.ForAnalyzer.LegacyCacheDir,
-		a.ForAnalyzer.LegacyGroup,
-		a.ForAnalyzer.LegacyGroupPath,
-		a.ForAnalyzer.OutputImageRef,
-		a.ForAnalyzer.PreviousImageRef,
-		a.ForAnalyzer.RunImageRef,
-		a.ForAnalyzer.SkipLayers,
+		a.AdditionalTags,
+		a.CacheImageRef,
+		a.LaunchCacheDir,
+		a.LayersDir,
+		a.LegacyCacheDir,
+		buildpack.Group{},
+		a.LegacyGroupPath,
+		a.OutputImageRef,
+		a.PreviousImageRef,
+		a.RunImageRef,
+		a.SkipLayers,
 		cmd.DefaultLogger,
 	)
 	if err != nil {

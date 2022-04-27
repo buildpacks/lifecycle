@@ -44,8 +44,8 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 				when("not provided", func() {
 					it("falls back to stack.toml", func() {
 						inputs := platform.AnalyzeInputs{
-							StackPath:   filepath.Join("testdata", "layers", "stack.toml"),
-							ForAnalyzer: platform.ForAnalyzer{OutputImageRef: "some-image"},
+							StackPath:      filepath.Join("testdata", "layers", "stack.toml"),
+							OutputImageRef: "some-image",
 						}
 						ret, err := resolver.ResolveAnalyze(inputs, logger)
 						h.AssertNil(t, err)
@@ -55,8 +55,8 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 					when("stack.toml not present", func() {
 						it("errors", func() {
 							inputs := platform.AnalyzeInputs{
-								StackPath:   "not-exist-stack.toml",
-								ForAnalyzer: platform.ForAnalyzer{OutputImageRef: "some-image"},
+								StackPath:      "not-exist-stack.toml",
+								OutputImageRef: "some-image",
 							}
 							_, err := resolver.ResolveAnalyze(inputs, logger)
 							h.AssertNotNil(t, err)
@@ -70,14 +70,12 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			when("provided destination tags are on different registries", func() {
 				it("errors", func() {
 					inputs := platform.AnalyzeInputs{
-						ForAnalyzer: platform.ForAnalyzer{
-							AdditionalTags: str.Slice{
-								"some-registry.io/some-namespace/some-image:tag",
-								"some-other-registry.io/some-namespace/some-image",
-							},
-							OutputImageRef: "some-registry.io/some-namespace/some-image",
-							RunImageRef:    "some-run-image-ref", // ignore
+						AdditionalTags: str.Slice{
+							"some-registry.io/some-namespace/some-image:tag",
+							"some-other-registry.io/some-namespace/some-image",
 						},
+						OutputImageRef: "some-registry.io/some-namespace/some-image",
+						RunImageRef:    "some-run-image-ref", // ignore
 					}
 					_, err := resolver.ResolveAnalyze(inputs, logger)
 					h.AssertNotNil(t, err)
@@ -95,7 +93,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			when("cache image tag and cache directory are both blank", func() {
 				it("warns", func() {
 					inputs := platform.AnalyzeInputs{
-						ForAnalyzer: platform.ForAnalyzer{OutputImageRef: "some-image"},
+						OutputImageRef: "some-image",
 					}
 					_, err := resolver.ResolveAnalyze(inputs, logger)
 					h.AssertNil(t, err)
@@ -108,8 +106,8 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 				when("not provided", func() {
 					it("does not warn", func() {
 						inputs := platform.AnalyzeInputs{
-							StackPath:   "not-exist-stack.toml",
-							ForAnalyzer: platform.ForAnalyzer{OutputImageRef: "some-image"},
+							StackPath:      "not-exist-stack.toml",
+							OutputImageRef: "some-image",
 						}
 						_, err := resolver.ResolveAnalyze(inputs, logger)
 						h.AssertNil(t, err)
@@ -127,12 +125,10 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 					)
 
 					inputs := platform.AnalyzeInputs{
-						AnalyzedPath: platform.PlaceholderAnalyzedPath,
-						ForAnalyzer: platform.ForAnalyzer{
-							LegacyGroupPath: platform.PlaceholderGroupPath,
-							LayersDir:       "some-layers-dir",
-							OutputImageRef:  "some-image",
-						},
+						AnalyzedPath:    platform.PlaceholderAnalyzedPath,
+						LegacyGroupPath: platform.PlaceholderGroupPath,
+						LayersDir:       "some-layers-dir",
+						OutputImageRef:  "some-image",
 					}
 					ret, err := resolver.ResolveAnalyze(inputs, logger)
 					h.AssertNil(t, err)
@@ -150,12 +146,10 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 			when("layers path is provided", func() {
 				it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
 					inputs := platform.AnalyzeInputs{
-						AnalyzedPath: filepath.Join(".", "analyzed.toml"),
-						ForAnalyzer: platform.ForAnalyzer{
-							LegacyGroupPath: filepath.Join(".", "group.toml"),
-							LayersDir:       filepath.Join("testdata", "other-layers"),
-							OutputImageRef:  "some-image",
-						},
+						AnalyzedPath:    filepath.Join(".", "analyzed.toml"),
+						LegacyGroupPath: filepath.Join(".", "group.toml"),
+						LayersDir:       filepath.Join("testdata", "other-layers"),
+						OutputImageRef:  "some-image",
 					}
 					ret, err := resolver.ResolveAnalyze(inputs, logger)
 					h.AssertNil(t, err)
