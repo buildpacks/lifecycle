@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/layer"
-	spec "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -99,9 +99,9 @@ func (r *restoreCmd) Exec() error {
 		return err
 	}
 
-	var appMeta spec.LayersMetadata
+	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		var analyzedMd spec.AnalyzedMetadata
+		var analyzedMd platform.AnalyzedMetadata
 		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMd); err == nil {
 			appMeta = analyzedMd.Metadata
 		}
@@ -117,7 +117,7 @@ func (r *restoreCmd) registryImages() []string {
 	return []string{}
 }
 
-func (r restoreArgs) restore(layerMetadata spec.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
+func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
 		LayersDir:             r.layersDir,
 		Buildpacks:            group.Group,
@@ -132,7 +132,7 @@ func (r restoreArgs) restore(layerMetadata spec.LayersMetadata, group buildpack.
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(spec.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
 	}
 	return nil
 }

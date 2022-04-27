@@ -10,7 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
-	spec "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -77,10 +77,10 @@ func (b *buildCmd) Exec() error {
 	return b.build(group, plan)
 }
 
-func (ba buildArgs) build(group buildpack.Group, plan spec.BuildPlan) error {
+func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
-		return cmd.FailErrCode(err, ba.platform.CodeFor(spec.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
@@ -100,10 +100,10 @@ func (ba buildArgs) build(group buildpack.Group, plan spec.BuildPlan) error {
 	if err != nil {
 		if err, ok := err.(*buildpack.Error); ok {
 			if err.Type == buildpack.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(spec.FailedBuildWithErrors), "build")
+				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(platform.FailedBuildWithErrors), "build")
 			}
 		}
-		return cmd.FailErrCode(err, ba.platform.CodeFor(spec.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
 	if err := encoding.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
@@ -112,15 +112,15 @@ func (ba buildArgs) build(group buildpack.Group, plan spec.BuildPlan) error {
 	return nil
 }
 
-func (b *buildCmd) readData() (buildpack.Group, spec.BuildPlan, error) {
+func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {
 	group, err := buildpack.ReadGroup(b.groupPath)
 	if err != nil {
-		return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}
 
-	var plan spec.BuildPlan
+	var plan platform.BuildPlan
 	if _, err := toml.DecodeFile(b.planPath, &plan); err != nil {
-		return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
 	}
 	return group, plan, nil
 }
