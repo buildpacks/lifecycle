@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/golang/mock/gomock"
-	testspec "github.com/sclevine/spec"
+	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
@@ -22,19 +22,19 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/layer"
-	spec "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestAnalyzer(t *testing.T) {
 	for _, api := range api.Platform.Supported {
-		testspec.Run(t, "unit-analyzer/"+api.String(), testAnalyzer(api.String()), testspec.Parallel(), testspec.Report(report.Terminal{}))
+		spec.Run(t, "unit-analyzer/"+api.String(), testAnalyzer(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
-	testspec.Run(t, "unit-new-analyzer", testAnalyzerFactory, testspec.Parallel(), testspec.Report(report.Terminal{}))
+	spec.Run(t, "unit-new-analyzer", testAnalyzerFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testAnalyzerFactory(t *testing.T, when testspec.G, it testspec.S) {
+func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#NewAnalyzer", func() {
 		var (
 			analyzerFactory     *lifecycle.AnalyzerFactory
@@ -330,8 +330,8 @@ func testAnalyzerFactory(t *testing.T, when testspec.G, it testspec.S) {
 	})
 }
 
-func testAnalyzer(platformAPI string) func(t *testing.T, when testspec.G, it testspec.S) {
-	return func(t *testing.T, when testspec.G, it testspec.S) {
+func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
+	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
 			cacheDir         string
 			layersDir        string
@@ -401,8 +401,8 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when testspec.G, it tes
 
 		when("#Analyze", func() {
 			var (
-				expectedAppMetadata   spec.LayersMetadata
-				expectedCacheMetadata spec.CacheMetadata
+				expectedAppMetadata   platform.LayersMetadata
+				expectedCacheMetadata cache.Metadata
 				ref                   *testmock.MockReference
 			)
 
@@ -469,7 +469,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when testspec.G, it tes
 					h.AssertNil(t, err)
 
 					h.AssertNil(t, md.PreviousImage)
-					h.AssertEq(t, md.Metadata, spec.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 
@@ -483,7 +483,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when testspec.G, it tes
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, spec.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 
@@ -497,7 +497,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when testspec.G, it tes
 				it("returns empty analyzed metadata", func() {
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-					h.AssertEq(t, md.Metadata, spec.LayersMetadata{})
+					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
 

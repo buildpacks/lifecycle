@@ -8,7 +8,6 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	spec "github.com/buildpacks/lifecycle/platform"
@@ -81,7 +80,7 @@ func (b *buildCmd) Exec() error {
 func (ba buildArgs) build(group buildpack.Group, plan spec.BuildPlan) error {
 	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
 	if err != nil {
-		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(spec.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
@@ -101,10 +100,10 @@ func (ba buildArgs) build(group buildpack.Group, plan spec.BuildPlan) error {
 	if err != nil {
 		if err, ok := err.(*buildpack.Error); ok {
 			if err.Type == buildpack.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(platform.FailedBuildWithErrors), "build")
+				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(spec.FailedBuildWithErrors), "build")
 			}
 		}
-		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
+		return cmd.FailErrCode(err, ba.platform.CodeFor(spec.BuildError), "build")
 	}
 
 	if err := encoding.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {

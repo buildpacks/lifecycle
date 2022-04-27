@@ -14,7 +14,6 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
-	platform "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	spec "github.com/buildpacks/lifecycle/platform"
@@ -71,7 +70,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(platform.RebaseError), "set app image")
+		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(spec.RebaseError), "set app image")
 	}
 
 	return nil
@@ -123,11 +122,11 @@ func (r *rebaseCmd) Exec() error {
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
 	if err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "rebase")
+		return cmd.FailErrCode(err, r.platform.CodeFor(spec.RebaseError), "rebase")
 	}
 
 	if err := encoding.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "write rebase report")
+		return cmd.FailErrCode(err, r.platform.CodeFor(spec.RebaseError), "write rebase report")
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	cache "github.com/buildpacks/lifecycle/cache"
 	layer "github.com/buildpacks/lifecycle/internal/layer"
 	platform "github.com/buildpacks/lifecycle/platform"
 )
@@ -38,7 +39,7 @@ func (m *MockMetadataRestorer) EXPECT() *MockMetadataRestorerMockRecorder {
 }
 
 // Restore mocks base method.
-func (m *MockMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata, arg3 layer.SHAStore) error {
+func (m *MockMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 cache.Metadata, arg3 layer.SHAStore) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

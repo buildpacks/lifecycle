@@ -12,17 +12,16 @@ import (
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
-	testspec "github.com/sclevine/spec"
+	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/layers"
-	spec "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -31,17 +30,17 @@ func TestRestorer(t *testing.T) {
 	for _, buildpackAPIStr := range []string{"0.5", api.Buildpack.Latest().String()} {
 		for _, platformAPI := range api.Platform.Supported {
 			platformAPIStr := platformAPI.String()
-			testspec.Run(
+			spec.Run(
 				t,
 				"unit-restorer/buildpack-"+buildpackAPIStr+"/platform-"+platformAPIStr,
-				testRestorer(buildpackAPIStr, platformAPIStr), testspec.Report(report.Terminal{}),
+				testRestorer(buildpackAPIStr, platformAPIStr), spec.Report(report.Terminal{}),
 			)
 		}
 	}
 }
 
-func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when testspec.G, it testspec.S) {
-	return func(t *testing.T, when testspec.G, it testspec.S) {
+func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
+	return func(t *testing.T, when spec.G, it spec.S) {
 		when("#Restore", func() {
 			var (
 				cacheDir     string
@@ -653,7 +652,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when test
 					h.AssertNil(t, err)
 					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
 					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
-					h.AssertNil(t, testCache.SetMetadata(spec.CacheMetadata{BOM: spec.LayerMetadata{SHA: "some-digest"}}))
+					h.AssertNil(t, testCache.SetMetadata(cache.Metadata{BOM: cache.LayerMetadata{SHA: "some-digest"}}))
 					h.AssertNil(t, testCache.Commit())
 				})
 
@@ -670,7 +669,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when test
 
 			when("there is no app image metadata", func() {
 				it.Before(func() {
-					restorer.LayersMetadata = spec.LayersMetadata{}
+					restorer.LayersMetadata = platform.LayersMetadata{}
 				})
 
 				it("analyzes with no layer metadata", func() {

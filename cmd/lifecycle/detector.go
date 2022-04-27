@@ -7,7 +7,6 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	platform "github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	spec "github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -110,15 +109,15 @@ func (da detectArgs) detect() (buildpack.Group, spec.BuildPlan, error) {
 			case buildpack.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.FailedDetect), "detect")
+				return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(spec.FailedDetect), "detect")
 			case buildpack.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.FailedDetectWithErrors), "detect")
+				return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(spec.FailedDetectWithErrors), "detect")
 			default:
-				return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.DetectError), "detect")
+				return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(spec.DetectError), "detect")
 			}
 		default:
-			return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.DetectError), "detect")
+			return buildpack.Group{}, spec.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(spec.DetectError), "detect")
 		}
 	}
 

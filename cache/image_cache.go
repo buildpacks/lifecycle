@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 const MetadataLabel = "io.buildpacks.lifecycle.cache.metadata"
@@ -61,7 +60,7 @@ func (c *ImageCache) Name() string {
 	return c.origImage.Name()
 }
 
-func (c *ImageCache) SetMetadata(metadata platform.CacheMetadata) error {
+func (c *ImageCache) SetMetadata(metadata Metadata) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -72,10 +71,10 @@ func (c *ImageCache) SetMetadata(metadata platform.CacheMetadata) error {
 	return c.newImage.SetLabel(MetadataLabel, string(data))
 }
 
-func (c *ImageCache) RetrieveMetadata() (platform.CacheMetadata, error) {
-	var meta platform.CacheMetadata
+func (c *ImageCache) RetrieveMetadata() (Metadata, error) {
+	var meta Metadata
 	if err := image.DecodeLabel(c.origImage, MetadataLabel, &meta); err != nil {
-		return platform.CacheMetadata{}, nil
+		return Metadata{}, nil
 	}
 	return meta, nil
 }

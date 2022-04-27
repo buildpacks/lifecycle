@@ -180,7 +180,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
 		err             error
 		appMeta         platform.LayersMetadata
-		cacheMeta       platform.CacheMetadata
+		cacheMeta       cache.Metadata
 		previousImageID *platform.ImageIdentifier
 		runImageID      *platform.ImageIdentifier
 	)
@@ -250,15 +250,15 @@ func bomSHA(appMeta platform.LayersMetadata) string {
 	return appMeta.BOM.SHA
 }
 
-func retrieveCacheMetadata(cache Cache, logger Logger) (platform.CacheMetadata, error) {
+func retrieveCacheMetadata(fromCache Cache, logger Logger) (cache.Metadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
-	var cacheMeta platform.CacheMetadata
-	if cache != nil {
+	var cacheMeta cache.Metadata
+	if fromCache != nil {
 		var err error
-		if !cache.Exists() {
+		if !fromCache.Exists() {
 			logger.Info("Layer cache not found")
 		}
-		cacheMeta, err = cache.RetrieveMetadata()
+		cacheMeta, err = fromCache.RetrieveMetadata()
 		if err != nil {
 			return cacheMeta, errors.Wrap(err, "retrieving cache metadata")
 		}

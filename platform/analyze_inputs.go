@@ -3,7 +3,6 @@ package platform
 import (
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
@@ -50,7 +49,7 @@ func (a AnalyzeInputs) RegistryImages() []string {
 
 // ResolveAnalyze accepts an AnalyzeInputs and returns a new AnalyzeInputs with default values filled in,
 // or an error if the provided inputs are not valid.
-func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger lifecycle.Logger) (AnalyzeInputs, error) {
+func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger Logger) (AnalyzeInputs, error) {
 	resolvedInputs := inputs
 
 	if err := r.fillDefaults(&resolvedInputs, logger); err != nil {
@@ -63,7 +62,7 @@ func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger lifecycle.L
 	return resolvedInputs, nil
 }
 
-func (r *InputsResolver) fillDefaults(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
+func (r *InputsResolver) fillDefaults(inputs *AnalyzeInputs, logger Logger) error {
 	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
 		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, r.platformAPI)
 	}
@@ -79,7 +78,7 @@ func (r *InputsResolver) fillDefaults(inputs *AnalyzeInputs, logger lifecycle.Lo
 	return r.fillRunImage(inputs, logger)
 }
 
-func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger lifecycle.Logger) error {
+func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger Logger) error {
 	if r.platformAPI.LessThan("0.7") || inputs.RunImageRef != "" {
 		return nil
 	}
@@ -101,7 +100,7 @@ func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger lifecycle.Lo
 	return nil
 }
 
-func (r *InputsResolver) validate(inputs AnalyzeInputs, logger lifecycle.Logger) error {
+func (r *InputsResolver) validate(inputs AnalyzeInputs, logger Logger) error {
 	if inputs.OutputImageRef == "" {
 		return errors.New("image argument is required")
 	}

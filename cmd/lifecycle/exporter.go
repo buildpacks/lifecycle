@@ -21,7 +21,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
@@ -313,11 +312,11 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(platform.ExportError), "export")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(spec.ExportError), "export")
 	}
 
 	if err := encoding.WriteTOML(ea.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, ea.platform.CodeFor(platform.ExportError), "write export report")
+		return cmd.FailErrCode(err, ea.platform.CodeFor(spec.ExportError), "write export report")
 	}
 
 	if cacheStore != nil {

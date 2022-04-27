@@ -11,7 +11,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	spec "github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -133,7 +132,7 @@ func (r restoreArgs) restore(layerMetadata spec.LayersMetadata, group buildpack.
 	}
 
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.platform.CodeFor(spec.RestoreError), "restore")
 	}
 	return nil
 }

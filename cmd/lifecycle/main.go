@@ -17,13 +17,13 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/cmd/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Platform interface {
 	API() *api.Version
 	CodeFor(errType platform.LifecycleExitError) int
-	ResolveAnalyze(inputs platform.AnalyzeInputs, logger lifecycle.Logger) (platform.AnalyzeInputs, error)
+	ResolveAnalyze(inputs platform.AnalyzeInputs, logger platform.Logger) (platform.AnalyzeInputs, error)
 }
 
 func main() {

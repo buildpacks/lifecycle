@@ -21,7 +21,6 @@ import (
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -167,7 +166,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)
 			h.AssertNil(t, testCache.AddLayerFile(layer.TarPath, layer.Digest))
-			h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: layer.Digest}}))
+			h.AssertNil(t, testCache.SetMetadata(cache.Metadata{BOM: cache.LayerMetadata{SHA: layer.Digest}}))
 			h.AssertNil(t, testCache.Commit())
 
 			h.AssertNil(t, os.RemoveAll(filepath.Join(layersDir, "sbom")))

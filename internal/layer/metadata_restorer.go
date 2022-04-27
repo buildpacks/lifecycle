@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
@@ -14,7 +15,7 @@ import (
 
 //go:generate mockgen -package testmock -destination ../../testmock/metadata_restorer.go github.com/buildpacks/lifecycle/internal/layer MetadataRestorer
 type MetadataRestorer interface {
-	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error
+	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta cache.Metadata, layerSHAStore SHAStore) error
 }
 
 func NewMetadataRestorer(logger Logger, layersDir string, skipLayers bool) MetadataRestorer {
@@ -31,7 +32,7 @@ type DefaultMetadataRestorer struct {
 	Logger     Logger
 }
 
-func (r *DefaultMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error {
+func (r *DefaultMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta cache.Metadata, layerSHAStore SHAStore) error {
 	if err := r.restoreStoreTOML(appMeta, buildpacks); err != nil {
 		return err
 	}
@@ -54,7 +55,7 @@ func (r *DefaultMetadataRestorer) restoreStoreTOML(appMeta platform.LayersMetada
 	return nil
 }
 
-func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, buildpacks []buildpack.GroupBuildpack) error {
+func (r *DefaultMetadataRestorer) restoreLayerMetadata(layerSHAStore SHAStore, appMeta platform.LayersMetadata, cacheMeta cache.Metadata, buildpacks []buildpack.GroupBuildpack) error {
 	if r.SkipLayers {
 		r.Logger.Infof("Skipping buildpack layer analysis")
 		return nil
@@ -130,7 +131,7 @@ func (r *DefaultMetadataRestorer) writeLayerMetadata(layerSHAStore SHAStore, bui
 
 type NopMetadataRestorer struct{}
 
-func (r *NopMetadataRestorer) Restore(_ []buildpack.GroupBuildpack, _ platform.LayersMetadata, _ platform.CacheMetadata, _ SHAStore) error {
+func (r *NopMetadataRestorer) Restore(_ []buildpack.GroupBuildpack, _ platform.LayersMetadata, _ cache.Metadata, _ SHAStore) error {
 	return nil
 }
 

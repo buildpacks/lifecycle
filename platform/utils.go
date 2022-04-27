@@ -6,9 +6,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
-
-	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 func appendNotEmpty(slice []string, elems ...string) []string {
@@ -46,13 +43,13 @@ func parseRegistry(providedRef string) (string, error) {
 	return ref.Context().RegistryStr(), nil
 }
 
-func readStack(stackPath string, logger lifecycle.Logger) (platform.StackMetadata, error) {
-	var stackMD platform.StackMetadata
+func readStack(stackPath string, logger Logger) (StackMetadata, error) {
+	var stackMD StackMetadata
 	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
 		if os.IsNotExist(err) {
 			logger.Infof("no stack metadata found at path '%s'\n", stackPath)
 		} else {
-			return platform.StackMetadata{}, err
+			return StackMetadata{}, err
 		}
 	}
 	return stackMD, nil
