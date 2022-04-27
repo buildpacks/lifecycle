@@ -2,7 +2,6 @@ package cache
 
 import "github.com/buildpacks/lifecycle/buildpack"
 
-// TODO: find the right place for this struct
 type Metadata struct {
 	BOM        LayerMetadata              `json:"sbom"`
 	Buildpacks []buildpack.LayersMetadata `json:"buildpacks"`
