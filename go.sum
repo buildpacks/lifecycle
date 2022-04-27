@@ -108,6 +108,8 @@ github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnweb
 github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=
 github.com/buildpacks/imgutil v0.0.0-20220310160537-4dd8bc60eaff h1:sP0G3fOfWMSDabqIuPY1o6aeiX35eQz9mWhYCMqgp08=
 github.com/buildpacks/imgutil v0.0.0-20220310160537-4dd8bc60eaff/go.mod h1:zjdTnysBSl9Jeiz2J/B7Nf621dsDaEGkMfySlPqXNtY=
+github.com/buildpacks/imgutil v0.0.0-20220426222531-6c8e43a19cde h1:cVvgAVb3fengFGjhxlWQaFsui0a0oR83FDOKcJ/ZRKs=
+github.com/buildpacks/imgutil v0.0.0-20220426222531-6c8e43a19cde/go.mod h1:zjdTnysBSl9Jeiz2J/B7Nf621dsDaEGkMfySlPqXNtY=
 github.com/cenkalti/backoff/v4 v4.1.1/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
