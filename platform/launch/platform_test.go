@@ -1,4 +1,4 @@
-package platform_test
+package launch_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/cmd/launcher/platform"
+	platform "github.com/buildpacks/lifecycle/platform/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 

@@ -1,4 +1,4 @@
-package platform
+package launch
 
 type LifecycleExitError int
 

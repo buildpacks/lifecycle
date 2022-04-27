@@ -10,9 +10,9 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/cmd/launcher/platform"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
+	platform "github.com/buildpacks/lifecycle/platform/launch"
 )
 
 func main() {
