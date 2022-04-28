@@ -7,21 +7,14 @@ import (
 )
 
 const (
-	DefaultAnalyzedFile        = "analyzed.toml"
-	DefaultGroupFile           = "group.toml"
-	DefaultOrderFile           = "order.toml"
-	DefaultPlanFile            = "plan.toml"
-	DefaultProjectMetadataFile = "project-metadata.toml"
-	DefaultReportFile          = "report.toml"
+	DefaultAnalyzedFile = "analyzed.toml"
+	DefaultGroupFile    = "group.toml"
+	// TODO: future work should move order, plan, project metadata, and report to this file
 )
 
 var (
-	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
-	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
-	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
-	PlaceholderProjectMetadataPath = filepath.Join("<layers>", DefaultProjectMetadataFile)
-	PlaceholderReportPath          = filepath.Join("<layers>", DefaultReportFile)
-	PlaceholderOrderPath           = filepath.Join("<layers>", DefaultOrderFile)
+	PlaceholderAnalyzedPath = filepath.Join("<layers>", DefaultAnalyzedFile)
+	PlaceholderGroupPath    = filepath.Join("<layers>", DefaultGroupFile)
 )
 
 func defaultPath(placeholderPath, layersDir string, platformAPI *api.Version) string {

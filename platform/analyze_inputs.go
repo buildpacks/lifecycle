@@ -10,7 +10,7 @@ import (
 // AnalyzeInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
 type AnalyzeInputs struct {
-	AdditionalTags   str.Slice
+	AdditionalTags   str.Slice // satisfies the `Value` interface required by the `flag` package
 	AnalyzedPath     string
 	CacheImageRef    string
 	LaunchCacheDir   string
