@@ -31,20 +31,20 @@ type Detector struct {
 	Platform Platform
 	Resolver Resolver
 	Runs     *sync.Map
-	Store    BuildpackStore
+	Store    DirStore
 }
 
-func NewDetector(config buildpack.DetectConfig, buildpacksDir string, platform Platform) (*Detector, error) {
+func NewDetector(config buildpack.DetectConfig, buildpacksDir string, p Platform) (*Detector, error) {
 	resolver := &DefaultResolver{
 		Logger: config.Logger,
 	}
-	store, err := buildpack.NewBuildpackStore(buildpacksDir)
+	store, err := platform.NewDirStore(buildpacksDir, "")
 	if err != nil {
 		return nil, err
 	}
 	return &Detector{
 		DetectConfig: config,
-		Platform:     platform,
+		Platform:     p,
 		Resolver:     resolver,
 		Runs:         &sync.Map{},
 		Store:        store,
@@ -102,7 +102,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 			continue
 		}
 
-		bp, err := d.Store.Lookup(groupBp.ID, groupBp.Version)
+		bp, err := d.Store.LookupBp(groupBp.ID, groupBp.Version)
 		if err != nil {
 			return nil, nil, err
 		}

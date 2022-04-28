@@ -26,8 +26,8 @@ type BuildEnv interface {
 	List() []string
 }
 
-type BuildpackStore interface {
-	Lookup(bpID, bpVersion string) (buildpack.Buildpack, error)
+type DirStore interface {
+	LookupBp(bpID, bpVersion string) (platform.Buildpack, error)
 }
 
 type Buildpack interface {
@@ -37,15 +37,15 @@ type Buildpack interface {
 }
 
 type Builder struct {
-	AppDir         string
-	LayersDir      string
-	PlatformDir    string
-	Platform       Platform
-	Group          buildpack.Group
-	Plan           platform.BuildPlan
-	Out, Err       goio.Writer
-	Logger         Logger
-	BuildpackStore BuildpackStore
+	AppDir      string
+	LayersDir   string
+	PlatformDir string
+	Platform    Platform
+	Group       buildpack.Group
+	Plan        platform.BuildPlan
+	Out, Err    goio.Writer
+	Logger      Logger
+	DirStore    DirStore
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -75,7 +75,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
-		bpTOML, err := b.BuildpackStore.Lookup(bp.ID, bp.Version)
+		bpTOML, err := b.DirStore.LookupBp(bp.ID, bp.Version)
 		if err != nil {
 			return nil, err
 		}

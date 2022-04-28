@@ -78,22 +78,22 @@ func (b *buildCmd) Exec() error {
 }
 
 func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error {
-	buildpackStore, err := buildpack.NewBuildpackStore(ba.buildpacksDir)
+	dirStore, err := platform.NewDirStore(ba.buildpacksDir, "")
 	if err != nil {
 		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 	}
 
 	builder := &lifecycle.Builder{
-		AppDir:         ba.appDir,
-		LayersDir:      ba.layersDir,
-		PlatformDir:    ba.platformDir,
-		Platform:       ba.platform,
-		Group:          group,
-		Plan:           plan,
-		Out:            cmd.Stdout,
-		Err:            cmd.Stderr,
-		Logger:         cmd.DefaultLogger,
-		BuildpackStore: buildpackStore,
+		AppDir:      ba.appDir,
+		LayersDir:   ba.layersDir,
+		PlatformDir: ba.platformDir,
+		Platform:    ba.platform,
+		Group:       group,
+		Plan:        plan,
+		Out:         cmd.Stdout,
+		Err:         cmd.Stderr,
+		Logger:      cmd.DefaultLogger,
+		DirStore:    dirStore,
 	}
 	md, err := builder.Build()
 
