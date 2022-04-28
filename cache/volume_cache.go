@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type VolumeCache struct {
@@ -57,7 +59,7 @@ func (c *VolumeCache) Name() string {
 	return c.dir
 }
 
-func (c *VolumeCache) SetMetadata(metadata Metadata) error {
+func (c *VolumeCache) SetMetadata(metadata platform.CacheMetadata) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -75,20 +77,20 @@ func (c *VolumeCache) SetMetadata(metadata Metadata) error {
 	return nil
 }
 
-func (c *VolumeCache) RetrieveMetadata() (Metadata, error) {
+func (c *VolumeCache) RetrieveMetadata() (platform.CacheMetadata, error) {
 	metadataPath := filepath.Join(c.committedDir, MetadataLabel)
 	file, err := os.Open(metadataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return Metadata{}, nil
+			return platform.CacheMetadata{}, nil
 		}
-		return Metadata{}, errors.Wrapf(err, "opening metadata file '%s'", metadataPath)
+		return platform.CacheMetadata{}, errors.Wrapf(err, "opening metadata file '%s'", metadataPath)
 	}
 	defer file.Close()
 
-	metadata := Metadata{}
+	metadata := platform.CacheMetadata{}
 	if json.NewDecoder(file).Decode(&metadata) != nil {
-		return Metadata{}, nil
+		return platform.CacheMetadata{}, nil
 	}
 	return metadata, nil
 }

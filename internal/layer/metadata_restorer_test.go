@@ -15,7 +15,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -31,7 +30,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 		layerMetadataRestorer layer.MetadataRestorer
 		layerSHAStore         layer.SHAStore
 		layersMetadata        platform.LayersMetadata
-		cacheMetadata         cache.Metadata
+		cacheMetadata         platform.CacheMetadata
 		buildpacks            []buildpack.GroupBuildpack
 		skipLayers            bool
 		useShaFiles           bool

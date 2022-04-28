@@ -15,6 +15,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -145,7 +146,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the metadata", func() {
-					expected := cache.Metadata{
+					expected := platform.CacheMetadata{
 						Buildpacks: []buildpack.LayersMetadata{{
 							ID:      "bp.id",
 							Version: "1.2.3",
@@ -253,13 +254,13 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("#SetMetadata", func() {
-				var newMetadata cache.Metadata
+				var newMetadata platform.CacheMetadata
 
 				it.Before(func() {
 					previousContents := []byte(`{"buildpacks": [{"key": "old.bp.id"}]}`)
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), previousContents, 0600))
 
-					newMetadata = cache.Metadata{
+					newMetadata = platform.CacheMetadata{
 						Buildpacks: []buildpack.LayersMetadata{{
 							ID: "new.bp.id",
 						}},
@@ -290,7 +291,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("set without commit", func() {
 					it("retrieve returns the previous metadata", func() {
-						previousMetadata := cache.Metadata{
+						previousMetadata := platform.CacheMetadata{
 							Buildpacks: []buildpack.LayersMetadata{{
 								ID: "old.bp.id",
 							}},

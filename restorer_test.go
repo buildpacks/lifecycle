@@ -652,7 +652,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 					h.AssertNil(t, err)
 					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
 					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
-					h.AssertNil(t, testCache.SetMetadata(cache.Metadata{BOM: cache.LayerMetadata{SHA: "some-digest"}}))
+					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: platform.LayerMetadata{SHA: "some-digest"}}))
 					h.AssertNil(t, testCache.Commit())
 				})
 
