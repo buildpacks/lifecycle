@@ -94,7 +94,7 @@ func (a *analyzeCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := priv.EnsureOwner(a.UID, a.GID, a.LayersDir, a.LegacyCacheDir); err != nil {
+	if err := priv.EnsureOwner(a.UID, a.GID, a.LayersDir, a.LegacyCacheDir, a.LaunchCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err := priv.RunAs(a.UID, a.GID); err != nil {
