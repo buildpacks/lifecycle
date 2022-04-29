@@ -35,7 +35,7 @@ func TestBuilder(t *testing.T) {
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
-//go:generate mockgen -package testmock -destination testmock/buildpack.go github.com/buildpacks/lifecycle Buildpack
+//go:generate mockgen -package testmock -destination testmock/buildpack.go github.com/buildpacks/lifecycle BuildModule
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (

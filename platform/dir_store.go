@@ -9,13 +9,6 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 )
 
-// TODO: is this needed? It is needed so that the tests can mock a buildpack.Build()
-type Buildpack interface {
-	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
-	ConfigFile() *buildpack.Descriptor
-	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
-}
-
 type DirStore struct {
 	buildpacksDir string
 	extensionsDir string
@@ -32,7 +25,7 @@ func NewDirStore(buildpacksDir string, extensionsDir string) (*DirStore, error) 
 	return &DirStore{buildpacksDir: buildpacksDir, extensionsDir: extensionsDir}, nil
 }
 
-func (s *DirStore) LookupBp(id, version string) (Buildpack, error) {
+func (s *DirStore) LookupBp(id, version string) (buildpack.BuildModule, error) {
 	bpTOML := buildpack.Descriptor{}
 	dirPath := filepath.Join(s.buildpacksDir, launch.EscapeID(id), version)
 	if _, err := toml.DecodeFile(filepath.Join(dirPath, "buildpack.toml"), &bpTOML); err != nil {
@@ -42,7 +35,7 @@ func (s *DirStore) LookupBp(id, version string) (Buildpack, error) {
 	return &bpTOML, nil
 }
 
-func (s *DirStore) LookupExt(id, version string) (Buildpack, error) {
+func (s *DirStore) LookupExt(id, version string) (buildpack.BuildModule, error) {
 	extTOML := buildpack.Descriptor{}
 	dirPath := filepath.Join(s.extensionsDir, launch.EscapeID(id), version)
 	if _, err := toml.DecodeFile(filepath.Join(dirPath, "extension.toml"), &extTOML); err != nil {

@@ -27,8 +27,8 @@ type BuildEnv interface {
 }
 
 type DirStore interface {
-	LookupBp(bpID, bpVersion string) (platform.Buildpack, error)
-	LookupExt(bpID, bpVersion string) (platform.Buildpack, error)
+	LookupBp(bpID, bpVersion string) (buildpack.BuildModule, error)
+	LookupExt(bpID, bpVersion string) (buildpack.BuildModule, error)
 }
 
 // type Buildpack interface {

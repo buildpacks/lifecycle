@@ -116,7 +116,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 		// Lookup element in store.
 		var (
-			detectable platform.Buildpack // TODO: move interface to buildpack package
+			detectable buildpack.BuildModule // TODO: move interface to buildpack package
 			err        error
 		)
 		switch {
@@ -143,7 +143,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		// Run detect if element is a component buildpack or an extension.
 		key := groupEl.String()
 		wg.Add(1)
-		go func(key string, bp platform.Buildpack) {
+		go func(key string, bp buildpack.BuildModule) {
 			if _, ok := d.Runs.Load(key); !ok {
 				d.Runs.Store(key, bp.Detect(&d.DetectConfig, env.NewBuildEnv(os.Environ())))
 			}

@@ -4,6 +4,12 @@ package buildpack
 
 import "github.com/BurntSushi/toml"
 
+type BuildModule interface {
+	Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error)
+	ConfigFile() *Descriptor
+	Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun
+}
+
 type Descriptor struct {
 	API       string `toml:"api"`
 	Buildpack Info   `toml:"buildpack"` // exactly one of 'buildpack' or 'extension' must be populated

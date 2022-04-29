@@ -10,7 +10,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
-	platform "github.com/buildpacks/lifecycle/platform"
 )
 
 // MockDirStore is a mock of DirStore interface.
@@ -37,10 +36,10 @@ func (m *MockDirStore) EXPECT() *MockDirStoreMockRecorder {
 }
 
 // LookupBp mocks base method.
-func (m *MockDirStore) LookupBp(arg0, arg1 string) (platform.Buildpack, error) {
+func (m *MockDirStore) LookupBp(arg0, arg1 string) (buildpack.BuildModule, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LookupBp", arg0, arg1)
-	ret0, _ := ret[0].(platform.Buildpack)
+	ret0, _ := ret[0].(buildpack.BuildModule)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -52,10 +51,10 @@ func (mr *MockDirStoreMockRecorder) LookupBp(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // LookupExt mocks base method.
-func (m *MockDirStore) LookupExt(arg0, arg1 string) (platform.Buildpack, error) {
+func (m *MockDirStore) LookupExt(arg0, arg1 string) (buildpack.BuildModule, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LookupExt", arg0, arg1)
-	ret0, _ := ret[0].(platform.Buildpack)
+	ret0, _ := ret[0].(buildpack.BuildModule)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
