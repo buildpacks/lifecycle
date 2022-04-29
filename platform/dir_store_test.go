@@ -11,25 +11,25 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestStore(t *testing.T) {
-	spec.Run(t, "Store", testStore, spec.Report(report.Terminal{}))
+func TestDirStore(t *testing.T) {
+	spec.Run(t, "DirStore", testDirStore, spec.Report(report.Terminal{}))
 }
 
-func testStore(t *testing.T, when spec.G, it spec.S) {
-	var store *platform.DirStore
+func testDirStore(t *testing.T, when spec.G, it spec.S) {
+	var dirStore *platform.DirStore
 
 	it.Before(func() {
 		var err error
-		store, err = platform.NewDirStore(
+		dirStore, err = platform.NewDirStore(
 			filepath.Join("testdata", "cnb", "buildpacks"),
 			filepath.Join("testdata", "cnb", "extensions"),
 		)
 		h.AssertNil(t, err)
 	})
 
-	when("LookupBp", func() {
+	when(".LookupBp", func() {
 		it("returns buildpack from buildpack.toml", func() {
-			bp, err := store.LookupBp("A", "v1")
+			bp, err := dirStore.LookupBp("A", "v1")
 			h.AssertNil(t, err)
 
 			config := bp.ConfigFile()
@@ -41,12 +41,12 @@ func testStore(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("LookupExt", func() {
+	when(".LookupExt", func() {
 		it("returns extension from extension.toml", func() {
-			ext, err := store.LookupExt("A", "v1")
+			ext, err := dirStore.LookupExt("A", "v1")
 			h.AssertNil(t, err)
 
-			// TODO: validate config
+			// TODO: validate config in buildpack package
 			config := ext.ConfigFile()
 			h.AssertEq(t, config.Extension.ID, "A")
 			h.AssertEq(t, config.Extension.Name, "Extension A")

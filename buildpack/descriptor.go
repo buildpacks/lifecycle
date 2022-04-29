@@ -16,12 +16,35 @@ func (b *Descriptor) ConfigFile() *Descriptor {
 	return b
 }
 
-func (b *Descriptor) IsMetaBuildpack() bool {
-	return b.Order != nil
+func (b *Descriptor) IsBuildpack() bool {
+	return b.Buildpack.ID != ""
+}
+
+func (b *Descriptor) IsExtension() bool {
+	return b.Extension.ID != ""
+}
+
+func (b *Descriptor) IsComposite() bool {
+	return len(b.Order) > 0
 }
 
 func (b *Descriptor) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
+}
+
+func (b *Descriptor) ToGroupElement() GroupBuildpack {
+	groupEl := GroupBuildpack{API: b.API}
+	switch {
+	case b.IsBuildpack():
+		groupEl.ID = b.Buildpack.ID
+		groupEl.Version = b.Buildpack.Version
+		groupEl.Homepage = b.Buildpack.Homepage
+	case b.IsExtension():
+		groupEl.ID = b.Extension.ID
+		groupEl.Version = b.Extension.Version
+		groupEl.Homepage = b.Extension.Homepage
+	}
+	return groupEl
 }
 
 type Info struct {
@@ -45,12 +68,13 @@ func ReadGroup(path string) (Group, error) {
 	return group, err
 }
 
-func ReadOrder(path string) (Order, error) {
+func ReadOrder(path string) (Order, Order, error) {
 	var order struct {
-		Order Order `toml:"order"`
+		Order    Order `toml:"order"`
+		OrderExt Order `toml:"order-ext"`
 	}
 	_, err := toml.DecodeFile(path, &order)
-	return order.Order, err
+	return order.Order, order.OrderExt, err
 }
 
 func (bg Group) Append(group ...Group) Group {
@@ -60,14 +84,35 @@ func (bg Group) Append(group ...Group) Group {
 	return bg
 }
 
+// TODO: rename GroupElement
 // A GroupBuildpack represents a buildpack referenced in a buildpack.toml's [[order.group]].
 // It may be a regular buildpack, or a meta buildpack.
 type GroupBuildpack struct {
-	API      string `toml:"api,omitempty" json:"-"`
+	// Fields that are common to order.toml and group.toml
+
+	// ID specifies the ID of the buildpack or extension.
+	ID string `toml:"id" json:"id"`
+	// Version specifies the version of the buildpack or extension.
+	Version string `toml:"version" json:"version"`
+
+	// Fields that are in group.toml only
+
+	// API specifies the Buildpack API that the buildpack or extension implements.
+	API string `toml:"api,omitempty" json:"-"`
+	// Homepage specifies the homepage of the buildpack or extension.
 	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty"`
-	ID       string `toml:"id" json:"id"`
-	Optional bool   `toml:"optional,omitempty" json:"optional,omitempty"`
-	Version  string `toml:"version" json:"version"`
+	// Extension specifies whether the group element is a buildpack or an extension.
+	Extension bool `toml:"extension,omitempty" json:"extension,omitempty"` // TODO: confirm that we want this in the label
+
+	// Fields that are in order.toml only
+
+	// Optional specifies that the buildpack or extension is optional. Extensions are always optional.
+	Optional bool `toml:"optional,omitempty" json:"optional,omitempty"`
+
+	// Fields that are never written
+
+	// OrderExt holds the order for extensions during the detect phase. \
+	OrderExt Order `toml:"-" json:"-"`
 }
 
 func (bp GroupBuildpack) String() string {

@@ -9,6 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
+	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	platform "github.com/buildpacks/lifecycle/platform"
 )
 
@@ -48,4 +49,31 @@ func (m *MockDirStore) LookupBp(arg0, arg1 string) (platform.Buildpack, error) {
 func (mr *MockDirStoreMockRecorder) LookupBp(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookupBp", reflect.TypeOf((*MockDirStore)(nil).LookupBp), arg0, arg1)
+}
+
+// LookupExt mocks base method.
+func (m *MockDirStore) LookupExt(arg0, arg1 string) (platform.Buildpack, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LookupExt", arg0, arg1)
+	ret0, _ := ret[0].(platform.Buildpack)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LookupExt indicates an expected call of LookupExt.
+func (mr *MockDirStoreMockRecorder) LookupExt(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookupExt", reflect.TypeOf((*MockDirStore)(nil).LookupExt), arg0, arg1)
+}
+
+// RegisterExtensionsOrder mocks base method.
+func (m *MockDirStore) RegisterExtensionsOrder(arg0 buildpack.Order) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RegisterExtensionsOrder", arg0)
+}
+
+// RegisterExtensionsOrder indicates an expected call of RegisterExtensionsOrder.
+func (mr *MockDirStoreMockRecorder) RegisterExtensionsOrder(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterExtensionsOrder", reflect.TypeOf((*MockDirStore)(nil).RegisterExtensionsOrder), arg0)
 }

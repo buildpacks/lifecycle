@@ -22,6 +22,8 @@ type detectCmd struct {
 }
 
 type detectArgs struct {
+	extensionsDir string
+
 	// inputs needed when run by creator
 	buildpacksDir string
 	appDir        string
@@ -34,13 +36,25 @@ type detectArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
-	cmd.FlagBuildpacksDir(&d.buildpacksDir)
-	cmd.FlagAppDir(&d.appDir)
-	cmd.FlagLayersDir(&d.layersDir)
-	cmd.FlagPlatformDir(&d.platformDir)
-	cmd.FlagOrderPath(&d.orderPath)
-	cmd.FlagGroupPath(&d.groupPath)
-	cmd.FlagPlanPath(&d.planPath)
+	switch {
+	case d.platform.API().AtLeast("0.10"):
+		cmd.FlagAppDir(&d.appDir)
+		cmd.FlagBuildpacksDir(&d.buildpacksDir)
+		cmd.FlagExtensionsDir(&d.extensionsDir)
+		cmd.FlagGroupPath(&d.groupPath)
+		cmd.FlagLayersDir(&d.layersDir)
+		cmd.FlagOrderPath(&d.orderPath)
+		cmd.FlagPlanPath(&d.planPath)
+		cmd.FlagPlatformDir(&d.platformDir)
+	default:
+		cmd.FlagAppDir(&d.appDir)
+		cmd.FlagBuildpacksDir(&d.buildpacksDir)
+		cmd.FlagGroupPath(&d.groupPath)
+		cmd.FlagLayersDir(&d.layersDir)
+		cmd.FlagOrderPath(&d.orderPath)
+		cmd.FlagPlanPath(&d.planPath)
+		cmd.FlagPlatformDir(&d.platformDir)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -81,27 +95,28 @@ func (d *detectCmd) Exec() error {
 }
 
 func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
-	order, err := buildpack.ReadOrder(da.orderPath)
+	// read provided order path
+	order, orderExt, err := buildpack.ReadOrder(da.orderPath)
 	if err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read order file")
 	}
-	if err := da.verifyBuildpackApis(order); err != nil {
+	// initialize store from provided dir paths
+	dirStore, err := platform.NewDirStore(da.buildpacksDir, da.extensionsDir)
+	if err != nil {
+		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "initialize executable store")
+	}
+	// verify apis
+	if err := da.verifyApis(dirStore, order, orderExt); err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, err
 	}
-
-	detector, err := lifecycle.NewDetector(
-		buildpack.DetectConfig{
-			AppDir:      da.appDir,
-			PlatformDir: da.platformDir,
-			Logger:      cmd.DefaultLogger,
-		},
-		da.buildpacksDir,
-		da.platform,
-	)
-	if err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "initialize detector")
-	}
-	group, plan, err := detector.Detect(order)
+	// new detector
+	detector := lifecycle.NewDetector(nil, buildpack.DetectConfig{
+		AppDir:      da.appDir,
+		PlatformDir: da.platformDir,
+		Logger:      cmd.DefaultLogger,
+	}, dirStore)
+	// do detect
+	group, plan, err := detector.Detect(order, nil)
 	if err != nil {
 		switch err := err.(type) {
 		case *buildpack.Error:
@@ -124,18 +139,25 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 	return group, plan, nil
 }
 
-func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
-	store, err := platform.NewDirStore(da.buildpacksDir, "")
-	if err != nil {
-		return err
-	}
+func (da detectArgs) verifyApis(dirStore *platform.DirStore, order buildpack.Order, orderExt buildpack.Order) error {
 	for _, group := range order {
-		for _, groupBp := range group.Group {
-			buildpack, err := store.LookupBp(groupBp.ID, groupBp.Version)
+		for _, groupEl := range group.Group {
+			foundBp, err := dirStore.LookupBp(groupEl.ID, groupEl.Version)
 			if err != nil {
-				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", groupBp.String()))
+				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", groupEl.String()))
 			}
-			if err := cmd.VerifyBuildpackAPI(groupBp.String(), buildpack.ConfigFile().API); err != nil {
+			if err := cmd.VerifyBuildpackAPI(groupEl.String(), foundBp.ConfigFile().API); err != nil {
+				return err
+			}
+		}
+	}
+	for _, group := range orderExt {
+		for _, groupEl := range group.Group {
+			foundExt, err := dirStore.LookupExt(groupEl.ID, groupEl.Version)
+			if err != nil {
+				return cmd.FailErr(err, fmt.Sprintf("lookup extension.toml for extension '%s'", groupEl.String()))
+			}
+			if err := cmd.VerifyBuildpackAPI(groupEl.String(), foundExt.ConfigFile().API); err != nil {
 				return err
 			}
 		}

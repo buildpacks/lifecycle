@@ -28,13 +28,14 @@ type BuildEnv interface {
 
 type DirStore interface {
 	LookupBp(bpID, bpVersion string) (platform.Buildpack, error)
+	LookupExt(bpID, bpVersion string) (platform.Buildpack, error)
 }
 
-type Buildpack interface {
-	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
-	ConfigFile() *buildpack.Descriptor
-	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
-}
+// type Buildpack interface {
+// 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
+// 	ConfigFile() *buildpack.Descriptor
+// 	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
+// }
 
 type Builder struct {
 	AppDir      string

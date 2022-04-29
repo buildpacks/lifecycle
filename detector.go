@@ -7,8 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/internal/lifecycle"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -28,31 +30,36 @@ type Resolver interface {
 
 type Detector struct {
 	buildpack.DetectConfig
-	Platform Platform
-	Resolver Resolver
-	Runs     *sync.Map
-	Store    DirStore
+
+	DirStore     DirStore
+	OrderHandler lifecycle.OrderHandler
+	Resolver     Resolver
+	Runs         *sync.Map
 }
 
-func NewDetector(config buildpack.DetectConfig, buildpacksDir string, p Platform) (*Detector, error) {
+// TODO: test
+func NewDetector(platformAPI *api.Version, config buildpack.DetectConfig, dirStore DirStore) *Detector {
+	var orderHandler lifecycle.OrderHandler
+	if platformAPI.AtLeast("0.9") { // TODO: change
+		orderHandler = &lifecycle.DefaultOrderHandler{}
+	} else {
+		orderHandler = &lifecycle.LegacyOrderHandler{}
+	}
 	resolver := &DefaultResolver{
 		Logger: config.Logger,
 	}
-	store, err := platform.NewDirStore(buildpacksDir, "")
-	if err != nil {
-		return nil, err
-	}
 	return &Detector{
 		DetectConfig: config,
-		Platform:     p,
+		DirStore:     dirStore,
+		OrderHandler: orderHandler,
 		Resolver:     resolver,
 		Runs:         &sync.Map{},
-		Store:        store,
-	}, nil
+	}
 }
 
-func (d *Detector) Detect(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
-	return d.DetectOrder(order)
+func (d *Detector) Detect(orderBp, orderExt buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
+	d.OrderHandler.PrependExtensions(orderBp, orderExt)
+	return d.DetectOrder(orderBp)
 }
 
 func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
@@ -97,36 +104,51 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuildpack, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
 	for i, groupBp := range group.Group {
-		key := groupBp.String()
-		if hasID(done, groupBp.ID) {
+		// Continue if element has already been processed.
+		if hasID(done, groupBp.ID) { // TODO: assign id to order-ext?
 			continue
 		}
 
-		bp, err := d.Store.LookupBp(groupBp.ID, groupBp.Version)
+		// Resolve order if element is the order for extensions.
+		if len(groupBp.OrderExt) > 0 { // TODO: make helper
+			return d.detectOrder(groupBp.OrderExt, done, group.Group[i+1:], groupBp.Optional, wg) // TODO: should the entire order for extensions be optional? Should it be configurable?
+		}
+
+		// Lookup element in store.
+		var (
+			detectable platform.Buildpack // TODO: move interface to buildpack package
+			err        error
+		)
+		switch {
+		case groupBp.Extension:
+			detectable, err = d.DirStore.LookupExt(groupBp.ID, groupBp.Version)
+		default:
+			detectable, err = d.DirStore.LookupBp(groupBp.ID, groupBp.Version)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
+		descriptor := detectable.ConfigFile()
 
-		bpDesc := bp.ConfigFile()
-		groupBp.API = bpDesc.API
-		groupBp.Homepage = bpDesc.Buildpack.Homepage
-
-		if bpDesc.IsMetaBuildpack() {
+		// Resolve order if element is a composite buildpack.
+		if descriptor.IsComposite() {
 			// TODO: double-check slice safety here
 			// FIXME: cyclical references lead to infinite recursion
-			return d.detectOrder(bpDesc.Order, done, group.Group[i+1:], groupBp.Optional, wg)
+			return d.detectOrder(descriptor.Order, done, group.Group[i+1:], groupBp.Optional, wg)
 		}
 
-		bpEnv := env.NewBuildEnv(os.Environ())
+		// Mark element as done.
+		done = append(done, descriptor.ToGroupElement())
 
-		done = append(done, groupBp)
+		// Run detect if element is a component buildpack or an extension.
+		key := groupBp.String()
 		wg.Add(1)
-		go func(key string, bp Buildpack) {
+		go func(key string, bp platform.Buildpack) {
 			if _, ok := d.Runs.Load(key); !ok {
-				d.Runs.Store(key, bp.Detect(&d.DetectConfig, bpEnv))
+				d.Runs.Store(key, bp.Detect(&d.DetectConfig, env.NewBuildEnv(os.Environ())))
 			}
 			wg.Done()
-		}(key, bp)
+		}(key, detectable)
 	}
 
 	wg.Wait()
@@ -341,7 +363,7 @@ type detectTrial []detectOption
 func (ts detectTrial) remove(bp buildpack.GroupBuildpack) detectTrial {
 	var out detectTrial
 	for _, t := range ts {
-		if t.GroupBuildpack != bp {
+		if t.GroupBuildpack.ID != bp.ID { // TODO: check
 			out = append(out, t)
 		}
 	}

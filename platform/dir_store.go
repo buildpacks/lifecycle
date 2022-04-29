@@ -9,7 +9,7 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 )
 
-// TODO: can this be removed?
+// TODO: is this needed? It is needed so that the tests can mock a buildpack.Build()
 type Buildpack interface {
 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
 	ConfigFile() *buildpack.Descriptor

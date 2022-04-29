@@ -42,7 +42,7 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 					`group = [{id = "C"}, {}]`+"\n",
 				filepath.Join(tmpDir, "order.toml"),
 			)
-			actual, err := buildpack.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+			actual, _, err := buildpack.ReadOrder(filepath.Join(tmpDir, "order.toml"))
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
@@ -52,6 +52,35 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 			}); s != "" {
 				t.Fatalf("Unexpected list:\n%s\n", s)
 			}
+		})
+
+		when("there are extensions", func() {
+			it("should return an ordering of buildpacks and an ordering of extensions", func() {
+				h.Mkfile(t,
+					"[[order]]\n"+
+						`group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`+"\n"+
+						"[[order]]\n"+
+						`group = [{id = "C"}, {}]`+"\n"+
+						"[[order-ext]]\n"+
+						`group = [{id = "D"}, {}]`+"\n",
+					filepath.Join(tmpDir, "order.toml"),
+				)
+				foundOrder, foundOrderExt, err := buildpack.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+				if err != nil {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+				if s := cmp.Diff(foundOrder, buildpack.Order{
+					{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
+					{Group: []buildpack.GroupBuildpack{{ID: "C"}, {}}},
+				}); s != "" {
+					t.Fatalf("Unexpected list:\n%s\n", s)
+				}
+				if s := cmp.Diff(foundOrderExt, buildpack.Order{
+					{Group: []buildpack.GroupBuildpack{{ID: "D"}, {}}},
+				}); s != "" {
+					t.Fatalf("Unexpected list:\n%s\n", s)
+				}
+			})
 		})
 	})
 

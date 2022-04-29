@@ -39,17 +39,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			mockCtrl = gomock.NewController(t)
-			detector = &lifecycle.Detector{
-				Runs: &sync.Map{},
-			}
+			dirStore = testmock.NewMockDirStore(mockCtrl)
+			var err error
+			detector = lifecycle.NewDetector(api.Platform.Latest(), buildpack.DetectConfig{}, dirStore)
+			h.AssertNil(t, err)
 
+			// override resolver
 			resolver = testmock.NewMockResolver(mockCtrl)
 			detector.Resolver = resolver
-
-			dirStore = testmock.NewMockDirStore(mockCtrl)
-			detector.Store = dirStore
-
-			detector.Platform = platform.NewPlatform(api.Platform.Latest().String())
 		})
 
 		it.After(func() {
@@ -73,7 +70,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			dirStore.EXPECT().LookupBp("E", "v1").Return(bpE1, nil)
 			bpE1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-				API: "0.2",
+				API:       "0.2",
+				Buildpack: buildpack.Info{ID: "E", Version: "v1"},
 				Order: []buildpack.Group{
 					{
 						Group: []buildpack.GroupBuildpack{
@@ -86,12 +84,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
-			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
+			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 			bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("F", "v1").Return(bpF1, nil)
 			bpF1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-				API: "0.2",
+				API:       "0.2",
+				Buildpack: buildpack.Info{ID: "F", Version: "v1"},
 				Order: []buildpack.Group{
 					{Group: []buildpack.GroupBuildpack{
 						{ID: "C", Version: "v1"},
@@ -106,11 +105,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			dirStore.EXPECT().LookupBp("C", "v1").Return(bpC1, nil)
-			bpC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "C", Version: "v1"}})
 			bpC1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			firstGroup := []buildpack.GroupBuildpack{
@@ -129,7 +128,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			dirStore.EXPECT().LookupBp("G", "v1").Return(bpG1, nil)
 			bpG1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-				API: "0.2",
+				API:       "0.2",
+				Buildpack: buildpack.Info{ID: "G", Version: "v1"},
 				Order: []buildpack.Group{
 					{
 						Group: []buildpack.GroupBuildpack{
@@ -147,7 +147,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			dirStore.EXPECT().LookupBp("B", "v2").Return(bpB2, nil)
-			bpB2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v2"}})
 			bpB2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			secondGroup := []buildpack.GroupBuildpack{
@@ -164,15 +164,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			).After(firstResolve)
 
 			dirStore.EXPECT().LookupBp("C", "v2").Return(bpC2, nil)
-			bpC2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpC2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "C", Version: "v2"}})
 			bpC2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("D", "v2").Return(bpD2, nil)
-			bpD2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpD2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "D", Version: "v2"}})
 			bpD2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 
 			thirdGroup := []buildpack.GroupBuildpack{
 				{ID: "A", Version: "v1", API: "0.3"},
@@ -190,7 +190,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			).After(secondResolve)
 
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 
 			fourthGroup := []buildpack.GroupBuildpack{
 				{ID: "A", Version: "v1", API: "0.3"},
@@ -206,11 +206,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			).After(thirdResolve)
 
 			dirStore.EXPECT().LookupBp("D", "v1").Return(bpD1, nil)
-			bpD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "D", Version: "v1"}})
 			bpD1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 
 			fifthGroup := []buildpack.GroupBuildpack{
 				{ID: "A", Version: "v1", API: "0.3"},
@@ -229,7 +229,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			order := buildpack.Order{
 				{Group: []buildpack.GroupBuildpack{{ID: "E", Version: "v1"}}},
 			}
-			_, _, err := detector.Detect(order)
+			_, _, err := detector.Detect(order, nil)
 			if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
@@ -251,7 +251,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			dirStore.EXPECT().LookupBp("E", "v1").Return(bpE1, nil)
 			bpE1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-				API: "0.2",
+				API:       "0.2",
+				Buildpack: buildpack.Info{ID: "E", Version: "v1"},
 				Order: []buildpack.Group{
 					{
 						Group: []buildpack.GroupBuildpack{
@@ -266,13 +267,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
 			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
 				API:       "0.3",
-				Buildpack: buildpack.Info{Homepage: "Buildpack A Homepage"},
+				Buildpack: buildpack.Info{ID: "A", Version: "v1", Homepage: "Buildpack A Homepage"},
 			})
 			bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("F", "v1").Return(bpF1, nil)
 			bpF1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-				API: "0.2",
+				API:       "0.2",
+				Buildpack: buildpack.Info{ID: "F", Version: "v1"},
 				Order: []buildpack.Group{
 					{Group: []buildpack.GroupBuildpack{
 						{ID: "C", Version: "v1"},
@@ -287,11 +289,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			dirStore.EXPECT().LookupBp("C", "v1").Return(bpC1, nil)
-			bpC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "C", Version: "v1"}})
 			bpC1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			firstGroup := []buildpack.GroupBuildpack{
@@ -310,7 +312,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			dirStore.EXPECT().LookupBp("G", "v1").Return(bpG1, nil)
 			bpG1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-				API: "0.2",
+				API:       "0.2",
+				Buildpack: buildpack.Info{ID: "G", Version: "v1"},
 				Order: []buildpack.Group{
 					{
 						Group: []buildpack.GroupBuildpack{
@@ -328,7 +331,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			dirStore.EXPECT().LookupBp("B", "v2").Return(bpB2, nil)
-			bpB2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v2"}})
 			bpB2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			secondGroup := []buildpack.GroupBuildpack{
@@ -345,15 +348,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			).After(firstResolve)
 
 			dirStore.EXPECT().LookupBp("C", "v2").Return(bpC2, nil)
-			bpC2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpC2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "C", Version: "v2"}})
 			bpC2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("D", "v2").Return(bpD2, nil)
-			bpD2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpD2.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "D", Version: "v2"}})
 			bpD2.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 
 			thirdGroup := []buildpack.GroupBuildpack{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
@@ -371,7 +374,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			).After(secondResolve)
 
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 
 			fourthGroup := []buildpack.GroupBuildpack{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
@@ -389,7 +392,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			order := buildpack.Order{
 				{Group: []buildpack.GroupBuildpack{{ID: "E", Version: "v1"}}},
 			}
-			group, plan, err := detector.Detect(order)
+			group, plan, err := detector.Detect(order, nil)
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
@@ -411,12 +414,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		it("should convert top level versions to metadata versions", func() {
 			bpA1 := testmock.NewMockBuildpack(mockCtrl)
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
-			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
+			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 			bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			bpB1 := testmock.NewMockBuildpack(mockCtrl)
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 			group := []buildpack.GroupBuildpack{
@@ -449,7 +452,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				},
 			}, nil)
 
-			found, plan, err := detector.Detect(buildpack.Order{{Group: group}})
+			found, plan, err := detector.Detect(buildpack.Order{{Group: group}}, nil)
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
@@ -483,7 +486,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		it("should update detect runs for each buildpack", func() {
 			bpA1 := testmock.NewMockBuildpack(mockCtrl)
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
-			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
+			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 			bpA1.EXPECT().Detect(gomock.Any(), gomock.Any()).Return(buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
@@ -503,7 +506,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			bpB1 := testmock.NewMockBuildpack(mockCtrl)
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
-			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 			bpBerror := errors.New("some-error")
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any()).Return(buildpack.DetectRun{
 				Output: []byte("detect out: B@v1\ndetect err: B@v1"),
@@ -517,7 +520,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 			resolver.EXPECT().Resolve(group, detector.Runs).Return(group, []platform.BuildPlanEntry{}, nil)
 
-			_, _, err := detector.Detect(buildpack.Order{{Group: group}})
+			_, _, err := detector.Detect(buildpack.Order{{Group: group}}, nil)
 			if err != nil {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
@@ -564,7 +567,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("returns a buildpack error", func() {
 					bpA1 := testmock.NewMockBuildpack(mockCtrl)
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
-					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
+					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 					bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 					group := []buildpack.GroupBuildpack{
@@ -576,7 +579,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						lifecycle.ErrBuildpack,
 					)
 
-					_, _, err := detector.Detect(buildpack.Order{{Group: group}})
+					_, _, err := detector.Detect(buildpack.Order{{Group: group}}, nil)
 					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeBuildpack {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
@@ -587,7 +590,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("returns a detect error", func() {
 					bpA1 := testmock.NewMockBuildpack(mockCtrl)
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
-					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3"})
+					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 					bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 					group := []buildpack.GroupBuildpack{
@@ -599,11 +602,136 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						lifecycle.ErrFailedDetection,
 					)
 
-					_, _, err := detector.Detect(buildpack.Order{{Group: group}})
+					_, _, err := detector.Detect(buildpack.Order{{Group: group}}, nil)
 					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 				})
+			})
+		})
+
+		when("provided an order for extensions", func() {
+			it("prepends the order to each buildpack group and selects the first passing group", func() {
+				bpA1 := testmock.NewMockBuildpack(mockCtrl)
+				bpB1 := testmock.NewMockBuildpack(mockCtrl)
+				extC1 := testmock.NewMockBuildpack(mockCtrl)
+				extD1 := testmock.NewMockBuildpack(mockCtrl)
+
+				dirStore.EXPECT().LookupExt("C", "v1").Return(extC1, nil)
+				extC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.9",
+					Extension: buildpack.Info{ID: "C", Version: "v1"},
+				})
+				extC1.EXPECT().Detect(gomock.Any(), gomock.Any())
+
+				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
+				bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.8",
+					Buildpack: buildpack.Info{ID: "A", Version: "v1"},
+				})
+				bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
+
+				firstGroup := []buildpack.GroupBuildpack{
+					{ID: "C", Version: "v1", API: "0.9"},
+					{ID: "A", Version: "v1", API: "0.8"},
+				}
+				firstResolve := resolver.EXPECT().Resolve(
+					firstGroup,
+					detector.Runs,
+				).Return(
+					[]buildpack.GroupBuildpack{},
+					[]platform.BuildPlanEntry{},
+					lifecycle.ErrFailedDetection,
+				)
+
+				dirStore.EXPECT().LookupExt("D", "v1").Return(extD1, nil)
+				extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.9",
+					Extension: buildpack.Info{ID: "D", Version: "v1"},
+				})
+				extD1.EXPECT().Detect(gomock.Any(), gomock.Any())
+
+				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
+				bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.8",
+					Buildpack: buildpack.Info{ID: "A", Version: "v1"},
+				})
+
+				secondGroup := []buildpack.GroupBuildpack{
+					{ID: "D", Version: "v1", API: "0.9"},
+					{ID: "A", Version: "v1", API: "0.8"},
+				}
+				secondResolve := resolver.EXPECT().Resolve(
+					secondGroup,
+					detector.Runs,
+				).Return(
+					[]buildpack.GroupBuildpack{},
+					[]platform.BuildPlanEntry{},
+					lifecycle.ErrFailedDetection,
+				).After(firstResolve)
+
+				dirStore.EXPECT().LookupExt("C", "v1").Return(extC1, nil)
+				extC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.9",
+					Extension: buildpack.Info{ID: "C", Version: "v1"},
+				})
+
+				dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
+				bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.8",
+					Buildpack: buildpack.Info{ID: "B", Version: "v1"},
+				})
+				bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
+
+				thirdGroup := []buildpack.GroupBuildpack{
+					{ID: "C", Version: "v1", API: "0.9"},
+					{ID: "B", Version: "v1", API: "0.8"},
+				}
+				thirdResolve := resolver.EXPECT().Resolve(
+					thirdGroup,
+					detector.Runs,
+				).Return(
+					[]buildpack.GroupBuildpack{},
+					[]platform.BuildPlanEntry{},
+					lifecycle.ErrFailedDetection,
+				).After(secondResolve)
+
+				dirStore.EXPECT().LookupExt("D", "v1").Return(extD1, nil)
+				extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.9",
+					Extension: buildpack.Info{ID: "D", Version: "v1"},
+				})
+
+				dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
+				bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+					API:       "0.8",
+					Buildpack: buildpack.Info{ID: "B", Version: "v1"},
+				})
+
+				fourthGroup := []buildpack.GroupBuildpack{
+					{ID: "D", Version: "v1", API: "0.9"},
+					{ID: "B", Version: "v1", API: "0.8"},
+				}
+				resolver.EXPECT().Resolve(
+					fourthGroup,
+					detector.Runs,
+				).Return(
+					fourthGroup,
+					[]platform.BuildPlanEntry{},
+					nil,
+				).After(thirdResolve)
+
+				order := buildpack.Order{
+					{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}},
+					{Group: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}}},
+				}
+				orderExt := buildpack.Order{
+					{Group: []buildpack.GroupBuildpack{{ID: "C", Version: "v1"}}},
+					{Group: []buildpack.GroupBuildpack{{ID: "D", Version: "v1"}}},
+				}
+
+				_, _, err := detector.Detect(order, orderExt)
+				h.AssertNil(t, err)
 			})
 		})
 	})
