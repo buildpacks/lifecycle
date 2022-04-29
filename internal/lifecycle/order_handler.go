@@ -20,10 +20,10 @@ func (h *DefaultOrderHandler) PrependExtensions(orderBp buildpack.Order, orderEx
 		}
 		orderExt[i] = group
 	}
-	extGroupEl := buildpack.GroupBuildpack{OrderExt: orderExt}
+	extGroupEl := buildpack.GroupElement{OrderExt: orderExt}
 	for i, group := range orderBp {
 		orderBp[i] = buildpack.Group{
-			Group: append([]buildpack.GroupBuildpack{extGroupEl}, group.Group...),
+			Group: append([]buildpack.GroupElement{extGroupEl}, group.Group...),
 		}
 	}
 }

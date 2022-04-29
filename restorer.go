@@ -17,7 +17,7 @@ type Restorer struct {
 	LayersDir string
 	Logger    Logger
 
-	Buildpacks            []buildpack.GroupBuildpack
+	Buildpacks            []buildpack.GroupElement
 	LayerMetadataRestorer layer.MetadataRestorer  // Platform API >= 0.7
 	LayersMetadata        platform.LayersMetadata // Platform API >= 0.7
 	Platform              Platform

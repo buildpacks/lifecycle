@@ -319,7 +319,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					fakeImageHandler.EXPECT().Docker()
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 
-					providedGroup := buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "some-buildpack-id"}}}
+					providedGroup := buildpack.Group{Group: []buildpack.GroupElement{{ID: "some-buildpack-id"}}}
 					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", providedGroup, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
 					h.AssertNil(t, err)
 
@@ -375,7 +375,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 				PreviousImage: image,
 				Logger:        &discardLogger,
 				SBOMRestorer:  sbomRestorer,
-				Buildpacks: []buildpack.GroupBuildpack{
+				Buildpacks: []buildpack.GroupElement{
 					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
 					{ID: "no.metadata.buildpack", API: api.Buildpack.Latest().String()},
@@ -444,7 +444,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 						h.AssertNil(t, testCache.SetMetadata(expectedCacheMetadata))
 						h.AssertNil(t, testCache.Commit())
 
-						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
+						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupElement{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
 						expectRestoresLayerMetadataIfSupported()
 					})
 

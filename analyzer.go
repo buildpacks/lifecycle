@@ -41,7 +41,7 @@ type Analyzer struct {
 	SBOMRestorer  layer.SBOMRestorer
 
 	// Platform API < 0.7
-	Buildpacks            []buildpack.GroupBuildpack
+	Buildpacks            []buildpack.GroupElement
 	Cache                 Cache
 	LayerMetadataRestorer layer.MetadataRestorer
 	RestoresLayerMetadata bool

@@ -22,29 +22,29 @@ func testOrderHandler(t *testing.T, when spec.G, it spec.S) {
 		when("PrependExtensions", func() {
 			it("prepends the extensions order to each group in the buildpacks order", func() {
 				orderBp := buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}},
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 				}
 				orderExt := buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "C", Version: "v1"}}},
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "D", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
 				}
 				expectedOrderExt := buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "C", Version: "v1", Extension: true}}},
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "D", Version: "v1", Extension: true}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true}}},
 				}
 
 				orderHandler.PrependExtensions(orderBp, orderExt)
 
 				if s := cmp.Diff(orderBp, buildpack.Order{
 					buildpack.Group{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupElement{
 							{OrderExt: expectedOrderExt},
 							{ID: "A", Version: "v1"},
 						},
 					},
 					buildpack.Group{
-						Group: []buildpack.GroupBuildpack{
+						Group: []buildpack.GroupElement{
 							{OrderExt: expectedOrderExt},
 							{ID: "B", Version: "v1"},
 						},
@@ -57,15 +57,15 @@ func testOrderHandler(t *testing.T, when spec.G, it spec.S) {
 			when("the extensions order is empty", func() {
 				it("does not modify the buildpacks order", func() {
 					orderBp := buildpack.Order{
-						buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}},
-						buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}}},
+						buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+						buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 					}
 
 					orderHandler.PrependExtensions(orderBp, nil)
 
 					if s := cmp.Diff(orderBp, buildpack.Order{
-						buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}},
-						buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}}},
+						buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+						buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
 					}
@@ -80,19 +80,19 @@ func testOrderHandler(t *testing.T, when spec.G, it spec.S) {
 		when("PrependExtensions", func() {
 			it("does not modify the buildpacks order", func() {
 				orderBp := buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}},
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 				}
 				orderExt := buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "C", Version: "v1"}}},
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "D", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
 				}
 
 				orderHandler.PrependExtensions(orderBp, orderExt)
 
 				if s := cmp.Diff(orderBp, buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}},
-					buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "B", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 				}); s != "" {
 					t.Fatalf("Unexpected:\n%s\n", s)
 				}

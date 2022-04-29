@@ -81,7 +81,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 				restorer = &lifecycle.Restorer{
 					LayersDir: layersDir,
 					Logger:    &logger,
-					Buildpacks: []buildpack.GroupBuildpack{
+					Buildpacks: []buildpack.GroupElement{
 						{ID: "buildpack.id", API: buildpackAPI},
 						{ID: "escaped/buildpack/id", API: buildpackAPI},
 					},
@@ -533,7 +533,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 
 					when("the buildpack is detected", func() {
 						it.Before(func() {
-							restorer.Buildpacks = []buildpack.GroupBuildpack{{ID: "nogroup.buildpack.id", API: buildpackAPI}}
+							restorer.Buildpacks = []buildpack.GroupElement{{ID: "nogroup.buildpack.id", API: buildpackAPI}}
 							h.AssertNil(t, restorer.Restore(testCache))
 						})
 

@@ -32,8 +32,8 @@ func (b *Descriptor) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }
 
-func (b *Descriptor) ToGroupElement() GroupBuildpack {
-	groupEl := GroupBuildpack{API: b.API}
+func (b *Descriptor) ToGroupElement() GroupElement {
+	groupEl := GroupElement{API: b.API}
 	switch {
 	case b.IsBuildpack():
 		groupEl.ID = b.Buildpack.ID
@@ -59,7 +59,7 @@ type Info struct {
 type Order []Group
 
 type Group struct {
-	Group []GroupBuildpack `toml:"group"`
+	Group []GroupElement `toml:"group"`
 }
 
 func ReadGroup(path string) (Group, error) {
@@ -84,10 +84,9 @@ func (bg Group) Append(group ...Group) Group {
 	return bg
 }
 
-// TODO: rename GroupElement
-// A GroupBuildpack represents a buildpack referenced in a buildpack.toml's [[order.group]].
+// A GroupElement represents a buildpack referenced in a buildpack.toml's [[order.group]].
 // It may be a regular buildpack, or a meta buildpack.
-type GroupBuildpack struct {
+type GroupElement struct {
 	// Fields that are common to order.toml and group.toml
 
 	// ID specifies the ID of the buildpack or extension.
@@ -115,21 +114,21 @@ type GroupBuildpack struct {
 	OrderExt Order `toml:"-" json:"-"`
 }
 
-func (bp GroupBuildpack) String() string {
+func (bp GroupElement) String() string {
 	return bp.ID + "@" + bp.Version
 }
 
-func (bp GroupBuildpack) NoOpt() GroupBuildpack {
+func (bp GroupElement) NoOpt() GroupElement {
 	bp.Optional = false
 	return bp
 }
 
-func (bp GroupBuildpack) NoAPI() GroupBuildpack {
+func (bp GroupElement) NoAPI() GroupElement {
 	bp.API = ""
 	return bp
 }
 
-func (bp GroupBuildpack) NoHomepage() GroupBuildpack {
+func (bp GroupElement) NoHomepage() GroupElement {
 	bp.Homepage = ""
 	return bp
 }

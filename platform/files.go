@@ -74,14 +74,14 @@ type RunImageMetadata struct {
 // metadata.toml
 
 type BuildMetadata struct {
-	BOM                         []buildpack.BOMEntry       `toml:"bom,omitempty" json:"bom"`
-	Buildpacks                  []buildpack.GroupBuildpack `toml:"buildpacks" json:"buildpacks"`
-	Labels                      []buildpack.Label          `toml:"labels" json:"-"`
-	Launcher                    LauncherMetadata           `toml:"-" json:"launcher"`
-	Processes                   []launch.Process           `toml:"processes" json:"processes"`
-	Slices                      []layers.Slice             `toml:"slices" json:"-"`
-	BuildpackDefaultProcessType string                     `toml:"buildpack-default-process-type,omitempty" json:"buildpack-default-process-type,omitempty"`
-	PlatformAPI                 *api.Version               `toml:"-" json:"-"`
+	BOM                         []buildpack.BOMEntry     `toml:"bom,omitempty" json:"bom"`
+	Buildpacks                  []buildpack.GroupElement `toml:"buildpacks" json:"buildpacks"`
+	Labels                      []buildpack.Label        `toml:"labels" json:"-"`
+	Launcher                    LauncherMetadata         `toml:"-" json:"launcher"`
+	Processes                   []launch.Process         `toml:"processes" json:"processes"`
+	Slices                      []layers.Slice           `toml:"slices" json:"-"`
+	BuildpackDefaultProcessType string                   `toml:"buildpack-default-process-type,omitempty" json:"buildpack-default-process-type,omitempty"`
+	PlatformAPI                 *api.Version             `toml:"-" json:"-"`
 }
 
 func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
@@ -167,12 +167,12 @@ func containsEntry(metRequires []string, entry BuildPlanEntry) bool {
 }
 
 type BuildPlanEntry struct {
-	Providers []buildpack.GroupBuildpack `toml:"providers"`
-	Requires  []buildpack.Require        `toml:"requires"`
+	Providers []buildpack.GroupElement `toml:"providers"`
+	Requires  []buildpack.Require      `toml:"requires"`
 }
 
 func (be BuildPlanEntry) NoOpt() BuildPlanEntry {
-	var out []buildpack.GroupBuildpack
+	var out []buildpack.GroupElement
 	for _, p := range be.Providers {
 		out = append(out, p.NoOpt().NoAPI().NoHomepage())
 	}

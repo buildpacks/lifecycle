@@ -79,11 +79,11 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 	when("MarshalJSON", func() {
 		var (
 			buildMD    *platform.BuildMetadata
-			buildpacks []buildpack.GroupBuildpack
+			buildpacks []buildpack.GroupElement
 		)
 
 		it.Before(func() {
-			buildpacks = []buildpack.GroupBuildpack{
+			buildpacks = []buildpack.GroupElement{
 				{ID: "A", Version: "v1"},
 			}
 			buildMD = &platform.BuildMetadata{
@@ -91,7 +91,7 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 					Require: buildpack.Require{
 						Name: "some-dep",
 					},
-					Buildpack: buildpack.GroupBuildpack{
+					Buildpack: buildpack.GroupElement{
 						ID: "A", Version: "v1",
 					},
 				}},

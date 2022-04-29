@@ -25,7 +25,7 @@ var (
 )
 
 type Resolver interface {
-	Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error)
+	Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error)
 }
 
 type Detector struct {
@@ -77,7 +77,7 @@ func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform
 	return buildpack.Group{Group: bps}, platform.BuildPlan{Entries: entries}, err
 }
 
-func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupBuildpack, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupElement, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	ngroup := buildpack.Group{Group: next}
 	buildpackErr := false
 	for _, group := range order {
@@ -102,16 +102,16 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 	return nil, nil, ErrFailedDetection
 }
 
-func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuildpack, wg *sync.WaitGroup) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
-	for i, groupBp := range group.Group {
+func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+	for i, groupEl := range group.Group {
 		// Continue if element has already been processed.
-		if hasID(done, groupBp.ID) { // TODO: assign id to order-ext?
+		if hasID(done, groupEl.ID) { // TODO: assign id to order-ext?
 			continue
 		}
 
 		// Resolve order if element is the order for extensions.
-		if len(groupBp.OrderExt) > 0 { // TODO: make helper
-			return d.detectOrder(groupBp.OrderExt, done, group.Group[i+1:], groupBp.Optional, wg) // TODO: should the entire order for extensions be optional? Should it be configurable?
+		if len(groupEl.OrderExt) > 0 { // TODO: make helper
+			return d.detectOrder(groupEl.OrderExt, done, group.Group[i+1:], groupEl.Optional, wg) // TODO: should the entire order for extensions be optional? Should it be configurable?
 		}
 
 		// Lookup element in store.
@@ -120,10 +120,10 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 			err        error
 		)
 		switch {
-		case groupBp.Extension:
-			detectable, err = d.DirStore.LookupExt(groupBp.ID, groupBp.Version)
+		case groupEl.Extension:
+			detectable, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
 		default:
-			detectable, err = d.DirStore.LookupBp(groupBp.ID, groupBp.Version)
+			detectable, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
 		}
 		if err != nil {
 			return nil, nil, err
@@ -134,14 +134,14 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 		if descriptor.IsComposite() {
 			// TODO: double-check slice safety here
 			// FIXME: cyclical references lead to infinite recursion
-			return d.detectOrder(descriptor.Order, done, group.Group[i+1:], groupBp.Optional, wg)
+			return d.detectOrder(descriptor.Order, done, group.Group[i+1:], groupEl.Optional, wg)
 		}
 
 		// Mark element as done.
 		done = append(done, descriptor.ToGroupElement())
 
 		// Run detect if element is a component buildpack or an extension.
-		key := groupBp.String()
+		key := groupEl.String()
 		wg.Add(1)
 		go func(key string, bp platform.Buildpack) {
 			if _, ok := d.Runs.Load(key); !ok {
@@ -156,7 +156,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupBuil
 	return d.Resolver.Resolve(done, d.Runs)
 }
 
-func hasID(bps []buildpack.GroupBuildpack, id string) bool {
+func hasID(bps []buildpack.GroupElement, id string) bool {
 	for _, bp := range bps {
 		if bp.ID == id {
 			return true
@@ -171,7 +171,7 @@ type DefaultResolver struct {
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
 // If any required buildpack in the group failed detection or a build plan cannot be resolved, it returns an error.
-func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildpack, detectRuns *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectRun
 	for _, bp := range done {
 		t, ok := detectRuns.Load(bp.String())
@@ -260,9 +260,9 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupBuildpack, detectRuns *s
 		r.Logger.Infof(f, t.ID, t.Version)
 	}
 
-	var found []buildpack.GroupBuildpack
+	var found []buildpack.GroupElement
 	for _, r := range trial {
-		found = append(found, r.GroupBuildpack.NoOpt())
+		found = append(found, r.GroupElement.NoOpt())
 	}
 	var plan []platform.BuildPlanEntry
 	for _, dep := range deps {
@@ -280,7 +280,7 @@ func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTria
 		retry = false
 		deps = newDepMap(trial)
 
-		if err := deps.eachUnmetRequire(func(name string, bp buildpack.GroupBuildpack) error {
+		if err := deps.eachUnmetRequire(func(name string, bp buildpack.GroupElement) error {
 			retry = true
 			if !bp.Optional {
 				r.Logger.Debugf("fail: %s requires %s", bp, name)
@@ -293,7 +293,7 @@ func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTria
 			return nil, nil, err
 		}
 
-		if err := deps.eachUnmetProvide(func(name string, bp buildpack.GroupBuildpack) error {
+		if err := deps.eachUnmetProvide(func(name string, bp buildpack.GroupElement) error {
 			retry = true
 			if !bp.Optional {
 				r.Logger.Debugf("fail: %s provides unused %s", bp, name)
@@ -315,14 +315,14 @@ func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTria
 }
 
 type detectResult struct {
-	buildpack.GroupBuildpack
+	buildpack.GroupElement
 	buildpack.DetectRun
 }
 
 func (r *detectResult) options() []detectOption {
 	var out []detectOption
 	for i, sections := range append([]buildpack.PlanSections{r.PlanSections}, r.Or...) {
-		bp := r.GroupBuildpack
+		bp := r.GroupElement
 		bp.Optional = bp.Optional && i == len(r.Or)
 		out = append(out, detectOption{bp, sections})
 	}
@@ -354,16 +354,16 @@ func (rs detectResults) runTrialsFrom(prefix detectTrial, f trialFunc) (depMap, 
 }
 
 type detectOption struct {
-	buildpack.GroupBuildpack
+	buildpack.GroupElement
 	buildpack.PlanSections
 }
 
 type detectTrial []detectOption
 
-func (ts detectTrial) remove(bp buildpack.GroupBuildpack) detectTrial {
+func (ts detectTrial) remove(bp buildpack.GroupElement) detectTrial {
 	var out detectTrial
 	for _, t := range ts {
-		if t.GroupBuildpack.ID != bp.ID { // TODO: check
+		if t.GroupElement.ID != bp.ID { // TODO: check
 			out = append(out, t)
 		}
 	}
@@ -372,8 +372,8 @@ func (ts detectTrial) remove(bp buildpack.GroupBuildpack) detectTrial {
 
 type depEntry struct {
 	platform.BuildPlanEntry
-	earlyRequires []buildpack.GroupBuildpack
-	extraProvides []buildpack.GroupBuildpack
+	earlyRequires []buildpack.GroupElement
+	extraProvides []buildpack.GroupElement
 }
 
 type depMap map[string]depEntry
@@ -382,22 +382,22 @@ func newDepMap(trial detectTrial) depMap {
 	m := depMap{}
 	for _, option := range trial {
 		for _, p := range option.Provides {
-			m.provide(option.GroupBuildpack, p)
+			m.provide(option.GroupElement, p)
 		}
 		for _, r := range option.Requires {
-			m.require(option.GroupBuildpack, r)
+			m.require(option.GroupElement, r)
 		}
 	}
 	return m
 }
 
-func (m depMap) provide(bp buildpack.GroupBuildpack, provide buildpack.Provide) {
+func (m depMap) provide(bp buildpack.GroupElement, provide buildpack.Provide) {
 	entry := m[provide.Name]
 	entry.extraProvides = append(entry.extraProvides, bp)
 	m[provide.Name] = entry
 }
 
-func (m depMap) require(bp buildpack.GroupBuildpack, require buildpack.Require) {
+func (m depMap) require(bp buildpack.GroupElement, require buildpack.Require) {
 	entry := m[require.Name]
 	entry.Providers = append(entry.Providers, entry.extraProvides...)
 	entry.extraProvides = nil
@@ -410,7 +410,7 @@ func (m depMap) require(bp buildpack.GroupBuildpack, require buildpack.Require) 
 	m[require.Name] = entry
 }
 
-func (m depMap) eachUnmetProvide(f func(name string, bp buildpack.GroupBuildpack) error) error {
+func (m depMap) eachUnmetProvide(f func(name string, bp buildpack.GroupElement) error) error {
 	for name, entry := range m {
 		if len(entry.extraProvides) != 0 {
 			for _, bp := range entry.extraProvides {
@@ -423,7 +423,7 @@ func (m depMap) eachUnmetProvide(f func(name string, bp buildpack.GroupBuildpack
 	return nil
 }
 
-func (m depMap) eachUnmetRequire(f func(name string, bp buildpack.GroupBuildpack) error) error {
+func (m depMap) eachUnmetRequire(f func(name string, bp buildpack.GroupElement) error) error {
 	for name, entry := range m {
 		if len(entry.earlyRequires) != 0 {
 			for _, bp := range entry.earlyRequires {

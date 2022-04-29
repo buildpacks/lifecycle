@@ -259,7 +259,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 											Name:     "some-dep",
 											Metadata: map[string]interface{}{"version": "some-version"},
 										},
-										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},
 								},
 							}); s != "" {
@@ -299,7 +299,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 											Name:     "some-dep",
 											Metadata: map[string]interface{}{"version": "some-version"},
 										},
-										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},
 								},
 								BOMFiles: []buildpack.BOMFile{
@@ -341,7 +341,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 											Name:     "some-dep",
 											Metadata: map[string]interface{}{"version": "some-version"},
 										},
-										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},
 								},
 								Labels:    []buildpack.Label{},
@@ -384,7 +384,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 											Name:     "some-dep",
 											Metadata: map[string]interface{}{"version": "some-version"},
 										},
-										Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+										Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 									},
 								},
 								Labels:    []buildpack.Label{},
@@ -1027,28 +1027,28 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									Name:     "some-deprecated-bp-dep",
 									Metadata: map[string]interface{}{"version": "v1"},
 								},
-								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 							},
 							{
 								Require: buildpack.Require{
 									Name:     "some-deprecated-bp-replace-version-dep",
 									Metadata: map[string]interface{}{"version": "some-version-new"},
 								},
-								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 							},
 							{
 								Require: buildpack.Require{
 									Name:     "some-dep",
 									Metadata: map[string]interface{}{"version": "v1"},
 								},
-								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 							},
 							{
 								Require: buildpack.Require{
 									Name:     "some-replace-version-dep",
 									Metadata: map[string]interface{}{"version": "some-version-new"},
 								},
-								Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+								Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 							},
 						},
 						Labels: nil,
@@ -1093,21 +1093,21 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Name:     "dep-1",
 								Metadata: map[string]interface{}{"version": "v1"},
 							},
-							Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 						},
 						{
 							Require: buildpack.Require{
 								Name:     "dep-2",
 								Metadata: map[string]interface{}{"version": "v2"},
 							},
-							Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 						},
 						{
 							Require: buildpack.Require{
 								Name:     "dep-3",
 								Metadata: map[string]interface{}{"version": "v3"},
 							},
-							Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"},
+							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"},
 						},
 					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
@@ -1262,21 +1262,21 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Name:     "some-deprecated-bp-replace-version-dep",
 								Metadata: map[string]interface{}{"version": "some-version-new"},
 							},
-							Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 						},
 						{
 							Require: buildpack.Require{
 								Name:     "some-dep",
 								Metadata: map[string]interface{}{"version": "v1"},
 							},
-							Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 						},
 						{
 							Require: buildpack.Require{
 								Name:     "some-replace-version-dep",
 								Metadata: map[string]interface{}{"version": "some-version-new"},
 							},
-							Buildpack: buildpack.GroupBuildpack{ID: "A", Version: "v1"}, // no api, no homepage
+							Buildpack: buildpack.GroupElement{ID: "A", Version: "v1"}, // no api, no homepage
 						},
 					},
 					Labels:      []buildpack.Label{},

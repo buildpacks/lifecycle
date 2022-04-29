@@ -67,7 +67,7 @@ func (b *BOMFile) mediaType() string {
 	}
 }
 
-func validateMediaTypes(bp GroupBuildpack, bomfiles []BOMFile, declaredTypes []string) error {
+func validateMediaTypes(bp GroupElement, bomfiles []BOMFile, declaredTypes []string) error {
 	ensureDeclared := func(declaredTypes []string, foundType string) error {
 		for _, declaredType := range declaredTypes {
 			dType, _, err := mime.ParseMediaType(declaredType)
@@ -102,7 +102,7 @@ func sbomGlob(layersDir string) (matches []string, err error) {
 	return
 }
 
-func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, bpLayers map[string]LayerMetadataFile, logger Logger) ([]BOMFile, error) {
+func (b *Descriptor) processBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger Logger) ([]BOMFile, error) {
 	var (
 		files []BOMFile
 	)

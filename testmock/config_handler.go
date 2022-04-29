@@ -36,10 +36,10 @@ func (m *MockConfigHandler) EXPECT() *MockConfigHandlerMockRecorder {
 }
 
 // ReadGroup mocks base method.
-func (m *MockConfigHandler) ReadGroup(arg0 string) ([]buildpack.GroupBuildpack, error) {
+func (m *MockConfigHandler) ReadGroup(arg0 string) ([]buildpack.GroupElement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadGroup", arg0)
-	ret0, _ := ret[0].([]buildpack.GroupBuildpack)
+	ret0, _ := ret[0].([]buildpack.GroupElement)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

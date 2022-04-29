@@ -13,7 +13,7 @@ type CacheHandler interface {
 
 //go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle RegistryHandler
 type ConfigHandler interface {
-	ReadGroup(path string) ([]buildpack.GroupBuildpack, error)
+	ReadGroup(path string) ([]buildpack.GroupElement, error)
 }
 
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle ImageHandler
