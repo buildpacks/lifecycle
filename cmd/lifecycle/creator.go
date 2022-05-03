@@ -173,7 +173,7 @@ func (c *createCmd) Exec() error {
 		factory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
 			NewCacheHandler(c.keychain),
-			NewConfigHandler(),
+			lifecycle.NewConfigHandler(&cmd.APIVerifier{}),
 			NewImageHandler(c.docker, c.keychain),
 			NewRegistryHandler(c.keychain),
 		)
@@ -229,7 +229,7 @@ func (c *createCmd) Exec() error {
 		factory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
 			NewCacheHandler(c.keychain),
-			NewConfigHandler(),
+			lifecycle.NewConfigHandler(&cmd.APIVerifier{}),
 			NewImageHandler(c.docker, c.keychain),
 			NewRegistryHandler(c.keychain),
 		)

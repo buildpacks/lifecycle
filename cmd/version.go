@@ -50,7 +50,7 @@ func VerifyPlatformAPI(requested string) error {
 				break
 			case DeprecationModeError:
 				DefaultLogger.Errorf("Platform requested deprecated API '%s'", requested)
-				DefaultLogger.Errorf("Deprecated APIs are disable by %s=%s", EnvDeprecationMode, DeprecationModeError)
+				DefaultLogger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
 				return platformAPIError(requested)
 			case DeprecationModeWarn:
 				DefaultLogger.Warnf("Platform requested deprecated API '%s'", requested)
@@ -61,6 +61,12 @@ func VerifyPlatformAPI(requested string) error {
 		return nil
 	}
 	return platformAPIError(requested)
+}
+
+type APIVerifier struct{}
+
+func (v *APIVerifier) VerifyBuildpackAPI(kind, name, requested string) error {
+	return VerifyBuildpackAPI(name, requested)
 }
 
 // TODO: fix error messages so that they are accurate for buildpacks OR extensions
@@ -79,7 +85,7 @@ func VerifyBuildpackAPI(bp string, requested string) error {
 				break
 			case DeprecationModeError:
 				DefaultLogger.Errorf("Buildpack '%s' requests deprecated API '%s'", bp, requested)
-				DefaultLogger.Errorf("Deprecated APIs are disable by %s=%s", EnvDeprecationMode, DeprecationModeError)
+				DefaultLogger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
 				return buildpackAPIError(bp, requested)
 			case DeprecationModeWarn:
 				DefaultLogger.Warnf("Buildpack '%s' requests deprecated API '%s'", bp, requested)

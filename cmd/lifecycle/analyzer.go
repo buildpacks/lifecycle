@@ -108,7 +108,7 @@ func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
 		a.platform.API(),
 		NewCacheHandler(a.keychain),
-		NewConfigHandler(),
+		lifecycle.NewConfigHandler(&cmd.APIVerifier{}),
 		NewImageHandler(a.docker, a.keychain),
 		NewRegistryHandler(a.keychain),
 	)

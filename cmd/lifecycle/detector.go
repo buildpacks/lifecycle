@@ -96,7 +96,7 @@ func (d *detectCmd) Exec() error {
 
 func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 	// read provided order path
-	order, orderExt, err := platform.ReadOrder(da.orderPath)
+	order, orderExt, err := lifecycle.ReadOrder(da.orderPath)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read order file")
 	}

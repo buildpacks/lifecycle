@@ -103,19 +103,19 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	}
 	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
 		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
-			t.Err = errors.Errorf(`buildpack %s has a "version" key that does not match "metadata.version"`, b.Buildpack.ID)
+			t.Err = errors.Errorf(b.Kind()+` %s has a "version" key that does not match "metadata.version"`, b.Info().ID)
 			t.Code = -1
 		}
 	}
 	if api.MustParse(b.API).AtLeast("0.3") {
 		if t.hasDoublySpecifiedVersions() || t.Or.hasDoublySpecifiedVersions() {
-			t.Err = errors.Errorf(`buildpack %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, b.Buildpack.ID)
+			t.Err = errors.Errorf(b.Kind()+` %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, b.Info().ID)
 			t.Code = -1
 		}
 	}
 	if api.MustParse(b.API).AtLeast("0.3") {
 		if t.hasTopLevelVersions() || t.Or.hasTopLevelVersions() {
-			config.Logger.Warnf(`Warning: buildpack %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, b.Buildpack.ID)
+			config.Logger.Warnf(b.Kind()+` %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, b.Info().ID)
 		}
 	}
 	t.Output = out.Bytes()

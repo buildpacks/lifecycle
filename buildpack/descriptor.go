@@ -54,6 +54,13 @@ func (b *Descriptor) IsExtension() bool {
 	return b.Extension.ID != ""
 }
 
+func (b *Descriptor) Kind() string {
+	if b.IsExtension() {
+		return "extension"
+	}
+	return "buildpack"
+}
+
 func (b *Descriptor) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }

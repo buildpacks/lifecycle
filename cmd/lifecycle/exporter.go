@@ -200,7 +200,7 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
-	group, err := platform.ReadGroup(e.groupPath)
+	group, err := lifecycle.ReadGroup(e.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
