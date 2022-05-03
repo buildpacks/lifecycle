@@ -96,7 +96,7 @@ func (d *detectCmd) Exec() error {
 
 func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 	// read provided order path
-	order, orderExt, err := buildpack.ReadOrder(da.orderPath)
+	order, orderExt, err := platform.ReadOrder(da.orderPath)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read order file")
 	}
@@ -110,13 +110,13 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 		return buildpack.Group{}, platform.BuildPlan{}, err
 	}
 	// new detector
-	detector := lifecycle.NewDetector(nil, buildpack.DetectConfig{
+	detector := lifecycle.NewDetector(da.platform.API(), buildpack.DetectConfig{
 		AppDir:      da.appDir,
 		PlatformDir: da.platformDir,
 		Logger:      cmd.DefaultLogger,
 	}, dirStore)
 	// do detect
-	group, plan, err := detector.Detect(order, nil)
+	group, plan, err := detector.Detect(order, orderExt)
 	if err != nil {
 		switch err := err.(type) {
 		case *buildpack.Error:

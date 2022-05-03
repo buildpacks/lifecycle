@@ -469,13 +469,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				detectImage,
 				h.WithFlags(
 					"--user", userID,
-					"--volume", orderPath+":/custom/order.toml",
+					"--volume", orderPath+":/layers/order.toml",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				),
 				h.WithArgs(
 					"-extensions=/cnb/extensions",
 					"-log-level=debug",
-					"-order=/custom/order.toml",
 				),
 			)
 
@@ -484,8 +483,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			var buildpackGroup buildpack.Group
 			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
 			h.AssertNil(t, err)
-			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_buildpack")
-			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_buildpack_version")
+			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_extension")
+			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_extension_version")
+			h.AssertEq(t, buildpackGroup.Group[0].Extension, true)
+			h.AssertEq(t, buildpackGroup.Group[1].ID, "buildpack_for_ext")
+			h.AssertEq(t, buildpackGroup.Group[1].Version, "buildpack_for_ext_version")
+			h.AssertEq(t, buildpackGroup.Group[1].Extension, false)
 		})
 	})
 

@@ -30,8 +30,8 @@ func testOrderHandler(t *testing.T, when spec.G, it spec.S) {
 					buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
 				}
 				expectedOrderExt := buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true}}},
-					buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
 				}
 
 				orderHandler.PrependExtensions(orderBp, orderExt)

@@ -113,7 +113,7 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 }
 
 func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {
-	group, err := buildpack.ReadGroup(b.groupPath)
+	group, err := platform.ReadGroup(b.groupPath)
 	if err != nil {
 		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
 	}

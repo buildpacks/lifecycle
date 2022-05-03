@@ -1,5 +1,5 @@
 api = "0.3"
 [buildpack]
-    id = "simple_buildpack"
-    version = "simple_buildpack_version"
-    name = "Simple Buildpack"
+    id = "buildpack_for_ext"
+    version = "buildpack_for_ext_version"
+    name = "Buildpack for Extensions"

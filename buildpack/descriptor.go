@@ -2,12 +2,22 @@
 
 package buildpack
 
-import "github.com/BurntSushi/toml"
+import (
+	"github.com/BurntSushi/toml"
+)
 
 type BuildModule interface {
 	Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error)
 	ConfigFile() *Descriptor
 	Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun
+}
+
+func ReadDescriptor(path string) (Descriptor, error) {
+	descriptor := Descriptor{}
+	if _, err := toml.DecodeFile(path, &descriptor); err != nil {
+		return Descriptor{}, err
+	}
+	return descriptor, nil
 }
 
 type Descriptor struct {
@@ -22,16 +32,26 @@ func (b *Descriptor) ConfigFile() *Descriptor {
 	return b
 }
 
+func (b *Descriptor) Info() *Info {
+	switch {
+	case b.IsBuildpack():
+		return &b.Buildpack
+	case b.IsExtension():
+		return &b.Extension
+	}
+	return &Info{}
+}
+
 func (b *Descriptor) IsBuildpack() bool {
 	return b.Buildpack.ID != ""
 }
 
-func (b *Descriptor) IsExtension() bool {
-	return b.Extension.ID != ""
-}
-
 func (b *Descriptor) IsComposite() bool {
 	return len(b.Order) > 0
+}
+
+func (b *Descriptor) IsExtension() bool {
+	return b.Extension.ID != ""
 }
 
 func (b *Descriptor) String() string {
@@ -49,6 +69,8 @@ func (b *Descriptor) ToGroupElement() GroupElement {
 		groupEl.ID = b.Extension.ID
 		groupEl.Version = b.Extension.Version
 		groupEl.Homepage = b.Extension.Homepage
+		groupEl.Extension = true
+		groupEl.Optional = true
 	}
 	return groupEl
 }
@@ -66,21 +88,6 @@ type Order []Group
 
 type Group struct {
 	Group []GroupElement `toml:"group"`
-}
-
-func ReadGroup(path string) (Group, error) {
-	var group Group
-	_, err := toml.DecodeFile(path, &group)
-	return group, err
-}
-
-func ReadOrder(path string) (Order, Order, error) {
-	var order struct {
-		Order    Order `toml:"order"`
-		OrderExt Order `toml:"order-ext"`
-	}
-	_, err := toml.DecodeFile(path, &order)
-	return order.Order, order.OrderExt, err
 }
 
 func (bg Group) Append(group ...Group) Group {
@@ -107,7 +114,7 @@ type GroupElement struct {
 	// Homepage specifies the homepage of the buildpack or extension.
 	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty"`
 	// Extension specifies whether the group element is a buildpack or an extension.
-	Extension bool `toml:"extension,omitempty" json:"extension,omitempty"` // TODO: confirm that we want this in the label
+	Extension bool `toml:"extension,omitempty" json:"-"`
 
 	// Fields that are in order.toml only
 
@@ -120,21 +127,25 @@ type GroupElement struct {
 	OrderExt Order `toml:"-" json:"-"`
 }
 
-func (bp GroupElement) String() string {
-	return bp.ID + "@" + bp.Version
+func (e GroupElement) IsExtensionsOrder() bool {
+	return len(e.OrderExt) > 0
 }
 
-func (bp GroupElement) NoOpt() GroupElement {
-	bp.Optional = false
-	return bp
+func (e GroupElement) NoOpt() GroupElement {
+	e.Optional = false
+	return e
 }
 
-func (bp GroupElement) NoAPI() GroupElement {
-	bp.API = ""
-	return bp
+func (e GroupElement) NoAPI() GroupElement {
+	e.API = ""
+	return e
 }
 
-func (bp GroupElement) NoHomepage() GroupElement {
-	bp.Homepage = ""
-	return bp
+func (e GroupElement) NoHomepage() GroupElement {
+	e.Homepage = ""
+	return e
+}
+
+func (e GroupElement) String() string {
+	return e.ID + "@" + e.Version
 }

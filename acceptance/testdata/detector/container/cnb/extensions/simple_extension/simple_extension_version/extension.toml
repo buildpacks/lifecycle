@@ -1,5 +1,5 @@
 api = "0.9"
-[buildpack]
+[extension]
     id = "simple_extension"
     version = "simple_extension_version"
     name = "Simple Extension"

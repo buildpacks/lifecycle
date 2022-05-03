@@ -156,7 +156,7 @@ func NewConfigHandler() *DefaultConfigHandler {
 }
 
 func (h *DefaultConfigHandler) ReadGroup(path string) ([]buildpack.GroupElement, error) {
-	group, err := buildpack.ReadGroup(path)
+	group, err := platform.ReadGroup(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading buildpack group")
 	}

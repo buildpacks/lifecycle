@@ -15,7 +15,7 @@ const (
 )
 
 func init() {
-	// TODO: uncomment when buildpacks/pack#493 (lifecycle containers with a tty) is implemented
+	// TODO: uncomment when https://github.com/buildpacks/pack/issues/493 (lifecycle containers with a tty) is implemented
 	// color.Disable(!terminal.IsTerminal(int(os.Stdout.Fd())))
 }
 

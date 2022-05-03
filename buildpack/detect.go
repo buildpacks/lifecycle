@@ -40,6 +40,7 @@ type DetectConfig struct {
 	Logger      Logger
 }
 
+// TODO: change the receiver to be Info
 func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	appDir, err := filepath.Abs(config.AppDir)
 	if err != nil {
@@ -70,7 +71,7 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	cmd.Stdout = out
 	cmd.Stderr = out
 
-	if b.Buildpack.ClearEnv {
+	if b.Info().ClearEnv {
 		cmd.Env = bpEnv.List()
 	} else {
 		cmd.Env, err = bpEnv.WithPlatform(config.PlatformDir)

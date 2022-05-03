@@ -46,12 +46,9 @@ func testDirStore(t *testing.T, when spec.G, it spec.S) {
 			ext, err := dirStore.LookupExt("A", "v1")
 			h.AssertNil(t, err)
 
-			// TODO: validate config in buildpack package
 			config := ext.ConfigFile()
 			h.AssertEq(t, config.Extension.ID, "A")
-			h.AssertEq(t, config.Extension.Name, "Extension A")
 			h.AssertEq(t, config.Extension.Version, "v1")
-			h.AssertEq(t, config.Extension.Homepage, "Extension A Homepage")
 		})
 	})
 }

@@ -87,7 +87,7 @@ func (r *restoreCmd) Privileges() error {
 }
 
 func (r *restoreCmd) Exec() error {
-	group, err := buildpack.ReadGroup(r.groupPath)
+	group, err := platform.ReadGroup(r.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}

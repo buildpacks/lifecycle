@@ -5,6 +5,7 @@ package platform
 import (
 	"encoding/json"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -71,6 +72,14 @@ type RunImageMetadata struct {
 	Reference string `json:"reference" toml:"reference"`
 }
 
+// group.toml
+
+func ReadGroup(path string) (buildpack.Group, error) {
+	var group buildpack.Group
+	_, err := toml.DecodeFile(path, &group)
+	return group, err
+}
+
 // metadata.toml
 
 type BuildMetadata struct {
@@ -123,6 +132,17 @@ type SourceMetadata struct {
 type GitMetadata struct {
 	Repository string `json:"repository"`
 	Commit     string `json:"commit"`
+}
+
+// order.toml
+
+func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
+	var order struct {
+		Order    buildpack.Order `toml:"order"`
+		OrderExt buildpack.Order `toml:"order-ext"`
+	}
+	_, err := toml.DecodeFile(path, &order)
+	return order.Order, order.OrderExt, err
 }
 
 // plan.toml

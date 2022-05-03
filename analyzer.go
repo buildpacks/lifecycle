@@ -83,7 +83,7 @@ func (f *AnalyzerFactory) NewAnalyzer(
 	}
 
 	if f.platformAPI.AtLeast("0.8") && !skipLayers {
-		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{ // TODO: eventually layer.NewSBOMRestorer should always return the default one, and then we can use the constructor
+		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{
 			LayersDir: layersDir,
 			Logger:    logger,
 		}

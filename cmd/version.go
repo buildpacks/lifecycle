@@ -63,7 +63,7 @@ func VerifyPlatformAPI(requested string) error {
 	return platformAPIError(requested)
 }
 
-// TODO: fix error messages
+// TODO: fix error messages so that they are accurate for buildpacks OR extensions
 func VerifyBuildpackAPI(bp string, requested string) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {

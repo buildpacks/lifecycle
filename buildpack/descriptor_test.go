@@ -1,12 +1,9 @@
 package buildpack_test
 
 import (
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -14,107 +11,102 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestUtils(t *testing.T) {
+func TestDescriptor(t *testing.T) {
 	spec.Run(t, "Descriptor", testDescriptor, spec.Report(report.Terminal{}))
 }
 
 func testDescriptor(t *testing.T, when spec.G, it spec.S) {
-	when(".ReadOrder", func() {
-		var tmpDir string
+	when("#ReadDescriptor", func() {
+		when("buildpack", func() {
+			it("returns a descriptor with buildpack info", func() {
+				path := filepath.Join("testdata", "by-id", "A", "v1", "buildpack.toml")
+				descriptor, err := buildpack.ReadDescriptor(path)
+				h.AssertNil(t, err)
 
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
-			if err != nil {
-				t.Fatal(err)
-			}
+				h.AssertEq(t, descriptor.API, "0.7")
+				h.AssertEq(t, descriptor.Buildpack.ID, "A")
+				h.AssertEq(t, descriptor.Buildpack.Name, "Buildpack A")
+				h.AssertEq(t, descriptor.Buildpack.Version, "v1")
+				h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack A Homepage")
+				h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
+			})
 		})
 
-		it.After(func() {
-			os.RemoveAll(tmpDir)
-		})
+		when("extension", func() {
+			it("returns a descriptor with extension info", func() {
+				path := filepath.Join("testdata", "by-id", "extA", "v1", "extension.toml")
+				descriptor, err := buildpack.ReadDescriptor(path)
+				h.AssertNil(t, err)
 
-		it("should return an ordering of buildpacks", func() {
-			h.Mkfile(t,
-				"[[order]]\n"+
-					`group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`+"\n"+
-					"[[order]]\n"+
-					`group = [{id = "C"}, {}]`+"\n",
-				filepath.Join(tmpDir, "order.toml"),
-			)
-			actual, _, err := buildpack.ReadOrder(filepath.Join(tmpDir, "order.toml"))
-			if err != nil {
-				t.Fatalf("Unexpected error:\n%s\n", err)
-			}
-			if s := cmp.Diff(actual, buildpack.Order{
-				{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
-				{Group: []buildpack.GroupElement{{ID: "C"}, {}}},
-			}); s != "" {
-				t.Fatalf("Unexpected list:\n%s\n", s)
-			}
-		})
-
-		when("there are extensions", func() {
-			it("should return an ordering of buildpacks and an ordering of extensions", func() {
-				h.Mkfile(t,
-					"[[order]]\n"+
-						`group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`+"\n"+
-						"[[order]]\n"+
-						`group = [{id = "C"}, {}]`+"\n"+
-						"[[order-ext]]\n"+
-						`group = [{id = "D"}, {}]`+"\n",
-					filepath.Join(tmpDir, "order.toml"),
-				)
-				foundOrder, foundOrderExt, err := buildpack.ReadOrder(filepath.Join(tmpDir, "order.toml"))
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
-				if s := cmp.Diff(foundOrder, buildpack.Order{
-					{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
-					{Group: []buildpack.GroupElement{{ID: "C"}, {}}},
-				}); s != "" {
-					t.Fatalf("Unexpected list:\n%s\n", s)
-				}
-				if s := cmp.Diff(foundOrderExt, buildpack.Order{
-					{Group: []buildpack.GroupElement{{ID: "D"}, {}}},
-				}); s != "" {
-					t.Fatalf("Unexpected list:\n%s\n", s)
-				}
+				h.AssertEq(t, descriptor.API, "0.9")
+				h.AssertEq(t, descriptor.Extension.ID, "A")
+				h.AssertEq(t, descriptor.Extension.Name, "Extension A")
+				h.AssertEq(t, descriptor.Extension.Version, "v1")
+				h.AssertEq(t, descriptor.Extension.Homepage, "Extension A Homepage")
 			})
 		})
 	})
 
-	when(".ReadGroup", func() {
-		var tmpDir string
+	when(".Info", func() {
+		var info = &buildpack.Info{
+			ID:       "A",
+			Version:  "v1",
+			ClearEnv: true,
+		}
 
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
-			if err != nil {
-				t.Fatal(err)
-			}
+		when("buildpack", func() {
+			it("returns buildpack info", func() {
+				descriptor := buildpack.Descriptor{
+					API:       "0.9",
+					Buildpack: *info,
+				}
+
+				h.AssertEq(t, descriptor.Info(), info)
+			})
 		})
 
-		it.After(func() {
-			os.RemoveAll(tmpDir)
+		when("extension", func() {
+			it("returns extension info", func() {
+				descriptor := buildpack.Descriptor{
+					API:       "0.9",
+					Extension: *info,
+				}
+
+				h.AssertEq(t, descriptor.Info(), info)
+			})
+		})
+	})
+
+	when(".ToGroupElement", func() {
+		when("buildpack", func() {
+			it("returns a group element that is a buildpack", func() {
+				descriptor := buildpack.Descriptor{
+					API: "0.9",
+					Buildpack: buildpack.Info{
+						ID:      "A",
+						Version: "v1",
+					},
+				}
+				groupEl := descriptor.ToGroupElement()
+
+				h.AssertEq(t, groupEl.Extension, false)
+			})
 		})
 
-		it("should return a group of buildpacks", func() {
-			h.Mkfile(t, `group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`,
-				filepath.Join(tmpDir, "group.toml"),
-			)
-			actual, err := buildpack.ReadGroup(filepath.Join(tmpDir, "group.toml"))
-			if err != nil {
-				t.Fatalf("Unexpected error:\n%s\n", err)
-			}
-			if s := cmp.Diff(actual, buildpack.Group{
-				Group: []buildpack.GroupElement{
-					{ID: "A", Version: "v1"},
-					{ID: "B", Optional: true},
-				},
-			}); s != "" {
-				t.Fatalf("Unexpected list:\n%s\n", s)
-			}
+		when("extension", func() {
+			it("returns a group element that is an extension", func() {
+				descriptor := buildpack.Descriptor{
+					API: "0.9",
+					Extension: buildpack.Info{
+						ID:      "A",
+						Version: "v1",
+					},
+				}
+				groupEl := descriptor.ToGroupElement()
+
+				h.AssertEq(t, groupEl.Extension, true)
+				h.AssertEq(t, groupEl.Optional, true)
+			})
 		})
 	})
 }

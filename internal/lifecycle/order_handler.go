@@ -17,6 +17,7 @@ func (h *DefaultOrderHandler) PrependExtensions(orderBp buildpack.Order, orderEx
 	for i, group := range orderExt {
 		for j := range group.Group {
 			group.Group[j].Extension = true
+			group.Group[j].Optional = true
 		}
 		orderExt[i] = group
 	}

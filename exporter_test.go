@@ -830,7 +830,6 @@ version = "4.5.6"
 				opts.AppDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "previous-image-not-exist", "layers", "app"))
 				h.AssertNil(t, err)
 
-				// TODO : this is an hacky way to create a non-existing image and should be improved in imgutil
 				nonExistingOriginalImage = fakes.NewImage("app/original-image", "", nil)
 				h.AssertNil(t, nonExistingOriginalImage.Delete())
 			})
@@ -1436,7 +1435,6 @@ version = "4.5.6"
 				opts.AppDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "bad-layer", "layers", "app"))
 				h.AssertNil(t, err)
 
-				// TODO : this is an hacky way to create a non-existing image and should be improved in imgutil
 				nonExistingOriginalImage = fakes.NewImage("app/original-image", "", nil)
 				h.AssertNil(t, nonExistingOriginalImage.Delete())
 			})

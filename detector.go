@@ -37,10 +37,9 @@ type Detector struct {
 	Runs         *sync.Map
 }
 
-// TODO: test
-func NewDetector(platformAPI *api.Version, config buildpack.DetectConfig, dirStore DirStore) *Detector {
+func NewDetector(platformAPI *api.Version, config buildpack.DetectConfig, dirStore DirStore) *Detector { // TODO: add test
 	var orderHandler lifecycle.OrderHandler
-	if platformAPI.AtLeast("0.9") { // TODO: change
+	if platformAPI.AtLeast("0.10") { // TODO: change to experimental api
 		orderHandler = &lifecycle.DefaultOrderHandler{}
 	} else {
 		orderHandler = &lifecycle.LegacyOrderHandler{}
@@ -105,18 +104,18 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	for i, groupEl := range group.Group {
 		// Continue if element has already been processed.
-		if hasID(done, groupEl.ID) { // TODO: assign id to order-ext?
+		if hasID(done, groupEl.ID) {
 			continue
 		}
 
 		// Resolve order if element is the order for extensions.
-		if len(groupEl.OrderExt) > 0 { // TODO: make helper
-			return d.detectOrder(groupEl.OrderExt, done, group.Group[i+1:], groupEl.Optional, wg) // TODO: should the entire order for extensions be optional? Should it be configurable?
+		if groupEl.IsExtensionsOrder() {
+			return d.detectOrder(groupEl.OrderExt, done, group.Group[i+1:], true, wg)
 		}
 
 		// Lookup element in store.
 		var (
-			detectable buildpack.BuildModule // TODO: move interface to buildpack package
+			detectable buildpack.BuildModule
 			err        error
 		)
 		switch {
@@ -132,7 +131,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 		// Resolve order if element is a composite buildpack.
 		if descriptor.IsComposite() {
-			// TODO: double-check slice safety here
+			// FIXME: double-check slice safety here
 			// FIXME: cyclical references lead to infinite recursion
 			return d.detectOrder(descriptor.Order, done, group.Group[i+1:], groupEl.Optional, wg)
 		}
@@ -363,7 +362,7 @@ type detectTrial []detectOption
 func (ts detectTrial) remove(bp buildpack.GroupElement) detectTrial {
 	var out detectTrial
 	for _, t := range ts {
-		if t.GroupElement.ID != bp.ID { // TODO: check
+		if t.GroupElement.ID != bp.ID && t.GroupElement.Version == bp.Version {
 			out = append(out, t)
 		}
 	}
