@@ -251,6 +251,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					"index.docker.io": {
 						RegistryToken: "qwerty=",
 					},
+					"missing.auth.config": {},
 				},
 			}
 		})
@@ -272,11 +273,22 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, envVar, jsonAuth.String())
 		})
 
-		it("returns an empty result for Anonymous registries", func() {
-			envVar, err := auth.BuildEnvVar(keychain, "anonymous.com/dockerhub/image")
-			h.AssertNil(t, err)
+		when("anonymous registry", func() {
+			it("returns an empty result", func() {
+				envVar, err := auth.BuildEnvVar(keychain, "anonymous.com/some/image")
+				h.AssertNil(t, err)
 
-			h.AssertEq(t, envVar, "{}")
+				h.AssertEq(t, envVar, "{}")
+			})
+		})
+
+		when("registry is missing auth config", func() {
+			it("returns an empty result", func() {
+				envVar, err := auth.BuildEnvVar(keychain, "missing.auth.config/some/image")
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, envVar, "{}")
+			})
 		})
 	})
 }

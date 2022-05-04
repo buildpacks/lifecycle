@@ -156,7 +156,7 @@ func authConfigToHeader(config *authn.AuthConfig) (string, error) {
 		return fmt.Sprintf("Basic %s", encoded), nil
 	}
 
-	return "", nil
+	return "", errors.New("failed to find authorization information")
 }
 
 var (
