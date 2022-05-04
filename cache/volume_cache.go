@@ -2,7 +2,7 @@ package cache
 
 import (
 	"encoding/json"
-	"io"
+	goio "io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -105,13 +106,13 @@ func (c *VolumeCache) AddLayerFile(tarPath string, diffID string) error {
 		return nil
 	}
 
-	if err := copyFile(tarPath, layerTar); err != nil {
+	if err := io.Copy(tarPath, layerTar); err != nil {
 		return errors.Wrapf(err, "caching layer (%s)", diffID)
 	}
 	return nil
 }
 
-func (c *VolumeCache) AddLayer(rc io.ReadCloser, diffID string) error {
+func (c *VolumeCache) AddLayer(rc goio.ReadCloser, diffID string) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -122,7 +123,7 @@ func (c *VolumeCache) AddLayer(rc io.ReadCloser, diffID string) error {
 	}
 	defer fh.Close()
 
-	if _, err := io.Copy(fh, rc); err != nil {
+	if _, err := goio.Copy(fh, rc); err != nil {
 		return errors.Wrap(err, "copying layer to tar file")
 	}
 	return nil
@@ -138,7 +139,7 @@ func (c *VolumeCache) ReuseLayer(diffID string) error {
 	return nil
 }
 
-func (c *VolumeCache) RetrieveLayer(diffID string) (io.ReadCloser, error) {
+func (c *VolumeCache) RetrieveLayer(diffID string) (goio.ReadCloser, error) {
 	path, err := c.RetrieveLayerFile(diffID)
 	if err != nil {
 		return nil, err
@@ -176,13 +177,13 @@ func (c *VolumeCache) Commit() error {
 		return errCacheCommitted
 	}
 	c.committed = true
-	if err := os.Rename(c.committedDir, c.backupDir); err != nil {
+	if err := io.RenameWithWindowsFallback(c.committedDir, c.backupDir); err != nil {
 		return errors.Wrap(err, "backing up cache")
 	}
 	defer os.RemoveAll(c.backupDir)
 
-	if err1 := os.Rename(c.stagingDir, c.committedDir); err1 != nil {
-		if err2 := os.Rename(c.backupDir, c.committedDir); err2 != nil {
+	if err1 := io.RenameWithWindowsFallback(c.stagingDir, c.committedDir); err1 != nil {
+		if err2 := io.RenameWithWindowsFallback(c.backupDir, c.committedDir); err2 != nil {
 			return errors.Wrap(err2, "rolling back cache")
 		}
 		return errors.Wrap(err1, "committing cache")
@@ -204,22 +205,4 @@ func (c *VolumeCache) setupStagingDir() error {
 		return err
 	}
 	return os.MkdirAll(c.stagingDir, 0777)
-}
-
-func copyFile(from, to string) error {
-	in, err := os.Open(from)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(to)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-
-	return err
 }

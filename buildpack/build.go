@@ -3,7 +3,7 @@ package buildpack
 import (
 	"errors"
 	"fmt"
-	"io"
+	goio "io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -15,6 +15,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/io"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -35,8 +36,8 @@ type BuildConfig struct {
 	AppDir      string
 	PlatformDir string
 	LayersDir   string
-	Out         io.Writer
-	Err         io.Writer
+	Out         goio.Writer
+	Err         goio.Writer
 	Logger      Logger
 }
 
@@ -114,10 +115,7 @@ func (b *Descriptor) Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (Bui
 func renameLayerDirIfNeeded(layerMetadataFile LayerMetadataFile, layerDir string) error {
 	// rename <layers>/<layer> to <layers>/<layer>.ignore if buildpack API >= 0.6 and all of the types flags are set to false
 	if !layerMetadataFile.Launch && !layerMetadataFile.Cache && !layerMetadataFile.Build {
-		if err := os.Rename(layerDir, layerDir+".ignore"); err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
+		if err := io.RenameWithWindowsFallback(layerDir, layerDir+".ignore"); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}

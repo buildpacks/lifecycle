@@ -18,36 +18,66 @@ func TestIO(t *testing.T) {
 }
 
 func testIO(t *testing.T, when spec.G, it spec.S) {
-	when(".Copy", func() {
-		var tmpDir string
+	var tmpDir string
 
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
-			if err != nil {
-				t.Fatal(err)
-			}
+	it.Before(func() {
+		var err error
+		tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+		h.AssertNil(t, err)
+	})
+
+	it.After(func() {
+		os.RemoveAll(tmpDir)
+	})
+
+	when("#Copy", func() {
+		when("called with file", func() {
+			it("copies source to destination", func() {
+				src := filepath.Join(tmpDir, "src.txt")
+				dst := filepath.Join(tmpDir, "dest.txt")
+				h.Mkfile(t, "some-file-content", src)
+
+				h.AssertNil(t, io.Copy(src, dst))
+
+				result := h.MustReadFile(t, dst)
+				h.AssertEq(t, string(result), "some-file-content")
+			})
 		})
 
-		it.After(func() {
-			os.RemoveAll(tmpDir)
+		when("called with directory", func() {
+			it("copies source to destination", func() {
+				src := filepath.Join("testdata", "some_dir")
+				dst := filepath.Join(tmpDir, "dest_dir")
+
+				h.AssertNil(t, io.Copy(src, dst))
+
+				h.AssertPathExists(t, filepath.Join(dst))
+				h.AssertPathExists(t, filepath.Join(dst, "some_file"))
+				contents := h.MustReadFile(t, filepath.Join(dst, "some_file"))
+				h.AssertEq(t, string(contents), "some-content\n")
+				h.AssertPathExists(t, filepath.Join(dst, "some_link"))
+				target, err := os.Readlink(filepath.Join(dst, "some_link"))
+				h.AssertNil(t, err)
+				h.AssertEq(t, target, "some_file")
+				h.AssertPathExists(t, filepath.Join(dst, "other_dir"))
+				h.AssertPathExists(t, filepath.Join(dst, "other_dir", "other_file"))
+				contents = h.MustReadFile(t, filepath.Join(dst, "other_dir", "other_file"))
+				h.AssertEq(t, string(contents), "other-content\n")
+				h.AssertPathExists(t, filepath.Join(dst, "other_dir", "other_link"))
+				target, err = os.Readlink(filepath.Join(dst, "other_dir", "other_link"))
+				h.AssertEq(t, target, "other_file")
+				h.AssertNil(t, err)
+			})
 		})
+	})
 
-		it("should copy files", func() {
-			var (
-				src  = filepath.Join(tmpDir, "src.txt")
-				dest = filepath.Join(tmpDir, "dest.txt")
-			)
-
-			h.Mkfile(t, "some-file-content", src)
-
-			err := io.Copy(src, dest)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			result := h.MustReadFile(t, dest)
-			h.AssertEq(t, string(result), "some-file-content")
+	when("#RenameWithWindowsFallback", func() {
+		when("directory does not exist", func() {
+			it("returns not exist error", func() {
+				err := io.RenameWithWindowsFallback("some-not-exist-dir", "dest-dir")
+				h.AssertNotNil(t, err)
+				h.AssertEq(t, os.IsNotExist(err), true)
+			})
 		})
 	})
 }
