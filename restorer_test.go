@@ -20,10 +20,10 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/layer"
-	ltestmock "github.com/buildpacks/lifecycle/internal/layer/testmock"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
+	"github.com/buildpacks/lifecycle/testmock"
 )
 
 func TestRestorer(t *testing.T) {
@@ -33,13 +33,13 @@ func TestRestorer(t *testing.T) {
 			spec.Run(
 				t,
 				"unit-restorer/buildpack-"+buildpackAPIStr+"/platform-"+platformAPIStr,
-				testRestorerBuilder(buildpackAPIStr, platformAPIStr), spec.Report(report.Terminal{}),
+				testRestorer(buildpackAPIStr, platformAPIStr), spec.Report(report.Terminal{}),
 			)
 		}
 	}
 }
 
-func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
+func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		when("#Restore", func() {
 			var (
@@ -50,7 +50,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				testCache    lifecycle.Cache
 				restorer     *lifecycle.Restorer
 				mockCtrl     *gomock.Controller
-				sbomRestorer *ltestmock.MockSBOMRestorer
+				sbomRestorer *testmock.MockSBOMRestorer
 			)
 
 			it.Before(func() {
@@ -73,7 +73,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 				h.AssertNil(t, err)
 
 				mockCtrl = gomock.NewController(t)
-				sbomRestorer = ltestmock.NewMockSBOMRestorer(mockCtrl)
+				sbomRestorer = testmock.NewMockSBOMRestorer(mockCtrl)
 				if api.MustParse(platformAPI).AtLeast("0.8") {
 					sbomRestorer.EXPECT().RestoreToBuildpackLayers(gomock.Any()).AnyTimes()
 				}
@@ -85,7 +85,7 @@ func testRestorerBuilder(buildpackAPI, platformAPI string) func(t *testing.T, wh
 						{ID: "buildpack.id", API: buildpackAPI},
 						{ID: "escaped/buildpack/id", API: buildpackAPI},
 					},
-					LayerMetadataRestorer: layer.NewMetadataRestorer(&logger, layersDir, skipLayers),
+					LayerMetadataRestorer: layer.NewDefaultMetadataRestorer(layersDir, skipLayers, &logger),
 					SBOMRestorer:          sbomRestorer,
 					Platform:              p,
 				}

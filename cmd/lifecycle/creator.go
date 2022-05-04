@@ -9,10 +9,12 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -40,7 +42,7 @@ type createCmd struct {
 	skipRestore         bool
 	useDaemon           bool
 
-	additionalTags cmd.StringSlice
+	additionalTags str.Slice
 	docker         client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain       authn.Keychain
 	platform       Platform
@@ -168,18 +170,31 @@ func (c *createCmd) Exec() error {
 		plan       platform.BuildPlan
 	)
 	if c.platform.API().AtLeast("0.7") {
-		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzedMD, err = analyzeArgs{
-			docker:           c.docker,
-			keychain:         c.keychain,
-			layersDir:        c.layersDir,
-			launchCacheDir:   c.launchCacheForAnalyzer(),
-			platform:         c.platform,
-			previousImageRef: c.previousImageRef,
-			runImageRef:      c.runImageRef,
-			skipLayers:       c.skipRestore,
-			useDaemon:        c.useDaemon,
-		}.analyze()
+		factory := lifecycle.NewAnalyzerFactory(
+			c.platform.API(),
+			NewCacheHandler(c.keychain),
+			NewConfigHandler(),
+			NewImageHandler(c.docker, c.keychain),
+			NewRegistryHandler(c.keychain),
+		)
+		analyzer, err := factory.NewAnalyzer(
+			c.additionalTags,
+			c.cacheImageRef,
+			c.launchCacheDir,
+			c.layersDir,
+			"",
+			buildpack.Group{},
+			"",
+			c.outputImageRef,
+			c.previousImageRef,
+			c.runImageRef,
+			c.skipRestore,
+			cmd.DefaultLogger,
+		)
+		if err != nil {
+			return errors.Wrap(err, "initializing analyzer")
+		}
+		analyzedMD, err = analyzer.Analyze()
 		if err != nil {
 			return err
 		}
@@ -211,17 +226,31 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		analyzedMD, err = analyzeArgs{
-			docker:           c.docker,
-			keychain:         c.keychain,
-			layersDir:        c.layersDir,
-			legacyCache:      cacheStore,
-			legacyGroup:      group,
-			skipLayers:       c.skipRestore,
-			platform:         c.platform,
-			previousImageRef: c.previousImageRef,
-			useDaemon:        c.useDaemon,
-		}.analyze()
+		factory := lifecycle.NewAnalyzerFactory(
+			c.platform.API(),
+			NewCacheHandler(c.keychain),
+			NewConfigHandler(),
+			NewImageHandler(c.docker, c.keychain),
+			NewRegistryHandler(c.keychain),
+		)
+		analyzer, err := factory.NewAnalyzer(
+			c.additionalTags,
+			c.cacheImageRef,
+			c.launchCacheDir,
+			c.layersDir,
+			c.cacheDir,
+			group,
+			"",
+			c.outputImageRef,
+			c.previousImageRef,
+			c.runImageRef,
+			c.skipRestore,
+			cmd.DefaultLogger,
+		)
+		if err != nil {
+			return errors.Wrap(err, "initializing analyzer")
+		}
+		analyzedMD, err = analyzer.Analyze()
 		if err != nil {
 			return err
 		}
@@ -318,13 +347,6 @@ func (c *createCmd) populateRunImage() error {
 		return errors.New("-run-image is required when there is no stack metadata available")
 	}
 	return nil
-}
-
-func (c *createCmd) launchCacheForAnalyzer() string {
-	if c.useDaemon && c.platform.API().AtLeast("0.8") {
-		return c.launchCacheDir
-	}
-	return ""
 }
 
 func startPinging(docker client.CommonAPIClient) (stopPinging func()) {

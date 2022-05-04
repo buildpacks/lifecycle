@@ -1,0 +1,5 @@
+[[group]]
+id = "some-buildpack-id"
+version = "some-buildpack-version"
+api = "1.2.3"
+homepage = "some-buildpack-homepage"

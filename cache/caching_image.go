@@ -11,19 +11,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-type cachingImage struct {
+type CachingImage struct {
 	imgutil.Image
 	cache *VolumeCache
 }
 
 func NewCachingImage(image imgutil.Image, cache *VolumeCache) imgutil.Image {
-	return &cachingImage{
+	return &CachingImage{
 		Image: image,
 		cache: cache,
 	}
 }
 
-func (c *cachingImage) AddLayer(path string) error {
+func (c *CachingImage) AddLayer(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return errors.Wrap(err, "opening layer file")
@@ -38,7 +38,7 @@ func (c *cachingImage) AddLayer(path string) error {
 	return c.AddLayerWithDiffID(path, diffID)
 }
 
-func (c *cachingImage) AddLayerWithDiffID(path string, diffID string) error {
+func (c *CachingImage) AddLayerWithDiffID(path string, diffID string) error {
 	if err := c.cache.AddLayerFile(path, diffID); err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (c *cachingImage) AddLayerWithDiffID(path string, diffID string) error {
 	return c.Image.AddLayerWithDiffID(path, diffID)
 }
 
-func (c *cachingImage) ReuseLayer(diffID string) error {
+func (c *CachingImage) ReuseLayer(diffID string) error {
 	found, err := c.cache.HasLayer(diffID)
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func (c *cachingImage) ReuseLayer(diffID string) error {
 	return c.cache.AddLayer(rc, diffID)
 }
 
-func (c *cachingImage) GetLayer(diffID string) (io.ReadCloser, error) {
+func (c *CachingImage) GetLayer(diffID string) (io.ReadCloser, error) {
 	if found, err := c.cache.HasLayer(diffID); err != nil {
 		return nil, fmt.Errorf("layer with SHA '%s' not found", diffID)
 	} else if found {
@@ -82,7 +82,7 @@ func (c *cachingImage) GetLayer(diffID string) (io.ReadCloser, error) {
 	return c.Image.GetLayer(diffID)
 }
 
-func (c *cachingImage) Save(additionalNames ...string) error {
+func (c *CachingImage) Save(additionalNames ...string) error {
 	err := c.Image.Save(additionalNames...)
 
 	if saveSucceededFor(c.Name(), err) {

@@ -361,3 +361,27 @@ func AllLogs(logHandler *memory.Handler) string {
 	}
 	return CleanEndings(out)
 }
+
+func AssertLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
+	t.Helper()
+	var messages []string
+	for _, le := range logHandler.Entries {
+		messages = append(messages, le.Message)
+		if strings.Contains(le.Message, expected) {
+			return
+		}
+	}
+	t.Fatalf("Expected log entries %+v to contain %s", messages, expected)
+}
+
+func AssertNoLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
+	t.Helper()
+	var messages []string
+	for _, le := range logHandler.Entries {
+		messages = append(messages, le.Message)
+		if strings.Contains(le.Message, expected) {
+			fmtMessage := "\n" + strings.Join(messages, "\n") + "\n"
+			t.Fatalf("Expected log entries: %s not to contain \n'%s'", fmtMessage, expected)
+		}
+	}
+}

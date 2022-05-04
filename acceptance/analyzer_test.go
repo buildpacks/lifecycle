@@ -219,6 +219,31 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-other-buildpack-id"))
 				h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id"))
 			})
+
+			when("group contains unsupported buildpacks", func() {
+				it("errors", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -group flag")
+
+					cmd := exec.Command(
+						"docker", "run", "--rm",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						analyzeImage,
+						ctrPath(analyzerPath),
+						"-group", ctrPath("/layers/unsupported-group.toml"),
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
+
+					h.AssertNotNil(t, err)
+					failErr, ok := err.(*exec.ExitError)
+					if !ok {
+						t.Fatalf("expected an error of type exec.ExitError")
+					}
+					h.AssertEq(t, failErr.ExitCode(), 12) // platform code for buildpack api incompatibility
+					expected := "buildpack API version '0.1' is incompatible with the lifecycle"
+					h.AssertStringContains(t, string(output), expected)
+				})
+			})
 		})
 
 		when("analyzed path is provided", func() {
@@ -337,7 +362,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 						h.AssertNotNil(t, err)
 
-						h.AssertStringContains(t, string(output), "failed to : ensure registry read access to some-run-image") // TODO: update some-run-image to have explicit permissions when https://github.com/buildpacks/lifecycle/pull/685 is merged
+						h.AssertStringContains(t, string(output), "validating registry read access: ensure registry read access to some-run-image") // TODO: update some-run-image to have explicit permissions when https://github.com/buildpacks/lifecycle/pull/685 is merged
 					})
 
 					when("stack.toml not present", func() {
@@ -385,7 +410,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("the provided destination tags are on different registries", func() {
+		when.Pend("the provided destination tags are on different registries", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept destination tags")
 
@@ -933,7 +958,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "failed to : ensure registry read access to " + analyzeRegFixtures.InaccessibleImage
+						expected := "validating registry read access: ensure registry read access to " + analyzeRegFixtures.InaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
@@ -1033,7 +1058,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							output, err := cmd.CombinedOutput()
 
 							h.AssertNotNil(t, err)
-							expected := "failed to : ensure registry read/write access to " + analyzeRegFixtures.ReadOnlyCacheImage
+							expected := "validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.ReadOnlyCacheImage
 							h.AssertStringContains(t, string(output), expected)
 						})
 					})
@@ -1106,7 +1131,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output, err := cmd.CombinedOutput()
 
 						h.AssertNotNil(t, err)
-						expected := "failed to : ensure registry read/write access to " + analyzeRegFixtures.InaccessibleImage
+						expected := "validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.InaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})

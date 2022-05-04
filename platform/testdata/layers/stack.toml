@@ -1,0 +1,3 @@
+[run-image]
+ image = "some-run-image"
+ mirrors = ["some-run-image-mirror", "some-other-run-image-mirror"]

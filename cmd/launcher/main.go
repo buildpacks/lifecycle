@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	platform "github.com/buildpacks/lifecycle/platform/launch"
 )
 
 func main() {
@@ -26,7 +26,6 @@ func runLaunch() error {
 	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
 		cmd.Exit(err)
 	}
-
 	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata

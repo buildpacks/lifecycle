@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -436,6 +437,14 @@ func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMet
 	}
 
 	return analyzedMD, nil
+}
+
+func parseRegistry(providedRef string) (string, error) {
+	ref, err := name.ParseReference(providedRef, name.WeakValidation)
+	if err != nil {
+		return "", err
+	}
+	return ref.Context().RegistryStr(), nil
 }
 
 func (ea exportArgs) customSourceDateEpoch() time.Time {

@@ -5,19 +5,25 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	lplatform "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Platform interface {
 	API() *api.Version
-	CodeFor(errType lplatform.LifecycleExitError) int
+	CodeFor(errType platform.LifecycleExitError) int
+	ResolveAnalyze(inputs platform.AnalyzeInputs, logger platform.Logger) (platform.AnalyzeInputs, error)
 }
 
 func main() {
@@ -26,13 +32,13 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	p := lplatform.NewPlatform(platformAPI)
+	p := platform.NewPlatform(platformAPI)
 
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
 		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: p}}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: p}}, false)
+		cmd.Run(&analyzeCmd{platform: p}, false)
 	case "restorer":
 		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
 	case "builder":
@@ -60,7 +66,7 @@ func subcommand(platform Platform) {
 	case "detect":
 		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, true)
 	case "analyze":
-		cmd.Run(&analyzeCmd{analyzeArgs: analyzeArgs{platform: platform}}, true)
+		cmd.Run(&analyzeCmd{platform: platform}, true)
 	case "restore":
 		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: platform}}, true)
 	case "build":
@@ -76,6 +82,90 @@ func subcommand(platform Platform) {
 	}
 }
 
+// handlers
+
+type DefaultCacheHandler struct {
+	keychain authn.Keychain
+}
+
+func NewCacheHandler(keychain authn.Keychain) *DefaultCacheHandler {
+	return &DefaultCacheHandler{
+		keychain: keychain,
+	}
+}
+
+func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string) (lifecycle.Cache, error) {
+	var (
+		cacheStore lifecycle.Cache
+		err        error
+	)
+	if cacheImageRef != "" {
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating image cache")
+		}
+	} else if cacheDir != "" {
+		cacheStore, err = cache.NewVolumeCache(cacheDir)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating volume cache")
+		}
+	}
+	return cacheStore, nil
+}
+
+type DefaultImageHandler struct {
+	docker   client.CommonAPIClient
+	keychain authn.Keychain
+}
+
+func NewImageHandler(docker client.CommonAPIClient, keychain authn.Keychain) *DefaultImageHandler {
+	return &DefaultImageHandler{
+		docker:   docker,
+		keychain: keychain,
+	}
+}
+
+func (h *DefaultImageHandler) InitImage(imageRef string) (imgutil.Image, error) {
+	if imageRef == "" {
+		return nil, nil
+	}
+
+	if h.docker != nil {
+		return local.NewImage(
+			imageRef,
+			h.docker,
+			local.FromBaseImage(imageRef),
+		)
+	}
+
+	return remote.NewImage(
+		imageRef,
+		h.keychain,
+		remote.FromBaseImage(imageRef),
+	)
+}
+
+func (h *DefaultImageHandler) Docker() bool {
+	return h.docker != nil
+}
+
+type DefaultConfigHandler struct{}
+
+func NewConfigHandler() *DefaultConfigHandler {
+	return &DefaultConfigHandler{}
+}
+
+func (h *DefaultConfigHandler) ReadGroup(path string) ([]buildpack.GroupBuildpack, error) {
+	group, err := buildpack.ReadGroup(path)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading buildpack group")
+	}
+	if err = verifyBuildpackApis(group); err != nil {
+		return nil, err
+	}
+	return group.Group, nil
+}
+
 func verifyBuildpackApis(group buildpack.Group) error {
 	for _, bp := range group.Group {
 		if bp.API == "" {
@@ -89,6 +179,58 @@ func verifyBuildpackApis(group buildpack.Group) error {
 	}
 	return nil
 }
+
+type DefaultRegistryHandler struct {
+	keychain authn.Keychain
+}
+
+func NewRegistryHandler(keychain authn.Keychain) *DefaultRegistryHandler {
+	return &DefaultRegistryHandler{
+		keychain: keychain,
+	}
+}
+
+func (rv *DefaultRegistryHandler) EnsureReadAccess(imageRefs ...string) error {
+	for _, imageRef := range imageRefs {
+		if err := verifyReadAccess(imageRef, rv.keychain); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (rv *DefaultRegistryHandler) EnsureWriteAccess(imageRefs ...string) error {
+	for _, imageRef := range imageRefs {
+		if err := verifyReadWriteAccess(imageRef, rv.keychain); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func verifyReadAccess(imageRef string, keychain authn.Keychain) error {
+	if imageRef == "" {
+		return nil
+	}
+	img, _ := remote.NewImage(imageRef, keychain)
+	if !img.CheckReadAccess() {
+		return errors.Errorf("ensure registry read access to %s", imageRef)
+	}
+	return nil
+}
+
+func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
+	if imageRef == "" {
+		return nil
+	}
+	img, _ := remote.NewImage(imageRef, keychain)
+	if !img.CheckReadWriteAccess() {
+		return errors.Errorf("ensure registry read/write access to %s", imageRef)
+	}
+	return nil
+}
+
+// helpers
 
 func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecycle.Cache, error) {
 	var (

@@ -1,4 +1,4 @@
-package platform_test
+package launch_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
+	platform "github.com/buildpacks/lifecycle/platform/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -28,9 +28,6 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				it("configures the platform", func() {
 					foundPlatform := platform.NewPlatform(platformAPI.String())
 
-					t.Log("with an inputs resolver")
-					h.AssertNotNil(t, foundPlatform.InputsResolver)
-
 					t.Log("with a default exiter")
 					_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
 					h.AssertEq(t, ok, true)
@@ -47,9 +44,6 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 
 				it("configures the platform", func() {
 					foundPlatform := platform.NewPlatform(platformAPI.String())
-
-					t.Log("with an inputs resolver")
-					h.AssertNotNil(t, foundPlatform.InputsResolver)
 
 					t.Log("with a legacy exiter")
 					_, ok := foundPlatform.Exiter.(*platform.LegacyExiter)
