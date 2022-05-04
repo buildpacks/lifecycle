@@ -156,6 +156,10 @@ func authConfigToHeader(config *authn.AuthConfig) (string, error) {
 		return fmt.Sprintf("Basic %s", encoded), nil
 	}
 
+	if config.IdentityToken != "" {
+		return fmt.Sprintf("Bearer %s", config.IdentityToken), nil
+	}
+
 	return "", nil
 }
 

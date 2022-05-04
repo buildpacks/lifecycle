@@ -251,6 +251,9 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					"index.docker.io": {
 						RegistryToken: "qwerty=",
 					},
+					"oauth.registry.io": {
+						IdentityToken: "hjkl=",
+					},
 				},
 			}
 		})
@@ -258,14 +261,17 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 		it("builds json encoded env with auth headers", func() {
 			envVar, err := auth.BuildEnvVar(keychain,
 				"some-registry.com/image",
-				"some-registry.com/image2",
-				"other-registry.com/image3",
-				"my/image")
+				"some-registry.com/image1",
+				"other-registry.com/image2",
+				"my/image", // index.docker.io
+				"oauth.registry.io/image",
+			)
 			h.AssertNil(t, err)
 
 			var jsonAuth bytes.Buffer
 			h.AssertNil(t, json.Compact(&jsonAuth, []byte(`{
 	"index.docker.io": "Bearer qwerty=",
+	"oauth.registry.io": "Bearer hjkl=",
 	"other-registry.com": "Basic asdf=",
 	"some-registry.com": "Basic dXNlcjpwYXNzd29yZA=="
 }`)))
