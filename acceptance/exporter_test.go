@@ -6,6 +6,7 @@ package acceptance
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +20,10 @@ import (
 
 	"github.com/buildpacks/imgutil"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -214,6 +218,41 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.Run(t, exec.Command("docker", "pull", exportedImageName))
 							assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 						})
+
+						it("is created with empty layer", func() {
+							cacheImageName := exportTest.RegRepoName("some-empty-cache-image-" + h.RandString(10))
+							exportFlags := []string{"-cache-image", cacheImageName, "-layers", "/other_layers"}
+							if api.MustParse(platformAPI).LessThan("0.7") {
+								exportFlags = append(exportFlags, "-run-image", exportRegFixtures.ReadOnlyRunImage)
+							}
+
+							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+							exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
+							exportArgs = append(exportArgs, exportedImageName)
+
+							output := h.DockerRun(t,
+								exportImage,
+								h.WithFlags(
+									"--env", "CNB_PLATFORM_API="+platformAPI,
+									"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+									"--network", exportRegNetwork,
+								),
+								h.WithArgs(exportArgs...),
+							)
+							h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+							testEmptyLayerSHA := calculateEmptyLayerSha(t)
+
+							// Retrieve the cache image from the ephemeral registry
+							h.Run(t, exec.Command("docker", "pull", cacheImageName))
+							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain)
+							h.AssertNil(t, err)
+
+							//Assert the cache image was created with an empty layer
+							layer, err := subject.RetrieveLayer(testEmptyLayerSHA)
+							h.AssertNil(t, err)
+							defer layer.Close()
+						})
 					})
 				})
 			})
@@ -247,4 +286,17 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 	analyzedMD.PreviousImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}
 	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+
+	placeHolderPath = filepath.Join("testdata", "exporter", "container", "other_layers", "analyzed.toml.placeholder")
+	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
+	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+}
+
+func calculateEmptyLayerSha(t *testing.T) string {
+	tmpDir, err := ioutil.TempDir("", "")
+	h.AssertNil(t, err)
+	testLayerEmptyPath := filepath.Join(tmpDir, "empty.tar")
+	h.AssertNil(t, ioutil.WriteFile(testLayerEmptyPath, []byte{}, 0600))
+	return "sha256:" + h.ComputeSHA256ForFile(t, testLayerEmptyPath)
 }
