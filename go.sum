@@ -114,6 +114,8 @@ github.com/buildpacks/imgutil v0.0.0-20220503154324-ea435be1d82b h1:rGui5OQFhtSa
 github.com/buildpacks/imgutil v0.0.0-20220503154324-ea435be1d82b/go.mod h1:epiOwjf1aINTJVW67YSy7Kpzfxetf9n09C0niao4Yl8=
 github.com/buildpacks/imgutil v0.0.0-20220504141347-7d30d57687f1 h1:lHOAwzhPZnuZx91Di+QujpKVEKJEr/YUcm8tIL/gvII=
 github.com/buildpacks/imgutil v0.0.0-20220504141347-7d30d57687f1/go.mod h1:FEERX7CHvd8nq4TDwozqf0IMYaUQKKHwPLAkmpC4RrM=
+github.com/buildpacks/imgutil v0.0.0-20220504154612-41b113050e2b h1:DryqLviRhksqkKfZ/5I610XUbuap2EsRaC6tNx4RQdc=
+github.com/buildpacks/imgutil v0.0.0-20220504154612-41b113050e2b/go.mod h1:FEERX7CHvd8nq4TDwozqf0IMYaUQKKHwPLAkmpC4RrM=
 github.com/cenkalti/backoff/v4 v4.1.1/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

@@ -3,7 +3,7 @@ module github.com/buildpacks/lifecycle
 require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20220504141347-7d30d57687f1
+	github.com/buildpacks/imgutil v0.0.0-20220504154612-41b113050e2b
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.8
