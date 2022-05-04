@@ -179,16 +179,13 @@ func (c *VolumeCache) Commit() error {
 	c.committed = true
 
 	// Test to see if copying and removing the cache can "fix" https://github.com/buildpacks/pack/issues/1423
-	if err := io.RecursiveCopy(c.committedDir, c.backupDir); err != nil {
-		return errors.Wrap(err, "copying committed directory")
-	}
-	if err := os.RemoveAll(c.committedDir); err != nil {
-		return errors.Wrap(err, "removing committed directory")
+	if err := rename(c.committedDir, c.backupDir); err != nil {
+		return errors.Wrap(err, "backing up cache")
 	}
 	defer os.RemoveAll(c.backupDir)
 
-	if err1 := os.Rename(c.stagingDir, c.committedDir); err1 != nil {
-		if err2 := os.Rename(c.backupDir, c.committedDir); err2 != nil {
+	if err1 := rename(c.stagingDir, c.committedDir); err1 != nil {
+		if err2 := rename(c.backupDir, c.committedDir); err2 != nil {
 			return errors.Wrap(err2, "rolling back cache")
 		}
 		return errors.Wrap(err1, "committing cache")
@@ -228,4 +225,14 @@ func copyFile(from, to string) error {
 	_, err = goio.Copy(out, in)
 
 	return err
+}
+
+func rename(from, to string) error {
+	if err := io.RecursiveCopy(from, to); err != nil {
+		return errors.Wrap(err, "copying directory")
+	}
+	if err := os.RemoveAll(from); err != nil {
+		return errors.Wrap(err, "removing directory")
+	}
+	return nil
 }
