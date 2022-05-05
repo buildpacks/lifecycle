@@ -27,6 +27,8 @@ func Copy(src, dst string) error {
 		if err := copySymlink(src, dst); err != nil {
 			return err
 		}
+	default:
+		// ignore edge cases (unix socket, named pipe, etc.)
 	}
 	return nil
 }
