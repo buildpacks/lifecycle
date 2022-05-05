@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -105,7 +106,7 @@ func (c *VolumeCache) AddLayerFile(tarPath string, diffID string) error {
 		return nil
 	}
 
-	if err := copyFile(tarPath, layerTar); err != nil {
+	if err := fsutil.Copy(tarPath, layerTar); err != nil {
 		return errors.Wrapf(err, "caching layer (%s)", diffID)
 	}
 	return nil
@@ -176,13 +177,13 @@ func (c *VolumeCache) Commit() error {
 		return errCacheCommitted
 	}
 	c.committed = true
-	if err := os.Rename(c.committedDir, c.backupDir); err != nil {
+	if err := fsutil.RenameWithWindowsFallback(c.committedDir, c.backupDir); err != nil {
 		return errors.Wrap(err, "backing up cache")
 	}
 	defer os.RemoveAll(c.backupDir)
 
-	if err1 := os.Rename(c.stagingDir, c.committedDir); err1 != nil {
-		if err2 := os.Rename(c.backupDir, c.committedDir); err2 != nil {
+	if err1 := fsutil.RenameWithWindowsFallback(c.stagingDir, c.committedDir); err1 != nil {
+		if err2 := fsutil.RenameWithWindowsFallback(c.backupDir, c.committedDir); err2 != nil {
 			return errors.Wrap(err2, "rolling back cache")
 		}
 		return errors.Wrap(err1, "committing cache")
@@ -204,22 +205,4 @@ func (c *VolumeCache) setupStagingDir() error {
 		return err
 	}
 	return os.MkdirAll(c.stagingDir, 0777)
-}
-
-func copyFile(from, to string) error {
-	in, err := os.Open(from)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(to)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-
-	return err
 }
