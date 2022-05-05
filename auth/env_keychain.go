@@ -157,15 +157,16 @@ func authConfigToHeader(config *authn.AuthConfig) (string, error) {
 	}
 
 	if config.IdentityToken != "" {
-		return fmt.Sprintf("Bearer %s", config.IdentityToken), nil
+		return fmt.Sprintf("X-Identity %s", config.IdentityToken), nil
 	}
 
 	return "", nil
 }
 
 var (
-	basicAuthRegExp  = regexp.MustCompile("(?i)^basic (.*)$")
-	bearerAuthRegExp = regexp.MustCompile("(?i)^bearer (.*)$")
+	basicAuthRegExp     = regexp.MustCompile("(?i)^basic (.*)$")
+	bearerAuthRegExp    = regexp.MustCompile("(?i)^bearer (.*)$")
+	identityTokenRegExp = regexp.MustCompile("(?i)^x-identity (.*)$")
 )
 
 func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
@@ -178,6 +179,12 @@ func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
 	if matches := bearerAuthRegExp.FindAllStringSubmatch(header, -1); len(matches) != 0 {
 		return &authn.AuthConfig{
 			RegistryToken: matches[0][1],
+		}, nil
+	}
+
+	if matches := identityTokenRegExp.FindAllStringSubmatch(header, -1); len(matches) != 0 {
+		return &authn.AuthConfig{
+			IdentityToken: matches[0][1],
 		}, nil
 	}
 

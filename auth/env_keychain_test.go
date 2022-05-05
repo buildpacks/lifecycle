@@ -27,7 +27,11 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					err := os.Setenv(
 						"CNB_REGISTRY_AUTH",
-						`{"basic-registry.com": "Basic some-basic-auth=", "bearer-registry.com": "Bearer some-bearer-auth="}`,
+						`{
+	"basic-registry.com": "Basic some-basic-auth=",
+	"bearer-registry.com": "Bearer some-bearer-auth=",
+	"oauth.registry.io": "X-Identity some-identity-token="
+}`,
 					)
 					h.AssertNil(t, err)
 				})
@@ -44,6 +48,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 						Auths: map[string]string{
 							"basic-registry.com":  "Basic some-basic-auth=",
 							"bearer-registry.com": "Bearer some-bearer-auth=",
+							"oauth.registry.io":   "X-Identity some-identity-token=",
 						},
 					})
 				})
@@ -92,16 +97,20 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					"index.docker.io": {
 						RegistryToken: "qwerty=",
 					},
+					"oauth.registry.io": {
+						IdentityToken: "hjkl=",
+					},
 				},
 			}
 
 			inMemoryKeychain := auth.InMemoryKeychain(
 				keychain,
-				"some-registry.com/image",
+				"some-registry.com/image1",
 				"some-registry.com/image2",
 				"", // empty strings should be ignored
-				"other-registry.com/image3",
-				"my/image",
+				"other-registry.com/image",
+				"my/image", // index.docker.io
+				"oauth.registry.io/image",
 			)
 
 			h.AssertEq(t, inMemoryKeychain, &auth.ResolvedKeychain{
@@ -109,6 +118,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					"index.docker.io":    "Bearer qwerty=",
 					"other-registry.com": "Basic asdf=",
 					"some-registry.com":  "Basic dXNlcjpwYXNzd29yZA==",
+					"oauth.registry.io":  "X-Identity hjkl=",
 				},
 			})
 		})
@@ -155,12 +165,13 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				resolvedKeychain = auth.ResolvedKeychain{Auths: map[string]string{
 					"basic-registry.com":  "Basic some-basic-auth=",
 					"bearer-registry.com": "Bearer some-bearer-auth=",
+					"oauth.registry.io":   "X-Identity some-identity-token=",
 					"bad-header.com":      "Some Bad Header",
 				}}
 			})
 
 			when("auth header is found", func() {
-				it("loads the basic auth from the environment", func() {
+				it("loads the basic auth from memory", func() {
 					registry, err := name.NewRegistry("basic-registry.com", name.WeakValidation)
 					h.AssertNil(t, err)
 
@@ -173,7 +184,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, header, &authn.AuthConfig{Auth: "some-basic-auth="})
 				})
 
-				it("loads the bearer auth from the environment", func() {
+				it("loads the bearer auth from memory", func() {
 					registry, err := name.NewRegistry("bearer-registry.com", name.WeakValidation)
 					h.AssertNil(t, err)
 
@@ -184,6 +195,19 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, header, &authn.AuthConfig{RegistryToken: "some-bearer-auth="})
+				})
+
+				it("loads the identity token from memory", func() {
+					registry, err := name.NewRegistry("oauth.registry.io", name.WeakValidation)
+					h.AssertNil(t, err)
+
+					authenticator, err := resolvedKeychain.Resolve(registry)
+					h.AssertNil(t, err)
+
+					header, err := authenticator.Authorization()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, header, &authn.AuthConfig{IdentityToken: "some-identity-token="})
 				})
 
 				when("error parsing header", func() {
@@ -260,9 +284,9 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 
 		it("builds json encoded env with auth headers", func() {
 			envVar, err := auth.BuildEnvVar(keychain,
-				"some-registry.com/image",
 				"some-registry.com/image1",
-				"other-registry.com/image2",
+				"some-registry.com/image2",
+				"other-registry.com/image",
 				"my/image", // index.docker.io
 				"oauth.registry.io/image",
 			)
@@ -271,7 +295,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 			var jsonAuth bytes.Buffer
 			h.AssertNil(t, json.Compact(&jsonAuth, []byte(`{
 	"index.docker.io": "Bearer qwerty=",
-	"oauth.registry.io": "Bearer hjkl=",
+	"oauth.registry.io": "X-Identity hjkl=",
 	"other-registry.com": "Basic asdf=",
 	"some-registry.com": "Basic dXNlcjpwYXNzd29yZA=="
 }`)))
