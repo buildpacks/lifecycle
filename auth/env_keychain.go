@@ -36,8 +36,8 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 	return authn.NewMultiKeychain(
 		envKeychain,
 		InMemoryKeychain(authn.DefaultKeychain, images...),
-		amazonKeychain,
-		azureKeychain,
+		InMemoryKeychain(amazonKeychain, images...),
+		InMemoryKeychain(azureKeychain, images...),
 	), nil
 }
 
