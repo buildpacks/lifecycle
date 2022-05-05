@@ -4,7 +4,7 @@ require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20220504154612-41b113050e2b
-	github.com/docker/docker v20.10.14+incompatible
+	github.com/docker/docker v20.10.15+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.8
 	github.com/google/go-containerregistry v0.8.0
@@ -18,7 +18,6 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
-	github.com/containerd/containerd v1.5.8 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.10.1 // indirect
 	github.com/docker/cli v20.10.12+incompatible // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
@@ -26,7 +25,6 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
@@ -38,9 +36,6 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
-	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
-	google.golang.org/grpc v1.43.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 )
 
 go 1.17
