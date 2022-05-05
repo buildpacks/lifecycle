@@ -1,4 +1,4 @@
-package io
+package fsutil
 
 import (
 	"io"

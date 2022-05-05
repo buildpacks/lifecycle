@@ -2,7 +2,7 @@ package layer
 
 import (
 	"fmt"
-	goio "io"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -14,7 +14,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	io "github.com/buildpacks/lifecycle/internal/io"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -27,7 +27,7 @@ type SBOMRestorer interface {
 }
 
 type Cache interface {
-	RetrieveLayer(sha string) (goio.ReadCloser, error)
+	RetrieveLayer(sha string) (io.ReadCloser, error)
 }
 
 type SBOMRestorerOpts struct {
@@ -138,7 +138,7 @@ func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuild
 			return nil
 		}
 
-		return io.Copy(path, filepath.Join(destDir, fmt.Sprintf("%s.%s", layerName, fileName)))
+		return fsutil.Copy(path, filepath.Join(destDir, fmt.Sprintf("%s.%s", layerName, fileName)))
 	}
 }
 

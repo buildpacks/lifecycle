@@ -1,4 +1,4 @@
-package io_test
+package fsutil_test
 
 import (
 	"io/ioutil"
@@ -9,7 +9,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/internal/io"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -37,7 +37,7 @@ func testIO(t *testing.T, when spec.G, it spec.S) {
 				dst := filepath.Join(tmpDir, "dest.txt")
 				h.Mkfile(t, "some-file-content", src)
 
-				h.AssertNil(t, io.Copy(src, dst))
+				h.AssertNil(t, fsutil.Copy(src, dst))
 
 				result := h.MustReadFile(t, dst)
 				h.AssertEq(t, string(result), "some-file-content")
@@ -49,7 +49,7 @@ func testIO(t *testing.T, when spec.G, it spec.S) {
 				src := filepath.Join("testdata", "some_dir")
 				dst := filepath.Join(tmpDir, "dest_dir")
 
-				h.AssertNil(t, io.Copy(src, dst))
+				h.AssertNil(t, fsutil.Copy(src, dst))
 
 				h.AssertPathExists(t, filepath.Join(dst))
 				h.AssertPathExists(t, filepath.Join(dst, "some_file"))
@@ -74,7 +74,7 @@ func testIO(t *testing.T, when spec.G, it spec.S) {
 	when("#RenameWithWindowsFallback", func() {
 		when("directory does not exist", func() {
 			it("returns not exist error", func() {
-				err := io.RenameWithWindowsFallback("some-not-exist-dir", "dest-dir")
+				err := fsutil.RenameWithWindowsFallback("some-not-exist-dir", "dest-dir")
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, os.IsNotExist(err), true)
 			})
