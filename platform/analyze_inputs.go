@@ -43,29 +43,26 @@ func (a AnalyzeInputs) RegistryImages() []string {
 func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger Logger) (AnalyzeInputs, error) {
 	resolvedInputs := inputs
 
-	if err := r.fillDefaults(&resolvedInputs, logger); err != nil {
+	if err := r.fillAnalyzeDefaults(&resolvedInputs, logger); err != nil {
 		return AnalyzeInputs{}, err
 	}
 
-	if err := r.validate(resolvedInputs, logger); err != nil {
+	if err := r.validateAnalyze(resolvedInputs, logger); err != nil {
 		return AnalyzeInputs{}, err
 	}
 	return resolvedInputs, nil
 }
 
-func (r *InputsResolver) fillDefaults(inputs *AnalyzeInputs, logger Logger) error {
+func (r *InputsResolver) fillAnalyzeDefaults(inputs *AnalyzeInputs, logger Logger) error {
 	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
 		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, r.platformAPI)
 	}
-
 	if inputs.LegacyGroupPath == PlaceholderGroupPath {
 		inputs.LegacyGroupPath = defaultPath(PlaceholderGroupPath, inputs.LayersDir, r.platformAPI)
 	}
-
 	if inputs.PreviousImageRef == "" {
 		inputs.PreviousImageRef = inputs.OutputImageRef
 	}
-
 	return r.fillRunImage(inputs, logger)
 }
 
@@ -91,7 +88,7 @@ func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger Logger) erro
 	return nil
 }
 
-func (r *InputsResolver) validate(inputs AnalyzeInputs, logger Logger) error {
+func (r *InputsResolver) validateAnalyze(inputs AnalyzeInputs, logger Logger) error {
 	if inputs.OutputImageRef == "" {
 		return errors.New("image argument is required")
 	}

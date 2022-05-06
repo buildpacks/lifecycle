@@ -64,15 +64,3 @@ func (mr *MockDirStoreMockRecorder) LookupExt(arg0, arg1 interface{}) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookupExt", reflect.TypeOf((*MockDirStore)(nil).LookupExt), arg0, arg1)
 }
-
-// RegisterExtensionsOrder mocks base method.
-func (m *MockDirStore) RegisterExtensionsOrder(arg0 buildpack.Order) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RegisterExtensionsOrder", arg0)
-}
-
-// RegisterExtensionsOrder indicates an expected call of RegisterExtensionsOrder.
-func (mr *MockDirStoreMockRecorder) RegisterExtensionsOrder(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterExtensionsOrder", reflect.TypeOf((*MockDirStore)(nil).RegisterExtensionsOrder), arg0)
-}

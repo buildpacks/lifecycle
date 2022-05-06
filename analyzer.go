@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
-type Platform interface {
+type Platform interface { // TODO: move someplace else
 	API() *api.Version
 }
 

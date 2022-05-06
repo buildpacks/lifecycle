@@ -35,7 +35,7 @@ func TestBuilder(t *testing.T) {
 
 //go:generate mockgen -package testmock -destination testmock/env.go github.com/buildpacks/lifecycle BuildEnv
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
-//go:generate mockgen -package testmock -destination testmock/buildpack.go github.com/buildpacks/lifecycle BuildModule
+//go:generate mockgen -package testmock -destination testmock/build_module.go github.com/buildpacks/lifecycle/buildpack BuildModule
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
@@ -127,8 +127,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				bpA := testmock.NewMockBuildpack(mockCtrl)
-				bpB := testmock.NewMockBuildpack(mockCtrl)
+				bpA := testmock.NewMockBuildModule(mockCtrl)
+				bpB := testmock.NewMockBuildModule(mockCtrl)
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 				expectedPlanA := buildpack.Plan{Entries: []buildpack.Require{
 					{Name: "some-dep", Version: "v1"},
@@ -152,7 +152,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should provide the correct environment to each buildpack", func() {
 				bpA := &fakeBp{}
-				bpB := testmock.NewMockBuildpack(mockCtrl)
+				bpB := testmock.NewMockBuildModule(mockCtrl)
 				expectedEnv := env.NewBuildEnv(append(os.Environ(), "HOME=modified-by-bpA"))
 
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
@@ -166,8 +166,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("copies any created BOM files to the correct locations", func() {
-				bpA := testmock.NewMockBuildpack(mockCtrl)
-				bpB := testmock.NewMockBuildpack(mockCtrl)
+				bpA := testmock.NewMockBuildModule(mockCtrl)
+				bpB := testmock.NewMockBuildModule(mockCtrl)
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 				dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 
@@ -241,8 +241,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error for any unsupported SBOM formats", func() {
-				bpA := testmock.NewMockBuildpack(mockCtrl)
-				bpB := testmock.NewMockBuildpack(mockCtrl)
+				bpA := testmock.NewMockBuildModule(mockCtrl)
+				bpB := testmock.NewMockBuildModule(mockCtrl)
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 				dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 
@@ -281,8 +281,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.Mkdir(t, oldDir)
 				oldFile := filepath.Join(oldDir, "launch.sbom.cdx.json")
 				h.Mkfile(t, `{"key": "some-bom-content"}`, oldFile)
-				bpA := testmock.NewMockBuildpack(mockCtrl)
-				bpB := testmock.NewMockBuildpack(mockCtrl)
+				bpA := testmock.NewMockBuildModule(mockCtrl)
+				bpB := testmock.NewMockBuildModule(mockCtrl)
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 				dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 				bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, nil)
@@ -302,7 +302,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{ID: "B", Version: "v2", API: "0.2"},
 						}
 
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							BuildBOM: []buildpack.BOMEntry{
@@ -324,7 +324,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							BuildBOM: []buildpack.BOMEntry{
@@ -409,10 +409,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("buildpacks", func() {
 					it("should include builder buildpacks", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any())
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any())
 
@@ -431,7 +431,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("labels", func() {
 					it("should aggregate labels from each buildpack", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Labels: []buildpack.Label{
@@ -439,7 +439,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{Key: "some-other-bpA-key", Value: "some-other-bpA-value"},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Labels: []buildpack.Label{
@@ -465,7 +465,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("processes", func() {
 					it("should override identical processes from earlier buildpacks", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
@@ -485,7 +485,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
@@ -548,7 +548,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("last default process type wins", func() {
-							bpA := testmock.NewMockBuildpack(mockCtrl)
+							bpA := testmock.NewMockBuildModule(mockCtrl)
 							dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 							bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
@@ -562,7 +562,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									},
 								},
 							}, nil)
-							bpB := testmock.NewMockBuildpack(mockCtrl)
+							bpB := testmock.NewMockBuildModule(mockCtrl)
 							dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 							bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
@@ -577,7 +577,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							}, nil)
 
-							bpC := testmock.NewMockBuildpack(mockCtrl)
+							bpC := testmock.NewMockBuildModule(mockCtrl)
 							dirStore.EXPECT().LookupBp("C", "v3").Return(bpC, nil)
 							bpC.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
@@ -628,7 +628,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("should warn and not set any default process", func() {
-							bpB := testmock.NewMockBuildpack(mockCtrl)
+							bpB := testmock.NewMockBuildModule(mockCtrl)
 							dirStore.EXPECT().LookupBp("A", "v1").Return(bpB, nil)
 							bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
@@ -643,7 +643,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							}, nil)
 
-							bpA := testmock.NewMockBuildpack(mockCtrl)
+							bpA := testmock.NewMockBuildModule(mockCtrl)
 							dirStore.EXPECT().LookupBp("B", "v2").Return(bpA, nil)
 							bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
@@ -658,7 +658,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							}, nil)
 
-							bpC := testmock.NewMockBuildpack(mockCtrl)
+							bpC := testmock.NewMockBuildModule(mockCtrl)
 							dirStore.EXPECT().LookupBp("C", "v3").Return(bpC, nil)
 							bpC.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 								Processes: []launch.Process{
@@ -710,7 +710,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								}
 							})
 							it("shouldn't set it as a default process", func() {
-								bpA := testmock.NewMockBuildpack(mockCtrl)
+								bpA := testmock.NewMockBuildModule(mockCtrl)
 								dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 								bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 									Processes: []launch.Process{
@@ -753,7 +753,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								}
 							})
 							it("should set it as a default process", func() {
-								bpA := testmock.NewMockBuildpack(mockCtrl)
+								bpA := testmock.NewMockBuildModule(mockCtrl)
 								dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 								bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 									Processes: []launch.Process{
@@ -807,7 +807,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("slices", func() {
 					it("should aggregate slices from each buildpack", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Slices: []layers.Slice{
@@ -816,7 +816,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{Paths: []string{"extra-path"}},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Slices: []layers.Slice{
@@ -846,7 +846,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("building fails", func() {
 			when("first buildpack build fails", func() {
 				it("should error", func() {
-					bpA := testmock.NewMockBuildpack(mockCtrl)
+					bpA := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
@@ -860,10 +860,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("later buildpack build fails", func() {
 				it("should error", func() {
-					bpA := testmock.NewMockBuildpack(mockCtrl)
+					bpA := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 					bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, nil)
-					bpB := testmock.NewMockBuildpack(mockCtrl)
+					bpB := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 					bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
@@ -884,7 +884,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("build metadata", func() {
 				when("bom", func() {
 					it("should convert metadata.version to top level version", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							LaunchBOM: []buildpack.BOMEntry{
@@ -897,7 +897,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any())
 
@@ -937,7 +937,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("shouldn't set it as a default process", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
@@ -981,7 +981,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("shouldn't set it as a default process", func() {
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							Processes: []launch.Process{
@@ -1031,7 +1031,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{ID: "B", Version: "v2", API: "0.2"},
 						}
 
-						bpA := testmock.NewMockBuildpack(mockCtrl)
+						bpA := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							LaunchBOM: []buildpack.BOMEntry{
@@ -1044,7 +1044,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						}, nil)
-						bpB := testmock.NewMockBuildpack(mockCtrl)
+						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any()).Return(buildpack.BuildResult{
 							LaunchBOM: []buildpack.BOMEntry{

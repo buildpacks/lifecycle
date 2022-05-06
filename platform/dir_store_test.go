@@ -34,10 +34,7 @@ func testDirStore(t *testing.T, when spec.G, it spec.S) {
 
 			config := bp.ConfigFile()
 			h.AssertEq(t, config.Buildpack.ID, "A")
-			h.AssertEq(t, config.Buildpack.Name, "Buildpack A")
 			h.AssertEq(t, config.Buildpack.Version, "v1")
-			h.AssertEq(t, config.Buildpack.Homepage, "Buildpack A Homepage")
-			h.AssertEq(t, config.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
 		})
 	})
 

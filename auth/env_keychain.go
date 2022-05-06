@@ -47,7 +47,7 @@ func EnvKeychain(envVar string) (authn.Keychain, error) {
 
 // InMemoryKeychain resolves credentials for the given images from the given keychain and returns a new keychain
 // that stores the pre-resolved credentials in memory and returns them on demand. This is useful in cases where the
-// backing credential store may become inaccessible in the the future.
+// backing credential store may become inaccessible in the future.
 func InMemoryKeychain(keychain authn.Keychain, images ...string) authn.Keychain {
 	return &ResolvedKeychain{
 		Auths: buildAuthMap(keychain, images...),

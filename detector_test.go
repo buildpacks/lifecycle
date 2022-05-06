@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/apex/log"
+	"github.com/apex/log/handlers/discard"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
@@ -29,10 +30,64 @@ func TestDetector(t *testing.T) {
 }
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
+	when("#NewDetector", func() {
+		var (
+			detectorFactory   *lifecycle.DetectorFactory
+			fakeConfigHandler *testmock.MockConfigHandler
+			logger            *log.Logger
+			mockController    *gomock.Controller
+		)
+
+		it.Before(func() {
+			mockController = gomock.NewController(t)
+			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
+			logger = &log.Logger{Handler: &discard.Handler{}}
+		})
+
+		it.After(func() {
+			mockController.Finish()
+		})
+
+		when("platform api >= 0.10", func() { // TODO: change to pre-release api in https://github.com/buildpacks/lifecycle/issues/459
+			it.Before(func() {
+				detectorFactory = lifecycle.NewDetectorFactory(
+					api.Platform.Latest(),
+					nil, // TODO: add
+				)
+			})
+
+			it("configures the detector", func() {
+				detector, err := detectorFactory.NewDetector(
+					"some-app-dir",
+					"some-buildpacks-dir",
+					"some-extensions-dir",
+					"some-order-path",
+					"some-platform-dir",
+					logger,
+				)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, detector.AppDir, "some-app-dir")
+				// TODO: test dir store
+				// TODO: test logger
+				// mock call to config handler and assert that detector holds what it returns
+				h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
+				// TODO: test resolver
+				// TODO: test runs
+			})
+
+			when("there are extensions", func() {
+				it("prepends the extensions order to the buildpacks order", func() {
+
+				})
+			})
+		})
+	})
+
 	when(".Detect", func() {
 		var (
-			mockCtrl *gomock.Controller
 			detector *lifecycle.Detector
+			mockCtrl *gomock.Controller
 			resolver *testmock.MockResolver
 			dirStore *testmock.MockDirStore
 		)
@@ -41,7 +96,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mockCtrl = gomock.NewController(t)
 			dirStore = testmock.NewMockDirStore(mockCtrl)
 			var err error
-			detector = lifecycle.NewDetector(api.Platform.Latest(), buildpack.DetectConfig{}, dirStore)
+			detector = &lifecycle.Detector{
+				// TODO
+			}
 			h.AssertNil(t, err)
 
 			// override resolver
@@ -57,16 +114,16 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 			// The order that other calls are written in is the order that they happen in.
 
-			bpE1 := testmock.NewMockBuildpack(mockCtrl)
-			bpA1 := testmock.NewMockBuildpack(mockCtrl)
-			bpF1 := testmock.NewMockBuildpack(mockCtrl)
-			bpC1 := testmock.NewMockBuildpack(mockCtrl)
-			bpB1 := testmock.NewMockBuildpack(mockCtrl)
-			bpG1 := testmock.NewMockBuildpack(mockCtrl)
-			bpB2 := testmock.NewMockBuildpack(mockCtrl)
-			bpC2 := testmock.NewMockBuildpack(mockCtrl)
-			bpD2 := testmock.NewMockBuildpack(mockCtrl)
-			bpD1 := testmock.NewMockBuildpack(mockCtrl)
+			bpE1 := testmock.NewMockBuildModule(mockCtrl)
+			bpA1 := testmock.NewMockBuildModule(mockCtrl)
+			bpF1 := testmock.NewMockBuildModule(mockCtrl)
+			bpC1 := testmock.NewMockBuildModule(mockCtrl)
+			bpB1 := testmock.NewMockBuildModule(mockCtrl)
+			bpG1 := testmock.NewMockBuildModule(mockCtrl)
+			bpB2 := testmock.NewMockBuildModule(mockCtrl)
+			bpC2 := testmock.NewMockBuildModule(mockCtrl)
+			bpD2 := testmock.NewMockBuildModule(mockCtrl)
+			bpD1 := testmock.NewMockBuildModule(mockCtrl)
 
 			dirStore.EXPECT().LookupBp("E", "v1").Return(bpE1, nil)
 			bpE1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
@@ -239,15 +296,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 			// The order that other calls are written in is the order that they happen in.
 
-			bpE1 := testmock.NewMockBuildpack(mockCtrl)
-			bpA1 := testmock.NewMockBuildpack(mockCtrl)
-			bpF1 := testmock.NewMockBuildpack(mockCtrl)
-			bpC1 := testmock.NewMockBuildpack(mockCtrl)
-			bpB1 := testmock.NewMockBuildpack(mockCtrl)
-			bpG1 := testmock.NewMockBuildpack(mockCtrl)
-			bpB2 := testmock.NewMockBuildpack(mockCtrl)
-			bpC2 := testmock.NewMockBuildpack(mockCtrl)
-			bpD2 := testmock.NewMockBuildpack(mockCtrl)
+			bpE1 := testmock.NewMockBuildModule(mockCtrl)
+			bpA1 := testmock.NewMockBuildModule(mockCtrl)
+			bpF1 := testmock.NewMockBuildModule(mockCtrl)
+			bpC1 := testmock.NewMockBuildModule(mockCtrl)
+			bpB1 := testmock.NewMockBuildModule(mockCtrl)
+			bpG1 := testmock.NewMockBuildModule(mockCtrl)
+			bpB2 := testmock.NewMockBuildModule(mockCtrl)
+			bpC2 := testmock.NewMockBuildModule(mockCtrl)
+			bpD2 := testmock.NewMockBuildModule(mockCtrl)
 
 			dirStore.EXPECT().LookupBp("E", "v1").Return(bpE1, nil)
 			bpE1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
@@ -412,12 +469,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should convert top level versions to metadata versions", func() {
-			bpA1 := testmock.NewMockBuildpack(mockCtrl)
+			bpA1 := testmock.NewMockBuildModule(mockCtrl)
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
 			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 			bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
-			bpB1 := testmock.NewMockBuildpack(mockCtrl)
+			bpB1 := testmock.NewMockBuildModule(mockCtrl)
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 			bpB1.EXPECT().Detect(gomock.Any(), gomock.Any())
@@ -484,7 +541,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should update detect runs for each buildpack", func() {
-			bpA1 := testmock.NewMockBuildpack(mockCtrl)
+			bpA1 := testmock.NewMockBuildModule(mockCtrl)
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
 			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 			bpA1.EXPECT().Detect(gomock.Any(), gomock.Any()).Return(buildpack.DetectRun{
@@ -504,7 +561,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				Code:   0,
 			})
 
-			bpB1 := testmock.NewMockBuildpack(mockCtrl)
+			bpB1 := testmock.NewMockBuildModule(mockCtrl)
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil)
 			bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2", Buildpack: buildpack.Info{ID: "B", Version: "v1"}})
 			bpBerror := errors.New("some-error")
@@ -565,7 +622,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		when("resolve errors", func() {
 			when("with buildpack error", func() {
 				it("returns a buildpack error", func() {
-					bpA1 := testmock.NewMockBuildpack(mockCtrl)
+					bpA1 := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
 					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 					bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
@@ -588,7 +645,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			when("with detect error", func() {
 				it("returns a detect error", func() {
-					bpA1 := testmock.NewMockBuildpack(mockCtrl)
+					bpA1 := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil)
 					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
 					bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
@@ -615,10 +672,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 				// The order that other calls are written in is the order that they happen in.
 
-				bpA1 := testmock.NewMockBuildpack(mockCtrl)
-				bpB1 := testmock.NewMockBuildpack(mockCtrl)
-				extC1 := testmock.NewMockBuildpack(mockCtrl)
-				extD1 := testmock.NewMockBuildpack(mockCtrl)
+				bpA1 := testmock.NewMockBuildModule(mockCtrl)
+				bpB1 := testmock.NewMockBuildModule(mockCtrl)
+				extC1 := testmock.NewMockBuildModule(mockCtrl)
+				extD1 := testmock.NewMockBuildModule(mockCtrl)
 
 				// first group
 

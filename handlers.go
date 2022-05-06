@@ -13,11 +13,6 @@ type CacheHandler interface {
 	InitCache(imageRef, dir string) (Cache, error)
 }
 
-//go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle RegistryHandler
-type ConfigHandler interface {
-	ReadGroup(path string) ([]buildpack.GroupElement, error)
-}
-
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle ImageHandler
 type ImageHandler interface {
 	InitImage(imageRef string) (imgutil.Image, error)
@@ -32,8 +27,14 @@ type RegistryHandler interface {
 
 //go:generate mockgen -package testmock -destination testmock/api_verifier.go github.com/buildpacks/lifecycle APIVerifier
 type APIVerifier interface {
-	//
+	// TODO: add comment about why this exists
 	VerifyBuildpackAPI(kind, name, requested string) error
+}
+
+//go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle RegistryHandler
+type ConfigHandler interface {
+	ReadGroup(path string) ([]buildpack.GroupElement, error)
+	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 }
 
 type DefaultConfigHandler struct {

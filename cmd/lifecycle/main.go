@@ -24,6 +24,7 @@ type Platform interface {
 	API() *api.Version
 	CodeFor(errType platform.LifecycleExitError) int
 	ResolveAnalyze(inputs platform.AnalyzeInputs, logger platform.Logger) (platform.AnalyzeInputs, error)
+	ResolveDetect(inputs platform.DetectInputs) (platform.DetectInputs, error)
 }
 
 func main() {
@@ -36,7 +37,7 @@ func main() {
 
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: p}}, false)
+		cmd.Run(&detectCmd{platform: p}, false)
 	case "analyzer":
 		cmd.Run(&analyzeCmd{platform: p}, false)
 	case "restorer":

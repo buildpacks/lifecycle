@@ -37,30 +37,91 @@ type Logger interface {
 type DetectConfig struct {
 	AppDir      string
 	PlatformDir string
-	Logger      Logger
+	Logger      Logger // TODO: move out of this struct
 }
 
-// TODO: change the receiver to be Info
 func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
-	appDir, err := filepath.Abs(config.AppDir)
+	appDir, platformDir, err := processPlatformPaths(config)
 	if err != nil {
 		return DetectRun{Code: -1, Err: err}
+	}
+
+	planDir, planPath, err := processBuildpackPaths(err)
+	defer os.RemoveAll(planDir)
+	if err != nil {
+		return DetectRun{Code: -1, Err: err}
+	}
+
+	var result DetectRun
+	_, err = os.Stat(filepath.Join(b.Dir, "bin", "detect"))
+	if b.IsExtension() && os.IsNotExist(err) {
+		// treat extension root directory as pre-populated output directory
+		planPath = filepath.Join(b.Dir, "plan.toml")
+		if _, err := toml.DecodeFile(planPath, &result); err != nil {
+			return DetectRun{Code: -1, Err: err}
+		}
+	} else {
+		result = b.runDetect(platformDir, planPath, appDir, bpEnv)
+		if result.Code != 0 {
+			return result
+		}
+		backupOut := result.Output
+		if _, err := toml.DecodeFile(planPath, &result); err != nil {
+			return DetectRun{Code: -1, Err: err, Output: backupOut}
+		}
+	}
+
+	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
+		if result.hasInconsistentVersions() || result.Or.hasInconsistentVersions() {
+			result.Err = errors.Errorf(b.Kind()+` %s has a "version" key that does not match "metadata.version"`, b.Info().ID)
+			result.Code = -1
+		}
+	}
+	if api.MustParse(b.API).AtLeast("0.3") {
+		if result.hasDoublySpecifiedVersions() || result.Or.hasDoublySpecifiedVersions() {
+			result.Err = errors.Errorf(b.Kind()+` %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, b.Info().ID)
+			result.Code = -1
+		}
+	}
+	if api.MustParse(b.API).AtLeast("0.3") {
+		if result.hasTopLevelVersions() || result.Or.hasTopLevelVersions() {
+			config.Logger.Warnf(b.Kind()+` %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, b.Info().ID)
+		}
+	}
+	if b.IsExtension() {
+		if result.hasRequires() || result.Or.hasRequires() {
+			result.Err = errors.Errorf(b.Kind()+` %s outputs "requires" which is not allowed`, b.Info().ID)
+			result.Code = -1
+		}
+	}
+	return result
+}
+
+func processPlatformPaths(config *DetectConfig) (string, string, error) {
+	appDir, err := filepath.Abs(config.AppDir)
+	if err != nil {
+		return "", "", nil
 	}
 	platformDir, err := filepath.Abs(config.PlatformDir)
 	if err != nil {
-		return DetectRun{Code: -1, Err: err}
+		return "", "", nil
 	}
+	return appDir, platformDir, nil
+}
+
+func processBuildpackPaths(err error) (string, string, error) {
 	planDir, err := ioutil.TempDir("", "plan.")
 	if err != nil {
-		return DetectRun{Code: -1, Err: err}
+		return "", "", err
 	}
-	defer os.RemoveAll(planDir)
-
 	planPath := filepath.Join(planDir, "plan.toml")
-	if err := ioutil.WriteFile(planPath, nil, 0600); err != nil {
-		return DetectRun{Code: -1, Err: err}
+	if err = ioutil.WriteFile(planPath, nil, 0600); err != nil {
+		return "", "", err
 	}
+	return planDir, planPath, nil
+}
 
+func (b *Descriptor) runDetect(platformDir, planPath, appDir string, bpEnv BuildEnv) DetectRun {
 	out := &bytes.Buffer{}
 	cmd := exec.Command(
 		filepath.Join(b.Dir, "bin", "detect"),
@@ -71,16 +132,16 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	cmd.Stdout = out
 	cmd.Stderr = out
 
+	var err error
 	if b.Info().ClearEnv {
 		cmd.Env = bpEnv.List()
 	} else {
-		cmd.Env, err = bpEnv.WithPlatform(config.PlatformDir)
+		cmd.Env, err = bpEnv.WithPlatform(platformDir)
 		if err != nil {
 			return DetectRun{Code: -1, Err: err}
 		}
 	}
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
-
 	if api.MustParse(b.API).AtLeast("0.8") {
 		cmd.Env = append(
 			cmd.Env,
@@ -97,29 +158,7 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 		}
 		return DetectRun{Code: -1, Err: err, Output: out.Bytes()}
 	}
-	var t DetectRun
-	if _, err := toml.DecodeFile(planPath, &t); err != nil {
-		return DetectRun{Code: -1, Err: err, Output: out.Bytes()}
-	}
-	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
-		if t.hasInconsistentVersions() || t.Or.hasInconsistentVersions() {
-			t.Err = errors.Errorf(b.Kind()+` %s has a "version" key that does not match "metadata.version"`, b.Info().ID)
-			t.Code = -1
-		}
-	}
-	if api.MustParse(b.API).AtLeast("0.3") {
-		if t.hasDoublySpecifiedVersions() || t.Or.hasDoublySpecifiedVersions() {
-			t.Err = errors.Errorf(b.Kind()+` %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, b.Info().ID)
-			t.Code = -1
-		}
-	}
-	if api.MustParse(b.API).AtLeast("0.3") {
-		if t.hasTopLevelVersions() || t.Or.hasTopLevelVersions() {
-			config.Logger.Warnf(b.Kind()+` %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, b.Info().ID)
-		}
-	}
-	t.Output = out.Bytes()
-	return t
+	return DetectRun{Code: 0, Err: nil, Output: out.Bytes()}
 }
 
 type DetectRun struct {

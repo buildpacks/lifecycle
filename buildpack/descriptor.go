@@ -3,6 +3,8 @@
 package buildpack
 
 import (
+	"path/filepath"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -12,10 +14,16 @@ type BuildModule interface {
 	Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun
 }
 
-func ReadDescriptor(path string) (Descriptor, error) {
-	descriptor := Descriptor{}
-	if _, err := toml.DecodeFile(path, &descriptor); err != nil {
-		return Descriptor{}, err
+func ReadDescriptor(path string) (*Descriptor, error) {
+	var (
+		descriptor *Descriptor
+		err        error
+	)
+	if _, err = toml.DecodeFile(path, &descriptor); err != nil {
+		return &Descriptor{}, err
+	}
+	if descriptor.Dir, err = filepath.Abs(filepath.Dir(path)); err != nil {
+		return &Descriptor{}, err
 	}
 	return descriptor, nil
 }

@@ -28,36 +28,51 @@ type Resolver interface {
 	Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error)
 }
 
-type Detector struct {
-	buildpack.DetectConfig
-
-	DirStore     DirStore
-	OrderHandler lifecycle.OrderHandler
-	Resolver     Resolver
-	Runs         *sync.Map
+type DetectorFactory struct {
+	platformAPI   *api.Version
+	configHandler ConfigHandler
 }
 
-func NewDetector(platformAPI *api.Version, config buildpack.DetectConfig, dirStore DirStore) *Detector { // TODO: add test
-	var orderHandler lifecycle.OrderHandler
-	if platformAPI.AtLeast("0.10") { // TODO: change to experimental api
-		orderHandler = &lifecycle.DefaultOrderHandler{}
-	} else {
-		orderHandler = &lifecycle.LegacyOrderHandler{}
+func NewDetectorFactory(platformAPI *api.Version, configHandler ConfigHandler) *DetectorFactory {
+	return &DetectorFactory{
+		platformAPI:   platformAPI,
+		configHandler: configHandler,
 	}
-	resolver := &DefaultResolver{
-		Logger: config.Logger,
-	}
+}
+
+type Detector struct {
+	AppDir      string
+	DirStore    DirStore
+	Logger      Logger
+	Order       buildpack.Order
+	PlatformDir string
+	Resolver    Resolver
+	Runs        *sync.Map
+}
+
+func (f *DetectorFactory) NewDetector(
+	appDir string,
+	buildpacksDir string,
+	extensionsDir string,
+	orderPath string,
+	platformDir string,
+	logger Logger,
+) (*Detector, error) { // TODO: add test for this constructor
+	// instantiate dir store
+
+	// set logger
+
+	// read order and prepend extensions
+
 	return &Detector{
-		DetectConfig: config,
-		DirStore:     dirStore,
-		OrderHandler: orderHandler,
-		Resolver:     resolver,
-		Runs:         &sync.Map{},
-	}
+		Logger:   logger,
+		Resolver: &DefaultResolver{Logger: logger},
+		Runs:     &sync.Map{},
+	}, nil
 }
 
 func (d *Detector) Detect(orderBp, orderExt buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
-	d.OrderHandler.PrependExtensions(orderBp, orderExt)
+	lifecycle.PrependExtensions(orderBp, orderExt) // TODO: only for newer api
 	return d.DetectOrder(orderBp)
 }
 
@@ -144,7 +159,12 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		wg.Add(1)
 		go func(key string, bp buildpack.BuildModule) {
 			if _, ok := d.Runs.Load(key); !ok {
-				d.Runs.Store(key, bp.Detect(&d.DetectConfig, env.NewBuildEnv(os.Environ())))
+				detectConfig := &buildpack.DetectConfig{
+					AppDir:      d.AppDir,
+					PlatformDir: d.PlatformDir,
+					Logger:      d.Logger,
+				}
+				d.Runs.Store(key, bp.Detect(detectConfig, env.NewBuildEnv(os.Environ())))
 			}
 			wg.Done()
 		}(key, detectable)

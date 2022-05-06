@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -9,15 +10,22 @@ import (
 const (
 	DefaultAnalyzedFile = "analyzed.toml"
 	DefaultGroupFile    = "group.toml"
-	// TODO: future work should move order, plan, project metadata, and report to this file
+	DefaultOrderFile    = "order.toml"
+	DefaultPlanFile     = "plan.toml"
 )
 
 var (
 	PlaceholderAnalyzedPath = filepath.Join("<layers>", DefaultAnalyzedFile)
 	PlaceholderGroupPath    = filepath.Join("<layers>", DefaultGroupFile)
+	PlaceholderOrderPath    = filepath.Join("<layers>", DefaultOrderFile)
+	PlaceholderPlanPath     = filepath.Join("<layers>", DefaultPlanFile)
 )
 
 func defaultPath(placeholderPath, layersDir string, platformAPI *api.Version) string {
+	if placeholderPath == PlaceholderOrderPath {
+		return defaultOrderPath(layersDir, platformAPI)
+	}
+
 	filename := filepath.Base(placeholderPath)
 	if (platformAPI).LessThan("0.5") || (layersDir == "") {
 		// prior to platform api 0.5, the default directory was the working dir.
@@ -25,4 +33,17 @@ func defaultPath(placeholderPath, layersDir string, platformAPI *api.Version) st
 		return filepath.Join(".", filename)
 	}
 	return filepath.Join(layersDir, filename)
+}
+
+func defaultOrderPath(layersDir string, platformAPI *api.Version) string {
+	cnbOrderPath := filepath.Join(rootDir, "cnb", "order.toml")
+	if platformAPI.LessThan("0.6") {
+		return cnbOrderPath
+	}
+
+	layersOrderPath := filepath.Join(layersDir, "order.toml")
+	if _, err := os.Stat(layersOrderPath); err != nil {
+		return cnbOrderPath
+	}
+	return layersOrderPath
 }
