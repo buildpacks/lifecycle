@@ -19,6 +19,10 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
+type Platform interface {
+	API() *api.Version
+}
+
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
@@ -30,12 +34,6 @@ type DirStore interface {
 	LookupBp(bpID, bpVersion string) (buildpack.BuildModule, error)
 	LookupExt(bpID, bpVersion string) (buildpack.BuildModule, error)
 }
-
-// type Buildpack interface {
-// 	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
-// 	ConfigFile() *buildpack.Descriptor
-// 	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
-// }
 
 type Builder struct {
 	AppDir      string

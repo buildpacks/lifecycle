@@ -69,7 +69,7 @@ func (v *APIVerifier) VerifyBuildpackAPI(kind, name, requested string) error {
 	return VerifyBuildpackAPI(name, requested)
 }
 
-// TODO: fix error messages so that they are accurate for buildpacks OR extensions
+// TODO: npa: fix error messages so that they are accurate for buildpacks OR extensions
 func VerifyBuildpackAPI(bp string, requested string) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {

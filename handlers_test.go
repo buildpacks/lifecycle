@@ -12,6 +12,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cmd"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -40,9 +41,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "group.toml"),
 			)
 			actual, err := lifecycle.ReadGroup(filepath.Join(tmpDir, "group.toml"))
-			if err != nil {
-				t.Fatalf("Unexpected error:\n%s\n", err)
-			}
+			h.AssertNil(t, err)
 			if s := cmp.Diff(actual, buildpack.Group{
 				Group: []buildpack.GroupElement{
 					{ID: "A", Version: "v1"},
@@ -78,9 +77,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(tmpDir, "order.toml"),
 			)
 			actual, _, err := lifecycle.ReadOrder(filepath.Join(tmpDir, "order.toml"))
-			if err != nil {
-				t.Fatalf("Unexpected error:\n%s\n", err)
-			}
+			h.AssertNil(t, err)
 			if s := cmp.Diff(actual, buildpack.Order{
 				{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
 				{Group: []buildpack.GroupElement{{ID: "C"}, {}}},
@@ -101,9 +98,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(tmpDir, "order.toml"),
 				)
 				foundOrder, foundOrderExt, err := lifecycle.ReadOrder(filepath.Join(tmpDir, "order.toml"))
-				if err != nil {
-					t.Fatalf("Unexpected error:\n%s\n", err)
-				}
+				h.AssertNil(t, err)
 				if s := cmp.Diff(foundOrder, buildpack.Order{
 					{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
 					{Group: []buildpack.GroupElement{{ID: "C"}, {}}},
@@ -116,17 +111,104 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected list:\n%s\n", s)
 				}
 			})
+		})
+	})
 
-			it("errors when order-ext contains a nested order", func() {
-				// TODO
+	when("DefaultConfigHandler", func() {
+		var configHandler *lifecycle.DefaultConfigHandler
+
+		it.Before(func() {
+			configHandler = lifecycle.NewConfigHandler(&cmd.APIVerifier{})
+		})
+
+		when(".ReadGroup", func() {
+			var tmpDir string
+
+			it.Before(func() {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+				if err != nil {
+					t.Fatal(err)
+				}
 			})
 
-			it("errors when order-ext contains buildpacks", func() {
-				// TODO
+			it.After(func() {
+				os.RemoveAll(tmpDir)
 			})
 
-			it("errors when order contains extensions", func() {
-				// TODO
+			it("returns a group of buildpacks", func() {
+				h.Mkfile(t, `group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`,
+					filepath.Join(tmpDir, "group.toml"),
+				)
+				actual, err := configHandler.ReadGroup(filepath.Join(tmpDir, "group.toml"))
+				h.AssertNil(t, err)
+				if s := cmp.Diff(actual, []buildpack.GroupElement{
+					{ID: "A", Version: "v1"},
+					{ID: "B", Optional: true},
+				}); s != "" {
+					t.Fatalf("Unexpected list:\n%s\n", s)
+				}
+			})
+		})
+
+		when(".ReadOrder", func() {
+			var tmpDir string
+
+			it.Before(func() {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+				if err != nil {
+					t.Fatal(err)
+				}
+			})
+
+			it.After(func() {
+				os.RemoveAll(tmpDir)
+			})
+
+			it("returns an ordering of buildpacks", func() {
+				h.Mkfile(t,
+					"[[order]]\n"+
+						`group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`+"\n"+
+						"[[order]]\n"+
+						`group = [{id = "C"}, {}]`+"\n",
+					filepath.Join(tmpDir, "order.toml"),
+				)
+				actual, _, err := configHandler.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+				h.AssertNil(t, err)
+				if s := cmp.Diff(actual, buildpack.Order{
+					{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
+					{Group: []buildpack.GroupElement{{ID: "C"}, {}}},
+				}); s != "" {
+					t.Fatalf("Unexpected list:\n%s\n", s)
+				}
+			})
+
+			when("there are extensions", func() {
+				it("returns an ordering of buildpacks and an ordering of extensions", func() {
+					h.Mkfile(t,
+						"[[order]]\n"+
+							`group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`+"\n"+
+							"[[order]]\n"+
+							`group = [{id = "C"}, {}]`+"\n"+
+							"[[order-ext]]\n"+
+							`group = [{id = "D"}, {}]`+"\n",
+						filepath.Join(tmpDir, "order.toml"),
+					)
+					foundOrder, foundOrderExt, err := configHandler.ReadOrder(filepath.Join(tmpDir, "order.toml"))
+					h.AssertNil(t, err)
+					if s := cmp.Diff(foundOrder, buildpack.Order{
+						{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}, {ID: "B", Optional: true}}},
+						{Group: []buildpack.GroupElement{{ID: "C"}, {}}},
+					}); s != "" {
+						t.Fatalf("Unexpected list:\n%s\n", s)
+					}
+					if s := cmp.Diff(foundOrderExt, buildpack.Order{
+						{Group: []buildpack.GroupElement{{ID: "D"}, {}}},
+					}); s != "" {
+						t.Fatalf("Unexpected list:\n%s\n", s)
+					}
+				})
 			})
 		})
 	})

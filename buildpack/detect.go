@@ -37,7 +37,7 @@ type Logger interface {
 type DetectConfig struct {
 	AppDir      string
 	PlatformDir string
-	Logger      Logger // TODO: move out of this struct
+	Logger      Logger
 }
 
 func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {

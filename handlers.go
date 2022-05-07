@@ -26,8 +26,11 @@ type RegistryHandler interface {
 }
 
 //go:generate mockgen -package testmock -destination testmock/api_verifier.go github.com/buildpacks/lifecycle APIVerifier
+// APIVerifier exists to avoid having the lifecycle package depend on the cmd package.
+// The package dependency actually already exists, but this is to avoid making it worse.
+// Eventually, much logic in the cmd package should move to the platform package, after which
+// we might be able to remove this interface.
 type APIVerifier interface {
-	// TODO: add comment about why this exists
 	VerifyBuildpackAPI(kind, name, requested string) error
 }
 
