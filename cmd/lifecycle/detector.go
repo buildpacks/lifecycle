@@ -72,11 +72,11 @@ func (d *detectCmd) Exec() error {
 		cmd.DefaultLogger,
 	)
 	if err != nil {
-		return err
+		return cmd.FailErr(err, "initialize detector")
 	}
 	group, plan, err := doDetect(detector, d.platform)
 	if err != nil {
-		return err
+		return err // pass through error from doDetect
 	}
 	return d.writeData(group, plan)
 }

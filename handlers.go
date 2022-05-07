@@ -97,5 +97,8 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 		OrderExt buildpack.Order `toml:"order-ext"`
 	}
 	_, err := toml.DecodeFile(path, &order)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "reading buildpack order file")
+	}
 	return order.Order, order.OrderExt, err
 }
