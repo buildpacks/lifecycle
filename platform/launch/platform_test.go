@@ -25,7 +25,7 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 					h.SkipIf(t, platformAPI.LessThan("0.6"), "")
 				})
 
-				it("configures the platformr", func() {
+				it("configures the platform", func() {
 					foundPlatform := platform.NewPlatform(platformAPI.String())
 
 					t.Log("with a default exiter")

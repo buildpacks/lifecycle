@@ -219,6 +219,31 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertPathExists(t, filepath.Join(copyDir, "layers", "some-other-buildpack-id"))
 				h.AssertPathDoesNotExist(t, filepath.Join(copyDir, "layers", "some-buildpack-id"))
 			})
+
+			when("group contains unsupported buildpacks", func() {
+				it("errors", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -group flag")
+
+					cmd := exec.Command(
+						"docker", "run", "--rm",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						analyzeImage,
+						ctrPath(analyzerPath),
+						"-group", ctrPath("/layers/unsupported-group.toml"),
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
+
+					h.AssertNotNil(t, err)
+					failErr, ok := err.(*exec.ExitError)
+					if !ok {
+						t.Fatalf("expected an error of type exec.ExitError")
+					}
+					h.AssertEq(t, failErr.ExitCode(), 12) // platform code for buildpack api incompatibility
+					expected := "buildpack API version '0.1' is incompatible with the lifecycle"
+					h.AssertStringContains(t, string(output), expected)
+				})
+			})
 		})
 
 		when("analyzed path is provided", func() {
