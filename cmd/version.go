@@ -65,16 +65,30 @@ func VerifyPlatformAPI(requested string) error {
 
 type APIVerifier struct{}
 
-func (v *APIVerifier) VerifyBuildpackAPI(kind, name, requested string) error {
-	return VerifyBuildpackAPI(name, requested)
+func (v *APIVerifier) VerifyBuildpackAPIForBuildpack(name, requested string) error {
+	return VerifyBuildpackAPI(Buildpack, name, requested)
 }
 
-// TODO: npa: fix error messages so that they are accurate for buildpacks OR extensions
-func VerifyBuildpackAPI(bp string, requested string) error {
+func (v *APIVerifier) VerifyBuildpackAPIForExtension(name, requested string) error {
+	return VerifyBuildpackAPI(Extension, name, requested)
+}
+
+type ModuleKind int
+
+const (
+	Buildpack ModuleKind = iota
+	Extension
+)
+
+func VerifyBuildpackAPI(kind ModuleKind, name string, requested string) error {
+	moduleKind := "Buildpack"
+	if kind == Extension {
+		moduleKind = "Extension"
+	}
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
 		return FailErrCode(
-			fmt.Errorf("parse buildpack API '%s' for buildpack '%s'", requestedAPI, bp),
+			fmt.Errorf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(moduleKind), name),
 			CodeIncompatibleBuildpackAPI,
 		)
 	}
@@ -84,18 +98,18 @@ func VerifyBuildpackAPI(bp string, requested string) error {
 			case DeprecationModeQuiet:
 				break
 			case DeprecationModeError:
-				DefaultLogger.Errorf("Buildpack '%s' requests deprecated API '%s'", bp, requested)
+				DefaultLogger.Errorf("%s '%s' requests deprecated API '%s'", moduleKind, name, requested)
 				DefaultLogger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
-				return buildpackAPIError(bp, requested)
+				return buildpackAPIError(moduleKind, name, requested)
 			case DeprecationModeWarn:
-				DefaultLogger.Warnf("Buildpack '%s' requests deprecated API '%s'", bp, requested)
+				DefaultLogger.Warnf("%s '%s' requests deprecated API '%s'", moduleKind, name, requested)
 			default:
-				DefaultLogger.Warnf("Buildpack '%s' requests deprecated API '%s'", bp, requested)
+				DefaultLogger.Warnf("%s '%s' requests deprecated API '%s'", moduleKind, name, requested)
 			}
 		}
 		return nil
 	}
-	return buildpackAPIError(bp, requested)
+	return buildpackAPIError(moduleKind, name, requested)
 }
 
 func platformAPIError(requested string) error {
@@ -105,9 +119,9 @@ func platformAPIError(requested string) error {
 	)
 }
 
-func buildpackAPIError(bp string, requested string) error {
+func buildpackAPIError(moduleKind string, name string, requested string) error {
 	return FailErrCode(
-		fmt.Errorf("set API for buildpack '%s': buildpack API version '%s' is incompatible with the lifecycle", bp, requested),
+		fmt.Errorf("set API for %s '%s': buildpack API version '%s' is incompatible with the lifecycle", moduleKind, name, requested),
 		CodeIncompatibleBuildpackAPI,
 	)
 }

@@ -80,7 +80,7 @@ func verifyBuildpackAPIs(bps []launch.Buildpack) error {
 			// but if for some reason we do, default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(bp.ID, bp.API); err != nil {
+		if err := cmd.VerifyBuildpackAPI(cmd.Buildpack, bp.ID, bp.API); err != nil {
 			return err
 		}
 	}
