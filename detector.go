@@ -57,23 +57,35 @@ func (f *DetectorFactory) NewDetector(
 	orderPath string,
 	platformDir string,
 	logger Logger,
-) (*Detector, error) { // TODO: add test for this constructor
-	// instantiate dir store
+) (*Detector, error) {
+	dirStore, err := platform.NewDirStore(buildpacksDir, extensionsDir)
+	if err != nil {
+		return nil, err
+	}
 
-	// set logger
+	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath)
+	if err != nil {
+		return nil, err
+	}
 
-	// read order and prepend extensions
+	order := orderBp
+	if f.platformAPI.AtLeast("0.10") {
+		order = lifecycle.PrependExtensions(orderBp, orderExt)
+	}
 
 	return &Detector{
-		Logger:   logger,
-		Resolver: &DefaultResolver{Logger: logger},
-		Runs:     &sync.Map{},
+		AppDir:      appDir,
+		DirStore:    dirStore,
+		Logger:      logger,
+		Order:       order,
+		PlatformDir: platformDir,
+		Resolver:    &DefaultResolver{Logger: logger},
+		Runs:        &sync.Map{},
 	}, nil
 }
 
-func (d *Detector) Detect(orderBp, orderExt buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
-	lifecycle.PrependExtensions(orderBp, orderExt) // TODO: only for newer api
-	return d.DetectOrder(orderBp)
+func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {
+	return d.DetectOrder(d.Order)
 }
 
 func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
@@ -221,6 +233,7 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *syn
 
 	results := detectResults{}
 	detected := true
+	anyBuildpacksDetected := false
 	buildpackErr := false
 	for i, bp := range done {
 		run := groupRuns[i]
@@ -228,6 +241,9 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *syn
 		case CodeDetectPass:
 			r.Logger.Debugf("pass: %s", bp)
 			results = append(results, detectResult{bp, run})
+			if !bp.Extension {
+				anyBuildpacksDetected = true
+			}
 		case CodeDetectFail:
 			if bp.Optional {
 				r.Logger.Debugf("skip: %s", bp)
@@ -249,6 +265,9 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *syn
 		if buildpackErr {
 			return nil, nil, ErrBuildpack
 		}
+		return nil, nil, ErrFailedDetection
+	} else if !anyBuildpacksDetected {
+		r.Logger.Debugf("fail: no viable buildpacks in group")
 		return nil, nil, ErrFailedDetection
 	}
 

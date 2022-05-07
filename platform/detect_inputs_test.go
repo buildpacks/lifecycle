@@ -4,8 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/memory"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -23,15 +21,59 @@ func TestDetectInputs(t *testing.T) {
 func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
-			resolver   *platform.InputsResolver
-			logHandler *memory.Handler
-			logger     platform.Logger
+			resolver *platform.InputsResolver
 		)
 
 		it.Before(func() {
 			resolver = platform.NewInputsResolver(api.MustParse(platformAPI))
-			logHandler = memory.New()
-			logger = &log.Logger{Handler: logHandler}
+		})
+
+		it("resolves absolute paths of directories", func() {
+			appDir := filepath.Join("testdata", "workspace")
+			appDirAbs, err := filepath.Abs(appDir)
+			h.AssertNil(t, err)
+
+			bpDir := filepath.Join("testdata", "cnb", "buildpacks")
+			bpDirAbs, err := filepath.Abs(bpDir)
+			h.AssertNil(t, err)
+
+			extDir := filepath.Join("testdata", "cnb", "extensions")
+			extDirAbs, err := filepath.Abs(extDir)
+			h.AssertNil(t, err)
+
+			layersDir := filepath.Join("testdata", "layers")
+			layersDirAbs, err := filepath.Abs(layersDir)
+			h.AssertNil(t, err)
+
+			platformDir := filepath.Join("testdata", "platform")
+			platformDirAbs, err := filepath.Abs(platformDir)
+			h.AssertNil(t, err)
+
+			inputs := platform.DetectInputs{
+				AppDir:        appDir,
+				BuildpacksDir: bpDir,
+				ExtensionsDir: extDir,
+				LayersDir:     layersDir,
+				PlatformDir:   platformDir,
+			}
+			ret, err := resolver.ResolveDetect(inputs)
+			h.AssertNil(t, err)
+			h.AssertEq(t, ret.AppDir, appDirAbs)
+			h.AssertEq(t, ret.BuildpacksDir, bpDirAbs)
+			h.AssertEq(t, ret.ExtensionsDir, extDirAbs)
+			h.AssertEq(t, ret.LayersDir, layersDirAbs)
+			h.AssertEq(t, ret.PlatformDir, platformDirAbs)
+		})
+
+		when("extensions dir is not provided", func() {
+			it("resolves the absolute path as an empty string", func() {
+				inputs := platform.DetectInputs{
+					ExtensionsDir: "",
+				}
+				ret, err := resolver.ResolveDetect(inputs)
+				h.AssertNil(t, err)
+				h.AssertEq(t, ret.ExtensionsDir, "")
+			})
 		})
 
 		when("latest platform api(s)", func() {
@@ -50,7 +92,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 							OrderPath: platform.PlaceholderOrderPath,
 							PlanPath:  platform.PlaceholderPlanPath,
 						}
-						ret, err := resolver.ResolveDetect(inputs, logger)
+						ret, err := resolver.ResolveDetect(inputs)
 						h.AssertNil(t, err)
 						h.AssertEq(t, ret.OrderPath, filepath.Join(layersDir, "order.toml"))
 						h.AssertEq(t, ret.GroupPath, filepath.Join(layersDir, "group.toml"))
@@ -66,7 +108,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 							OrderPath: platform.PlaceholderOrderPath,
 							PlanPath:  platform.PlaceholderPlanPath,
 						}
-						ret, err := resolver.ResolveDetect(inputs, logger)
+						ret, err := resolver.ResolveDetect(inputs)
 						h.AssertNil(t, err)
 						h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
 						h.AssertEq(t, ret.GroupPath, filepath.Join("some-layers-dir", "group.toml"))
@@ -91,7 +133,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 						OrderPath: platform.PlaceholderOrderPath,
 						PlanPath:  platform.PlaceholderPlanPath,
 					}
-					ret, err := resolver.ResolveDetect(inputs, logger)
+					ret, err := resolver.ResolveDetect(inputs)
 					h.AssertNil(t, err)
 					h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
 					h.AssertEq(t, ret.GroupPath, filepath.Join(layersDir, "group.toml"))
@@ -112,7 +154,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 						LayersDir: "some-layers-dir",
 						OrderPath: platform.PlaceholderOrderPath,
 						PlanPath:  platform.PlaceholderPlanPath}
-					ret, err := resolver.ResolveDetect(inputs, logger)
+					ret, err := resolver.ResolveDetect(inputs)
 					h.AssertNil(t, err)
 					h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
 					h.AssertEq(t, ret.GroupPath, filepath.Join(".", "group.toml"))

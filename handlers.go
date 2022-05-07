@@ -31,7 +31,7 @@ type APIVerifier interface {
 	VerifyBuildpackAPI(kind, name, requested string) error
 }
 
-//go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle RegistryHandler
+//go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
 	ReadGroup(path string) ([]buildpack.GroupElement, error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
@@ -74,6 +74,10 @@ func (h *DefaultConfigHandler) verifyBuildpackApis(group buildpack.Group) error 
 		}
 	}
 	return nil
+}
+
+func (h *DefaultConfigHandler) ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
+	return ReadOrder(path)
 }
 
 func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {

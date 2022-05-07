@@ -65,7 +65,7 @@ func subcommand(platform Platform) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cmd.Run(&detectCmd{detectArgs: detectArgs{platform: platform}}, true)
+		cmd.Run(&detectCmd{platform: platform}, true)
 	case "analyze":
 		cmd.Run(&analyzeCmd{platform: platform}, true)
 	case "restore":

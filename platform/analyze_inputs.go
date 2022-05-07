@@ -43,7 +43,7 @@ func (a AnalyzeInputs) RegistryImages() []string {
 func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger Logger) (AnalyzeInputs, error) {
 	resolvedInputs := inputs
 
-	if err := r.fillAnalyzeDefaults(&resolvedInputs, logger); err != nil {
+	if err := r.fillAnalyzeDefaultFilePaths(&resolvedInputs, logger); err != nil {
 		return AnalyzeInputs{}, err
 	}
 
@@ -53,7 +53,7 @@ func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger Logger) (An
 	return resolvedInputs, nil
 }
 
-func (r *InputsResolver) fillAnalyzeDefaults(inputs *AnalyzeInputs, logger Logger) error {
+func (r *InputsResolver) fillAnalyzeDefaultFilePaths(inputs *AnalyzeInputs, logger Logger) error {
 	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
 		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, r.platformAPI)
 	}

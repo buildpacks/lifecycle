@@ -49,3 +49,19 @@ func (mr *MockConfigHandlerMockRecorder) ReadGroup(arg0 interface{}) *gomock.Cal
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadGroup", reflect.TypeOf((*MockConfigHandler)(nil).ReadGroup), arg0)
 }
+
+// ReadOrder mocks base method.
+func (m *MockConfigHandler) ReadOrder(arg0 string) (buildpack.Order, buildpack.Order, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadOrder", arg0)
+	ret0, _ := ret[0].(buildpack.Order)
+	ret1, _ := ret[1].(buildpack.Order)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ReadOrder indicates an expected call of ReadOrder.
+func (mr *MockConfigHandlerMockRecorder) ReadOrder(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadOrder", reflect.TypeOf((*MockConfigHandler)(nil).ReadOrder), arg0)
+}

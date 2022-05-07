@@ -62,20 +62,26 @@ func (d *detectCmd) Privileges() error {
 }
 
 func (d *detectCmd) Exec() error {
-	detector, err := lifecycle.NewDetector()
+	factory := lifecycle.NewDetectorFactory(d.platform.API(), lifecycle.NewConfigHandler(&cmd.APIVerifier{}))
+	detector, err := factory.NewDetector(
+		d.AppDir,
+		d.BuildpacksDir,
+		d.ExtensionsDir,
+		d.OrderPath,
+		d.PlatformDir,
+		cmd.DefaultLogger,
+	)
 	if err != nil {
 		return err
 	}
-
 	group, plan, err := doDetect(detector, d.platform)
 	if err != nil {
 		return err
 	}
-
 	return d.writeData(group, plan)
 }
 
-func doDetect(detector lifecycle.Detector, p Platform) (buildpack.Group, platform.BuildPlan, error) {
+func doDetect(detector *lifecycle.Detector, p Platform) (buildpack.Group, platform.BuildPlan, error) {
 	group, plan, err := detector.Detect()
 	if err != nil {
 		switch err := err.(type) {

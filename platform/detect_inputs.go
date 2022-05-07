@@ -1,5 +1,9 @@
 package platform
 
+import (
+	"path/filepath"
+)
+
 // DetectInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
 type DetectInputs struct {
@@ -18,17 +22,15 @@ type DetectInputs struct {
 func (r *InputsResolver) ResolveDetect(inputs DetectInputs) (DetectInputs, error) {
 	resolvedInputs := inputs
 
-	if err := r.fillDetectDefaults(&resolvedInputs); err != nil {
-		return DetectInputs{}, err
-	}
+	r.fillDetectDefaultFilePaths(&resolvedInputs)
 
-	if err := r.validateDetect(resolvedInputs); err != nil {
+	if err := r.resolveDirPaths(&resolvedInputs); err != nil {
 		return DetectInputs{}, err
 	}
 	return resolvedInputs, nil
 }
 
-func (r *InputsResolver) fillDetectDefaults(inputs *DetectInputs) error {
+func (r *InputsResolver) fillDetectDefaultFilePaths(inputs *DetectInputs) {
 	if inputs.OrderPath == PlaceholderOrderPath {
 		inputs.OrderPath = defaultPath(PlaceholderOrderPath, inputs.LayersDir, r.platformAPI)
 	}
@@ -38,9 +40,31 @@ func (r *InputsResolver) fillDetectDefaults(inputs *DetectInputs) error {
 	if inputs.PlanPath == PlaceholderPlanPath {
 		inputs.PlanPath = defaultPath(PlaceholderPlanPath, inputs.LayersDir, r.platformAPI)
 	}
+}
+
+func (r *InputsResolver) resolveDirPaths(inputs *DetectInputs) error {
+	var err error
+	if inputs.AppDir, err = filepath.Abs(inputs.AppDir); err != nil {
+		return err
+	}
+	if inputs.BuildpacksDir, err = filepath.Abs(inputs.BuildpacksDir); err != nil {
+		return err
+	}
+	if inputs.ExtensionsDir, err = absoluteIfNotEmpty(inputs.ExtensionsDir); err != nil {
+		return err
+	}
+	if inputs.LayersDir, err = filepath.Abs(inputs.LayersDir); err != nil {
+		return err
+	}
+	if inputs.PlatformDir, err = filepath.Abs(inputs.PlatformDir); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (r *InputsResolver) validateDetect(inputs DetectInputs) error {
-	return nil
+func absoluteIfNotEmpty(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+	return filepath.Abs(path)
 }

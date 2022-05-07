@@ -46,7 +46,7 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 		return DetectRun{Code: -1, Err: err}
 	}
 
-	planDir, planPath, err := processBuildpackPaths(err)
+	planDir, planPath, err := processBuildpackPaths()
 	defer os.RemoveAll(planDir)
 	if err != nil {
 		return DetectRun{Code: -1, Err: err}
@@ -109,7 +109,7 @@ func processPlatformPaths(config *DetectConfig) (string, string, error) {
 	return appDir, platformDir, nil
 }
 
-func processBuildpackPaths(err error) (string, string, error) {
+func processBuildpackPaths() (string, string, error) {
 	planDir, err := ioutil.TempDir("", "plan.")
 	if err != nil {
 		return "", "", err
