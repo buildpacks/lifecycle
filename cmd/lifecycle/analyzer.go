@@ -39,6 +39,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cmd.FlagTags(&a.AdditionalTags)
 		cmd.FlagUID(&a.UID)
 		cmd.FlagUseDaemon(&a.UseDaemon)
+		cmd.FlagExportOCI(&a.OCILayoutDir)
 	case a.platform.API().AtLeast("0.7"):
 		cmd.FlagAnalyzedPath(&a.AnalyzedPath)
 		cmd.FlagCacheImage(&a.CacheImageRef)

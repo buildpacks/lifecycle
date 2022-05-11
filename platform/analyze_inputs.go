@@ -19,6 +19,7 @@ type AnalyzeInputs struct {
 	LegacyCacheDir   string
 	LegacyGroupPath  string
 	OutputImageRef   string
+	OCILayoutDir	 string
 	PreviousImageRef string
 	RunImageRef      string
 	StackPath        string
@@ -115,5 +116,12 @@ func (r *InputsResolver) validateAnalyze(inputs AnalyzeInputs, logger log.Logger
 	if inputs.CacheImageRef == "" && inputs.LegacyCacheDir == "" {
 		logger.Warn("Not restoring cached layer metadata, no cache flag specified.")
 	}
+
+	if inputs.OCILayoutDir != "" {
+		if inputs.UseDaemon {
+			return errors.New("exporting to multiples target is not allowed")
+		}
+	}
+
 	return nil
 }

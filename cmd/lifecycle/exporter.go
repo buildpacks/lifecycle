@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/buildpacks/lifecycle/layout"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -49,6 +50,7 @@ type exportArgs struct {
 	launchCacheDir      string
 	launcherPath        string
 	layersDir           string
+	ociLayoutDir	 	string
 	processType         string
 	projectMetadataPath string
 	reportPath          string
@@ -86,6 +88,7 @@ func (e *exportCmd) DefineFlags() {
 	cmd.FlagStackPath(&e.stackPath)
 	cmd.FlagUID(&e.uid)
 	cmd.FlagUseDaemon(&e.useDaemon)
+	cmd.FlagExportOCI(&e.ociLayoutDir)
 
 	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
@@ -96,9 +99,15 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
+	if e.ociLayoutDir != "" {
+		if e.useDaemon {
+			return cmd.FailErrCode(errors.New( "exporting to multiples target is not allowed"), cmd.CodeInvalidArgs, "parse arguments")
+		}
+	}
+
 	e.imageNames = args
-	if e.launchCacheDir != "" && !e.useDaemon {
-		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
+	if e.launchCacheDir != "" && (!e.useDaemon || e.ociLayoutDir != "") {
+		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon or -oci")
 		e.launchCacheDir = ""
 	}
 
@@ -398,6 +407,19 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
+	runImage, err := remote.NewImage(ea.runImageRef, ea.keychain, remote.FromBaseImage(ea.runImageRef))
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "access run image")
+	}
+	runImageID, err := runImage.Identifier()
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "get run image reference")
+	}
+	return appImage, runImageID.String(), nil
+}
+
+func (ea exportArgs) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+	appImage, _ := layout.NewImage(ea.ociLayoutDir, layout.FromRemoteBaseImage(ea.keychain, ea.runImageRef))
 	runImage, err := remote.NewImage(ea.runImageRef, ea.keychain, remote.FromBaseImage(ea.runImageRef))
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
