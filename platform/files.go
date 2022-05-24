@@ -125,8 +125,6 @@ type GitMetadata struct {
 	Commit     string `json:"commit"`
 }
 
-// order.toml
-
 // plan.toml
 
 type BuildPlan struct {
