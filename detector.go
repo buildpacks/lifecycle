@@ -63,7 +63,7 @@ func (f *DetectorFactory) NewDetector(
 		return nil, err
 	}
 
-	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath)
+	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath, dirStore)
 	if err != nil {
 		return nil, err
 	}

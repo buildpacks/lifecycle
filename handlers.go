@@ -27,7 +27,7 @@ type RegistryHandler interface {
 
 //go:generate mockgen -package testmock -destination testmock/api_verifier.go github.com/buildpacks/lifecycle APIVerifier
 // APIVerifier exists to avoid having the lifecycle package depend on the cmd package.
-// The package dependency actually already exists, but this is to avoid making it worse.
+// This package dependency actually already exists, but we are trying to avoid making it worse.
 // Eventually, much logic in the cmd package should move to the platform package, after which
 // we might be able to remove this interface.
 type APIVerifier interface {
@@ -38,7 +38,7 @@ type APIVerifier interface {
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
 	ReadGroup(path string) ([]buildpack.GroupElement, error)
-	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
+	ReadOrder(path string, dirStore DirStore) (buildpack.Order, buildpack.Order, error)
 }
 
 type DefaultConfigHandler struct {
@@ -87,8 +87,34 @@ func (h *DefaultConfigHandler) verifyBuildpackApis(group buildpack.Group) error 
 	return nil
 }
 
-func (h *DefaultConfigHandler) ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
-	return ReadOrder(path)
+func (h *DefaultConfigHandler) ReadOrder(path string, dirStore DirStore) (buildpack.Order, buildpack.Order, error) {
+	orderBp, orderExt, err := ReadOrder(path)
+	if err != nil {
+		return buildpack.Order{}, buildpack.Order{}, err
+	}
+	for _, group := range orderBp {
+		for _, groupEl := range group.Group {
+			bp, err := dirStore.LookupBp(groupEl.ID, groupEl.Version)
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := h.apiVerifier.VerifyBuildpackAPIForBuildpack(groupEl.String(), bp.ConfigFile().API); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	for _, group := range orderExt {
+		for _, groupEl := range group.Group {
+			ext, err := dirStore.LookupExt(groupEl.ID, groupEl.Version)
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := h.apiVerifier.VerifyBuildpackAPIForExtension(groupEl.String(), ext.ConfigFile().API); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	return orderBp, orderExt, nil
 }
 
 func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {

@@ -192,7 +192,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return errors.Wrap(err, "initializing analyzer")
+			return cmd.FailErr(err, "initialize analyzer")
 		}
 		analyzedMD, err = analyzer.Analyze()
 		if err != nil {
@@ -210,7 +210,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "initialize detector")
 		}
 		group, plan, err = doDetect(detector, c.platform)
 		if err != nil {
@@ -228,7 +228,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return err
+			return cmd.FailErr(err, "initialize detector")
 		}
 		group, plan, err = doDetect(detector, c.platform)
 		if err != nil {
@@ -258,7 +258,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return errors.Wrap(err, "initializing analyzer")
+			return cmd.FailErr(err, "initialize analyzer")
 		}
 		analyzedMD, err = analyzer.Analyze()
 		if err != nil {

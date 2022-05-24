@@ -112,8 +112,8 @@ func (bg Group) Append(group ...Group) Group {
 	return bg
 }
 
-// A GroupElement represents a buildpack referenced in a buildpack.toml's [[order.group]].
-// It may be a regular buildpack, or a meta buildpack.
+// A GroupElement represents a buildpack referenced in a buildpack.toml's [[order.group]] OR
+// a buildpack or extension in order.toml OR a buildpack or extension in group.toml.
 type GroupElement struct {
 	// Fields that are common to order.toml and group.toml
 

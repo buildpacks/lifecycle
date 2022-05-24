@@ -51,17 +51,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api >= 0.10", func() { // TODO: change to pre-release api in https://github.com/buildpacks/lifecycle/issues/459
 			it.Before(func() {
-				detectorFactory = lifecycle.NewDetectorFactory(
-					api.Platform.Latest(),
-					fakeConfigHandler,
-				)
+				detectorFactory = lifecycle.NewDetectorFactory(api.Platform.Latest(), fakeConfigHandler)
 			})
 
 			it("configures the detector", func() {
 				order := buildpack.Order{
 					buildpack.Group{Group: []buildpack.GroupElement{{ID: "some-id", Version: "some-version"}}},
 				}
-				fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+				fakeConfigHandler.EXPECT().ReadOrder("some-order-path", gomock.Any()).Return(order, nil, nil)
 
 				detector, err := detectorFactory.NewDetector(
 					"some-app-dir",
@@ -114,7 +111,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}
-					fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
+					fakeConfigHandler.EXPECT().ReadOrder("some-order-path", gomock.Any()).Return(orderBp, orderExt, nil)
 
 					detector, err := detectorFactory.NewDetector(
 						"some-app-dir",
@@ -141,17 +138,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.10", func() { // TODO: change to pre-release api in https://github.com/buildpacks/lifecycle/issues/459
 			it.Before(func() {
-				detectorFactory = lifecycle.NewDetectorFactory(
-					api.MustParse("0.9"),
-					fakeConfigHandler,
-				)
+				detectorFactory = lifecycle.NewDetectorFactory(api.MustParse("0.9"), fakeConfigHandler)
 			})
 
 			it("configures the detector", func() {
 				order := buildpack.Order{
 					buildpack.Group{Group: []buildpack.GroupElement{{ID: "some-id", Version: "some-version"}}},
 				}
-				fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+				fakeConfigHandler.EXPECT().ReadOrder("some-order-path", gomock.Any()).Return(order, nil, nil)
 
 				detector, err := detectorFactory.NewDetector(
 					"some-app-dir",
@@ -184,7 +178,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1"}}},
 						buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
 					}
-					fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
+					fakeConfigHandler.EXPECT().ReadOrder("some-order-path", gomock.Any()).Return(orderBp, orderExt, nil)
 
 					detector, err := detectorFactory.NewDetector(
 						"some-app-dir",
