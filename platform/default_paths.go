@@ -12,7 +12,7 @@ const (
 	DefaultGroupFile    = "group.toml"
 	DefaultOrderFile    = "order.toml"
 	DefaultPlanFile     = "plan.toml"
-	// TODO: future work should move order, plan, project metadata, and report to this file
+	// TODO: future work should move project metadata and report to this file
 )
 
 var (
