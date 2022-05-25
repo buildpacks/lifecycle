@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var regex = regexp.MustCompile(`^v?(\d+)\.?(\d*)-?([a-zA-Z0-9-]+)?$`)
+var regex = regexp.MustCompile(`^v?(\d+)\.?(\d*)(-[a-zA-Z0-9-]+)?$`)
 
 type Version struct {
 	Major      uint64
