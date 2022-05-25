@@ -88,6 +88,11 @@ func (a APIs) IsDeprecated(target *Version) bool {
 	return false
 }
 
+// IsExperimental returns true or false depending on whether the target API is experimental
+func (a APIs) IsExperimental(target *Version) bool {
+	return target.Prerelease != ""
+}
+
 // Latest returns the latest API that is supported
 func (a APIs) Latest() *Version {
 	latest := a.Supported[0]

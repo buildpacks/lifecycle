@@ -342,8 +342,8 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet)
-	if err := opts.WorkingImage.SetEnv(cmd.EnvDeprecationMode, cmd.DeprecationModeQuiet); err != nil {
+	e.Logger.Debugf("Setting %s=%s", cmd.EnvDeprecationMode, cmd.ModeQuiet)
+	if err := opts.WorkingImage.SetEnv(cmd.EnvDeprecationMode, cmd.ModeQuiet); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
