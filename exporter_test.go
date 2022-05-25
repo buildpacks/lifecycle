@@ -691,7 +691,8 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						val := fakeAppImage.WorkingDir()
+						val, err := fakeAppImage.WorkingDir()
+						h.AssertNil(t, err)
 						h.AssertEq(t, val, opts.AppDir)
 					})
 				})
@@ -703,7 +704,8 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						val := fakeAppImage.WorkingDir()
+						val, err := fakeAppImage.WorkingDir()
+						h.AssertNil(t, err)
 						h.AssertEq(t, val, "")
 					})
 				})

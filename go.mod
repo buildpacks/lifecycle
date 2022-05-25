@@ -4,11 +4,11 @@ require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20220324232016-7a06d24eebd7
-	github.com/buildpacks/imgutil v0.0.0-20220310160537-4dd8bc60eaff
+	github.com/buildpacks/imgutil v0.0.0-20220504154612-41b113050e2b
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20220327082430-c57b701bfc08
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/golang/mock v1.6.0
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/google/go-containerregistry v0.8.0
 	github.com/heroku/color v0.0.6
 	github.com/pkg/errors v0.9.1
