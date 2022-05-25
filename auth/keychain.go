@@ -194,6 +194,11 @@ func buildAuthHeaders(keychain authn.Keychain, images ...string) map[string]stri
 	return registryAuths
 }
 
+// authConfigToHeader accepts an authn.AuthConfig and returns an Authorization header,
+// or an error if the config cannot be processed.
+// Note that when resolving credentials, the header is simply used to reconstruct the originally provided authn.AuthConfig,
+// making it essentially a stringification (the actual value is unimportant as long as it is consistent and contains
+// all the necessary information).
 func authConfigToHeader(config *authn.AuthConfig) (string, error) {
 	if config.Auth != "" {
 		return fmt.Sprintf("Basic %s", config.Auth), nil
@@ -210,6 +215,7 @@ func authConfigToHeader(config *authn.AuthConfig) (string, error) {
 	}
 
 	if config.IdentityToken != "" {
+		// There isn't an Authorization header for identity tokens, but we just need a way to represent the data.
 		return fmt.Sprintf("X-Identity %s", config.IdentityToken), nil
 	}
 
