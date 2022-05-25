@@ -14,7 +14,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	io2 "github.com/buildpacks/lifecycle/internal/io"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -138,7 +138,7 @@ func (r *DefaultSBOMRestorer) restoreSBOMFunc(detectedBps []buildpack.GroupBuild
 			return nil
 		}
 
-		return io2.Copy(path, filepath.Join(destDir, fmt.Sprintf("%s.%s", layerName, fileName)))
+		return fsutil.Copy(path, filepath.Join(destDir, fmt.Sprintf("%s.%s", layerName, fileName)))
 	}
 }
 

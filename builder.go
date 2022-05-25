@@ -2,7 +2,7 @@ package lifecycle
 
 import (
 	"fmt"
-	goio "io"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/internal/io"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -43,7 +43,7 @@ type Builder struct {
 	Platform       Platform
 	Group          buildpack.Group
 	Plan           platform.BuildPlan
-	Out, Err       goio.Writer
+	Out, Err       io.Writer
 	Logger         Logger
 	BuildpackStore BuildpackStore
 }
@@ -186,7 +186,7 @@ func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) e
 				return err
 			}
 
-			return io.Copy(bomFile.Path, filepath.Join(targetDir, name))
+			return fsutil.Copy(bomFile.Path, filepath.Join(targetDir, name))
 		}
 	)
 

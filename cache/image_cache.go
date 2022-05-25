@@ -45,6 +45,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		keychain,
 		remote.WithPreviousImage(name),
 		remote.WithDefaultPlatform(imgutil.Platform{OS: runtime.GOOS}),
+		remote.AddEmptyLayerOnSave(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
