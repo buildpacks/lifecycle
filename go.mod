@@ -6,7 +6,7 @@ require (
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20220324232016-7a06d24eebd7
 	github.com/buildpacks/imgutil v0.0.0-20220504154612-41b113050e2b
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20220327082430-c57b701bfc08
-	github.com/docker/docker v20.10.14+incompatible
+	github.com/docker/docker v20.10.16+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.8
 	github.com/google/go-containerregistry v0.8.0
@@ -40,7 +40,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.3.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.6.0 // indirect
 	github.com/aws/smithy-go v1.6.0 // indirect
-	github.com/containerd/containerd v1.5.8 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.10.1 // indirect
 	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/docker/cli v20.10.12+incompatible // indirect
@@ -50,7 +49,6 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
@@ -64,9 +62,6 @@ require (
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
-	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
-	google.golang.org/grpc v1.43.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 )
 
 go 1.17
