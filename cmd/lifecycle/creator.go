@@ -164,6 +164,11 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
+	dirStore, err := platform.NewDirStore(c.buildpacksDir, "")
+	if err != nil {
+		return err
+	}
+
 	var (
 		analyzedMD platform.AnalyzedMetadata
 		group      buildpack.Group
@@ -172,8 +177,9 @@ func (c *createCmd) Exec() error {
 	if c.platform.API().AtLeast("0.7") {
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
+			&cmd.APIVerifier{},
 			NewCacheHandler(c.keychain),
-			lifecycle.NewConfigHandler(&cmd.APIVerifier{}),
+			lifecycle.NewConfigHandler(),
 			NewImageHandler(c.docker, c.keychain),
 			NewRegistryHandler(c.keychain),
 		)
@@ -200,15 +206,13 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("DETECTING")
-		detectorFactory := lifecycle.NewDetectorFactory(c.platform.API(), lifecycle.NewConfigHandler(&cmd.APIVerifier{}))
-		detector, err := detectorFactory.NewDetector(
-			c.appDir,
-			c.buildpacksDir,
-			"",
-			c.orderPath,
-			c.platformDir,
-			cmd.DefaultLogger,
+		detectorFactory := lifecycle.NewDetectorFactory(
+			c.platform.API(),
+			&cmd.APIVerifier{},
+			lifecycle.NewConfigHandler(),
+			dirStore,
 		)
+		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
 		if err != nil {
 			return cmd.FailErr(err, "initialize detector")
 		}
@@ -218,15 +222,13 @@ func (c *createCmd) Exec() error {
 		}
 	} else {
 		cmd.DefaultLogger.Phase("DETECTING")
-		detectorFactory := lifecycle.NewDetectorFactory(c.platform.API(), lifecycle.NewConfigHandler(&cmd.APIVerifier{}))
-		detector, err := detectorFactory.NewDetector(
-			c.appDir,
-			c.buildpacksDir,
-			"",
-			c.orderPath,
-			c.platformDir,
-			cmd.DefaultLogger,
+		detectorFactory := lifecycle.NewDetectorFactory(
+			c.platform.API(),
+			&cmd.APIVerifier{},
+			lifecycle.NewConfigHandler(),
+			dirStore,
 		)
+		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
 		if err != nil {
 			return cmd.FailErr(err, "initialize detector")
 		}
@@ -238,8 +240,9 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
+			&cmd.APIVerifier{},
 			NewCacheHandler(c.keychain),
-			lifecycle.NewConfigHandler(&cmd.APIVerifier{}),
+			lifecycle.NewConfigHandler(),
 			NewImageHandler(c.docker, c.keychain),
 			NewRegistryHandler(c.keychain),
 		)

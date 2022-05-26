@@ -14,15 +14,24 @@ import (
 
 type AnalyzerFactory struct {
 	platformAPI     *api.Version
+	apiVerifier     APIVerifier
 	cacheHandler    CacheHandler
 	configHandler   ConfigHandler
 	imageHandler    ImageHandler
 	registryHandler RegistryHandler
 }
 
-func NewAnalyzerFactory(platformAPI *api.Version, cacheHandler CacheHandler, configHandler ConfigHandler, imageHandler ImageHandler, registryHandler RegistryHandler) *AnalyzerFactory {
+func NewAnalyzerFactory(
+	platformAPI *api.Version,
+	apiVerifier APIVerifier,
+	cacheHandler CacheHandler,
+	configHandler ConfigHandler,
+	imageHandler ImageHandler,
+	registryHandler RegistryHandler,
+) *AnalyzerFactory {
 	return &AnalyzerFactory{
 		platformAPI:     platformAPI,
+		apiVerifier:     apiVerifier,
 		cacheHandler:    cacheHandler,
 		configHandler:   configHandler,
 		imageHandler:    imageHandler,
@@ -124,8 +133,10 @@ func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Grou
 		return nil
 	}
 	var err error
-	analyzer.Buildpacks, err = f.configHandler.ReadGroup(path)
-	return err
+	if analyzer.Buildpacks, err = f.configHandler.ReadGroup(path); err != nil {
+		return err
+	}
+	return f.apiVerifier.VerifyBuildpackAPIsForGroup(analyzer.Buildpacks)
 }
 
 func (f *AnalyzerFactory) setCache(analyzer *Analyzer, imageRef string, dir string) error {

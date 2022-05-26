@@ -106,8 +106,9 @@ func (a *analyzeCmd) Privileges() error {
 func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
 		a.platform.API(),
+		&cmd.APIVerifier{},
 		NewCacheHandler(a.keychain),
-		lifecycle.NewConfigHandler(&cmd.APIVerifier{}),
+		lifecycle.NewConfigHandler(),
 		NewImageHandler(a.docker, a.keychain),
 		NewRegistryHandler(a.keychain),
 	)

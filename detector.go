@@ -30,13 +30,22 @@ type Resolver interface {
 
 type DetectorFactory struct {
 	platformAPI   *api.Version
+	apiVerifier   APIVerifier
 	configHandler ConfigHandler
+	dirStore      DirStore
 }
 
-func NewDetectorFactory(platformAPI *api.Version, configHandler ConfigHandler) *DetectorFactory {
+func NewDetectorFactory(
+	platformAPI *api.Version,
+	apiVerifier APIVerifier,
+	configHandler ConfigHandler,
+	dirStore DirStore,
+) *DetectorFactory {
 	return &DetectorFactory{
 		platformAPI:   platformAPI,
+		apiVerifier:   apiVerifier,
 		configHandler: configHandler,
+		dirStore:      dirStore,
 	}
 }
 
@@ -50,38 +59,53 @@ type Detector struct {
 	Runs        *sync.Map
 }
 
-func (f *DetectorFactory) NewDetector(
-	appDir string,
-	buildpacksDir string,
-	extensionsDir string,
-	orderPath string,
-	platformDir string,
-	logger Logger,
-) (*Detector, error) {
-	dirStore, err := platform.NewDirStore(buildpacksDir, extensionsDir)
+func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger Logger) (*Detector, error) {
+	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath)
 	if err != nil {
 		return nil, err
 	}
-
-	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath, dirStore)
-	if err != nil {
-		return nil, err
+	if f.platformAPI.LessThan("0.10") {
+		orderExt = nil
 	}
-
-	order := orderBp
-	if f.platformAPI.AtLeast("0.10") {
-		order = lifecycle.PrependExtensions(orderBp, orderExt)
+	if err = f.verifyAPIs(orderBp, orderExt); err != nil {
+		return nil, err
 	}
 
 	return &Detector{
 		AppDir:      appDir,
-		DirStore:    dirStore,
+		DirStore:    f.dirStore,
 		Logger:      logger,
-		Order:       order,
+		Order:       lifecycle.PrependExtensions(orderBp, orderExt),
 		PlatformDir: platformDir,
 		Resolver:    &DefaultResolver{Logger: logger},
 		Runs:        &sync.Map{},
 	}, nil
+}
+
+func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order) error {
+	for _, group := range orderBp {
+		for _, groupEl := range group.Group {
+			bp, err := f.dirStore.LookupBp(groupEl.ID, groupEl.Version)
+			if err != nil {
+				return err
+			}
+			if err = f.apiVerifier.VerifyBuildpackAPIForBuildpack(groupEl.String(), bp.ConfigFile().API); err != nil {
+				return err
+			}
+		}
+	}
+	for _, group := range orderExt {
+		for _, groupEl := range group.Group {
+			ext, err := f.dirStore.LookupExt(groupEl.ID, groupEl.Version)
+			if err != nil {
+				return err
+			}
+			if err = f.apiVerifier.VerifyBuildpackAPIForExtension(groupEl.String(), ext.ConfigFile().API); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {

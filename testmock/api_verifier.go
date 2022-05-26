@@ -8,6 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+
+	buildpack "github.com/buildpacks/lifecycle/buildpack"
 )
 
 // MockAPIVerifier is a mock of APIVerifier interface.
@@ -59,4 +61,18 @@ func (m *MockAPIVerifier) VerifyBuildpackAPIForExtension(arg0, arg1 string) erro
 func (mr *MockAPIVerifierMockRecorder) VerifyBuildpackAPIForExtension(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyBuildpackAPIForExtension", reflect.TypeOf((*MockAPIVerifier)(nil).VerifyBuildpackAPIForExtension), arg0, arg1)
+}
+
+// VerifyBuildpackAPIsForGroup mocks base method.
+func (m *MockAPIVerifier) VerifyBuildpackAPIsForGroup(arg0 []buildpack.GroupElement) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyBuildpackAPIsForGroup", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// VerifyBuildpackAPIsForGroup indicates an expected call of VerifyBuildpackAPIsForGroup.
+func (mr *MockAPIVerifierMockRecorder) VerifyBuildpackAPIsForGroup(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyBuildpackAPIsForGroup", reflect.TypeOf((*MockAPIVerifier)(nil).VerifyBuildpackAPIsForGroup), arg0)
 }

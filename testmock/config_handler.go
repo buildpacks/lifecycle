@@ -9,7 +9,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	lifecycle "github.com/buildpacks/lifecycle"
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 )
 
@@ -52,9 +51,9 @@ func (mr *MockConfigHandlerMockRecorder) ReadGroup(arg0 interface{}) *gomock.Cal
 }
 
 // ReadOrder mocks base method.
-func (m *MockConfigHandler) ReadOrder(arg0 string, arg1 lifecycle.DirStore) (buildpack.Order, buildpack.Order, error) {
+func (m *MockConfigHandler) ReadOrder(arg0 string) (buildpack.Order, buildpack.Order, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadOrder", arg0, arg1)
+	ret := m.ctrl.Call(m, "ReadOrder", arg0)
 	ret0, _ := ret[0].(buildpack.Order)
 	ret1, _ := ret[1].(buildpack.Order)
 	ret2, _ := ret[2].(error)
@@ -62,7 +61,7 @@ func (m *MockConfigHandler) ReadOrder(arg0 string, arg1 lifecycle.DirStore) (bui
 }
 
 // ReadOrder indicates an expected call of ReadOrder.
-func (mr *MockConfigHandlerMockRecorder) ReadOrder(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockConfigHandlerMockRecorder) ReadOrder(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadOrder", reflect.TypeOf((*MockConfigHandler)(nil).ReadOrder), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadOrder", reflect.TypeOf((*MockConfigHandler)(nil).ReadOrder), arg0)
 }

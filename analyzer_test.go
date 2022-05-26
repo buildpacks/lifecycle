@@ -38,6 +38,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#NewAnalyzer", func() {
 		var (
 			analyzerFactory     *lifecycle.AnalyzerFactory
+			fakeAPIVerifier     *testmock.MockAPIVerifier
 			fakeCacheHandler    *testmock.MockCacheHandler
 			fakeConfigHandler   *testmock.MockConfigHandler
 			fakeImageHandler    *testmock.MockImageHandler
@@ -49,6 +50,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
+			fakeAPIVerifier = testmock.NewMockAPIVerifier(mockController)
 			fakeCacheHandler = testmock.NewMockCacheHandler(mockController)
 			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
 			fakeImageHandler = testmock.NewMockImageHandler(mockController)
@@ -66,13 +68,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api >= 0.8", func() {
 			it.Before(func() {
-				analyzerFactory = lifecycle.NewAnalyzerFactory(
-					api.Platform.Latest(),
-					fakeCacheHandler,
-					fakeConfigHandler,
-					fakeImageHandler,
-					fakeRegistryHandler,
-				)
+				analyzerFactory = lifecycle.NewAnalyzerFactory(api.Platform.Latest(), fakeAPIVerifier, fakeCacheHandler, fakeConfigHandler, fakeImageHandler, fakeRegistryHandler)
 			})
 
 			it("configures the analyzer", func() {
@@ -164,13 +160,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api = 0.7", func() {
 			it.Before(func() {
-				analyzerFactory = lifecycle.NewAnalyzerFactory(
-					api.MustParse("0.7"),
-					fakeCacheHandler,
-					fakeConfigHandler,
-					fakeImageHandler,
-					fakeRegistryHandler,
-				)
+				analyzerFactory = lifecycle.NewAnalyzerFactory(api.MustParse("0.7"), fakeAPIVerifier, fakeCacheHandler, fakeConfigHandler, fakeImageHandler, fakeRegistryHandler)
 			})
 
 			it("configures the analyzer", func() {
@@ -235,13 +225,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.7", func() {
 			it.Before(func() {
-				analyzerFactory = lifecycle.NewAnalyzerFactory(
-					api.MustParse("0.6"),
-					fakeCacheHandler,
-					fakeConfigHandler,
-					fakeImageHandler,
-					fakeRegistryHandler,
-				)
+				analyzerFactory = lifecycle.NewAnalyzerFactory(api.MustParse("0.6"), fakeAPIVerifier, fakeCacheHandler, fakeConfigHandler, fakeImageHandler, fakeRegistryHandler)
 			})
 
 			it("configures the analyzer", func() {
@@ -251,7 +235,9 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("does not ensure registry access")
 
 				t.Log("processes group")
-				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path")
+				group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
+				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPIsForGroup(group)
 
 				t.Log("processes cache")
 				fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")
@@ -291,7 +277,9 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					t.Log("does not ensure registry access")
 
 					t.Log("processes group")
-					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path")
+					group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
+					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPIsForGroup(group)
 
 					t.Log("processes cache")
 					fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")

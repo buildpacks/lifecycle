@@ -62,15 +62,17 @@ func (d *detectCmd) Privileges() error {
 }
 
 func (d *detectCmd) Exec() error {
-	factory := lifecycle.NewDetectorFactory(d.platform.API(), lifecycle.NewConfigHandler(&cmd.APIVerifier{}))
-	detector, err := factory.NewDetector(
-		d.AppDir,
-		d.BuildpacksDir,
-		d.ExtensionsDir,
-		d.OrderPath,
-		d.PlatformDir,
-		cmd.DefaultLogger,
+	dirStore, err := platform.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
+	if err != nil {
+		return err
+	}
+	factory := lifecycle.NewDetectorFactory(
+		d.platform.API(),
+		&cmd.APIVerifier{},
+		lifecycle.NewConfigHandler(),
+		dirStore,
 	)
+	detector, err := factory.NewDetector(d.AppDir, d.OrderPath, d.PlatformDir, cmd.DefaultLogger)
 	if err != nil {
 		return cmd.FailErr(err, "initialize detector")
 	}
