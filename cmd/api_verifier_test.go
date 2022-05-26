@@ -9,6 +9,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -91,7 +92,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("VerifyBuildpackAPIs", func() {
+	when("VerifyBuildpackAPI", func() {
 		it.Before(func() {
 			var err error
 			api.Buildpack, err = api.NewAPIs([]string{"1.2", "2.1"}, []string{"1"})
@@ -151,6 +152,47 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 					}
 					h.AssertEq(t, failErr.Code, 12)
 				})
+			})
+		})
+	})
+
+	when("APIVerifier", func() {
+		var apiVerifier *cmd.APIVerifier
+
+		it.Before(func() {
+			apiVerifier = &cmd.APIVerifier{}
+		})
+
+		when("VerifyBuildpackAPIsForGroup", func() {
+			it.Before(func() {
+				var err error
+				api.Buildpack, err = api.NewAPIs([]string{"0.2"}, []string{})
+				h.AssertNil(t, err)
+			})
+
+			it("fills in missing apis", func() {
+				group := []buildpack.GroupElement{{ID: "some-id", Version: "some-version"}}
+				h.AssertNil(t, apiVerifier.VerifyBuildpackAPIsForGroup(group))
+			})
+
+			it("verifies buildpacks", func() {
+				group := []buildpack.GroupElement{{ID: "some-id", Version: "some-version", API: "bad-api"}}
+				err := apiVerifier.VerifyBuildpackAPIsForGroup(group)
+				failErr, ok := err.(*cmd.ErrorFail)
+				if !ok {
+					t.Fatalf("expected an error of type cmd.ErrorFail")
+				}
+				h.AssertEq(t, failErr.Code, 12)
+			})
+
+			it("verifies extensions", func() {
+				group := []buildpack.GroupElement{{ID: "some-id", Version: "some-version", API: "bad-api", Extension: true}}
+				err := apiVerifier.VerifyBuildpackAPIsForGroup(group)
+				failErr, ok := err.(*cmd.ErrorFail)
+				if !ok {
+					t.Fatalf("expected an error of type cmd.ErrorFail")
+				}
+				h.AssertEq(t, failErr.Code, 12)
 			})
 		})
 	})
