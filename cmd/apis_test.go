@@ -93,7 +93,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 		when("is experimental", func() {
 			when("CNB_EXPERIMENTAL_MODE=warn", func() {
 				it("warns", func() {
-					cmd.ExperimentalMode = cmd.ModeWarn
+					cmd.ExperimentalModeAPIs = cmd.ModeWarn
 					err := cmd.VerifyPlatformAPI("2.1-alpha-1")
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
@@ -104,7 +104,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=quiet", func() {
 				it("succeeds silently", func() {
-					cmd.ExperimentalMode = cmd.ModeQuiet
+					cmd.ExperimentalModeAPIs = cmd.ModeQuiet
 					err := cmd.VerifyPlatformAPI("2.1-alpha-1")
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
@@ -113,7 +113,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=error", func() {
 				it("errors with exit code 11", func() {
-					cmd.ExperimentalMode = cmd.ModeError
+					cmd.ExperimentalModeAPIs = cmd.ModeError
 					err := cmd.VerifyPlatformAPI("2.1-alpha-1")
 					failErr, ok := err.(*cmd.ErrorFail)
 					if !ok {
@@ -191,7 +191,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 		when("is experimental", func() {
 			when("CNB_EXPERIMENTAL_MODE=warn", func() {
 				it("warns", func() {
-					cmd.ExperimentalMode = cmd.ModeWarn
+					cmd.ExperimentalModeAPIs = cmd.ModeWarn
 					err := cmd.VerifyBuildpackAPI("some-buildpack", "2.1-alpha-1")
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
@@ -202,7 +202,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=quiet", func() {
 				it("succeeds silently", func() {
-					cmd.ExperimentalMode = cmd.ModeQuiet
+					cmd.ExperimentalModeAPIs = cmd.ModeQuiet
 					err := cmd.VerifyBuildpackAPI("some-buildpack", "2.1-alpha-1")
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
@@ -211,7 +211,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=error", func() {
 				it("errors with exit code 11", func() {
-					cmd.ExperimentalMode = cmd.ModeError
+					cmd.ExperimentalModeAPIs = cmd.ModeError
 					err := cmd.VerifyBuildpackAPI("some-buildpack", "2.1-alpha-1")
 					failErr, ok := err.(*cmd.ErrorFail)
 					if !ok {

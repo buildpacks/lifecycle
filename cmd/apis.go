@@ -2,18 +2,13 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/buildpacks/lifecycle/api"
 )
 
 var (
-	DeprecationMode  = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
-	ExperimentalMode = EnvOrDefault(EnvExperimentalMode, DefaultExperimentalMode)
-)
-
-const (
-	ModeQuiet = "quiet"
-	ModeWarn  = "warn"
-	ModeError = "error"
+	DeprecationMode      = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
+	ExperimentalModeAPIs = EnvOrDefault(EnvExperimentalModeAPIs, DefaultExperimentalModeAPIs)
 )
 
 func VerifyPlatformAPI(requested string) error {
@@ -40,12 +35,12 @@ func VerifyPlatformAPI(requested string) error {
 			}
 		}
 		if api.Platform.IsExperimental(requestedAPI) {
-			switch ExperimentalMode {
+			switch ExperimentalModeAPIs {
 			case ModeQuiet:
 				break
 			case ModeError:
 				DefaultLogger.Errorf("Platform requested experimental API '%s'", requested)
-				DefaultLogger.Errorf("Experimental APIs are disabled by %s=%s", EnvExperimentalMode, ModeError)
+				DefaultLogger.Errorf("Experimental APIs are disabled by %s=%s", EnvExperimentalModeAPIs, ModeError)
 				return platformAPIError(requested)
 			case ModeWarn:
 				DefaultLogger.Warnf("Platform requested experimental API '%s'", requested)
@@ -82,12 +77,12 @@ func VerifyBuildpackAPI(bp string, requested string) error {
 			}
 		}
 		if api.Buildpack.IsExperimental(requestedAPI) {
-			switch ExperimentalMode {
+			switch ExperimentalModeAPIs {
 			case ModeQuiet:
 				break
 			case ModeError:
 				DefaultLogger.Errorf("Buildpack '%s' requests experimental API '%s'", bp, requested)
-				DefaultLogger.Errorf("Experimental APIs are disabled by %s=%s", EnvExperimentalMode, ModeError)
+				DefaultLogger.Errorf("Experimental APIs are disabled by %s=%s", EnvExperimentalModeAPIs, ModeError)
 				return buildpackAPIError(bp, requested)
 			case ModeWarn:
 				DefaultLogger.Warnf("Buildpack '%s' requests experimental API '%s'", bp, requested)
