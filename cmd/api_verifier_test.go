@@ -13,11 +13,11 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-func TestPlatformAPI(t *testing.T) {
-	spec.Run(t, "PlatformAPI", testPlatformAPI, spec.Sequential(), spec.Report(report.Terminal{}))
+func TestAPIVerifier(t *testing.T) {
+	spec.Run(t, "APIVerifier", testAPIVerifier, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
-func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
+func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 	var (
 		logHandler *memory.Handler
 	)
