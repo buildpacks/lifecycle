@@ -96,39 +96,35 @@ func (v *Version) Equal(o *Version) bool {
 //    1 is greater than *Version o
 func (v *Version) Compare(o *Version) int {
 	if v.Major != o.Major {
-		if v.Major < o.Major {
+		switch {
+		case v.Major < o.Major:
 			return -1
-		}
-
-		if v.Major > o.Major {
+		default:
+			// v.Major > o.Major
 			return 1
 		}
 	}
 
 	if v.Minor != o.Minor {
-		if v.Minor < o.Minor {
+		switch {
+		case v.Minor < o.Minor:
 			return -1
-		}
-
-		if v.Minor > o.Minor {
+		default:
+			// v.Minor > o.Minor
 			return 1
 		}
 	}
 
 	if v.Prerelease != o.Prerelease {
-		if o.Prerelease == "" {
+		switch {
+		case o.Prerelease == "":
 			return -1
-		}
-
-		if v.Prerelease == "" {
+		case v.Prerelease == "":
 			return 1
-		}
-
-		if v.Prerelease < o.Prerelease {
+		case v.Prerelease < o.Prerelease:
 			return -1
-		}
-
-		if v.Prerelease > o.Prerelease {
+		default:
+			// v.Prerelease > o.Prerelease
 			return 1
 		}
 	}
