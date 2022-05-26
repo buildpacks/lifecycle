@@ -230,7 +230,7 @@ func authConfigToHeader(config *authn.AuthConfig) (string, error) {
 		return fmt.Sprintf("X-Identity %s", config.IdentityToken), nil
 	}
 
-	return "", nil
+	return "", errors.New("failed to find authorization information")
 }
 
 // ReferenceForRepoName returns a reference and an authenticator for a given image name and keychain.
