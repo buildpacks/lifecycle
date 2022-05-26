@@ -15,14 +15,16 @@ const (
 	DeprecationModeError = "error"
 )
 
-type APIVerifier struct{}
-
 type ModuleKind int
 
 const (
 	Buildpack ModuleKind = iota
 	Extension
 )
+
+var DeprecationMode = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
+
+type APIVerifier struct{}
 
 func (v *APIVerifier) VerifyBuildpackAPIForBuildpack(name, requested string) error {
 	return VerifyBuildpackAPI(Buildpack, name, requested)

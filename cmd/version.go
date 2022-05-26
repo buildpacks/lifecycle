@@ -13,8 +13,6 @@ var (
 	SCMCommit = ""
 	// SCMRepository is the source repository.
 	SCMRepository = ""
-
-	DeprecationMode = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
 )
 
 // buildVersion is a display format of the version and build metadata in compliance with semver.
