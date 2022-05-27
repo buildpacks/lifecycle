@@ -21,7 +21,7 @@ func TestEnvKeychain(t *testing.T) {
 }
 
 func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
-	when("NewEnvKeychain", func() {
+	when("#NewEnvKeychain", func() {
 		when("environment variable is set", func() {
 			when("valid", func() {
 				it.Before(func() {
@@ -164,7 +164,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("empty", func() {
+			when("auth header is empty", func() {
 				it.Before(func() {
 					envKeychain = auth.EnvKeychain{AuthHeaders: map[string]string{}}
 				})
@@ -185,7 +185,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("NewResolvedKeychain", func() {
+	when("#NewResolvedKeychain", func() {
 		it("returns a resolved keychain from the provided keychain", func() {
 			keychain := &FakeKeychain{
 				authMap: map[string]*authn.AuthConfig{
@@ -202,6 +202,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					"oauth.registry.io": {
 						IdentityToken: "hjkl=",
 					},
+					"empty-auth.registry.io": {},
 				},
 			}
 
@@ -213,6 +214,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				"other-registry.com/image",
 				"my/image", // index.docker.io
 				"oauth.registry.io/image",
+				"empty-auth.registry.io/image",
 			)
 
 			h.AssertEq(t, resolvedKeychain, &auth.ResolvedKeychain{
@@ -292,7 +294,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("auth header is found", func() {
+			when("auth config is found", func() {
 				it("loads the basic auth from memory", func() {
 					registry, err := name.NewRegistry("basic-registry.com", name.WeakValidation)
 					h.AssertNil(t, err)
@@ -348,7 +350,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("empty", func() {
+			when("keychain is empty", func() {
 				it.Before(func() {
 					resolvedKeychain = auth.ResolvedKeychain{AuthConfigs: map[string]*authn.AuthConfig{}}
 				})
@@ -385,7 +387,7 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 					"index.docker.io": {
 						RegistryToken: "qwerty=",
 					},
-					"missing.auth.config": {},
+					"empty-auth.registry.io": {},
 					"oauth.registry.io": {
 						IdentityToken: "hjkl=",
 					},
@@ -422,9 +424,9 @@ func testEnvKeychain(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("registry is missing auth config", func() {
+		when("auth config is empty", func() {
 			it("returns an empty result", func() {
-				envVar, err := auth.BuildEnvVar(keychain, "missing.auth.config/some/image")
+				envVar, err := auth.BuildEnvVar(keychain, "empty-auth.registry.io/some/image")
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, envVar, "{}")
