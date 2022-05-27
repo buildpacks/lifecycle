@@ -4,7 +4,7 @@ require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20220324232016-7a06d24eebd7
-	github.com/buildpacks/imgutil v0.0.0-20220504154612-41b113050e2b
+	github.com/buildpacks/imgutil v0.0.0-20220527150729-7a271a852e31
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20220327082430-c57b701bfc08
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/golang/mock v1.6.0
@@ -14,7 +14,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
 )
 
 require (
@@ -50,7 +50,7 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/klauspost/compress v1.15.4 // indirect
+	github.com/klauspost/compress v1.15.5 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -61,7 +61,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20220516155154-20f960328961 // indirect
+	golang.org/x/net v0.0.0-20220526153639-5463443f8c37 // indirect
 )
 
 go 1.17
