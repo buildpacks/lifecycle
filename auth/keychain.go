@@ -127,6 +127,9 @@ func buildAuthConfigs(keychain authn.Keychain, images ...string) map[string]*aut
 		if err != nil {
 			continue
 		}
+		if *authConfig == (authn.AuthConfig{}) {
+			continue
+		}
 		registryAuths[reference.Context().Registry.Name()] = authConfig
 	}
 	return registryAuths
