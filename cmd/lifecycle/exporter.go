@@ -23,6 +23,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -423,7 +424,7 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	}
 }
 
-func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
+func parseAnalyzedMD(logger log.Logger, path string) (platform.AnalyzedMetadata, error) {
 	var analyzedMD platform.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)

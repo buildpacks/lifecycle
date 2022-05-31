@@ -16,6 +16,7 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -38,7 +39,7 @@ type BuildConfig struct {
 	LayersDir   string
 	Out         io.Writer
 	Err         io.Writer
-	Logger      Logger
+	Logger      log.Logger
 }
 
 type BuildResult struct {
@@ -122,7 +123,7 @@ func renameLayerDirIfNeeded(layerMetadataFile LayerMetadataFile, layerDir string
 	return nil
 }
 
-func (b *Descriptor) processLayers(layersDir string, logger Logger) (map[string]LayerMetadataFile, error) {
+func (b *Descriptor) processLayers(layersDir string, logger log.Logger) (map[string]LayerMetadataFile, error) {
 	if api.MustParse(b.API).LessThan("0.6") {
 		return eachLayer(layersDir, b.API, func(path, buildpackAPI string) (LayerMetadataFile, error) {
 			layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
@@ -244,7 +245,7 @@ func eachLayer(bpLayersDir, buildpackAPI string, fn func(path, api string) (Laye
 	return bpLayers, nil
 }
 
-func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger Logger) (BuildResult, error) {
+func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger log.Logger) (BuildResult, error) {
 	br := BuildResult{}
 	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
@@ -347,7 +348,7 @@ func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Pl
 	return br, nil
 }
 
-func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, logger Logger) error {
+func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, logger log.Logger) error {
 	if api.MustParse(bpAPI).AtLeast("0.6") {
 		return nil
 	}

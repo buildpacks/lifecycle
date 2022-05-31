@@ -11,12 +11,13 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Rebaser struct {
-	Logger      Logger
+	Logger      log.Logger
 	PlatformAPI *api.Version
 }
 

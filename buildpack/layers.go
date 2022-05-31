@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/launch"
 )
 
@@ -23,7 +24,7 @@ type LayersDir struct {
 	Store     *StoreTOML
 }
 
-func ReadLayersDir(layersDir string, bp GroupBuildpack, logger Logger) (LayersDir, error) {
+func ReadLayersDir(layersDir string, bp GroupBuildpack, logger log.Logger) (LayersDir, error) {
 	path := filepath.Join(layersDir, launch.EscapeID(bp.ID))
 	logger.Debugf("Reading buildpack directory: %s", path)
 	bpDir := LayersDir{
@@ -106,7 +107,7 @@ func Malformed(l Layer) bool {
 	return err != nil
 }
 
-func (d *LayersDir) NewLayer(name, buildpackAPI string, logger Logger) *Layer {
+func (d *LayersDir) NewLayer(name, buildpackAPI string, logger log.Logger) *Layer {
 	return &Layer{
 		layerDir: layerDir{
 			path:       filepath.Join(d.Path, name),
@@ -120,7 +121,7 @@ func (d *LayersDir) NewLayer(name, buildpackAPI string, logger Logger) *Layer {
 type Layer struct { // TODO: need to refactor so api and logger won't be part of this struct
 	layerDir
 	api    string
-	logger Logger
+	logger log.Logger
 }
 
 type layerDir struct {

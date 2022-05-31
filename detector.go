@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -144,7 +145,7 @@ func hasID(bps []buildpack.GroupBuildpack, id string) bool {
 }
 
 type DefaultResolver struct {
-	Logger Logger
+	Logger log.Logger
 }
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.

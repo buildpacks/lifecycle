@@ -8,7 +8,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle"
+	llog "github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/internal/modes"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -19,7 +19,7 @@ func TestExperimentalFeaturesGuard(t *testing.T) {
 
 func testExperimentalFeaturesGuard(t *testing.T, when spec.G, it spec.S) {
 	var (
-		logger     lifecycle.Logger
+		logger     llog.Logger
 		logHandler *memory.Handler
 	)
 

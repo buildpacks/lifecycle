@@ -54,7 +54,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 		when("is deprecated", func() {
 			when("CNB_DEPRECATION_MODE=warn", func() {
 				it("warns", func() {
-					modes.Deprecation = cmd.ModeWarn
+					modes.Deprecation = modes.Warn
 					err := modes.VerifyPlatformAPI("1.1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
@@ -65,7 +65,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=quiet", func() {
 				it("succeeds silently", func() {
-					modes.Deprecation = cmd.ModeQuiet
+					modes.Deprecation = modes.Quiet
 					err := modes.VerifyPlatformAPI("1.1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
@@ -74,7 +74,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=error", func() {
 				it("errors", func() {
-					modes.Deprecation = cmd.ModeError
+					modes.Deprecation = modes.Error
 					err := modes.VerifyPlatformAPI("1.1", supported, logger)
 					h.AssertNotNil(t, err)
 				})
@@ -84,7 +84,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 		when("is experimental", func() {
 			when("CNB_EXPERIMENTAL_MODE=warn", func() {
 				it("warns", func() {
-					modes.ExperimentalAPIs = cmd.ModeWarn
+					modes.ExperimentalAPIs = modes.Warn
 					err := modes.VerifyPlatformAPI("2.1-alpha-1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
@@ -95,7 +95,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=quiet", func() {
 				it("succeeds silently", func() {
-					modes.ExperimentalAPIs = cmd.ModeQuiet
+					modes.ExperimentalAPIs = modes.Quiet
 					err := modes.VerifyPlatformAPI("2.1-alpha-1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
@@ -104,7 +104,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=error", func() {
 				it("errors", func() {
-					modes.ExperimentalAPIs = cmd.ModeError
+					modes.ExperimentalAPIs = modes.Error
 					err := modes.VerifyPlatformAPI("2.1-alpha-1", supported, logger)
 					h.AssertNotNil(t, err)
 				})
@@ -136,7 +136,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 		when("is deprecated", func() {
 			when("CNB_DEPRECATION_MODE=warn", func() {
 				it("warns", func() {
-					modes.Deprecation = cmd.ModeWarn
+					modes.Deprecation = modes.Warn
 					err := modes.VerifyBuildpackAPI("some-buildpack", "1.1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
@@ -147,7 +147,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=quiet", func() {
 				it("succeeds silently", func() {
-					modes.Deprecation = cmd.ModeQuiet
+					modes.Deprecation = modes.Quiet
 					err := modes.VerifyBuildpackAPI("some-buildpack", "1.1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
@@ -156,7 +156,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=error", func() {
 				it("errors", func() {
-					modes.Deprecation = cmd.ModeError
+					modes.Deprecation = modes.Error
 					err := modes.VerifyBuildpackAPI("some-buildpack", "1.1", supported, logger)
 					h.AssertNotNil(t, err)
 				})
@@ -166,7 +166,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 		when("is experimental", func() {
 			when("CNB_EXPERIMENTAL_MODE=warn", func() {
 				it("warns", func() {
-					modes.ExperimentalAPIs = cmd.ModeWarn
+					modes.ExperimentalAPIs = modes.Warn
 					err := modes.VerifyBuildpackAPI("some-buildpack", "2.1-alpha-1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
@@ -177,7 +177,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=quiet", func() {
 				it("succeeds silently", func() {
-					modes.ExperimentalAPIs = cmd.ModeQuiet
+					modes.ExperimentalAPIs = modes.Quiet
 					err := modes.VerifyBuildpackAPI("some-buildpack", "2.1-alpha-1", supported, logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
@@ -186,7 +186,7 @@ func testAPIVerifier(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_EXPERIMENTAL_MODE=error", func() {
 				it("errors", func() {
-					modes.ExperimentalAPIs = cmd.ModeError
+					modes.ExperimentalAPIs = modes.Error
 					err := modes.VerifyBuildpackAPI("some-buildpack", "2.1-alpha-1", supported, logger)
 					h.AssertNotNil(t, err)
 				})

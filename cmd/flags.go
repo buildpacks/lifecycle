@@ -64,10 +64,6 @@ const (
 	EnvStackPath           = "CNB_STACK_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
-
-	ModeQuiet = "quiet"
-	ModeWarn  = "warn"
-	ModeError = "error"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)

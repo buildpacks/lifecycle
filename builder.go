@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -44,7 +45,7 @@ type Builder struct {
 	Group          buildpack.Group
 	Plan           platform.BuildPlan
 	Out, Err       io.Writer
-	Logger         Logger
+	Logger         log.Logger
 	BuildpackStore BuildpackStore
 }
 

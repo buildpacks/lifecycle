@@ -9,13 +9,14 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/layer"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
 type Restorer struct {
 	LayersDir string
-	Logger    Logger
+	Logger    log.Logger
 
 	Buildpacks            []buildpack.GroupBuildpack
 	LayerMetadataRestorer layer.MetadataRestorer  // Platform API >= 0.7

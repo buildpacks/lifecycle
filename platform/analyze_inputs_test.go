@@ -10,6 +10,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	llog "github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -26,7 +27,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 		var (
 			resolver   *platform.InputsResolver
 			logHandler *memory.Handler
-			logger     platform.Logger
+			logger     llog.Logger
 		)
 
 		it.Before(func() {

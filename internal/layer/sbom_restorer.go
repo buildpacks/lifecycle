@@ -15,6 +15,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
+	"github.com/buildpacks/lifecycle/internal/log"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 )
@@ -32,7 +33,7 @@ type Cache interface {
 
 type SBOMRestorerOpts struct {
 	LayersDir string
-	Logger    Logger
+	Logger    log.Logger
 	Nop       bool
 }
 
@@ -48,7 +49,7 @@ func NewSBOMRestorer(opts SBOMRestorerOpts, platformAPI *api.Version) SBOMRestor
 
 type DefaultSBOMRestorer struct {
 	LayersDir string
-	Logger    Logger
+	Logger    log.Logger
 }
 
 func (r *DefaultSBOMRestorer) RestoreFromPrevious(image imgutil.Image, layerDigest string) error {
