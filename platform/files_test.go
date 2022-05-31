@@ -96,7 +96,7 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 					},
 				}},
 				Buildpacks:  buildpacks,
-				PlatformAPI: api.Platform.Latest(),
+				PlatformAPI: platform.APIs.Latest(),
 			}
 		})
 

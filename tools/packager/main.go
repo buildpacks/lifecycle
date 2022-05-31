@@ -16,8 +16,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 var (
@@ -68,10 +69,10 @@ func doPackage() error {
 
 	descriptorContents, err := fillTemplate(templateContents, map[string]interface{}{
 		"lifecycle_version":         version,
-		"apis_buildpack_supported":  api.Buildpack.Supported.String(),
-		"apis_buildpack_deprecated": api.Buildpack.Deprecated.String(),
-		"apis_platform_supported":   api.Platform.Supported.String(),
-		"apis_platform_deprecated":  api.Platform.Deprecated.String(),
+		"apis_buildpack_supported":  buildpack.APIs.Supported.String(),
+		"apis_buildpack_deprecated": buildpack.APIs.Deprecated.String(),
+		"apis_platform_supported":   platform.APIs.Supported.String(),
+		"apis_platform_deprecated":  platform.APIs.Deprecated.String(),
 	})
 	if err != nil {
 		return errors.Wrap(err, "Failed to fill template")

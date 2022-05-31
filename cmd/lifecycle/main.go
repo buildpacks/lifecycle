@@ -28,8 +28,8 @@ type Platform interface {
 
 func main() {
 	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
-		cmd.Exit(err)
+	if err := platform.VerifyAPI(platformAPI, cmd.DefaultLogger); err != nil {
+		cmd.Exit(cmd.FailErrCode(err, cmd.CodeIncompatiblePlatformAPI, "set platform API"))
 	}
 
 	p := platform.NewPlatform(platformAPI)
@@ -173,8 +173,8 @@ func verifyBuildpackApis(group buildpack.Group) error {
 			// but if for some reason it isn't default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(bp.String(), bp.API); err != nil {
-			return err
+		if err := buildpack.VerifyAPI(bp.String(), bp.API, cmd.DefaultLogger); err != nil {
+			return cmd.FailErrCode(err, cmd.CodeIncompatibleBuildpackAPI, "set buildpack API")
 		}
 	}
 	return nil

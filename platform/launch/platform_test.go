@@ -12,7 +12,7 @@ import (
 )
 
 func TestPlatform(t *testing.T) {
-	for _, api := range api.Platform.Supported {
+	for _, api := range platform.APIs.Supported {
 		spec.Run(t, "unit-platform/"+api.String(), testPlatform(api), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }

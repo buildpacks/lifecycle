@@ -18,7 +18,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -41,7 +40,7 @@ func TestDetector(t *testing.T) {
 	h.DockerBuild(t,
 		detectImage,
 		detectDockerContext,
-		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
+		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", platform.APIs.Latest())),
 	)
 	defer h.DockerImageRemove(t, detectImage)
 

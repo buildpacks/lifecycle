@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/buildpack"
+
 	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 
@@ -23,8 +25,8 @@ func runLaunch() error {
 	color.Disable(cmd.BoolEnv(cmd.EnvNoColor))
 
 	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
-		cmd.Exit(err)
+	if err := platform.VerifyAPI(platformAPI, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeIncompatiblePlatformAPI, "set platform API")
 	}
 	p := platform.NewPlatform(platformAPI)
 
@@ -80,8 +82,8 @@ func verifyBuildpackAPIs(bps []launch.Buildpack) error {
 			// but if for some reason we do, default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(bp.ID, bp.API); err != nil {
-			return err
+		if err := buildpack.VerifyAPI(bp.ID, bp.API, cmd.DefaultLogger); err != nil {
+			return cmd.FailErrCode(err, cmd.CodeIncompatibleBuildpackAPI, "set buildpack API")
 		}
 	}
 	return nil

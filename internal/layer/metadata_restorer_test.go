@@ -13,7 +13,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
@@ -55,9 +54,9 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 	when("#Restore", func() {
 		it.Before(func() {
 			buildpacks = []buildpack.GroupBuildpack{
-				{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
-				{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
-				{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()},
+				{ID: "metadata.buildpack", API: buildpack.APIs.Latest().String()},
+				{ID: "no.cache.buildpack", API: buildpack.APIs.Latest().String()},
+				{ID: "escaped/buildpack/id", API: buildpack.APIs.Latest().String()},
 			}
 		})
 
@@ -168,8 +167,8 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 			when("buildpack api >= 0.6", func() {
 				it("restores layer metadata without the launch, build and cache flags", func() {
 					buildpacks = []buildpack.GroupBuildpack{
-						{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
-						{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
+						{ID: "metadata.buildpack", API: buildpack.APIs.Latest().String()},
+						{ID: "no.cache.buildpack", API: buildpack.APIs.Latest().String()},
 					}
 
 					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
@@ -337,7 +336,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 
 			when("subset of buildpacks are detected", func() {
 				it.Before(func() {
-					buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()}}
+					buildpacks = []buildpack.GroupBuildpack{{ID: "no.cache.buildpack", API: buildpack.APIs.Latest().String()}}
 				})
 
 				it("restores layers for detected buildpacks", func() {

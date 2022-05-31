@@ -18,10 +18,10 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -64,10 +64,10 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			exporter = &lifecycle.Exporter{
-				PlatformAPI: api.Platform.Latest(),
+				PlatformAPI: platform.APIs.Latest(),
 				Buildpacks: []buildpack.GroupBuildpack{
-					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
-					{ID: "other.buildpack.id", API: api.Buildpack.Latest().String()},
+					{ID: "buildpack.id", API: buildpack.APIs.Latest().String()},
+					{ID: "other.buildpack.id", API: buildpack.APIs.Latest().String()},
 				},
 				Logger:       &log.Logger{Handler: logHandler, Level: level},
 				LayerFactory: layerFactory,

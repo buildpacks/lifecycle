@@ -15,6 +15,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/internal/modes"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -342,8 +343,8 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", cmd.EnvDeprecationMode, cmd.ModeQuiet)
-	if err := opts.WorkingImage.SetEnv(cmd.EnvDeprecationMode, cmd.ModeQuiet); err != nil {
+	e.Logger.Debugf("Setting %s=%s", modes.EnvDeprecation, modes.Quiet)
+	if err := opts.WorkingImage.SetEnv(modes.EnvDeprecation, modes.Quiet); err != nil {
 		return errors.Wrapf(err, "set app image env %s", cmd.EnvAppDir)
 	}
 

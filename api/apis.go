@@ -7,11 +7,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	Platform  = newApisMustParse([]string{"0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"}, nil)
-	Buildpack = newApisMustParse([]string{"0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8"}, nil)
-)
-
 type APIs struct {
 	Supported  List
 	Deprecated List
@@ -27,8 +22,8 @@ func (l List) String() string {
 	return "[" + strings.Join(els, ", ") + "]"
 }
 
-// newApisMustParse calls NewApis and panics on error
-func newApisMustParse(supported []string, deprecated []string) APIs {
+// NewAPIsMustParse calls NewApis and panics on error
+func NewAPIsMustParse(supported []string, deprecated []string) APIs {
 	apis, err := NewAPIs(supported, deprecated)
 	if err != nil {
 		panic(err)

@@ -16,7 +16,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -50,7 +49,7 @@ func TestBuilder(t *testing.T) {
 	h.DockerBuild(t,
 		builderImage,
 		builderDockerContext,
-		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", api.Platform.Latest())),
+		h.WithArgs("--build-arg", fmt.Sprintf("cnb_platform_api=%s", platform.APIs.Latest())),
 		h.WithFlags(
 			"-f", filepath.Join(builderDockerContext, dockerfileName),
 		),

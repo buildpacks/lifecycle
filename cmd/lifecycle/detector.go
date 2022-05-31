@@ -131,12 +131,12 @@ func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
 	}
 	for _, group := range order {
 		for _, groupBp := range group.Group {
-			buildpack, err := store.Lookup(groupBp.ID, groupBp.Version)
+			bp, err := store.Lookup(groupBp.ID, groupBp.Version)
 			if err != nil {
 				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", groupBp.String()))
 			}
-			if err := cmd.VerifyBuildpackAPI(groupBp.String(), buildpack.ConfigFile().API); err != nil {
-				return err
+			if err := buildpack.VerifyAPI(groupBp.String(), bp.ConfigFile().API, cmd.DefaultLogger); err != nil {
+				return cmd.FailErrCode(err, cmd.CodeIncompatibleBuildpackAPI, "set buildpack API")
 			}
 		}
 	}

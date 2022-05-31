@@ -136,12 +136,12 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		exporter = &lifecycle.Exporter{
 			Buildpacks: []buildpack.GroupBuildpack{
-				{ID: "buildpack.id", Version: "1.2.3", API: api.Buildpack.Latest().String()},
-				{ID: "other.buildpack.id", Version: "4.5.6", API: api.Buildpack.Latest().String(), Optional: false},
+				{ID: "buildpack.id", Version: "1.2.3", API: buildpack.APIs.Latest().String()},
+				{ID: "other.buildpack.id", Version: "4.5.6", API: buildpack.APIs.Latest().String(), Optional: false},
 			},
 			LayerFactory: layerFactory,
 			Logger:       &log.Logger{Handler: logHandler},
-			PlatformAPI:  api.Platform.Latest(),
+			PlatformAPI:  platform.APIs.Latest(),
 		}
 	})
 
@@ -290,7 +290,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 			when("the launch flag is in the top level table", func() {
 				it.Before(func() {
-					exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "bad.buildpack.id", API: api.Buildpack.Latest().String()}}
+					exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "bad.buildpack.id", API: buildpack.APIs.Latest().String()}}
 					fakeAppImage.AddPreviousLayer("bad-layer", "")
 					opts.OrigMetadata = platform.LayersMetadata{
 						Buildpacks: []buildpack.LayersMetadata{{
@@ -637,7 +637,7 @@ version = "4.5.6"
 
 				val, err := opts.WorkingImage.Env("CNB_PLATFORM_API")
 				h.AssertNil(t, err)
-				h.AssertEq(t, val, api.Platform.Latest().String())
+				h.AssertEq(t, val, platform.APIs.Latest().String())
 			})
 
 			it("sets CNB_DEPRECATION_MODE=quiet", func() {
@@ -1396,7 +1396,7 @@ version = "4.5.6"
 
 		when("buildpack requires an escaped id", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: api.Buildpack.Latest().String()}}
+				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: buildpack.APIs.Latest().String()}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), opts.LayersDir)
 			})

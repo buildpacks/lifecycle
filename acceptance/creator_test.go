@@ -17,6 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -48,7 +49,7 @@ func TestCreator(t *testing.T) {
 	createDaemonFixtures = createTest.targetDaemon.fixtures
 	createRegFixtures = createTest.targetRegistry.fixtures
 
-	for _, platformAPI := range api.Platform.Supported {
+	for _, platformAPI := range platform.APIs.Supported {
 		spec.Run(t, "acceptance-creator/"+platformAPI.String(), testCreatorFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
