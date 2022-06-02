@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 )
@@ -365,11 +365,15 @@ func (i *Image) Save(additionalNames ...string) error {
 	start := time.Now()
 	for _, layerInfo := range i.additionalLayers {
 		fmt.Printf("Loading layer from path: %s and diffID: %s\n", layerInfo.path, layerInfo.diffID)
-		layer, err := tarball.LayerFromFile(layerInfo.path, tarball.WithMediaType(types.OCILayer))
+		file, err := os.Open(layerInfo.path)
 		if err != nil {
 			return errors.Wrapf(err, "creating layer from %s", layerInfo.path)
 		}
-		image, err = mutate.AppendLayers(image, layer)
+		layer := stream.NewLayer(file)
+		if err != nil {
+			return errors.Wrapf(err, "creating layer from %s", layerInfo.path)
+		}
+		image, err = appendOCILayer(image, layer)
 		if err != nil {
 			return errors.Wrapf(err, "appending layer %s", layerInfo.path)
 		}
@@ -487,4 +491,18 @@ func ImageExists(path string) bool {
 		return false
 	}
 	return true
+}
+
+// This method is a workaround to override the Media Type of the layer to OCILayer
+func appendOCILayer(image v1.Image, layer v1.Layer) (v1.Image, error) {
+	additions := make([]mutate.Addendum, 0)
+	additions = append(additions, mutate.Addendum{
+		MediaType: types.OCILayer,
+		Layer:     layer,
+	})
+	image, err := mutate.Append(image, additions...)
+	if err != nil {
+		return nil, err
+	}
+	return image, nil
 }
