@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 const (
@@ -102,7 +103,7 @@ func sbomGlob(layersDir string) (matches []string, err error) {
 	return
 }
 
-func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, bpLayers map[string]LayerMetadataFile, logger Logger) ([]BOMFile, error) {
+func (b *Descriptor) processBOMFiles(layersDir string, bp GroupBuildpack, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
 	var (
 		files []BOMFile
 	)

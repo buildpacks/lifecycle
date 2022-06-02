@@ -15,7 +15,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -49,7 +48,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			buildpackStore = testmock.NewMockBuildpackStore(mockCtrl)
 			detector.Store = buildpackStore
 
-			detector.Platform = platform.NewPlatform(api.Platform.Latest().String())
+			detector.Platform = platform.NewPlatform(platform.APIs.Latest().String())
 		})
 
 		it.After(func() {

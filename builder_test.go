@@ -19,7 +19,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
@@ -70,11 +69,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			AppDir:      appDir,
 			LayersDir:   layersDir,
 			PlatformDir: platformDir,
-			Platform:    platform.NewPlatform(api.Platform.Latest().String()),
+			Platform:    platform.NewPlatform(platform.APIs.Latest().String()),
 			Group: buildpack.Group{
 				Group: []buildpack.GroupBuildpack{
-					{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage"},
-					{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
+					{ID: "A", Version: "v1", API: buildpack.APIs.Latest().String(), Homepage: "Buildpack A Homepage"},
+					{ID: "B", Version: "v2", API: buildpack.APIs.Latest().String()},
 				},
 			},
 			Out:            stdout,
@@ -421,8 +420,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
 						if s := cmp.Diff(metadata.Buildpacks, []buildpack.GroupBuildpack{
-							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage"},
-							{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
+							{ID: "A", Version: "v1", API: buildpack.APIs.Latest().String(), Homepage: "Buildpack A Homepage"},
+							{ID: "B", Version: "v2", API: buildpack.APIs.Latest().String()},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
@@ -541,9 +540,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("multiple default process types", func() {
 						it.Before(func() {
 							builder.Group.Group = []buildpack.GroupBuildpack{
-								{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
-								{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
-								{ID: "C", Version: "v3", API: api.Buildpack.Latest().String()},
+								{ID: "A", Version: "v1", API: buildpack.APIs.Latest().String()},
+								{ID: "B", Version: "v2", API: buildpack.APIs.Latest().String()},
+								{ID: "C", Version: "v3", API: buildpack.APIs.Latest().String()},
 							}
 						})
 
@@ -621,9 +620,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("overriding default process type, with a non-default process type", func() {
 						it.Before(func() {
 							builder.Group.Group = []buildpack.GroupBuildpack{
-								{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
-								{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
-								{ID: "C", Version: "v3", API: api.Buildpack.Latest().String()},
+								{ID: "A", Version: "v1", API: buildpack.APIs.Latest().String()},
+								{ID: "B", Version: "v2", API: buildpack.APIs.Latest().String()},
+								{ID: "C", Version: "v3", API: buildpack.APIs.Latest().String()},
 							}
 						})
 
@@ -706,7 +705,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						when("buildpack API >= 0.6", func() {
 							it.Before(func() {
 								builder.Group.Group = []buildpack.GroupBuildpack{
-									{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
+									{ID: "A", Version: "v1", API: buildpack.APIs.Latest().String()},
 								}
 							})
 							it("shouldn't set it as a default process", func() {
@@ -932,7 +931,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack API >= 0.6", func() {
 					it.Before(func() {
 						builder.Group.Group = []buildpack.GroupBuildpack{
-							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
+							{ID: "A", Version: "v1", API: buildpack.APIs.Latest().String()},
 						}
 					})
 

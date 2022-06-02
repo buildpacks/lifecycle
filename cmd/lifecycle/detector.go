@@ -7,8 +7,10 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/guard"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -34,31 +36,31 @@ type detectArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
-	cmd.FlagBuildpacksDir(&d.buildpacksDir)
-	cmd.FlagAppDir(&d.appDir)
-	cmd.FlagLayersDir(&d.layersDir)
-	cmd.FlagPlatformDir(&d.platformDir)
-	cmd.FlagOrderPath(&d.orderPath)
-	cmd.FlagGroupPath(&d.groupPath)
-	cmd.FlagPlanPath(&d.planPath)
+	cli.FlagBuildpacksDir(&d.buildpacksDir)
+	cli.FlagAppDir(&d.appDir)
+	cli.FlagLayersDir(&d.layersDir)
+	cli.FlagPlatformDir(&d.platformDir)
+	cli.FlagOrderPath(&d.orderPath)
+	cli.FlagGroupPath(&d.groupPath)
+	cli.FlagPlanPath(&d.planPath)
 }
 
 // Args validates arguments and flags, and fills in default values.
 func (d *detectCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), platform.CodeForInvalidArgs, "parse arguments")
 	}
 
-	if d.groupPath == cmd.PlaceholderGroupPath {
-		d.groupPath = cmd.DefaultGroupPath(d.platform.API().String(), d.layersDir)
+	if d.groupPath == platform.PlaceholderGroupPath {
+		d.groupPath = cli.DefaultGroupPath(d.platform.API().String(), d.layersDir)
 	}
 
-	if d.planPath == cmd.PlaceholderPlanPath {
-		d.planPath = cmd.DefaultPlanPath(d.platform.API().String(), d.layersDir)
+	if d.planPath == platform.PlaceholderPlanPath {
+		d.planPath = cli.DefaultPlanPath(d.platform.API().String(), d.layersDir)
 	}
 
-	if d.orderPath == cmd.PlaceholderOrderPath {
-		d.orderPath = cmd.DefaultOrderPath(d.platform.API().String(), d.layersDir)
+	if d.orderPath == platform.PlaceholderOrderPath {
+		d.orderPath = cli.DefaultOrderPath(d.platform.API().String(), d.layersDir)
 	}
 
 	return nil
@@ -131,12 +133,12 @@ func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
 	}
 	for _, group := range order {
 		for _, groupBp := range group.Group {
-			buildpack, err := store.Lookup(groupBp.ID, groupBp.Version)
+			bp, err := store.Lookup(groupBp.ID, groupBp.Version)
 			if err != nil {
 				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", groupBp.String()))
 			}
-			if err := cmd.VerifyBuildpackAPI(groupBp.String(), buildpack.ConfigFile().API); err != nil {
-				return err
+			if err := guard.BuildpackAPI(groupBp.String(), bp.ConfigFile().API, buildpack.APIs, cmd.DefaultLogger); err != nil {
+				return cmd.FailErrCode(err, platform.CodeForIncompatibleBuildpackAPI, "set buildpack API")
 			}
 		}
 	}

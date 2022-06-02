@@ -7,12 +7,13 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
-	platform "github.com/buildpacks/lifecycle/platform/launch"
+	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestPlatform(t *testing.T) {
-	for _, api := range api.Platform.Supported {
+	for _, api := range launch.APIs.Supported {
 		spec.Run(t, "unit-platform/"+api.String(), testPlatform(api), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
@@ -26,10 +27,10 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatform(platformAPI.String())
+					foundPlatform := launch.NewPlatform(platformAPI.String())
 
 					t.Log("with a default exiter")
-					_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
+					_, ok := foundPlatform.Exiter.(*launch.DefaultExiter)
 					h.AssertEq(t, ok, true)
 
 					t.Log("with an api")
@@ -43,15 +44,28 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatform(platformAPI.String())
+					foundPlatform := launch.NewPlatform(platformAPI.String())
 
 					t.Log("with a legacy exiter")
-					_, ok := foundPlatform.Exiter.(*platform.LegacyExiter)
+					_, ok := foundPlatform.Exiter.(*launch.LegacyExiter)
 					h.AssertEq(t, ok, true)
 
 					t.Log("with an api")
 					h.AssertEq(t, foundPlatform.API(), platformAPI)
 				})
+			})
+		})
+
+		when("constants", func() {
+			it("match platform package", func() {
+				h.AssertEq(t, launch.APIs, platform.APIs)
+				h.AssertEq(t, launch.EnvAppDir, platform.EnvAppDir)
+				h.AssertEq(t, launch.EnvLayersDir, platform.EnvLayersDir)
+				h.AssertEq(t, launch.EnvPlatformAPI, platform.EnvPlatformAPI)
+				h.AssertEq(t, launch.EnvProcessType, platform.EnvProcessType)
+				h.AssertEq(t, launch.CodeForFailed, platform.CodeForFailed)
+				h.AssertEq(t, launch.CodeForIncompatiblePlatformAPI, platform.CodeForIncompatiblePlatformAPI)
+				h.AssertEq(t, launch.CodeForIncompatibleBuildpackAPI, platform.CodeForIncompatibleBuildpackAPI)
 			})
 		})
 	}

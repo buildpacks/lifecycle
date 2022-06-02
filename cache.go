@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -127,7 +128,7 @@ func (e *Exporter) addSBOMCacheLayer(layersDir string, cacheStore Cache, origMet
 	return nil
 }
 
-func readLayersSBOM(layersDir string, bomType string, logger Logger) (LayerDir, error) {
+func readLayersSBOM(layersDir string, bomType string, logger log.Logger) (LayerDir, error) {
 	path := filepath.Join(layersDir, "sbom", bomType)
 	_, err := ioutil.ReadDir(path)
 	if err != nil {

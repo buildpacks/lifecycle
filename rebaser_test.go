@@ -58,7 +58,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 		rebaser = &lifecycle.Rebaser{
 			Logger:      &log.Logger{Handler: &discard.Handler{}},
-			PlatformAPI: api.Platform.Latest(),
+			PlatformAPI: platform.APIs.Latest(),
 		}
 	})
 

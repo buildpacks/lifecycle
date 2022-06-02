@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/layer"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -37,7 +38,7 @@ func NewAnalyzerFactory(platformAPI *api.Version, cacheHandler CacheHandler, con
 type Analyzer struct {
 	PreviousImage imgutil.Image
 	RunImage      imgutil.Image
-	Logger        Logger
+	Logger        log.Logger
 	SBOMRestorer  layer.SBOMRestorer
 
 	// Platform API < 0.7
@@ -59,7 +60,7 @@ func (f *AnalyzerFactory) NewAnalyzer(
 	previousImageRef string,
 	runImageRef string,
 	skipLayers bool,
-	logger Logger,
+	logger log.Logger,
 ) (*Analyzer, error) {
 	analyzer := &Analyzer{
 		LayerMetadataRestorer: &layer.NopMetadataRestorer{},
@@ -246,7 +247,7 @@ func bomSHA(appMeta platform.LayersMetadata) string {
 	return appMeta.BOM.SHA
 }
 
-func retrieveCacheMetadata(fromCache Cache, logger Logger) (platform.CacheMetadata, error) {
+func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMetadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
 	var cacheMeta platform.CacheMetadata
 	if fromCache != nil {

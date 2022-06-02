@@ -1,4 +1,4 @@
-package cmd
+package platform
 
 const (
 	rootDir = `c:\`

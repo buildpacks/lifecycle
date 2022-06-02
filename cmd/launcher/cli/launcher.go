@@ -9,23 +9,24 @@ import (
 	"github.com/heroku/color"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform/guard"
 	platform "github.com/buildpacks/lifecycle/platform/launch"
 )
 
 func RunLaunch() error {
-	color.Disable(cmd.BoolEnv(cmd.EnvNoColor))
+	color.Disable(noColor)
 
-	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
-		cmd.Exit(err)
+	if err := platform.GuardAPI(platformAPI, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, platform.CodeForIncompatiblePlatformAPI, "set platform API")
 	}
 	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
-	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir)), &md); err != nil {
+	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(layersDir), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 	if err := verifyBuildpackAPIs(md.Buildpacks); err != nil {
@@ -36,8 +37,8 @@ func RunLaunch() error {
 
 	launcher := &launch.Launcher{
 		DefaultProcessType: defaultProcessType,
-		LayersDir:          cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir),
-		AppDir:             cmd.EnvOrDefault(cmd.EnvAppDir, cmd.DefaultAppDir),
+		LayersDir:          layersDir,
+		AppDir:             appDir,
 		PlatformAPI:        p.API(),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
@@ -56,9 +57,9 @@ func RunLaunch() error {
 
 func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) string {
 	if platformAPI.LessThan("0.4") {
-		return cmd.EnvOrDefault(cmd.EnvProcessType, cmd.DefaultProcessType)
+		return processType
 	}
-	if pType := os.Getenv(cmd.EnvProcessType); pType != "" {
+	if pType := os.Getenv(platform.EnvProcessType); pType != "" {
 		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}
@@ -76,8 +77,8 @@ func verifyBuildpackAPIs(bps []launch.Buildpack) error {
 			// but if for some reason we do, default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(bp.ID, bp.API); err != nil {
-			return err
+		if err := guard.BuildpackAPI(bp.ID, bp.API, buildpack.APIs, cmd.DefaultLogger); err != nil {
+			return cmd.FailErrCode(err, platform.CodeForIncompatibleBuildpackAPI, "set buildpack API")
 		}
 	}
 	return nil

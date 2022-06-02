@@ -27,7 +27,7 @@ import (
 	"github.com/buildpacks/lifecycle/testmock"
 )
 
-var latestBuildpackAPI = api.Buildpack.Latest()
+var latestBuildpackAPI = buildpack.APIs.Latest()
 
 func TestBuild(t *testing.T) {
 	spec.Run(t, "Build", testBuild, spec.Report(report.Terminal{}))

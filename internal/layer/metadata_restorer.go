@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -17,7 +18,7 @@ type MetadataRestorer interface {
 	Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error
 }
 
-func NewDefaultMetadataRestorer(layersDir string, skipLayers bool, logger Logger) *DefaultMetadataRestorer {
+func NewDefaultMetadataRestorer(layersDir string, skipLayers bool, logger log.Logger) *DefaultMetadataRestorer {
 	return &DefaultMetadataRestorer{
 		Logger:     logger,
 		LayersDir:  layersDir,
@@ -28,7 +29,7 @@ func NewDefaultMetadataRestorer(layersDir string, skipLayers bool, logger Logger
 type DefaultMetadataRestorer struct {
 	LayersDir  string
 	SkipLayers bool
-	Logger     Logger
+	Logger     log.Logger
 }
 
 func (r *DefaultMetadataRestorer) Restore(buildpacks []buildpack.GroupBuildpack, appMeta platform.LayersMetadata, cacheMeta platform.CacheMetadata, layerSHAStore SHAStore) error {

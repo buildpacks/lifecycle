@@ -2,7 +2,18 @@ package platform
 
 type LifecycleExitError int
 
-const CodeFailed = 1
+const (
+	CodeForFailed = 1 // CodeForFailed indicates generic lifecycle error
+	// 2: reserved
+	CodeForInvalidArgs = 3
+	// 4: CodeForInvalidEnv
+	// 5: CodeForNotFound
+	// 9: CodeForFailedUpdate
+
+	// API errors
+	CodeForIncompatiblePlatformAPI  = 11
+	CodeForIncompatibleBuildpackAPI = 12
+)
 
 const (
 	FailedDetect           LifecycleExitError = iota
@@ -91,5 +102,5 @@ func codeFor(errType LifecycleExitError, exitCodes map[LifecycleExitError]int) i
 	if code, ok := exitCodes[errType]; ok {
 		return code
 	}
-	return CodeFailed
+	return CodeForFailed
 }

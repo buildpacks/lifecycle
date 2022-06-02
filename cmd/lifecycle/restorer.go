@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -38,33 +39,33 @@ type restoreArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
-	cmd.FlagCacheDir(&r.cacheDir)
-	cmd.FlagCacheImage(&r.cacheImageTag)
-	cmd.FlagGroupPath(&r.groupPath)
-	cmd.FlagLayersDir(&r.layersDir)
-	cmd.FlagUID(&r.uid)
-	cmd.FlagGID(&r.gid)
+	cli.FlagCacheDir(&r.cacheDir)
+	cli.FlagCacheImage(&r.cacheImageTag)
+	cli.FlagGroupPath(&r.groupPath)
+	cli.FlagLayersDir(&r.layersDir)
+	cli.FlagUID(&r.uid)
+	cli.FlagGID(&r.gid)
 	if r.restoresLayerMetadata() {
-		cmd.FlagAnalyzedPath(&r.analyzedPath)
-		cmd.FlagSkipLayers(&r.skipLayers)
+		cli.FlagAnalyzedPath(&r.analyzedPath)
+		cli.FlagSkipLayers(&r.skipLayers)
 	}
 }
 
 // Args validates arguments and flags, and fills in default values.
 func (r *restoreCmd) Args(nargs int, args []string) error {
 	if nargs > 0 {
-		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected Args"), platform.CodeForInvalidArgs, "parse arguments")
 	}
 	if r.cacheImageTag == "" && r.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 
-	if r.groupPath == cmd.PlaceholderGroupPath {
-		r.groupPath = cmd.DefaultGroupPath(r.platform.API().String(), r.layersDir)
+	if r.groupPath == platform.PlaceholderGroupPath {
+		r.groupPath = cli.DefaultGroupPath(r.platform.API().String(), r.layersDir)
 	}
 
-	if r.analyzedPath == cmd.PlaceholderAnalyzedPath {
-		r.analyzedPath = cmd.DefaultAnalyzedPath(r.platform.API().String(), r.layersDir)
+	if r.analyzedPath == platform.PlaceholderAnalyzedPath {
+		r.analyzedPath = cli.DefaultAnalyzedPath(r.platform.API().String(), r.layersDir)
 	}
 
 	return nil

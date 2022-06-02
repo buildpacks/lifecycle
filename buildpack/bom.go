@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 type BOMValidator interface {
 	ValidateBOM(GroupBuildpack, []BOMEntry) ([]BOMEntry, error)
 }
 
-func NewBOMValidator(bpAPI string, layersDir string, logger Logger) BOMValidator {
+func NewBOMValidator(bpAPI string, layersDir string, logger log.Logger) BOMValidator {
 	switch {
 	case api.MustParse(bpAPI).LessThan("0.5"):
 		return &legacyBOMValidator{}
@@ -23,7 +24,7 @@ func NewBOMValidator(bpAPI string, layersDir string, logger Logger) BOMValidator
 }
 
 type defaultBOMValidator struct {
-	logger    Logger
+	logger    log.Logger
 	layersDir string
 }
 

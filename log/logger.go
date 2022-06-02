@@ -1,4 +1,4 @@
-package platform
+package log
 
 type Logger interface {
 	Debug(msg string)

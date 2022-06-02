@@ -59,7 +59,7 @@ func TestExporter(t *testing.T) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	for _, platformAPI := range api.Platform.Supported {
+	for _, platformAPI := range platform.APIs.Supported {
 		spec.Run(t, "acceptance-exporter/"+platformAPI.String(), testExporterFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }

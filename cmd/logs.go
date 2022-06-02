@@ -46,7 +46,7 @@ func SetLogLevel(level string) *ErrorFail {
 	var err error
 	DefaultLogger.Level, err = log.ParseLevel(level)
 	if err != nil {
-		return FailErrCode(err, CodeInvalidArgs, "parse log level")
+		return FailErrCode(err, CodeForInvalidArgs, "parse log level")
 	}
 
 	return nil

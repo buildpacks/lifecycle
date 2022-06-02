@@ -21,9 +21,11 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -69,30 +71,30 @@ type exportArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
-	cmd.FlagAnalyzedPath(&e.analyzedPath)
-	cmd.FlagAppDir(&e.appDir)
-	cmd.FlagCacheDir(&e.cacheDir)
-	cmd.FlagCacheImage(&e.cacheImageTag)
-	cmd.FlagGID(&e.gid)
-	cmd.FlagGroupPath(&e.groupPath)
-	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
-	cmd.FlagLauncherPath(&e.launcherPath)
-	cmd.FlagLayersDir(&e.layersDir)
-	cmd.FlagProcessType(&e.processType)
-	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
-	cmd.FlagReportPath(&e.reportPath)
-	cmd.FlagRunImage(&e.runImageRef)
-	cmd.FlagStackPath(&e.stackPath)
-	cmd.FlagUID(&e.uid)
-	cmd.FlagUseDaemon(&e.useDaemon)
+	cli.FlagAnalyzedPath(&e.analyzedPath)
+	cli.FlagAppDir(&e.appDir)
+	cli.FlagCacheDir(&e.cacheDir)
+	cli.FlagCacheImage(&e.cacheImageTag)
+	cli.FlagGID(&e.gid)
+	cli.FlagGroupPath(&e.groupPath)
+	cli.FlagLaunchCacheDir(&e.launchCacheDir)
+	cli.FlagLauncherPath(&e.launcherPath)
+	cli.FlagLayersDir(&e.layersDir)
+	cli.FlagProcessType(&e.processType)
+	cli.FlagProjectMetadataPath(&e.projectMetadataPath)
+	cli.FlagReportPath(&e.reportPath)
+	cli.FlagRunImage(&e.runImageRef)
+	cli.FlagStackPath(&e.stackPath)
+	cli.FlagUID(&e.uid)
+	cli.FlagUseDaemon(&e.useDaemon)
 
-	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
+	cli.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
 
 // Args validates arguments and flags, and fills in default values.
 func (e *exportCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), platform.CodeForInvalidArgs, "parse arguments")
 	}
 
 	e.imageNames = args
@@ -106,27 +108,27 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(e.useDaemon, e.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, platform.CodeForInvalidArgs, "validate image tag(s)")
 	}
 
 	if err := e.validateRunImageInput(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
+		return cmd.FailErrCode(err, platform.CodeForInvalidArgs, "validate run image input")
 	}
 
-	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
-		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platform.API().String(), e.layersDir)
+	if e.analyzedPath == platform.PlaceholderAnalyzedPath {
+		e.analyzedPath = cli.DefaultAnalyzedPath(e.platform.API().String(), e.layersDir)
 	}
 
-	if e.groupPath == cmd.PlaceholderGroupPath {
-		e.groupPath = cmd.DefaultGroupPath(e.platform.API().String(), e.layersDir)
+	if e.groupPath == platform.PlaceholderGroupPath {
+		e.groupPath = cli.DefaultGroupPath(e.platform.API().String(), e.layersDir)
 	}
 
-	if e.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
-		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platform.API().String(), e.layersDir)
+	if e.projectMetadataPath == platform.PlaceholderProjectMetadataPath {
+		e.projectMetadataPath = cli.DefaultProjectMetadataPath(e.platform.API().String(), e.layersDir)
 	}
 
-	if e.reportPath == cmd.PlaceholderReportPath {
-		e.reportPath = cmd.DefaultReportPath(e.platform.API().String(), e.layersDir)
+	if e.reportPath == platform.PlaceholderReportPath {
+		e.reportPath = cli.DefaultReportPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.deprecatedRunImageRef != "" {
@@ -136,21 +138,21 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	var err error
 	e.analyzedMD, err = parseAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+		return cmd.FailErrCode(err, platform.CodeForInvalidArgs, "parse analyzed metadata")
 	}
 
 	e.stackMD, err = readStack(e.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, platform.CodeForInvalidArgs, "parse stack metadata")
 	}
 
 	e.targetRegistry, err = parseRegistry(e.imageNames[0])
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, platform.CodeForInvalidArgs, "parse target registry")
 	}
 
 	if err := e.populateRunImageRefIfNeeded(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, platform.CodeForInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -249,11 +251,11 @@ func (e *exportCmd) populateRunImageRefIfNeeded() error {
 
 func (e *exportCmd) validateRunImageInput() error {
 	switch {
-	case e.supportsRunImage() && e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+	case e.supportsRunImage() && e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(platform.EnvRunImage):
 		return errors.New("supply only one of -run-image or (deprecated) -image")
 	case !e.supportsRunImage() && e.deprecatedRunImageRef != "":
 		return errors.New("-image is unsupported")
-	case !e.supportsRunImage() && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+	case !e.supportsRunImage() && e.runImageRef != os.Getenv(platform.EnvRunImage):
 		return errors.New("-run-image is unsupported")
 	default:
 		return nil
@@ -423,7 +425,7 @@ func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
 	}
 }
 
-func parseAnalyzedMD(logger lifecycle.Logger, path string) (platform.AnalyzedMetadata, error) {
+func parseAnalyzedMD(logger log.Logger, path string) (platform.AnalyzedMetadata, error) {
 	var analyzedMD platform.AnalyzedMetadata
 
 	_, err := toml.DecodeFile(path, &analyzedMD)

@@ -19,14 +19,20 @@ func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
 		it("is equal to comparison", func() {
 			subject := api.MustParse("0.2")
 			comparison := api.MustParse("0.2")
+			h.AssertEq(t, subject.Equal(comparison), true)
 
+			subject = api.MustParse("0.2-alpha-1")
+			comparison = api.MustParse("0.2-alpha-1")
 			h.AssertEq(t, subject.Equal(comparison), true)
 		})
 
 		it("is not equal to comparison", func() {
 			subject := api.MustParse("0.2")
 			comparison := api.MustParse("0.3")
+			h.AssertEq(t, subject.Equal(comparison), false)
 
+			subject = api.MustParse("0.2-alpha-1")
+			comparison = api.MustParse("0.2")
 			h.AssertEq(t, subject.Equal(comparison), false)
 		})
 	})
@@ -52,6 +58,13 @@ func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
 				target := api.MustParse("0.2")
 
 				h.AssertEq(t, v.IsSupersetOf(target), false)
+			})
+
+			it("Prerelease", func() {
+				v := api.MustParse("0.2")
+				target := api.MustParse("0.2-alpha-2")
+
+				h.AssertEq(t, v.IsSupersetOf(target), true)
 			})
 		})
 
@@ -90,15 +103,23 @@ func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, v.IsSupersetOf(target), false)
 			})
+
+			it("Prerelease", func() {
+				v := api.MustParse("2.0")
+				target := api.MustParse("2.0-alpha-2")
+
+				h.AssertEq(t, v.IsSupersetOf(target), true)
+			})
 		})
 	})
 
 	when("#LessThan", func() {
 		var subject = api.MustParse("0.3")
 		var toTest = map[string]bool{
-			"0.2": false,
-			"0.3": false,
-			"0.4": true,
+			"0.2":         false,
+			"0.3":         false,
+			"0.4":         true,
+			"0.3-alpha-1": false,
 		}
 		it("returns the expected value", func() {
 			for comparison, expected := range toTest {
@@ -110,9 +131,10 @@ func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
 	when("#AtLeast", func() {
 		var subject = api.MustParse("0.3")
 		var toTest = map[string]bool{
-			"0.2": true,
-			"0.3": true,
-			"0.4": false,
+			"0.2":         true,
+			"0.3":         true,
+			"0.4":         false,
+			"0.3-alpha-1": true,
 		}
 		it("returns the expected value", func() {
 			for comparison, expected := range toTest {

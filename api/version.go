@@ -8,11 +8,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-var regex = regexp.MustCompile(`^v?(\d+)\.?(\d*)$`)
+var regex = regexp.MustCompile(`^v?(\d+)\.?(\d*)(-[a-zA-Z0-9-]+)?$`)
 
 type Version struct {
-	Major,
-	Minor uint64
+	Major      uint64
+	Minor      uint64
+	Prerelease string
 }
 
 func MustParse(v string) *Version {
@@ -32,9 +33,10 @@ func NewVersion(v string) (*Version, error) {
 
 	var (
 		major, minor uint64
+		prerelease   string
 		err          error
 	)
-	if len(matches[0]) == 3 {
+	if len(matches[0]) == 4 {
 		major, err = strconv.ParseUint(matches[0][1], 10, 64)
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing Major '%s'", matches[0][1])
@@ -48,14 +50,19 @@ func NewVersion(v string) (*Version, error) {
 				return nil, errors.Wrapf(err, "parsing Minor '%s'", matches[0][2])
 			}
 		}
+
+		prerelease = matches[0][3]
 	} else {
 		return nil, errors.Errorf("could not parse version '%s'", v)
 	}
 
-	return &Version{Major: major, Minor: minor}, nil
+	return &Version{Major: major, Minor: minor, Prerelease: prerelease}, nil
 }
 
 func (v *Version) String() string {
+	if v.Prerelease != "" {
+		return fmt.Sprintf("%d.%d-%s", v.Major, v.Minor, v.Prerelease)
+	}
 	return fmt.Sprintf("%d.%d", v.Major, v.Minor)
 }
 
@@ -89,21 +96,35 @@ func (v *Version) Equal(o *Version) bool {
 //    1 is greater than *Version o
 func (v *Version) Compare(o *Version) int {
 	if v.Major != o.Major {
-		if v.Major < o.Major {
+		switch {
+		case v.Major < o.Major:
 			return -1
-		}
-
-		if v.Major > o.Major {
+		default:
+			// v.Major > o.Major
 			return 1
 		}
 	}
 
 	if v.Minor != o.Minor {
-		if v.Minor < o.Minor {
+		switch {
+		case v.Minor < o.Minor:
 			return -1
+		default:
+			// v.Minor > o.Minor
+			return 1
 		}
+	}
 
-		if v.Minor > o.Minor {
+	if v.Prerelease != o.Prerelease {
+		switch {
+		case o.Prerelease == "":
+			return -1
+		case v.Prerelease == "":
+			return 1
+		case v.Prerelease < o.Prerelease:
+			return -1
+		default:
+			// v.Prerelease > o.Prerelease
 			return 1
 		}
 	}
@@ -113,7 +134,7 @@ func (v *Version) Compare(o *Version) int {
 
 func (v *Version) IsSupersetOf(o *Version) bool {
 	if v.Major == 0 {
-		return v.Equal(o)
+		return v.Major == o.Major && v.Minor == o.Minor
 	}
 	return v.Major == o.Major && v.Minor >= o.Minor
 }

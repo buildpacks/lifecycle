@@ -17,6 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -36,7 +37,7 @@ func TestRestorer(t *testing.T) {
 	h.DockerBuild(t, restorerImage, restoreDockerContext)
 	defer h.DockerImageRemove(t, restorerImage)
 
-	for _, platformAPI := range api.Platform.Supported {
+	for _, platformAPI := range platform.APIs.Supported {
 		spec.Run(t, "acceptance-restorer/"+platformAPI.String(), testRestorerFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }

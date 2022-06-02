@@ -12,32 +12,19 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 const (
+	EnvBuildPlanPath = "CNB_BUILD_PLAN_PATH"
 	EnvBuildpackDir  = "CNB_BUILDPACK_DIR"
 	EnvPlatformDir   = "CNB_PLATFORM_DIR"
-	EnvBuildPlanPath = "CNB_BUILD_PLAN_PATH"
 )
-
-type Logger interface {
-	Debug(msg string)
-	Debugf(fmt string, v ...interface{})
-
-	Info(msg string)
-	Infof(fmt string, v ...interface{})
-
-	Warn(msg string)
-	Warnf(fmt string, v ...interface{})
-
-	Error(msg string)
-	Errorf(fmt string, v ...interface{})
-}
 
 type DetectConfig struct {
 	AppDir      string
 	PlatformDir string
-	Logger      Logger
+	Logger      log.Logger
 }
 
 func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {

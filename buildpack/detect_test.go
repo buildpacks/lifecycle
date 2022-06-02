@@ -14,7 +14,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/buildpack/testmock"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -82,7 +81,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			bpTOML = buildpack.Descriptor{
-				API: api.Buildpack.Latest().String(),
+				API: buildpack.APIs.Latest().String(),
 				Buildpack: buildpack.Info{
 					ID: "A",
 				},

@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
@@ -39,34 +40,34 @@ type rebaseCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *rebaseCmd) DefineFlags() {
-	cmd.FlagGID(&r.gid)
-	cmd.FlagReportPath(&r.reportPath)
-	cmd.FlagRunImage(&r.runImageRef)
-	cmd.FlagUID(&r.uid)
-	cmd.FlagUseDaemon(&r.useDaemon)
+	cli.FlagGID(&r.gid)
+	cli.FlagReportPath(&r.reportPath)
+	cli.FlagRunImage(&r.runImageRef)
+	cli.FlagUID(&r.uid)
+	cli.FlagUseDaemon(&r.useDaemon)
 
-	cmd.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
+	cli.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
 }
 
 // Args validates arguments and flags, and fills in default values.
 func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), platform.CodeForInvalidArgs, "parse arguments")
 	}
 	r.imageNames = args
 	if err := image.ValidateDestinationTags(r.useDaemon, r.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, platform.CodeForInvalidArgs, "validate image tag(s)")
 	}
 
 	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {
-		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), platform.CodeForInvalidArgs, "parse arguments")
 	}
 	if r.deprecatedRunImageRef != "" {
 		r.runImageRef = r.deprecatedRunImageRef
 	}
 
-	if r.reportPath == cmd.PlaceholderReportPath {
-		r.reportPath = cmd.DefaultReportPath(r.platform.API().String(), "")
+	if r.reportPath == platform.PlaceholderReportPath {
+		r.reportPath = cli.DefaultReportPath(r.platform.API().String(), "")
 	}
 
 	if err := r.setAppImage(); err != nil {
@@ -175,7 +176,7 @@ func (r *rebaseCmd) setAppImage() error {
 
 	if r.runImageRef == "" {
 		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
+			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), platform.CodeForInvalidArgs, "parse arguments")
 		}
 		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {

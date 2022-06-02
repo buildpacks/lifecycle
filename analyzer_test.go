@@ -28,7 +28,7 @@ import (
 )
 
 func TestAnalyzer(t *testing.T) {
-	for _, api := range api.Platform.Supported {
+	for _, api := range platform.APIs.Supported {
 		spec.Run(t, "unit-analyzer/"+api.String(), testAnalyzer(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 	spec.Run(t, "unit-new-analyzer", testAnalyzerFactory, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -67,7 +67,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 		when("platform api >= 0.8", func() {
 			it.Before(func() {
 				analyzerFactory = lifecycle.NewAnalyzerFactory(
-					api.Platform.Latest(),
+					platform.APIs.Latest(),
 					fakeCacheHandler,
 					fakeConfigHandler,
 					fakeImageHandler,
@@ -376,9 +376,9 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 				Logger:        &discardLogger,
 				SBOMRestorer:  sbomRestorer,
 				Buildpacks: []buildpack.GroupBuildpack{
-					{ID: "metadata.buildpack", API: api.Buildpack.Latest().String()},
-					{ID: "no.cache.buildpack", API: api.Buildpack.Latest().String()},
-					{ID: "no.metadata.buildpack", API: api.Buildpack.Latest().String()},
+					{ID: "metadata.buildpack", API: buildpack.APIs.Latest().String()},
+					{ID: "no.cache.buildpack", API: buildpack.APIs.Latest().String()},
+					{ID: "no.metadata.buildpack", API: buildpack.APIs.Latest().String()},
 				},
 				Cache:                 testCache,
 				LayerMetadataRestorer: metadataRestorer,
@@ -444,7 +444,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 						h.AssertNil(t, testCache.SetMetadata(expectedCacheMetadata))
 						h.AssertNil(t, testCache.Commit())
 
-						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: api.Buildpack.Latest().String()})
+						analyzer.Buildpacks = append(analyzer.Buildpacks, buildpack.GroupBuildpack{ID: "escaped/buildpack/id", API: buildpack.APIs.Latest().String()})
 						expectRestoresLayerMetadataIfSupported()
 					})
 

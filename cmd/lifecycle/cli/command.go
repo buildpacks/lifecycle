@@ -1,9 +1,11 @@
-package cmd
+package cli
 
 import (
 	"io/ioutil"
 	"log"
 	"os"
+
+	"github.com/buildpacks/lifecycle/cmd"
 )
 
 // Command defines the interface for running the lifecycle phases
@@ -36,27 +38,27 @@ func Run(c Command, asSubcommand bool) {
 	if asSubcommand {
 		if err := flagSet.Parse(os.Args[2:]); err != nil {
 			// flagSet exits on error, we shouldn't get here
-			Exit(err)
+			cmd.Exit(err)
 		}
 	} else {
 		if err := flagSet.Parse(os.Args[1:]); err != nil {
 			// flagSet exits on error, we shouldn't get here
-			Exit(err)
+			cmd.Exit(err)
 		}
 	}
-	DisableColor(noColor)
+	cmd.DisableColor(noColor)
 
 	if printVersion {
-		ExitWithVersion()
+		cmd.ExitWithVersion()
 	}
-	if err := SetLogLevel(logLevel); err != nil {
-		Exit(err)
+	if err := cmd.SetLogLevel(logLevel); err != nil {
+		cmd.Exit(err)
 	}
 	if err := c.Args(flagSet.NArg(), flagSet.Args()); err != nil {
-		Exit(err)
+		cmd.Exit(err)
 	}
 	if err := c.Privileges(); err != nil {
-		Exit(err)
+		cmd.Exit(err)
 	}
-	Exit(c.Exec())
+	cmd.Exit(c.Exec())
 }

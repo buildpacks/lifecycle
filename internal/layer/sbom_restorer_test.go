@@ -43,7 +43,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		sbomRestorer = layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 			LayersDir: layersDir,
 			Logger:    &log.Logger{Handler: &discard.Handler{}},
-		}, api.Platform.Latest())
+		}, platform.APIs.Latest())
 	})
 
 	it.After(func() {
@@ -55,7 +55,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			it("returns a NopSBOMRestorer", func() {
 				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 					Nop: true,
-				}, api.Platform.Latest())
+				}, platform.APIs.Latest())
 				_, ok := r.(*layer.NopSBOMRestorer)
 				h.AssertEq(t, ok, true)
 			})
@@ -74,7 +74,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 				r := layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
 					LayersDir: "some-dir",
 					Logger:    &log.Logger{Handler: &discard.Handler{}},
-				}, api.Platform.Latest())
+				}, platform.APIs.Latest())
 				_, ok := r.(*layer.DefaultSBOMRestorer)
 				h.AssertEq(t, ok, true)
 			})
@@ -196,7 +196,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join("testdata", "sbom"),
 				filepath.Join(layersDir, "sbom"))
 
-			buildpackAPI := api.Buildpack.Latest().String()
+			buildpackAPI := buildpack.APIs.Latest().String()
 			detectedBps = []buildpack.GroupBuildpack{
 				{ID: "buildpack.id", API: buildpackAPI},
 				{ID: "escaped/buildpack/id", API: buildpackAPI},

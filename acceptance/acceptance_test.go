@@ -12,7 +12,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	latestPlatformAPI = api.Platform.Latest().String()
+	latestPlatformAPI = platform.APIs.Latest().String()
 	buildDir          string
 )
 
