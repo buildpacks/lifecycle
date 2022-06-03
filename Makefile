@@ -242,8 +242,7 @@ format: install-goimports
 
 tidy:
 	@echo "> Tidying modules..."
-	$(GOCMD) mod tidy
-	cd tools && $(GOCMD) mod tidy
+	$(GOCMD) mod tidy -compat=1.17
 
 test: unit acceptance
 
