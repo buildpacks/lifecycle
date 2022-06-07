@@ -82,24 +82,13 @@ func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, log
 }
 
 func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order) error {
-	for _, group := range orderBp {
+	for _, group := range append(orderBp, orderExt...) {
 		for _, groupEl := range group.Group {
-			bp, err := f.dirStore.Lookup(buildpack.KindBuildpack, groupEl.ID, groupEl.Version)
+			module, err := f.dirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
 			if err != nil {
 				return err
 			}
-			if err = f.apiVerifier.VerifyBuildpackAPI(buildpack.KindBuildpack, groupEl.String(), bp.ConfigFile().API); err != nil {
-				return err
-			}
-		}
-	}
-	for _, group := range orderExt {
-		for _, groupEl := range group.Group {
-			ext, err := f.dirStore.Lookup(buildpack.KindExtension, groupEl.ID, groupEl.Version)
-			if err != nil {
-				return err
-			}
-			if err = f.apiVerifier.VerifyBuildpackAPI(buildpack.KindExtension, groupEl.String(), ext.ConfigFile().API); err != nil {
+			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.ConfigFile().API); err != nil {
 				return err
 			}
 		}
@@ -187,7 +176,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		}
 
 		// Mark element as done.
-		done = append(done, descriptor.ToGroupElement())
+		done = append(done, descriptor.ToGroupElement(groupEl.Optional))
 
 		// Run detect if element is a component buildpack or an extension.
 		key := groupEl.String()

@@ -89,8 +89,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 					}
 					orderExt := buildpack.Order{
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1"}}},
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
+						buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true}}},
+						buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true}}},
 					}
 					expectedOrder := buildpack.Order{
 						buildpack.Group{
@@ -751,6 +751,21 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}, cmp.Comparer(errors.Is)); s != "" {
 				t.Fatalf("Unexpected detect run:\n%s\n", s)
 			}
+		})
+
+		it("preserves 'optional'", func() {
+			bpA1 := testmock.NewMockBuildModule(mockCtrl)
+			dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.3", Buildpack: buildpack.Info{ID: "A", Version: "v1"}})
+			bpA1.EXPECT().Detect(gomock.Any(), gomock.Any())
+
+			group := []buildpack.GroupElement{
+				{ID: "A", Version: "v1", API: "0.3", Optional: true},
+			}
+			resolver.EXPECT().Resolve(group, detector.Runs)
+
+			detector.Order = buildpack.Order{{Group: group}}
+			_, _, _ = detector.Detect()
 		})
 
 		when("resolve errors", func() {

@@ -87,7 +87,7 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 						Version: "v1",
 					},
 				}
-				groupEl := descriptor.ToGroupElement()
+				groupEl := descriptor.ToGroupElement(false)
 
 				h.AssertEq(t, groupEl.Extension, false)
 			})
@@ -102,7 +102,7 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 						Version: "v1",
 					},
 				}
-				groupEl := descriptor.ToGroupElement()
+				groupEl := descriptor.ToGroupElement(false)
 
 				h.AssertEq(t, groupEl.Extension, true)
 				h.AssertEq(t, groupEl.Optional, true)

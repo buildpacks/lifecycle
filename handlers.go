@@ -78,5 +78,11 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reading buildpack order file")
 	}
+	for g, group := range order.OrderExt {
+		for e := range group.Group {
+			group.Group[e].Extension = true
+		}
+		order.OrderExt[g] = group
+	}
 	return order.Order, order.OrderExt, err
 }

@@ -90,7 +90,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected list:\n%s\n", s)
 				}
 				if s := cmp.Diff(foundOrderExt, buildpack.Order{
-					{Group: []buildpack.GroupElement{{ID: "D"}}},
+					{Group: []buildpack.GroupElement{{ID: "D", Extension: true}}},
 				}); s != "" {
 					t.Fatalf("Unexpected list:\n%s\n", s)
 				}
@@ -174,7 +174,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected list:\n%s\n", s)
 					}
 					if s := cmp.Diff(foundOrderExt, buildpack.Order{
-						{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
+						{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true}}},
 					}); s != "" {
 						t.Fatalf("Unexpected list:\n%s\n", s)
 					}

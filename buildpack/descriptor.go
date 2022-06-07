@@ -78,13 +78,15 @@ func (b *Descriptor) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }
 
-func (b *Descriptor) ToGroupElement() GroupElement {
+func (b *Descriptor) ToGroupElement(optional bool) GroupElement {
 	groupEl := GroupElement{API: b.API}
 	switch {
 	case b.IsBuildpack():
 		groupEl.ID = b.Buildpack.ID
 		groupEl.Version = b.Buildpack.Version
 		groupEl.Homepage = b.Buildpack.Homepage
+		groupEl.Extension = false
+		groupEl.Optional = optional
 	case b.IsExtension():
 		groupEl.ID = b.Extension.ID
 		groupEl.Version = b.Extension.Version
