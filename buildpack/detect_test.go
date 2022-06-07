@@ -311,7 +311,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 							var err error
 							descriptor, err = buildpack.ReadDescriptor(descriptorPath)
 							h.AssertNil(t, err)
-							descriptor.API = buildpack.APIs.Latest().String() // override
+							descriptor.API = api.Buildpack.Latest().String() // override
 						})
 
 						it("passes detection", func() {
