@@ -31,8 +31,7 @@ type BuildEnv interface {
 }
 
 type DirStore interface {
-	LookupBp(bpID, bpVersion string) (buildpack.BuildModule, error)
-	LookupExt(bpID, bpVersion string) (buildpack.BuildModule, error)
+	Lookup(kind, id, version string) (buildpack.BuildModule, error)
 }
 
 type Builder struct {
@@ -74,7 +73,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
-		bpTOML, err := b.DirStore.LookupBp(bp.ID, bp.Version)
+		bpTOML, err := b.DirStore.Lookup(buildpack.KindBuildpack, bp.ID, bp.Version)
 		if err != nil {
 			return nil, err
 		}

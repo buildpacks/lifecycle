@@ -84,7 +84,7 @@ func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, log
 func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order) error {
 	for _, group := range orderBp {
 		for _, groupEl := range group.Group {
-			bp, err := f.dirStore.LookupBp(groupEl.ID, groupEl.Version)
+			bp, err := f.dirStore.Lookup(buildpack.KindBuildpack, groupEl.ID, groupEl.Version)
 			if err != nil {
 				return err
 			}
@@ -95,7 +95,7 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 	}
 	for _, group := range orderExt {
 		for _, groupEl := range group.Group {
-			ext, err := f.dirStore.LookupExt(groupEl.ID, groupEl.Version)
+			ext, err := f.dirStore.Lookup(buildpack.KindExtension, groupEl.ID, groupEl.Version)
 			if err != nil {
 				return err
 			}
@@ -170,9 +170,9 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		)
 		switch {
 		case groupEl.Extension:
-			detectable, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
+			detectable, err = d.DirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
 		default:
-			detectable, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
+			detectable, err = d.DirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
 		}
 		if err != nil {
 			return nil, nil, err
