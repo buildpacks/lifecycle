@@ -15,23 +15,12 @@ const (
 	DeprecationModeError = "error"
 )
 
-type ModuleKind int
-
-const (
-	Buildpack ModuleKind = iota
-	Extension
-)
-
 var DeprecationMode = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
 
 type APIVerifier struct{}
 
-func (v *APIVerifier) VerifyBuildpackAPIForBuildpack(name, requested string) error {
-	return VerifyBuildpackAPI(Buildpack, name, requested)
-}
-
-func (v *APIVerifier) VerifyBuildpackAPIForExtension(name, requested string) error {
-	return VerifyBuildpackAPI(Extension, name, requested)
+func (v *APIVerifier) VerifyBuildpackAPI(kind, name, requested string) error {
+	return VerifyBuildpackAPI(kind, name, requested)
 }
 
 func (v *APIVerifier) VerifyBuildpackAPIsForGroup(group []buildpack.GroupElement) error {
@@ -43,11 +32,11 @@ func (v *APIVerifier) VerifyBuildpackAPIsForGroup(group []buildpack.GroupElement
 		}
 		switch {
 		case groupEl.Extension:
-			if err := v.VerifyBuildpackAPIForExtension(groupEl.String(), groupEl.API); err != nil {
+			if err := v.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), groupEl.API); err != nil {
 				return err
 			}
 		default:
-			if err := v.VerifyBuildpackAPIForBuildpack(groupEl.String(), groupEl.API); err != nil {
+			if err := v.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), groupEl.API); err != nil {
 				return err
 			}
 		}
@@ -55,15 +44,11 @@ func (v *APIVerifier) VerifyBuildpackAPIsForGroup(group []buildpack.GroupElement
 	return nil
 }
 
-func VerifyBuildpackAPI(kind ModuleKind, name string, requested string) error {
-	moduleKind := "Buildpack"
-	if kind == Extension {
-		moduleKind = "Extension"
-	}
+func VerifyBuildpackAPI(kind, name, requested string) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
 		return FailErrCode(
-			fmt.Errorf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(moduleKind), name),
+			fmt.Errorf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(kind), name),
 			CodeIncompatibleBuildpackAPI,
 		)
 	}
@@ -73,18 +58,18 @@ func VerifyBuildpackAPI(kind ModuleKind, name string, requested string) error {
 			case DeprecationModeQuiet:
 				break
 			case DeprecationModeError:
-				DefaultLogger.Errorf("%s '%s' requests deprecated API '%s'", moduleKind, name, requested)
+				DefaultLogger.Errorf("%s '%s' requests deprecated API '%s'", kind, name, requested)
 				DefaultLogger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
-				return buildpackAPIError(moduleKind, name, requested)
+				return buildpackAPIError(kind, name, requested)
 			case DeprecationModeWarn:
-				DefaultLogger.Warnf("%s '%s' requests deprecated API '%s'", moduleKind, name, requested)
+				DefaultLogger.Warnf("%s '%s' requests deprecated API '%s'", kind, name, requested)
 			default:
-				DefaultLogger.Warnf("%s '%s' requests deprecated API '%s'", moduleKind, name, requested)
+				DefaultLogger.Warnf("%s '%s' requests deprecated API '%s'", kind, name, requested)
 			}
 		}
 		return nil
 	}
-	return buildpackAPIError(moduleKind, name, requested)
+	return buildpackAPIError(kind, name, requested)
 }
 
 func buildpackAPIError(moduleKind string, name string, requested string) error {

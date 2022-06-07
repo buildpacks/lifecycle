@@ -88,7 +88,7 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 			if err != nil {
 				return err
 			}
-			if err = f.apiVerifier.VerifyBuildpackAPIForBuildpack(groupEl.String(), bp.ConfigFile().API); err != nil {
+			if err = f.apiVerifier.VerifyBuildpackAPI(buildpack.KindBuildpack, groupEl.String(), bp.ConfigFile().API); err != nil {
 				return err
 			}
 		}
@@ -99,7 +99,7 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 			if err != nil {
 				return err
 			}
-			if err = f.apiVerifier.VerifyBuildpackAPIForExtension(groupEl.String(), ext.ConfigFile().API); err != nil {
+			if err = f.apiVerifier.VerifyBuildpackAPI(buildpack.KindExtension, groupEl.String(), ext.ConfigFile().API); err != nil {
 				return err
 			}
 		}

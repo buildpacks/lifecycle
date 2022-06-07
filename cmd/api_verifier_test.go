@@ -101,7 +101,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 
 		when("is invalid", func() {
 			it("error with exit code 12", func() {
-				err := cmd.VerifyBuildpackAPI(cmd.Buildpack, "some-buildpack", "bad-api")
+				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "bad-api")
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
 					t.Fatalf("expected an error of type cmd.ErrorFail")
@@ -112,7 +112,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 
 		when("is unsupported", func() {
 			it("error with exit code 11", func() {
-				err := cmd.VerifyBuildpackAPI(cmd.Buildpack, "some-buildpack", "2.2")
+				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "2.2")
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
 					t.Fatalf("expected an error of type cmd.ErrorFail")
@@ -125,7 +125,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 			when("CNB_DEPRECATION_MODE=warn", func() {
 				it("should warn", func() {
 					cmd.DeprecationMode = cmd.DeprecationModeWarn
-					err := cmd.VerifyBuildpackAPI(cmd.Buildpack, "some-buildpack", "1.1")
+					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1")
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
 					h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
@@ -136,7 +136,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 			when("CNB_DEPRECATION_MODE=quiet", func() {
 				it("should succeed silently", func() {
 					cmd.DeprecationMode = cmd.DeprecationModeQuiet
-					err := cmd.VerifyBuildpackAPI(cmd.Buildpack, "some-buildpack", "1.1")
+					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1")
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
 				})
@@ -145,7 +145,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 			when("CNB_DEPRECATION_MODE=error", func() {
 				it("error with exit code 11", func() {
 					cmd.DeprecationMode = cmd.DeprecationModeError
-					err := cmd.VerifyBuildpackAPI(cmd.Buildpack, "some-buildpack", "1.1")
+					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1")
 					failErr, ok := err.(*cmd.ErrorFail)
 					if !ok {
 						t.Fatalf("expected an error of type cmd.ErrorFail")

@@ -8,6 +8,11 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+const (
+	KindBuildpack = "Buildpack"
+	KindExtension = "Extension"
+)
+
 type BuildModule interface {
 	Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error)
 	ConfigFile() *Descriptor
@@ -144,6 +149,13 @@ type GroupElement struct {
 
 func (e GroupElement) IsExtensionsOrder() bool {
 	return len(e.OrderExt) > 0
+}
+
+func (e GroupElement) Kind() string {
+	if e.Extension {
+		return KindExtension
+	}
+	return KindBuildpack
 }
 
 func (e GroupElement) NoOpt() GroupElement {

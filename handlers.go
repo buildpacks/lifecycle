@@ -31,8 +31,7 @@ type RegistryHandler interface {
 // Eventually, much logic in the cmd package should move to the platform package, after which
 // we might be able to remove this interface.
 type APIVerifier interface {
-	VerifyBuildpackAPIForBuildpack(name, requested string) error
-	VerifyBuildpackAPIForExtension(name, requested string) error
+	VerifyBuildpackAPI(kind, name, requested string) error
 	VerifyBuildpackAPIsForGroup(group []buildpack.GroupElement) error
 }
 

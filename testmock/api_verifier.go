@@ -35,32 +35,18 @@ func (m *MockAPIVerifier) EXPECT() *MockAPIVerifierMockRecorder {
 	return m.recorder
 }
 
-// VerifyBuildpackAPIForBuildpack mocks base method.
-func (m *MockAPIVerifier) VerifyBuildpackAPIForBuildpack(arg0, arg1 string) error {
+// VerifyBuildpackAPI mocks base method.
+func (m *MockAPIVerifier) VerifyBuildpackAPI(arg0, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyBuildpackAPIForBuildpack", arg0, arg1)
+	ret := m.ctrl.Call(m, "VerifyBuildpackAPI", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// VerifyBuildpackAPIForBuildpack indicates an expected call of VerifyBuildpackAPIForBuildpack.
-func (mr *MockAPIVerifierMockRecorder) VerifyBuildpackAPIForBuildpack(arg0, arg1 interface{}) *gomock.Call {
+// VerifyBuildpackAPI indicates an expected call of VerifyBuildpackAPI.
+func (mr *MockAPIVerifierMockRecorder) VerifyBuildpackAPI(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyBuildpackAPIForBuildpack", reflect.TypeOf((*MockAPIVerifier)(nil).VerifyBuildpackAPIForBuildpack), arg0, arg1)
-}
-
-// VerifyBuildpackAPIForExtension mocks base method.
-func (m *MockAPIVerifier) VerifyBuildpackAPIForExtension(arg0, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyBuildpackAPIForExtension", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// VerifyBuildpackAPIForExtension indicates an expected call of VerifyBuildpackAPIForExtension.
-func (mr *MockAPIVerifierMockRecorder) VerifyBuildpackAPIForExtension(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyBuildpackAPIForExtension", reflect.TypeOf((*MockAPIVerifier)(nil).VerifyBuildpackAPIForExtension), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyBuildpackAPI", reflect.TypeOf((*MockAPIVerifier)(nil).VerifyBuildpackAPI), arg0, arg1, arg2)
 }
 
 // VerifyBuildpackAPIsForGroup mocks base method.

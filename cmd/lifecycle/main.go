@@ -237,7 +237,7 @@ func verifyBuildpackApis(group buildpack.Group) error {
 			// but if for some reason it isn't default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(cmd.Buildpack, bp.String(), bp.API); err != nil { // TODO: when builder and exporter are extensions-aware, this function call should be modified to provide the right module kind
+		if err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API); err != nil { // TODO: when builder and exporter are extensions-aware, this function call should be modified to provide the right module kind
 			return err
 		}
 	}
