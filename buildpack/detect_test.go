@@ -290,7 +290,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 				when("/bin/detect is missing", func() {
 					it.Before(func() {
-						descriptorPath := filepath.Join("testdata", "by-id", "extB", "v1", "extension.toml")
+						descriptorPath = filepath.Join("testdata", "by-id", "extB", "v1", "extension.toml")
 						var err error
 						descriptor, err = buildpack.ReadDescriptor(descriptorPath)
 						h.AssertNil(t, err)
@@ -303,6 +303,25 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 						t.Log("treats the extension root as a pre-populated output directory")
 						h.AssertEq(t, detectRun.Provides, []buildpack.Provide{{Name: "some-dep"}})
+					})
+
+					when("plan is missing", func() {
+						it.Before(func() {
+							descriptorPath = filepath.Join("testdata", "by-id", "extC", "v1", "extension.toml")
+							var err error
+							descriptor, err = buildpack.ReadDescriptor(descriptorPath)
+							h.AssertNil(t, err)
+							descriptor.API = buildpack.APIs.Latest().String() // override
+						})
+
+						it("passes detection", func() {
+							detectRun := descriptor.Detect(&detectConfig, mockEnv)
+							h.AssertEq(t, detectRun.Code, 0)
+
+							t.Log("treats the extension root as a pre-populated output directory")
+							var empty []buildpack.Provide
+							h.AssertEq(t, detectRun.Provides, empty)
+						})
 					})
 				})
 			})
