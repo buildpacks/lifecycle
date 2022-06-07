@@ -138,7 +138,7 @@ type GroupElement struct {
 
 	// Fields that are never written
 
-	// OrderExt holds the order for extensions during the detect phase. \
+	// OrderExt holds the order for extensions during the detect phase.
 	OrderExt Order `toml:"-" json:"-"`
 }
 

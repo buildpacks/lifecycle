@@ -18,7 +18,6 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	ilifecycle "github.com/buildpacks/lifecycle/internal/lifecycle"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -988,7 +987,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
 				}
 
-				detector.Order = ilifecycle.PrependExtensions(orderBp, orderExt)
+				detector.Order = lifecycle.PrependExtensions(orderBp, orderExt)
 				_, _, err := detector.Detect()
 				h.AssertNil(t, err)
 			})
@@ -1580,6 +1579,69 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			) {
 				t.Fatalf("Unexpected log:\n%s\n", s)
 			}
+		})
+	})
+
+	when("#PrependExtensions", func() {
+		it("prepends the extensions order to each group in the buildpacks order", func() {
+			orderBp := buildpack.Order{
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
+			}
+			orderExt := buildpack.Order{
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1"}}},
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
+			}
+			expectedOrderExt := buildpack.Order{
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
+			}
+
+			newOrder := lifecycle.PrependExtensions(orderBp, orderExt)
+
+			t.Log("returns the modified order")
+			if s := cmp.Diff(newOrder, buildpack.Order{
+				buildpack.Group{
+					Group: []buildpack.GroupElement{
+						{OrderExt: expectedOrderExt},
+						{ID: "A", Version: "v1"},
+					},
+				},
+				buildpack.Group{
+					Group: []buildpack.GroupElement{
+						{OrderExt: expectedOrderExt},
+						{ID: "B", Version: "v1"},
+					},
+				},
+			}); s != "" {
+				t.Fatalf("Unexpected:\n%s\n", s)
+			}
+
+			t.Log("does not modify the originally provided order")
+			if s := cmp.Diff(orderBp, buildpack.Order{
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
+			}); s != "" {
+				t.Fatalf("Unexpected:\n%s\n", s)
+			}
+		})
+
+		when("the extensions order is empty", func() {
+			it("returns the originally provided order", func() {
+				orderBp := buildpack.Order{
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
+				}
+
+				newOrder := lifecycle.PrependExtensions(orderBp, nil)
+
+				if s := cmp.Diff(newOrder, buildpack.Order{
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
+				}); s != "" {
+					t.Fatalf("Unexpected:\n%s\n", s)
+				}
+			})
 		})
 	})
 }

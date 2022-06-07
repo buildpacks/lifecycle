@@ -10,7 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
-	"github.com/buildpacks/lifecycle/internal/lifecycle"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -75,7 +74,7 @@ func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, log
 		AppDir:      appDir,
 		DirStore:    f.dirStore,
 		Logger:      logger,
-		Order:       lifecycle.PrependExtensions(orderBp, orderExt),
+		Order:       PrependExtensions(orderBp, orderExt),
 		PlatformDir: platformDir,
 		Resolver:    &DefaultResolver{Logger: logger},
 		Runs:        &sync.Map{},
@@ -496,4 +495,28 @@ func (m depMap) eachUnmetRequire(f func(name string, bp buildpack.GroupElement) 
 		}
 	}
 	return nil
+}
+
+func PrependExtensions(orderBp buildpack.Order, orderExt buildpack.Order) buildpack.Order {
+	if len(orderExt) == 0 {
+		return orderBp
+	}
+
+	// fill in values for extensions order
+	for i, group := range orderExt {
+		for j := range group.Group {
+			group.Group[j].Extension = true
+			group.Group[j].Optional = true
+		}
+		orderExt[i] = group
+	}
+
+	var newOrder buildpack.Order
+	extGroupEl := buildpack.GroupElement{OrderExt: orderExt}
+	for _, group := range orderBp {
+		newOrder = append(newOrder, buildpack.Group{
+			Group: append([]buildpack.GroupElement{extGroupEl}, group.Group...),
+		})
+	}
+	return newOrder
 }
