@@ -22,14 +22,12 @@ import (
 )
 
 func TestDetect(t *testing.T) {
-	bpPath := filepath.Join("testdata", "by-id", "A", "v1", "buildpack.toml")
-	extPath := filepath.Join("testdata", "by-id", "extA", "v1", "extension.toml")
-	for _, path := range []string{bpPath, extPath} {
-		spec.Run(t, fmt.Sprintf("Detect-%s", filepath.Base(path)), testDetect(path), spec.Report(report.Terminal{}))
+	for _, kind := range []string{buildpack.KindBuildpack, buildpack.KindExtension} {
+		spec.Run(t, fmt.Sprintf("Detect-%s", kind), testDetect(kind), spec.Report(report.Terminal{}))
 	}
 }
 
-func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S) {
+func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
 			mockCtrl     *gomock.Controller
@@ -83,16 +81,22 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 		when("#Detect", func() {
 			var (
 				descriptor *buildpack.Descriptor
-				kind       string
 			)
 
 			it.Before(func() {
+				var descriptorPath string
+				switch kind {
+				case buildpack.KindBuildpack:
+					descriptorPath = filepath.Join("testdata", "by-id", "A", "v1", "buildpack.toml")
+				case buildpack.KindExtension:
+					descriptorPath = filepath.Join("testdata", "by-id", "extA", "v1", "extension.toml")
+				default:
+					t.Fatalf("unknown module kind: %s", kind)
+				}
 				var err error
 				descriptor, err = buildpack.ReadDescriptor(descriptorPath)
 				h.AssertNil(t, err)
 				descriptor.API = api.Buildpack.Latest().String() // override
-
-				kind = strings.TrimSuffix(filepath.Base(descriptorPath), ".toml") // buildpack or extension
 			})
 
 			when("env", func() {
@@ -184,7 +188,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 			when("plan deprecations", func() {
 				it.Before(func() {
-					h.SkipIf(t, kind == "extension", "extensions do not output requires")
+					h.SkipIf(t, kind == buildpack.KindExtension, "extensions do not output requires")
 					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
 				})
 
@@ -199,7 +203,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), kind+` A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 				})
 
 				it("fails if there is an alternate plan with both a top level version and a metadata version", func() {
@@ -216,7 +220,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), kind+` A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 				})
 
 				it("warns if the plan has a top level version", func() {
@@ -230,7 +234,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := h.AllLogs(logHandler); !strings.Contains(s,
-						kind+` A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+						strings.ToLower(kind)+` A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {
 						t.Fatalf("Expected log to contain warning:\n%s\n", s)
 					}
@@ -250,7 +254,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := h.AllLogs(logHandler); !strings.Contains(s,
-						kind+` A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+						strings.ToLower(kind)+` A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {
 						t.Fatalf("Expected log to contain warning:\n%s\n", s)
 					}
@@ -259,7 +263,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 			when("extensions", func() {
 				it.Before(func() {
-					h.SkipIf(t, kind == "buildpack", "")
+					h.SkipIf(t, kind == buildpack.KindBuildpack, "")
 				})
 
 				it("fails if the plan has requires", func() {
@@ -290,9 +294,8 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 				when("/bin/detect is missing", func() {
 					it.Before(func() {
-						descriptorPath = filepath.Join("testdata", "by-id", "extB", "v1", "extension.toml")
 						var err error
-						descriptor, err = buildpack.ReadDescriptor(descriptorPath)
+						descriptor, err = buildpack.ReadDescriptor(filepath.Join("testdata", "by-id", "extB", "v1", "extension.toml"))
 						h.AssertNil(t, err)
 						descriptor.API = api.Buildpack.Latest().String() // override
 					})
@@ -307,9 +310,8 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 					when("plan is missing", func() {
 						it.Before(func() {
-							descriptorPath = filepath.Join("testdata", "by-id", "extC", "v1", "extension.toml")
 							var err error
-							descriptor, err = buildpack.ReadDescriptor(descriptorPath)
+							descriptor, err = buildpack.ReadDescriptor(filepath.Join("testdata", "by-id", "extC", "v1", "extension.toml"))
 							h.AssertNil(t, err)
 							descriptor.API = api.Buildpack.Latest().String() // override
 						})
@@ -328,7 +330,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 			when("buildpack api < 0.8", func() {
 				it.Before(func() {
-					h.SkipIf(t, kind == "extension", "")
+					h.SkipIf(t, kind == buildpack.KindExtension, "")
 					descriptor.API = "0.7"
 				})
 
@@ -351,7 +353,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 
 			when("buildpack api = 0.2", func() {
 				it.Before(func() {
-					h.SkipIf(t, kind == "extension", "")
+					h.SkipIf(t, kind == buildpack.KindExtension, "")
 					descriptor.API = "0.2"
 				})
 
@@ -369,7 +371,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), kind+` A has a "version" key that does not match "metadata.version"`)
+					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key that does not match "metadata.version"`)
 				})
 
 				it("fails if there is an alternate plan with a top level version and a metadata version that are different", func() {
@@ -387,7 +389,7 @@ func testDetect(descriptorPath string) func(t *testing.T, when spec.G, it spec.S
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), kind+` A has a "version" key that does not match "metadata.version"`)
+					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key that does not match "metadata.version"`)
 				})
 			})
 		})
