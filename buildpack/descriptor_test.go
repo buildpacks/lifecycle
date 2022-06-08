@@ -76,37 +76,4 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-
-	when(".ToGroupElement", func() {
-		when("buildpack", func() {
-			it("returns a group element that is a buildpack", func() {
-				descriptor := buildpack.Descriptor{
-					API: "0.9",
-					Buildpack: buildpack.Info{
-						ID:      "A",
-						Version: "v1",
-					},
-				}
-				groupEl := descriptor.ToGroupElement(false)
-
-				h.AssertEq(t, groupEl.Extension, false)
-			})
-		})
-
-		when("extension", func() {
-			it("returns a group element that is an extension", func() {
-				descriptor := buildpack.Descriptor{
-					API: "0.9",
-					Extension: buildpack.Info{
-						ID:      "A",
-						Version: "v1",
-					},
-				}
-				groupEl := descriptor.ToGroupElement(false)
-
-				h.AssertEq(t, groupEl.Extension, true)
-				h.AssertEq(t, groupEl.Optional, true)
-			})
-		})
-	})
 }

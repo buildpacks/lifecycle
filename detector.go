@@ -176,7 +176,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		}
 
 		// Mark element as done.
-		done = append(done, descriptor.ToGroupElement(groupEl.Optional))
+		done = append(done, groupEl.WithAPI(descriptor.API).WithHomepage(descriptor.Info().Homepage))
 
 		// Run detect if element is a component buildpack or an extension.
 		key := groupEl.String()
@@ -413,7 +413,7 @@ type detectTrial []detectOption
 func (ts detectTrial) remove(bp buildpack.GroupElement) detectTrial {
 	var out detectTrial
 	for _, t := range ts {
-		if t.GroupElement.ID != bp.ID && t.GroupElement.Version == bp.Version {
+		if !t.GroupElement.Equals(bp) {
 			out = append(out, t)
 		}
 	}

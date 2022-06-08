@@ -78,25 +78,6 @@ func (b *Descriptor) String() string {
 	return b.Buildpack.Name + " " + b.Buildpack.Version
 }
 
-func (b *Descriptor) ToGroupElement(optional bool) GroupElement {
-	groupEl := GroupElement{API: b.API}
-	switch {
-	case b.IsBuildpack():
-		groupEl.ID = b.Buildpack.ID
-		groupEl.Version = b.Buildpack.Version
-		groupEl.Homepage = b.Buildpack.Homepage
-		groupEl.Extension = false
-		groupEl.Optional = optional
-	case b.IsExtension():
-		groupEl.ID = b.Extension.ID
-		groupEl.Version = b.Extension.Version
-		groupEl.Homepage = b.Extension.Homepage
-		groupEl.Extension = true
-		groupEl.Optional = true
-	}
-	return groupEl
-}
-
 type Info struct {
 	ClearEnv bool     `toml:"clear-env,omitempty"`
 	Homepage string   `toml:"homepage,omitempty"`
@@ -149,6 +130,15 @@ type GroupElement struct {
 	OrderExt Order `toml:"-" json:"-"`
 }
 
+func (e GroupElement) Equals(o GroupElement) bool {
+	return e.ID == o.ID &&
+		e.Version == o.Version &&
+		e.API == o.API &&
+		e.Homepage == o.Homepage &&
+		e.Extension == o.Extension &&
+		e.Optional == o.Optional
+}
+
 func (e GroupElement) IsExtensionsOrder() bool {
 	return len(e.OrderExt) > 0
 }
@@ -158,11 +148,6 @@ func (e GroupElement) Kind() string {
 		return KindExtension
 	}
 	return KindBuildpack
-}
-
-func (e GroupElement) NoOpt() GroupElement {
-	e.Optional = false
-	return e
 }
 
 func (e GroupElement) NoAPI() GroupElement {
@@ -175,6 +160,21 @@ func (e GroupElement) NoHomepage() GroupElement {
 	return e
 }
 
+func (e GroupElement) NoOpt() GroupElement {
+	e.Optional = false
+	return e
+}
+
 func (e GroupElement) String() string {
 	return e.ID + "@" + e.Version
+}
+
+func (e GroupElement) WithAPI(version string) GroupElement {
+	e.API = version
+	return e
+}
+
+func (e GroupElement) WithHomepage(address string) GroupElement {
+	e.Homepage = address
+	return e
 }
