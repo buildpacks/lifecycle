@@ -1,0 +1,8 @@
+api = "0.9"
+
+[extension]
+id = "A"
+name = "Extension A"
+version = "v1.clear"
+homepage = "Extension A Homepage"
+clear-env = true

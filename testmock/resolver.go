@@ -38,10 +38,10 @@ func (m *MockResolver) EXPECT() *MockResolverMockRecorder {
 }
 
 // Resolve mocks base method.
-func (m *MockResolver) Resolve(arg0 []buildpack.GroupBuildpack, arg1 *sync.Map) ([]buildpack.GroupBuildpack, []platform.BuildPlanEntry, error) {
+func (m *MockResolver) Resolve(arg0 []buildpack.GroupElement, arg1 *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Resolve", arg0, arg1)
-	ret0, _ := ret[0].([]buildpack.GroupBuildpack)
+	ret0, _ := ret[0].([]buildpack.GroupElement)
 	ret1, _ := ret[1].([]platform.BuildPlanEntry)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2

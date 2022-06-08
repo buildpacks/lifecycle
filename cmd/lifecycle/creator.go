@@ -164,20 +164,26 @@ func (c *createCmd) Exec() error {
 		return err
 	}
 
+	dirStore, err := platform.NewDirStore(c.buildpacksDir, "")
+	if err != nil {
+		return err
+	}
+
 	var (
 		analyzedMD platform.AnalyzedMetadata
 		group      buildpack.Group
 		plan       platform.BuildPlan
 	)
 	if c.platform.API().AtLeast("0.7") {
-		factory := lifecycle.NewAnalyzerFactory(
+		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
+			&cmd.APIVerifier{},
 			NewCacheHandler(c.keychain),
-			NewConfigHandler(),
+			lifecycle.NewConfigHandler(),
 			NewImageHandler(c.docker, c.keychain),
 			NewRegistryHandler(c.keychain),
 		)
-		analyzer, err := factory.NewAnalyzer(
+		analyzer, err := analyzerFactory.NewAnalyzer(
 			c.additionalTags,
 			c.cacheImageRef,
 			c.launchCacheDir,
@@ -192,7 +198,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return errors.Wrap(err, "initializing analyzer")
+			return cmd.FailErr(err, "initialize analyzer")
 		}
 		analyzedMD, err = analyzer.Analyze()
 		if err != nil {
@@ -200,40 +206,47 @@ func (c *createCmd) Exec() error {
 		}
 
 		cmd.DefaultLogger.Phase("DETECTING")
-		group, plan, err = detectArgs{
-			buildpacksDir: c.buildpacksDir,
-			appDir:        c.appDir,
-			layersDir:     c.layersDir,
-			platform:      c.platform,
-			platformDir:   c.platformDir,
-			orderPath:     c.orderPath,
-		}.detect()
+		detectorFactory := lifecycle.NewDetectorFactory(
+			c.platform.API(),
+			&cmd.APIVerifier{},
+			lifecycle.NewConfigHandler(),
+			dirStore,
+		)
+		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
+		if err != nil {
+			return cmd.FailErr(err, "initialize detector")
+		}
+		group, plan, err = doDetect(detector, c.platform)
 		if err != nil {
 			return err
 		}
 	} else {
 		cmd.DefaultLogger.Phase("DETECTING")
-		group, plan, err = detectArgs{
-			buildpacksDir: c.buildpacksDir,
-			appDir:        c.appDir,
-			layersDir:     c.layersDir,
-			platform:      c.platform,
-			platformDir:   c.platformDir,
-			orderPath:     c.orderPath,
-		}.detect()
+		detectorFactory := lifecycle.NewDetectorFactory(
+			c.platform.API(),
+			&cmd.APIVerifier{},
+			lifecycle.NewConfigHandler(),
+			dirStore,
+		)
+		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
+		if err != nil {
+			return cmd.FailErr(err, "initialize detector")
+		}
+		group, plan, err = doDetect(detector, c.platform)
 		if err != nil {
 			return err
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
-		factory := lifecycle.NewAnalyzerFactory(
+		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
+			&cmd.APIVerifier{},
 			NewCacheHandler(c.keychain),
-			NewConfigHandler(),
+			lifecycle.NewConfigHandler(),
 			NewImageHandler(c.docker, c.keychain),
 			NewRegistryHandler(c.keychain),
 		)
-		analyzer, err := factory.NewAnalyzer(
+		analyzer, err := analyzerFactory.NewAnalyzer(
 			c.additionalTags,
 			c.cacheImageRef,
 			c.launchCacheDir,
@@ -248,7 +261,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return errors.Wrap(err, "initializing analyzer")
+			return cmd.FailErr(err, "initialize analyzer")
 		}
 		analyzedMD, err = analyzer.Analyze()
 		if err != nil {

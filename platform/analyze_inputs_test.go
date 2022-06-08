@@ -83,6 +83,22 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 					h.AssertStringContains(t, err.Error(), expected)
 				})
 			})
+
+			when("layers directory is provided", func() {
+				it("uses group.toml at the layers directory and writes analyzed.toml at the layers directory", func() {
+					inputs := platform.AnalyzeInputs{
+						AnalyzedPath:    platform.PlaceholderAnalyzedPath,
+						LegacyGroupPath: platform.PlaceholderGroupPath,
+						LayersDir:       "some-layers-dir",
+						OutputImageRef:  "some-image",
+						RunImageRef:     "some-run-image",
+					}
+					ret, err := resolver.ResolveAnalyze(inputs, logger)
+					h.AssertNil(t, err)
+					h.AssertEq(t, ret.LegacyGroupPath, filepath.Join("some-layers-dir", "group.toml"))
+					h.AssertEq(t, ret.AnalyzedPath, filepath.Join("some-layers-dir", "analyzed.toml"))
+				})
+			})
 		})
 
 		when("platform api < 0.7", func() {
@@ -116,35 +132,15 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 					})
 				})
 			})
-
-			when("layers path is provided", func() {
-				it("uses the group path at the layers path and writes analyzed.toml at the layers path", func() {
-					h.SkipIf(t,
-						api.MustParse(platformAPI).LessThan("0.5"),
-						"Platform API < 0.5 reads and writes to the working directory",
-					)
-
-					inputs := platform.AnalyzeInputs{
-						AnalyzedPath:    platform.PlaceholderAnalyzedPath,
-						LegacyGroupPath: platform.PlaceholderGroupPath,
-						LayersDir:       "some-layers-dir",
-						OutputImageRef:  "some-image",
-					}
-					ret, err := resolver.ResolveAnalyze(inputs, logger)
-					h.AssertNil(t, err)
-					h.AssertEq(t, ret.LegacyGroupPath, filepath.Join("some-layers-dir", "group.toml"))
-					h.AssertEq(t, ret.AnalyzedPath, filepath.Join("some-layers-dir", "analyzed.toml"))
-				})
-			})
 		})
 
 		when("platform api < 0.5", func() {
 			it.Before(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.6"), "")
+				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.5"), "")
 			})
 
-			when("layers path is provided", func() {
-				it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
+			when("layers directory is provided", func() {
+				it("uses group.toml at the working directory and writes analyzed.toml at the working directory", func() {
 					inputs := platform.AnalyzeInputs{
 						AnalyzedPath:    filepath.Join(".", "analyzed.toml"),
 						LegacyGroupPath: filepath.Join(".", "group.toml"),

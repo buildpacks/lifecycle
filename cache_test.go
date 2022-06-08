@@ -65,7 +65,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 			exporter = &lifecycle.Exporter{
 				PlatformAPI: api.Platform.Latest(),
-				Buildpacks: []buildpack.GroupBuildpack{
+				Buildpacks: []buildpack.GroupElement{
 					{ID: "buildpack.id", API: api.Buildpack.Latest().String()},
 					{ID: "other.buildpack.id", API: api.Buildpack.Latest().String()},
 				},
@@ -291,7 +291,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("buildpack API < 0.6", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "old.buildpack.id", API: "0.5"}}
+				exporter.Buildpacks = []buildpack.GroupElement{{ID: "old.buildpack.id", API: "0.5"}}
 			})
 			when("the layers are valid", func() {
 				it.Before(func() {

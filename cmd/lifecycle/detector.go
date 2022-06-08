@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -13,34 +12,31 @@ import (
 )
 
 type detectCmd struct {
-	// flags: inputs
-	detectArgs
-
-	// flags: paths to write outputs
-	groupPath string
-	planPath  string
-}
-
-type detectArgs struct {
-	// inputs needed when run by creator
-	buildpacksDir string
-	appDir        string
-	layersDir     string
-	platformDir   string
-	orderPath     string
-
 	platform Platform
+	platform.DetectInputs
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
-	cmd.FlagBuildpacksDir(&d.buildpacksDir)
-	cmd.FlagAppDir(&d.appDir)
-	cmd.FlagLayersDir(&d.layersDir)
-	cmd.FlagPlatformDir(&d.platformDir)
-	cmd.FlagOrderPath(&d.orderPath)
-	cmd.FlagGroupPath(&d.groupPath)
-	cmd.FlagPlanPath(&d.planPath)
+	switch {
+	case d.platform.API().AtLeast("0.10"):
+		cmd.FlagAppDir(&d.AppDir)
+		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
+		cmd.FlagExtensionsDir(&d.ExtensionsDir)
+		cmd.FlagGroupPath(&d.GroupPath)
+		cmd.FlagLayersDir(&d.LayersDir)
+		cmd.FlagOrderPath(&d.OrderPath)
+		cmd.FlagPlanPath(&d.PlanPath)
+		cmd.FlagPlatformDir(&d.PlatformDir)
+	default:
+		cmd.FlagAppDir(&d.AppDir)
+		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
+		cmd.FlagGroupPath(&d.GroupPath)
+		cmd.FlagLayersDir(&d.LayersDir)
+		cmd.FlagOrderPath(&d.OrderPath)
+		cmd.FlagPlanPath(&d.PlanPath)
+		cmd.FlagPlatformDir(&d.PlatformDir)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -49,18 +45,11 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	if d.groupPath == cmd.PlaceholderGroupPath {
-		d.groupPath = cmd.DefaultGroupPath(d.platform.API().String(), d.layersDir)
+	var err error
+	d.DetectInputs, err = d.platform.ResolveDetect(d.DetectInputs)
+	if err != nil {
+		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "resolve inputs")
 	}
-
-	if d.planPath == cmd.PlaceholderPlanPath {
-		d.planPath = cmd.DefaultPlanPath(d.platform.API().String(), d.layersDir)
-	}
-
-	if d.orderPath == cmd.PlaceholderOrderPath {
-		d.orderPath = cmd.DefaultOrderPath(d.platform.API().String(), d.layersDir)
-	}
-
 	return nil
 }
 
@@ -73,35 +62,29 @@ func (d *detectCmd) Privileges() error {
 }
 
 func (d *detectCmd) Exec() error {
-	group, plan, err := d.detect()
+	dirStore, err := platform.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
 	if err != nil {
 		return err
+	}
+	factory := lifecycle.NewDetectorFactory(
+		d.platform.API(),
+		&cmd.APIVerifier{},
+		lifecycle.NewConfigHandler(),
+		dirStore,
+	)
+	detector, err := factory.NewDetector(d.AppDir, d.OrderPath, d.PlatformDir, cmd.DefaultLogger)
+	if err != nil {
+		return cmd.FailErr(err, "initialize detector")
+	}
+	group, plan, err := doDetect(detector, d.platform)
+	if err != nil {
+		return err // pass through error from doDetect
 	}
 	return d.writeData(group, plan)
 }
 
-func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
-	order, err := buildpack.ReadOrder(da.orderPath)
-	if err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack order file")
-	}
-	if err := da.verifyBuildpackApis(order); err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, err
-	}
-
-	detector, err := lifecycle.NewDetector(
-		buildpack.DetectConfig{
-			AppDir:      da.appDir,
-			PlatformDir: da.platformDir,
-			Logger:      cmd.DefaultLogger,
-		},
-		da.buildpacksDir,
-		da.platform,
-	)
-	if err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "initialize detector")
-	}
-	group, plan, err := detector.Detect(order)
+func doDetect(detector *lifecycle.Detector, p Platform) (buildpack.Group, platform.BuildPlan, error) {
+	group, plan, err := detector.Detect()
 	if err != nil {
 		switch err := err.(type) {
 		case *buildpack.Error:
@@ -109,46 +92,25 @@ func (da detectArgs) detect() (buildpack.Group, platform.BuildPlan, error) {
 			case buildpack.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.FailedDetect), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetect), "detect")
 			case buildpack.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.FailedDetectWithErrors), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetectWithErrors), "detect")
 			default:
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.DetectError), "detect")
+				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
 			}
 		default:
-			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, da.platform.CodeFor(platform.DetectError), "detect")
+			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
 		}
 	}
-
 	return group, plan, nil
 }
 
-func (da detectArgs) verifyBuildpackApis(order buildpack.Order) error {
-	store, err := buildpack.NewBuildpackStore(da.buildpacksDir)
-	if err != nil {
-		return err
-	}
-	for _, group := range order {
-		for _, groupBp := range group.Group {
-			buildpack, err := store.Lookup(groupBp.ID, groupBp.Version)
-			if err != nil {
-				return cmd.FailErr(err, fmt.Sprintf("lookup buildpack.toml for buildpack '%s'", groupBp.String()))
-			}
-			if err := cmd.VerifyBuildpackAPI(groupBp.String(), buildpack.ConfigFile().API); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (d *detectCmd) writeData(group buildpack.Group, plan platform.BuildPlan) error {
-	if err := encoding.WriteTOML(d.groupPath, group); err != nil {
+	if err := encoding.WriteTOML(d.GroupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
-
-	if err := encoding.WriteTOML(d.planPath, plan); err != nil {
+	if err := encoding.WriteTOML(d.PlanPath, plan); err != nil {
 		return cmd.FailErr(err, "write detect plan")
 	}
 	return nil

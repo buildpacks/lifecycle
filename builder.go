@@ -19,6 +19,10 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 )
 
+type Platform interface {
+	API() *api.Version
+}
+
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
@@ -26,26 +30,20 @@ type BuildEnv interface {
 	List() []string
 }
 
-type BuildpackStore interface {
-	Lookup(bpID, bpVersion string) (buildpack.Buildpack, error)
-}
-
-type Buildpack interface {
-	Build(bpPlan buildpack.Plan, config buildpack.BuildConfig, bpEnv buildpack.BuildEnv) (buildpack.BuildResult, error)
-	ConfigFile() *buildpack.Descriptor
-	Detect(config *buildpack.DetectConfig, bpEnv buildpack.BuildEnv) buildpack.DetectRun
+type DirStore interface {
+	Lookup(kind, id, version string) (buildpack.BuildModule, error)
 }
 
 type Builder struct {
-	AppDir         string
-	LayersDir      string
-	PlatformDir    string
-	Platform       Platform
-	Group          buildpack.Group
-	Plan           platform.BuildPlan
-	Out, Err       io.Writer
-	Logger         Logger
-	BuildpackStore BuildpackStore
+	AppDir      string
+	LayersDir   string
+	PlatformDir string
+	Platform    Platform
+	Group       buildpack.Group
+	Plan        platform.BuildPlan
+	Out, Err    io.Writer
+	Logger      Logger
+	DirStore    DirStore
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -75,7 +73,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
-		bpTOML, err := b.BuildpackStore.Lookup(bp.ID, bp.Version)
+		bpTOML, err := b.DirStore.Lookup(buildpack.KindBuildpack, bp.ID, bp.Version)
 		if err != nil {
 			return nil, err
 		}

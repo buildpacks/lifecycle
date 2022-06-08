@@ -5,7 +5,6 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
@@ -107,8 +106,9 @@ func (a *analyzeCmd) Privileges() error {
 func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
 		a.platform.API(),
+		&cmd.APIVerifier{},
 		NewCacheHandler(a.keychain),
-		NewConfigHandler(),
+		lifecycle.NewConfigHandler(),
 		NewImageHandler(a.docker, a.keychain),
 		NewRegistryHandler(a.keychain),
 	)
@@ -127,16 +127,16 @@ func (a *analyzeCmd) Exec() error {
 		cmd.DefaultLogger,
 	)
 	if err != nil {
-		return err
+		return cmd.FailErr(err, "initialize analyzer")
 	}
 
 	analyzedMD, err := analyzer.Analyze()
 	if err != nil {
-		return cmd.FailErrCode(err, a.platform.CodeFor(platform.AnalyzeError), "analyzer")
+		return cmd.FailErrCode(err, a.platform.CodeFor(platform.AnalyzeError), "analyze")
 	}
 
 	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
-		return errors.Wrap(err, "writing analyzed.toml")
+		return cmd.FailErr(err, "write analyzed")
 	}
 	return nil
 }

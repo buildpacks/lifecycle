@@ -38,7 +38,7 @@ func (m *MockMetadataRestorer) EXPECT() *MockMetadataRestorerMockRecorder {
 }
 
 // Restore mocks base method.
-func (m *MockMetadataRestorer) Restore(arg0 []buildpack.GroupBuildpack, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata, arg3 layer.SHAStore) error {
+func (m *MockMetadataRestorer) Restore(arg0 []buildpack.GroupElement, arg1 platform.LayersMetadata, arg2 platform.CacheMetadata, arg3 layer.SHAStore) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

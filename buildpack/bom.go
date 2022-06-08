@@ -8,7 +8,7 @@ import (
 )
 
 type BOMValidator interface {
-	ValidateBOM(GroupBuildpack, []BOMEntry) ([]BOMEntry, error)
+	ValidateBOM(GroupElement, []BOMEntry) ([]BOMEntry, error)
 }
 
 func NewBOMValidator(bpAPI string, layersDir string, logger Logger) BOMValidator {
@@ -27,7 +27,7 @@ type defaultBOMValidator struct {
 	layersDir string
 }
 
-func (v *defaultBOMValidator) ValidateBOM(bp GroupBuildpack, bom []BOMEntry) ([]BOMEntry, error) {
+func (v *defaultBOMValidator) ValidateBOM(bp GroupElement, bom []BOMEntry) ([]BOMEntry, error) {
 	if err := v.validateBOM(bom); err != nil {
 		return []BOMEntry{}, err
 	}
@@ -58,13 +58,13 @@ func (v *defaultBOMValidator) validateBOM(bom []BOMEntry) error {
 	return nil
 }
 
-func (v *defaultBOMValidator) processBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
+func (v *defaultBOMValidator) processBOM(buildpack GroupElement, bom []BOMEntry) []BOMEntry {
 	return WithBuildpack(buildpack, bom)
 }
 
 type v05To06BOMValidator struct{}
 
-func (v *v05To06BOMValidator) ValidateBOM(bp GroupBuildpack, bom []BOMEntry) ([]BOMEntry, error) {
+func (v *v05To06BOMValidator) ValidateBOM(bp GroupElement, bom []BOMEntry) ([]BOMEntry, error) {
 	if err := v.validateBOM(bom); err != nil {
 		return []BOMEntry{}, err
 	}
@@ -80,13 +80,13 @@ func (v *v05To06BOMValidator) validateBOM(bom []BOMEntry) error {
 	return nil
 }
 
-func (v *v05To06BOMValidator) processBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
+func (v *v05To06BOMValidator) processBOM(buildpack GroupElement, bom []BOMEntry) []BOMEntry {
 	return WithBuildpack(buildpack, bom)
 }
 
 type legacyBOMValidator struct{}
 
-func (v *legacyBOMValidator) ValidateBOM(bp GroupBuildpack, bom []BOMEntry) ([]BOMEntry, error) {
+func (v *legacyBOMValidator) ValidateBOM(bp GroupElement, bom []BOMEntry) ([]BOMEntry, error) {
 	if err := v.validateBOM(bom); err != nil {
 		return []BOMEntry{}, err
 	}
@@ -105,7 +105,7 @@ func (v *legacyBOMValidator) validateBOM(bom []BOMEntry) error {
 	return nil
 }
 
-func (v *legacyBOMValidator) processBOM(buildpack GroupBuildpack, bom []BOMEntry) []BOMEntry {
+func (v *legacyBOMValidator) processBOM(buildpack GroupElement, bom []BOMEntry) []BOMEntry {
 	bom = WithBuildpack(buildpack, bom)
 	for i := range bom {
 		bom[i].convertVersionToMetadata()

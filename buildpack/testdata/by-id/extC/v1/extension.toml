@@ -1,0 +1,7 @@
+api = "0.9"
+
+[extension]
+id = "B"
+name = "Extension B"
+version = "v1"
+homepage = "Extension B Homepage"

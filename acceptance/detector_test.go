@@ -96,7 +96,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			)
 			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
-			expected := "failed to read buildpack order file"
+			expected := "failed to initialize detector: reading buildpack order file"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
@@ -290,7 +290,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"-order=/custom/order.toml")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
-				expected := "failed to read buildpack order file: open /custom/order.toml: no such file or directory"
+				expected := "failed to initialize detector: reading buildpack order file: open /custom/order.toml: no such file or directory"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
@@ -435,10 +435,60 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"--rm", detectImage)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to read buildpack order file: open /cnb/order.toml: no such file or directory"
+					expected := "failed to initialize detector: reading buildpack order file: open /cnb/order.toml: no such file or directory"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
+		})
+	})
+
+	when("-order contains extensions", func() {
+		var containerName, copyDir, orderPath string
+
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+			orderPath, err = filepath.Abs(filepath.Join("testdata", "detector", "container", "cnb", "orders", "order_with_ext.toml"))
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			os.RemoveAll(copyDir)
+		})
+
+		it("processes the provided order.toml", func() {
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
+				"/layers",
+				detectImage,
+				h.WithFlags(
+					"--user", userID,
+					"--volume", orderPath+":/layers/order.toml",
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+				),
+				h.WithArgs(
+					"-extensions=/cnb/extensions",
+					"-log-level=debug",
+				),
+			)
+
+			// check group.toml
+			tempGroupToml := filepath.Join(copyDir, "layers", "group.toml")
+			var buildpackGroup buildpack.Group
+			_, err := toml.DecodeFile(tempGroupToml, &buildpackGroup)
+			h.AssertNil(t, err)
+			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_extension")
+			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_extension_version")
+			h.AssertEq(t, buildpackGroup.Group[0].Extension, true)
+			h.AssertEq(t, buildpackGroup.Group[1].ID, "buildpack_for_ext")
+			h.AssertEq(t, buildpackGroup.Group[1].Version, "buildpack_for_ext_version")
+			h.AssertEq(t, buildpackGroup.Group[1].Extension, false)
 		})
 	})
 

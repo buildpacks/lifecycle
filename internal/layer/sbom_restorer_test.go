@@ -188,7 +188,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#RestoreToBuildpackLayers", func() {
-		var detectedBps []buildpack.GroupBuildpack
+		var detectedBps []buildpack.GroupElement
 
 		it.Before(func() {
 			h.Mkdir(t, filepath.Join(layersDir, "sbom"))
@@ -197,7 +197,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 				filepath.Join(layersDir, "sbom"))
 
 			buildpackAPI := api.Buildpack.Latest().String()
-			detectedBps = []buildpack.GroupBuildpack{
+			detectedBps = []buildpack.GroupElement{
 				{ID: "buildpack.id", API: buildpackAPI},
 				{ID: "escaped/buildpack/id", API: buildpackAPI},
 			}

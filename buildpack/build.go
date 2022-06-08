@@ -246,7 +246,7 @@ func eachLayer(bpLayersDir, buildpackAPI string, fn func(path, api string) (Laye
 
 func (b *Descriptor) readOutputFiles(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger Logger) (BuildResult, error) {
 	br := BuildResult{}
-	bpFromBpInfo := GroupBuildpack{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
+	bpFromBpInfo := GroupElement{ID: b.Buildpack.ID, Version: b.Buildpack.Version}
 
 	// setup launch.toml
 	var launchTOML LaunchTOML
@@ -404,7 +404,7 @@ func names(requires []Require) []string {
 	return out
 }
 
-func WithBuildpack(bp GroupBuildpack, bom []BOMEntry) []BOMEntry {
+func WithBuildpack(bp GroupElement, bom []BOMEntry) []BOMEntry {
 	var out []BOMEntry
 	for _, entry := range bom {
 		entry.Buildpack = bp.NoAPI().NoHomepage()

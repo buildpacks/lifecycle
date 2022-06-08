@@ -1,0 +1,9 @@
+[[order]]
+  [[order.group]]
+    id = "buildpack_for_ext"
+    version = "buildpack_for_ext_version"
+
+[[order-ext]]
+  [[order-ext.group]]
+    id = "simple_extension"
+    version = "simple_extension_version"

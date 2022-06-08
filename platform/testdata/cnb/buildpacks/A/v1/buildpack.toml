@@ -1,0 +1,8 @@
+api = "0.7"
+
+[buildpack]
+id = "A"
+name = "Buildpack A"
+version = "v1"
+homepage = "Buildpack A Homepage"
+sbom-formats = ["application/vnd.cyclonedx+json"]

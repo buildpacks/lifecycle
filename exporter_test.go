@@ -135,7 +135,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			}).AnyTimes()
 
 		exporter = &lifecycle.Exporter{
-			Buildpacks: []buildpack.GroupBuildpack{
+			Buildpacks: []buildpack.GroupElement{
 				{ID: "buildpack.id", Version: "1.2.3", API: api.Buildpack.Latest().String()},
 				{ID: "other.buildpack.id", Version: "4.5.6", API: api.Buildpack.Latest().String(), Optional: false},
 			},
@@ -290,7 +290,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 			when("the launch flag is in the top level table", func() {
 				it.Before(func() {
-					exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "bad.buildpack.id", API: api.Buildpack.Latest().String()}}
+					exporter.Buildpacks = []buildpack.GroupElement{{ID: "bad.buildpack.id", API: api.Buildpack.Latest().String()}}
 					fakeAppImage.AddPreviousLayer("bad-layer", "")
 					opts.OrigMetadata = platform.LayersMetadata{
 						Buildpacks: []buildpack.LayersMetadata{{
@@ -832,7 +832,6 @@ version = "4.5.6"
 				opts.AppDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "previous-image-not-exist", "layers", "app"))
 				h.AssertNil(t, err)
 
-				// TODO : this is an hacky way to create a non-existing image and should be improved in imgutil
 				nonExistingOriginalImage = fakes.NewImage("app/original-image", "", nil)
 				h.AssertNil(t, nonExistingOriginalImage.Delete())
 			})
@@ -1367,14 +1366,14 @@ version = "4.5.6"
 										Name:     "dep1",
 										Metadata: map[string]interface{}{"version": string("v1")},
 									},
-									Buildpack: buildpack.GroupBuildpack{ID: "buildpack.id", Version: "1.2.3"},
+									Buildpack: buildpack.GroupElement{ID: "buildpack.id", Version: "1.2.3"},
 								},
 								{
 									Require: buildpack.Require{
 										Name:     "dep2",
 										Metadata: map[string]interface{}{"version": string("v1")},
 									},
-									Buildpack: buildpack.GroupBuildpack{ID: "other.buildpack.id", Version: "4.5.6"},
+									Buildpack: buildpack.GroupElement{ID: "other.buildpack.id", Version: "4.5.6"},
 								},
 							})
 						})
@@ -1396,7 +1395,7 @@ version = "4.5.6"
 
 		when("buildpack requires an escaped id", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "some/escaped/bp/id", API: api.Buildpack.Latest().String()}}
+				exporter.Buildpacks = []buildpack.GroupElement{{ID: "some/escaped/bp/id", API: api.Buildpack.Latest().String()}}
 
 				h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "escaped-bpid", "layers"), opts.LayersDir)
 			})
@@ -1438,7 +1437,6 @@ version = "4.5.6"
 				opts.AppDir, err = filepath.Abs(filepath.Join("testdata", "exporter", "bad-layer", "layers", "app"))
 				h.AssertNil(t, err)
 
-				// TODO : this is an hacky way to create a non-existing image and should be improved in imgutil
 				nonExistingOriginalImage = fakes.NewImage("app/original-image", "", nil)
 				h.AssertNil(t, nonExistingOriginalImage.Delete())
 			})
@@ -1477,7 +1475,7 @@ version = "4.5.6"
 
 		when("buildpack API < 0.6", func() {
 			it.Before(func() {
-				exporter.Buildpacks = []buildpack.GroupBuildpack{{ID: "old.buildpack.id", API: "0.5"}}
+				exporter.Buildpacks = []buildpack.GroupElement{{ID: "old.buildpack.id", API: "0.5"}}
 			})
 
 			when("previous image exists", func() {

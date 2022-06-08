@@ -36,7 +36,7 @@ func testEncoding(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should write JSON", func() {
-			group := buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}}
+			group := buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}}
 			if err := encoding.WriteJSON(filepath.Join(tmpDir, "subdir", "group.toml"), group); err != nil {
 				t.Fatal(err)
 			}
@@ -65,7 +65,7 @@ func testEncoding(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should write TOML", func() {
-			group := buildpack.Group{Group: []buildpack.GroupBuildpack{{ID: "A", Version: "v1"}}}
+			group := buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}}
 			if err := encoding.WriteTOML(filepath.Join(tmpDir, "subdir", "group.toml"), group); err != nil {
 				t.Fatal(err)
 			}
