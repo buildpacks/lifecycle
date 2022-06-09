@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 // AnalyzeInputs holds the values of command-line flags and args.
@@ -40,7 +41,7 @@ func (a AnalyzeInputs) RegistryImages() []string {
 
 // ResolveAnalyze accepts an AnalyzeInputs and returns a new AnalyzeInputs with default values filled in,
 // or an error if the provided inputs are not valid.
-func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger Logger) (AnalyzeInputs, error) {
+func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger log.Logger) (AnalyzeInputs, error) {
 	resolvedInputs := inputs
 
 	if err := r.fillAnalyzeDefaultFilePaths(&resolvedInputs, logger); err != nil {
@@ -53,7 +54,7 @@ func (r *InputsResolver) ResolveAnalyze(inputs AnalyzeInputs, logger Logger) (An
 	return resolvedInputs, nil
 }
 
-func (r *InputsResolver) fillAnalyzeDefaultFilePaths(inputs *AnalyzeInputs, logger Logger) error {
+func (r *InputsResolver) fillAnalyzeDefaultFilePaths(inputs *AnalyzeInputs, logger log.Logger) error {
 	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
 		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, r.platformAPI)
 	}
@@ -66,7 +67,7 @@ func (r *InputsResolver) fillAnalyzeDefaultFilePaths(inputs *AnalyzeInputs, logg
 	return r.fillRunImage(inputs, logger)
 }
 
-func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger Logger) error {
+func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger log.Logger) error {
 	if r.platformAPI.LessThan("0.7") || inputs.RunImageRef != "" {
 		return nil
 	}
@@ -88,7 +89,7 @@ func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger Logger) erro
 	return nil
 }
 
-func (r *InputsResolver) validateAnalyze(inputs AnalyzeInputs, logger Logger) error {
+func (r *InputsResolver) validateAnalyze(inputs AnalyzeInputs, logger log.Logger) error {
 	if inputs.OutputImageRef == "" {
 		return errors.New("image argument is required")
 	}

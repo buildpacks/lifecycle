@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -51,14 +52,14 @@ func NewDetectorFactory(
 type Detector struct {
 	AppDir      string
 	DirStore    DirStore
-	Logger      Logger
+	Logger      log.Logger
 	Order       buildpack.Order
 	PlatformDir string
 	Resolver    Resolver
 	Runs        *sync.Map
 }
 
-func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger Logger) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
 	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath)
 	if err != nil {
 		return nil, err
@@ -209,7 +210,7 @@ func hasID(bps []buildpack.GroupElement, id string) bool {
 }
 
 type DefaultResolver struct {
-	Logger Logger
+	Logger log.Logger
 }
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
