@@ -47,6 +47,18 @@ jobs:
         run: |
           make format || true
           make test
+  test-linux-s390x:
+    runs-on: linux-s390x
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17'
+      - name: Test
+        run: |
+          make format || true
+          make test
   test-windows:
     runs-on: windows-2019
     steps:
@@ -98,6 +110,7 @@ jobs:
     needs:
       - test-linux-amd64
       - test-linux-arm64
+      - test-linux-s390x
       - test-windows
     runs-on: ubuntu-18.04
     steps:
@@ -147,6 +160,14 @@ jobs:
         with:
           name: lifecycle-linux-arm64-sha256
           path: out/lifecycle-v*+linux.arm64.tgz.sha256
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-linux-s390x
+          path: out/lifecycle-v*+linux.s390x.tgz
+      - uses: actions/upload-artifact@v2
+        with:
+          name: lifecycle-linux-s390x-sha256
+          path: out/lifecycle-v*+linux.s390x.tgz.sha256
       - uses: actions/upload-artifact@v2
         with:
           name: lifecycle-windows-x86-64
@@ -208,12 +229,16 @@ jobs:
           LINUX_ARM64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.arm64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64 -arch arm64 | awk '{print $NF}')
           echo "LINUX_ARM64_SHA: $LINUX_ARM64_SHA"
 
+          LINUX_S390X_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+linux.s390x.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x -arch s390x | awk '{print $NF}')
+          echo "LINUX_S390X_SHA: $LINUX_S390X_SHA"
+
           WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
+              buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-s390x@${LINUX_S390X_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows@${WINDOWS_AMD64_SHA}
 
           MANIFEST_SHA=$(docker manifest push buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG})
