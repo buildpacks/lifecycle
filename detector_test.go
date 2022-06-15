@@ -33,7 +33,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("#NewDetector", func() {
 		var (
 			detectorFactory   *lifecycle.DetectorFactory
-			fakeAPIVerifier   *testmock.MockAPIVerifier
+			fakeAPIVerifier   *testmock.MockBuildpackAPIVerifier
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
 			logger            *log.Logger
@@ -42,7 +42,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			fakeAPIVerifier = testmock.NewMockAPIVerifier(mockController)
+			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
 			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
 			fakeDirStore = testmock.NewMockDirStore(mockController)
 			logger = &log.Logger{Handler: &discard.Handler{}}
@@ -52,9 +52,14 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			mockController.Finish()
 		})
 
-		when("platform api >= 0.10", func() { // TODO: change to pre-release api in https://github.com/buildpacks/lifecycle/issues/459
+		when("platform api >= 0.10", func() {
 			it.Before(func() {
-				detectorFactory = lifecycle.NewDetectorFactory(api.Platform.Latest(), fakeAPIVerifier, fakeConfigHandler, fakeDirStore)
+				detectorFactory = lifecycle.NewDetectorFactory(
+					api.Platform.Latest(),
+					fakeAPIVerifier,
+					fakeConfigHandler,
+					fakeDirStore,
+				)
 			})
 
 			it("configures the detector", func() {
@@ -67,7 +72,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				bpA1 := testmock.NewMockBuildModule(mockController)
 				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 				bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 
 				detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
@@ -121,16 +126,16 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					extD1 := testmock.NewMockBuildModule(mockController)
 					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
 					bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2")
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2", logger)
 					fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
 					extC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.10"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10")
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10", logger)
 					fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
 					extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.10"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10")
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
 					detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
 					h.AssertNil(t, err)
@@ -147,7 +152,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("platform api < 0.10", func() { // TODO: change to pre-release api in https://github.com/buildpacks/lifecycle/issues/459
+		when("platform api < 0.10", func() {
 			it.Before(func() {
 				detectorFactory = lifecycle.NewDetectorFactory(api.MustParse("0.9"), fakeAPIVerifier, fakeConfigHandler, fakeDirStore)
 			})
@@ -162,7 +167,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				bpA1 := testmock.NewMockBuildModule(mockController)
 				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 				bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 
 				detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
@@ -194,10 +199,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					bpB1 := testmock.NewMockBuildModule(mockController)
 					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
 					bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2")
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2", logger)
 
 					detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
 					h.AssertNil(t, err)

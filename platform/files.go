@@ -71,11 +71,18 @@ type RunImageMetadata struct {
 	Reference string `json:"reference" toml:"reference"`
 }
 
+// generated.toml
+
+type GeneratedMetadata struct {
+	Dockerfiles []buildpack.Dockerfile `toml:"dockerfiles" json:"dockerfiles"`
+}
+
 // metadata.toml
 
 type BuildMetadata struct {
 	BOM                         []buildpack.BOMEntry     `toml:"bom,omitempty" json:"bom"`
 	Buildpacks                  []buildpack.GroupElement `toml:"buildpacks" json:"buildpacks"`
+	Extensions                  []buildpack.GroupElement `toml:"extensions,omitempty" json:"extensions,omitempty"`
 	Labels                      []buildpack.Label        `toml:"labels" json:"-"`
 	Launcher                    LauncherMetadata         `toml:"-" json:"launcher"`
 	Processes                   []launch.Process         `toml:"processes" json:"processes"`
@@ -131,11 +138,11 @@ type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
 }
 
-func (p BuildPlan) Find(bpID string) buildpack.Plan {
+func (p BuildPlan) Find(groupEl buildpack.GroupElement) buildpack.Plan {
 	var out []buildpack.Require
 	for _, entry := range p.Entries {
 		for _, provider := range entry.Providers {
-			if provider.ID == bpID {
+			if provider.ID == groupEl.ID && provider.Extension == groupEl.Extension {
 				out = append(out, entry.Requires...)
 				break
 			}

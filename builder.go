@@ -31,10 +31,6 @@ type BuildEnv interface {
 	List() []string
 }
 
-type DirStore interface {
-	Lookup(kind, id, version string) (buildpack.BuildModule, error)
-}
-
 type Builder struct {
 	AppDir      string
 	LayersDir   string
@@ -70,17 +66,20 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 	bpEnv := env.NewBuildEnv(os.Environ())
 
-	for _, bp := range b.Group.Group {
-		b.Logger.Debugf("Running build for buildpack %s", bp)
+	for _, groupEl := range b.Group.Group {
+		if groupEl.Extension {
+			continue
+		}
+		b.Logger.Debugf("Running build for buildpack %s", groupEl)
 
 		b.Logger.Debug("Looking up buildpack")
-		bpTOML, err := b.DirStore.Lookup(buildpack.KindBuildpack, bp.ID, bp.Version)
+		bpTOML, err := b.DirStore.Lookup(buildpack.KindBuildpack, groupEl.ID, groupEl.Version)
 		if err != nil {
 			return nil, err
 		}
 
 		b.Logger.Debug("Finding plan")
-		bpPlan := plan.Find(bp.ID)
+		bpPlan := plan.Find(groupEl)
 
 		br, err := bpTOML.Build(bpPlan, config, bpEnv)
 		if err != nil {
@@ -88,7 +87,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 
 		b.Logger.Debug("Updating buildpack processes")
-		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.Platform.API())
+		updateDefaultProcesses(br.Processes, api.MustParse(groupEl.API), b.Platform.API())
 
 		buildBOM = append(buildBOM, br.BuildBOM...)
 		launchBOM = append(launchBOM, br.LaunchBOM...)
@@ -104,7 +103,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 		slices = append(slices, br.Slices...)
 
-		b.Logger.Debugf("Finished running build for buildpack %s", bp)
+		b.Logger.Debugf("Finished running build for buildpack %s", groupEl)
 	}
 
 	if b.Platform.API().LessThan("0.4") {
@@ -116,7 +115,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 	if b.Platform.API().AtLeast("0.8") {
 		b.Logger.Debug("Copying SBOM files")
-		err = b.copyBOMFiles(config.LayersDir, bomFiles)
+		err = b.copySBOMFiles(config.OutputParentDir, bomFiles)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +138,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Finished build")
 	return &platform.BuildMetadata{
 		BOM:                         launchBOM,
-		Buildpacks:                  b.Group.Group,
+		Buildpacks:                  b.Group.Filter(buildpack.KindBuildpack).Group,
+		Extensions:                  b.Group.Filter(buildpack.KindExtension).Group,
 		Labels:                      labels,
 		Processes:                   procList,
 		Slices:                      slices,
@@ -147,7 +147,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}, nil
 }
 
-// copyBOMFiles() copies any BOM files written by buildpacks during the Build() process
+// copySBOMFiles() copies any BOM files written by buildpacks during the Build() process
 // to their appropriate locations, in preparation for its final application layer.
 // This function handles both BOMs that are associated with a layer directory and BOMs that are not
 // associated with a layer directory, since "bomFile.LayerName" will be "" in the latter case.
@@ -168,7 +168,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 //             ├── A
 //             │   └── sbom.cdx.json
 //             └── sbom.cdx.json
-func (b *Builder) copyBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) error {
+func (b *Builder) copySBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) error {
 	var (
 		buildSBOMDir  = filepath.Join(layersDir, "sbom", "build")
 		cacheSBOMDir  = filepath.Join(layersDir, "sbom", "cache")
@@ -237,12 +237,12 @@ func (b *Builder) BuildConfig() (buildpack.BuildConfig, error) {
 	}
 
 	return buildpack.BuildConfig{
-		AppDir:      appDir,
-		PlatformDir: platformDir,
-		LayersDir:   layersDir,
-		Out:         b.Out,
-		Err:         b.Err,
-		Logger:      b.Logger,
+		AppDir:          appDir,
+		PlatformDir:     platformDir,
+		OutputParentDir: layersDir,
+		Out:             b.Out,
+		Err:             b.Err,
+		Logger:          b.Logger,
 	}, nil
 }
 

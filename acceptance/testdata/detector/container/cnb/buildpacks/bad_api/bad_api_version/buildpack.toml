@@ -1,0 +1,5 @@
+api = "0.1"
+[buildpack]
+    id = "bad_api"
+    version = "bad_api_version"
+    name = "Bad API Buildpack"

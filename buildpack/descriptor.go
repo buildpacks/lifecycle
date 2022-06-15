@@ -13,6 +13,7 @@ const (
 	KindExtension = "Extension"
 )
 
+//go:generate mockgen -package testmock -destination ../testmock/build_module.go github.com/buildpacks/lifecycle/buildpack BuildModule
 type BuildModule interface {
 	Build(bpPlan Plan, config BuildConfig, bpEnv BuildEnv) (BuildResult, error)
 	ConfigFile() *Descriptor
@@ -41,41 +42,41 @@ type Descriptor struct {
 	Dir       string `toml:"-"`
 }
 
-func (b *Descriptor) ConfigFile() *Descriptor {
-	return b
+func (d *Descriptor) ConfigFile() *Descriptor {
+	return d
 }
 
-func (b *Descriptor) Info() *Info {
+func (d *Descriptor) Info() *Info {
 	switch {
-	case b.IsBuildpack():
-		return &b.Buildpack
-	case b.IsExtension():
-		return &b.Extension
+	case d.IsBuildpack():
+		return &d.Buildpack
+	case d.IsExtension():
+		return &d.Extension
 	}
 	return &Info{}
 }
 
-func (b *Descriptor) IsBuildpack() bool {
-	return b.Buildpack.ID != ""
+func (d *Descriptor) IsBuildpack() bool {
+	return d.Buildpack.ID != ""
 }
 
-func (b *Descriptor) IsComposite() bool {
-	return len(b.Order) > 0
+func (d *Descriptor) IsComposite() bool {
+	return len(d.Order) > 0
 }
 
-func (b *Descriptor) IsExtension() bool {
-	return b.Extension.ID != ""
+func (d *Descriptor) IsExtension() bool {
+	return d.Extension.ID != ""
 }
 
-func (b *Descriptor) Kind() string {
-	if b.IsExtension() {
+func (d *Descriptor) Kind() string {
+	if d.IsExtension() {
 		return "extension"
 	}
 	return "buildpack"
 }
 
-func (b *Descriptor) String() string {
-	return b.Buildpack.Name + " " + b.Buildpack.Version
+func (d *Descriptor) String() string {
+	return d.Buildpack.Name + " " + d.Buildpack.Version
 }
 
 type Info struct {
@@ -98,6 +99,25 @@ func (bg Group) Append(group ...Group) Group {
 		bg.Group = append(bg.Group, g.Group...)
 	}
 	return bg
+}
+
+func (bg Group) Filter(kind string) Group {
+	var group Group
+	for _, el := range bg.Group {
+		if el.Kind() == kind {
+			group.Group = append(group.Group, el)
+		}
+	}
+	return group
+}
+
+func (bg Group) HasExtensions() bool {
+	for _, el := range bg.Group {
+		if el.Extension {
+			return true
+		}
+	}
+	return false
 }
 
 // A GroupElement represents a buildpack referenced in a buildpack.toml's [[order.group]] OR

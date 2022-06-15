@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"io/ioutil"
+	"strings"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -20,12 +22,15 @@ type detectCmd struct {
 func (d *detectCmd) DefineFlags() {
 	switch {
 	case d.platform.API().AtLeast("0.10"):
+		cmd.FlagAnalyzedPath(&d.AnalyzedPath)
 		cmd.FlagAppDir(&d.AppDir)
 		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
 		cmd.FlagExtensionsDir(&d.ExtensionsDir)
+		cmd.FlagGeneratedPath(&d.GeneratedPath)
 		cmd.FlagGroupPath(&d.GroupPath)
 		cmd.FlagLayersDir(&d.LayersDir)
 		cmd.FlagOrderPath(&d.OrderPath)
+		cmd.FlagOutputDir(&d.OutputDir)
 		cmd.FlagPlanPath(&d.PlanPath)
 		cmd.FlagPlatformDir(&d.PlatformDir)
 	default:
@@ -56,7 +61,7 @@ func (d *detectCmd) Args(nargs int, args []string) error {
 func (d *detectCmd) Privileges() error {
 	// detector should never be run with privileges
 	if priv.IsPrivileged() {
-		return cmd.FailErr(errors.New("refusing to run as root"), "build")
+		return cmd.FailErr(errors.New("refusing to run as root"), "detect")
 	}
 	return nil
 }
@@ -66,21 +71,91 @@ func (d *detectCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	factory := lifecycle.NewDetectorFactory(
+	detectorFactory := lifecycle.NewDetectorFactory(
 		d.platform.API(),
 		&cmd.APIVerifier{},
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
-	detector, err := factory.NewDetector(d.AppDir, d.OrderPath, d.PlatformDir, cmd.DefaultLogger)
+	detector, err := detectorFactory.NewDetector(
+		d.AppDir,
+		d.OrderPath,
+		d.PlatformDir,
+		cmd.DefaultLogger,
+	)
 	if err != nil {
-		return cmd.FailErr(err, "initialize detector")
+		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
 	group, plan, err := doDetect(detector, d.platform)
 	if err != nil {
-		return err // pass through error from doDetect
+		return err // pass through error
 	}
-	return d.writeData(group, plan)
+	if group.HasExtensions() {
+		generatorFactory := lifecycle.NewGeneratorFactory(
+			&cmd.APIVerifier{},
+			dirStore,
+		)
+		generator, err := generatorFactory.NewGenerator(
+			d.AppDir,
+			group,
+			d.OutputDir,
+			plan,
+			d.PlatformDir,
+			cmd.DefaultLogger,
+		)
+		if err != nil {
+			return unwrapErrorFailWithMessage(err, "initialize generator")
+		}
+		generated, err := generator.Generate()
+		if err != nil {
+			return d.unwrapGenerateFail(err)
+		}
+		analyzed, err := d.updateAnalyzed(generated.Dockerfiles)
+		if err != nil {
+			return err
+		}
+		if err := d.writeGenerateData(*generated, analyzed); err != nil {
+			return err
+		}
+	}
+	return d.writeDetectData(group, plan)
+}
+
+func unwrapErrorFailWithMessage(err error, msg string) error {
+	errorFail, ok := err.(*cmd.ErrorFail)
+	if ok {
+		return errorFail
+	}
+	return cmd.FailErr(err, msg)
+}
+
+func (d *detectCmd) unwrapGenerateFail(err error) error {
+	if err, ok := err.(*buildpack.Error); ok {
+		if err.Type == buildpack.ErrTypeBuildpack {
+			return cmd.FailErrCode(err.Cause(), d.platform.CodeFor(platform.FailedGenerateWithErrors), "build")
+		}
+	}
+	return cmd.FailErrCode(err, d.platform.CodeFor(platform.GenerateError), "build")
+}
+
+func (d *detectCmd) updateAnalyzed(dockerfiles []buildpack.Dockerfile) (platform.AnalyzedMetadata, error) {
+	// TODO: this function should move to the lifecycle package and be tested
+	lastDockerfile := dockerfiles[len(dockerfiles)-1]
+	contents, err := ioutil.ReadFile(lastDockerfile.Path)
+	if err != nil {
+		return platform.AnalyzedMetadata{}, err
+	}
+	parts := strings.Split(string(contents), " ") // TODO: use proper dockerfile parser instead (see kaniko)
+	if len(parts) != 2 || parts[0] != "FROM" {
+		return platform.AnalyzedMetadata{}, errors.New("failed to parse dockerfile, expected format 'FROM <image>'")
+	}
+	newRunImage := strings.TrimSpace(parts[1])
+	analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
+	if err != nil {
+		return platform.AnalyzedMetadata{}, err
+	}
+	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: newRunImage}
+	return analyzedMD, nil
 }
 
 func doDetect(detector *lifecycle.Detector, p Platform) (buildpack.Group, platform.BuildPlan, error) {
@@ -106,12 +181,22 @@ func doDetect(detector *lifecycle.Detector, p Platform) (buildpack.Group, platfo
 	return group, plan, nil
 }
 
-func (d *detectCmd) writeData(group buildpack.Group, plan platform.BuildPlan) error {
+func (d *detectCmd) writeDetectData(group buildpack.Group, plan platform.BuildPlan) error {
 	if err := encoding.WriteTOML(d.GroupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
 	if err := encoding.WriteTOML(d.PlanPath, plan); err != nil {
 		return cmd.FailErr(err, "write detect plan")
+	}
+	return nil
+}
+
+func (d *detectCmd) writeGenerateData(generated platform.GeneratedMetadata, analyzedMD platform.AnalyzedMetadata) error {
+	if err := encoding.WriteTOML(d.GeneratedPath, generated); err != nil {
+		return cmd.FailErr(err, "write generated metadata")
+	}
+	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
+		return cmd.FailErr(err, "write analyzed metadata")
 	}
 	return nil
 }

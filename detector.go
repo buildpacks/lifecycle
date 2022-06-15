@@ -30,14 +30,14 @@ type Resolver interface {
 
 type DetectorFactory struct {
 	platformAPI   *api.Version
-	apiVerifier   APIVerifier
+	apiVerifier   BuildpackAPIVerifier
 	configHandler ConfigHandler
 	dirStore      DirStore
 }
 
 func NewDetectorFactory(
 	platformAPI *api.Version,
-	apiVerifier APIVerifier,
+	apiVerifier BuildpackAPIVerifier,
 	configHandler ConfigHandler,
 	dirStore DirStore,
 ) *DetectorFactory {
@@ -60,36 +60,43 @@ type Detector struct {
 }
 
 func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
-	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath)
-	if err != nil {
+	detector := &Detector{
+		AppDir:      appDir,
+		DirStore:    f.dirStore,
+		Logger:      logger,
+		PlatformDir: platformDir,
+		Resolver:    &DefaultResolver{Logger: logger},
+		Runs:        &sync.Map{},
+	}
+	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
+	}
+	return detector, nil
+}
+
+func (f *DetectorFactory) setOrder(detector *Detector, path string, logger log.Logger) error {
+	orderBp, orderExt, err := f.configHandler.ReadOrder(path)
+	if err != nil {
+		return err
 	}
 	if f.platformAPI.LessThan("0.10") {
 		orderExt = nil
 	}
-	if err = f.verifyAPIs(orderBp, orderExt); err != nil {
-		return nil, err
+	if err = f.verifyAPIs(orderBp, orderExt, logger); err != nil {
+		return err
 	}
-
-	return &Detector{
-		AppDir:      appDir,
-		DirStore:    f.dirStore,
-		Logger:      logger,
-		Order:       PrependExtensions(orderBp, orderExt),
-		PlatformDir: platformDir,
-		Resolver:    &DefaultResolver{Logger: logger},
-		Runs:        &sync.Map{},
-	}, nil
+	detector.Order = PrependExtensions(orderBp, orderExt)
+	return nil
 }
 
-func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order) error {
+func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order, logger log.Logger) error {
 	for _, group := range append(orderBp, orderExt...) {
 		for _, groupEl := range group.Group {
 			module, err := f.dirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
 			if err != nil {
 				return err
 			}
-			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.ConfigFile().API); err != nil {
+			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.ConfigFile().API, logger); err != nil {
 				return err
 			}
 		}

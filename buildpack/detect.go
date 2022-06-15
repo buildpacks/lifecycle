@@ -27,7 +27,7 @@ type DetectConfig struct {
 	Logger      log.Logger
 }
 
-func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
+func (d *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	appDir, platformDir, err := processPlatformPaths(config)
 	if err != nil {
 		return DetectRun{Code: -1, Err: err}
@@ -40,15 +40,15 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	}
 
 	var result DetectRun
-	_, err = os.Stat(filepath.Join(b.Dir, "bin", "detect"))
-	if b.IsExtension() && os.IsNotExist(err) {
+	_, err = os.Stat(filepath.Join(d.Dir, "bin", "detect"))
+	if d.IsExtension() && os.IsNotExist(err) {
 		// treat extension root directory as pre-populated output directory
-		planPath = filepath.Join(b.Dir, "plan.toml")
+		planPath = filepath.Join(d.Dir, "plan.toml")
 		if _, err := toml.DecodeFile(planPath, &result); err != nil && !os.IsNotExist(err) {
 			return DetectRun{Code: -1, Err: err}
 		}
 	} else {
-		result = b.runDetect(platformDir, planPath, appDir, bpEnv)
+		result = d.runDetect(platformDir, planPath, appDir, bpEnv)
 		if result.Code != 0 {
 			return result
 		}
@@ -58,26 +58,26 @@ func (b *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 		}
 	}
 
-	if api.MustParse(b.API).Equal(api.MustParse("0.2")) {
+	if api.MustParse(d.API).Equal(api.MustParse("0.2")) {
 		if result.hasInconsistentVersions() || result.Or.hasInconsistentVersions() {
-			result.Err = errors.Errorf(b.Kind()+` %s has a "version" key that does not match "metadata.version"`, b.Info().ID)
+			result.Err = errors.Errorf(d.Kind()+` %s has a "version" key that does not match "metadata.version"`, d.Info().ID)
 			result.Code = -1
 		}
 	}
-	if api.MustParse(b.API).AtLeast("0.3") {
+	if api.MustParse(d.API).AtLeast("0.3") {
 		if result.hasDoublySpecifiedVersions() || result.Or.hasDoublySpecifiedVersions() {
-			result.Err = errors.Errorf(b.Kind()+` %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, b.Info().ID)
+			result.Err = errors.Errorf(d.Kind()+` %s has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`, d.Info().ID)
 			result.Code = -1
 		}
 	}
-	if api.MustParse(b.API).AtLeast("0.3") {
+	if api.MustParse(d.API).AtLeast("0.3") {
 		if result.hasTopLevelVersions() || result.Or.hasTopLevelVersions() {
-			config.Logger.Warnf(b.Kind()+` %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, b.Info().ID)
+			config.Logger.Warnf(d.Kind()+` %s has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`, d.Info().ID)
 		}
 	}
-	if b.IsExtension() {
+	if d.IsExtension() {
 		if result.hasRequires() || result.Or.hasRequires() {
-			result.Err = errors.Errorf(b.Kind()+` %s outputs "requires" which is not allowed`, b.Info().ID)
+			result.Err = errors.Errorf(d.Kind()+` %s outputs "requires" which is not allowed`, d.Info().ID)
 			result.Code = -1
 		}
 	}
@@ -108,10 +108,10 @@ func processBuildpackPaths() (string, string, error) {
 	return planDir, planPath, nil
 }
 
-func (b *Descriptor) runDetect(platformDir, planPath, appDir string, bpEnv BuildEnv) DetectRun {
+func (d *Descriptor) runDetect(platformDir, planPath, appDir string, bpEnv BuildEnv) DetectRun {
 	out := &bytes.Buffer{}
 	cmd := exec.Command(
-		filepath.Join(b.Dir, "bin", "detect"),
+		filepath.Join(d.Dir, "bin", "detect"),
 		platformDir,
 		planPath,
 	) // #nosec G204
@@ -120,7 +120,7 @@ func (b *Descriptor) runDetect(platformDir, planPath, appDir string, bpEnv Build
 	cmd.Stderr = out
 
 	var err error
-	if b.Info().ClearEnv {
+	if d.Info().ClearEnv {
 		cmd.Env = bpEnv.List()
 	} else {
 		cmd.Env, err = bpEnv.WithPlatform(platformDir)
@@ -128,8 +128,8 @@ func (b *Descriptor) runDetect(platformDir, planPath, appDir string, bpEnv Build
 			return DetectRun{Code: -1, Err: err}
 		}
 	}
-	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+b.Dir)
-	if api.MustParse(b.API).AtLeast("0.8") {
+	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+d.Dir)
+	if api.MustParse(d.API).AtLeast("0.8") {
 		cmd.Env = append(
 			cmd.Env,
 			EnvPlatformDir+"="+platformDir,

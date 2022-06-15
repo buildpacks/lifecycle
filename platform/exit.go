@@ -5,15 +5,17 @@ type LifecycleExitError int
 const CodeFailed = 1
 
 const (
-	FailedDetect           LifecycleExitError = iota
-	FailedDetectWithErrors                    // no buildpacks detected
-	DetectError                               // no buildpacks detected and at least one errored
-	AnalyzeError                              // generic analyze error
-	RestoreError                              // generic restore error
-	FailedBuildWithErrors                     // buildpack error during /bin/build
-	BuildError                                // generic build error
-	ExportError                               // generic export error
-	RebaseError                               // generic rebase error
+	FailedDetect             LifecycleExitError = iota
+	FailedDetectWithErrors                      // no buildpacks detected
+	DetectError                                 // no buildpacks detected and at least one errored
+	AnalyzeError                                // generic analyze error
+	RestoreError                                // generic restore error
+	FailedBuildWithErrors                       // buildpack error during /bin/build
+	BuildError                                  // generic build error
+	ExportError                                 // generic export error
+	RebaseError                                 // generic rebase error
+	FailedGenerateWithErrors                    // extension error during /bin/generate
+	GenerateError                               // generic generate error
 )
 
 type Exiter interface {
@@ -52,6 +54,10 @@ var defaultExitCodes = map[LifecycleExitError]int{
 
 	// rebase phase errors: 70-79
 	RebaseError: 72, // RebaseError indicates generic rebase error
+
+	// generate phase errors: 80-89
+	FailedGenerateWithErrors: 81,
+	GenerateError:            82, // GenerateError indicates generic generate error
 }
 
 func (e *DefaultExiter) CodeFor(errType LifecycleExitError) int {
@@ -81,6 +87,10 @@ var legacyExitCodes = map[LifecycleExitError]int{
 
 	// rebase phase errors: 600-699
 	RebaseError: 602, // RebaseError indicates generic rebase error
+
+	// generate phase is unsupported on older platforms and shouldn't be reached
+	FailedGenerateWithErrors: CodeFailed,
+	GenerateError:            CodeFailed,
 }
 
 func (e *LegacyExiter) CodeFor(errType LifecycleExitError) int {

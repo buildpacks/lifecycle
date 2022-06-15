@@ -18,6 +18,7 @@ var (
 	DefaultLauncherPath    = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
 	DefaultLayersDir       = filepath.Join(rootDir, "layers")
 	DefaultLogLevel        = "info"
+	DefaultOutputDir       = filepath.Join(rootDir, "layers")
 	DefaultPlatformAPI     = "0.3"
 	DefaultPlatformDir     = filepath.Join(rootDir, "platform")
 	DefaultProcessType     = "web"
@@ -25,6 +26,7 @@ var (
 
 	DefaultAnalyzedFile        = "analyzed.toml"
 	DefaultGroupFile           = "group.toml"
+	DefaultGeneratedFile       = "generated.toml"
 	DefaultOrderFile           = "order.toml"
 	DefaultPlanFile            = "plan.toml"
 	DefaultProjectMetadataFile = "project-metadata.toml"
@@ -32,6 +34,7 @@ var (
 
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
 	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
+	PlaceholderGeneratedPath       = filepath.Join("<layers>", DefaultGeneratedFile)
 	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
 	PlaceholderProjectMetadataPath = filepath.Join("<layers>", DefaultProjectMetadataFile)
 	PlaceholderReportPath          = filepath.Join("<layers>", DefaultReportFile)
@@ -46,6 +49,7 @@ const (
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
+	EnvGeneratedPath       = "CNB_GENERATED_PATH"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
@@ -53,6 +57,7 @@ const (
 	EnvLogLevel            = "CNB_LOG_LEVEL"
 	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
 	EnvOrderPath           = "CNB_ORDER_PATH"
+	EnvOutputDir           = "CNB_OUTPUT_DIR"
 	EnvPlanPath            = "CNB_PLAN_PATH"
 	EnvPlatformAPI         = "CNB_PLATFORM_API"
 	EnvPlatformDir         = "CNB_PLATFORM_DIR"
@@ -98,6 +103,10 @@ func FlagExtensionsDir(extensionsDir *string) {
 	flagSet.StringVar(extensionsDir, "extensions", EnvOrDefault(EnvExtensionsDir, DefaultExtensionsDir), "path to extensions directory")
 }
 
+func FlagGeneratedPath(path *string) {
+	flagSet.StringVar(path, "generated", EnvOrDefault(EnvGeneratedPath, PlaceholderGeneratedPath), "path to generated.toml")
+}
+
 func FlagGID(gid *int) {
 	flagSet.IntVar(gid, "gid", intEnv(EnvGID), "GID of user's group in the stack's build and run images")
 }
@@ -128,6 +137,10 @@ func FlagNoColor(skip *bool) {
 
 func FlagOrderPath(orderPath *string) {
 	flagSet.StringVar(orderPath, "order", EnvOrDefault(EnvOrderPath, PlaceholderOrderPath), "path to order.toml")
+}
+
+func FlagOutputDir(dir *string) {
+	flagSet.StringVar(dir, "output-dir", EnvOrDefault(EnvOutputDir, DefaultOutputDir), "path to output directory")
 }
 
 func DefaultOrderPath(platformAPI, layersDir string) string {

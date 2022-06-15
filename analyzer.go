@@ -15,7 +15,7 @@ import (
 
 type AnalyzerFactory struct {
 	platformAPI     *api.Version
-	apiVerifier     APIVerifier
+	apiVerifier     BuildpackAPIVerifier
 	cacheHandler    CacheHandler
 	configHandler   ConfigHandler
 	imageHandler    ImageHandler
@@ -24,7 +24,7 @@ type AnalyzerFactory struct {
 
 func NewAnalyzerFactory(
 	platformAPI *api.Version,
-	apiVerifier APIVerifier,
+	apiVerifier BuildpackAPIVerifier,
 	cacheHandler CacheHandler,
 	configHandler ConfigHandler,
 	imageHandler ImageHandler,
@@ -78,7 +78,7 @@ func (f *AnalyzerFactory) NewAnalyzer(
 			return nil, err
 		}
 	} else {
-		if err := f.setBuildpacks(analyzer, legacyGroup, legacyGroupPath); err != nil {
+		if err := f.setBuildpacks(analyzer, legacyGroup, legacyGroupPath, logger); err != nil {
 			return nil, err
 		}
 		if err := f.setCache(analyzer, cacheImageRef, legacyCacheDir); err != nil {
@@ -128,7 +128,7 @@ func (f *AnalyzerFactory) ensureRegistryAccess(
 	return nil
 }
 
-func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Group, path string) error {
+func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Group, path string, logger log.Logger) error {
 	if len(group.Group) > 0 {
 		analyzer.Buildpacks = group.Group
 		return nil
@@ -137,7 +137,12 @@ func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Grou
 	if analyzer.Buildpacks, err = f.configHandler.ReadGroup(path); err != nil {
 		return err
 	}
-	return f.apiVerifier.VerifyBuildpackAPIsForGroup(analyzer.Buildpacks)
+	for _, bp := range analyzer.Buildpacks {
+		if err := f.apiVerifier.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, logger); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (f *AnalyzerFactory) setCache(analyzer *Analyzer, imageRef string, dir string) error {
