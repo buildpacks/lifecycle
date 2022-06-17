@@ -446,7 +446,7 @@ func processTypeWarning(launchMD launch.Metadata, defaultProcessType string) str
 }
 
 func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, previousSHA string) (string, error) {
-	layer, err := e.LayerFactory.DirLayer(layer.ID, layer.TarPath)
+	layer, err := e.LayerFactory.DirLayer(layer.ID, layer.TarPath) //TODO If the layer is already a .tar file, are we adding overhead here?
 	if err != nil {
 		return "", errors.Wrapf(err, "creating layer '%s'", layer.ID)
 	}

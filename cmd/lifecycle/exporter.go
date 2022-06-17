@@ -306,7 +306,12 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	var runImageID string
 
 	if ea.useOCI {
-		appImage, runImageID, err = ea.initLayoutAppImage(analyzedMD)
+		repo := "/oci/repo"
+		err = os.MkdirAll(repo, 0777)
+		if err != nil {
+			return cmd.FailErr(err, "creating oci repo")
+		}
+		appImage, runImageID, err = ea.initLayoutAppImage(analyzedMD, repo)
 	} else if ea.useDaemon {
 		appImage, runImageID, err = ea.initDaemonAppImage(analyzedMD)
 	} else {
@@ -428,8 +433,8 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 	return appImage, runImageID.String(), nil
 }
 
-func (ea exportArgs) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
-	var appImage *layout.Image
+func (ea exportArgs) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata, cacheDir string) (imgutil.Image, string, error) {
+	var appImage imgutil.Image
 	appPath := filepath.Join(ea.ociLayoutDir, ea.imageNames[0])
 	imageRef := strings.SplitN(ea.stackMD.RunImage.Image, ":", 2)
 	runImagePath := path.Join(ea.ociLayoutDir, imageRef[0])
@@ -443,6 +448,13 @@ func (ea exportArgs) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (i
 	} else {
 		appImage, _ = layout.NewImage(appPath, layout.WithImageRef(imageRef[0]), layout.FromBaseImage(runImagePath))
 	}
+
+	volumeCache, err := cache.NewVolumeCache(cacheDir)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "create launch cache")
+	}
+	appImage = cache.NewCachingImage(appImage, volumeCache)
+
 	runImage, err := layout.NewImage(runImagePath, layout.WithImageRef(imageRef[0]), layout.FromBaseImage(runImagePath))
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")

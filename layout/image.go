@@ -5,10 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/google/go-containerregistry/pkg/v1/match"
 
 	"github.com/buildpacks/imgutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -332,7 +335,6 @@ func (i *Image) Save(additionalNames ...string) error {
 	_, err = layout.Write(i.Name(), empty.Index)
 
 	if i.underlyingImage != nil {
-
 		runLayers, _ := i.underlyingImage.Layers()
 		layerBlobsDir := filepath.Join(i.path, "blobs", "sha256")
 		err = os.MkdirAll(layerBlobsDir, 0755)
@@ -392,11 +394,20 @@ func (i *Image) Save(additionalNames ...string) error {
 	}
 
 	start = time.Now()
-	err = path.AppendImage(image, layout.WithAnnotations(annotations))
+	if i.prevImage != nil {
+		err = path.ReplaceImage(image, match.Name(additionalNames[0]), layout.WithAnnotations(annotations))
+	} else {
+		err = path.AppendImage(image, layout.WithAnnotations(annotations))
+	}
 	elapsed = time.Since(start)
 	fmt.Printf("Writing image to disk took %s\n", elapsed)
 	if err != nil {
-		return errors.Wrap(err, "append image")
+		return errors.Wrap(err, "writing image")
+	}
+
+	err = i.cleanBlobs(image, path)
+	if err != nil {
+		return errors.Wrap(err, "cleaning blobs")
 	}
 	return nil
 }
@@ -505,4 +516,40 @@ func appendOCILayer(image v1.Image, layer v1.Layer) (v1.Image, error) {
 		return nil, err
 	}
 	return image, nil
+}
+
+// This method deletes the unused files in the blobs folder
+func (i *Image) cleanBlobs(image v1.Image, path layout.Path) error {
+	layerBlobsDir := filepath.Join(i.path, "blobs", "sha256")
+	files, err := ioutil.ReadDir(layerBlobsDir)
+	if err != nil {
+		return errors.Wrap(err, "listing blobs")
+	}
+	if len(files) > 0 {
+		// Let's create a map
+		manifest, _ := image.Manifest()
+		index, _ := path.ImageIndex()
+		idx, _ := index.Digest()
+		mHash := manifest.Config.Digest
+		imgD, _ := image.Digest()
+		layersMap := map[string]string{}
+		layersMap[idx.String()] = "true"
+		layersMap[mHash.String()] = "true"
+		layersMap[imgD.String()] = "true"
+		currentLayers := manifest.Layers
+		for _, v := range currentLayers {
+			layersMap[v.Digest.String()] = "true"
+		}
+		// Delete the files
+		for _, file := range files {
+			name := fmt.Sprintf("sha256:%s", file.Name())
+			if _, ok := layersMap[name]; !ok {
+				err := os.Remove(filepath.Join(layerBlobsDir, file.Name()))
+				if err != nil {
+					fmt.Printf("error deleting file %s", err)
+				}
+			}
+		}
+	}
+	return nil
 }
