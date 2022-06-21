@@ -37,6 +37,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeDirStore     *testmock.MockDirStore
 			logger           *log.Logger
 			mockController   *gomock.Controller
+			stdout, stderr   *bytes.Buffer
 		)
 
 		it.Before(func() {
@@ -76,6 +77,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 				"some-output-dir",
 				providedPlan,
 				"some-platform-dir",
+				stdout, stderr,
 				logger,
 			)
 			h.AssertNil(t, err)
@@ -85,10 +87,12 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, generator.Extensions, []buildpack.GroupElement{
 				{ID: "A", Version: "v1", API: "0.9"},
 			})
-			h.AssertEq(t, generator.OutputDir, filepath.Join("some-output-dir", "generated")) // TODO: figure out where this goes
+			h.AssertEq(t, generator.OutputDir, "some-output-dir")
 			h.AssertEq(t, generator.Logger, logger)
 			h.AssertEq(t, generator.Plan, providedPlan)
 			h.AssertEq(t, generator.PlatformDir, "some-platform-dir")
+			h.AssertEq(t, generator.Stdout, stdout)
+			h.AssertEq(t, generator.Stderr, stderr)
 		})
 	})
 }
@@ -128,12 +132,12 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			AppDir:      appDir,
 			DirStore:    dirStore,
 			Extensions:  providedExtensions,
-			OutputDir:   outputDir,
 			Logger:      &log.Logger{Handler: logHandler},
+			OutputDir:   outputDir,
 			Plan:        platform.BuildPlan{},
 			PlatformDir: platformDir,
-			Out:         stdout,
-			Err:         stderr,
+			Stderr:      stderr,
+			Stdout:      stdout,
 		}
 	})
 

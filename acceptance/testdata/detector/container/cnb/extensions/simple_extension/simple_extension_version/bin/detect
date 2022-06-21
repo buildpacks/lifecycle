@@ -6,3 +6,5 @@ cat >> "${plan_path}" <<EOL
 [[provides]]
 name = "some_requirement"
 EOL
+
+echo "simple_extension: output from /bin/detect"

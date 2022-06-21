@@ -14,14 +14,14 @@ import (
 )
 
 type Generator struct {
-	AppDir      string
-	DirStore    DirStore
-	Extensions  []buildpack.GroupElement
-	OutputDir   string
-	Logger      log.Logger
-	Out, Err    io.Writer // TODO: does this need to be passed in explicitly?
-	Plan        platform.BuildPlan
-	PlatformDir string
+	AppDir         string
+	DirStore       DirStore
+	Extensions     []buildpack.GroupElement
+	OutputDir      string
+	Logger         log.Logger
+	Stdout, Stderr io.Writer
+	Plan           platform.BuildPlan
+	PlatformDir    string
 }
 
 type GeneratorFactory struct {
@@ -45,15 +45,18 @@ func (f *GeneratorFactory) NewGenerator(
 	outputDir string,
 	plan platform.BuildPlan,
 	platformDir string,
+	stdout, stderr io.Writer,
 	logger log.Logger,
 ) (*Generator, error) {
 	generator := &Generator{
 		AppDir:      appDir,
 		DirStore:    f.dirStore,
-		OutputDir:   filepath.Join(outputDir, "generated"),
 		Logger:      logger,
+		OutputDir:   outputDir,
 		Plan:        plan,
 		PlatformDir: platformDir,
+		Stdout:      stdout,
+		Stderr:      stderr,
 	}
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
@@ -113,11 +116,11 @@ func (g *Generator) Generate() error {
 func (g *Generator) GenerateConfig() buildpack.BuildConfig {
 	return buildpack.BuildConfig{
 		AppDir:          g.AppDir,
+		Err:             g.Stderr,
+		Logger:          g.Logger,
+		Out:             g.Stdout,
 		OutputParentDir: g.OutputDir,
 		PlatformDir:     g.PlatformDir,
-		Out:             g.Out,
-		Err:             g.Err,
-		Logger:          g.Logger,
 	}
 }
 

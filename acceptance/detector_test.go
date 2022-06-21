@@ -481,7 +481,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("processes the provided order.toml", func() {
-			h.DockerRunAndCopy(t,
+			output := h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
 				"/layers",
@@ -500,6 +500,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			t.Log("runs /bin/detect for buildpacks and extensions")
+			h.AssertStringContains(t, output, "simple_extension: output from /bin/detect")
 			t.Log("writes group.toml")
 			foundGroupTOML := filepath.Join(copyDir, "layers", "group.toml")
 			var buildpackGroup buildpack.Group
@@ -521,6 +522,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, plan.Entries[0].Providers[0].Extension, true)
 
 			t.Log("runs /bin/generate for extensions")
+			h.AssertStringContains(t, output, "simple_extension: output from /bin/generate")
 			t.Log("copies the generated dockerfiles to the output directory")
 			dockerfilePath := filepath.Join(copyDir, "layers", "generated", "run", "simple_extension", "Dockerfile")
 			h.AssertPathExists(t, dockerfilePath)
