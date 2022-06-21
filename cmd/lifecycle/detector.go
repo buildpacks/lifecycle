@@ -2,8 +2,6 @@ package main
 
 import (
 	"errors"
-	"io/ioutil"
-	"strings"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -26,7 +24,6 @@ func (d *detectCmd) DefineFlags() {
 		cmd.FlagAppDir(&d.AppDir)
 		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
 		cmd.FlagExtensionsDir(&d.ExtensionsDir)
-		cmd.FlagGeneratedPath(&d.GeneratedPath)
 		cmd.FlagGroupPath(&d.GroupPath)
 		cmd.FlagLayersDir(&d.LayersDir)
 		cmd.FlagOrderPath(&d.OrderPath)
@@ -97,7 +94,7 @@ func (d *detectCmd) Exec() error {
 		)
 		generator, err := generatorFactory.NewGenerator(
 			d.AppDir,
-			group,
+			group.GroupExtensions,
 			d.OutputDir,
 			plan,
 			d.PlatformDir,
@@ -106,15 +103,32 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize generator")
 		}
-		generated, err := generator.Generate()
+		err = generator.Generate()
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		analyzed, err := d.updateAnalyzed(generated.Dockerfiles)
+		extenderFactory := lifecycle.NewExtenderFactory(
+			&cmd.APIVerifier{},
+			dirStore,
+		)
+		extender, err := extenderFactory.NewExtender(
+			group.GroupExtensions,
+			generator.OutputDir,
+			cmd.DefaultLogger,
+		)
 		if err != nil {
-			return err
+			return unwrapErrorFailWithMessage(err, "initialize extender")
 		}
-		if err := d.writeGenerateData(*generated, analyzed); err != nil {
+		newRunImage, err := extender.LastRunImage()
+		if err != nil {
+			return cmd.FailErr(err, "determine last run image")
+		}
+		analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
+		if err != nil {
+			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+		}
+		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: newRunImage}
+		if err := d.writeGenerateData(analyzedMD); err != nil {
 			return err
 		}
 	}
@@ -136,26 +150,6 @@ func (d *detectCmd) unwrapGenerateFail(err error) error {
 		}
 	}
 	return cmd.FailErrCode(err, d.platform.CodeFor(platform.GenerateError), "build")
-}
-
-func (d *detectCmd) updateAnalyzed(dockerfiles []buildpack.Dockerfile) (platform.AnalyzedMetadata, error) {
-	// TODO: this function should move to the lifecycle package and be tested
-	lastDockerfile := dockerfiles[len(dockerfiles)-1]
-	contents, err := ioutil.ReadFile(lastDockerfile.Path)
-	if err != nil {
-		return platform.AnalyzedMetadata{}, err
-	}
-	parts := strings.Split(string(contents), " ") // TODO: use proper dockerfile parser instead (see kaniko)
-	if len(parts) != 2 || parts[0] != "FROM" {
-		return platform.AnalyzedMetadata{}, errors.New("failed to parse dockerfile, expected format 'FROM <image>'")
-	}
-	newRunImage := strings.TrimSpace(parts[1])
-	analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
-	if err != nil {
-		return platform.AnalyzedMetadata{}, err
-	}
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: newRunImage}
-	return analyzedMD, nil
 }
 
 func doDetect(detector *lifecycle.Detector, p Platform) (buildpack.Group, platform.BuildPlan, error) {
@@ -191,10 +185,7 @@ func (d *detectCmd) writeDetectData(group buildpack.Group, plan platform.BuildPl
 	return nil
 }
 
-func (d *detectCmd) writeGenerateData(generated platform.GeneratedMetadata, analyzedMD platform.AnalyzedMetadata) error {
-	if err := encoding.WriteTOML(d.GeneratedPath, generated); err != nil {
-		return cmd.FailErr(err, "write generated metadata")
-	}
+func (d *detectCmd) writeGenerateData(analyzedMD platform.AnalyzedMetadata) error {
 	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
 		return cmd.FailErr(err, "write analyzed metadata")
 	}

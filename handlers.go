@@ -73,7 +73,7 @@ func (h *DefaultConfigHandler) ReadOrder(path string) (buildpack.Order, buildpac
 func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	var order struct {
 		Order    buildpack.Order `toml:"order"`
-		OrderExt buildpack.Order `toml:"order-ext"`
+		OrderExt buildpack.Order `toml:"order-extensions"`
 	}
 	_, err := toml.DecodeFile(path, &order)
 	if err != nil {

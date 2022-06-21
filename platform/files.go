@@ -71,12 +71,6 @@ type RunImageMetadata struct {
 	Reference string `json:"reference" toml:"reference"`
 }
 
-// generated.toml
-
-type GeneratedMetadata struct {
-	Dockerfiles []buildpack.Dockerfile `toml:"dockerfiles" json:"dockerfiles"`
-}
-
 // metadata.toml
 
 type BuildMetadata struct {
@@ -138,11 +132,15 @@ type BuildPlan struct {
 	Entries []BuildPlanEntry `toml:"entries"`
 }
 
-func (p BuildPlan) Find(groupEl buildpack.GroupElement) buildpack.Plan {
+func (p BuildPlan) Find(kind, id string) buildpack.Plan {
+	var extension bool
+	if kind == buildpack.KindExtension {
+		extension = true
+	}
 	var out []buildpack.Require
 	for _, entry := range p.Entries {
 		for _, provider := range entry.Providers {
-			if provider.ID == groupEl.ID && provider.Extension == groupEl.Extension {
+			if provider.ID == id && provider.Extension == extension {
 				out = append(out, entry.Requires...)
 				break
 			}

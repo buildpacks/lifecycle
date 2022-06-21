@@ -66,20 +66,17 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 	bpEnv := env.NewBuildEnv(os.Environ())
 
-	for _, groupEl := range b.Group.Group {
-		if groupEl.Extension {
-			continue
-		}
-		b.Logger.Debugf("Running build for buildpack %s", groupEl)
+	for _, bp := range b.Group.Group {
+		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
-		bpTOML, err := b.DirStore.Lookup(buildpack.KindBuildpack, groupEl.ID, groupEl.Version)
+		bpTOML, err := b.DirStore.Lookup(buildpack.KindBuildpack, bp.ID, bp.Version)
 		if err != nil {
 			return nil, err
 		}
 
 		b.Logger.Debug("Finding plan")
-		bpPlan := plan.Find(groupEl)
+		bpPlan := plan.Find(buildpack.KindBuildpack, bp.ID)
 
 		br, err := bpTOML.Build(bpPlan, config, bpEnv)
 		if err != nil {
@@ -87,7 +84,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 
 		b.Logger.Debug("Updating buildpack processes")
-		updateDefaultProcesses(br.Processes, api.MustParse(groupEl.API), b.Platform.API())
+		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.Platform.API())
 
 		buildBOM = append(buildBOM, br.BuildBOM...)
 		launchBOM = append(launchBOM, br.LaunchBOM...)
@@ -103,7 +100,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 		slices = append(slices, br.Slices...)
 
-		b.Logger.Debugf("Finished running build for buildpack %s", groupEl)
+		b.Logger.Debugf("Finished running build for buildpack %s", bp)
 	}
 
 	if b.Platform.API().LessThan("0.4") {
@@ -138,8 +135,8 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Finished build")
 	return &platform.BuildMetadata{
 		BOM:                         launchBOM,
-		Buildpacks:                  b.Group.Filter(buildpack.KindBuildpack).Group,
-		Extensions:                  b.Group.Filter(buildpack.KindExtension).Group,
+		Buildpacks:                  b.Group.Group,
+		Extensions:                  b.Group.GroupExtensions,
 		Labels:                      labels,
 		Processes:                   procList,
 		Slices:                      slices,

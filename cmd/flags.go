@@ -103,10 +103,6 @@ func FlagExtensionsDir(extensionsDir *string) {
 	flagSet.StringVar(extensionsDir, "extensions", EnvOrDefault(EnvExtensionsDir, DefaultExtensionsDir), "path to extensions directory")
 }
 
-func FlagGeneratedPath(path *string) {
-	flagSet.StringVar(path, "generated", EnvOrDefault(EnvGeneratedPath, PlaceholderGeneratedPath), "path to generated.toml")
-}
-
 func FlagGID(gid *int) {
 	flagSet.IntVar(gid, "gid", intEnv(EnvGID), "GID of user's group in the stack's build and run images")
 }

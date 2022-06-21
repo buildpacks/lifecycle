@@ -128,18 +128,6 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertEq(t, ret.PlanPath, filepath.Join("some-layers-dir", "plan.toml"))
 					})
 				})
-
-				it("writes generated.toml at the layers directory", func() {
-					inputs := platform.DetectInputs{
-						GenerateInputs: platform.GenerateInputs{
-							GeneratedPath: platform.PlaceholderGeneratedPath,
-						},
-						LayersDir: "some-layers-dir",
-					}
-					ret, err := resolver.ResolveDetect(inputs)
-					h.AssertNil(t, err)
-					h.AssertEq(t, ret.GeneratedPath, filepath.Join("some-layers-dir", "generated.toml"))
-				})
 			})
 		})
 

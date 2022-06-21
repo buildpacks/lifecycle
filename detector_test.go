@@ -100,7 +100,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					expectedOrder := buildpack.Order{
 						buildpack.Group{
 							Group: []buildpack.GroupElement{
-								{OrderExt: buildpack.Order{
+								{OrderExtensions: buildpack.Order{
 									buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
 									buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
 								}},
@@ -109,7 +109,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						},
 						buildpack.Group{
 							Group: []buildpack.GroupElement{
-								{OrderExt: buildpack.Order{
+								{OrderExtensions: buildpack.Order{
 									buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
 									buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
 								}},
@@ -905,6 +905,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: buildpack.Info{ID: "A", Version: "v1"},
 				})
 
+				// try resolve
 				thirdGroup := []buildpack.GroupElement{
 					{ID: "A", Version: "v1", API: "0.8"},
 				}
@@ -964,39 +965,22 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: buildpack.Info{ID: "B", Version: "v1"},
 				})
 
+				// try resolve
 				fifthGroup := []buildpack.GroupElement{
 					{ID: "D", Version: "v1", API: "0.9", Extension: true, Optional: true},
 					{ID: "B", Version: "v1", API: "0.8"},
 				}
-				fifthResolve := resolver.EXPECT().Resolve(
+				resolver.EXPECT().Resolve(
 					fifthGroup,
 					detector.Runs,
 				).Return(
-					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
-					lifecycle.ErrFailedDetection,
-				).After(fourthResolve)
-
-				// sixth group
-
-				// process B@v1
-				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
-				bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-					API:       "0.8",
-					Buildpack: buildpack.Info{ID: "B", Version: "v1"},
-				})
-
-				sixthGroup := []buildpack.GroupElement{
-					{ID: "B", Version: "v1", API: "0.8"},
-				}
-				resolver.EXPECT().Resolve(
-					sixthGroup,
-					detector.Runs,
-				).Return(
-					sixthGroup,
+					[]buildpack.GroupElement{
+						{ID: "D", Version: "v1", API: "0.9", Extension: true}, // optional removed
+						{ID: "B", Version: "v1", API: "0.8"},
+					},
 					[]platform.BuildPlanEntry{},
 					nil,
-				).After(fifthResolve)
+				).After(fourthResolve)
 
 				orderBp := buildpack.Order{
 					{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
@@ -1008,8 +992,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				detector.Order = lifecycle.PrependExtensions(orderBp, orderExt)
-				_, _, err := detector.Detect()
+				group, _, err := detector.Detect()
 				h.AssertNil(t, err)
+
+				h.AssertEq(t, group.Group, []buildpack.GroupElement{{ID: "B", Version: "v1", API: "0.8"}})
+				h.AssertEq(t, group.GroupExtensions, []buildpack.GroupElement{{ID: "D", Version: "v1", API: "0.9"}})
 			})
 		})
 	})
@@ -1623,13 +1610,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			if s := cmp.Diff(newOrder, buildpack.Order{
 				buildpack.Group{
 					Group: []buildpack.GroupElement{
-						{OrderExt: expectedOrderExt},
+						{OrderExtensions: expectedOrderExt},
 						{ID: "A", Version: "v1"},
 					},
 				},
 				buildpack.Group{
 					Group: []buildpack.GroupElement{
-						{OrderExt: expectedOrderExt},
+						{OrderExtensions: expectedOrderExt},
 						{ID: "B", Version: "v1"},
 					},
 				},

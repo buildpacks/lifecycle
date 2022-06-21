@@ -494,7 +494,6 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				h.WithArgs(
 					"-analyzed=/layers/analyzed.toml",
 					"-extensions=/cnb/extensions",
-					"-generated=/layers/generated.toml",
 					"-log-level=debug",
 					"-output-dir=/layers",
 				),
@@ -506,12 +505,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			var buildpackGroup buildpack.Group
 			_, err := toml.DecodeFile(foundGroupTOML, &buildpackGroup)
 			h.AssertNil(t, err)
-			h.AssertEq(t, buildpackGroup.Group[0].ID, "simple_extension")
-			h.AssertEq(t, buildpackGroup.Group[0].Version, "simple_extension_version")
-			h.AssertEq(t, buildpackGroup.Group[0].Extension, true)
-			h.AssertEq(t, buildpackGroup.Group[1].ID, "buildpack_for_ext")
-			h.AssertEq(t, buildpackGroup.Group[1].Version, "buildpack_for_ext_version")
-			h.AssertEq(t, buildpackGroup.Group[1].Extension, false)
+			h.AssertEq(t, buildpackGroup.GroupExtensions[0].ID, "simple_extension")
+			h.AssertEq(t, buildpackGroup.GroupExtensions[0].Version, "simple_extension_version")
+			h.AssertEq(t, buildpackGroup.GroupExtensions[0].Extension, false) // this shows that `extension = true` is not redundantly printed in group.toml
+			h.AssertEq(t, buildpackGroup.Group[0].ID, "buildpack_for_ext")
+			h.AssertEq(t, buildpackGroup.Group[0].Version, "buildpack_for_ext_version")
+			h.AssertEq(t, buildpackGroup.Group[0].Extension, false)
 			t.Log("writes plan.toml")
 			foundPlanTOML := filepath.Join(copyDir, "layers", "plan.toml")
 			var plan platform.BuildPlan
@@ -522,19 +521,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, plan.Entries[0].Providers[0].Extension, true)
 
 			t.Log("runs /bin/generate for extensions")
-			t.Log("writes generated.toml")
-			foundGeneratedTOML := filepath.Join(copyDir, "layers", "generated.toml")
-			var metadata platform.GeneratedMetadata
-			_, err = toml.DecodeFile(foundGeneratedTOML, &metadata)
-			h.AssertEq(t, metadata.Dockerfiles, []buildpack.Dockerfile{
-				{
-					ExtensionID: "simple_extension",
-					Kind:        "run",
-					Path:        ctrPath("/layers", "generated", "simple_extension", "run.Dockerfile"),
-				},
-			})
 			t.Log("copies the generated dockerfiles to the output directory")
-			h.AssertPathExists(t, filepath.Join(copyDir, "layers", "generated", "simple_extension", "run.Dockerfile"))
+			dockerfilePath := filepath.Join(copyDir, "layers", "generated", "run", "simple_extension", "Dockerfile")
+			h.AssertPathExists(t, dockerfilePath)
+			contents, err := ioutil.ReadFile(dockerfilePath)
+			h.AssertEq(t, string(contents), "FROM some-run-image-from-extension\n")
 			t.Log("records the new run image in analyzed.toml")
 			foundAnalyzedTOML := filepath.Join(copyDir, "layers", "analyzed.toml")
 			var analyzed platform.AnalyzedMetadata

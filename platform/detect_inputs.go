@@ -21,8 +21,7 @@ type DetectInputs struct {
 }
 
 type GenerateInputs struct {
-	GeneratedPath string
-	OutputDir     string
+	OutputDir string
 }
 
 // ResolveDetect accepts a DetectInputs and returns a new DetectInputs with default values filled in,
@@ -39,9 +38,6 @@ func (r *InputsResolver) ResolveDetect(inputs DetectInputs) (DetectInputs, error
 }
 
 func (r *InputsResolver) fillDetectDefaultFilePaths(inputs *DetectInputs) {
-	if inputs.GeneratedPath == PlaceholderGeneratedPath {
-		inputs.GeneratedPath = defaultPath(PlaceholderGeneratedPath, inputs.LayersDir, r.platformAPI)
-	}
 	if inputs.GroupPath == PlaceholderGroupPath {
 		inputs.GroupPath = defaultPath(PlaceholderGroupPath, inputs.LayersDir, r.platformAPI)
 	}

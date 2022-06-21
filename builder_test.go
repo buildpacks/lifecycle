@@ -57,9 +57,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
-		if err != nil {
-			t.Fatalf("Error: %s\n", err)
-		}
+		h.AssertNil(t, err)
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 		platformDir = filepath.Join(tmpDir, "platform")
 		layersDir = filepath.Join(tmpDir, "launch")
@@ -427,12 +425,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("extensions", func() {
-				when("the provided group includes extensions", func() {
+				when("there is a group for extensions", func() {
 					it.Before(func() {
-						builder.Group.Group[0].Extension = true
+						builder.Group.GroupExtensions = []buildpack.GroupElement{
+							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Extension A Homepage"},
+						}
 					})
 
 					it("includes the provided extensions with homepage information, but does not run them", func() {
+						bpA := testmock.NewMockBuildModule(mockCtrl)
+						dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA, nil)
+						bpA.EXPECT().Build(gomock.Any(), config, gomock.Any())
 						bpB := testmock.NewMockBuildModule(mockCtrl)
 						dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v2").Return(bpB, nil)
 						bpB.EXPECT().Build(gomock.Any(), config, gomock.Any())
@@ -441,10 +444,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, metadata.Buildpacks, []buildpack.GroupElement{
+							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage"},
 							{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 						})
 						h.AssertEq(t, metadata.Extensions, []buildpack.GroupElement{
-							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage", Extension: true},
+							{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Extension A Homepage"},
 						})
 					})
 				})

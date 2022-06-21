@@ -91,7 +91,8 @@ type Info struct {
 type Order []Group
 
 type Group struct {
-	Group []GroupElement `toml:"group"`
+	Group           []GroupElement `toml:"group"`
+	GroupExtensions []GroupElement `toml:"group-extensions,omitempty" json:"group-extensions,omitempty"`
 }
 
 func (bg Group) Append(group ...Group) Group {
@@ -101,23 +102,8 @@ func (bg Group) Append(group ...Group) Group {
 	return bg
 }
 
-func (bg Group) Filter(kind string) Group {
-	var group Group
-	for _, el := range bg.Group {
-		if el.Kind() == kind {
-			group.Group = append(group.Group, el)
-		}
-	}
-	return group
-}
-
 func (bg Group) HasExtensions() bool {
-	for _, el := range bg.Group {
-		if el.Extension {
-			return true
-		}
-	}
-	return false
+	return len(bg.GroupExtensions) > 0
 }
 
 // A GroupElement represents a buildpack referenced in a buildpack.toml's [[order.group]] OR
@@ -146,8 +132,8 @@ type GroupElement struct {
 
 	// Fields that are never written
 
-	// OrderExt holds the order for extensions during the detect phase.
-	OrderExt Order `toml:"-" json:"-"`
+	// OrderExtensions holds the order for extensions during the detect phase.
+	OrderExtensions Order `toml:"-" json:"-"`
 }
 
 func (e GroupElement) Equals(o GroupElement) bool {
@@ -160,7 +146,7 @@ func (e GroupElement) Equals(o GroupElement) bool {
 }
 
 func (e GroupElement) IsExtensionsOrder() bool {
-	return len(e.OrderExt) > 0
+	return len(e.OrderExtensions) > 0
 }
 
 func (e GroupElement) Kind() string {
@@ -172,6 +158,11 @@ func (e GroupElement) Kind() string {
 
 func (e GroupElement) NoAPI() GroupElement {
 	e.API = ""
+	return e
+}
+
+func (e GroupElement) NoExtension() GroupElement {
+	e.Extension = false
 	return e
 }
 

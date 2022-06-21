@@ -16,7 +16,7 @@ import (
 type Generator struct {
 	AppDir      string
 	DirStore    DirStore
-	Group       buildpack.Group
+	Extensions  []buildpack.GroupElement
 	OutputDir   string
 	Logger      log.Logger
 	Out, Err    io.Writer // TODO: does this need to be passed in explicitly?
@@ -41,7 +41,7 @@ func NewGeneratorFactory(
 
 func (f *GeneratorFactory) NewGenerator(
 	appDir string,
-	group buildpack.Group,
+	extensions []buildpack.GroupElement,
 	outputDir string,
 	plan platform.BuildPlan,
 	platformDir string,
@@ -55,43 +55,43 @@ func (f *GeneratorFactory) NewGenerator(
 		Plan:        plan,
 		PlatformDir: platformDir,
 	}
-	if err := f.setGroup(generator, group, logger); err != nil {
+	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
 	}
 	return generator, nil
 }
 
-func (f *GeneratorFactory) setGroup(generator *Generator, group buildpack.Group, logger log.Logger) error {
-	generator.Group = group.Filter(buildpack.KindExtension)
-	for _, el := range generator.Group.Group {
-		if err := f.apiVerifier.VerifyBuildpackAPI(el.Kind(), el.String(), el.API, logger); err != nil {
+func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buildpack.GroupElement, logger log.Logger) error {
+	generator.Extensions = extensions
+	for _, el := range generator.Extensions {
+		if err := f.apiVerifier.VerifyBuildpackAPI(buildpack.KindExtension, el.String(), el.API, logger); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (g *Generator) Generate() (*platform.GeneratedMetadata, error) {
+func (g *Generator) Generate() error {
 	var dockerfiles []buildpack.Dockerfile
 
 	buildEnv := env.NewBuildEnv(os.Environ())
 	plan := g.Plan
-	for _, ext := range g.Group.Filter(buildpack.KindExtension).Group {
+	for _, ext := range g.Extensions {
 		g.Logger.Debugf("Running generate for extension %s", ext)
 
 		g.Logger.Debug("Looking up module")
 		descriptor, err := g.DirStore.Lookup(buildpack.KindExtension, ext.ID, ext.Version)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		g.Logger.Debug("Finding plan")
-		foundPlan := plan.Find(ext)
+		foundPlan := plan.Find(buildpack.KindExtension, ext.ID)
 
 		g.Logger.Debug("Invoking command")
 		result, err := descriptor.Build(foundPlan, g.GenerateConfig(), buildEnv)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		// aggregate build results
@@ -102,16 +102,12 @@ func (g *Generator) Generate() (*platform.GeneratedMetadata, error) {
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
-	var err error
-	dockerfiles, err = g.copyDockerfiles(g.OutputDir, dockerfiles)
-	if err != nil {
-		return nil, err
+	if err := g.copyDockerfiles(g.OutputDir, dockerfiles); err != nil {
+		return err
 	}
 
 	g.Logger.Debug("Finished build")
-	return &platform.GeneratedMetadata{
-		Dockerfiles: dockerfiles,
-	}, nil
+	return nil
 }
 
 func (g *Generator) GenerateConfig() buildpack.BuildConfig {
@@ -125,23 +121,19 @@ func (g *Generator) GenerateConfig() buildpack.BuildConfig {
 	}
 }
 
-func (g *Generator) copyDockerfiles(outputDir string, dockerfiles []buildpack.Dockerfile) ([]buildpack.Dockerfile, error) {
-	var out []buildpack.Dockerfile
+func (g *Generator) copyDockerfiles(outputDir string, dockerfiles []buildpack.Dockerfile) error {
 	for _, dockerfile := range dockerfiles {
-		targetDir := filepath.Join(outputDir, launch.EscapeID(dockerfile.ExtensionID))
-		targetPath := filepath.Join(targetDir, filepath.Base(dockerfile.Path))
+		targetDir := filepath.Join(outputDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
+		targetPath := filepath.Join(targetDir, "Dockerfile")
 		if dockerfile.Path == targetPath {
-			out = append(out, dockerfile)
 			continue
 		}
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
-			return nil, err
+			return err
 		}
 		if err := fsutil.Copy(dockerfile.Path, targetPath); err != nil {
-			return nil, err
+			return err
 		}
-		dockerfile.Path = targetPath
-		out = append(out, dockerfile)
 	}
-	return out, nil
+	return nil
 }
