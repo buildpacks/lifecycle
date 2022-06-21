@@ -500,6 +500,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			t.Log("runs /bin/detect for buildpacks and extensions")
+			h.AssertStringContains(t, output, "Platform requested experimental feature 'Dockerfiles'")
 			h.AssertStringContains(t, output, "simple_extension: output from /bin/detect")
 			t.Log("writes group.toml")
 			foundGroupTOML := filepath.Join(copyDir, "layers", "group.toml")

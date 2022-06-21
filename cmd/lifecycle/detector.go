@@ -89,6 +89,9 @@ func (d *detectCmd) Exec() error {
 		return err // pass through error
 	}
 	if group.HasExtensions() {
+		if err = platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+			return err
+		}
 		generatorFactory := lifecycle.NewGeneratorFactory(
 			&cmd.APIVerifier{},
 			dirStore,
