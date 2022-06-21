@@ -103,7 +103,7 @@ func sbomGlob(layersDir string) (matches []string, err error) {
 	return
 }
 
-func (d *Descriptor) processBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
+func (d *Descriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
 	var (
 		files []BOMFile
 	)

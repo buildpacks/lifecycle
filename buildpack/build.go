@@ -289,7 +289,7 @@ func (d *Descriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn 
 		br.MetRequires = names(bpPlanOut.Entries)
 
 		// set BOM files
-		br.BOMFiles, err = d.processBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
+		br.BOMFiles, err = d.processSBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
 		if err != nil {
 			return BuildResult{}, err
 		}
@@ -322,7 +322,7 @@ func (d *Descriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn 
 		br.MetRequires = names(bpPlanIn.filter(buildTOML.Unmet).Entries)
 
 		// set BOM files
-		br.BOMFiles, err = d.processBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
+		br.BOMFiles, err = d.processSBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
 		if err != nil {
 			return BuildResult{}, err
 		}
