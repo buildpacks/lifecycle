@@ -411,22 +411,22 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
 								})
 							})
+						})
 
-							it("errors when the launch, cache and build flags are in the top level", func() {
-								h.Mkdir(t,
-									filepath.Join(layersDir, "A"),
-									filepath.Join(appDir, "layers-A-v1", "layer"),
-								)
-								h.Mkfile(t,
-									"build=true\ncache=true\nlaunch=true",
-									filepath.Join(appDir, "layers-A-v1", "layer.toml"),
-								)
+						it("errors when the launch, cache and build flags are in the top level", func() {
+							h.Mkdir(t,
+								filepath.Join(layersDir, "A"),
+								filepath.Join(appDir, "layers-A-v1", "layer"),
+							)
+							h.Mkfile(t,
+								"build=true\ncache=true\nlaunch=true",
+								filepath.Join(appDir, "layers-A-v1", "layer.toml"),
+							)
 
-								_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-								h.AssertNotNil(t, err)
-								expected := "the launch, cache and build flags should be in the types table"
-								h.AssertStringContains(t, err.Error(), expected)
-							})
+							_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+							h.AssertNotNil(t, err)
+							expected := "the launch, cache and build flags should be in the types table"
+							h.AssertStringContains(t, err.Error(), expected)
 						})
 					})
 
