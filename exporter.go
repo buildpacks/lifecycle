@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -34,7 +35,7 @@ type Cache interface {
 type Exporter struct {
 	Buildpacks   []buildpack.GroupElement
 	LayerFactory LayerFactory
-	Logger       Logger
+	Logger       log.Logger
 	PlatformAPI  *api.Version
 }
 
