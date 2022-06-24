@@ -24,7 +24,7 @@ type AnalyzeInputs struct {
 	LegacyCacheDir   string
 	LegacyGroupPath  string
 	OutputImageRef   string
-	OCILayoutDir	 string
+	OCILayoutDir     string
 	PreviousImageRef string
 	RunImageRef      string
 	StackPath        string
@@ -78,7 +78,6 @@ func (r *InputsResolver) fillAnalyzeDefaultFilePaths(inputs *AnalyzeInputs, logg
 	return r.fillRunImage(inputs, logger)
 }
 
-
 func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger log.Logger) error {
 	if inputs.UseOCI {
 		// received something like: cnbs/sample-stack-run:alpine, we need to remove everything after :
@@ -86,7 +85,7 @@ func (r *InputsResolver) fillRunImage(inputs *AnalyzeInputs, logger log.Logger) 
 		inputs.RunImageRef = path.Join(cmd.DefaultOCIDir, imageRef[0])
 		return nil
 	}
-	
+
 	if r.platformAPI.LessThan("0.7") || inputs.RunImageRef != "" {
 		return nil
 	}

@@ -307,7 +307,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					fakeImageHandler.EXPECT().Docker()
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 					providedGroup := buildpack.Group{Group: []buildpack.GroupElement{{ID: "some-buildpack-id"}}}
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", providedGroup, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false,  false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", providedGroup, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, false, nil)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.Buildpacks, providedGroup.Group)
 				})
