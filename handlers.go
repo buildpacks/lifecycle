@@ -72,18 +72,18 @@ func (h *DefaultConfigHandler) ReadOrder(path string) (buildpack.Order, buildpac
 
 func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	var order struct {
-		Order    buildpack.Order `toml:"order"`
-		OrderExt buildpack.Order `toml:"order-extensions"`
+		Order           buildpack.Order `toml:"order"`
+		OrderExtensions buildpack.Order `toml:"order-extensions"`
 	}
 	_, err := toml.DecodeFile(path, &order)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reading buildpack order file")
 	}
-	for g, group := range order.OrderExt {
+	for g, group := range order.OrderExtensions {
 		for e := range group.Group {
 			group.Group[e].Extension = true
 		}
-		order.OrderExt[g] = group
+		order.OrderExtensions[g] = group
 	}
-	return order.Order, order.OrderExt, err
+	return order.Order, order.OrderExtensions, err
 }

@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -77,6 +78,14 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 func (g *Generator) Generate() error {
 	var dockerfiles []buildpack.Dockerfile
 
+	config := g.GenerateConfig()
+	tempOutputDir, err := ioutil.TempDir("", "generated.")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tempOutputDir)
+	config.OutputParentDir = tempOutputDir
+
 	buildEnv := env.NewBuildEnv(os.Environ())
 	plan := g.Plan
 	for _, ext := range g.Extensions {
@@ -92,7 +101,7 @@ func (g *Generator) Generate() error {
 		foundPlan := plan.Find(buildpack.KindExtension, ext.ID)
 
 		g.Logger.Debug("Invoking command")
-		result, err := descriptor.Build(foundPlan, g.GenerateConfig(), buildEnv)
+		result, err := descriptor.Build(foundPlan, config, buildEnv)
 		if err != nil {
 			return err
 		}
@@ -115,12 +124,11 @@ func (g *Generator) Generate() error {
 
 func (g *Generator) GenerateConfig() buildpack.BuildConfig {
 	return buildpack.BuildConfig{
-		AppDir:          g.AppDir,
-		Err:             g.Stderr,
-		Logger:          g.Logger,
-		Out:             g.Stdout,
-		OutputParentDir: g.OutputDir,
-		PlatformDir:     g.PlatformDir,
+		AppDir:      g.AppDir,
+		Err:         g.Stderr,
+		Logger:      g.Logger,
+		Out:         g.Stdout,
+		PlatformDir: g.PlatformDir,
 	}
 }
 

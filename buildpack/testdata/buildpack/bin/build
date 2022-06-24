@@ -14,11 +14,11 @@ echo "build out: ${bp_id}@${bp_version}"
 >&2 echo "build err: ${bp_id}@${bp_version}"
 
 echo "TEST_ENV: ${TEST_ENV}" > "build-info-${bp_id}-${bp_version}"
+echo -n "${CNB_BP_PLAN_PATH:-unset}" > "build-env-cnb-bp-plan-path-${bp_id}-${bp_version}"
 echo -n "${CNB_BUILDPACK_DIR:-unset}" > "build-env-cnb-buildpack-dir-${bp_id}-${bp_version}"
 echo -n "${CNB_LAYERS_DIR:-unset}" > "build-env-cnb-layers-dir-${bp_id}-${bp_version}"
 echo -n "${CNB_OUTPUT_DIR:-unset}" > "build-env-cnb-output-dir-${bp_id}-${bp_version}"
 echo -n "${CNB_PLATFORM_DIR:-unset}" > "build-env-cnb-platform-dir-${bp_id}-${bp_version}"
-echo -n "${CNB_BP_PLAN_PATH:-unset}" > "build-env-cnb-bp-plan-path-${bp_id}-${bp_version}"
 
 cp -a "$platform_dir/env" "build-env-${bp_id}-${bp_version}"
 

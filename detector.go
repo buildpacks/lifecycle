@@ -50,13 +50,14 @@ func NewDetectorFactory(
 }
 
 type Detector struct {
-	AppDir      string
-	DirStore    DirStore
-	Logger      log.Logger
-	Order       buildpack.Order
-	PlatformDir string
-	Resolver    Resolver
-	Runs        *sync.Map
+	AppDir        string
+	DirStore      DirStore
+	HasExtensions bool
+	Logger        log.Logger
+	Order         buildpack.Order
+	PlatformDir   string
+	Resolver      Resolver
+	Runs          *sync.Map
 }
 
 func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
@@ -79,8 +80,8 @@ func (f *DetectorFactory) setOrder(detector *Detector, path string, logger log.L
 	if err != nil {
 		return err
 	}
-	if f.platformAPI.LessThan("0.10") {
-		orderExt = nil
+	if len(orderExt) > 0 {
+		detector.HasExtensions = true
 	}
 	if err = f.verifyAPIs(orderBp, orderExt, logger); err != nil {
 		return err

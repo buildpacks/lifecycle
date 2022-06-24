@@ -26,7 +26,6 @@ var (
 
 	DefaultAnalyzedFile        = "analyzed.toml"
 	DefaultGroupFile           = "group.toml"
-	DefaultGeneratedFile       = "generated.toml"
 	DefaultOrderFile           = "order.toml"
 	DefaultPlanFile            = "plan.toml"
 	DefaultProjectMetadataFile = "project-metadata.toml"
@@ -34,7 +33,6 @@ var (
 
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
 	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
-	PlaceholderGeneratedPath       = filepath.Join("<layers>", DefaultGeneratedFile)
 	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
 	PlaceholderProjectMetadataPath = filepath.Join("<layers>", DefaultProjectMetadataFile)
 	PlaceholderReportPath          = filepath.Join("<layers>", DefaultReportFile)
@@ -49,7 +47,6 @@ const (
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
-	EnvGeneratedPath       = "CNB_GENERATED_PATH"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"

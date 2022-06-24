@@ -84,14 +84,16 @@ func (d *detectCmd) Exec() error {
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
+	if detector.HasExtensions {
+		if err = platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+			return err
+		}
+	}
 	group, plan, err := doDetect(detector, d.platform)
 	if err != nil {
 		return err // pass through error
 	}
 	if group.HasExtensions() {
-		if err = platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
-			return err
-		}
 		generatorFactory := lifecycle.NewGeneratorFactory(
 			&cmd.APIVerifier{},
 			dirStore,

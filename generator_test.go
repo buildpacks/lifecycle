@@ -195,7 +195,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				{Name: "some-dep", Version: "v1"},
 				{Name: "some-unmet-dep", Version: "v2"},
 			}}
-			extA.EXPECT().Build(expectedPlanA, generator.GenerateConfig(), gomock.Any()).Return(buildpack.BuildResult{
+			extA.EXPECT().Build(expectedPlanA, gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
 				MetRequires: []string{"some-dep"},
 			}, nil)
 			dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(extB, nil)
@@ -203,48 +203,56 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				{Name: "some-unmet-dep", Version: "v2"},
 				{Name: "other-dep", Version: "v4"},
 			}}
-			extB.EXPECT().Build(expectedPlanB, generator.GenerateConfig(), gomock.Any())
+			extB.EXPECT().Build(expectedPlanB, gomock.Any(), gomock.Any())
 
 			err := generator.Generate()
 			h.AssertNil(t, err)
 		})
 
-		when("generated metadata", func() {
-			when("dockerfiles", func() {
-				it("aggregates dockerfiles from each extension", func() {
-					h.Mkdir(t, filepath.Join(outputDir, "A"))
-					dockerfilePath1 := filepath.Join(outputDir, "A", "run.Dockerfile")
-					h.Mkfile(t, `FROM some-run-image`, dockerfilePath1)
-					bRootDir := filepath.Join(tmpDir, "extensions", "B", "v2")
-					h.Mkdir(t, bRootDir)
-					dockerfilePath2 := filepath.Join(bRootDir, "run.Dockerfile")
-					h.Mkfile(t, `FROM other-run-image`, dockerfilePath2)
+		it("aggregates dockerfiles from each extension", func() {
+			bRootDir := filepath.Join(tmpDir, "extensions", "B", "v2")
+			h.Mkdir(t, bRootDir)
+			dockerfilePath2 := filepath.Join(bRootDir, "run.Dockerfile")
+			h.Mkfile(t, `FROM other-run-image`, dockerfilePath2)
 
-					extA := testmock.NewMockBuildModule(mockCtrl)
-					dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(extA, nil)
-					extA.EXPECT().Build(gomock.Any(), generator.GenerateConfig(), gomock.Any()).Return(buildpack.BuildResult{
+			extA := testmock.NewMockBuildModule(mockCtrl)
+			dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(extA, nil)
+			extA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.Plan, config buildpack.BuildConfig, _ buildpack.BuildEnv) (buildpack.BuildResult, error) {
+					// check config
+					h.AssertEq(t, config.AppDir, generator.AppDir)
+					h.AssertEq(t, config.PlatformDir, generator.PlatformDir)
+
+					// create fixture
+					h.Mkdir(t, filepath.Join(config.OutputParentDir, "A"))
+					dockerfilePath1 := filepath.Join(config.OutputParentDir, "A", "run.Dockerfile")
+					h.Mkfile(t, `FROM some-run-image`, dockerfilePath1)
+
+					return buildpack.BuildResult{
 						Dockerfiles: []buildpack.Dockerfile{
 							{ExtensionID: "A", Path: dockerfilePath1, Kind: "run"},
 						},
-					}, nil)
-					extB := testmock.NewMockBuildModule(mockCtrl)
-					dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(extB, nil)
-					extB.EXPECT().Build(gomock.Any(), generator.GenerateConfig(), gomock.Any()).Return(buildpack.BuildResult{
-						Dockerfiles: []buildpack.Dockerfile{
-							{ExtensionID: "B", Path: dockerfilePath2, Kind: "run"},
-						},
-					}, nil)
-
-					err := generator.Generate()
-					h.AssertNil(t, err)
-
-					t.Log("copies Dockerfiles to the correct locations")
-					contents1 := h.MustReadFile(t, filepath.Join(outputDir, "run", "A", "Dockerfile"))
-					h.AssertEq(t, string(contents1), `FROM some-run-image`)
-					contents2 := h.MustReadFile(t, filepath.Join(outputDir, "run", "B", "Dockerfile"))
-					h.AssertEq(t, string(contents2), `FROM other-run-image`)
+					}, nil
 				})
-			})
+			extB := testmock.NewMockBuildModule(mockCtrl)
+			dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(extB, nil)
+			extB.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
+				Dockerfiles: []buildpack.Dockerfile{
+					{ExtensionID: "B", Path: dockerfilePath2, Kind: "run"},
+				},
+			}, nil)
+
+			err := generator.Generate()
+			h.AssertNil(t, err)
+
+			t.Log("copies Dockerfiles to the correct locations")
+			contents1 := h.MustReadFile(t, filepath.Join(outputDir, "run", "A", "Dockerfile"))
+			h.AssertEq(t, string(contents1), `FROM some-run-image`)
+			contents2 := h.MustReadFile(t, filepath.Join(outputDir, "run", "B", "Dockerfile"))
+			h.AssertEq(t, string(contents2), `FROM other-run-image`)
+
+			t.Log("does not pollute the output directory")
+			h.AssertPathDoesNotExist(t, filepath.Join(outputDir, "A", "run.Dockerfile"))
 		})
 
 		when("extension generate failed", func() {
@@ -252,7 +260,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				it("errors", func() {
 					bpA := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(bpA, nil)
-					bpA.EXPECT().Build(gomock.Any(), generator.GenerateConfig(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
+					bpA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
 					if err := generator.Generate(); err == nil {
 						t.Fatal("Expected error.\n")
@@ -266,10 +274,10 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				it("errors", func() {
 					bpA := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(bpA, nil)
-					bpA.EXPECT().Build(gomock.Any(), generator.GenerateConfig(), gomock.Any()).Return(buildpack.BuildResult{}, nil)
+					bpA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, nil)
 					bpB := testmock.NewMockBuildModule(mockCtrl)
 					dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(bpB, nil)
-					bpB.EXPECT().Build(gomock.Any(), generator.GenerateConfig(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
+					bpB.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
 					if err := generator.Generate(); err == nil {
 						t.Fatal("Expected error.\n")

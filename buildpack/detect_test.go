@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -412,9 +411,6 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 }
 
 func isUnset(actual string) bool {
-	if runtime.GOOS == "windows" {
-		return actual == ""
-	}
 	return actual == "unset"
 }
 

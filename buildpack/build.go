@@ -161,9 +161,9 @@ func (d *Descriptor) processLayers(layersDir string, logger log.Logger) (map[str
 	})
 }
 
-func preparePaths(moduleID string, plan Plan, layersDir, parentPlanDir string) (string, string, error) {
+func preparePaths(moduleID string, plan Plan, outputParentDir, parentPlanDir string) (string, string, error) {
 	moduleDirName := launch.EscapeID(moduleID) // TODO: this logic should eventually move to the platform package
-	moduleOutputDir := filepath.Join(layersDir, moduleDirName)
+	moduleOutputDir := filepath.Join(outputParentDir, moduleDirName)
 	childPlanDir := filepath.Join(parentPlanDir, moduleDirName)
 	if err := os.MkdirAll(moduleOutputDir, 0777); err != nil {
 		return "", "", err

@@ -281,6 +281,8 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("errors when the buildpack's layers dir cannot be created", func() {
+						h.SkipIf(t, kind == buildpack.KindExtension, "")
+
 						h.Mkfile(t, "some-data", filepath.Join(layersDir, "A"))
 						_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
 						if _, ok := err.(*os.PathError); !ok {
