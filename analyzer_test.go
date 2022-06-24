@@ -89,7 +89,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, false, logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -127,7 +127,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, false, nil)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -149,7 +149,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					fakeImageHandler.EXPECT().Docker()
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", true, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", true, false, nil)
 					h.AssertNil(t, err)
 
 					_, ok := analyzer.SBOMRestorer.(*layer.NopSBOMRestorer)
@@ -179,7 +179,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, false, logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -215,7 +215,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, false, nil)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -249,7 +249,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, false, logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -293,7 +293,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, false, nil)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -306,12 +306,9 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 					fakeImageHandler.EXPECT().Docker()
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
-
 					providedGroup := buildpack.Group{Group: []buildpack.GroupElement{{ID: "some-buildpack-id"}}}
-
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", providedGroup, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", providedGroup, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false,  false, nil)
 					h.AssertNil(t, err)
-
 					h.AssertEq(t, analyzer.Buildpacks, providedGroup.Group)
 				})
 			})

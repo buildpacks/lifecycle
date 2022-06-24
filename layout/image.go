@@ -1,7 +1,6 @@
 package layout
 
 import (
-	"compress/flate"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -10,9 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/buildpacks/imgutil/remote"
-	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/imgutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -27,11 +23,13 @@ import (
 var _ imgutil.Image = (*Image)(nil)
 
 type Image struct {
-	path             string
-	underlyingImage  v1.Image
-	config           *v1.ConfigFile
-	prevImage        *Image
-	additionalLayers []layerInfo
+	path                string
+	imageRef            string
+	underlyingImage     v1.Image
+	underlyingImagePath string
+	config              *v1.ConfigFile
+	prevImage           *Image
+	additionalLayers    []layerInfo
 }
 
 type layerInfo struct {
@@ -44,8 +42,7 @@ type ImageOption func(*options) error
 type options struct {
 	baseImagePath string
 	prevImagePath string
-	keychain      authn.Keychain
-	repoName      string
+	imageRef      string
 }
 
 type IDIdentifier struct {
@@ -75,10 +72,9 @@ func FromBaseImage(path string) ImageOption {
 	}
 }
 
-func FromRemoteBaseImage(keychain authn.Keychain, repoName string) ImageOption {
+func WithImageRef(imageRef string) ImageOption {
 	return func(i *options) error {
-		i.keychain = keychain
-		i.repoName = repoName
+		i.imageRef = imageRef
 		return nil
 	}
 }
@@ -93,6 +89,7 @@ func NewImage(path string, ops ...ImageOption) (*Image, error) {
 
 	image := &Image{
 		path:            path,
+		imageRef:        imageOpts.imageRef,
 		underlyingImage: EmptyImage,
 		config: &v1.ConfigFile{
 			Config: v1.Config{
@@ -101,25 +98,14 @@ func NewImage(path string, ops ...ImageOption) (*Image, error) {
 		},
 	}
 
-	if imageOpts.repoName != "" && imageOpts.keychain != nil {
-		remoteImage, err := remote.NewV1Image(imageOpts.keychain, imageOpts.repoName)
-		if err != nil {
-			return nil, err
-		}
-		image.underlyingImage = remoteImage
-		runConfig, err := remoteImage.ConfigFile()
-		if err != nil {
-			return nil, err
-		}
-		image.config = runConfig
-	} else if imageExists(imageOpts.baseImagePath) {
+	if ImageExists(imageOpts.baseImagePath) {
 		err := processBaseImagePath(image, imageOpts.baseImagePath)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if imageExists(imageOpts.prevImagePath) {
+	if ImageExists(imageOpts.prevImagePath) {
 		err := processPrevImagePath(image, imageOpts.prevImagePath)
 		if err != nil {
 			return nil, err
@@ -174,6 +160,7 @@ func processBaseImagePath(image *Image, path string) error {
 	}
 	image.config = baseImage.config.DeepCopy()
 	image.underlyingImage = baseImage.underlyingImage
+	image.underlyingImagePath = path
 	return nil
 }
 
@@ -342,31 +329,54 @@ func (i *Image) Save(additionalNames ...string) error {
 		return errors.Wrap(err, "set config")
 	}
 
+	_, err = layout.Write(i.Name(), empty.Index)
+
 	if i.underlyingImage != nil {
+
 		runLayers, _ := i.underlyingImage.Layers()
+		layerBlobsDir := filepath.Join(i.path, "blobs", "sha256")
+		err = os.MkdirAll(layerBlobsDir, 0755)
+		if err != nil {
+			return errors.Wrap(err, "appending run image layer 1")
+		}
+		start := time.Now()
 		for _, runLayer := range runLayers {
-			image, err = appendOCILayer(image, runLayer)
+			blob, err := runLayer.Digest()
+			fmt.Println(blob.String())
+			if err != nil {
+				return errors.Wrap(err, "appending run image layer 2")
+			}
+			b := strings.Split(blob.String(), ":")
+			layerPathRef := filepath.Join("..", "..", "..", i.imageRef, "blobs", b[0], b[1])
+			layerSymLink := filepath.Join(layerBlobsDir, b[1])
+			os.Symlink(layerPathRef, layerSymLink)
+			image, err = mutate.AppendLayers(image, runLayer)
 			if err != nil {
 				return errors.Wrap(err, "appending layer")
 			}
 		}
+		elapsed := time.Since(start)
+		fmt.Printf("Adding run image layers took %s\n", elapsed)
 	}
 
 	// FIXME: This still produces a gzip (with no actual compression) based on the current GGCR implementation.
 	// We would need to PR a change to skip gunzip packaging all together and update the mediatype.
 	// See: https://github.com/google/go-containerregistry/blob/c061b3f39cff652d18f95ee23ebfd39cb3f5ee89/pkg/v1/tarball/layer.go#L85
+	start := time.Now()
 	for _, layerInfo := range i.additionalLayers {
-		layer, err := tarball.LayerFromFile(layerInfo.path, tarball.WithCompressionLevel(flate.DefaultCompression))
+		fmt.Printf("Loading layer from path: %s and diffID: %s\n", layerInfo.path, layerInfo.diffID)
+		layer, err := tarball.LayerFromFile(layerInfo.path, tarball.WithMediaType(types.OCILayer))
 		if err != nil {
 			return errors.Wrapf(err, "creating layer from %s", layerInfo.path)
 		}
-		image, err = appendOCILayer(image, layer)
+		image, err = mutate.AppendLayers(image, layer)
 		if err != nil {
 			return errors.Wrapf(err, "appending layer %s", layerInfo.path)
 		}
 	}
+	elapsed := time.Since(start)
+	fmt.Printf("Adding layers to image took %s\n", elapsed)
 
-	_, err = layout.Write(i.Name(), empty.Index)
 	if err != nil {
 		return errors.Wrap(err, "creating layout dir")
 	}
@@ -376,7 +386,11 @@ func (i *Image) Save(additionalNames ...string) error {
 	if len(additionalNames) > 0 {
 		annotations = map[string]string{"org.opencontainers.image.ref.name": additionalNames[0]}
 	}
+
+	start = time.Now()
 	err = path.AppendImage(image, layout.WithAnnotations(annotations))
+	elapsed = time.Since(start)
+	fmt.Printf("Writing image to disk took %s\n", elapsed)
 	if err != nil {
 		return errors.Wrap(err, "append image")
 	}
@@ -464,7 +478,7 @@ func pathExists(path string) bool {
 	return false
 }
 
-func imageExists(path string) bool {
+func ImageExists(path string) bool {
 	if !pathExists(path) {
 		return false
 	}
@@ -473,17 +487,4 @@ func imageExists(path string) bool {
 		return false
 	}
 	return true
-}
-
-func appendOCILayer(image v1.Image, layer v1.Layer) (v1.Image, error) {
-	additions := make([]mutate.Addendum, 0)
-	additions = append(additions, mutate.Addendum{
-		MediaType: types.OCILayer,
-		Layer:     layer,
-	})
-	image, err := mutate.Append(image, additions...)
-	if err != nil {
-		return nil, err
-	}
-	return image, nil
 }

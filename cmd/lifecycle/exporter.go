@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/buildpacks/lifecycle/layout"
 	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/buildpacks/lifecycle/layout"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -50,7 +54,7 @@ type exportArgs struct {
 	launchCacheDir      string
 	launcherPath        string
 	layersDir           string
-	ociLayoutDir	 	string
+	ociLayoutDir        string
 	processType         string
 	projectMetadataPath string
 	reportPath          string
@@ -61,6 +65,7 @@ type exportArgs struct {
 	stackMD             platform.StackMetadata
 
 	useDaemon bool
+	useOCI    bool
 	uid, gid  int
 
 	platform Platform
@@ -89,6 +94,7 @@ func (e *exportCmd) DefineFlags() {
 	cmd.FlagUID(&e.uid)
 	cmd.FlagUseDaemon(&e.useDaemon)
 	cmd.FlagExportOCI(&e.ociLayoutDir)
+	cmd.FlagUseOCI(&e.useOCI)
 
 	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
@@ -99,15 +105,13 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
-	if e.ociLayoutDir != "" {
-		if e.useDaemon {
-			return cmd.FailErrCode(errors.New( "exporting to multiples target is not allowed"), cmd.CodeInvalidArgs, "parse arguments")
-		}
+	if e.useDaemon && e.useOCI {
+		return cmd.FailErrCode(errors.New("exporting to multiples target is not allowed"), cmd.CodeInvalidArgs, "parse arguments")
 	}
 
 	e.imageNames = args
-	if e.launchCacheDir != "" && (!e.useDaemon || e.ociLayoutDir != "") {
-		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon or -oci")
+	if e.launchCacheDir != "" && !e.useDaemon {
+		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
 		e.launchCacheDir = ""
 	}
 
@@ -300,7 +304,10 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 
 	var appImage imgutil.Image
 	var runImageID string
-	if ea.useDaemon {
+
+	if ea.useOCI {
+		appImage, runImageID, err = ea.initLayoutAppImage(analyzedMD)
+	} else if ea.useDaemon {
 		appImage, runImageID, err = ea.initDaemonAppImage(analyzedMD)
 	} else {
 		appImage, runImageID, err = ea.initRemoteAppImage(analyzedMD)
@@ -330,9 +337,12 @@ func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, a
 	}
 
 	if cacheStore != nil {
+		start := time.Now()
 		if cacheErr := exporter.Cache(ea.layersDir, cacheStore); cacheErr != nil {
 			cmd.DefaultLogger.Warnf("Failed to export cache: %v\n", cacheErr)
 		}
+		elapsed := time.Since(start)
+		cmd.DefaultLogger.Infof("Exporting cache layers to %s directory took %s", ea.layersDir, elapsed)
 	}
 	return nil
 }
@@ -419,8 +429,21 @@ func (ea exportArgs) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (i
 }
 
 func (ea exportArgs) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
-	appImage, _ := layout.NewImage(ea.ociLayoutDir, layout.FromRemoteBaseImage(ea.keychain, ea.runImageRef))
-	runImage, err := remote.NewImage(ea.runImageRef, ea.keychain, remote.FromBaseImage(ea.runImageRef))
+	var appImage *layout.Image
+	appPath := filepath.Join(ea.ociLayoutDir, ea.imageNames[0])
+	imageRef := strings.SplitN(ea.stackMD.RunImage.Image, ":", 2)
+	runImagePath := path.Join(ea.ociLayoutDir, imageRef[0])
+
+	cmd.DefaultLogger.Infof("Using application image path : %s", appPath)
+	cmd.DefaultLogger.Infof("Using run image path: %s", runImagePath)
+
+	if layout.ImageExists(appPath) {
+		appImage, _ = layout.NewImage(appPath, layout.WithImageRef(imageRef[0]), layout.WithPreviousImage(appPath),
+			layout.FromBaseImage(runImagePath))
+	} else {
+		appImage, _ = layout.NewImage(appPath, layout.WithImageRef(imageRef[0]), layout.FromBaseImage(runImagePath))
+	}
+	runImage, err := layout.NewImage(runImagePath, layout.WithImageRef(imageRef[0]), layout.FromBaseImage(runImagePath))
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}

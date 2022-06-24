@@ -65,6 +65,7 @@ func (f *AnalyzerFactory) NewAnalyzer(
 	previousImageRef string,
 	runImageRef string,
 	skipLayers bool,
+	useOCI bool,
 	logger log.Logger,
 ) (*Analyzer, error) {
 	analyzer := &Analyzer{
@@ -74,8 +75,10 @@ func (f *AnalyzerFactory) NewAnalyzer(
 	}
 
 	if f.platformAPI.AtLeast("0.7") {
-		if err := f.ensureRegistryAccess(additionalTags, cacheImageRef, outputImageRef, runImageRef, previousImageRef); err != nil {
-			return nil, err
+		if !useOCI {
+			if err := f.ensureRegistryAccess(additionalTags, cacheImageRef, outputImageRef, runImageRef, previousImageRef); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		if err := f.setBuildpacks(analyzer, legacyGroup, legacyGroupPath); err != nil {
@@ -151,6 +154,7 @@ func (f *AnalyzerFactory) setPrevious(analyzer *Analyzer, imageRef string, launc
 		return nil
 	}
 	var err error
+	analyzer.Logger.Infof("Initializing previous image %s", imageRef)
 	analyzer.PreviousImage, err = f.imageHandler.InitImage(imageRef)
 	if err != nil {
 		return errors.Wrap(err, "getting previous image")
@@ -172,6 +176,7 @@ func (f *AnalyzerFactory) setRun(analyzer *Analyzer, imageRef string) error {
 		return nil
 	}
 	var err error
+	analyzer.Logger.Infof("Initializing run image %s", imageRef)
 	analyzer.RunImage, err = f.imageHandler.InitImage(imageRef)
 	if err != nil {
 		return errors.Wrap(err, "getting run image")

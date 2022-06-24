@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/layout"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -149,6 +151,24 @@ func (h *DefaultImageHandler) InitImage(imageRef string) (imgutil.Image, error) 
 
 func (h *DefaultImageHandler) Docker() bool {
 	return h.docker != nil
+}
+
+// OCI Image Handler
+type OCIImageHandler struct{}
+
+func NewOCIImageHandler() *OCIImageHandler {
+	return &OCIImageHandler{}
+}
+
+func (h *OCIImageHandler) InitImage(imageRef string) (imgutil.Image, error) {
+	if imageRef == "" {
+		return nil, nil
+	}
+	return layout.NewImage(imageRef, layout.FromBaseImage(imageRef))
+}
+
+func (h *OCIImageHandler) Docker() bool {
+	return false
 }
 
 type DefaultRegistryHandler struct {

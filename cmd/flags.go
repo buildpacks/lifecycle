@@ -22,7 +22,7 @@ var (
 	DefaultPlatformDir     = filepath.Join(rootDir, "platform")
 	DefaultProcessType     = "web"
 	DefaultStackPath       = filepath.Join(rootDir, "cnb", "stack.toml")
-	DefaultOCIDir		   = ""
+	DefaultOCIDir          = filepath.Join(rootDir, "oci")
 
 	DefaultAnalyzedFile        = "analyzed.toml"
 	DefaultGroupFile           = "group.toml"
@@ -67,8 +67,8 @@ const (
 	EnvStackPath           = "CNB_STACK_PATH"
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
-	EnvUseLayout           = "CNB_USE_LAYOUT" // defaults to false
-	EnvLayoutDir           = "CNB_LAYOUT_DIR"
+	EnvOCIPath             = "CNB_OCI_PATH"
+	EnvUseOCI              = "CNB_USE_OCI" //defaults to false
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
@@ -202,7 +202,11 @@ func FlagUseDaemon(use *bool) {
 }
 
 func FlagExportOCI(dir *string) {
-	flagSet.StringVar(dir, "oci", EnvOrDefault(*dir, DefaultOCIDir), "export to a directory in OCI layout format")
+	flagSet.StringVar(dir, "oci-dir", EnvOrDefault(EnvOCIPath, DefaultOCIDir), "path to export to OCI layout format")
+}
+
+func FlagUseOCI(use *bool) {
+	flagSet.BoolVar(use, "oci", BoolEnv(EnvUseOCI), "export to a directory in OCI layout format")
 }
 
 func FlagVersion(version *bool) {
