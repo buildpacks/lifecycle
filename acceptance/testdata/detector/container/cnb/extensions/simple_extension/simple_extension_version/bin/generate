@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+cat >> "${CNB_OUTPUT_DIR}/run.Dockerfile" <<EOL
+FROM some-run-image-from-extension
+EOL
+
+echo "simple_extension: output from /bin/generate"

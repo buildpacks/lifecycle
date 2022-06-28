@@ -18,7 +18,7 @@ import (
 
 func TestAnalyzeInputs(t *testing.T) {
 	for _, api := range api.Platform.Supported {
-		spec.Run(t, "unit-analyzer/"+api.String(), testAnalyzeInputs(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
+		spec.Run(t, "unit-analyze-inputs/"+api.String(), testAnalyzeInputs(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
 

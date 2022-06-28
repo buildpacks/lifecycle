@@ -19,7 +19,7 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 	when("#ReadDescriptor", func() {
 		when("buildpack", func() {
 			it("returns a descriptor with buildpack info", func() {
-				path := filepath.Join("testdata", "by-id", "A", "v1", "buildpack.toml")
+				path := filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
 				descriptor, err := buildpack.ReadDescriptor(path)
 				h.AssertNil(t, err)
 
@@ -34,7 +34,7 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 		when("extension", func() {
 			it("returns a descriptor with extension info", func() {
-				path := filepath.Join("testdata", "by-id", "extA", "v1", "extension.toml")
+				path := filepath.Join("testdata", "extension", "by-id", "A", "v1", "extension.toml")
 				descriptor, err := buildpack.ReadDescriptor(path)
 				h.AssertNil(t, err)
 

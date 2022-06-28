@@ -29,16 +29,16 @@ import (
 
 func TestAnalyzer(t *testing.T) {
 	for _, api := range api.Platform.Supported {
+		spec.Run(t, "unit-new-analyzer/"+api.String(), testAnalyzerFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 		spec.Run(t, "unit-analyzer/"+api.String(), testAnalyzer(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
-	spec.Run(t, "unit-new-analyzer", testAnalyzerFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#NewAnalyzer", func() {
 		var (
 			analyzerFactory     *lifecycle.AnalyzerFactory
-			fakeAPIVerifier     *testmock.MockAPIVerifier
+			fakeAPIVerifier     *testmock.MockBuildpackAPIVerifier
 			fakeCacheHandler    *testmock.MockCacheHandler
 			fakeConfigHandler   *testmock.MockConfigHandler
 			fakeImageHandler    *testmock.MockImageHandler
@@ -50,7 +50,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			fakeAPIVerifier = testmock.NewMockAPIVerifier(mockController)
+			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
 			fakeCacheHandler = testmock.NewMockCacheHandler(mockController)
 			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
 			fakeImageHandler = testmock.NewMockImageHandler(mockController)
@@ -68,7 +68,14 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api >= 0.8", func() {
 			it.Before(func() {
-				analyzerFactory = lifecycle.NewAnalyzerFactory(api.Platform.Latest(), fakeAPIVerifier, fakeCacheHandler, fakeConfigHandler, fakeImageHandler, fakeRegistryHandler)
+				analyzerFactory = lifecycle.NewAnalyzerFactory(
+					api.Platform.Latest(),
+					fakeAPIVerifier,
+					fakeCacheHandler,
+					fakeConfigHandler,
+					fakeImageHandler,
+					fakeRegistryHandler,
+				)
 			})
 
 			it("configures the analyzer", func() {
@@ -89,7 +96,20 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer(
+					[]string{"some-additional-tag"},
+					"some-cache-image-ref",
+					"some-launch-cache-dir",
+					"some-layers-dir",
+					"some-legacy-cache-dir",
+					buildpack.Group{},
+					"some-legacy-group-path",
+					"some-output-image-ref",
+					"some-previous-image-ref",
+					"some-run-image-ref",
+					false,
+					logger,
+				)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -127,7 +147,20 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer(
+						[]string{"some-additional-tag"},
+						"some-cache-image-ref",
+						launchCacheDir,
+						"some-layers-dir",
+						"some-legacy-cache-dir",
+						buildpack.Group{},
+						"some-legacy-group-path",
+						"some-output-image-ref",
+						"some-previous-image-ref",
+						"some-run-image-ref",
+						false,
+						logger,
+					)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -149,7 +182,19 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					fakeImageHandler.EXPECT().Docker()
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", true, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer(
+						[]string{"some-additional-tag"},
+						"some-cache-image-ref",
+						"some-launch-cache-dir",
+						"some-layers-dir",
+						"some-legacy-cache-dir", buildpack.Group{},
+						"some-legacy-group-path",
+						"some-output-image-ref",
+						"some-previous-image-ref",
+						"some-run-image-ref",
+						true,
+						logger,
+					)
 					h.AssertNil(t, err)
 
 					_, ok := analyzer.SBOMRestorer.(*layer.NopSBOMRestorer)
@@ -160,7 +205,14 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api = 0.7", func() {
 			it.Before(func() {
-				analyzerFactory = lifecycle.NewAnalyzerFactory(api.MustParse("0.7"), fakeAPIVerifier, fakeCacheHandler, fakeConfigHandler, fakeImageHandler, fakeRegistryHandler)
+				analyzerFactory = lifecycle.NewAnalyzerFactory(
+					api.MustParse("0.7"),
+					fakeAPIVerifier,
+					fakeCacheHandler,
+					fakeConfigHandler,
+					fakeImageHandler,
+					fakeRegistryHandler,
+				)
 			})
 
 			it("configures the analyzer", func() {
@@ -179,7 +231,20 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer(
+					[]string{"some-additional-tag"},
+					"some-cache-image-ref",
+					"some-launch-cache-dir",
+					"some-layers-dir",
+					"some-legacy-cache-dir",
+					buildpack.Group{},
+					"some-legacy-group-path",
+					"some-output-image-ref",
+					"some-previous-image-ref",
+					"some-run-image-ref",
+					false,
+					logger,
+				)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -215,7 +280,18 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer(
+						[]string{"some-additional-tag"},
+						"some-cache-image-ref", launchCacheDir,
+						"some-layers-dir",
+						"some-legacy-cache-dir", buildpack.Group{},
+						"some-legacy-group-path",
+						"some-output-image-ref",
+						"some-previous-image-ref",
+						"some-run-image-ref",
+						false,
+						logger,
+					)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -237,7 +313,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes group")
 				group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
 				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPIsForGroup(group)
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 				t.Log("processes cache")
 				fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")
@@ -249,7 +325,19 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
 
-				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", "some-launch-cache-dir", "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, logger)
+				analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"},
+					"some-cache-image-ref",
+					"some-launch-cache-dir",
+					"some-layers-dir",
+					"some-legacy-cache-dir",
+					buildpack.Group{},
+					"some-legacy-group-path",
+					"some-output-image-ref",
+					"some-previous-image-ref",
+					"some-run-image-ref",
+					false,
+					logger,
+				)
 				h.AssertNil(t, err)
 				h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 				h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())
@@ -279,7 +367,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					t.Log("processes group")
 					group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
 					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPIsForGroup(group)
+					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 					t.Log("processes cache")
 					fakeCacheHandler.EXPECT().InitCache("some-cache-image-ref", "some-legacy-cache-dir")
@@ -293,7 +381,20 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					launchCacheDir := filepath.Join(tempDir, "some-launch-cache-dir")
 					h.AssertNil(t, os.MkdirAll(launchCacheDir, 0777))
-					analyzer, err := analyzerFactory.NewAnalyzer([]string{"some-additional-tag"}, "some-cache-image-ref", launchCacheDir, "some-layers-dir", "some-legacy-cache-dir", buildpack.Group{}, "some-legacy-group-path", "some-output-image-ref", "some-previous-image-ref", "some-run-image-ref", false, nil)
+					analyzer, err := analyzerFactory.NewAnalyzer(
+						[]string{"some-additional-tag"},
+						"some-cache-image-ref",
+						launchCacheDir,
+						"some-layers-dir",
+						"some-legacy-cache-dir",
+						buildpack.Group{},
+						"some-legacy-group-path",
+						"some-output-image-ref",
+						"some-previous-image-ref",
+						"some-run-image-ref",
+						false,
+						logger,
+					)
 					h.AssertNil(t, err)
 					h.AssertEq(t, analyzer.PreviousImage.Name(), previousImage.Name())
 					h.AssertEq(t, analyzer.RunImage.Name(), runImage.Name())

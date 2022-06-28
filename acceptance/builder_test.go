@@ -131,11 +131,37 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				),
 			)
 			// check builder metadata.toml for success test
-			md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
+			md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
 			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+		})
+	})
+
+	when("-group contains extensions", func() {
+		it("includes the provided extensions in <layers>/config/metadata.toml", func() {
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
+				ctrPath("/layers"),
+				builderImage,
+				h.WithFlags(
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/group_with_ext.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+				),
+			)
+			// check builder metadata.toml for success test
+			md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
+			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+			h.AssertStringContains(t, md.Extensions[0].API, "0.9")
+			h.AssertEq(t, md.Extensions[0].Extension, false) // this shows that `extension = true` is not redundantly printed in group.toml
+			h.AssertStringContains(t, md.Extensions[0].ID, "hello_world")
+			h.AssertStringContains(t, md.Extensions[0].Version, "0.0.1")
 		})
 	})
 
@@ -173,7 +199,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 					// check builder metadata.toml for success test
-					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
+					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 					h.AssertEq(t, len(md.Processes), 0)
 				})
 			})
@@ -249,7 +275,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 					// check builder metadata.toml for success test
-					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/config/metadata.toml"))
+					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
 					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")

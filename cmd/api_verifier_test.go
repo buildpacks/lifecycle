@@ -101,7 +101,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 
 		when("is invalid", func() {
 			it("error with exit code 12", func() {
-				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "bad-api")
+				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "bad-api", cmd.DefaultLogger)
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
 					t.Fatalf("expected an error of type cmd.ErrorFail")
@@ -112,7 +112,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 
 		when("is unsupported", func() {
 			it("error with exit code 11", func() {
-				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "2.2")
+				err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "2.2", cmd.DefaultLogger)
 				failErr, ok := err.(*cmd.ErrorFail)
 				if !ok {
 					t.Fatalf("expected an error of type cmd.ErrorFail")
@@ -125,7 +125,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 			when("CNB_DEPRECATION_MODE=warn", func() {
 				it("should warn", func() {
 					cmd.DeprecationMode = cmd.DeprecationModeWarn
-					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1")
+					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", cmd.DefaultLogger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
 					h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
@@ -136,7 +136,7 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 			when("CNB_DEPRECATION_MODE=quiet", func() {
 				it("should succeed silently", func() {
 					cmd.DeprecationMode = cmd.DeprecationModeQuiet
-					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1")
+					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", cmd.DefaultLogger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
 				})
@@ -145,54 +145,13 @@ func testPlatformAPI(t *testing.T, when spec.G, it spec.S) {
 			when("CNB_DEPRECATION_MODE=error", func() {
 				it("error with exit code 11", func() {
 					cmd.DeprecationMode = cmd.DeprecationModeError
-					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1")
+					err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", cmd.DefaultLogger)
 					failErr, ok := err.(*cmd.ErrorFail)
 					if !ok {
 						t.Fatalf("expected an error of type cmd.ErrorFail")
 					}
 					h.AssertEq(t, failErr.Code, 12)
 				})
-			})
-		})
-	})
-
-	when("APIVerifier", func() {
-		var apiVerifier *cmd.APIVerifier
-
-		it.Before(func() {
-			apiVerifier = &cmd.APIVerifier{}
-		})
-
-		when("VerifyBuildpackAPIsForGroup", func() {
-			it.Before(func() {
-				var err error
-				api.Buildpack, err = api.NewAPIs([]string{"0.2"}, []string{})
-				h.AssertNil(t, err)
-			})
-
-			it("fills in missing apis", func() {
-				group := []buildpack.GroupElement{{ID: "some-id", Version: "some-version"}}
-				h.AssertNil(t, apiVerifier.VerifyBuildpackAPIsForGroup(group))
-			})
-
-			it("verifies buildpacks", func() {
-				group := []buildpack.GroupElement{{ID: "some-id", Version: "some-version", API: "bad-api"}}
-				err := apiVerifier.VerifyBuildpackAPIsForGroup(group)
-				failErr, ok := err.(*cmd.ErrorFail)
-				if !ok {
-					t.Fatalf("expected an error of type cmd.ErrorFail")
-				}
-				h.AssertEq(t, failErr.Code, 12)
-			})
-
-			it("verifies extensions", func() {
-				group := []buildpack.GroupElement{{ID: "some-id", Version: "some-version", API: "bad-api", Extension: true}}
-				err := apiVerifier.VerifyBuildpackAPIsForGroup(group)
-				failErr, ok := err.(*cmd.ErrorFail)
-				if !ok {
-					t.Fatalf("expected an error of type cmd.ErrorFail")
-				}
-				h.AssertEq(t, failErr.Code, 12)
 			})
 		})
 	})

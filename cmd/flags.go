@@ -18,6 +18,7 @@ var (
 	DefaultLauncherPath    = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
 	DefaultLayersDir       = filepath.Join(rootDir, "layers")
 	DefaultLogLevel        = "info"
+	DefaultOutputDir       = filepath.Join(rootDir, "layers")
 	DefaultPlatformAPI     = "0.3"
 	DefaultPlatformDir     = filepath.Join(rootDir, "platform")
 	DefaultProcessType     = "web"
@@ -53,6 +54,7 @@ const (
 	EnvLogLevel            = "CNB_LOG_LEVEL"
 	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
 	EnvOrderPath           = "CNB_ORDER_PATH"
+	EnvOutputDir           = "CNB_OUTPUT_DIR"
 	EnvPlanPath            = "CNB_PLAN_PATH"
 	EnvPlatformAPI         = "CNB_PLATFORM_API"
 	EnvPlatformDir         = "CNB_PLATFORM_DIR"
@@ -128,6 +130,10 @@ func FlagNoColor(skip *bool) {
 
 func FlagOrderPath(orderPath *string) {
 	flagSet.StringVar(orderPath, "order", EnvOrDefault(EnvOrderPath, PlaceholderOrderPath), "path to order.toml")
+}
+
+func FlagOutputDir(dir *string) {
+	flagSet.StringVar(dir, "output-dir", EnvOrDefault(EnvOutputDir, DefaultOutputDir), "path to output directory")
 }
 
 func DefaultOrderPath(platformAPI, layersDir string) string {

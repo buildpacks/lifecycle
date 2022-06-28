@@ -96,20 +96,23 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 		DirStore:    dirStore,
 	}
 	md, err := builder.Build()
-
 	if err != nil {
-		if err, ok := err.(*buildpack.Error); ok {
-			if err.Type == buildpack.ErrTypeBuildpack {
-				return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(platform.FailedBuildWithErrors), "build")
-			}
-		}
-		return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
+		return ba.unwrapBuildFail(err)
 	}
 
 	if err := encoding.WriteTOML(launch.GetMetadataFilePath(ba.layersDir), md); err != nil {
 		return cmd.FailErr(err, "write build metadata")
 	}
 	return nil
+}
+
+func (ba *buildArgs) unwrapBuildFail(err error) error {
+	if err, ok := err.(*buildpack.Error); ok {
+		if err.Type == buildpack.ErrTypeBuildpack {
+			return cmd.FailErrCode(err.Cause(), ba.platform.CodeFor(platform.FailedBuildWithErrors), "build")
+		}
+	}
+	return cmd.FailErrCode(err, ba.platform.CodeFor(platform.BuildError), "build")
 }
 
 func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {

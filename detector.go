@@ -30,14 +30,14 @@ type Resolver interface {
 
 type DetectorFactory struct {
 	platformAPI   *api.Version
-	apiVerifier   APIVerifier
+	apiVerifier   BuildpackAPIVerifier
 	configHandler ConfigHandler
 	dirStore      DirStore
 }
 
 func NewDetectorFactory(
 	platformAPI *api.Version,
-	apiVerifier APIVerifier,
+	apiVerifier BuildpackAPIVerifier,
 	configHandler ConfigHandler,
 	dirStore DirStore,
 ) *DetectorFactory {
@@ -50,46 +50,54 @@ func NewDetectorFactory(
 }
 
 type Detector struct {
-	AppDir      string
-	DirStore    DirStore
-	Logger      log.Logger
-	Order       buildpack.Order
-	PlatformDir string
-	Resolver    Resolver
-	Runs        *sync.Map
+	AppDir        string
+	DirStore      DirStore
+	HasExtensions bool
+	Logger        log.Logger
+	Order         buildpack.Order
+	PlatformDir   string
+	Resolver      Resolver
+	Runs          *sync.Map
 }
 
 func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
-	orderBp, orderExt, err := f.configHandler.ReadOrder(orderPath)
-	if err != nil {
-		return nil, err
-	}
-	if f.platformAPI.LessThan("0.10") {
-		orderExt = nil
-	}
-	if err = f.verifyAPIs(orderBp, orderExt); err != nil {
-		return nil, err
-	}
-
-	return &Detector{
+	detector := &Detector{
 		AppDir:      appDir,
 		DirStore:    f.dirStore,
 		Logger:      logger,
-		Order:       PrependExtensions(orderBp, orderExt),
 		PlatformDir: platformDir,
 		Resolver:    &DefaultResolver{Logger: logger},
 		Runs:        &sync.Map{},
-	}, nil
+	}
+	if err := f.setOrder(detector, orderPath, logger); err != nil {
+		return nil, err
+	}
+	return detector, nil
 }
 
-func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order) error {
+func (f *DetectorFactory) setOrder(detector *Detector, path string, logger log.Logger) error {
+	orderBp, orderExt, err := f.configHandler.ReadOrder(path)
+	if err != nil {
+		return err
+	}
+	if len(orderExt) > 0 {
+		detector.HasExtensions = true
+	}
+	if err = f.verifyAPIs(orderBp, orderExt, logger); err != nil {
+		return err
+	}
+	detector.Order = PrependExtensions(orderBp, orderExt)
+	return nil
+}
+
+func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack.Order, logger log.Logger) error {
 	for _, group := range append(orderBp, orderExt...) {
 		for _, groupEl := range group.Group {
 			module, err := f.dirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
 			if err != nil {
 				return err
 			}
-			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.ConfigFile().API); err != nil {
+			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.ConfigFile().API, logger); err != nil {
 				return err
 			}
 		}
@@ -102,18 +110,30 @@ func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {
 }
 
 func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
-	bps, entries, err := d.detectOrder(order, nil, nil, false, &sync.WaitGroup{})
+	detected, planEntries, err := d.detectOrder(order, nil, nil, false, &sync.WaitGroup{})
 	if err == ErrBuildpack {
 		err = buildpack.NewError(err, buildpack.ErrTypeBuildpack)
 	} else if err == ErrFailedDetection {
 		err = buildpack.NewError(err, buildpack.ErrTypeFailedDetection)
 	}
-	for i := range entries {
-		for j := range entries[i].Requires {
-			entries[i].Requires[j].ConvertVersionToMetadata()
+	for i := range planEntries {
+		for j := range planEntries[i].Requires {
+			planEntries[i].Requires[j].ConvertVersionToMetadata()
 		}
 	}
-	return buildpack.Group{Group: bps}, platform.BuildPlan{Entries: entries}, err
+	return buildpack.Group{Group: filter(detected, buildpack.KindBuildpack), GroupExtensions: filter(detected, buildpack.KindExtension)},
+		platform.BuildPlan{Entries: planEntries},
+		err
+}
+
+func filter(group []buildpack.GroupElement, kind string) []buildpack.GroupElement {
+	var out []buildpack.GroupElement
+	for _, el := range group {
+		if el.Kind() == kind {
+			out = append(out, el.NoExtension().NoOpt())
+		}
+	}
+	return out
 }
 
 func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupElement, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
@@ -150,7 +170,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 		// Resolve order if element is the order for extensions.
 		if groupEl.IsExtensionsOrder() {
-			return d.detectOrder(groupEl.OrderExt, done, group.Group[i+1:], true, wg)
+			return d.detectOrder(groupEl.OrderExtensions, done, group.Group[i+1:], true, wg)
 		}
 
 		// Lookup element in store.
@@ -502,7 +522,7 @@ func PrependExtensions(orderBp buildpack.Order, orderExt buildpack.Order) buildp
 	}
 
 	var newOrder buildpack.Order
-	extGroupEl := buildpack.GroupElement{OrderExt: orderExt}
+	extGroupEl := buildpack.GroupElement{OrderExtensions: orderExt}
 	for _, group := range orderBp {
 		newOrder = append(newOrder, buildpack.Group{
 			Group: append([]buildpack.GroupElement{extGroupEl}, group.Group...),

@@ -6,11 +6,17 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 //go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle CacheHandler
 type CacheHandler interface {
 	InitCache(imageRef, dir string) (Cache, error)
+}
+
+//go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
+type DirStore interface {
+	Lookup(kind, id, version string) (buildpack.BuildModule, error)
 }
 
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle ImageHandler
@@ -25,14 +31,9 @@ type RegistryHandler interface {
 	EnsureWriteAccess(imageRefs ...string) error
 }
 
-//go:generate mockgen -package testmock -destination testmock/api_verifier.go github.com/buildpacks/lifecycle APIVerifier
-// APIVerifier exists to avoid having the lifecycle package depend on the cmd package.
-// This package dependency actually already exists, but we are trying to avoid making it worse.
-// Eventually, much logic in the cmd package should move to the platform package, after which
-// we might be able to remove this interface.
-type APIVerifier interface {
-	VerifyBuildpackAPI(kind, name, requested string) error
-	VerifyBuildpackAPIsForGroup(group []buildpack.GroupElement) error
+//go:generate mockgen -package testmock -destination testmock/buildpack_api_verifier.go github.com/buildpacks/lifecycle BuildpackAPIVerifier
+type BuildpackAPIVerifier interface {
+	VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error
 }
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
@@ -71,18 +72,18 @@ func (h *DefaultConfigHandler) ReadOrder(path string) (buildpack.Order, buildpac
 
 func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	var order struct {
-		Order    buildpack.Order `toml:"order"`
-		OrderExt buildpack.Order `toml:"order-ext"`
+		Order           buildpack.Order `toml:"order"`
+		OrderExtensions buildpack.Order `toml:"order-extensions"`
 	}
 	_, err := toml.DecodeFile(path, &order)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reading buildpack order file")
 	}
-	for g, group := range order.OrderExt {
+	for g, group := range order.OrderExtensions {
 		for e := range group.Group {
 			group.Group[e].Extension = true
 		}
-		order.OrderExt[g] = group
+		order.OrderExtensions[g] = group
 	}
-	return order.Order, order.OrderExt, err
+	return order.Order, order.OrderExtensions, err
 }

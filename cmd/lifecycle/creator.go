@@ -198,7 +198,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return cmd.FailErr(err, "initialize analyzer")
+			return unwrapErrorFailWithMessage(err, "initialize analyzer")
 		}
 		analyzedMD, err = analyzer.Analyze()
 		if err != nil {
@@ -214,11 +214,11 @@ func (c *createCmd) Exec() error {
 		)
 		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
 		if err != nil {
-			return cmd.FailErr(err, "initialize detector")
+			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
 		group, plan, err = doDetect(detector, c.platform)
 		if err != nil {
-			return err
+			return err // pass through error
 		}
 	} else {
 		cmd.DefaultLogger.Phase("DETECTING")
@@ -230,11 +230,11 @@ func (c *createCmd) Exec() error {
 		)
 		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
 		if err != nil {
-			return cmd.FailErr(err, "initialize detector")
+			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
 		group, plan, err = doDetect(detector, c.platform)
 		if err != nil {
-			return err
+			return err // pass through error
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
@@ -261,7 +261,7 @@ func (c *createCmd) Exec() error {
 			cmd.DefaultLogger,
 		)
 		if err != nil {
-			return cmd.FailErr(err, "initialize analyzer")
+			return unwrapErrorFailWithMessage(err, "initialize analyzer")
 		}
 		analyzedMD, err = analyzer.Analyze()
 		if err != nil {

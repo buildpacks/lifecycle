@@ -33,7 +33,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when("#NewDetector", func() {
 		var (
 			detectorFactory   *lifecycle.DetectorFactory
-			fakeAPIVerifier   *testmock.MockAPIVerifier
+			fakeAPIVerifier   *testmock.MockBuildpackAPIVerifier
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
 			logger            *log.Logger
@@ -42,175 +42,111 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			fakeAPIVerifier = testmock.NewMockAPIVerifier(mockController)
+			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
 			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
 			fakeDirStore = testmock.NewMockDirStore(mockController)
 			logger = &log.Logger{Handler: &discard.Handler{}}
+
+			detectorFactory = lifecycle.NewDetectorFactory(
+				api.Platform.Latest(),
+				fakeAPIVerifier,
+				fakeConfigHandler,
+				fakeDirStore,
+			)
 		})
 
 		it.After(func() {
 			mockController.Finish()
 		})
 
-		when("platform api >= 0.10", func() { // TODO: change to pre-release api in https://github.com/buildpacks/lifecycle/issues/459
-			it.Before(func() {
-				detectorFactory = lifecycle.NewDetectorFactory(api.Platform.Latest(), fakeAPIVerifier, fakeConfigHandler, fakeDirStore)
-			})
+		it("configures the detector", func() {
+			order := buildpack.Order{
+				buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+			}
+			fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
 
-			it("configures the detector", func() {
-				order := buildpack.Order{
-					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
-				}
-				fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+			t.Log("verifies buildpack apis")
+			bpA1 := testmock.NewMockBuildModule(mockController)
+			fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 
-				t.Log("verifies buildpack apis")
-				bpA1 := testmock.NewMockBuildModule(mockController)
-				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
-				bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
+			detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
+			h.AssertNil(t, err)
 
-				detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
-				h.AssertNil(t, err)
-
-				h.AssertEq(t, detector.AppDir, "some-app-dir")
-				h.AssertNotNil(t, detector.DirStore)
-				h.AssertEq(t, detector.Logger, logger)
-				h.AssertEq(t, detector.Order, order)
-				h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
-				_, ok := detector.Resolver.(*lifecycle.DefaultResolver)
-				h.AssertEq(t, ok, true)
-				h.AssertNotNil(t, detector.Runs)
-			})
-
-			when("there are extensions", func() {
-				it("prepends the extensions order to the buildpacks order", func() {
-					orderBp := buildpack.Order{
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
-					}
-					orderExt := buildpack.Order{
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true}}},
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true}}},
-					}
-					expectedOrder := buildpack.Order{
-						buildpack.Group{
-							Group: []buildpack.GroupElement{
-								{OrderExt: buildpack.Order{
-									buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
-									buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
-								}},
-								{ID: "A", Version: "v1"},
-							},
-						},
-						buildpack.Group{
-							Group: []buildpack.GroupElement{
-								{OrderExt: buildpack.Order{
-									buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
-									buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
-								}},
-								{ID: "B", Version: "v1"},
-							},
-						},
-					}
-					fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
-
-					t.Log("verifies buildpack apis")
-					bpA1 := testmock.NewMockBuildModule(mockController)
-					bpB1 := testmock.NewMockBuildModule(mockController)
-					extC1 := testmock.NewMockBuildModule(mockController)
-					extD1 := testmock.NewMockBuildModule(mockController)
-					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
-					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
-					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
-					bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2")
-					fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
-					extC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.10"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10")
-					fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
-					extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.10"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10")
-
-					detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, detector.AppDir, "some-app-dir")
-					h.AssertNotNil(t, detector.DirStore)
-					h.AssertEq(t, detector.Logger, logger)
-					h.AssertEq(t, detector.Order, expectedOrder)
-					h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
-					_, ok := detector.Resolver.(*lifecycle.DefaultResolver)
-					h.AssertEq(t, ok, true)
-					h.AssertNotNil(t, detector.Runs)
-				})
-			})
+			h.AssertEq(t, detector.AppDir, "some-app-dir")
+			h.AssertNotNil(t, detector.DirStore)
+			h.AssertEq(t, detector.HasExtensions, false)
+			h.AssertEq(t, detector.Logger, logger)
+			h.AssertEq(t, detector.Order, order)
+			h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
+			_, ok := detector.Resolver.(*lifecycle.DefaultResolver)
+			h.AssertEq(t, ok, true)
+			h.AssertNotNil(t, detector.Runs)
 		})
 
-		when("platform api < 0.10", func() { // TODO: change to pre-release api in https://github.com/buildpacks/lifecycle/issues/459
-			it.Before(func() {
-				detectorFactory = lifecycle.NewDetectorFactory(api.MustParse("0.9"), fakeAPIVerifier, fakeConfigHandler, fakeDirStore)
-			})
-
-			it("configures the detector", func() {
-				order := buildpack.Order{
+		when("there are extensions", func() {
+			it("prepends the extensions order to the buildpacks order", func() {
+				orderBp := buildpack.Order{
 					buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 				}
-				fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+				orderExt := buildpack.Order{
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true}}},
+					buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true}}},
+				}
+				expectedOrder := buildpack.Order{
+					buildpack.Group{
+						Group: []buildpack.GroupElement{
+							{OrderExtensions: buildpack.Order{
+								buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
+								buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
+							}},
+							{ID: "A", Version: "v1"},
+						},
+					},
+					buildpack.Group{
+						Group: []buildpack.GroupElement{
+							{OrderExtensions: buildpack.Order{
+								buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1", Extension: true, Optional: true}}},
+								buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1", Extension: true, Optional: true}}},
+							}},
+							{ID: "B", Version: "v1"},
+						},
+					},
+				}
+				fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
 
 				t.Log("verifies buildpack apis")
 				bpA1 := testmock.NewMockBuildModule(mockController)
+				bpB1 := testmock.NewMockBuildModule(mockController)
+				extC1 := testmock.NewMockBuildModule(mockController)
+				extD1 := testmock.NewMockBuildModule(mockController)
 				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 				bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
+				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
+				bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2", logger)
+				fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
+				extC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.10"})
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10", logger)
+				fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
+				extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.10"})
+				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
 				detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, detector.AppDir, "some-app-dir")
 				h.AssertNotNil(t, detector.DirStore)
+				h.AssertEq(t, detector.HasExtensions, true)
 				h.AssertEq(t, detector.Logger, logger)
-				h.AssertEq(t, detector.Order, order)
+				h.AssertEq(t, detector.Order, expectedOrder)
 				h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
 				_, ok := detector.Resolver.(*lifecycle.DefaultResolver)
 				h.AssertEq(t, ok, true)
 				h.AssertNotNil(t, detector.Runs)
-			})
-
-			when("there are extensions", func() {
-				it("ignores them", func() {
-					orderBp := buildpack.Order{
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
-					}
-					orderExt := buildpack.Order{
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "C", Version: "v1"}}},
-						buildpack.Group{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
-					}
-					fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
-
-					t.Log("verifies buildpack apis")
-					bpA1 := testmock.NewMockBuildModule(mockController)
-					bpB1 := testmock.NewMockBuildModule(mockController)
-					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
-					bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2")
-					fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
-					bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
-					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2")
-
-					detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, detector.AppDir, "some-app-dir")
-					h.AssertNotNil(t, detector.DirStore)
-					h.AssertEq(t, detector.Logger, logger)
-					h.AssertEq(t, detector.Order, orderBp)
-					h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
-					_, ok := detector.Resolver.(*lifecycle.DefaultResolver)
-					h.AssertEq(t, ok, true)
-					h.AssertNotNil(t, detector.Runs)
-				})
 			})
 		})
 	})
@@ -900,6 +836,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: buildpack.Info{ID: "A", Version: "v1"},
 				})
 
+				// try resolve
 				thirdGroup := []buildpack.GroupElement{
 					{ID: "A", Version: "v1", API: "0.8"},
 				}
@@ -959,39 +896,22 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					Buildpack: buildpack.Info{ID: "B", Version: "v1"},
 				})
 
+				// try resolve
 				fifthGroup := []buildpack.GroupElement{
 					{ID: "D", Version: "v1", API: "0.9", Extension: true, Optional: true},
 					{ID: "B", Version: "v1", API: "0.8"},
 				}
-				fifthResolve := resolver.EXPECT().Resolve(
+				resolver.EXPECT().Resolve(
 					fifthGroup,
 					detector.Runs,
 				).Return(
-					[]buildpack.GroupElement{},
-					[]platform.BuildPlanEntry{},
-					lifecycle.ErrFailedDetection,
-				).After(fourthResolve)
-
-				// sixth group
-
-				// process B@v1
-				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
-				bpB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
-					API:       "0.8",
-					Buildpack: buildpack.Info{ID: "B", Version: "v1"},
-				})
-
-				sixthGroup := []buildpack.GroupElement{
-					{ID: "B", Version: "v1", API: "0.8"},
-				}
-				resolver.EXPECT().Resolve(
-					sixthGroup,
-					detector.Runs,
-				).Return(
-					sixthGroup,
+					[]buildpack.GroupElement{
+						{ID: "D", Version: "v1", API: "0.9", Extension: true}, // optional removed
+						{ID: "B", Version: "v1", API: "0.8"},
+					},
 					[]platform.BuildPlanEntry{},
 					nil,
-				).After(fifthResolve)
+				).After(fourthResolve)
 
 				orderBp := buildpack.Order{
 					{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
@@ -1003,8 +923,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				detector.Order = lifecycle.PrependExtensions(orderBp, orderExt)
-				_, _, err := detector.Detect()
+				group, _, err := detector.Detect()
 				h.AssertNil(t, err)
+
+				h.AssertEq(t, group.Group, []buildpack.GroupElement{{ID: "B", Version: "v1", API: "0.8"}})
+				h.AssertEq(t, group.GroupExtensions, []buildpack.GroupElement{{ID: "D", Version: "v1", API: "0.9"}})
 			})
 		})
 	})
@@ -1618,13 +1541,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			if s := cmp.Diff(newOrder, buildpack.Order{
 				buildpack.Group{
 					Group: []buildpack.GroupElement{
-						{OrderExt: expectedOrderExt},
+						{OrderExtensions: expectedOrderExt},
 						{ID: "A", Version: "v1"},
 					},
 				},
 				buildpack.Group{
 					Group: []buildpack.GroupElement{
-						{OrderExt: expectedOrderExt},
+						{OrderExtensions: expectedOrderExt},
 						{ID: "B", Version: "v1"},
 					},
 				},

@@ -77,7 +77,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 						`group = [{id = "A", version = "v1"}, {id = "B", optional = true}]`+"\n"+
 						"[[order]]\n"+
 						`group = [{id = "C"}]`+"\n"+
-						"[[order-ext]]\n"+
+						"[[order-extensions]]\n"+
 						`group = [{id = "D"}]`+"\n",
 					filepath.Join(tmpDir, "order.toml"),
 				)
@@ -159,7 +159,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 							`group = [{id = "A", version = "v1"}, {id = "B", version = "v1", optional = true}]`+"\n"+
 							"[[order]]\n"+
 							`group = [{id = "C", version = "v1"}]`+"\n"+
-							"[[order-ext]]\n"+
+							"[[order-extensions]]\n"+
 							`group = [{id = "D", version = "v1"}]`+"\n",
 						filepath.Join(tmpDir, "order.toml"),
 					)

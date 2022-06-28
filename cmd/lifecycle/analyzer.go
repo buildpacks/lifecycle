@@ -127,7 +127,7 @@ func (a *analyzeCmd) Exec() error {
 		cmd.DefaultLogger,
 	)
 	if err != nil {
-		return cmd.FailErr(err, "initialize analyzer")
+		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
 
 	analyzedMD, err := analyzer.Analyze()
