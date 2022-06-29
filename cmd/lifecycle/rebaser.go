@@ -51,21 +51,21 @@ func (r *rebaseCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	r.imageNames = args
 	if err := image.ValidateDestinationTags(r.useDaemon, r.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "validate image tag(s)")
 	}
 
 	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {
-		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	if r.deprecatedRunImageRef != "" {
 		r.runImageRef = r.deprecatedRunImageRef
 	}
 
-	if r.reportPath == cmd.PlaceholderReportPath {
+	if r.reportPath == platform.PlaceholderReportPath {
 		r.reportPath = cmd.DefaultReportPath(r.platform.API().String(), "")
 	}
 
@@ -175,7 +175,7 @@ func (r *rebaseCmd) setAppImage() error {
 
 	if r.runImageRef == "" {
 		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeInvalidArgs, "parse arguments")
+			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
 		}
 		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {

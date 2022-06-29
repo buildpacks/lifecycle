@@ -5,5 +5,4 @@ package cmd
 
 const (
 	rootDir = "/"
-	execExt = ""
 )

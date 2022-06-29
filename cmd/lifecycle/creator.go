@@ -76,7 +76,7 @@ func (c *createCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (c *createCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 
 	c.outputImageRef = args[0]
@@ -94,34 +94,34 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.outputImageRef)...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "validate image tag(s)")
 	}
 
-	if c.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
+	if c.projectMetadataPath == platform.PlaceholderProjectMetadataPath {
 		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platform.API().String(), c.layersDir)
 	}
 
-	if c.reportPath == cmd.PlaceholderReportPath {
+	if c.reportPath == platform.PlaceholderReportPath {
 		c.reportPath = cmd.DefaultReportPath(c.platform.API().String(), c.layersDir)
 	}
 
-	if c.orderPath == cmd.PlaceholderOrderPath {
+	if c.orderPath == platform.PlaceholderOrderPath {
 		c.orderPath = cmd.DefaultOrderPath(c.platform.API().String(), c.layersDir)
 	}
 
 	var err error
 	c.stackMD, err = readStack(c.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse stack metadata")
 	}
 
 	c.targetRegistry, err = parseRegistry(c.outputImageRef)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse target registry")
 	}
 
 	if err := c.populateRunImage(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -177,7 +177,7 @@ func (c *createCmd) Exec() error {
 	if c.platform.API().AtLeast("0.7") {
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
-			&cmd.APIVerifier{},
+			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
 			NewImageHandler(c.docker, c.keychain),
@@ -208,7 +208,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
 			c.platform.API(),
-			&cmd.APIVerifier{},
+			&cmd.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
@@ -224,7 +224,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
 			c.platform.API(),
-			&cmd.APIVerifier{},
+			&cmd.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
@@ -240,7 +240,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
-			&cmd.APIVerifier{},
+			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
 			NewImageHandler(c.docker, c.keychain),

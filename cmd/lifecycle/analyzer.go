@@ -67,14 +67,14 @@ func (a *analyzeCmd) DefineFlags() {
 func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
 		err := fmt.Errorf("received %d arguments, but expected 1", nargs)
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	a.AnalyzeInputs.OutputImageRef = args[0]
 
 	var err error
 	a.AnalyzeInputs, err = a.platform.ResolveAnalyze(a.AnalyzeInputs, cmd.DefaultLogger)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "resolve inputs")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
@@ -106,7 +106,7 @@ func (a *analyzeCmd) Privileges() error {
 func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
 		a.platform.API(),
-		&cmd.APIVerifier{},
+		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
 		NewImageHandler(a.docker, a.keychain),

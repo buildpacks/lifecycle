@@ -7,17 +7,12 @@ import (
 )
 
 const (
-	// lifecycle errors not specific to any phase: 1-99
-	CodeFailed = 1 // CodeFailed indicates generic lifecycle error
+	CodeForFailed = 1 // CodeForFailed indicates generic lifecycle error
 	// 2: reserved
-	CodeInvalidArgs = 3
-	// 4: CodeInvalidEnv
-	// 5: CodeNotFound
-	// 9: CodeFailedUpdate
-
-	// API errors
-	CodeIncompatiblePlatformAPI  = 11
-	CodeIncompatibleBuildpackAPI = 12
+	CodeForInvalidArgs = 3
+	// 4: CodeForInvalidEnv
+	// 5: CodeForNotFound
+	// 9: CodeForFailedUpdate
 )
 
 type ErrorFail struct {
@@ -39,7 +34,7 @@ func FailCode(code int, action ...string) *ErrorFail {
 }
 
 func FailErr(err error, action ...string) *ErrorFail {
-	code := CodeFailed
+	code := CodeForFailed
 	if err, ok := err.(*ErrorFail); ok {
 		code = err.Code
 	}
@@ -58,7 +53,7 @@ func Exit(err error) {
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
-	os.Exit(CodeFailed)
+	os.Exit(CodeForFailed)
 }
 
 func ExitWithVersion() {

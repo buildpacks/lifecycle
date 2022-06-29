@@ -93,7 +93,7 @@ func (e *exportCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (e *exportCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 
 	e.imageNames = args
@@ -107,26 +107,26 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if err := image.ValidateDestinationTags(e.useDaemon, e.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate image tag(s)")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "validate image tag(s)")
 	}
 
 	if err := e.validateRunImageInput(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "validate run image input")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "validate run image input")
 	}
 
-	if e.analyzedPath == cmd.PlaceholderAnalyzedPath {
+	if e.analyzedPath == platform.PlaceholderAnalyzedPath {
 		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platform.API().String(), e.layersDir)
 	}
 
-	if e.groupPath == cmd.PlaceholderGroupPath {
+	if e.groupPath == platform.PlaceholderGroupPath {
 		e.groupPath = cmd.DefaultGroupPath(e.platform.API().String(), e.layersDir)
 	}
 
-	if e.projectMetadataPath == cmd.PlaceholderProjectMetadataPath {
+	if e.projectMetadataPath == platform.PlaceholderProjectMetadataPath {
 		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platform.API().String(), e.layersDir)
 	}
 
-	if e.reportPath == cmd.PlaceholderReportPath {
+	if e.reportPath == platform.PlaceholderReportPath {
 		e.reportPath = cmd.DefaultReportPath(e.platform.API().String(), e.layersDir)
 	}
 
@@ -137,21 +137,21 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	var err error
 	e.analyzedMD, err = parseAnalyzedMD(cmd.DefaultLogger, e.analyzedPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
 	}
 
 	e.stackMD, err = readStack(e.stackPath)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse stack metadata")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse stack metadata")
 	}
 
 	e.targetRegistry, err = parseRegistry(e.imageNames[0])
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse target registry")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse target registry")
 	}
 
 	if err := e.populateRunImageRefIfNeeded(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "populate run image")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "populate run image")
 	}
 
 	return nil
@@ -250,11 +250,11 @@ func (e *exportCmd) populateRunImageRefIfNeeded() error {
 
 func (e *exportCmd) validateRunImageInput() error {
 	switch {
-	case e.supportsRunImage() && e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+	case e.supportsRunImage() && e.deprecatedRunImageRef != "" && e.runImageRef != os.Getenv(platform.EnvRunImage):
 		return errors.New("supply only one of -run-image or (deprecated) -image")
 	case !e.supportsRunImage() && e.deprecatedRunImageRef != "":
 		return errors.New("-image is unsupported")
-	case !e.supportsRunImage() && e.runImageRef != os.Getenv(cmd.EnvRunImage):
+	case !e.supportsRunImage() && e.runImageRef != os.Getenv(platform.EnvRunImage):
 		return errors.New("-run-image is unsupported")
 	default:
 		return nil

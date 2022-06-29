@@ -4,22 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/log"
-
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
-const (
-	DeprecationModeQuiet = "quiet"
-	DeprecationModeWarn  = "warn"
-	DeprecationModeError = "error"
-)
+var DeprecationMode = EnvOrDefault(platform.EnvDeprecationMode, platform.DefaultDeprecationMode)
 
-var DeprecationMode = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
+type BuildpackAPIVerifier struct{}
 
-type APIVerifier struct{}
-
-func (v *APIVerifier) VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
+func (v *BuildpackAPIVerifier) VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 	return VerifyBuildpackAPI(kind, name, requested, logger)
 }
 
@@ -28,19 +22,19 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 	if err != nil {
 		return FailErrCode(
 			fmt.Errorf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(kind), name),
-			CodeIncompatibleBuildpackAPI,
+			platform.CodeForIncompatibleBuildpackAPI,
 		)
 	}
 	if api.Buildpack.IsSupported(requestedAPI) {
 		if api.Buildpack.IsDeprecated(requestedAPI) {
 			switch DeprecationMode {
-			case DeprecationModeQuiet:
+			case platform.ModeQuiet:
 				break
-			case DeprecationModeError:
+			case platform.ModeError:
 				logger.Errorf("%s '%s' requests deprecated API '%s'", kind, name, requested)
-				logger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
+				logger.Errorf("Deprecated APIs are disabled by %s=%s", platform.EnvDeprecationMode, platform.ModeError)
 				return buildpackAPIError(kind, name, requested)
-			case DeprecationModeWarn:
+			case platform.ModeWarn:
 				logger.Warnf("%s '%s' requests deprecated API '%s'", kind, name, requested)
 			default:
 				logger.Warnf("%s '%s' requests deprecated API '%s'", kind, name, requested)
@@ -54,31 +48,28 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 func buildpackAPIError(moduleKind string, name string, requested string) error {
 	return FailErrCode(
 		fmt.Errorf("set API for %s '%s': buildpack API version '%s' is incompatible with the lifecycle", moduleKind, name, requested),
-		CodeIncompatibleBuildpackAPI,
+		platform.CodeForIncompatibleBuildpackAPI,
 	)
 }
 
-func VerifyPlatformAPI(requested string) error {
+func VerifyPlatformAPI(requested string, logger log.Logger) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
-		return FailErrCode(
-			fmt.Errorf("parse platform API '%s'", requested),
-			CodeIncompatiblePlatformAPI,
-		)
+		return platformAPIError(requested)
 	}
 	if api.Platform.IsSupported(requestedAPI) {
 		if api.Platform.IsDeprecated(requestedAPI) {
 			switch DeprecationMode {
-			case DeprecationModeQuiet:
+			case platform.ModeQuiet:
 				break
-			case DeprecationModeError:
-				DefaultLogger.Errorf("Platform requested deprecated API '%s'", requested)
-				DefaultLogger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
+			case platform.ModeError:
+				logger.Errorf("Platform requested deprecated API '%s'", requested)
+				logger.Errorf("Deprecated APIs are disabled by %s=%s", platform.EnvDeprecationMode, platform.ModeError)
 				return platformAPIError(requested)
-			case DeprecationModeWarn:
-				DefaultLogger.Warnf("Platform requested deprecated API '%s'", requested)
+			case platform.ModeWarn:
+				logger.Warnf("Platform requested deprecated API '%s'", requested)
 			default:
-				DefaultLogger.Warnf("Platform requested deprecated API '%s'", requested)
+				logger.Warnf("Platform requested deprecated API '%s'", requested)
 			}
 		}
 		return nil
@@ -89,6 +80,6 @@ func VerifyPlatformAPI(requested string) error {
 func platformAPIError(requested string) error {
 	return FailErrCode(
 		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requested),
-		CodeIncompatiblePlatformAPI,
+		platform.CodeForIncompatiblePlatformAPI,
 	)
 }

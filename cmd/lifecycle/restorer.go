@@ -53,17 +53,17 @@ func (r *restoreCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (r *restoreCmd) Args(nargs int, args []string) error {
 	if nargs > 0 {
-		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	if r.cacheImageTag == "" && r.cacheDir == "" {
 		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")
 	}
 
-	if r.groupPath == cmd.PlaceholderGroupPath {
+	if r.groupPath == platform.PlaceholderGroupPath {
 		r.groupPath = cmd.DefaultGroupPath(r.platform.API().String(), r.layersDir)
 	}
 
-	if r.analyzedPath == cmd.PlaceholderAnalyzedPath {
+	if r.analyzedPath == platform.PlaceholderAnalyzedPath {
 		r.analyzedPath = cmd.DefaultAnalyzedPath(r.platform.API().String(), r.layersDir)
 	}
 

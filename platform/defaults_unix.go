@@ -4,5 +4,6 @@
 package platform
 
 const (
+	execExt = ""
 	rootDir = "/"
 )

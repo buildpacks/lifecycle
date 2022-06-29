@@ -44,14 +44,14 @@ func (b *buildCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (b *buildCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 
-	if b.groupPath == cmd.PlaceholderGroupPath {
+	if b.groupPath == platform.PlaceholderGroupPath {
 		b.groupPath = cmd.DefaultGroupPath(b.platform.API().String(), b.layersDir)
 	}
 
-	if b.planPath == cmd.PlaceholderPlanPath {
+	if b.planPath == platform.PlaceholderPlanPath {
 		b.planPath = cmd.DefaultPlanPath(b.platform.API().String(), b.layersDir)
 	}
 

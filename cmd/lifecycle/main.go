@@ -29,8 +29,8 @@ type Platform interface {
 }
 
 func main() {
-	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
+	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
 		cmd.Exit(err)
 	}
 
@@ -53,7 +53,7 @@ func main() {
 		cmd.Run(&createCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
-			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
 		}
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
@@ -80,7 +80,7 @@ func subcommand(p Platform) {
 	case "create":
 		cmd.Run(&createCmd{platform: p}, true)
 	default:
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
+		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
 	}
 }
 

@@ -10,12 +10,6 @@ import (
 const (
 	EnvExperimentalMode = "CNB_PLATFORM_EXPERIMENTAL_FEATURES"
 
-	DefaultExperimentalMode = ExperimentalModeWarn
-
-	ExperimentalModeQuiet = "quiet"
-	ExperimentalModeWarn  = "warn"
-	ExperimentalModeError = "error"
-
 	FeatureDockerfiles = "Dockerfiles"
 )
 
@@ -23,13 +17,13 @@ var ExperimentalMode = envOrDefault(EnvExperimentalMode, DefaultExperimentalMode
 
 func GuardExperimental(requested string, logger log.Logger) error {
 	switch ExperimentalMode {
-	case ExperimentalModeQuiet:
+	case ModeQuiet:
 		break
-	case ExperimentalModeError:
+	case ModeError:
 		logger.Errorf("Platform requested experimental feature '%s'", requested)
-		logger.Errorf("Experimental features are disabled by %s=%s", EnvExperimentalMode, ExperimentalModeError)
+		logger.Errorf("Experimental features are disabled by %s=%s", EnvExperimentalMode, ModeError)
 		return errors.New("experimental feature")
-	case ExperimentalModeWarn:
+	case ModeWarn:
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
 	default:
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
