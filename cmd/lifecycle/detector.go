@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -21,24 +22,24 @@ type detectCmd struct {
 func (d *detectCmd) DefineFlags() {
 	switch {
 	case d.platform.API().AtLeast("0.10"):
-		cmd.FlagAnalyzedPath(&d.AnalyzedPath)
-		cmd.FlagAppDir(&d.AppDir)
-		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
-		cmd.FlagExtensionsDir(&d.ExtensionsDir)
-		cmd.FlagGroupPath(&d.GroupPath)
-		cmd.FlagLayersDir(&d.LayersDir)
-		cmd.FlagOrderPath(&d.OrderPath)
-		cmd.FlagOutputDir(&d.OutputDir)
-		cmd.FlagPlanPath(&d.PlanPath)
-		cmd.FlagPlatformDir(&d.PlatformDir)
+		cli.FlagAnalyzedPath(&d.AnalyzedPath)
+		cli.FlagAppDir(&d.AppDir)
+		cli.FlagBuildpacksDir(&d.BuildpacksDir)
+		cli.FlagExtensionsDir(&d.ExtensionsDir)
+		cli.FlagGroupPath(&d.GroupPath)
+		cli.FlagLayersDir(&d.LayersDir)
+		cli.FlagOrderPath(&d.OrderPath)
+		cli.FlagOutputDir(&d.OutputDir)
+		cli.FlagPlanPath(&d.PlanPath)
+		cli.FlagPlatformDir(&d.PlatformDir)
 	default:
-		cmd.FlagAppDir(&d.AppDir)
-		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
-		cmd.FlagGroupPath(&d.GroupPath)
-		cmd.FlagLayersDir(&d.LayersDir)
-		cmd.FlagOrderPath(&d.OrderPath)
-		cmd.FlagPlanPath(&d.PlanPath)
-		cmd.FlagPlatformDir(&d.PlatformDir)
+		cli.FlagAppDir(&d.AppDir)
+		cli.FlagBuildpacksDir(&d.BuildpacksDir)
+		cli.FlagGroupPath(&d.GroupPath)
+		cli.FlagLayersDir(&d.LayersDir)
+		cli.FlagOrderPath(&d.OrderPath)
+		cli.FlagPlanPath(&d.PlanPath)
+		cli.FlagPlatformDir(&d.PlatformDir)
 	}
 }
 

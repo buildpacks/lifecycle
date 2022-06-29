@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -13,11 +14,11 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	platform "github.com/buildpacks/lifecycle/platform/launch"
 )
 
 func RunLaunch() error {
-	color.Disable(cmd.BoolEnv(platform.EnvNoColor))
+	color.Disable(boolEnv(platform.EnvNoColor))
 
 	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
 	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
@@ -53,6 +54,15 @@ func RunLaunch() error {
 		return cmd.FailErrCode(err, p.CodeFor(platform.LaunchError), "launch")
 	}
 	return nil
+}
+
+func boolEnv(k string) bool {
+	v := os.Getenv(k)
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return b
 }
 
 func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) string {

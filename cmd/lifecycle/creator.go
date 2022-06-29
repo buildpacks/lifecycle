@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
@@ -51,26 +52,26 @@ type createCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
-	cmd.FlagAppDir(&c.appDir)
-	cmd.FlagBuildpacksDir(&c.buildpacksDir)
-	cmd.FlagCacheDir(&c.cacheDir)
-	cmd.FlagCacheImage(&c.cacheImageRef)
-	cmd.FlagGID(&c.gid)
-	cmd.FlagLaunchCacheDir(&c.launchCacheDir)
-	cmd.FlagLauncherPath(&c.launcherPath)
-	cmd.FlagLayersDir(&c.layersDir)
-	cmd.FlagOrderPath(&c.orderPath)
-	cmd.FlagPlatformDir(&c.platformDir)
-	cmd.FlagPreviousImage(&c.previousImageRef)
-	cmd.FlagReportPath(&c.reportPath)
-	cmd.FlagRunImage(&c.runImageRef)
-	cmd.FlagSkipRestore(&c.skipRestore)
-	cmd.FlagStackPath(&c.stackPath)
-	cmd.FlagUID(&c.uid)
-	cmd.FlagUseDaemon(&c.useDaemon)
-	cmd.FlagTags(&c.additionalTags)
-	cmd.FlagProjectMetadataPath(&c.projectMetadataPath)
-	cmd.FlagProcessType(&c.processType)
+	cli.FlagAppDir(&c.appDir)
+	cli.FlagBuildpacksDir(&c.buildpacksDir)
+	cli.FlagCacheDir(&c.cacheDir)
+	cli.FlagCacheImage(&c.cacheImageRef)
+	cli.FlagGID(&c.gid)
+	cli.FlagLaunchCacheDir(&c.launchCacheDir)
+	cli.FlagLauncherPath(&c.launcherPath)
+	cli.FlagLayersDir(&c.layersDir)
+	cli.FlagOrderPath(&c.orderPath)
+	cli.FlagPlatformDir(&c.platformDir)
+	cli.FlagPreviousImage(&c.previousImageRef)
+	cli.FlagReportPath(&c.reportPath)
+	cli.FlagRunImage(&c.runImageRef)
+	cli.FlagSkipRestore(&c.skipRestore)
+	cli.FlagStackPath(&c.stackPath)
+	cli.FlagUID(&c.uid)
+	cli.FlagUseDaemon(&c.useDaemon)
+	cli.FlagTags(&c.additionalTags)
+	cli.FlagProjectMetadataPath(&c.projectMetadataPath)
+	cli.FlagProcessType(&c.processType)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -98,15 +99,15 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	}
 
 	if c.projectMetadataPath == platform.PlaceholderProjectMetadataPath {
-		c.projectMetadataPath = cmd.DefaultProjectMetadataPath(c.platform.API().String(), c.layersDir)
+		c.projectMetadataPath = cli.DefaultProjectMetadataPath(c.platform.API().String(), c.layersDir)
 	}
 
 	if c.reportPath == platform.PlaceholderReportPath {
-		c.reportPath = cmd.DefaultReportPath(c.platform.API().String(), c.layersDir)
+		c.reportPath = cli.DefaultReportPath(c.platform.API().String(), c.layersDir)
 	}
 
 	if c.orderPath == platform.PlaceholderOrderPath {
-		c.orderPath = cmd.DefaultOrderPath(c.platform.API().String(), c.layersDir)
+		c.orderPath = cli.DefaultOrderPath(c.platform.API().String(), c.layersDir)
 	}
 
 	var err error

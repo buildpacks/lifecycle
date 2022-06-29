@@ -8,8 +8,6 @@ import (
 )
 
 const (
-	EnvExperimentalMode = "CNB_PLATFORM_EXPERIMENTAL_FEATURES"
-
 	FeatureDockerfiles = "Dockerfiles"
 )
 

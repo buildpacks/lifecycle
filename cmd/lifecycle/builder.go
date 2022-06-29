@@ -8,6 +8,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
@@ -33,12 +34,12 @@ type buildArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (b *buildCmd) DefineFlags() {
-	cmd.FlagBuildpacksDir(&b.buildpacksDir)
-	cmd.FlagGroupPath(&b.groupPath)
-	cmd.FlagPlanPath(&b.planPath)
-	cmd.FlagLayersDir(&b.layersDir)
-	cmd.FlagAppDir(&b.appDir)
-	cmd.FlagPlatformDir(&b.platformDir)
+	cli.FlagBuildpacksDir(&b.buildpacksDir)
+	cli.FlagGroupPath(&b.groupPath)
+	cli.FlagPlanPath(&b.planPath)
+	cli.FlagLayersDir(&b.layersDir)
+	cli.FlagAppDir(&b.appDir)
+	cli.FlagPlatformDir(&b.platformDir)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -48,11 +49,11 @@ func (b *buildCmd) Args(nargs int, args []string) error {
 	}
 
 	if b.groupPath == platform.PlaceholderGroupPath {
-		b.groupPath = cmd.DefaultGroupPath(b.platform.API().String(), b.layersDir)
+		b.groupPath = cli.DefaultGroupPath(b.platform.API().String(), b.layersDir)
 	}
 
 	if b.planPath == platform.PlaceholderPlanPath {
-		b.planPath = cmd.DefaultPlanPath(b.platform.API().String(), b.layersDir)
+		b.planPath = cli.DefaultPlanPath(b.platform.API().String(), b.layersDir)
 	}
 
 	return nil

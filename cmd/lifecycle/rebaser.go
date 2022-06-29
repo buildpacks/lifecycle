@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
@@ -39,13 +40,13 @@ type rebaseCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *rebaseCmd) DefineFlags() {
-	cmd.FlagGID(&r.gid)
-	cmd.FlagReportPath(&r.reportPath)
-	cmd.FlagRunImage(&r.runImageRef)
-	cmd.FlagUID(&r.uid)
-	cmd.FlagUseDaemon(&r.useDaemon)
+	cli.FlagGID(&r.gid)
+	cli.FlagReportPath(&r.reportPath)
+	cli.FlagRunImage(&r.runImageRef)
+	cli.FlagUID(&r.uid)
+	cli.FlagUseDaemon(&r.useDaemon)
 
-	cmd.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
+	cli.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -66,7 +67,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 
 	if r.reportPath == platform.PlaceholderReportPath {
-		r.reportPath = cmd.DefaultReportPath(r.platform.API().String(), "")
+		r.reportPath = cli.DefaultReportPath(r.platform.API().String(), "")
 	}
 
 	if err := r.setAppImage(); err != nil {

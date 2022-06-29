@@ -7,12 +7,15 @@ import (
 )
 
 const (
-	CodeForFailed = 1 // CodeForFailed indicates generic lifecycle error
+	CodeForFailed = 1
 	// 2: reserved
 	CodeForInvalidArgs = 3
 	// 4: CodeForInvalidEnv
 	// 5: CodeForNotFound
 	// 9: CodeForFailedUpdate
+
+	CodeForIncompatiblePlatformAPI  = 11
+	CodeForIncompatibleBuildpackAPI = 12
 )
 
 type ErrorFail struct {

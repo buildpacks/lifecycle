@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"flag"
@@ -14,7 +14,7 @@ import (
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
 
 func FlagAnalyzedPath(analyzedPath *string) {
-	flagSet.StringVar(analyzedPath, "analyzed", EnvOrDefault(platform.EnvAnalyzedPath, platform.PlaceholderAnalyzedPath), "path to analyzed.toml")
+	flagSet.StringVar(analyzedPath, "analyzed", envOrDefault(platform.EnvAnalyzedPath, platform.PlaceholderAnalyzedPath), "path to analyzed.toml")
 }
 
 func DefaultAnalyzedPath(platformAPI, layersDir string) string {
@@ -22,11 +22,11 @@ func DefaultAnalyzedPath(platformAPI, layersDir string) string {
 }
 
 func FlagAppDir(appDir *string) {
-	flagSet.StringVar(appDir, "app", EnvOrDefault(platform.EnvAppDir, platform.DefaultAppDir), "path to app directory")
+	flagSet.StringVar(appDir, "app", envOrDefault(platform.EnvAppDir, platform.DefaultAppDir), "path to app directory")
 }
 
 func FlagBuildpacksDir(buildpacksDir *string) {
-	flagSet.StringVar(buildpacksDir, "buildpacks", EnvOrDefault(platform.EnvBuildpacksDir, platform.DefaultBuildpacksDir), "path to buildpacks directory")
+	flagSet.StringVar(buildpacksDir, "buildpacks", envOrDefault(platform.EnvBuildpacksDir, platform.DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
 func FlagCacheDir(cacheDir *string) {
@@ -38,7 +38,7 @@ func FlagCacheImage(cacheImage *string) {
 }
 
 func FlagExtensionsDir(extensionsDir *string) {
-	flagSet.StringVar(extensionsDir, "extensions", EnvOrDefault(platform.EnvExtensionsDir, platform.DefaultExtensionsDir), "path to extensions directory")
+	flagSet.StringVar(extensionsDir, "extensions", envOrDefault(platform.EnvExtensionsDir, platform.DefaultExtensionsDir), "path to extensions directory")
 }
 
 func FlagGID(gid *int) {
@@ -46,7 +46,7 @@ func FlagGID(gid *int) {
 }
 
 func FlagGroupPath(groupPath *string) {
-	flagSet.StringVar(groupPath, "group", EnvOrDefault(platform.EnvGroupPath, platform.PlaceholderGroupPath), "path to group.toml")
+	flagSet.StringVar(groupPath, "group", envOrDefault(platform.EnvGroupPath, platform.PlaceholderGroupPath), "path to group.toml")
 }
 
 func DefaultGroupPath(platformAPI, layersDir string) string {
@@ -62,7 +62,7 @@ func FlagLauncherPath(launcherPath *string) {
 }
 
 func FlagLayersDir(layersDir *string) {
-	flagSet.StringVar(layersDir, "layers", EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir), "path to layers directory")
+	flagSet.StringVar(layersDir, "layers", envOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir), "path to layers directory")
 }
 
 func FlagNoColor(skip *bool) {
@@ -70,11 +70,11 @@ func FlagNoColor(skip *bool) {
 }
 
 func FlagOrderPath(orderPath *string) {
-	flagSet.StringVar(orderPath, "order", EnvOrDefault(platform.EnvOrderPath, platform.PlaceholderOrderPath), "path to order.toml")
+	flagSet.StringVar(orderPath, "order", envOrDefault(platform.EnvOrderPath, platform.PlaceholderOrderPath), "path to order.toml")
 }
 
 func FlagOutputDir(dir *string) {
-	flagSet.StringVar(dir, "output-dir", EnvOrDefault(platform.EnvOutputDir, platform.DefaultOutputDir), "path to output directory")
+	flagSet.StringVar(dir, "output-dir", envOrDefault(platform.EnvOutputDir, platform.DefaultOutputDir), "path to output directory")
 }
 
 func DefaultOrderPath(platformAPI, layersDir string) string {
@@ -94,7 +94,7 @@ func DefaultOrderPath(platformAPI, layersDir string) string {
 }
 
 func FlagPlanPath(planPath *string) {
-	flagSet.StringVar(planPath, "plan", EnvOrDefault(platform.EnvPlanPath, platform.PlaceholderPlanPath), "path to plan.toml")
+	flagSet.StringVar(planPath, "plan", envOrDefault(platform.EnvPlanPath, platform.PlaceholderPlanPath), "path to plan.toml")
 }
 
 func DefaultPlanPath(platformAPI, layersDir string) string {
@@ -102,7 +102,7 @@ func DefaultPlanPath(platformAPI, layersDir string) string {
 }
 
 func FlagPlatformDir(platformDir *string) {
-	flagSet.StringVar(platformDir, "platform", EnvOrDefault(platform.EnvPlatformDir, platform.DefaultPlatformDir), "path to platform directory")
+	flagSet.StringVar(platformDir, "platform", envOrDefault(platform.EnvPlatformDir, platform.DefaultPlatformDir), "path to platform directory")
 }
 
 func FlagPreviousImage(image *string) {
@@ -110,7 +110,7 @@ func FlagPreviousImage(image *string) {
 }
 
 func FlagReportPath(reportPath *string) {
-	flagSet.StringVar(reportPath, "report", EnvOrDefault(platform.EnvReportPath, platform.PlaceholderReportPath), "path to report.toml")
+	flagSet.StringVar(reportPath, "report", envOrDefault(platform.EnvReportPath, platform.PlaceholderReportPath), "path to report.toml")
 }
 
 func DefaultReportPath(platformAPI, layersDir string) string {
@@ -130,7 +130,7 @@ func FlagSkipRestore(skip *bool) {
 }
 
 func FlagStackPath(stackPath *string) {
-	flagSet.StringVar(stackPath, "stack", EnvOrDefault(platform.EnvStackPath, platform.DefaultStackPath), "path to stack.toml")
+	flagSet.StringVar(stackPath, "stack", envOrDefault(platform.EnvStackPath, platform.DefaultStackPath), "path to stack.toml")
 }
 
 func FlagTags(tags *str.Slice) {
@@ -150,11 +150,11 @@ func FlagVersion(version *bool) {
 }
 
 func FlagLogLevel(level *string) {
-	flagSet.StringVar(level, "log-level", EnvOrDefault(platform.EnvLogLevel, platform.DefaultLogLevel), "logging level")
+	flagSet.StringVar(level, "log-level", envOrDefault(platform.EnvLogLevel, platform.DefaultLogLevel), "logging level")
 }
 
 func FlagProjectMetadataPath(projectMetadataPath *string) {
-	flagSet.StringVar(projectMetadataPath, "project-metadata", EnvOrDefault(platform.EnvProjectMetadataPath, platform.PlaceholderProjectMetadataPath), "path to project-metadata.toml")
+	flagSet.StringVar(projectMetadataPath, "project-metadata", envOrDefault(platform.EnvProjectMetadataPath, platform.PlaceholderProjectMetadataPath), "path to project-metadata.toml")
 }
 
 func DefaultProjectMetadataPath(platformAPI, layersDir string) string {
@@ -192,7 +192,7 @@ func BoolEnv(k string) bool {
 	return b
 }
 
-func EnvOrDefault(key string, defaultVal string) string {
+func envOrDefault(key string, defaultVal string) string {
 	if envVal := os.Getenv(key); envVal != "" {
 		return envVal
 	}

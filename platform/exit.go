@@ -4,10 +4,6 @@ type LifecycleExitError int
 
 const (
 	CodeForFailed = 1
-
-	// API errors
-	CodeForIncompatiblePlatformAPI  = 11
-	CodeForIncompatibleBuildpackAPI = 12
 )
 
 const (
@@ -23,7 +19,6 @@ const (
 	LaunchError                                        // generic launch error
 	FailedGenerateWithErrors                           // extension error during /bin/generate
 	GenerateError                                      // generic generate error
-
 )
 
 type Exiter interface {

@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
@@ -70,24 +71,24 @@ type exportArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
-	cmd.FlagAnalyzedPath(&e.analyzedPath)
-	cmd.FlagAppDir(&e.appDir)
-	cmd.FlagCacheDir(&e.cacheDir)
-	cmd.FlagCacheImage(&e.cacheImageTag)
-	cmd.FlagGID(&e.gid)
-	cmd.FlagGroupPath(&e.groupPath)
-	cmd.FlagLaunchCacheDir(&e.launchCacheDir)
-	cmd.FlagLauncherPath(&e.launcherPath)
-	cmd.FlagLayersDir(&e.layersDir)
-	cmd.FlagProcessType(&e.processType)
-	cmd.FlagProjectMetadataPath(&e.projectMetadataPath)
-	cmd.FlagReportPath(&e.reportPath)
-	cmd.FlagRunImage(&e.runImageRef)
-	cmd.FlagStackPath(&e.stackPath)
-	cmd.FlagUID(&e.uid)
-	cmd.FlagUseDaemon(&e.useDaemon)
+	cli.FlagAnalyzedPath(&e.analyzedPath)
+	cli.FlagAppDir(&e.appDir)
+	cli.FlagCacheDir(&e.cacheDir)
+	cli.FlagCacheImage(&e.cacheImageTag)
+	cli.FlagGID(&e.gid)
+	cli.FlagGroupPath(&e.groupPath)
+	cli.FlagLaunchCacheDir(&e.launchCacheDir)
+	cli.FlagLauncherPath(&e.launcherPath)
+	cli.FlagLayersDir(&e.layersDir)
+	cli.FlagProcessType(&e.processType)
+	cli.FlagProjectMetadataPath(&e.projectMetadataPath)
+	cli.FlagReportPath(&e.reportPath)
+	cli.FlagRunImage(&e.runImageRef)
+	cli.FlagStackPath(&e.stackPath)
+	cli.FlagUID(&e.uid)
+	cli.FlagUseDaemon(&e.useDaemon)
 
-	cmd.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
+	cli.DeprecatedFlagRunImage(&e.deprecatedRunImageRef)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -115,19 +116,19 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 
 	if e.analyzedPath == platform.PlaceholderAnalyzedPath {
-		e.analyzedPath = cmd.DefaultAnalyzedPath(e.platform.API().String(), e.layersDir)
+		e.analyzedPath = cli.DefaultAnalyzedPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.groupPath == platform.PlaceholderGroupPath {
-		e.groupPath = cmd.DefaultGroupPath(e.platform.API().String(), e.layersDir)
+		e.groupPath = cli.DefaultGroupPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.projectMetadataPath == platform.PlaceholderProjectMetadataPath {
-		e.projectMetadataPath = cmd.DefaultProjectMetadataPath(e.platform.API().String(), e.layersDir)
+		e.projectMetadataPath = cli.DefaultProjectMetadataPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.reportPath == platform.PlaceholderReportPath {
-		e.reportPath = cmd.DefaultReportPath(e.platform.API().String(), e.layersDir)
+		e.reportPath = cli.DefaultReportPath(e.platform.API().String(), e.layersDir)
 	}
 
 	if e.deprecatedRunImageRef != "" {

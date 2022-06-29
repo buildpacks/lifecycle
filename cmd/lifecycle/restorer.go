@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -38,15 +39,15 @@ type restoreArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
-	cmd.FlagCacheDir(&r.cacheDir)
-	cmd.FlagCacheImage(&r.cacheImageTag)
-	cmd.FlagGroupPath(&r.groupPath)
-	cmd.FlagLayersDir(&r.layersDir)
-	cmd.FlagUID(&r.uid)
-	cmd.FlagGID(&r.gid)
+	cli.FlagCacheDir(&r.cacheDir)
+	cli.FlagCacheImage(&r.cacheImageTag)
+	cli.FlagGroupPath(&r.groupPath)
+	cli.FlagLayersDir(&r.layersDir)
+	cli.FlagUID(&r.uid)
+	cli.FlagGID(&r.gid)
 	if r.restoresLayerMetadata() {
-		cmd.FlagAnalyzedPath(&r.analyzedPath)
-		cmd.FlagSkipLayers(&r.skipLayers)
+		cli.FlagAnalyzedPath(&r.analyzedPath)
+		cli.FlagSkipLayers(&r.skipLayers)
 	}
 }
 
@@ -60,11 +61,11 @@ func (r *restoreCmd) Args(nargs int, args []string) error {
 	}
 
 	if r.groupPath == platform.PlaceholderGroupPath {
-		r.groupPath = cmd.DefaultGroupPath(r.platform.API().String(), r.layersDir)
+		r.groupPath = cli.DefaultGroupPath(r.platform.API().String(), r.layersDir)
 	}
 
 	if r.analyzedPath == platform.PlaceholderAnalyzedPath {
-		r.analyzedPath = cmd.DefaultAnalyzedPath(r.platform.API().String(), r.layersDir)
+		r.analyzedPath = cli.DefaultAnalyzedPath(r.platform.API().String(), r.layersDir)
 	}
 
 	return nil
