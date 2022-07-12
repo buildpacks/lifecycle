@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	EnvExperimentalMode = "CNB_PLATFORM_EXPERIMENTAL_FEATURES"
+	EnvExperimentalMode = "CNB_EXPERIMENTAL_MODE"
 
 	DefaultExperimentalMode = ExperimentalModeWarn
 
