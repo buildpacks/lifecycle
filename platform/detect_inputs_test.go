@@ -89,44 +89,60 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("latest platform api(s)", func() {
+		when("platform api > 0.9", func() {
+			it.Before(func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "")
+			})
+
+			layersDir := filepath.Join("testdata", "layers")
+
+			it("writes analyzed.toml at the layers directory", func() {
+				inputs := platform.DetectInputs{
+					AnalyzedPath: platform.PlaceholderAnalyzedPath,
+					LayersDir:    layersDir,
+				}
+				ret, err := resolver.ResolveDetect(inputs)
+				h.AssertNil(t, err)
+				h.AssertEq(t, ret.AnalyzedPath, filepath.Join(layersDir, "analyzed.toml"))
+			})
+		})
+
+		when("platform api > 0.5", func() {
 			it.Before(func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.6"), "")
 			})
 
-			when("layers directory is provided", func() {
-				layersDir := filepath.Join("testdata", "layers")
+			layersDir := filepath.Join("testdata", "layers")
 
-				when("<layers>/order.toml is present", func() {
-					it("uses order.toml at the layers directory and writes group.toml and plan.toml at the layers directory", func() {
-						inputs := platform.DetectInputs{
-							GroupPath: platform.PlaceholderGroupPath,
-							LayersDir: layersDir,
-							OrderPath: platform.PlaceholderOrderPath,
-							PlanPath:  platform.PlaceholderPlanPath,
-						}
-						ret, err := resolver.ResolveDetect(inputs)
-						h.AssertNil(t, err)
-						h.AssertEq(t, ret.OrderPath, filepath.Join(layersDir, "order.toml"))
-						h.AssertEq(t, ret.GroupPath, filepath.Join(layersDir, "group.toml"))
-						h.AssertEq(t, ret.PlanPath, filepath.Join(layersDir, "plan.toml"))
-					})
+			when("<layers>/order.toml is present", func() {
+				it("uses order.toml at the layers directory and writes group.toml and plan.toml at the layers directory", func() {
+					inputs := platform.DetectInputs{
+						GroupPath: platform.PlaceholderGroupPath,
+						LayersDir: layersDir,
+						OrderPath: platform.PlaceholderOrderPath,
+						PlanPath:  platform.PlaceholderPlanPath,
+					}
+					ret, err := resolver.ResolveDetect(inputs)
+					h.AssertNil(t, err)
+					h.AssertEq(t, ret.OrderPath, filepath.Join(layersDir, "order.toml"))
+					h.AssertEq(t, ret.GroupPath, filepath.Join(layersDir, "group.toml"))
+					h.AssertEq(t, ret.PlanPath, filepath.Join(layersDir, "plan.toml"))
 				})
+			})
 
-				when("<layers>/order.toml is not present", func() {
-					it("uses /cnb/order.toml and writes group.toml and plan.toml at the layers directory", func() {
-						inputs := platform.DetectInputs{
-							GroupPath: platform.PlaceholderGroupPath,
-							LayersDir: "some-layers-dir",
-							OrderPath: platform.PlaceholderOrderPath,
-							PlanPath:  platform.PlaceholderPlanPath,
-						}
-						ret, err := resolver.ResolveDetect(inputs)
-						h.AssertNil(t, err)
-						h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
-						h.AssertEq(t, ret.GroupPath, filepath.Join("some-layers-dir", "group.toml"))
-						h.AssertEq(t, ret.PlanPath, filepath.Join("some-layers-dir", "plan.toml"))
-					})
+			when("<layers>/order.toml is not present", func() {
+				it("uses /cnb/order.toml and writes group.toml and plan.toml at the layers directory", func() {
+					inputs := platform.DetectInputs{
+						GroupPath: platform.PlaceholderGroupPath,
+						LayersDir: "some-layers-dir",
+						OrderPath: platform.PlaceholderOrderPath,
+						PlanPath:  platform.PlaceholderPlanPath,
+					}
+					ret, err := resolver.ResolveDetect(inputs)
+					h.AssertNil(t, err)
+					h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
+					h.AssertEq(t, ret.GroupPath, filepath.Join("some-layers-dir", "group.toml"))
+					h.AssertEq(t, ret.PlanPath, filepath.Join("some-layers-dir", "plan.toml"))
 				})
 			})
 		})
@@ -136,22 +152,20 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.SkipIf(t, !api.MustParse(platformAPI).Equal(api.MustParse("0.5")), "")
 			})
 
-			when("layers directory is provided", func() {
-				layersDir := filepath.Join("testdata", "layers")
+			layersDir := filepath.Join("testdata", "layers")
 
-				it("uses /cnb/order.toml and writes group.toml and plan.toml at the layers directory", func() {
-					inputs := platform.DetectInputs{
-						GroupPath: platform.PlaceholderGroupPath,
-						LayersDir: layersDir,
-						OrderPath: platform.PlaceholderOrderPath,
-						PlanPath:  platform.PlaceholderPlanPath,
-					}
-					ret, err := resolver.ResolveDetect(inputs)
-					h.AssertNil(t, err)
-					h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
-					h.AssertEq(t, ret.GroupPath, filepath.Join(layersDir, "group.toml"))
-					h.AssertEq(t, ret.PlanPath, filepath.Join(layersDir, "plan.toml"))
-				})
+			it("uses /cnb/order.toml and writes group.toml and plan.toml at the layers directory", func() {
+				inputs := platform.DetectInputs{
+					GroupPath: platform.PlaceholderGroupPath,
+					LayersDir: layersDir,
+					OrderPath: platform.PlaceholderOrderPath,
+					PlanPath:  platform.PlaceholderPlanPath,
+				}
+				ret, err := resolver.ResolveDetect(inputs)
+				h.AssertNil(t, err)
+				h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
+				h.AssertEq(t, ret.GroupPath, filepath.Join(layersDir, "group.toml"))
+				h.AssertEq(t, ret.PlanPath, filepath.Join(layersDir, "plan.toml"))
 			})
 		})
 
@@ -160,19 +174,17 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.5"), "")
 			})
 
-			when("layers directory is provided", func() {
-				it("uses /cnb/order.toml and writes group.toml and plan.toml at the working directory", func() {
-					inputs := platform.DetectInputs{
-						GroupPath: platform.PlaceholderGroupPath,
-						LayersDir: "some-layers-dir",
-						OrderPath: platform.PlaceholderOrderPath,
-						PlanPath:  platform.PlaceholderPlanPath}
-					ret, err := resolver.ResolveDetect(inputs)
-					h.AssertNil(t, err)
-					h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
-					h.AssertEq(t, ret.GroupPath, filepath.Join(".", "group.toml"))
-					h.AssertEq(t, ret.PlanPath, filepath.Join(".", "plan.toml"))
-				})
+			it("uses /cnb/order.toml and writes group.toml and plan.toml at the working directory", func() {
+				inputs := platform.DetectInputs{
+					GroupPath: platform.PlaceholderGroupPath,
+					LayersDir: "some-layers-dir",
+					OrderPath: platform.PlaceholderOrderPath,
+					PlanPath:  platform.PlaceholderPlanPath}
+				ret, err := resolver.ResolveDetect(inputs)
+				h.AssertNil(t, err)
+				h.AssertStringContains(t, ret.OrderPath, filepath.Join("cnb", "order.toml"))
+				h.AssertEq(t, ret.GroupPath, filepath.Join(".", "group.toml"))
+				h.AssertEq(t, ret.PlanPath, filepath.Join(".", "plan.toml"))
 			})
 		})
 	}

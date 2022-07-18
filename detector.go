@@ -78,13 +78,13 @@ func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, log
 func (f *DetectorFactory) setOrder(detector *Detector, path string, logger log.Logger) error {
 	orderBp, orderExt, err := f.configHandler.ReadOrder(path)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "reading order")
 	}
 	if len(orderExt) > 0 {
 		detector.HasExtensions = true
 	}
 	if err = f.verifyAPIs(orderBp, orderExt, logger); err != nil {
-		return err
+		return errors.Wrap(err, "verifying apis")
 	}
 	detector.Order = PrependExtensions(orderBp, orderExt)
 	return nil
@@ -95,10 +95,10 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 		for _, groupEl := range group.Group {
 			module, err := f.dirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "looking up module")
 			}
 			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.ConfigFile().API, logger); err != nil {
-				return err
+				return errors.Wrap(err, "verifying module api")
 			}
 		}
 	}

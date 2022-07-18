@@ -38,6 +38,9 @@ func (r *InputsResolver) ResolveDetect(inputs DetectInputs) (DetectInputs, error
 }
 
 func (r *InputsResolver) fillDetectDefaultFilePaths(inputs *DetectInputs) {
+	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
+		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, r.platformAPI)
+	}
 	if inputs.GroupPath == PlaceholderGroupPath {
 		inputs.GroupPath = defaultPath(PlaceholderGroupPath, inputs.LayersDir, r.platformAPI)
 	}

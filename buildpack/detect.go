@@ -43,7 +43,7 @@ func (d *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	_, err = os.Stat(filepath.Join(d.Dir, "bin", "detect"))
 	if d.IsExtension() && os.IsNotExist(err) {
 		// treat extension root directory as pre-populated output directory
-		planPath = filepath.Join(d.Dir, "plan.toml")
+		planPath = filepath.Join(d.Dir, "detect", "plan.toml")
 		if _, err := toml.DecodeFile(planPath, &result); err != nil && !os.IsNotExist(err) {
 			return DetectRun{Code: -1, Err: err}
 		}
