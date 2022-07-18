@@ -150,23 +150,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("cache image tag and cache directory are both blank", func() {
-			it("warns", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not warn because it does not accept a -cache-dir flag")
-				output := h.DockerRun(t,
-					analyzeImage,
-					h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
-					h.WithArgs(
-						ctrPath(analyzerPath),
-						"some-image",
-					),
-				)
-
-				expected := "Not restoring cached layer metadata, no cache flag specified."
-				h.AssertStringContains(t, output, expected)
-			})
-		})
-
 		when("the provided layers directory isn't writeable", func() {
 			it("recursively chowns the directory", func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Not relevant on Windows")
@@ -345,89 +328,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
 					h.AssertStringContains(t, analyzedMD.RunImage.Reference, analyzeRegFixtures.ReadOnlyRunImage+"@sha256:")
 				})
-
-				when("CNB_RUN_IMAGE not provided", func() {
-					it("falls back to stack.toml", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept run image")
-
-						cmd := exec.Command("docker", "run", "--rm",
-							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "CNB_REGISTRY_AUTH="+analyzeRegAuthConfig,
-							"--network", analyzeRegNetwork,
-							analyzeImage,
-							ctrPath(analyzerPath),
-							"-stack", "/cnb/platform-0.7-stack.toml", // run image is some-run-image
-							analyzeRegFixtures.SomeAppImage,
-						) // #nosec G204
-						output, err := cmd.CombinedOutput()
-						h.AssertNotNil(t, err)
-
-						h.AssertStringContains(t, string(output), "validating registry read access: ensure registry read access to some-run-image") // TODO: update some-run-image to have explicit permissions when https://github.com/buildpacks/lifecycle/pull/685 is merged
-					})
-
-					when("stack.toml not present", func() {
-						it("errors", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept run image")
-
-							cmd := exec.Command(
-								"docker", "run", "--rm",
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								analyzeImage,
-								ctrPath(analyzerPath),
-								"some-image",
-							) // #nosec G204
-							output, err := cmd.CombinedOutput()
-
-							h.AssertNotNil(t, err)
-							expected := "-run-image is required when there is no stack metadata available"
-							h.AssertStringContains(t, string(output), expected)
-						})
-					})
-				})
-
-				when("older platform", func() {
-					it("does not print log warnings", func() {
-						h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 accepts run image")
-
-						output := h.DockerRunAndCopy(t,
-							containerName,
-							copyDir,
-							ctrPath("/layers/analyzed.toml"),
-							analyzeImage,
-							h.WithFlags(
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+analyzeRegAuthConfig,
-								"--env", "CNB_RUN_IMAGE="+analyzeRegFixtures.ReadOnlyRunImage,
-								"--network", analyzeRegNetwork,
-							),
-							h.WithArgs(ctrPath(analyzerPath), analyzeRegFixtures.SomeAppImage),
-						)
-
-						h.AssertStringDoesNotContain(t, output, `no stack metadata found at path ''`)
-						h.AssertStringDoesNotContain(t, output, `Previous image with name "" not found`)
-					})
-				})
-			})
-		})
-
-		when.Pend("the provided destination tags are on different registries", func() {
-			it("errors", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not accept destination tags")
-
-				cmd := exec.Command(
-					"docker", "run", "--rm",
-					"--env", "CNB_PLATFORM_API="+platformAPI,
-					analyzeImage,
-					ctrPath(analyzerPath),
-					"-tag", "some-registry.io/some-namespace/some-image",
-					"-tag", "some-other-registry.io/some-namespace/some-image:tag",
-					"some-other-registry.io/some-namespace/some-image",
-				) // #nosec G204
-				output, err := cmd.CombinedOutput()
-
-				h.AssertNotNil(t, err)
-				expected := "writing to multiple registries is unsupported"
-				h.AssertStringContains(t, string(output), expected)
 			})
 		})
 
@@ -929,39 +829,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						})
 					})
 				})
-
-				when("no read access", func() {
-					it("throws read error accessing previous image", func() {
-						analyzeFlags := []string{"-previous-image", analyzeRegFixtures.InaccessibleImage}
-						if api.MustParse(platformAPI).AtLeast("0.7") {
-							analyzeFlags = append(analyzeFlags, []string{"-run-image", analyzeRegFixtures.ReadOnlyRunImage}...)
-						}
-
-						var execArgs []string
-						execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
-						execArgs = append(execArgs, analyzeRegFixtures.ReadWriteAppImage)
-
-						cmd := exec.Command(
-							"docker",
-							append(
-								[]string{
-									"run", "--rm",
-									"--env", "CNB_PLATFORM_API=" + platformAPI,
-									"--env", "CNB_REGISTRY_AUTH={}",
-									"--name", containerName,
-									"--network", analyzeRegNetwork,
-									analyzeImage,
-								},
-								execArgs...,
-							)...,
-						) // #nosec G204
-						output, err := cmd.CombinedOutput()
-
-						h.AssertNotNil(t, err)
-						expected := "validating registry read access: ensure registry read access to " + analyzeRegFixtures.InaccessibleImage
-						h.AssertStringContains(t, string(output), expected)
-					})
-				})
 			})
 
 			when("cache is provided", func() {
@@ -1039,28 +906,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 							assertLogsAndRestoresCacheMetadata(t, copyDir, output)
 						})
-
-						it("throws read/write error accessing cache image", func() {
-							h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not validate cache flag")
-
-							cmd := exec.Command(
-								"docker", "run", "--rm",
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_RUN_IMAGE="+analyzeRegFixtures.ReadOnlyRunImage,
-								"--name", containerName,
-								"--network", analyzeRegNetwork,
-								analyzeImage,
-								ctrPath(analyzerPath),
-								"-cache-image",
-								analyzeRegFixtures.ReadOnlyCacheImage,
-								analyzeRegFixtures.ReadOnlyAppImage,
-							) // #nosec G204
-							output, err := cmd.CombinedOutput()
-
-							h.AssertNotNil(t, err)
-							expected := "validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.ReadOnlyCacheImage
-							h.AssertStringContains(t, string(output), expected)
-						})
 					})
 				})
 
@@ -1088,7 +933,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("called with tag", func() {
-				when("have read/write access to registry", func() {
+				when("read/write access to registry", func() {
 					it("passes read/write validation and writes analyzed.toml", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not use tag flag")
 						execArgs := []string{
@@ -1114,7 +959,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 				})
 
-				when("do not have read/write access to registry", func() {
+				when("no read/write access to registry", func() {
 					it("throws read/write error accessing destination tag", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not use tag flag")
 						cmd := exec.Command(
@@ -1135,65 +980,6 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
-			})
-		})
-
-		when("layers path is provided", func() {
-			it("uses the group path at the working directory and writes analyzed.toml at the working directory", func() {
-				h.SkipIf(t,
-					api.MustParse(platformAPI).AtLeast("0.5"),
-					"Platform API 0.5 and 0.6 read and write to the provided layers directory; Platform 0.7+ does not accept a -cache-dir flag",
-				)
-
-				otherLayersDir := filepath.Join(copyDir, "other-layers")
-				layersDir := filepath.Join(copyDir, "layers")
-
-				// The working directory is set to /layers in the Dockerfile
-				h.DockerSeedRunAndCopy(t,
-					containerName,
-					cacheFixtureDir, ctrPath("/cache"),
-					otherLayersDir, ctrPath("/other-layers"),
-					analyzeImage,
-					h.WithFlags(
-						"--env", "CNB_PLATFORM_API="+platformAPI,
-					),
-					h.WithArgs(
-						ctrPath(analyzerPath),
-						"-layers", ctrPath("/other-layers"),
-						"-cache-dir", ctrPath("/cache"), // use a cache so that we can observe the effect of group.toml (since we don't have a previous image)
-						"some-image",
-					),
-				)
-				h.AssertPathExists(t, filepath.Join(otherLayersDir, "some-buildpack-id")) // some-buildpack-id is found in the working directory: /layers/group.toml
-
-				h.DockerCopyOut(t, containerName, ctrPath("/layers"), layersDir) // analyzed.toml is written at the working directory: /layers
-				assertAnalyzedMetadata(t, filepath.Join(layersDir, "analyzed.toml"))
-			})
-
-			it("uses the group path at the layers path and writes analyzed.toml at the layers path", func() {
-				h.SkipIf(t,
-					api.MustParse(platformAPI).LessThan("0.5") || api.MustParse(platformAPI).AtLeast("0.7"),
-					"Platform API < 0.5 reads and writes to the working directory; Platform 0.7+ does not accept a -cache-dir flag",
-				)
-
-				h.DockerSeedRunAndCopy(t,
-					containerName,
-					cacheFixtureDir, ctrPath("/cache"),
-					copyDir, ctrPath("/some-other-layers"),
-					analyzeImage,
-					h.WithFlags(
-						"--env", "CNB_PLATFORM_API="+platformAPI,
-					),
-					h.WithArgs(
-						ctrPath(analyzerPath),
-						"-layers", ctrPath("/some-other-layers"),
-						"-cache-dir", ctrPath("/cache"), // use a cache so that we can observe the effect of group.toml (since we don't have a previous image)
-						"some-image",
-					),
-				)
-				h.AssertPathExists(t, filepath.Join(copyDir, "some-other-layers", "another-buildpack-id")) // another-buildpack-id is found in the provided -layers directory: /some-other-layers/group.toml
-
-				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-other-layers", "analyzed.toml")) // analyzed.toml is written at the provided -layers directory: /some-other-layers
 			})
 		})
 	}
