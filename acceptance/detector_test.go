@@ -454,7 +454,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						"--rm", detectImage)
 					output, err := command.CombinedOutput()
 					h.AssertNotNil(t, err)
-					expected := "failed to initialize detector: reading buildpack order file: open /cnb/order.toml: no such file or directory"
+					expected := "failed to initialize detector: reading order: reading buildpack order file: open /cnb/order.toml: no such file or directory"
 					h.AssertStringContains(t, string(output), expected)
 				})
 			})
