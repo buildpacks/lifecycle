@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-layers_dir=$1
+output_dir=$1
 platform_dir=$2
 plan_path=$3
 
@@ -25,23 +25,7 @@ cp -a "$platform_dir/env" "build-env-${bp_id}-${bp_version}"
 cat "$plan_path" > "build-plan-in-${bp_id}-${bp_version}.toml"
 
 if [[ -f run.Dockerfile-${bp_id}-${bp_version} ]]; then
-  cat "run.Dockerfile-${bp_id}-${bp_version}" > "$layers_dir/run.Dockerfile"
-fi
-
-if [[ -f build-plan-out-${bp_id}-${bp_version}.toml ]]; then
-  cat "build-plan-out-${bp_id}-${bp_version}.toml" > "$plan_path"
-fi
-
-if [[ -f build-${bp_id}-${bp_version}.toml ]]; then
-  cat "build-${bp_id}-${bp_version}.toml" > "$layers_dir/build.toml"
-fi
-
-if [[ -f launch-${bp_id}-${bp_version}.toml ]]; then
-  cat "launch-${bp_id}-${bp_version}.toml" > "$layers_dir/launch.toml"
-fi
-
-if [[ -d layers-${bp_id}-${bp_version} ]]; then
-  cp -a "layers-${bp_id}-${bp_version}/." "$layers_dir"
+  cat "run.Dockerfile-${bp_id}-${bp_version}" > "$output_dir/run.Dockerfile"
 fi
 
 if [[ -f build-status-${bp_id}-${bp_version} ]]; then

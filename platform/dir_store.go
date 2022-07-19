@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -15,10 +16,10 @@ type DirStore struct {
 
 func NewDirStore(buildpacksDir string, extensionsDir string) (*DirStore, error) {
 	var err error
-	if buildpacksDir, err = filepath.Abs(buildpacksDir); err != nil {
+	if buildpacksDir, err = absoluteIfNotEmpty(buildpacksDir); err != nil {
 		return nil, err
 	}
-	if extensionsDir, err = filepath.Abs(extensionsDir); err != nil {
+	if extensionsDir, err = absoluteIfNotEmpty(extensionsDir); err != nil {
 		return nil, err
 	}
 	return &DirStore{buildpacksDir: buildpacksDir, extensionsDir: extensionsDir}, nil
@@ -27,9 +28,15 @@ func NewDirStore(buildpacksDir string, extensionsDir string) (*DirStore, error) 
 func (s *DirStore) Lookup(kind, id, version string) (buildpack.BuildModule, error) {
 	switch kind {
 	case buildpack.KindBuildpack:
+		if s.buildpacksDir == "" {
+			return nil, errors.New("missing buildpacks directory")
+		}
 		descriptorPath := filepath.Join(s.buildpacksDir, launch.EscapeID(id), version, "buildpack.toml")
 		return buildpack.ReadDescriptor(descriptorPath)
 	case buildpack.KindExtension:
+		if s.extensionsDir == "" {
+			return nil, errors.New("missing extensions directory")
+		}
 		descriptorPath := filepath.Join(s.extensionsDir, launch.EscapeID(id), version, "extension.toml")
 		return buildpack.ReadDescriptor(descriptorPath)
 	default:

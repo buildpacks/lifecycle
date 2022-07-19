@@ -27,8 +27,9 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
 		return FailErrCode(
-			fmt.Errorf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(kind), name),
+			nil,
 			CodeIncompatibleBuildpackAPI,
+			fmt.Sprintf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(kind), name),
 		)
 	}
 	if api.Buildpack.IsSupported(requestedAPI) {
@@ -53,8 +54,9 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 
 func buildpackAPIError(moduleKind string, name string, requested string) error {
 	return FailErrCode(
-		fmt.Errorf("set API for %s '%s': buildpack API version '%s' is incompatible with the lifecycle", moduleKind, name, requested),
+		fmt.Errorf("buildpack API version '%s' is incompatible with the lifecycle", requested),
 		CodeIncompatibleBuildpackAPI,
+		fmt.Sprintf("set API for %s '%s'", moduleKind, name),
 	)
 }
 
@@ -62,8 +64,9 @@ func VerifyPlatformAPI(requested string) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
 		return FailErrCode(
-			fmt.Errorf("parse platform API '%s'", requested),
+			nil,
 			CodeIncompatiblePlatformAPI,
+			fmt.Sprintf("parse platform API '%s'", requested),
 		)
 	}
 	if api.Platform.IsSupported(requestedAPI) {
@@ -88,7 +91,8 @@ func VerifyPlatformAPI(requested string) error {
 
 func platformAPIError(requested string) error {
 	return FailErrCode(
-		fmt.Errorf("set platform API: platform API version '%s' is incompatible with the lifecycle", requested),
+		fmt.Errorf("platform API version '%s' is incompatible with the lifecycle", requested),
 		CodeIncompatiblePlatformAPI,
+		"set platform API",
 	)
 }

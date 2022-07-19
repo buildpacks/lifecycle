@@ -78,7 +78,7 @@ func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, log
 func (f *DetectorFactory) setOrder(detector *Detector, path string, logger log.Logger) error {
 	orderBp, orderExt, err := f.configHandler.ReadOrder(path)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "reading order")
 	}
 	if len(orderExt) > 0 {
 		detector.HasExtensions = true

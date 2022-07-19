@@ -431,53 +431,6 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("build result", func() {
-						when("met requires", func() {
-							it("are derived from build.toml", func() {
-								bpPlan := buildpack.Plan{
-									Entries: []buildpack.Require{
-										{Name: "some-dep"},
-										{Name: "some-other-dep"},
-										{Name: "some-unmet-dep"},
-									},
-								}
-								h.Mkfile(t,
-									"[[unmet]]\n"+
-										`name = "some-unmet-dep"`+"\n",
-									filepath.Join(appDir, "build-A-v1.toml"),
-								)
-
-								br, err := descriptor.Build(bpPlan, config, mockEnv)
-								h.AssertNil(t, err)
-
-								h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
-							})
-
-							when("there are invalid unmet entries", func() {
-								it("errors when name is missing", func() {
-									h.Mkfile(t,
-										"[[unmet]]\n",
-										filepath.Join(appDir, "build-A-v1.toml"),
-									)
-									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-									h.AssertNotNil(t, err)
-									expected := "name is required"
-									h.AssertStringContains(t, err.Error(), expected)
-								})
-
-								it("errors when name is invalid", func() {
-									h.Mkfile(t,
-										"[[unmet]]\n"+
-											`name = "unknown-dep"`+"\n",
-										filepath.Join(appDir, "build-A-v1.toml"),
-									)
-									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-									h.AssertNotNil(t, err)
-									expected := "must match a requested dependency"
-									h.AssertStringContains(t, err.Error(), expected)
-								})
-							})
-						})
-
 						when("for buildpack", func() {
 							it.Before(func() {
 								h.SkipIf(t, kind == buildpack.KindExtension, "")
@@ -752,6 +705,53 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 								})
 							})
 
+							when("met requires", func() {
+								it("are derived from build.toml", func() {
+									bpPlan := buildpack.Plan{
+										Entries: []buildpack.Require{
+											{Name: "some-dep"},
+											{Name: "some-other-dep"},
+											{Name: "some-unmet-dep"},
+										},
+									}
+									h.Mkfile(t,
+										"[[unmet]]\n"+
+											`name = "some-unmet-dep"`+"\n",
+										filepath.Join(appDir, "build-A-v1.toml"),
+									)
+
+									br, err := descriptor.Build(bpPlan, config, mockEnv)
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
+								})
+
+								when("there are invalid unmet entries", func() {
+									it("errors when name is missing", func() {
+										h.Mkfile(t,
+											"[[unmet]]\n",
+											filepath.Join(appDir, "build-A-v1.toml"),
+										)
+										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNotNil(t, err)
+										expected := "name is required"
+										h.AssertStringContains(t, err.Error(), expected)
+									})
+
+									it("errors when name is invalid", func() {
+										h.Mkfile(t,
+											"[[unmet]]\n"+
+												`name = "unknown-dep"`+"\n",
+											filepath.Join(appDir, "build-A-v1.toml"),
+										)
+										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNotNil(t, err)
+										expected := "must match a requested dependency"
+										h.AssertStringContains(t, err.Error(), expected)
+									})
+								})
+							})
+
 							when("processes", func() {
 								it("includes processes and uses the default value that is set", func() {
 									h.Mkfile(t,
@@ -862,6 +862,28 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 								})
 							})
 
+							when("met requires", func() {
+								it("are derived from input plan.toml", func() {
+									bpPlan := buildpack.Plan{
+										Entries: []buildpack.Require{
+											{Name: "some-dep"},
+											{Name: "some-other-dep"},
+										},
+									}
+									h.Mkdir(t, filepath.Join(appDir, "generate"))
+									h.Mkfile(t,
+										"[[unmet]]\n"+
+											`name = "some-other-dep"`+"\n",
+										filepath.Join(appDir, "generate", "build-A-v1.toml"),
+									)
+
+									br, err := descriptor.Build(bpPlan, config, mockEnv)
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
+								})
+							})
+
 							when("/bin/build is missing", func() {
 								it.Before(func() {
 									descriptor.Extension.ID = "B"
@@ -873,7 +895,6 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										Entries: []buildpack.Require{
 											{Name: "some-dep"},
 											{Name: "some-other-dep"},
-											{Name: "some-unmet-dep"},
 										},
 									}
 
@@ -885,7 +906,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									t.Log("processes run.Dockerfile")
 									h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "B")
 									h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
-									h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(descriptor.Dir, "run.Dockerfile"))
+									h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(descriptor.Dir, "generate", "run.Dockerfile"))
 								})
 							})
 						})
