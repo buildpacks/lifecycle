@@ -96,7 +96,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			)
 			output, err := command.CombinedOutput()
 			h.AssertNotNil(t, err)
-			expected := "failed to initialize detector: reading buildpack order file"
+			expected := "failed to initialize detector: reading order"
 			h.AssertStringContains(t, string(output), expected)
 		})
 	})
@@ -290,7 +290,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"-order=/custom/order.toml")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
-				expected := "failed to initialize detector: reading buildpack order file: open /custom/order.toml: no such file or directory"
+				expected := "failed to initialize detector: reading order: reading buildpack order file: open /custom/order.toml: no such file or directory"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
