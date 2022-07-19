@@ -169,6 +169,10 @@ github.com/bombsimon/wsl/v3 v3.3.0/go.mod h1:st10JtZYLE4D5sC7b8xV4zTKZwAQjCH/Hy2
 github.com/breml/bidichk v0.1.1/go.mod h1:zbfeitpevDUGI7V91Uzzuwrn4Vls8MoBMrwtt78jmso=
 github.com/buildpacks/imgutil v0.0.0-20220527150729-7a271a852e31 h1:EKj9YzFFAO5yI/IaPBJXKETfEvdRBZj+WWCrV+Sv8rk=
 github.com/buildpacks/imgutil v0.0.0-20220527150729-7a271a852e31/go.mod h1:SI90cWVEm7VmN9d/RLpiuchointjHNFRsQ1mFPbQVI4=
+github.com/buildpacks/imgutil v0.0.0-20220614135511-7288cede552f h1:jOEbJYXI+PFsF4E88OiGvOvc3lPOKIxvDUSmuiLY/VI=
+github.com/buildpacks/imgutil v0.0.0-20220614135511-7288cede552f/go.mod h1:SI90cWVEm7VmN9d/RLpiuchointjHNFRsQ1mFPbQVI4=
+github.com/buildpacks/imgutil v0.0.0-20220719152357-7e8f958d617a h1:iS2IILe9xPF2HIoxYhb2MPLeDfqwpE4PCQqzdnHzRC0=
+github.com/buildpacks/imgutil v0.0.0-20220719152357-7e8f958d617a/go.mod h1:S2RQzj190M80SV4VbpoCxeyoVYKjRN8qcIPLXEWNuF0=
 github.com/butuzov/ireturn v0.1.1/go.mod h1:Wh6Zl3IMtTpaIKbmwzqi6olnM9ptYQxxVacMsOEFPoc=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
@@ -220,6 +224,7 @@ github.com/docker/distribution v2.8.1+incompatible h1:Q50tZOPR6T/hjNsyc9g8/syEs6
 github.com/docker/distribution v2.8.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docker/docker v20.10.16+incompatible h1:2Db6ZR/+FUR3hqPMwnogOPHFn405crbpxvWzKovETOQ=
 github.com/docker/docker v20.10.16+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
+github.com/docker/docker v20.10.17+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker-credential-helpers v0.6.3/go.mod h1:WRaJzqw3CTB9bk10avuGsjVBZsD05qeibJ1/TYlvc0Y=
 github.com/docker/docker-credential-helpers v0.6.4 h1:axCks+yV+2MR3/kZhAmy07yC56WZ2Pwu/fKWtKuZB0o=
 github.com/docker/docker-credential-helpers v0.6.4/go.mod h1:ofX3UI0Gz1TteYBjtgs07O36Pyasyp66D2uKT7H8W1c=
@@ -356,6 +361,7 @@ github.com/google/go-cmp v0.5.8 h1:e6P7q2lk1O+qJJb4BtCQXlK8vWEO8V1ZeuEdJNOqZyg=
 github.com/google/go-cmp v0.5.8/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/google/go-containerregistry v0.9.0 h1:5Ths7RjxyFV0huKChQTgY6fLzvHhZMpLTFNja8U0/0w=
 github.com/google/go-containerregistry v0.9.0/go.mod h1:9eq4BnSufyT1kHNffX+vSXVonaJ7yaIOulrKZejMxnQ=
+github.com/google/go-containerregistry v0.10.0/go.mod h1:C7uwbB1QUAtvnknyd3ethxJRd4gtEjU/9WLXzckfI1Y=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/martian v2.1.0+incompatible/go.mod h1:9I4somxYTbIHy5NJKHRl3wXiIaQGbYVAs8BPL6v8lEs=
 github.com/google/martian/v3 v3.0.0/go.mod h1:y5Zk1BBys9G+gd6Jrk0W3cC1+ELVxBWuIGO+w/tUAp0=
