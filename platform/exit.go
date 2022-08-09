@@ -19,6 +19,7 @@ const (
 	LaunchError                                        // generic launch error
 	FailedGenerateWithErrors                           // extension error during /bin/generate
 	GenerateError                                      // generic generate error
+	ExtendError                                        // generic extend error
 )
 
 type Exiter interface {
@@ -64,6 +65,9 @@ var defaultExitCodes = map[LifecycleExitError]int{
 	// generate phase errors: 90-99
 	FailedGenerateWithErrors: 91, // FailedGenerateWithErrors indicates extension error during /bin/generate
 	GenerateError:            92, // GenerateError indicates generic generate error
+
+	// extend phase errors: 100-109
+	ExtendError: 102, // ExtendError indicates generic extend error
 }
 
 func (e *DefaultExiter) CodeFor(errType LifecycleExitError) int {
@@ -100,6 +104,9 @@ var legacyExitCodes = map[LifecycleExitError]int{
 	// generate phase is unsupported on older platforms and shouldn't be reached
 	FailedGenerateWithErrors: CodeForFailed,
 	GenerateError:            CodeForFailed,
+
+	// generate phase is unsupported on older platforms and shouldn't be reached
+	ExtendError: CodeForFailed,
 }
 
 func (e *LegacyExiter) CodeFor(errType LifecycleExitError) int {

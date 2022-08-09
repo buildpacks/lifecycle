@@ -62,7 +62,7 @@ type exportArgs struct {
 	useDaemon bool
 	uid, gid  int
 
-	platform Platform
+	platform *platform.Platform
 
 	// construct if necessary before dropping privileges
 	docker   client.CommonAPIClient

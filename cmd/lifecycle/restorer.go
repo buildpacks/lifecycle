@@ -30,7 +30,7 @@ type restoreCmd struct {
 
 type restoreArgs struct {
 	layersDir  string
-	platform   Platform
+	platform   *platform.Platform
 	skipLayers bool
 
 	// construct if necessary before dropping privileges

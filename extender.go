@@ -3,10 +3,14 @@ package lifecycle
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/dockerfile"
+	"github.com/buildpacks/lifecycle/internal/dockerfile/kaniko"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -17,37 +21,36 @@ type Extender struct {
 }
 
 type ExtenderFactory struct {
-	apiVerifier BuildpackAPIVerifier
-	dirStore    DirStore
+	apiVerifier   BuildpackAPIVerifier
+	configHandler ConfigHandler
 }
 
-func NewExtenderFactory(
-	apiVerifier BuildpackAPIVerifier,
-	dirStore DirStore,
-) *ExtenderFactory {
+func NewExtenderFactory(apiVerifier BuildpackAPIVerifier, configHandler ConfigHandler) *ExtenderFactory {
 	return &ExtenderFactory{
-		apiVerifier: apiVerifier,
-		dirStore:    dirStore,
+		apiVerifier:   apiVerifier,
+		configHandler: configHandler,
 	}
 }
 
-func (f *ExtenderFactory) NewExtender(
-	extensions []buildpack.GroupElement,
-	generatedDir string,
-	logger log.Logger,
-) (*Extender, error) {
-	generator := &Extender{
+func (f *ExtenderFactory) NewExtender(extensions []buildpack.GroupElement, groupPath string, generatedDir string, logger log.Logger) (*Extender, error) {
+	extender := &Extender{
 		GeneratedDir: generatedDir,
 		Logger:       logger,
 	}
-	if err := f.setExtensions(generator, extensions, logger); err != nil {
+	if err := f.setExtensions(extender, extensions, groupPath, logger); err != nil {
 		return nil, err
 	}
-	return generator, nil
+	return extender, nil
 }
 
-func (f *ExtenderFactory) setExtensions(extender *Extender, extensions []buildpack.GroupElement, logger log.Logger) error {
-	extender.Extensions = extensions
+func (f *ExtenderFactory) setExtensions(extender *Extender, extensions []buildpack.GroupElement, groupPath string, logger log.Logger) error {
+	if len(extensions) > 0 {
+		extender.Extensions = extensions
+	}
+	var err error
+	if _, extender.Extensions, err = f.configHandler.ReadGroup(groupPath); err != nil {
+		return err
+	}
 	for _, el := range extender.Extensions {
 		if err := f.apiVerifier.VerifyBuildpackAPI(buildpack.KindExtension, el.String(), el.API, logger); err != nil {
 			return err
@@ -57,7 +60,7 @@ func (f *ExtenderFactory) setExtensions(extender *Extender, extensions []buildpa
 }
 
 func (e *Extender) LastRunImage() (string, error) {
-	lastExtension := e.Extensions[len(e.Extensions)-1]
+	lastExtension := e.Extensions[len(e.Extensions)-1] // TODO: work backward through extensions until there is a Dockerfile in run
 	contents, err := ioutil.ReadFile(filepath.Join(e.GeneratedDir, "run", lastExtension.ID, "Dockerfile"))
 	if err != nil {
 		return "", err
@@ -68,4 +71,28 @@ func (e *Extender) LastRunImage() (string, error) {
 		return "", fmt.Errorf("failed to parse dockerfile, expected format 'FROM <image>', got: '%s'", strContents)
 	}
 	return strings.TrimSpace(parts[1]), nil
+}
+
+func (e *Extender) ExtendBuild(imageRef string) error {
+	e.Logger.Debugf("Extending %s", imageRef)
+	applier := kaniko.NewDockerfileApplier()
+	var dockerfiles []dockerfile.Dockerfile
+	for _, ext := range e.Extensions {
+		buildDockerfile, exists := e.buildDockerfileFor(ext.ID)
+		if exists {
+			e.Logger.Debugf("Found build Dockerfile for extension '%s'", ext.ID)
+			dockerfiles = append(dockerfiles, buildDockerfile)
+		}
+	}
+	return applier.Apply(dockerfiles, imageRef, e.Logger) // TODO: make this configurable?
+}
+
+func (e *Extender) buildDockerfileFor(extID string) (dockerfile.Dockerfile, bool) {
+	dockerfilePath := filepath.Join(e.GeneratedDir, "build", launch.EscapeID(extID), "Dockerfile")
+	if _, err := os.Stat(dockerfilePath); err != nil {
+		return dockerfile.Dockerfile{}, false
+	}
+	return dockerfile.Dockerfile{
+		Path: dockerfilePath, // TODO: read args from somewhere
+	}, true
 }

@@ -41,10 +41,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeDirStore = testmock.NewMockDirStore(mockController)
 			logger = &log.Logger{Handler: &discard.Handler{}}
 
-			extenderFactory = lifecycle.NewExtenderFactory(
-				fakeAPIVerifier,
-				fakeDirStore,
-			)
+			extenderFactory = lifecycle.NewExtenderFactory(fakeAPIVerifier, nil)
 		})
 
 		it.After(func() {
@@ -58,6 +55,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 				[]buildpack.GroupElement{
 					{ID: "A", Version: "v1", API: "0.9"},
 				},
+				"",
 				"some-generated-dir",
 				logger,
 			)
@@ -105,7 +103,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when(".LastRunImage", func() {
-		it("determines the last run image from the provided extensions", func() {
+		it("determines the last run image from the provided Dockerfiles", func() {
 			h.Mkdir(t, filepath.Join(generatedDir, "run", "A"))
 			h.Mkfile(t, "FROM some-run-image", filepath.Join(generatedDir, "run", "A", "Dockerfile"))
 			h.Mkdir(t, filepath.Join(generatedDir, "run", "B"))
@@ -115,6 +113,18 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, runImage, "some-other-run-image")
+		})
+	})
+
+	when(".ExtendBuild", func() {
+		it("validates the provided Dockerfiles", func() {
+			// TODO: table test
+		})
+		it("applies the provided Dockerfiles to the build image", func() {
+			// TODO: calls Dockerfile applier
+		})
+		it("sets environment variables from the extended build image in the build context", func() {
+			// TODO: Dockerfile applier returns reference?
 		})
 	})
 }

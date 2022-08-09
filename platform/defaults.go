@@ -16,6 +16,7 @@ const (
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	EnvExperimentalMode    = "CNB_PLATFORM_EXPERIMENTAL_FEATURES"
 	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
+	EnvGeneratedDir        = "CNB_GENERATED_DIR"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
@@ -65,6 +66,7 @@ var (
 	DefaultStackPath     = filepath.Join(rootDir, "cnb", "stack.toml")
 
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
+	PlaceholderGeneratedDir        = filepath.Join("<layers>", "generated")
 	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
 	PlaceholderOrderPath           = filepath.Join("<layers>", DefaultOrderFile)
 	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
@@ -77,13 +79,13 @@ func defaultPath(placeholderPath, layersDir string, platformAPI *api.Version) st
 		return defaultOrderPath(layersDir, platformAPI)
 	}
 
-	filename := filepath.Base(placeholderPath)
+	basename := filepath.Base(placeholderPath)
 	if (platformAPI).LessThan("0.5") || (layersDir == "") {
 		// prior to platform api 0.5, the default directory was the working dir.
 		// layersDir is unset when this call comes from the rebaser - will be fixed as part of https://github.com/buildpacks/spec/issues/156
-		return filepath.Join(".", filename)
+		return filepath.Join(".", basename)
 	}
-	return filepath.Join(layersDir, filename)
+	return filepath.Join(layersDir, basename)
 }
 
 func defaultOrderPath(layersDir string, platformAPI *api.Version) string {

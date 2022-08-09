@@ -38,7 +38,7 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
-	ReadGroup(path string) ([]buildpack.GroupElement, error)
+	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 }
 
@@ -48,12 +48,13 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
-func (h *DefaultConfigHandler) ReadGroup(path string) ([]buildpack.GroupElement, error) {
-	group, err := ReadGroup(path)
+func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {
+	var groupFile buildpack.Group
+	groupFile, err = ReadGroup(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "reading buildpack group")
+		return nil, nil, errors.Wrap(err, "reading buildpack group")
 	}
-	return group.Group, nil
+	return groupFile.Group, groupFile.GroupExtensions, nil
 }
 
 func ReadGroup(path string) (buildpack.Group, error) {

@@ -249,7 +249,7 @@ func (r *targetRegistry) createFixtures(t *testing.T) {
 	buildRegistryImage(
 		t,
 		someRunImageName,
-		filepath.Join("testdata", "cache-image"),
+		filepath.Join("testdata", "cache-image"), // TODO: this should be a valid run image
 		r.registry,
 		"--build-arg", "fromImage="+containerBaseImageFull,
 	)

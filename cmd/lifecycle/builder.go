@@ -29,7 +29,7 @@ type buildArgs struct {
 	appDir        string
 	platformDir   string
 
-	platform Platform
+	platform *platform.Platform
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).

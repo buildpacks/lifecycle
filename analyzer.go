@@ -134,7 +134,7 @@ func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Grou
 		return nil
 	}
 	var err error
-	if analyzer.Buildpacks, err = f.configHandler.ReadGroup(path); err != nil {
+	if analyzer.Buildpacks, _, err = f.configHandler.ReadGroup(path); err != nil {
 		return err
 	}
 	for _, bp := range analyzer.Buildpacks {

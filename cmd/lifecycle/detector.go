@@ -14,7 +14,7 @@ import (
 )
 
 type detectCmd struct {
-	platform Platform
+	platform *platform.Platform
 	platform.DetectInputs
 }
 
@@ -115,15 +115,8 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		extenderFactory := lifecycle.NewExtenderFactory(
-			&cmd.BuildpackAPIVerifier{},
-			dirStore,
-		)
-		extender, err := extenderFactory.NewExtender(
-			group.GroupExtensions,
-			generator.OutputDir,
-			cmd.DefaultLogger,
-		)
+		extenderFactory := lifecycle.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, nil)
+		extender, err := extenderFactory.NewExtender(group.GroupExtensions, "", generator.OutputDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize extender")
 		}
@@ -160,7 +153,7 @@ func (d *detectCmd) unwrapGenerateFail(err error) error {
 	return cmd.FailErrCode(err, d.platform.CodeFor(platform.GenerateError), "build")
 }
 
-func doDetect(detector *lifecycle.Detector, p Platform) (buildpack.Group, platform.BuildPlan, error) {
+func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Group, platform.BuildPlan, error) {
 	group, plan, err := detector.Detect()
 	if err != nil {
 		switch err := err.(type) {

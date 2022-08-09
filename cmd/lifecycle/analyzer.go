@@ -17,7 +17,7 @@ import (
 )
 
 type analyzeCmd struct {
-	platform Platform
+	platform *platform.Platform
 	platform.AnalyzeInputs
 
 	docker   client.CommonAPIClient // construct if necessary before dropping privileges

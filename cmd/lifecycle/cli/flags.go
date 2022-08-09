@@ -41,6 +41,10 @@ func FlagExtensionsDir(extensionsDir *string) {
 	flagSet.StringVar(extensionsDir, "extensions", envOrDefault(platform.EnvExtensionsDir, platform.DefaultExtensionsDir), "path to extensions directory")
 }
 
+func FlagGeneratedDir(dir *string) {
+	flagSet.StringVar(dir, "generated", envOrDefault(platform.EnvGeneratedDir, platform.PlaceholderGeneratedDir), "path to generated directory")
+}
+
 func FlagGID(gid *int) {
 	flagSet.IntVar(gid, "gid", intEnv(platform.EnvGID), "GID of user's group in the stack's build and run images")
 }

@@ -31,7 +31,7 @@ type rebaseCmd struct {
 	useDaemon             bool
 	uid, gid              int
 
-	platform Platform
+	platform *platform.Platform
 
 	// set if necessary before dropping privileges
 	docker   client.CommonAPIClient

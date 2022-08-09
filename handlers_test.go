@@ -119,7 +119,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 					filepath.Join(tmpDir, "group.toml"),
 				)
 
-				actual, err := configHandler.ReadGroup(filepath.Join(tmpDir, "group.toml"))
+				actual, _, err := configHandler.ReadGroup(filepath.Join(tmpDir, "group.toml"))
 				h.AssertNil(t, err)
 
 				if s := cmp.Diff(actual, []buildpack.GroupElement{
