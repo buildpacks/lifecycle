@@ -757,11 +757,11 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.Mkfile(t,
 										`[[processes]]`+"\n"+
 											`type = "some-type"`+"\n"+
-											`command = "some-cmd"`+"\n"+
+											`command = ["some-cmd"]`+"\n"+
 											`default = true`+"\n"+
 											`[[processes]]`+"\n"+
 											`type = "web"`+"\n"+
-											`command = "other-cmd"`+"\n",
+											`command = ["other-cmd"]`+"\n",
 										// default is false and therefore doesn't appear
 										filepath.Join(appDir, "launch-A-v1.toml"),
 									)
@@ -769,8 +769,8 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertNil(t, err)
 
 									h.AssertEq(t, br.Processes, []launch.Process{
-										{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true},
-										{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false},
+										{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true, Direct: true},
+										{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false, Direct: true},
 									})
 								})
 
@@ -779,11 +779,11 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										h.Mkfile(t,
 											`[[processes]]`+"\n"+
 												`type = "some-type"`+"\n"+
-												`command = "some-cmd"`+"\n"+
+												`command = ["some-cmd"]`+"\n"+
 												`default = true`+"\n"+
 												`[[processes]]`+"\n"+
 												`type = "some-type"`+"\n"+
-												`command = "some-other-cmd"`+"\n"+
+												`command = ["some-other-cmd"]`+"\n"+
 												`default = true`+"\n",
 											filepath.Join(appDir, "launch-A-v1.toml"),
 										)
@@ -797,11 +797,11 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										h.Mkfile(t,
 											`[[processes]]`+"\n"+
 												`type = "some-type"`+"\n"+
-												`command = "some-cmd"`+"\n"+
+												`command = ["some-cmd"]`+"\n"+
 												`default = true`+"\n"+
 												`[[processes]]`+"\n"+
 												`type = "other-type"`+"\n"+
-												`command = "other-cmd"`+"\n"+
+												`command = ["other-cmd"]`+"\n"+
 												`default = true`+"\n",
 											filepath.Join(appDir, "launch-A-v1.toml"),
 										)
@@ -812,102 +812,46 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									})
 								})
 
-								when("when bp api >= .10", func() {
-									it.Before(func() {
-										h.SkipIf(t, kind == buildpack.KindExtension, "")
-										descriptor.API = "0.10"
-									})
-
-									it("does not allow string command", func() {
-										h.Mkfile(t,
-											"[[processes]]\n"+
-												`command = "some-cmd"`,
-											filepath.Join(appDir, "launch-A-v1.toml"),
-										)
-										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-										h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type string; destination has type slice")
-									})
-
-									it("writes extra commands as args before defined args", func() {
-										h.Mkfile(t,
-											"[[processes]]\n"+
-												`command = ["some-cmd", "cmd-arg"]`+"\n"+
-												`args = ["first-arg"]`,
-											filepath.Join(appDir, "launch-A-v1.toml"),
-										)
-										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-										h.AssertNil(t, err)
-										h.AssertEq(t, len(br.Processes), 1)
-										h.AssertEq(t, br.Processes[0].Command, "some-cmd")
-										h.AssertEq(t, br.Processes[0].Args[0], "cmd-arg")
-										h.AssertEq(t, br.Processes[0].Args[1], "first-arg")
-									})
-
-									it("writes direct=true for processes", func() {
-										h.Mkfile(t,
-											"[[processes]]\n"+
-												`command = ["some-cmd", "cmd-arg"]`+"\n"+
-												`args = ["first-arg"]`,
-											filepath.Join(appDir, "launch-A-v1.toml"),
-										)
-										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-										h.AssertNil(t, err)
-										h.AssertEq(t, len(br.Processes), 1)
-										h.AssertEq(t, br.Processes[0].Command, "some-cmd")
-										h.AssertEq(t, br.Processes[0].Direct, true)
-									})
-
-									it("does not allow direct flag", func() {
-										h.Mkfile(t,
-											"[[processes]]\n"+
-												`command = ["some-cmd"]`+"\n"+
-												`direct = false`,
-											filepath.Join(appDir, "launch-A-v1.toml"),
-										)
-										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-										h.AssertError(t, err, "process.direct is not supported on this buildpack version")
-									})
-								})
-
-								it("allows setting direct", func() {
+								it("does not allow string command", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
-											`command = "some-cmd"`+"\n"+
-											`direct = false`,
+											`command = "some-cmd"`,
+										filepath.Join(appDir, "launch-A-v1.toml"),
+									)
+									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+									h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type string; destination has type slice")
+								})
+
+								it("writes extra commands as args before defined args", func() {
+									h.Mkfile(t,
+										"[[processes]]\n"+
+											`command = ["some-cmd", "cmd-arg"]`+"\n"+
+											`args = ["first-arg"]`,
 										filepath.Join(appDir, "launch-A-v1.toml"),
 									)
 									br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
 									h.AssertNil(t, err)
 									h.AssertEq(t, len(br.Processes), 1)
-									h.AssertEq(t, br.Processes[0].Direct, false)
+									h.AssertEq(t, br.Processes[0].Command, "some-cmd")
+									h.AssertEq(t, br.Processes[0].Args[0], "cmd-arg")
+									h.AssertEq(t, br.Processes[0].Args[1], "first-arg")
 								})
 
-								it("allows setting a single command string", func() {
+								it("writes direct=true for processes", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
-											`command = "some-command"`,
+											`command = ["some-cmd", "cmd-arg"]`+"\n"+
+											`args = ["first-arg"]`,
 										filepath.Join(appDir, "launch-A-v1.toml"),
 									)
 									br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
 									h.AssertNil(t, err)
 									h.AssertEq(t, len(br.Processes), 1)
-									h.AssertEq(t, br.Processes[0].Command, "some-command")
+									h.AssertEq(t, br.Processes[0].Command, "some-cmd")
+									h.AssertEq(t, br.Processes[0].Direct, true)
 								})
 
-								it("sets the working directory", func() {
-									h.Mkfile(t,
-										"[[processes]]\n"+
-											`command = "some-cmd"`+"\n"+
-											`working-dir = "/working-directory"`,
-										filepath.Join(appDir, "launch-A-v1.toml"),
-									)
-									br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-									h.AssertNil(t, err)
-									h.AssertEq(t, len(br.Processes), 1)
-									h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
-								})
-
-								it("does not allow commands as list of string", func() {
+								it("does not allow direct flag", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
 											`command = ["some-cmd"]`+"\n"+
@@ -915,7 +859,63 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										filepath.Join(appDir, "launch-A-v1.toml"),
 									)
 									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-									h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type []interface {}; destination has type string")
+									h.AssertError(t, err, "process.direct is not supported on this buildpack version")
+								})
+
+								when("when bp api < .10", func() {
+									it.Before(func() {
+										h.SkipIf(t, kind == buildpack.KindExtension, "")
+										descriptor.API = "0.9"
+									})
+
+									it("allows setting direct", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = "some-cmd"`+"\n"+
+												`direct = false`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNil(t, err)
+										h.AssertEq(t, len(br.Processes), 1)
+										h.AssertEq(t, br.Processes[0].Direct, false)
+									})
+
+									it("allows setting a single command string", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = "some-command"`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNil(t, err)
+										h.AssertEq(t, len(br.Processes), 1)
+										h.AssertEq(t, br.Processes[0].Command, "some-command")
+									})
+
+									it("sets the working directory", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = "some-cmd"`+"\n"+
+												`working-dir = "/working-directory"`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNil(t, err)
+										h.AssertEq(t, len(br.Processes), 1)
+										h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
+									})
+
+									it("does not allow commands as list of string", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = ["some-cmd"]`+"\n"+
+												`direct = false`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type []interface {}; destination has type string")
+									})
 								})
 							})
 
