@@ -869,7 +869,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									})
 								})
 
-								it("allow setting direct", func() {
+								it("allows setting direct", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
 											`command = "some-cmd"`+"\n"+
