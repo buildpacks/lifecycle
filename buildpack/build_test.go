@@ -907,7 +907,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
 								})
 
-								it("does not allow multiple commands", func() {
+								it("does not allow commands as list of string", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
 											`command = ["some-cmd"]`+"\n"+
