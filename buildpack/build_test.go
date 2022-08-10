@@ -882,7 +882,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertEq(t, br.Processes[0].Direct, false)
 								})
 
-								it("allow setting a single command string", func() {
+								it("allows setting a single command string", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
 											`command = "some-command"`,
