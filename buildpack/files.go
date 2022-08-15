@@ -40,7 +40,7 @@ func DecodeLaunchTOML(launchPath string, bpAPI string, launchTOML *LaunchTOML) e
 	}
 
 	// decode the process.commands, which differ based on buildpack API
-	commandsAreStrings := api.MustParse(bpAPI).LessThan("0.10")
+	commandsAreStrings := api.MustParse(bpAPI).LessThan("0.9")
 
 	// processes are defined differently depending on API version
 	// and will be decoded into different values

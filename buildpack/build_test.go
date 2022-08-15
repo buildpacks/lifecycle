@@ -822,7 +822,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type string; destination has type slice")
 								})
 
-								it("writes extra commands as args before defined args", func() {
+								it("returns extra commands as args before defined args", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
 											`command = ["some-cmd", "cmd-arg"]`+"\n"+
@@ -837,7 +837,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertEq(t, br.Processes[0].Args[1], "first-arg")
 								})
 
-								it("writes direct=true for processes", func() {
+								it("returns direct=true for processes", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
 											`command = ["some-cmd", "cmd-arg"]`+"\n"+
@@ -862,10 +862,10 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertError(t, err, "process.direct is not supported on this buildpack version")
 								})
 
-								when("when bp api < .10", func() {
+								when("buildpack api < 0.9", func() {
 									it.Before(func() {
 										h.SkipIf(t, kind == buildpack.KindExtension, "")
-										descriptor.API = "0.9"
+										descriptor.API = "0.8"
 									})
 
 									it("allows setting direct", func() {
