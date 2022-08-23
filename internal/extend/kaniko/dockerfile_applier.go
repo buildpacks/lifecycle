@@ -94,7 +94,7 @@ func (a *DockerfileApplier) Apply(dockerfiles []extend.Dockerfile, baseImageRef 
 	for _, env := range extendedConfig.Config.Env {
 		parts := strings.Split(env, "=")
 		if len(parts) != 2 {
-			return fmt.Errorf("parsing env '%s': expected format 'key=value'")
+			return fmt.Errorf("parsing env '%s': expected format 'key=value'", env)
 		}
 		if err := os.Setenv(parts[0], parts[1]); err != nil {
 			return fmt.Errorf("setting env: %w", err)
