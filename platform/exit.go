@@ -105,7 +105,7 @@ var legacyExitCodes = map[LifecycleExitError]int{
 	FailedGenerateWithErrors: CodeForFailed,
 	GenerateError:            CodeForFailed,
 
-	// generate phase is unsupported on older platforms and shouldn't be reached
+	// extend phase is unsupported on older platforms and shouldn't be reached
 	ExtendError: CodeForFailed,
 }
 
