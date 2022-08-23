@@ -5,19 +5,24 @@ package acceptance
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/internal/selective"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -60,62 +65,56 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "")
 		})
 
-		when.Pend("daemon case", func() {})
-
 		when("kaniko case", func() {
-			var workDir, buildImageDigest string
+			var kanikoDir, buildImageDigest, workDir string
 
 			it.Before(func() {
 				var err error
-				workDir, err = filepath.Abs(filepath.Join("testdata", "extender", "mounts", "workspace"))
+				kanikoDir, err = ioutil.TempDir("", "lifecycle-acceptance")
 				h.AssertNil(t, err)
-				// clean cache directory
-				h.AssertNil(t, os.RemoveAll(workDir)) // TODO: make tempdir
-				h.AssertNil(t, os.MkdirAll(workDir, 0755))
 
 				// push "builder" image to test registry
 				h.Run(t, exec.Command("docker", "tag", extendImage, extendTest.RegRepoName(extendImage)))
 				h.AssertNil(t, h.PushImage(h.DockerCli(t), extendTest.RegRepoName(extendImage), extendTest.targetRegistry.registry.EncodedLabeledAuth()))
 
-				// warm kaniko cache
-				h.DockerRun(t,
-					"gcr.io/kaniko-project/warmer:latest",
-					h.WithFlags(
-						"--env", "DOCKER_CONFIG=/docker-config",
-						"--volume", fmt.Sprintf("%s:/docker-config", extendTest.targetRegistry.dockerConfigDir),
-						"--volume", fmt.Sprintf("%s:/workspace", workDir),
-					),
-					h.WithArgs(
-						"--cache-dir=/workspace/cache",
-						fmt.Sprintf("--image=%s", extendTest.RegRepoName(extendImage)),
-					),
-				)
-
-				// get digest
-				// TODO: this is a hacky way to get the digest and should be improved
-				indexFile, err := filepath.Glob(filepath.Join(workDir, "cache", "sha256:*.json"))
+				// warm kaniko cache - this mimics what the analyzer or restorer would have done
+				os.Setenv("DOCKER_CONFIG", extendTest.targetRegistry.dockerConfigDir)
+				ref, auth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, extendTest.RegRepoName(extendImage))
 				h.AssertNil(t, err)
-				h.AssertEq(t, len(indexFile), 1)
-				buildImageDigest = strings.TrimSuffix(strings.TrimPrefix(filepath.Base(indexFile[0]), "sha256:"), ".json")
+				remoteImage, err := remote.Image(ref, remote.WithAuth(auth))
+				h.AssertNil(t, err)
+				buildImageHash, err := remoteImage.Digest()
+				h.AssertNil(t, err)
+				buildImageDigest = buildImageHash.String()
+				baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
+				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
+				layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
+				h.AssertNil(t, err)
+				h.AssertNil(t, layoutPath.AppendSelectiveImage(remoteImage))
+
+				workDir, err = ioutil.TempDir("", "lifecycle-acceptance")
+				h.AssertNil(t, err)
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(kanikoDir))
+				h.AssertNil(t, os.RemoveAll(workDir))
 			})
 
 			when("extending the build image", func() {
 				it("succeeds", func() {
 					extendArgs := []string{
 						ctrPath(extenderPath),
-						//"-cache-image", "oci:/kaniko/cache-dir/cache-image", // TODO: make configurable
 						"-generated", "/layers/generated",
 						"-log-level", "debug",
 						"-gid", "1000",
 						"-uid", "1234",
-						extendTest.RegRepoName(extendImage) + "@sha256:" + buildImageDigest,
+						"oci:/kaniko/cache/base/" + buildImageDigest,
 					}
-					kanikoDir, err := filepath.Abs(filepath.Join("testdata", "extender", "mounts", "kaniko"))
-					h.AssertNil(t, err)
 					layersDir, err := filepath.Abs(filepath.Join("testdata", "extender", "mounts", "layers"))
 					h.AssertNil(t, err)
 
-					t.Log("extends the build image")
+					t.Log("first build extends the build image by running Dockerfile commands")
 					firstOutput := h.DockerRun(t,
 						extendImage,
 						h.WithFlags(
@@ -127,20 +126,31 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(extendArgs...),
 					)
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
-					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl 7.58.0") // output by buildpack
+					t.Log("sets environment variables from the extended build image in the build context") // TODO (before drafting)
+					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl 7.58.0")      // output by buildpack, shows that curl was installed on the build image
 
-					t.Log("uses the cache directory")
+					t.Log("cleans the kaniko directory")
+					fis, err := ioutil.ReadDir(kanikoDir)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(fis), 1) // 1: /kaniko/cache
+
+					t.Log("changing the workspace doesn't break caching")
+					_, err = os.Create(filepath.Join(workDir, "some-file.txt"))
+					h.AssertNil(t, err)
+
+					t.Log("second build extends the build image by pulling from the cache directory")
 					secondOutput := h.DockerRun(t,
 						extendImage,
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir), // TODO: keep this from growing indefinitely
+							"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
 							"--volume", fmt.Sprintf("%s:/layers", layersDir),
-							"--volume", fmt.Sprintf("%s:/workspace", workDir), // contains the cache dir
+							"--volume", fmt.Sprintf("%s:/workspace", workDir),
 						),
 						h.WithArgs(extendArgs...),
 					)
 					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")
+					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl 7.58.0") // output by buildpack, shows that curl is still installed in the unpacked cached layer
 				})
 			})
 		})

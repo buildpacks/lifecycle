@@ -1,10 +1,12 @@
 package lifecycle
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
@@ -75,13 +77,17 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 	return nil
 }
 
-func (g *Generator) Generate() error {
+type GenerateResult struct {
+	RunImage string
+}
+
+func (g *Generator) Generate() (GenerateResult, error) {
 	var dockerfiles []buildpack.Dockerfile
 
 	config := g.GenerateConfig()
 	tempOutputDir, err := ioutil.TempDir("", "generated.")
 	if err != nil {
-		return err
+		return GenerateResult{}, err
 	}
 	defer os.RemoveAll(tempOutputDir)
 	config.OutputParentDir = tempOutputDir
@@ -94,7 +100,7 @@ func (g *Generator) Generate() error {
 		g.Logger.Debug("Looking up module")
 		descriptor, err := g.DirStore.Lookup(buildpack.KindExtension, ext.ID, ext.Version)
 		if err != nil {
-			return err
+			return GenerateResult{}, err
 		}
 
 		g.Logger.Debug("Finding plan")
@@ -103,7 +109,7 @@ func (g *Generator) Generate() error {
 		g.Logger.Debug("Invoking command")
 		result, err := descriptor.Build(foundPlan, config, buildEnv)
 		if err != nil {
-			return err
+			return GenerateResult{}, err
 		}
 
 		// aggregate build results
@@ -114,12 +120,18 @@ func (g *Generator) Generate() error {
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
-	if err := g.copyDockerfiles(g.OutputDir, dockerfiles); err != nil {
-		return err
+	if err := g.copyDockerfiles(dockerfiles); err != nil {
+		return GenerateResult{}, err
+	}
+
+	g.Logger.Debug("Checking for new run image")
+	runImage, err := g.checkNewRunImage()
+	if err != nil {
+		return GenerateResult{}, err
 	}
 
 	g.Logger.Debug("Finished build")
-	return nil
+	return GenerateResult{RunImage: runImage}, nil
 }
 
 func (g *Generator) GenerateConfig() buildpack.BuildConfig {
@@ -132,9 +144,9 @@ func (g *Generator) GenerateConfig() buildpack.BuildConfig {
 	}
 }
 
-func (g *Generator) copyDockerfiles(outputDir string, dockerfiles []buildpack.Dockerfile) error {
+func (g *Generator) copyDockerfiles(dockerfiles []buildpack.Dockerfile) error {
 	for _, dockerfile := range dockerfiles {
-		targetDir := filepath.Join(outputDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
+		targetDir := filepath.Join(g.OutputDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
 		targetPath := filepath.Join(targetDir, "Dockerfile")
 		if dockerfile.Path == targetPath {
 			continue
@@ -147,4 +159,27 @@ func (g *Generator) copyDockerfiles(outputDir string, dockerfiles []buildpack.Do
 		}
 	}
 	return nil
+}
+
+func (g *Generator) checkNewRunImage() (string, error) {
+	// There may be extensions that contribute only a build.Dockerfile; work backward through extensions until we find
+	// a run.Dockerfile.
+	for i := len(g.Extensions) - 1; i >= 0; i-- {
+		extID := g.Extensions[i].ID
+		runDockerfile := filepath.Join(g.OutputDir, "run", extID, "Dockerfile")
+		if _, err := os.Stat(runDockerfile); os.IsNotExist(err) {
+			continue
+		}
+		contents, err := ioutil.ReadFile(runDockerfile)
+		if err != nil {
+			return "", err
+		}
+		strContents := string(contents)
+		parts := strings.Split(strContents, " ")
+		if len(parts) != 2 || parts[0] != "FROM" {
+			return "", fmt.Errorf("failed to parse Dockerfile, expected format 'FROM <image>', got: '%s'", strContents)
+		}
+		return strings.TrimSpace(parts[1]), nil
+	}
+	return "", nil
 }

@@ -17,6 +17,7 @@ type DetectInputs struct {
 	PlanPath      string
 	PlatformDir   string
 
+	// TODO (before merging): refactor inputs as this pattern could lead to DetectInputs clobbering GenerateInputs if they share the same fields
 	GenerateInputs
 }
 

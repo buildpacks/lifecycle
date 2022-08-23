@@ -102,7 +102,7 @@ func (d *detectCmd) Exec() error {
 		generator, err := generatorFactory.NewGenerator(
 			d.AppDir,
 			group.GroupExtensions,
-			filepath.Join(d.OutputDir, "generated"),
+			filepath.Join(d.OutputDir, "generated"), // TODO (before spec PR): check weirdness here
 			plan,
 			d.PlatformDir,
 			cmd.Stdout, cmd.Stderr,
@@ -111,24 +111,18 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize generator")
 		}
-		err = generator.Generate()
+		result, err := generator.Generate()
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		extenderFactory := lifecycle.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, nil)
-		extender, err := extenderFactory.NewExtender(group.GroupExtensions, "", generator.OutputDir, cmd.DefaultLogger)
-		if err != nil {
-			return unwrapErrorFailWithMessage(err, "initialize extender")
-		}
-		newRunImage, err := extender.LastRunImage()
-		if err != nil {
-			return cmd.FailErr(err, "determine last run image")
+		if result.RunImage == "" {
+			return d.writeDetectData(group, plan)
 		}
 		analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
 		if err != nil {
 			return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
 		}
-		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: newRunImage}
+		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
 		if err := d.writeGenerateData(analyzedMD); err != nil {
 			return err
 		}

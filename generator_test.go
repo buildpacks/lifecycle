@@ -205,16 +205,12 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			}}
 			extB.EXPECT().Build(expectedPlanB, gomock.Any(), gomock.Any())
 
-			err := generator.Generate()
+			_, err := generator.Generate()
 			h.AssertNil(t, err)
 		})
 
 		it("aggregates dockerfiles from each extension", func() {
-			bRootDir := filepath.Join(tmpDir, "extensions", "B", "v2")
-			h.Mkdir(t, bRootDir)
-			dockerfilePath2 := filepath.Join(bRootDir, "run.Dockerfile")
-			h.Mkfile(t, `FROM other-run-image`, dockerfilePath2)
-
+			// Extension A outputs a run.Dockerfile to the provided output directory when invoked.
 			extA := testmock.NewMockBuildModule(mockCtrl)
 			dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(extA, nil)
 			extA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
@@ -234,25 +230,50 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						},
 					}, nil
 				})
+
+			// Extension B has a pre-populated root directory.
 			extB := testmock.NewMockBuildModule(mockCtrl)
+			bRootDir := filepath.Join(tmpDir, "extensions", "B", "v2")
+			h.Mkdir(t, bRootDir)
+			bDockerfilePath := filepath.Join(bRootDir, "run.Dockerfile")
+			h.Mkfile(t, `FROM other-run-image`, bDockerfilePath)
 			dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(extB, nil)
 			extB.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
 				Dockerfiles: []buildpack.Dockerfile{
-					{ExtensionID: "B", Path: dockerfilePath2, Kind: "run"},
+					{ExtensionID: "B", Path: bDockerfilePath, Kind: "run"},
 				},
 			}, nil)
 
-			err := generator.Generate()
+			// Extension C has a pre-populated root directory.
+			extC := testmock.NewMockBuildModule(mockCtrl)
+			cRootDir := filepath.Join(tmpDir, "extensions", "C", "v1") // TODO (before drafting): this should be nested under `generated`
+			h.Mkdir(t, cRootDir)
+			cDockerfilePath := filepath.Join(cRootDir, "build.Dockerfile")
+			h.Mkfile(t, `some-build.Dockerfile-content`, cDockerfilePath)
+			dirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC, nil)
+			extC.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
+				Dockerfiles: []buildpack.Dockerfile{
+					{ExtensionID: "C", Path: cDockerfilePath, Kind: "build"},
+				},
+			}, nil)
+
+			generator.Extensions = append(generator.Extensions, buildpack.GroupElement{ID: "C", Version: "v1", API: api.Buildpack.Latest().String()})
+			result, err := generator.Generate()
 			h.AssertNil(t, err)
 
 			t.Log("copies Dockerfiles to the correct locations")
-			contents1 := h.MustReadFile(t, filepath.Join(outputDir, "run", "A", "Dockerfile"))
-			h.AssertEq(t, string(contents1), `FROM some-run-image`)
-			contents2 := h.MustReadFile(t, filepath.Join(outputDir, "run", "B", "Dockerfile"))
-			h.AssertEq(t, string(contents2), `FROM other-run-image`)
+			aContents := h.MustReadFile(t, filepath.Join(outputDir, "run", "A", "Dockerfile"))
+			h.AssertEq(t, string(aContents), `FROM some-run-image`)
+			bContents := h.MustReadFile(t, filepath.Join(outputDir, "run", "B", "Dockerfile"))
+			h.AssertEq(t, string(bContents), `FROM other-run-image`)
+			cContents := h.MustReadFile(t, filepath.Join(outputDir, "build", "C", "Dockerfile"))
+			h.AssertEq(t, string(cContents), `some-build.Dockerfile-content`)
 
 			t.Log("does not pollute the output directory")
 			h.AssertPathDoesNotExist(t, filepath.Join(outputDir, "A", "run.Dockerfile"))
+
+			t.Log("returns the correct run image")
+			h.AssertEq(t, result.RunImage, "other-run-image")
 		})
 
 		when("extension generate failed", func() {
@@ -262,7 +283,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(bpA, nil)
 					bpA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
-					if err := generator.Generate(); err == nil {
+					if _, err := generator.Generate(); err == nil {
 						t.Fatal("Expected error.\n")
 					} else if !strings.Contains(err.Error(), "some error") {
 						t.Fatalf("Incorrect error: %s\n", err)
@@ -279,7 +300,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(bpB, nil)
 					bpB.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
-					if err := generator.Generate(); err == nil {
+					if _, err := generator.Generate(); err == nil {
 						t.Fatal("Expected error.\n")
 					} else if !strings.Contains(err.Error(), "some error") {
 						t.Fatalf("Incorrect error: %s\n", err)

@@ -2,16 +2,13 @@ package platform
 
 // BuildInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
-type BuildInputs struct { // TODO: use in cmd/lifecycle/builder.go
+type BuildInputs struct {
 	AppDir        string
 	BuildpacksDir string
-	GroupPath     string
 	LayersDir     string
 	PlanPath      string
 	PlatformDir   string
 }
-
-// TODO: see if some logic from cmd/lifecycle/cli/flags.go can move to this package
 
 // ResolveBuild accepts a BuildInputs and returns a new BuildInputs with default values filled in,
 // or an error if the provided inputs are not valid.
@@ -27,9 +24,6 @@ func (r *InputsResolver) ResolveBuild(inputs BuildInputs) (BuildInputs, error) {
 }
 
 func (r *InputsResolver) fillBuildDefaultFilePaths(inputs *BuildInputs) {
-	if inputs.GroupPath == PlaceholderGroupPath {
-		inputs.GroupPath = defaultPath(PlaceholderGroupPath, inputs.LayersDir, r.platformAPI)
-	}
 	if inputs.PlanPath == PlaceholderPlanPath {
 		inputs.PlanPath = defaultPath(PlaceholderPlanPath, inputs.LayersDir, r.platformAPI)
 	}

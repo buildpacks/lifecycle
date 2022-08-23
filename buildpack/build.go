@@ -72,6 +72,7 @@ func (bom *BOMEntry) convertVersionToMetadata() {
 	}
 }
 
+// TODO (before merging): make separate descriptors for buildpack and extension
 func (d *Descriptor) Build(plan Plan, config BuildConfig, buildEnv BuildEnv) (BuildResult, error) {
 	if api.MustParse(d.API).Equal(api.MustParse("0.2")) {
 		config.Logger.Debug("Updating plan entries")

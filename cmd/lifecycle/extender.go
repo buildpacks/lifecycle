@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/internal/extend/kaniko"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -19,15 +19,14 @@ type extendCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *extendCmd) DefineFlags() {
-	fmt.Println("XXX Force rebuild 4")
 	cli.FlagAppDir(&e.AppDir)
-	cli.FlagBuildpacksDir(&e.BuildpacksDir)
+	cli.FlagBuildpacksDir(&e.BuildInputs.BuildpacksDir)
 	cli.FlagGID(&e.GID)
 	cli.FlagGeneratedDir(&e.GeneratedDir)
 	cli.FlagGroupPath(&e.GroupPath)
-	cli.FlagLayersDir(&e.LayersDir)
-	cli.FlagPlanPath(&e.PlanPath)
-	cli.FlagPlatformDir(&e.PlatformDir)
+	cli.FlagLayersDir(&e.BuildInputs.LayersDir)
+	cli.FlagPlanPath(&e.BuildInputs.PlanPath)
+	cli.FlagPlatformDir(&e.BuildInputs.PlatformDir)
 	cli.FlagUID(&e.UID)
 }
 
@@ -47,34 +46,37 @@ func (e *extendCmd) Args(nargs int, args []string) error {
 }
 
 func (e *extendCmd) Privileges() error {
-	// TODO: see if we need to read creds from the environment in order to save the extended builder image
 	return nil
 }
 
 func (e *extendCmd) Exec() error {
 	extenderFactory := lifecycle.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
-	extender, err := extenderFactory.NewExtender([]buildpack.GroupElement{}, e.GroupPath, e.GeneratedDir, cmd.DefaultLogger)
+	extender, err := extenderFactory.NewExtender(kaniko.NewDockerfileApplier(), e.GroupPath, e.GeneratedDir, cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize extender")
 	}
 	if err = extender.ExtendBuild(e.ImageRef); err != nil {
 		return cmd.FailErrCode(err, e.platform.CodeFor(platform.ExtendError), "extend build image")
 	}
-	if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
+	if err = priv.EnsureOwner(e.UID, e.GID, e.BuildInputs.LayersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
 	}
+	e.BuildInputs, err = e.platform.ResolveBuild(e.BuildInputs)
+	if err != nil {
+		return err
+	}
 	buildCmd := buildCmd{
 		groupPath: e.GroupPath,
-		planPath:  e.PlanPath,
+		planPath:  e.BuildInputs.PlanPath,
 		buildArgs: buildArgs{
-			appDir:        e.AppDir,
-			buildpacksDir: e.BuildpacksDir,
-			layersDir:     e.LayersDir,
+			appDir:        e.BuildInputs.AppDir,
+			buildpacksDir: e.BuildInputs.BuildpacksDir,
+			layersDir:     e.BuildInputs.LayersDir,
 			platform:      e.platform,
-			platformDir:   e.PlatformDir,
+			platformDir:   e.BuildInputs.PlatformDir,
 		},
 	}
 	if err = buildCmd.Privileges(); err != nil {

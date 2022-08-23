@@ -1,15 +1,13 @@
 package lifecycle
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/internal/dockerfile"
-	"github.com/buildpacks/lifecycle/internal/dockerfile/kaniko"
+	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
@@ -18,6 +16,13 @@ type Extender struct {
 	Extensions   []buildpack.GroupElement
 	GeneratedDir string
 	Logger       log.Logger
+
+	DockerfileApplier DockerfileApplier
+}
+
+//go:generate mockgen -package testmock -destination testmock/dockerfile_applier.go github.com/buildpacks/lifecycle DockerfileApplier
+type DockerfileApplier interface {
+	Apply(dockerfiles []extend.Dockerfile, baseImageRef string, logger log.Logger) error
 }
 
 type ExtenderFactory struct {
@@ -32,21 +37,19 @@ func NewExtenderFactory(apiVerifier BuildpackAPIVerifier, configHandler ConfigHa
 	}
 }
 
-func (f *ExtenderFactory) NewExtender(extensions []buildpack.GroupElement, groupPath string, generatedDir string, logger log.Logger) (*Extender, error) {
+func (f *ExtenderFactory) NewExtender(dockerfileApplier DockerfileApplier, groupPath string, generatedDir string, logger log.Logger) (*Extender, error) {
 	extender := &Extender{
-		GeneratedDir: generatedDir,
-		Logger:       logger,
+		GeneratedDir:      generatedDir,
+		Logger:            logger,
+		DockerfileApplier: dockerfileApplier,
 	}
-	if err := f.setExtensions(extender, extensions, groupPath, logger); err != nil {
+	if err := f.setExtensions(extender, groupPath, logger); err != nil {
 		return nil, err
 	}
 	return extender, nil
 }
 
-func (f *ExtenderFactory) setExtensions(extender *Extender, extensions []buildpack.GroupElement, groupPath string, logger log.Logger) error {
-	if len(extensions) > 0 {
-		extender.Extensions = extensions
-	}
+func (f *ExtenderFactory) setExtensions(extender *Extender, groupPath string, logger log.Logger) error {
 	var err error
 	if _, extender.Extensions, err = f.configHandler.ReadGroup(groupPath); err != nil {
 		return err
@@ -59,40 +62,47 @@ func (f *ExtenderFactory) setExtensions(extender *Extender, extensions []buildpa
 	return nil
 }
 
-func (e *Extender) LastRunImage() (string, error) {
-	lastExtension := e.Extensions[len(e.Extensions)-1] // TODO: work backward through extensions until there is a Dockerfile in run
-	contents, err := ioutil.ReadFile(filepath.Join(e.GeneratedDir, "run", lastExtension.ID, "Dockerfile"))
-	if err != nil {
-		return "", err
-	}
-	strContents := string(contents)
-	parts := strings.Split(strContents, " ")
-	if len(parts) != 2 || parts[0] != "FROM" {
-		return "", fmt.Errorf("failed to parse dockerfile, expected format 'FROM <image>', got: '%s'", strContents)
-	}
-	return strings.TrimSpace(parts[1]), nil
-}
-
 func (e *Extender) ExtendBuild(imageRef string) error {
 	e.Logger.Debugf("Extending %s", imageRef)
-	applier := kaniko.NewDockerfileApplier()
-	var dockerfiles []dockerfile.Dockerfile
+	var dockerfiles []extend.Dockerfile
 	for _, ext := range e.Extensions {
-		buildDockerfile, exists := e.buildDockerfileFor(ext.ID)
-		if exists {
+		buildDockerfile, err := e.buildDockerfileFor(ext.ID)
+		if err != nil {
+			return err
+		}
+		if buildDockerfile != nil {
 			e.Logger.Debugf("Found build Dockerfile for extension '%s'", ext.ID)
-			dockerfiles = append(dockerfiles, buildDockerfile)
+			dockerfiles = append(dockerfiles, *buildDockerfile)
 		}
 	}
-	return applier.Apply(dockerfiles, imageRef, e.Logger) // TODO: make this configurable?
+	return e.DockerfileApplier.Apply(dockerfiles, imageRef, e.Logger)
 }
 
-func (e *Extender) buildDockerfileFor(extID string) (dockerfile.Dockerfile, bool) {
+func (e *Extender) buildDockerfileFor(extID string) (*extend.Dockerfile, error) {
 	dockerfilePath := filepath.Join(e.GeneratedDir, "build", launch.EscapeID(extID), "Dockerfile")
 	if _, err := os.Stat(dockerfilePath); err != nil {
-		return dockerfile.Dockerfile{}, false
+		return nil, nil
 	}
-	return dockerfile.Dockerfile{
-		Path: dockerfilePath, // TODO: read args from somewhere
-	}, true
+
+	configPath := filepath.Join(e.GeneratedDir, "build", launch.EscapeID(extID), "extend-config.toml")
+	var config buildpack.ExtendConfig
+	_, err := toml.DecodeFile(configPath, &config)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
+	var args []extend.Arg
+	for _, configArg := range config.Build.Args {
+		args = append(args, extend.Arg{
+			Name:  configArg.Name,
+			Value: configArg.Value,
+		})
+	}
+
+	return &extend.Dockerfile{
+		Path: dockerfilePath,
+		Args: args,
+	}, nil
 }

@@ -9,6 +9,6 @@ version = "0.0.1"
 api = "0.9"
 
 [[group-extensions]]
-id = "second-extension"
+id = "tree"
 version = "0.0.1"
 api = "0.9"
