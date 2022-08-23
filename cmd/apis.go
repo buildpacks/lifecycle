@@ -2,24 +2,28 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/log"
-
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 const (
-	DeprecationModeQuiet = "quiet"
-	DeprecationModeWarn  = "warn"
-	DeprecationModeError = "error"
+	EnvDeprecationMode = "CNB_DEPRECATION_MODE"
+
+	DefaultDeprecationMode = ModeWarn
+
+	ModeQuiet = "quiet"
+	ModeWarn  = "warn"
+	ModeError = "error"
 )
 
 var DeprecationMode = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
 
-type APIVerifier struct{}
+type BuildpackAPIVerifier struct{}
 
-func (v *APIVerifier) VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
+func (v *BuildpackAPIVerifier) VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 	return VerifyBuildpackAPI(kind, name, requested, logger)
 }
 
@@ -28,20 +32,20 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 	if err != nil {
 		return FailErrCode(
 			nil,
-			CodeIncompatibleBuildpackAPI,
+			CodeForIncompatibleBuildpackAPI,
 			fmt.Sprintf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(kind), name),
 		)
 	}
 	if api.Buildpack.IsSupported(requestedAPI) {
 		if api.Buildpack.IsDeprecated(requestedAPI) {
 			switch DeprecationMode {
-			case DeprecationModeQuiet:
+			case ModeQuiet:
 				break
-			case DeprecationModeError:
+			case ModeError:
 				logger.Errorf("%s '%s' requests deprecated API '%s'", kind, name, requested)
-				logger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
+				logger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, ModeError)
 				return buildpackAPIError(kind, name, requested)
-			case DeprecationModeWarn:
+			case ModeWarn:
 				logger.Warnf("%s '%s' requests deprecated API '%s'", kind, name, requested)
 			default:
 				logger.Warnf("%s '%s' requests deprecated API '%s'", kind, name, requested)
@@ -55,33 +59,33 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 func buildpackAPIError(moduleKind string, name string, requested string) error {
 	return FailErrCode(
 		fmt.Errorf("buildpack API version '%s' is incompatible with the lifecycle", requested),
-		CodeIncompatibleBuildpackAPI,
+		CodeForIncompatibleBuildpackAPI,
 		fmt.Sprintf("set API for %s '%s'", moduleKind, name),
 	)
 }
 
-func VerifyPlatformAPI(requested string) error {
+func VerifyPlatformAPI(requested string, logger log.Logger) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
 		return FailErrCode(
 			nil,
-			CodeIncompatiblePlatformAPI,
+			CodeForIncompatiblePlatformAPI,
 			fmt.Sprintf("parse platform API '%s'", requested),
 		)
 	}
 	if api.Platform.IsSupported(requestedAPI) {
 		if api.Platform.IsDeprecated(requestedAPI) {
 			switch DeprecationMode {
-			case DeprecationModeQuiet:
+			case ModeQuiet:
 				break
-			case DeprecationModeError:
-				DefaultLogger.Errorf("Platform requested deprecated API '%s'", requested)
-				DefaultLogger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, DeprecationModeError)
+			case ModeError:
+				logger.Errorf("Platform requested deprecated API '%s'", requested)
+				logger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, ModeError)
 				return platformAPIError(requested)
-			case DeprecationModeWarn:
-				DefaultLogger.Warnf("Platform requested deprecated API '%s'", requested)
+			case ModeWarn:
+				logger.Warnf("Platform requested deprecated API '%s'", requested)
 			default:
-				DefaultLogger.Warnf("Platform requested deprecated API '%s'", requested)
+				logger.Warnf("Platform requested deprecated API '%s'", requested)
 			}
 		}
 		return nil
@@ -92,7 +96,14 @@ func VerifyPlatformAPI(requested string) error {
 func platformAPIError(requested string) error {
 	return FailErrCode(
 		fmt.Errorf("platform API version '%s' is incompatible with the lifecycle", requested),
-		CodeIncompatiblePlatformAPI,
+		CodeForIncompatiblePlatformAPI,
 		"set platform API",
 	)
+}
+
+func EnvOrDefault(key string, defaultVal string) string {
+	if envVal := os.Getenv(key); envVal != "" {
+		return envVal
+	}
+	return defaultVal
 }

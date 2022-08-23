@@ -1,7 +1,7 @@
 //go:build linux || darwin
 // +build linux darwin
 
-package platform
+package launch
 
 const (
 	rootDir = "/"

@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -17,16 +18,16 @@ import (
 )
 
 func RunLaunch() error {
-	color.Disable(cmd.BoolEnv(cmd.EnvNoColor))
+	color.Disable(boolEnv(platform.EnvNoColor))
 
-	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
+	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
 		cmd.Exit(err)
 	}
 	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
-	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir)), &md); err != nil {
+	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 	if err := verifyBuildpackAPIs(md.Buildpacks); err != nil {
@@ -37,8 +38,8 @@ func RunLaunch() error {
 
 	launcher := &launch.Launcher{
 		DefaultProcessType: defaultProcessType,
-		LayersDir:          cmd.EnvOrDefault(cmd.EnvLayersDir, cmd.DefaultLayersDir),
-		AppDir:             cmd.EnvOrDefault(cmd.EnvAppDir, cmd.DefaultAppDir),
+		LayersDir:          cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir),
+		AppDir:             cmd.EnvOrDefault(platform.EnvAppDir, platform.DefaultAppDir),
 		PlatformAPI:        p.API(),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
@@ -55,11 +56,20 @@ func RunLaunch() error {
 	return nil
 }
 
+func boolEnv(k string) bool {
+	v := os.Getenv(k)
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return b
+}
+
 func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) string {
 	if platformAPI.LessThan("0.4") {
-		return cmd.EnvOrDefault(cmd.EnvProcessType, cmd.DefaultProcessType)
+		return cmd.EnvOrDefault(platform.EnvProcessType, platform.DefaultProcessType)
 	}
-	if pType := os.Getenv(cmd.EnvProcessType); pType != "" {
+	if pType := os.Getenv(platform.EnvProcessType); pType != "" {
 		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}

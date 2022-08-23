@@ -32,7 +32,7 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 	when("GuardExperimental", func() {
 		when("CNB_PLATFORM_EXPERIMENTAL_FEATURES=warn", func() {
 			it("warns", func() {
-				platform.ExperimentalMode = platform.ExperimentalModeWarn
+				platform.ExperimentalMode = platform.ModeWarn
 				err := platform.GuardExperimental("some-feature", logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(logHandler.Entries), 1)
@@ -43,7 +43,7 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 
 		when("CNB_PLATFORM_EXPERIMENTAL_FEATURES=quiet", func() {
 			it("succeeds silently", func() {
-				platform.ExperimentalMode = platform.ExperimentalModeQuiet
+				platform.ExperimentalMode = platform.ModeQuiet
 				err := platform.GuardExperimental("some-feature", logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(logHandler.Entries), 0)
@@ -52,7 +52,7 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 
 		when("CNB_PLATFORM_EXPERIMENTAL_FEATURES=error", func() {
 			it("error with exit code 11", func() {
-				platform.ExperimentalMode = platform.ExperimentalModeError
+				platform.ExperimentalMode = platform.ModeError
 				err := platform.GuardExperimental("some-feature", logger)
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, len(logHandler.Entries), 2)
