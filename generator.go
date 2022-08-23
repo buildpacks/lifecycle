@@ -82,7 +82,7 @@ type GenerateResult struct {
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
-	var dockerfiles []buildpack.Dockerfile
+	var dockerfiles []buildpack.DockerfileInfo
 
 	config := g.GenerateConfig()
 	tempOutputDir, err := ioutil.TempDir("", "generated.")
@@ -144,18 +144,22 @@ func (g *Generator) GenerateConfig() buildpack.BuildConfig {
 	}
 }
 
-func (g *Generator) copyDockerfiles(dockerfiles []buildpack.Dockerfile) error {
+func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
 	for _, dockerfile := range dockerfiles {
 		targetDir := filepath.Join(g.OutputDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
 		targetPath := filepath.Join(targetDir, "Dockerfile")
-		if dockerfile.Path == targetPath {
-			continue
-		}
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 			return err
 		}
 		if err := fsutil.Copy(dockerfile.Path, targetPath); err != nil {
 			return err
+		}
+		// check for extend-config.toml and if found, copy
+		extendConfigPath := filepath.Join(filepath.Dir(dockerfile.Path), "extend-config.toml")
+		if err := fsutil.Copy(extendConfigPath, filepath.Join(targetDir, "extend-config.toml")); err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
 		}
 	}
 	return nil

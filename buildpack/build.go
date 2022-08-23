@@ -47,7 +47,7 @@ type BuildConfig struct {
 type BuildResult struct {
 	BOMFiles    []BOMFile
 	BuildBOM    []BOMEntry
-	Dockerfiles []Dockerfile
+	Dockerfiles []DockerfileInfo
 	Labels      []Label
 	LaunchBOM   []BOMEntry
 	MetRequires []string
@@ -382,7 +382,7 @@ func (d *Descriptor) readOutputFilesExt(extOutputDir string, extPlanIn Plan) (Bu
 		}
 		return BuildResult{}, err
 	}
-	br.Dockerfiles = []Dockerfile{{ExtensionID: d.Info().ID, Kind: DockerfileKindRun, Path: runDockerfile}}
+	br.Dockerfiles = []DockerfileInfo{{ExtensionID: d.Info().ID, Kind: DockerfileKindRun, Path: runDockerfile}}
 	return br, nil
 }
 

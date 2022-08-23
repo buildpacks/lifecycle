@@ -225,7 +225,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					h.Mkfile(t, `FROM some-run-image`, dockerfilePath1)
 
 					return buildpack.BuildResult{
-						Dockerfiles: []buildpack.Dockerfile{
+						Dockerfiles: []buildpack.DockerfileInfo{
 							{ExtensionID: "A", Path: dockerfilePath1, Kind: "run"},
 						},
 					}, nil
@@ -233,26 +233,27 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 			// Extension B has a pre-populated root directory.
 			extB := testmock.NewMockBuildModule(mockCtrl)
-			bRootDir := filepath.Join(tmpDir, "extensions", "B", "v2")
+			bRootDir := filepath.Join(tmpDir, "extensions", "B", "v2") // TODO: fix this fixture to be more generic; the path doesn't need to be accurate
 			h.Mkdir(t, bRootDir)
 			bDockerfilePath := filepath.Join(bRootDir, "run.Dockerfile")
 			h.Mkfile(t, `FROM other-run-image`, bDockerfilePath)
 			dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(extB, nil)
 			extB.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
-				Dockerfiles: []buildpack.Dockerfile{
+				Dockerfiles: []buildpack.DockerfileInfo{
 					{ExtensionID: "B", Path: bDockerfilePath, Kind: "run"},
 				},
 			}, nil)
 
 			// Extension C has a pre-populated root directory.
 			extC := testmock.NewMockBuildModule(mockCtrl)
-			cRootDir := filepath.Join(tmpDir, "extensions", "C", "v1") // TODO (before drafting): this should be nested under `generated`
+			cRootDir := filepath.Join(tmpDir, "extensions", "C", "v1") // TODO: fix this fixture to be more generic; the path doesn't need to be accurate
 			h.Mkdir(t, cRootDir)
 			cDockerfilePath := filepath.Join(cRootDir, "build.Dockerfile")
 			h.Mkfile(t, `some-build.Dockerfile-content`, cDockerfilePath)
+			h.Mkfile(t, `some-extend-config-content`, filepath.Join(cRootDir, "extend-config.toml"))
 			dirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC, nil)
 			extC.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
-				Dockerfiles: []buildpack.Dockerfile{
+				Dockerfiles: []buildpack.DockerfileInfo{
 					{ExtensionID: "C", Path: cDockerfilePath, Kind: "build"},
 				},
 			}, nil)
@@ -268,6 +269,10 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, string(bContents), `FROM other-run-image`)
 			cContents := h.MustReadFile(t, filepath.Join(outputDir, "build", "C", "Dockerfile"))
 			h.AssertEq(t, string(cContents), `some-build.Dockerfile-content`)
+
+			t.Log("copies the extend-config.toml if exists")
+			configContents := h.MustReadFile(t, filepath.Join(outputDir, "build", "C", "extend-config.toml"))
+			h.AssertEq(t, string(configContents), `some-extend-config-content`)
 
 			t.Log("does not pollute the output directory")
 			h.AssertPathDoesNotExist(t, filepath.Join(outputDir, "A", "run.Dockerfile"))

@@ -5,10 +5,10 @@ const (
 	DockerfileKindRun   = "run"
 )
 
-type Dockerfile struct {
-	ExtensionID string `toml:"buildpack-id" json:"buildpackID"`
-	Kind        string `toml:"kind"`
-	Path        string `toml:"path"`
+type DockerfileInfo struct {
+	ExtensionID string
+	Kind        string // TODO: this could be inferred from the path
+	Path        string
 }
 
 type ExtendConfig struct {
