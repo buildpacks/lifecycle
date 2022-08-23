@@ -6,3 +6,5 @@ RUN echo ${build_id}
 
 USER root
 RUN apt-get update && apt-get install -y tree
+
+ENV CNB_STACK_ID=stack-id-from-ext-tree

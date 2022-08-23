@@ -5,3 +5,5 @@ echo "Hello Extensions buildpack"
 curl --version
 
 tree /layers
+
+echo "CNB_STACK_ID for buildpack: ${CNB_STACK_ID}"

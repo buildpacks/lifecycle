@@ -14,7 +14,7 @@ import (
 
 type Extender struct {
 	Extensions   []buildpack.GroupElement
-	GeneratedDir string
+	GeneratedDir string // TODO (before merging): /layers/generated shouldn't get exported in the final image
 	Logger       log.Logger
 
 	DockerfileApplier DockerfileApplier

@@ -86,6 +86,21 @@ func (a *DockerfileApplier) Apply(dockerfiles []extend.Dockerfile, baseImageRef 
 		baseImageRef = "intermediate-extended@" + intermediateImageHash.String()
 	}
 
+	// Set environment variables from the extended build image in the build context
+	extendedConfig, err := baseImage.ConfigFile()
+	if err != nil {
+		return fmt.Errorf("getting config for extended image: %w", err)
+	}
+	for _, env := range extendedConfig.Config.Env {
+		parts := strings.Split(env, "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("parsing env '%s': expected format 'key=value'")
+		}
+		if err := os.Setenv(parts[0], parts[1]); err != nil {
+			return fmt.Errorf("setting env: %w", err)
+		}
+	}
+
 	return cleanKanikoDir()
 }
 
