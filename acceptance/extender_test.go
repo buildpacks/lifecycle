@@ -111,8 +111,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						"-uid", "1234",
 						"oci:/kaniko/cache/base/" + buildImageDigest,
 					}
-					layersDir, err := filepath.Abs(filepath.Join("testdata", "extender", "mounts", "layers"))
-					h.AssertNil(t, err)
 
 					t.Log("first build extends the build image by running Dockerfile commands")
 					firstOutput := h.DockerRun(t,
@@ -120,7 +118,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 							"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
-							"--volume", fmt.Sprintf("%s:/layers", layersDir),
 							"--volume", fmt.Sprintf("%s:/workspace", workDir),
 						),
 						h.WithArgs(extendArgs...),
@@ -144,7 +141,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 							"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
-							"--volume", fmt.Sprintf("%s:/layers", layersDir),
 							"--volume", fmt.Sprintf("%s:/workspace", workDir),
 						),
 						h.WithArgs(extendArgs...),
