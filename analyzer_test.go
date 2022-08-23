@@ -28,8 +28,8 @@ import (
 )
 
 func TestAnalyzer(t *testing.T) {
+	spec.Run(t, "unit-new-analyzer/", testAnalyzerFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 	for _, api := range api.Platform.Supported {
-		spec.Run(t, "unit-new-analyzer/"+api.String(), testAnalyzerFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 		spec.Run(t, "unit-analyzer/"+api.String(), testAnalyzer(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }

@@ -1,6 +1,6 @@
 @echo off
 
-set layers_dir=%1
+set output_dir=%1
 set platform_dir=%2
 set plan_path=%3
 
@@ -39,23 +39,7 @@ if %ERRORLEVEL% neq 0 (
 type %plan_path% > build-plan-in-%bp_id%-%bp_version%.toml
 
 if exist run.Dockerfile-%bp_id%-%bp_version% (
-  type run.Dockerfile-%bp_id%-%bp_version% > %layers_dir%\run.Dockerfile
-)
-
-if exist build-plan-out-%bp_id%-%bp_version%.toml (
-  type build-plan-out-%bp_id%-%bp_version%.toml > %plan_path%
-)
-
-if exist build-%bp_id%-%bp_version%.toml (
-  type build-%bp_id%-%bp_version%.toml > %layers_dir%\build.toml
-)
-
-if exist launch-%bp_id%-%bp_version%.toml (
-  type launch-%bp_id%-%bp_version%.toml > %layers_dir%\launch.toml
-)
-
-if exist layers-%bp_id%-%bp_version% (
-  xcopy /e /q layers-%bp_id%-%bp_version% %layers_dir% >nul
+  type run.Dockerfile-%bp_id%-%bp_version% > %output_dir%\run.Dockerfile
 )
 
 if exist build-status-%bp_id%-%bp_version% (
@@ -63,7 +47,6 @@ if exist build-status-%bp_id%-%bp_version% (
     exit /b %%F
   )
 )
-
 if exist build-status (
   for /f "tokens=* USEBACKQ" %%F in (`type build-status`) do (
     exit /b %%F

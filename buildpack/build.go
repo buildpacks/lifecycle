@@ -98,7 +98,7 @@ func (d *Descriptor) Build(plan Plan, config BuildConfig, buildEnv BuildEnv) (Bu
 	_, err = os.Stat(filepath.Join(d.Dir, "bin", "generate"))
 	if d.IsExtension() && os.IsNotExist(err) {
 		// treat extension root directory as pre-populated output directory
-		return d.readOutputFilesExt(d.Dir, plan)
+		return d.readOutputFilesExt(filepath.Join(d.Dir, "generate"), plan)
 	} else if err = d.runCmd(moduleOutputDir, planPath, config, buildEnv); err != nil {
 		return BuildResult{}, err
 	}
@@ -371,18 +371,8 @@ func (d *Descriptor) readOutputFilesExt(extOutputDir string, extPlanIn Plan) (Bu
 	br := BuildResult{}
 	var err error
 
-	// read build.toml
-	var buildTOML BuildTOML
-	buildPath := filepath.Join(extOutputDir, "build.toml")
-	if _, err = toml.DecodeFile(buildPath, &buildTOML); err != nil && !os.IsNotExist(err) {
-		return BuildResult{}, err
-	}
-
 	// set MetRequires
-	if err = validateUnmet(buildTOML.Unmet, extPlanIn); err != nil {
-		return BuildResult{}, err
-	}
-	br.MetRequires = names(extPlanIn.filter(buildTOML.Unmet).Entries)
+	br.MetRequires = names(extPlanIn.Entries)
 
 	// set Dockerfiles
 	runDockerfile := filepath.Join(extOutputDir, "run.Dockerfile")
