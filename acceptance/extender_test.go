@@ -48,7 +48,6 @@ func TestExtender(t *testing.T) {
 
 	extendImage = extendTest.testImageRef
 	extenderPath = extendTest.containerBinaryPath
-	cacheFixtureDir = filepath.Join("testdata", "extender", "cache-dir")
 	extendRegAuthConfig = extendTest.targetRegistry.authConfig
 	extendRegNetwork = extendTest.targetRegistry.network
 	extendDaemonFixtures = extendTest.targetDaemon.fixtures
@@ -97,8 +96,8 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			it.After(func() {
-				h.AssertNil(t, os.RemoveAll(kanikoDir))
-				h.AssertNil(t, os.RemoveAll(workDir))
+				_ = os.RemoveAll(kanikoDir)
+				_ = os.RemoveAll(workDir)
 			})
 
 			when("extending the build image", func() {

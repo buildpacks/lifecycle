@@ -29,6 +29,10 @@ func FlagBuildpacksDir(buildpacksDir *string) {
 	flagSet.StringVar(buildpacksDir, "buildpacks", envOrDefault(platform.EnvBuildpacksDir, platform.DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
+func FlagBuildImage(buildImage *string) {
+	flagSet.StringVar(buildImage, "build-image", os.Getenv(platform.EnvBuildImage), "build image tag name")
+}
+
 func FlagCacheDir(cacheDir *string) {
 	flagSet.StringVar(cacheDir, "cache-dir", os.Getenv(platform.EnvCacheDir), "path to cache directory")
 }

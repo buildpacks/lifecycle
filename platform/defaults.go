@@ -10,6 +10,7 @@ import (
 const (
 	EnvAnalyzedPath        = "CNB_ANALYZED_PATH"
 	EnvAppDir              = "CNB_APP_DIR"
+	EnvBuildImage          = "CNB_BUILD_IMAGE"
 	EnvBuildpacksDir       = "CNB_BUILDPACKS_DIR"
 	EnvCacheDir            = "CNB_CACHE_DIR"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"

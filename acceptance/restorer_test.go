@@ -21,9 +21,13 @@ import (
 )
 
 var (
-	restoreDockerContext = filepath.Join("testdata", "restorer")
-	restorerBinaryDir    = filepath.Join("testdata", "restorer", "container", "cnb", "lifecycle")
-	restorerImage        = "lifecycle/acceptance/restorer"
+	restoreImage          string
+	restoreRegAuthConfig  string
+	restoreRegNetwork     string
+	restorerPath          string
+	restoreDaemonFixtures *daemonImageFixtures
+	restoreRegFixtures    *regImageFixtures
+	restoreTest           *PhaseTest
 )
 
 func TestRestorer(t *testing.T) {
@@ -32,9 +36,17 @@ func TestRestorer(t *testing.T) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	h.MakeAndCopyLifecycle(t, "linux", "amd64", restorerBinaryDir)
-	h.DockerBuild(t, restorerImage, restoreDockerContext)
-	defer h.DockerImageRemove(t, restorerImage)
+	testImageDockerContext := filepath.Join("testdata", "restorer")
+	restoreTest = NewPhaseTest(t, "restorer", testImageDockerContext)
+	restoreTest.Start(t)
+	defer restoreTest.Stop(t)
+
+	restoreImage = restoreTest.testImageRef
+	restorerPath = restoreTest.containerBinaryPath
+	restoreRegAuthConfig = restoreTest.targetRegistry.authConfig
+	restoreRegNetwork = restoreTest.targetRegistry.network
+	restoreDaemonFixtures = restoreTest.targetDaemon.fixtures
+	restoreRegFixtures = restoreTest.targetRegistry.fixtures
 
 	for _, platformAPI := range api.Platform.Supported {
 		spec.Run(t, "acceptance-restorer/"+platformAPI.String(), testRestorerFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
@@ -43,9 +55,24 @@ func TestRestorer(t *testing.T) {
 
 func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
+		var copyDir, containerName string
+		it.Before(func() {
+			containerName = "test-container-" + h.RandString(10)
+			var err error
+			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			if h.DockerContainerExists(t, containerName) {
+				h.Run(t, exec.Command("docker", "rm", containerName))
+			}
+			_ = os.RemoveAll(copyDir)
+		})
+
 		when("called with arguments", func() {
 			it("errors", func() {
-				command := exec.Command("docker", "run", "--rm", restorerImage, "some-arg")
+				command := exec.Command("docker", "run", "--rm", restoreImage, "some-arg")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
 				expected := "failed to parse arguments: received unexpected Args"
@@ -56,7 +83,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("called with -analyzed", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -analyzed flag")
-				command := exec.Command("docker", "run", "--rm", restorerImage, "-analyzed some-file-location")
+				command := exec.Command("docker", "run", "--rm", restoreImage, "-analyzed some-file-location")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
 				expected := "flag provided but not defined: -analyzed"
@@ -67,7 +94,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		when("called with -skip-layers", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -skip-layers flag")
-				command := exec.Command("docker", "run", "--rm", restorerImage, "-skip-layers true")
+				command := exec.Command("docker", "run", "--rm", restoreImage, "-skip-layers true")
 				output, err := command.CombinedOutput()
 				h.AssertNotNil(t, err)
 				expected := "flag provided but not defined: -skip-layers"
@@ -77,7 +104,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("called without any cache flag", func() {
 			it("outputs it will not restore cache layer data", func() {
-				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restorerImage)
+				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage)
 				output, err := command.CombinedOutput()
 				h.AssertNil(t, err)
 				expected := "Not restoring cached layer data, no cache flag specified"
@@ -86,28 +113,13 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("analyzed.toml exists with app metadata", func() {
-			var copyDir, containerName string
-			it.Before(func() {
-				containerName = "test-container-" + h.RandString(10)
-				var err error
-				copyDir, err = ioutil.TempDir("", "test-docker-copy-")
-				h.AssertNil(t, err)
-			})
-
-			it.After(func() {
-				if h.DockerContainerExists(t, containerName) {
-					h.Run(t, exec.Command("docker", "rm", containerName))
-				}
-				os.RemoveAll(copyDir)
-			})
-
 			it("restores app metadata", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not restore app metadata")
 				output := h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
 					ctrPath("/layers"),
-					restorerImage,
+					restoreImage,
 					h.WithFlags(append(
 						dockerSocketMount,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -117,33 +129,16 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 				h.AssertStringContains(t, output, "Restoring metadata for \"some-buildpack-id:launch-layer\"")
 			})
-
 		})
 
 		when("using cache-dir", func() {
 			when("there is cache present from a previous build", func() {
-				var copyDir, containerName string
-
-				it.Before(func() {
-					containerName = "test-container-" + h.RandString(10)
-					var err error
-					copyDir, err = ioutil.TempDir("", "test-docker-copy-")
-					h.AssertNil(t, err)
-				})
-
-				it.After(func() {
-					if h.DockerContainerExists(t, containerName) {
-						h.Run(t, exec.Command("docker", "rm", containerName))
-					}
-					os.RemoveAll(copyDir)
-				})
-
 				it("restores cached layer data", func() {
 					h.DockerRunAndCopy(t,
 						containerName,
 						copyDir,
 						"/layers",
-						restorerImage,
+						restoreImage,
 						h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
 						h.WithArgs("-cache-dir", "/cache"),
 					)
@@ -163,7 +158,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						containerName,
 						copyDir,
 						"/layers",
-						restorerImage,
+						restoreImage,
 						h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
 						h.WithArgs("-cache-dir", "/cache"),
 					)
@@ -181,7 +176,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						containerName,
 						copyDir,
 						"/layers",
-						restorerImage,
+						restoreImage,
 						h.WithFlags("--env", "CNB_PLATFORM_API="+platformAPI),
 						h.WithArgs("-cache-dir", "/cache"),
 					)
@@ -190,6 +185,28 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					unusedBpLayer := filepath.Join(copyDir, "layers", "unused_buildpack")
 					h.AssertPathDoesNotExist(t, unusedBpLayer)
 				})
+			})
+		})
+
+		when("using kaniko cache", func() {
+			it("accepts -build-image", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "Platform API < 0.10 does not use kaniko")
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					"/kaniko",
+					restoreImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "DOCKER_CONFIG=/docker-config",
+					),
+					h.WithArgs("-build-image", restoreRegFixtures.SomeCacheImage), // some-cache-image simulates a builder image in a registry
+				)
+				t.Log("writes builder manifest and config to the kaniko cache")
+				fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko", "cache", "base"))
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(fis), 1)
+				h.AssertPathExists(t, filepath.Join(copyDir, "kaniko", "cache", "base", fis[0].Name(), "oci-layout"))
 			})
 		})
 	}
