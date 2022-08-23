@@ -176,6 +176,7 @@ func (c *createCmd) Exec() error {
 		plan       platform.BuildPlan
 	)
 	if c.platform.API().AtLeast("0.7") {
+		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.platform.API(),
 			&cmd.BuildpackAPIVerifier{},

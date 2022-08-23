@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -58,7 +59,7 @@ func (f *ExtenderFactory) setExtensions(extender *Extender, extensions []buildpa
 
 func (e *Extender) LastRunImage() (string, error) {
 	lastExtension := e.Extensions[len(e.Extensions)-1]
-	contents, err := ioutil.ReadFile(filepath.Join(e.GeneratedDir, "run", lastExtension.ID, "Dockerfile"))
+	contents, err := ioutil.ReadFile(filepath.Join(e.GeneratedDir, "run", launch.EscapeID(lastExtension.ID), "Dockerfile"))
 	if err != nil {
 		return "", err
 	}

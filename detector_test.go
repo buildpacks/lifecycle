@@ -652,7 +652,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			bpARun, ok := detector.Runs.Load("A@v1")
+			bpARun, ok := detector.Runs.Load("Buildpack A@v1")
 			if !ok {
 				t.Fatalf("missing detection of '%s'", "A@v1")
 			}
@@ -676,7 +676,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected detect run:\n%s\n", s)
 			}
 
-			bpBRun, ok := detector.Runs.Load("B@v1")
+			bpBRun, ok := detector.Runs.Load("Buildpack B@v1")
 			if !ok {
 				t.Fatalf("missing detection of '%s'", "B@v1")
 			}
@@ -761,18 +761,18 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				bpA1 := testmock.NewMockBuildModule(mockCtrl)
 				bpB1 := testmock.NewMockBuildModule(mockCtrl)
-				extC1 := testmock.NewMockBuildModule(mockCtrl)
-				extD1 := testmock.NewMockBuildModule(mockCtrl)
+				extA1 := testmock.NewMockBuildModule(mockCtrl)
+				extB1 := testmock.NewMockBuildModule(mockCtrl)
 
 				// first group
 
-				// process C@v1
-				dirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
-				extC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+				// process A@v1
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(extA1, nil)
+				extA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
 					API:       "0.9",
-					Extension: buildpack.Info{ID: "C", Version: "v1"},
+					Extension: buildpack.Info{ID: "A", Version: "v1"},
 				})
-				extC1.EXPECT().Detect(gomock.Any(), gomock.Any())
+				extA1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 				// process A@v1
 				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
@@ -784,7 +784,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// try resolve
 				firstGroup := []buildpack.GroupElement{
-					{ID: "C", Version: "v1", API: "0.9", Extension: true, Optional: true},
+					{ID: "A", Version: "v1", API: "0.9", Extension: true, Optional: true},
 					{ID: "A", Version: "v1", API: "0.8"},
 				}
 				firstResolve := resolver.EXPECT().Resolve(
@@ -798,13 +798,13 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// second group
 
-				// process D@v1
-				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
-				extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+				// process B@v1
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v1").Return(extB1, nil)
+				extB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
 					API:       "0.9",
-					Extension: buildpack.Info{ID: "D", Version: "v1"},
+					Extension: buildpack.Info{ID: "B", Version: "v1"},
 				})
-				extD1.EXPECT().Detect(gomock.Any(), gomock.Any())
+				extB1.EXPECT().Detect(gomock.Any(), gomock.Any())
 
 				// process A@v1
 				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
@@ -815,7 +815,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// try resolve
 				secondGroup := []buildpack.GroupElement{
-					{ID: "D", Version: "v1", API: "0.9", Extension: true, Optional: true},
+					{ID: "B", Version: "v1", API: "0.9", Extension: true, Optional: true},
 					{ID: "A", Version: "v1", API: "0.8"},
 				}
 				secondResolve := resolver.EXPECT().Resolve(
@@ -851,11 +851,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// fourth group
 
-				// process C@v1
-				dirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
-				extC1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+				// process A@v1
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(extA1, nil)
+				extA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
 					API:       "0.9",
-					Extension: buildpack.Info{ID: "C", Version: "v1"},
+					Extension: buildpack.Info{ID: "A", Version: "v1"},
 				})
 
 				// process B@v1
@@ -868,7 +868,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// try resolve
 				fourthGroup := []buildpack.GroupElement{
-					{ID: "C", Version: "v1", API: "0.9", Extension: true, Optional: true},
+					{ID: "A", Version: "v1", API: "0.9", Extension: true, Optional: true},
 					{ID: "B", Version: "v1", API: "0.8"},
 				}
 				fourthResolve := resolver.EXPECT().Resolve(
@@ -882,11 +882,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// fifth group
 
-				// process D@v1
-				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
-				extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
+				// process B@v1
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v1").Return(extB1, nil)
+				extB1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{
 					API:       "0.9",
-					Extension: buildpack.Info{ID: "D", Version: "v1"},
+					Extension: buildpack.Info{ID: "B", Version: "v1"},
 				})
 
 				// process B@v1
@@ -898,7 +898,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				// try resolve
 				fifthGroup := []buildpack.GroupElement{
-					{ID: "D", Version: "v1", API: "0.9", Extension: true, Optional: true},
+					{ID: "B", Version: "v1", API: "0.9", Extension: true, Optional: true},
 					{ID: "B", Version: "v1", API: "0.8"},
 				}
 				resolver.EXPECT().Resolve(
@@ -906,7 +906,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					detector.Runs,
 				).Return(
 					[]buildpack.GroupElement{
-						{ID: "D", Version: "v1", API: "0.9", Extension: true}, // optional removed
+						{ID: "B", Version: "v1", API: "0.9", Extension: true}, // optional removed
 						{ID: "B", Version: "v1", API: "0.8"},
 					},
 					[]platform.BuildPlanEntry{},
@@ -918,8 +918,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 				}
 				orderExt := buildpack.Order{
-					{Group: []buildpack.GroupElement{{ID: "C", Version: "v1"}}},
-					{Group: []buildpack.GroupElement{{ID: "D", Version: "v1"}}},
+					{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
+					{Group: []buildpack.GroupElement{{ID: "B", Version: "v1"}}},
 				}
 
 				detector.Order = lifecycle.PrependExtensions(orderBp, orderExt)
@@ -927,7 +927,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, group.Group, []buildpack.GroupElement{{ID: "B", Version: "v1", API: "0.8"}})
-				h.AssertEq(t, group.GroupExtensions, []buildpack.GroupElement{{ID: "D", Version: "v1", API: "0.9"}})
+				h.AssertEq(t, group.GroupExtensions, []buildpack.GroupElement{{ID: "B", Version: "v1", API: "0.9"}})
 			})
 		})
 	})
@@ -966,10 +966,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				Code: 100,
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				Code: 100,
 			})
 
@@ -996,10 +996,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				detectRuns := &sync.Map{}
-				detectRuns.Store("A@v1", buildpack.DetectRun{
+				detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 					Code: 100,
 				})
-				detectRuns.Store("B@v1", buildpack.DetectRun{
+				detectRuns.Store("Extension B@v1", buildpack.DetectRun{
 					Code: 0,
 				})
 
@@ -1026,10 +1026,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				Code: 0,
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				Code: 127,
 			})
 
@@ -1054,10 +1054,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				Code: 0,
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				Code: 100,
 			})
 
@@ -1080,10 +1080,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				Code: 0,
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				Output: []byte("detect out: B@v1\ndetect err: B@v1"),
 				Code:   127,
 			})
@@ -1114,7 +1114,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1127,7 +1127,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1137,7 +1137,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("C@v2", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v2", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1147,7 +1147,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("D@v2", buildpack.DetectRun{
+			detectRuns.Store("Buildpack D@v2", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1214,7 +1214,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1224,7 +1224,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				},
 				Code: 100,
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1233,7 +1233,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1271,7 +1271,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1283,7 +1283,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1292,7 +1292,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1328,7 +1328,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1337,7 +1337,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1349,7 +1349,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1403,7 +1403,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1419,7 +1419,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1435,7 +1435,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1457,7 +1457,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("D@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack D@v1", buildpack.DetectRun{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
