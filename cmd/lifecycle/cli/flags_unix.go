@@ -1,9 +1,8 @@
 //go:build linux || darwin
 // +build linux darwin
 
-package cmd
+package cli
 
 const (
 	rootDir = "/"
-	execExt = ""
 )

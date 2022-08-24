@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -21,37 +22,37 @@ type detectCmd struct {
 func (d *detectCmd) DefineFlags() {
 	switch {
 	case d.platform.API().AtLeast("0.10"):
-		cmd.FlagAnalyzedPath(&d.AnalyzedPath)
-		cmd.FlagAppDir(&d.AppDir)
-		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
-		cmd.FlagExtensionsDir(&d.ExtensionsDir)
-		cmd.FlagGroupPath(&d.GroupPath)
-		cmd.FlagLayersDir(&d.LayersDir)
-		cmd.FlagOrderPath(&d.OrderPath)
-		cmd.FlagOutputDir(&d.OutputDir)
-		cmd.FlagPlanPath(&d.PlanPath)
-		cmd.FlagPlatformDir(&d.PlatformDir)
+		cli.FlagAnalyzedPath(&d.AnalyzedPath)
+		cli.FlagAppDir(&d.AppDir)
+		cli.FlagBuildpacksDir(&d.BuildpacksDir)
+		cli.FlagExtensionsDir(&d.ExtensionsDir)
+		cli.FlagGroupPath(&d.GroupPath)
+		cli.FlagLayersDir(&d.LayersDir)
+		cli.FlagOrderPath(&d.OrderPath)
+		cli.FlagOutputDir(&d.OutputDir)
+		cli.FlagPlanPath(&d.PlanPath)
+		cli.FlagPlatformDir(&d.PlatformDir)
 	default:
-		cmd.FlagAppDir(&d.AppDir)
-		cmd.FlagBuildpacksDir(&d.BuildpacksDir)
-		cmd.FlagGroupPath(&d.GroupPath)
-		cmd.FlagLayersDir(&d.LayersDir)
-		cmd.FlagOrderPath(&d.OrderPath)
-		cmd.FlagPlanPath(&d.PlanPath)
-		cmd.FlagPlatformDir(&d.PlatformDir)
+		cli.FlagAppDir(&d.AppDir)
+		cli.FlagBuildpacksDir(&d.BuildpacksDir)
+		cli.FlagGroupPath(&d.GroupPath)
+		cli.FlagLayersDir(&d.LayersDir)
+		cli.FlagOrderPath(&d.OrderPath)
+		cli.FlagPlanPath(&d.PlanPath)
+		cli.FlagPlatformDir(&d.PlatformDir)
 	}
 }
 
 // Args validates arguments and flags, and fills in default values.
 func (d *detectCmd) Args(nargs int, args []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 
 	var err error
 	d.DetectInputs, err = d.platform.ResolveDetect(d.DetectInputs)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "resolve inputs")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
@@ -71,7 +72,7 @@ func (d *detectCmd) Exec() error {
 	}
 	detectorFactory := lifecycle.NewDetectorFactory(
 		d.platform.API(),
-		&cmd.APIVerifier{},
+		&cmd.BuildpackAPIVerifier{},
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
@@ -95,7 +96,7 @@ func (d *detectCmd) Exec() error {
 	}
 	if group.HasExtensions() {
 		generatorFactory := lifecycle.NewGeneratorFactory(
-			&cmd.APIVerifier{},
+			&cmd.BuildpackAPIVerifier{},
 			dirStore,
 		)
 		generator, err := generatorFactory.NewGenerator(
@@ -115,7 +116,7 @@ func (d *detectCmd) Exec() error {
 			return d.unwrapGenerateFail(err)
 		}
 		extenderFactory := lifecycle.NewExtenderFactory(
-			&cmd.APIVerifier{},
+			&cmd.BuildpackAPIVerifier{},
 			dirStore,
 		)
 		extender, err := extenderFactory.NewExtender(
@@ -132,7 +133,7 @@ func (d *detectCmd) Exec() error {
 		}
 		analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
 		if err != nil {
-			return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse analyzed metadata")
+			return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
 		}
 		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: newRunImage}
 		if err := d.writeGenerateData(analyzedMD); err != nil {

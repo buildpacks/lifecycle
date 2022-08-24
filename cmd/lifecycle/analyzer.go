@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -27,39 +28,39 @@ type analyzeCmd struct {
 func (a *analyzeCmd) DefineFlags() {
 	switch {
 	case a.platform.API().AtLeast("0.9"):
-		cmd.FlagAnalyzedPath(&a.AnalyzedPath)
-		cmd.FlagCacheImage(&a.CacheImageRef)
-		cmd.FlagGID(&a.GID)
-		cmd.FlagLaunchCacheDir(&a.LaunchCacheDir)
-		cmd.FlagLayersDir(&a.LayersDir)
-		cmd.FlagPreviousImage(&a.PreviousImageRef)
-		cmd.FlagRunImage(&a.RunImageRef)
-		cmd.FlagSkipLayers(&a.SkipLayers)
-		cmd.FlagStackPath(&a.StackPath)
-		cmd.FlagTags(&a.AdditionalTags)
-		cmd.FlagUID(&a.UID)
-		cmd.FlagUseDaemon(&a.UseDaemon)
+		cli.FlagAnalyzedPath(&a.AnalyzedPath)
+		cli.FlagCacheImage(&a.CacheImageRef)
+		cli.FlagGID(&a.GID)
+		cli.FlagLaunchCacheDir(&a.LaunchCacheDir)
+		cli.FlagLayersDir(&a.LayersDir)
+		cli.FlagPreviousImage(&a.PreviousImageRef)
+		cli.FlagRunImage(&a.RunImageRef)
+		cli.FlagSkipLayers(&a.SkipLayers)
+		cli.FlagStackPath(&a.StackPath)
+		cli.FlagTags(&a.AdditionalTags)
+		cli.FlagUID(&a.UID)
+		cli.FlagUseDaemon(&a.UseDaemon)
 	case a.platform.API().AtLeast("0.7"):
-		cmd.FlagAnalyzedPath(&a.AnalyzedPath)
-		cmd.FlagCacheImage(&a.CacheImageRef)
-		cmd.FlagGID(&a.GID)
-		cmd.FlagLayersDir(&a.LayersDir)
-		cmd.FlagPreviousImage(&a.PreviousImageRef)
-		cmd.FlagRunImage(&a.RunImageRef)
-		cmd.FlagStackPath(&a.StackPath)
-		cmd.FlagTags(&a.AdditionalTags)
-		cmd.FlagUID(&a.UID)
-		cmd.FlagUseDaemon(&a.UseDaemon)
+		cli.FlagAnalyzedPath(&a.AnalyzedPath)
+		cli.FlagCacheImage(&a.CacheImageRef)
+		cli.FlagGID(&a.GID)
+		cli.FlagLayersDir(&a.LayersDir)
+		cli.FlagPreviousImage(&a.PreviousImageRef)
+		cli.FlagRunImage(&a.RunImageRef)
+		cli.FlagStackPath(&a.StackPath)
+		cli.FlagTags(&a.AdditionalTags)
+		cli.FlagUID(&a.UID)
+		cli.FlagUseDaemon(&a.UseDaemon)
 	default:
-		cmd.FlagAnalyzedPath(&a.AnalyzedPath)
-		cmd.FlagCacheDir(&a.LegacyCacheDir)
-		cmd.FlagCacheImage(&a.CacheImageRef)
-		cmd.FlagGID(&a.GID)
-		cmd.FlagGroupPath(&a.LegacyGroupPath)
-		cmd.FlagLayersDir(&a.LayersDir)
-		cmd.FlagSkipLayers(&a.SkipLayers)
-		cmd.FlagUID(&a.UID)
-		cmd.FlagUseDaemon(&a.UseDaemon)
+		cli.FlagAnalyzedPath(&a.AnalyzedPath)
+		cli.FlagCacheDir(&a.LegacyCacheDir)
+		cli.FlagCacheImage(&a.CacheImageRef)
+		cli.FlagGID(&a.GID)
+		cli.FlagGroupPath(&a.LegacyGroupPath)
+		cli.FlagLayersDir(&a.LayersDir)
+		cli.FlagSkipLayers(&a.SkipLayers)
+		cli.FlagUID(&a.UID)
+		cli.FlagUseDaemon(&a.UseDaemon)
 	}
 }
 
@@ -67,14 +68,14 @@ func (a *analyzeCmd) DefineFlags() {
 func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
 		err := fmt.Errorf("received %d arguments, but expected 1", nargs)
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "parse arguments")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	a.AnalyzeInputs.OutputImageRef = args[0]
 
 	var err error
 	a.AnalyzeInputs, err = a.platform.ResolveAnalyze(a.AnalyzeInputs, cmd.DefaultLogger)
 	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeInvalidArgs, "resolve inputs")
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
@@ -106,7 +107,7 @@ func (a *analyzeCmd) Privileges() error {
 func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
 		a.platform.API(),
-		&cmd.APIVerifier{},
+		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
 		NewImageHandler(a.docker, a.keychain),

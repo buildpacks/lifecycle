@@ -431,53 +431,6 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("build result", func() {
-						when("met requires", func() {
-							it("are derived from build.toml", func() {
-								bpPlan := buildpack.Plan{
-									Entries: []buildpack.Require{
-										{Name: "some-dep"},
-										{Name: "some-other-dep"},
-										{Name: "some-unmet-dep"},
-									},
-								}
-								h.Mkfile(t,
-									"[[unmet]]\n"+
-										`name = "some-unmet-dep"`+"\n",
-									filepath.Join(appDir, "build-A-v1.toml"),
-								)
-
-								br, err := descriptor.Build(bpPlan, config, mockEnv)
-								h.AssertNil(t, err)
-
-								h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
-							})
-
-							when("there are invalid unmet entries", func() {
-								it("errors when name is missing", func() {
-									h.Mkfile(t,
-										"[[unmet]]\n",
-										filepath.Join(appDir, "build-A-v1.toml"),
-									)
-									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-									h.AssertNotNil(t, err)
-									expected := "name is required"
-									h.AssertStringContains(t, err.Error(), expected)
-								})
-
-								it("errors when name is invalid", func() {
-									h.Mkfile(t,
-										"[[unmet]]\n"+
-											`name = "unknown-dep"`+"\n",
-										filepath.Join(appDir, "build-A-v1.toml"),
-									)
-									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-									h.AssertNotNil(t, err)
-									expected := "must match a requested dependency"
-									h.AssertStringContains(t, err.Error(), expected)
-								})
-							})
-						})
-
 						when("for buildpack", func() {
 							it.Before(func() {
 								h.SkipIf(t, kind == buildpack.KindExtension, "")
@@ -752,16 +705,63 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 								})
 							})
 
+							when("met requires", func() {
+								it("are derived from build.toml", func() {
+									bpPlan := buildpack.Plan{
+										Entries: []buildpack.Require{
+											{Name: "some-dep"},
+											{Name: "some-other-dep"},
+											{Name: "some-unmet-dep"},
+										},
+									}
+									h.Mkfile(t,
+										"[[unmet]]\n"+
+											`name = "some-unmet-dep"`+"\n",
+										filepath.Join(appDir, "build-A-v1.toml"),
+									)
+
+									br, err := descriptor.Build(bpPlan, config, mockEnv)
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
+								})
+
+								when("there are invalid unmet entries", func() {
+									it("errors when name is missing", func() {
+										h.Mkfile(t,
+											"[[unmet]]\n",
+											filepath.Join(appDir, "build-A-v1.toml"),
+										)
+										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNotNil(t, err)
+										expected := "name is required"
+										h.AssertStringContains(t, err.Error(), expected)
+									})
+
+									it("errors when name is invalid", func() {
+										h.Mkfile(t,
+											"[[unmet]]\n"+
+												`name = "unknown-dep"`+"\n",
+											filepath.Join(appDir, "build-A-v1.toml"),
+										)
+										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNotNil(t, err)
+										expected := "must match a requested dependency"
+										h.AssertStringContains(t, err.Error(), expected)
+									})
+								})
+							})
+
 							when("processes", func() {
 								it("includes processes and uses the default value that is set", func() {
 									h.Mkfile(t,
 										`[[processes]]`+"\n"+
 											`type = "some-type"`+"\n"+
-											`command = "some-cmd"`+"\n"+
+											`command = ["some-cmd"]`+"\n"+
 											`default = true`+"\n"+
 											`[[processes]]`+"\n"+
 											`type = "web"`+"\n"+
-											`command = "other-cmd"`+"\n",
+											`command = ["other-cmd"]`+"\n",
 										// default is false and therefore doesn't appear
 										filepath.Join(appDir, "launch-A-v1.toml"),
 									)
@@ -769,8 +769,8 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertNil(t, err)
 
 									h.AssertEq(t, br.Processes, []launch.Process{
-										{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true},
-										{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false},
+										{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true, Direct: true},
+										{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false, Direct: true},
 									})
 								})
 
@@ -779,11 +779,11 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										h.Mkfile(t,
 											`[[processes]]`+"\n"+
 												`type = "some-type"`+"\n"+
-												`command = "some-cmd"`+"\n"+
+												`command = ["some-cmd"]`+"\n"+
 												`default = true`+"\n"+
 												`[[processes]]`+"\n"+
 												`type = "some-type"`+"\n"+
-												`command = "some-other-cmd"`+"\n"+
+												`command = ["some-other-cmd"]`+"\n"+
 												`default = true`+"\n",
 											filepath.Join(appDir, "launch-A-v1.toml"),
 										)
@@ -797,11 +797,11 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										h.Mkfile(t,
 											`[[processes]]`+"\n"+
 												`type = "some-type"`+"\n"+
-												`command = "some-cmd"`+"\n"+
+												`command = ["some-cmd"]`+"\n"+
 												`default = true`+"\n"+
 												`[[processes]]`+"\n"+
 												`type = "other-type"`+"\n"+
-												`command = "other-cmd"`+"\n"+
+												`command = ["other-cmd"]`+"\n"+
 												`default = true`+"\n",
 											filepath.Join(appDir, "launch-A-v1.toml"),
 										)
@@ -812,16 +812,110 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									})
 								})
 
-								it("sets the working directory", func() {
+								it("does not allow string command", func() {
 									h.Mkfile(t,
 										"[[processes]]\n"+
-											`working-dir = "/working-directory"`,
+											`command = "some-cmd"`,
+										filepath.Join(appDir, "launch-A-v1.toml"),
+									)
+									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+									h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type string; destination has type slice")
+								})
+
+								it("returns extra commands as args before defined args", func() {
+									h.Mkfile(t,
+										"[[processes]]\n"+
+											`command = ["some-cmd", "cmd-arg"]`+"\n"+
+											`args = ["first-arg"]`,
 										filepath.Join(appDir, "launch-A-v1.toml"),
 									)
 									br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
 									h.AssertNil(t, err)
 									h.AssertEq(t, len(br.Processes), 1)
-									h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
+									h.AssertEq(t, br.Processes[0].Command, "some-cmd")
+									h.AssertEq(t, br.Processes[0].Args[0], "cmd-arg")
+									h.AssertEq(t, br.Processes[0].Args[1], "first-arg")
+								})
+
+								it("returns direct=true for processes", func() {
+									h.Mkfile(t,
+										"[[processes]]\n"+
+											`command = ["some-cmd", "cmd-arg"]`+"\n"+
+											`args = ["first-arg"]`,
+										filepath.Join(appDir, "launch-A-v1.toml"),
+									)
+									br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+									h.AssertNil(t, err)
+									h.AssertEq(t, len(br.Processes), 1)
+									h.AssertEq(t, br.Processes[0].Command, "some-cmd")
+									h.AssertEq(t, br.Processes[0].Direct, true)
+								})
+
+								it("does not allow direct flag", func() {
+									h.Mkfile(t,
+										"[[processes]]\n"+
+											`command = ["some-cmd"]`+"\n"+
+											`direct = false`,
+										filepath.Join(appDir, "launch-A-v1.toml"),
+									)
+									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+									h.AssertError(t, err, "process.direct is not supported on this buildpack version")
+								})
+
+								when("buildpack api < 0.9", func() {
+									it.Before(func() {
+										h.SkipIf(t, kind == buildpack.KindExtension, "")
+										descriptor.API = "0.8"
+									})
+
+									it("allows setting direct", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = "some-cmd"`+"\n"+
+												`direct = false`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNil(t, err)
+										h.AssertEq(t, len(br.Processes), 1)
+										h.AssertEq(t, br.Processes[0].Direct, false)
+									})
+
+									it("allows setting a single command string", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = "some-command"`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNil(t, err)
+										h.AssertEq(t, len(br.Processes), 1)
+										h.AssertEq(t, br.Processes[0].Command, "some-command")
+									})
+
+									it("sets the working directory", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = "some-cmd"`+"\n"+
+												`working-dir = "/working-directory"`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertNil(t, err)
+										h.AssertEq(t, len(br.Processes), 1)
+										h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
+									})
+
+									it("does not allow commands as list of string", func() {
+										h.Mkfile(t,
+											"[[processes]]\n"+
+												`command = ["some-cmd"]`+"\n"+
+												`direct = false`,
+											filepath.Join(appDir, "launch-A-v1.toml"),
+										)
+										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
+										h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type []interface {}; destination has type string")
+									})
 								})
 							})
 
@@ -862,6 +956,28 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 								})
 							})
 
+							when("met requires", func() {
+								it("are derived from input plan.toml", func() {
+									bpPlan := buildpack.Plan{
+										Entries: []buildpack.Require{
+											{Name: "some-dep"},
+											{Name: "some-other-dep"},
+										},
+									}
+									h.Mkdir(t, filepath.Join(appDir, "generate"))
+									h.Mkfile(t,
+										"[[unmet]]\n"+
+											`name = "some-other-dep"`+"\n",
+										filepath.Join(appDir, "generate", "build-A-v1.toml"),
+									)
+
+									br, err := descriptor.Build(bpPlan, config, mockEnv)
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
+								})
+							})
+
 							when("/bin/build is missing", func() {
 								it.Before(func() {
 									descriptor.Extension.ID = "B"
@@ -873,7 +989,6 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										Entries: []buildpack.Require{
 											{Name: "some-dep"},
 											{Name: "some-other-dep"},
-											{Name: "some-unmet-dep"},
 										},
 									}
 
@@ -885,7 +1000,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									t.Log("processes run.Dockerfile")
 									h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "B")
 									h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
-									h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(descriptor.Dir, "run.Dockerfile"))
+									h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(descriptor.Dir, "generate", "run.Dockerfile"))
 								})
 							})
 						})
@@ -1330,6 +1445,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 							it("ignores process working directory and warns", func() {
 								h.Mkfile(t,
 									"[[processes]]\n"+
+										`command = "echo"`+"\n"+
 										`working-dir = "/working-directory"`+"\n"+
 										`type = "some-type"`+"\n",
 									filepath.Join(appDir, "launch-A-v1.toml"),

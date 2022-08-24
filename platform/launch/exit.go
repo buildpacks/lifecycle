@@ -2,7 +2,7 @@ package launch
 
 type LifecycleExitError int
 
-const CodeFailed = 1
+const CodeForFailed = 1
 
 const (
 	LaunchError LifecycleExitError = iota
@@ -47,5 +47,5 @@ func codeFor(errType LifecycleExitError, exitCodes map[LifecycleExitError]int) i
 	if code, ok := exitCodes[errType]; ok {
 		return code
 	}
-	return CodeFailed
+	return CodeForFailed
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
@@ -29,8 +30,8 @@ type Platform interface {
 }
 
 func main() {
-	platformAPI := cmd.EnvOrDefault(cmd.EnvPlatformAPI, cmd.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI); err != nil {
+	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
 		cmd.Exit(err)
 	}
 
@@ -38,22 +39,22 @@ func main() {
 
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cmd.Run(&detectCmd{platform: p}, false)
+		cli.Run(&detectCmd{platform: p}, false)
 	case "analyzer":
-		cmd.Run(&analyzeCmd{platform: p}, false)
+		cli.Run(&analyzeCmd{platform: p}, false)
 	case "restorer":
-		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
+		cli.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
 	case "builder":
-		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, false)
+		cli.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, false)
 	case "exporter":
-		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
+		cli.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
 	case "rebaser":
-		cmd.Run(&rebaseCmd{platform: p}, false)
+		cli.Run(&rebaseCmd{platform: p}, false)
 	case "creator":
-		cmd.Run(&createCmd{platform: p}, false)
+		cli.Run(&createCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
-			cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "parse arguments"))
+			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
 		}
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
@@ -66,21 +67,21 @@ func subcommand(p Platform) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cmd.Run(&detectCmd{platform: p}, true)
+		cli.Run(&detectCmd{platform: p}, true)
 	case "analyze":
-		cmd.Run(&analyzeCmd{platform: p}, true)
+		cli.Run(&analyzeCmd{platform: p}, true)
 	case "restore":
-		cmd.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, true)
+		cli.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, true)
 	case "build":
-		cmd.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, true)
+		cli.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, true)
 	case "export":
-		cmd.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, true)
+		cli.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, true)
 	case "rebase":
-		cmd.Run(&rebaseCmd{platform: p}, true)
+		cli.Run(&rebaseCmd{platform: p}, true)
 	case "create":
-		cmd.Run(&createCmd{platform: p}, true)
+		cli.Run(&createCmd{platform: p}, true)
 	default:
-		cmd.Exit(cmd.FailCode(cmd.CodeInvalidArgs, "unknown phase:", phase))
+		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
 	}
 }
 

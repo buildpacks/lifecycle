@@ -97,7 +97,7 @@ func (d *Descriptor) Build(plan Plan, config BuildConfig, buildEnv BuildEnv) (Bu
 	_, err = os.Stat(filepath.Join(d.Dir, "bin", "generate"))
 	if d.IsExtension() && os.IsNotExist(err) {
 		// treat extension root directory as pre-populated output directory
-		return d.readOutputFilesExt(d.Dir, plan)
+		return d.readOutputFilesExt(filepath.Join(d.Dir, "generate"), plan)
 	} else if err = d.runCmd(moduleOutputDir, planPath, config, buildEnv); err != nil {
 		return BuildResult{}, err
 	}
@@ -295,7 +295,7 @@ func (d *Descriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn 
 		}
 
 		// read launch.toml, return if not exists
-		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
+		if err := DecodeLaunchTOML(launchPath, d.API, &launchTOML); os.IsNotExist(err) {
 			return br, nil
 		} else if err != nil {
 			return BuildResult{}, err
@@ -328,7 +328,7 @@ func (d *Descriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn 
 		}
 
 		// read launch.toml, return if not exists
-		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
+		if err := DecodeLaunchTOML(launchPath, d.API, &launchTOML); os.IsNotExist(err) {
 			return br, nil
 		} else if err != nil {
 			return BuildResult{}, err
@@ -352,7 +352,6 @@ func (d *Descriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn 
 	// set data from launch.toml
 	br.Labels = append([]Label{}, launchTOML.Labels...)
 	for i := range launchTOML.Processes {
-		launchTOML.Processes[i].BuildpackID = d.Info().ID
 		if api.MustParse(d.API).LessThan("0.8") {
 			if launchTOML.Processes[i].WorkingDirectory != "" {
 				logger.Warn(fmt.Sprintf("Warning: process working directory isn't supported in this buildpack api version. Ignoring working directory for process '%s'", launchTOML.Processes[i].Type))
@@ -360,7 +359,7 @@ func (d *Descriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn 
 			}
 		}
 	}
-	br.Processes = append([]launch.Process{}, launchTOML.Processes...)
+	br.Processes = append([]launch.Process{}, launchTOML.ToLaunchProcessesForBuildpack(d.Info().ID)...)
 	br.Slices = append([]layers.Slice{}, launchTOML.Slices...)
 
 	return br, nil
@@ -370,18 +369,8 @@ func (d *Descriptor) readOutputFilesExt(extOutputDir string, extPlanIn Plan) (Bu
 	br := BuildResult{}
 	var err error
 
-	// read build.toml
-	var buildTOML BuildTOML
-	buildPath := filepath.Join(extOutputDir, "build.toml")
-	if _, err = toml.DecodeFile(buildPath, &buildTOML); err != nil && !os.IsNotExist(err) {
-		return BuildResult{}, err
-	}
-
 	// set MetRequires
-	if err = validateUnmet(buildTOML.Unmet, extPlanIn); err != nil {
-		return BuildResult{}, err
-	}
-	br.MetRequires = names(extPlanIn.filter(buildTOML.Unmet).Entries)
+	br.MetRequires = names(extPlanIn.Entries)
 
 	// set Dockerfiles
 	runDockerfile := filepath.Join(extOutputDir, "run.Dockerfile")
@@ -395,7 +384,7 @@ func (d *Descriptor) readOutputFilesExt(extOutputDir string, extPlanIn Plan) (Bu
 	return br, nil
 }
 
-func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, logger log.Logger) error {
+func overrideDefaultForOldBuildpacks(processes []ProcessEntry, bpAPI string, logger log.Logger) error {
 	if api.MustParse(bpAPI).AtLeast("0.6") {
 		return nil
 	}
@@ -412,7 +401,7 @@ func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, l
 	return nil
 }
 
-func validateNoMultipleDefaults(processes []launch.Process) error {
+func validateNoMultipleDefaults(processes []ProcessEntry) error {
 	defaultType := ""
 	for _, process := range processes {
 		if process.Default && defaultType != "" {

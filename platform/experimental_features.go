@@ -1,21 +1,13 @@
 package platform
 
 import (
-	"errors"
+	"fmt"
 	"os"
 
 	"github.com/buildpacks/lifecycle/log"
 )
 
 const (
-	EnvExperimentalMode = "CNB_EXPERIMENTAL_MODE"
-
-	DefaultExperimentalMode = ExperimentalModeError
-
-	ExperimentalModeQuiet = "quiet"
-	ExperimentalModeWarn  = "warn"
-	ExperimentalModeError = "error"
-
 	FeatureDockerfiles = "Dockerfiles"
 )
 
@@ -23,15 +15,15 @@ var ExperimentalMode = envOrDefault(EnvExperimentalMode, DefaultExperimentalMode
 
 func GuardExperimental(requested string, logger log.Logger) error {
 	switch ExperimentalMode {
-	case ExperimentalModeQuiet:
+	case ModeQuiet:
 		break
-	case ExperimentalModeError:
+	case ModeError:
 		logger.Errorf("Platform requested experimental feature '%s'", requested)
-		logger.Errorf("Experimental features are disabled by %s=%s", EnvExperimentalMode, ExperimentalModeError)
-		return errors.New("experimental feature")
-	case ExperimentalModeWarn:
+		return fmt.Errorf("experimental features are disabled by %s=%s", EnvExperimentalMode, ModeError)
+	case ModeWarn:
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
 	default:
+		// This shouldn't be reached, as ExperimentalMode is always set.
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
 	}
 	return nil
