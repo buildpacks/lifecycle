@@ -21,7 +21,7 @@ type DetectInputs struct {
 }
 
 type GenerateInputs struct {
-	OutputDir string
+	GeneratedDir string
 }
 
 // ResolveDetect accepts a DetectInputs and returns a new DetectInputs with default values filled in,
@@ -66,7 +66,7 @@ func (r *InputsResolver) resolveDetectDirPaths(inputs *DetectInputs) error {
 	if inputs.LayersDir, err = absoluteIfNotEmpty(inputs.LayersDir); err != nil {
 		return err
 	}
-	if inputs.OutputDir, err = absoluteIfNotEmpty(inputs.OutputDir); err != nil {
+	if inputs.GeneratedDir, err = absoluteIfNotEmpty(inputs.GeneratedDir); err != nil {
 		return err
 	}
 	if inputs.PlatformDir, err = absoluteIfNotEmpty(inputs.PlatformDir); err != nil {
