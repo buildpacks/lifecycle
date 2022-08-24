@@ -819,7 +819,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										filepath.Join(appDir, "launch-A-v1.toml"),
 									)
 									_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-									h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type string; destination has type slice")
+									h.AssertError(t, err, "incompatible types: TOML value has type string; destination has type slice")
 								})
 
 								it("returns extra commands as args before defined args", func() {
@@ -914,7 +914,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 											filepath.Join(appDir, "launch-A-v1.toml"),
 										)
 										_, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
-										h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type []interface {}; destination has type string")
+										h.AssertError(t, err, "incompatible types: TOML value has type []interface {}; destination has type string")
 									})
 								})
 							})
