@@ -10,7 +10,7 @@ import (
 const (
 	EnvExperimentalMode = "CNB_EXPERIMENTAL_MODE"
 
-	DefaultExperimentalMode = ExperimentalModeWarn
+	DefaultExperimentalMode = ExperimentalModeError
 
 	ExperimentalModeQuiet = "quiet"
 	ExperimentalModeWarn  = "warn"
