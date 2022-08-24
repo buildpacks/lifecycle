@@ -30,27 +30,27 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("directory paths", func() {
 			it("resolves absolute paths", func() {
-				appDir := filepath.Join("testdata", "workspace")
+				appDir := "some-app-dir"
 				appDirAbs, err := filepath.Abs(appDir)
 				h.AssertNil(t, err)
 
-				bpDir := filepath.Join("testdata", "cnb", "buildpacks")
+				bpDir := "some-buildpacks-dir"
 				bpDirAbs, err := filepath.Abs(bpDir)
 				h.AssertNil(t, err)
 
-				extDir := filepath.Join("testdata", "cnb", "extensions")
+				extDir := "some-extensions-dir"
 				extDirAbs, err := filepath.Abs(extDir)
 				h.AssertNil(t, err)
 
-				layersDir := filepath.Join("testdata", "layers")
+				layersDir := "some-layers-dir"
 				layersDirAbs, err := filepath.Abs(layersDir)
 				h.AssertNil(t, err)
 
-				outputDir := filepath.Join("testdata", "layers")
-				outputDirAbs, err := filepath.Abs(outputDir)
+				generatedDir := "some-generated-dir"
+				generatedDirAbs, err := filepath.Abs(generatedDir)
 				h.AssertNil(t, err)
 
-				platformDir := filepath.Join("testdata", "platform")
+				platformDir := "some-platform-dir"
 				platformDirAbs, err := filepath.Abs(platformDir)
 				h.AssertNil(t, err)
 
@@ -61,7 +61,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 					LayersDir:     layersDir,
 					PlatformDir:   platformDir,
 					GenerateInputs: platform.GenerateInputs{
-						OutputDir: outputDir,
+						GeneratedDir: generatedDir,
 					},
 				}
 				ret, err := resolver.ResolveDetect(inputs)
@@ -70,7 +70,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertEq(t, ret.BuildpacksDir, bpDirAbs)
 				h.AssertEq(t, ret.ExtensionsDir, extDirAbs)
 				h.AssertEq(t, ret.LayersDir, layersDirAbs)
-				h.AssertEq(t, ret.OutputDir, outputDirAbs)
+				h.AssertEq(t, ret.GeneratedDir, generatedDirAbs)
 				h.AssertEq(t, ret.PlatformDir, platformDirAbs)
 			})
 
@@ -83,7 +83,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertEq(t, ret.BuildpacksDir, "")
 					h.AssertEq(t, ret.ExtensionsDir, "")
 					h.AssertEq(t, ret.LayersDir, "")
-					h.AssertEq(t, ret.OutputDir, "")
+					h.AssertEq(t, ret.GeneratedDir, "")
 					h.AssertEq(t, ret.PlatformDir, "")
 				})
 			})

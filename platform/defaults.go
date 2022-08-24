@@ -17,13 +17,13 @@ const (
 	EnvExperimentalMode    = "CNB_PLATFORM_EXPERIMENTAL_FEATURES"
 	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
 	EnvGID                 = "CNB_GROUP_ID"
+	EnvGeneratedDir        = "CNB_GENERATED_DIR"
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
 	EnvLayersDir           = "CNB_LAYERS_DIR"
 	EnvLogLevel            = "CNB_LOG_LEVEL"
 	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
 	EnvOrderPath           = "CNB_ORDER_PATH"
-	EnvOutputDir           = "CNB_OUTPUT_DIR"
 	EnvPlanPath            = "CNB_PLAN_PATH"
 	EnvPlatformAPI         = "CNB_PLATFORM_API"
 	EnvPlatformDir         = "CNB_PLATFORM_DIR"
@@ -58,9 +58,9 @@ var (
 	DefaultAppDir        = filepath.Join(rootDir, "workspace")
 	DefaultBuildpacksDir = filepath.Join(rootDir, "cnb", "buildpacks")
 	DefaultExtensionsDir = filepath.Join(rootDir, "cnb", "extensions")
+	DefaultGeneratedDir  = filepath.Join(rootDir, "layers", "generated")
 	DefaultLauncherPath  = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
 	DefaultLayersDir     = filepath.Join(rootDir, "layers")
-	DefaultOutputDir     = filepath.Join(rootDir, "layers")
 	DefaultPlatformDir   = filepath.Join(rootDir, "platform")
 	DefaultStackPath     = filepath.Join(rootDir, "cnb", "stack.toml")
 

@@ -350,7 +350,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"-analyzed=/layers/analyzed.toml",
 					"-extensions=/cnb/extensions",
 					"-log-level=debug",
-					"-output-dir=/layers",
+					"-generated=/layers/generated",
 				),
 			)
 
