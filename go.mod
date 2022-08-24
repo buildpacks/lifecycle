@@ -1,7 +1,7 @@
 module github.com/buildpacks/lifecycle
 
 require (
-	github.com/BurntSushi/toml v1.1.0
+	github.com/BurntSushi/toml v1.2.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20220706184558-ce46abcd012b
 	github.com/buildpacks/imgutil v0.0.0-20220719152357-7e8f958d617a
