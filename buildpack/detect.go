@@ -22,13 +22,14 @@ const (
 )
 
 type DetectConfig struct {
-	AppDir      string
-	PlatformDir string
-	Logger      log.Logger
+	AppDir         string
+	PlatformDir    string
+	BuildConfigDir string
+	Logger         log.Logger
 }
 
 func (d *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
-	appDir, platformDir, err := processPlatformPaths(config)
+	appDir, platformDir, buildConfigDir, err := processPlatformPaths(config)
 	if err != nil {
 		return DetectRun{Code: -1, Err: err}
 	}
@@ -48,7 +49,7 @@ func (d *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 			return DetectRun{Code: -1, Err: err}
 		}
 	} else {
-		result = d.runDetect(platformDir, planPath, appDir, bpEnv)
+		result = d.runDetect(platformDir, planPath, appDir, buildConfigDir, bpEnv)
 		if result.Code != 0 {
 			return result
 		}
@@ -84,16 +85,20 @@ func (d *Descriptor) Detect(config *DetectConfig, bpEnv BuildEnv) DetectRun {
 	return result
 }
 
-func processPlatformPaths(config *DetectConfig) (string, string, error) {
+func processPlatformPaths(config *DetectConfig) (string, string, string, error) {
 	appDir, err := filepath.Abs(config.AppDir)
 	if err != nil {
-		return "", "", nil
+		return "", "", "", nil
 	}
 	platformDir, err := filepath.Abs(config.PlatformDir)
 	if err != nil {
-		return "", "", nil
+		return "", "", "", nil
 	}
-	return appDir, platformDir, nil
+	buildConfigDir, err := filepath.Abs(config.BuildConfigDir)
+	if err != nil {
+		return "", "", "", nil
+	}
+	return appDir, platformDir, buildConfigDir, nil
 }
 
 func processBuildpackPaths() (string, string, error) {
@@ -108,7 +113,7 @@ func processBuildpackPaths() (string, string, error) {
 	return planDir, planPath, nil
 }
 
-func (d *Descriptor) runDetect(platformDir, planPath, appDir string, bpEnv BuildEnv) DetectRun {
+func (d *Descriptor) runDetect(platformDir, planPath, appDir, buildConfigDir string, bpEnv BuildEnv) DetectRun {
 	out := &bytes.Buffer{}
 	cmd := exec.Command(
 		filepath.Join(d.Dir, "bin", "detect"),
@@ -120,13 +125,14 @@ func (d *Descriptor) runDetect(platformDir, planPath, appDir string, bpEnv Build
 	cmd.Stderr = out
 
 	var err error
+
 	if d.Info().ClearEnv {
-		cmd.Env = bpEnv.List()
+		cmd.Env, err = bpEnv.WithOverrides("", buildConfigDir)
 	} else {
-		cmd.Env, err = bpEnv.WithPlatform(platformDir)
-		if err != nil {
-			return DetectRun{Code: -1, Err: err}
-		}
+		cmd.Env, err = bpEnv.WithOverrides(platformDir, buildConfigDir)
+	}
+	if err != nil {
+		return DetectRun{Code: -1, Err: err}
 	}
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+d.Dir)
 	if api.MustParse(d.API).AtLeast("0.8") {

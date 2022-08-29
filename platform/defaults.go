@@ -27,6 +27,7 @@ const (
 	EnvPlanPath            = "CNB_PLAN_PATH"
 	EnvPlatformAPI         = "CNB_PLATFORM_API"
 	EnvPlatformDir         = "CNB_PLATFORM_DIR"
+	EnvBuildConfigDir      = "CNB_BUILD_CONFIG_DIR"
 	EnvPreviousImage       = "CNB_PREVIOUS_IMAGE"
 	EnvProcessType         = "CNB_PROCESS_TYPE"
 	EnvProjectMetadataPath = "CNB_PROJECT_METADATA_PATH"
@@ -55,14 +56,15 @@ const (
 )
 
 var (
-	DefaultAppDir        = filepath.Join(rootDir, "workspace")
-	DefaultBuildpacksDir = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultExtensionsDir = filepath.Join(rootDir, "cnb", "extensions")
-	DefaultGeneratedDir  = filepath.Join(rootDir, "layers", "generated")
-	DefaultLauncherPath  = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
-	DefaultLayersDir     = filepath.Join(rootDir, "layers")
-	DefaultPlatformDir   = filepath.Join(rootDir, "platform")
-	DefaultStackPath     = filepath.Join(rootDir, "cnb", "stack.toml")
+	DefaultAppDir         = filepath.Join(rootDir, "workspace")
+	DefaultBuildpacksDir  = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultExtensionsDir  = filepath.Join(rootDir, "cnb", "extensions")
+	DefaultGeneratedDir   = filepath.Join(rootDir, "layers", "generated")
+	DefaultLauncherPath   = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
+	DefaultLayersDir      = filepath.Join(rootDir, "layers")
+	DefaultPlatformDir    = filepath.Join(rootDir, "platform")
+	DefaultBuildConfigDir = filepath.Join(rootDir, "cnb", "build-config")
+	DefaultStackPath      = filepath.Join(rootDir, "cnb", "stack.toml")
 
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
 	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)

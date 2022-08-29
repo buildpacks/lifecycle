@@ -23,6 +23,7 @@ type Generator struct {
 	Stdout, Stderr io.Writer
 	Plan           platform.BuildPlan
 	PlatformDir    string
+	BuildConfigDir string
 }
 
 type GeneratorFactory struct {
@@ -46,18 +47,20 @@ func (f *GeneratorFactory) NewGenerator(
 	outputDir string,
 	plan platform.BuildPlan,
 	platformDir string,
+	buildConfigDir string,
 	stdout, stderr io.Writer,
 	logger log.Logger,
 ) (*Generator, error) {
 	generator := &Generator{
-		AppDir:      appDir,
-		DirStore:    f.dirStore,
-		Logger:      logger,
-		OutputDir:   outputDir,
-		Plan:        plan,
-		PlatformDir: platformDir,
-		Stdout:      stdout,
-		Stderr:      stderr,
+		AppDir:         appDir,
+		DirStore:       f.dirStore,
+		Logger:         logger,
+		OutputDir:      outputDir,
+		Plan:           plan,
+		PlatformDir:    platformDir,
+		BuildConfigDir: buildConfigDir,
+		Stdout:         stdout,
+		Stderr:         stderr,
 	}
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
@@ -124,11 +127,12 @@ func (g *Generator) Generate() error {
 
 func (g *Generator) GenerateConfig() buildpack.BuildConfig {
 	return buildpack.BuildConfig{
-		AppDir:      g.AppDir,
-		Err:         g.Stderr,
-		Logger:      g.Logger,
-		Out:         g.Stdout,
-		PlatformDir: g.PlatformDir,
+		AppDir:         g.AppDir,
+		Err:            g.Stderr,
+		Logger:         g.Logger,
+		Out:            g.Stdout,
+		PlatformDir:    g.PlatformDir,
+		BuildConfigDir: g.BuildConfigDir,
 	}
 }
 

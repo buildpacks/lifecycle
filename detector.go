@@ -50,24 +50,26 @@ func NewDetectorFactory(
 }
 
 type Detector struct {
-	AppDir        string
-	DirStore      DirStore
-	HasExtensions bool
-	Logger        log.Logger
-	Order         buildpack.Order
-	PlatformDir   string
-	Resolver      Resolver
-	Runs          *sync.Map
+	AppDir         string
+	DirStore       DirStore
+	HasExtensions  bool
+	Logger         log.Logger
+	Order          buildpack.Order
+	PlatformDir    string
+	BuildConfigDir string
+	Resolver       Resolver
+	Runs           *sync.Map
 }
 
-func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir, buildConfigDir string, logger log.Logger) (*Detector, error) {
 	detector := &Detector{
-		AppDir:      appDir,
-		DirStore:    f.dirStore,
-		Logger:      logger,
-		PlatformDir: platformDir,
-		Resolver:    &DefaultResolver{Logger: logger},
-		Runs:        &sync.Map{},
+		AppDir:         appDir,
+		DirStore:       f.dirStore,
+		Logger:         logger,
+		PlatformDir:    platformDir,
+		BuildConfigDir: buildConfigDir,
+		Resolver:       &DefaultResolver{Logger: logger},
+		Runs:           &sync.Map{},
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
@@ -205,9 +207,10 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		go func(key string, bp buildpack.BuildModule) {
 			if _, ok := d.Runs.Load(key); !ok {
 				detectConfig := &buildpack.DetectConfig{
-					AppDir:      d.AppDir,
-					PlatformDir: d.PlatformDir,
-					Logger:      d.Logger,
+					AppDir:         d.AppDir,
+					PlatformDir:    d.PlatformDir,
+					BuildConfigDir: d.BuildConfigDir,
+					Logger:         d.Logger,
 				}
 				d.Runs.Store(key, bp.Detect(detectConfig, env.NewBuildEnv(os.Environ())))
 			}

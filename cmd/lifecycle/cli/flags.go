@@ -105,6 +105,10 @@ func FlagPlatformDir(platformDir *string) {
 	flagSet.StringVar(platformDir, "platform", envOrDefault(platform.EnvPlatformDir, platform.DefaultPlatformDir), "path to platform directory")
 }
 
+func FlagBuildConfigDir(baseConfigDir *string) {
+	flagSet.StringVar(baseConfigDir, "build-config", envOrDefault(platform.EnvBuildConfigDir, platform.DefaultPlatformDir), "path to base config directory")
+}
+
 func FlagPreviousImage(image *string) {
 	flagSet.StringVar(image, "previous-image", os.Getenv(platform.EnvPreviousImage), "reference to previous image")
 }

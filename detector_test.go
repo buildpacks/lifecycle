@@ -71,7 +71,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpA1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.2"})
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 
-			detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
+			detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", "some-build-config-dir", logger)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -135,7 +135,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				extD1.EXPECT().ConfigFile().Return(&buildpack.Descriptor{API: "0.10"})
 				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
-				detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
+				detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", "some-build-config-dir", logger)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, detector.AppDir, "some-app-dir")

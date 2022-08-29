@@ -31,7 +31,7 @@ const (
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
-	WithPlatform(platformDir string) ([]string, error)
+	WithOverrides(platformDir string, buildConfigDir string) ([]string, error)
 	List() []string
 }
 
@@ -39,6 +39,7 @@ type BuildConfig struct {
 	AppDir          string
 	OutputParentDir string
 	PlatformDir     string
+	BuildConfigDir  string
 	Out             io.Writer
 	Err             io.Writer
 	Logger          log.Logger
@@ -195,13 +196,13 @@ func (d *Descriptor) runCmd(moduleOutputDir, planPath string, config BuildConfig
 	cmd.Stderr = config.Err
 
 	var err error
+	platformDir := config.PlatformDir
 	if d.Buildpack.ClearEnv {
-		cmd.Env = buildEnv.List()
-	} else {
-		cmd.Env, err = buildEnv.WithPlatform(config.PlatformDir)
-		if err != nil {
-			return err
-		}
+		platformDir = ""
+	}
+	cmd.Env, err = buildEnv.WithOverrides(platformDir, config.BuildConfigDir)
+	if err != nil {
+		return err
 	}
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+d.Dir)
 	if api.MustParse(d.API).AtLeast("0.8") {

@@ -77,6 +77,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 				"some-output-dir",
 				providedPlan,
 				"some-platform-dir",
+				"some-build-config-dir",
 				stdout, stderr,
 				logger,
 			)

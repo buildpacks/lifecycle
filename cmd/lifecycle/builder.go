@@ -24,12 +24,12 @@ type buildCmd struct {
 
 type buildArgs struct {
 	// inputs needed when run by creator
-	buildpacksDir string
-	layersDir     string
-	appDir        string
-	platformDir   string
-
-	platform Platform
+	buildpacksDir  string
+	layersDir      string
+	appDir         string
+	platformDir    string
+	buildConfigDir string
+	platform       Platform
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
@@ -40,6 +40,7 @@ func (b *buildCmd) DefineFlags() {
 	cli.FlagLayersDir(&b.layersDir)
 	cli.FlagAppDir(&b.appDir)
 	cli.FlagPlatformDir(&b.platformDir)
+	cli.FlagBuildConfigDir(&b.buildConfigDir)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -85,16 +86,17 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	}
 
 	builder := &lifecycle.Builder{
-		AppDir:      ba.appDir,
-		LayersDir:   ba.layersDir,
-		PlatformDir: ba.platformDir,
-		Platform:    ba.platform,
-		Group:       group,
-		Plan:        plan,
-		Out:         cmd.Stdout,
-		Err:         cmd.Stderr,
-		Logger:      cmd.DefaultLogger,
-		DirStore:    dirStore,
+		AppDir:         ba.appDir,
+		LayersDir:      ba.layersDir,
+		PlatformDir:    ba.platformDir,
+		Platform:       ba.platform,
+		BuildConfigDir: ba.buildConfigDir,
+		Group:          group,
+		Plan:           plan,
+		Out:            cmd.Stdout,
+		Err:            cmd.Stderr,
+		Logger:         cmd.DefaultLogger,
+		DirStore:       dirStore,
 	}
 	md, err := builder.Build()
 	if err != nil {

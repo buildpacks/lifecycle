@@ -32,6 +32,7 @@ type createCmd struct {
 	orderPath           string
 	outputImageRef      string
 	platformDir         string
+	buildConfigDir      string
 	previousImageRef    string
 	processType         string
 	projectMetadataPath string
@@ -62,6 +63,7 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagLayersDir(&c.layersDir)
 	cli.FlagOrderPath(&c.orderPath)
 	cli.FlagPlatformDir(&c.platformDir)
+	cli.FlagBuildConfigDir(&c.buildConfigDir)
 	cli.FlagPreviousImage(&c.previousImageRef)
 	cli.FlagReportPath(&c.reportPath)
 	cli.FlagRunImage(&c.runImageRef)
@@ -214,7 +216,7 @@ func (c *createCmd) Exec() error {
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, c.buildConfigDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
@@ -230,7 +232,7 @@ func (c *createCmd) Exec() error {
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, c.buildConfigDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
@@ -288,11 +290,12 @@ func (c *createCmd) Exec() error {
 	stopPinging := startPinging(c.docker)
 	cmd.DefaultLogger.Phase("BUILDING")
 	err = buildArgs{
-		buildpacksDir: c.buildpacksDir,
-		layersDir:     c.layersDir,
-		appDir:        c.appDir,
-		platform:      c.platform,
-		platformDir:   c.platformDir,
+		buildpacksDir:  c.buildpacksDir,
+		layersDir:      c.layersDir,
+		appDir:         c.appDir,
+		platform:       c.platform,
+		platformDir:    c.platformDir,
+		buildConfigDir: c.buildConfigDir,
 	}.build(group, plan)
 	stopPinging()
 

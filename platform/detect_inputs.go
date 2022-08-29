@@ -7,16 +7,16 @@ import (
 // DetectInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
 type DetectInputs struct {
-	AnalyzedPath  string
-	AppDir        string
-	BuildpacksDir string
-	ExtensionsDir string
-	GroupPath     string
-	LayersDir     string
-	OrderPath     string
-	PlanPath      string
-	PlatformDir   string
-
+	AnalyzedPath   string
+	AppDir         string
+	BuildpacksDir  string
+	ExtensionsDir  string
+	GroupPath      string
+	LayersDir      string
+	OrderPath      string
+	PlanPath       string
+	PlatformDir    string
+	BuildConfigDir string
 	GenerateInputs
 }
 

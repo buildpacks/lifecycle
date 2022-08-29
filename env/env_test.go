@@ -225,41 +225,129 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#WithPlatform", func() {
-		it("should apply platform env vars as filename=file-contents", func() {
-			mkdir(t, filepath.Join(tmpDir, "env", "some-dir"))
-			mkfile(t, "value-path", filepath.Join(tmpDir, "env", "PATH"))
-			mkfile(t, "value-ld-library-path", filepath.Join(tmpDir, "env", "LD_LIBRARY_PATH"))
-			mkfile(t, "value-library-path", filepath.Join(tmpDir, "env", "LIBRARY_PATH"))
-			mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
-			mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
-			mksymlink(t, filepath.Join(tmpDir, "env", "some-dir"), filepath.Join(tmpDir, "env", "some-sym-dir"))
-			mksymlink(t, filepath.Join(tmpDir, "env", "VAR_NORMAL"), filepath.Join(tmpDir, "env", "VAR_SYM"))
+	when("#WithOverrides", func() {
+		when("it has a platform dir", func() {
+			it("should apply platform env vars as filename=file-contents", func() {
+				mkdir(t, filepath.Join(tmpDir, "env", "some-dir"))
+				mkfile(t, "value-path", filepath.Join(tmpDir, "env", "PATH"))
+				mkfile(t, "value-ld-library-path", filepath.Join(tmpDir, "env", "LD_LIBRARY_PATH"))
+				mkfile(t, "value-library-path", filepath.Join(tmpDir, "env", "LIBRARY_PATH"))
+				mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
+				mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE"))
+				mksymlink(t, filepath.Join(tmpDir, "env", "some-dir"), filepath.Join(tmpDir, "env", "some-sym-dir"))
+				mksymlink(t, filepath.Join(tmpDir, "env", "VAR_NORMAL"), filepath.Join(tmpDir, "env", "VAR_SYM"))
 
-			envv.Vars = env.NewVars(map[string]string{
-				"VAR_EMPTY":       "",
-				"VAR_OVERRIDE":    "value-override-orig",
-				"PATH":            "value-path-orig",
-				"LD_LIBRARY_PATH": strings.Join([]string{"value-ld-library-path-orig1", "value-ld-library-path-orig2"}, string(os.PathListSeparator)),
-			}, false)
-			out, err := envv.WithPlatform(tmpDir)
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			sort.Strings(out)
+				envv.Vars = env.NewVars(map[string]string{
+					"VAR_EMPTY":       "",
+					"VAR_OVERRIDE":    "value-override-orig",
+					"PATH":            "value-path-orig",
+					"LD_LIBRARY_PATH": strings.Join([]string{"value-ld-library-path-orig1", "value-ld-library-path-orig2"}, string(os.PathListSeparator)),
+				}, false)
+				out, err := envv.WithOverrides(tmpDir, "")
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				sort.Strings(out)
 
-			expected := []string{
-				formEnv("LD_LIBRARY_PATH", "value-ld-library-path", "value-ld-library-path-orig1", "value-ld-library-path-orig2"),
-				formEnv("LIBRARY_PATH", "value-library-path"),
-				formEnv("PATH", "value-path", "value-path-orig"),
-				formEnv("VAR_EMPTY", ""),
-				formEnv("VAR_NORMAL", "value-normal"),
-				formEnv("VAR_OVERRIDE", "value-override"),
-				formEnv("VAR_SYM", "value-normal"),
-			}
-			if s := cmp.Diff(out, expected); s != "" {
-				t.Fatalf("Unexpected env:\n%s\n", s)
-			}
+				expected := []string{
+					formEnv("LD_LIBRARY_PATH", "value-ld-library-path", "value-ld-library-path-orig1", "value-ld-library-path-orig2"),
+					formEnv("LIBRARY_PATH", "value-library-path"),
+					formEnv("PATH", "value-path", "value-path-orig"),
+					formEnv("VAR_EMPTY", ""),
+					formEnv("VAR_NORMAL", "value-normal"),
+					formEnv("VAR_OVERRIDE", "value-override"),
+					formEnv("VAR_SYM", "value-normal"),
+				}
+				if s := cmp.Diff(out, expected); s != "" {
+					t.Fatalf("Unexpected env:\n%s\n", s)
+				}
+			})
+		})
+		when("it has a base config dir", func() {
+			it("should apply base config env vars appropriately", func() {
+				mkdir(t, filepath.Join(tmpDir, "env", "some-dir"))
+				mkfile(t, "value-normal", filepath.Join(tmpDir, "env", "VAR_NORMAL"))
+				mkfile(t, "value-dne", filepath.Join(tmpDir, "env", "VAR_DNE.default"))
+				mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_EXIST"))
+				mkfile(t, "value-override", filepath.Join(tmpDir, "env", "VAR_OVERRIDE.override"))
+				mkfile(t, "value-prepend", filepath.Join(tmpDir, "env", "VAR_CHANGE.prepend"))
+				mkfile(t, ":", filepath.Join(tmpDir, "env", "VAR_CHANGE.delim"))
+				mkfile(t, "value-append", filepath.Join(tmpDir, "env", "VAR_CHANGE.append"))
+				mksymlink(t, filepath.Join(tmpDir, "env", "some-dir"), filepath.Join(tmpDir, "env", "some-sym-dir"))
+				mksymlink(t, filepath.Join(tmpDir, "env", "VAR_NORMAL"), filepath.Join(tmpDir, "env", "VAR_SYM"))
+
+				envv.Vars = env.NewVars(map[string]string{
+					"VAR_EMPTY":    "",
+					"VAR_EXIST":    "value-exist",
+					"VAR_OVERRIDE": "value-override-orig",
+				}, false)
+				out, err := envv.WithOverrides("", tmpDir)
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				sort.Strings(out)
+
+				expected := []string{
+					formEnv("VAR_CHANGE", "value-prepend:value-append"),
+					formEnv("VAR_DNE", "value-dne"),
+					formEnv("VAR_EMPTY", ""),
+					formEnv("VAR_EXIST", "value-exist"),
+					formEnv("VAR_NORMAL", "value-normal"),
+					formEnv("VAR_OVERRIDE", "value-override"),
+					formEnv("VAR_SYM", "value-normal"),
+				}
+				if s := cmp.Diff(out, expected); s != "" {
+					t.Fatalf("Unexpected env:\n%s\n", s)
+				}
+			})
+		})
+		when("it has both a platform dir and a base config dir", func() {
+			it("should apply platform env and then the base config env vars appropriately", func() {
+				platformDir := filepath.Join(tmpDir, "platform")
+				mkdir(t, filepath.Join(platformDir, "env", "some-dir"))
+				mkfile(t, "value-platform-dne", filepath.Join(platformDir, "env", "VAR_DNE"))
+				mkfile(t, "value-platform-override", filepath.Join(platformDir, "env", "VAR_PLATFORM_DEFAULT"))
+				mkfile(t, "value-platform-change", filepath.Join(platformDir, "env", "VAR_CHANGE"))
+				mkfile(t, "value-platform", filepath.Join(platformDir, "env", "VAR_OVERRIDE"))
+				baseConfigDir := filepath.Join(tmpDir, "base")
+				mkdir(t, filepath.Join(baseConfigDir, "env", "some-dir"))
+				mkfile(t, "value-normal", filepath.Join(baseConfigDir, "env", "VAR_NORMAL"))
+				mkfile(t, "value-override", filepath.Join(baseConfigDir, "env", "VAR_OVERRIDE.override"))
+				mkfile(t, "value-dne", filepath.Join(baseConfigDir, "env", "VAR_DNE.default"))
+				mkfile(t, "value-override", filepath.Join(baseConfigDir, "env", "VAR_EXIST.default"))
+				mkfile(t, "value-default", filepath.Join(baseConfigDir, "env", "VAR_DEFAULT"))
+				mkfile(t, "value-prepend", filepath.Join(baseConfigDir, "env", "VAR_CHANGE.prepend"))
+				mkfile(t, ":", filepath.Join(baseConfigDir, "env", "VAR_CHANGE.delim"))
+				mkfile(t, "value-append", filepath.Join(baseConfigDir, "env", "VAR_CHANGE.append"))
+				mksymlink(t, filepath.Join(baseConfigDir, "env", "some-dir"), filepath.Join(baseConfigDir, "env", "some-sym-dir"))
+				mksymlink(t, filepath.Join(baseConfigDir, "env", "VAR_NORMAL"), filepath.Join(baseConfigDir, "env", "VAR_SYM"))
+
+				envv.Vars = env.NewVars(map[string]string{
+					"VAR_EMPTY":   "",
+					"VAR_EXIST":   "value-exist",
+					"VAR_DEFAULT": "value-override-orig",
+				}, false)
+				out, err := envv.WithOverrides(platformDir, baseConfigDir)
+				if err != nil {
+					t.Fatalf("Error: %s\n", err)
+				}
+				sort.Strings(out)
+
+				expected := []string{
+					formEnv("VAR_CHANGE", "value-prepend:value-platform-change:value-append"),
+					formEnv("VAR_DEFAULT", "value-override-orig"),
+					formEnv("VAR_DNE", "value-platform-dne"),
+					formEnv("VAR_EMPTY", ""),
+					formEnv("VAR_EXIST", "value-exist"),
+					formEnv("VAR_NORMAL", "value-normal"),
+					formEnv("VAR_OVERRIDE", "value-override"),
+					formEnv("VAR_PLATFORM_DEFAULT", "value-platform-override"),
+					formEnv("VAR_SYM", "value-normal"),
+				}
+				if s := cmp.Diff(out, expected); s != "" {
+					t.Fatalf("Unexpected env:\n%s\n", s)
+				}
+			})
 		})
 	})
 

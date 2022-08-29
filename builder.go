@@ -27,20 +27,21 @@ type Platform interface {
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
-	WithPlatform(platformDir string) ([]string, error)
+	WithOverrides(platformDir string, baseConfigDir string) ([]string, error)
 	List() []string
 }
 
 type Builder struct {
-	AppDir      string
-	LayersDir   string
-	PlatformDir string
-	Platform    Platform
-	Group       buildpack.Group
-	Plan        platform.BuildPlan
-	Out, Err    io.Writer
-	Logger      log.Logger
-	DirStore    DirStore
+	AppDir         string
+	LayersDir      string
+	PlatformDir    string
+	BuildConfigDir string
+	Platform       Platform
+	Group          buildpack.Group
+	Plan           platform.BuildPlan
+	Out, Err       io.Writer
+	Logger         log.Logger
+	DirStore       DirStore
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -228,6 +229,10 @@ func (b *Builder) BuildConfig() (buildpack.BuildConfig, error) {
 	if err != nil {
 		return buildpack.BuildConfig{}, err
 	}
+	buildConfigDir, err := filepath.Abs(b.BuildConfigDir)
+	if err != nil {
+		return buildpack.BuildConfig{}, err
+	}
 	layersDir, err := filepath.Abs(b.LayersDir)
 	if err != nil {
 		return buildpack.BuildConfig{}, err
@@ -236,6 +241,7 @@ func (b *Builder) BuildConfig() (buildpack.BuildConfig, error) {
 	return buildpack.BuildConfig{
 		AppDir:          appDir,
 		PlatformDir:     platformDir,
+		BuildConfigDir:  buildConfigDir,
 		OutputParentDir: layersDir,
 		Out:             b.Out,
 		Err:             b.Err,

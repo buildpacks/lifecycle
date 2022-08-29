@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"path/filepath"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -40,6 +39,7 @@ func (d *detectCmd) DefineFlags() {
 		cli.FlagOrderPath(&d.OrderPath)
 		cli.FlagPlanPath(&d.PlanPath)
 		cli.FlagPlatformDir(&d.PlatformDir)
+		cli.FlagBuildConfigDir(&d.BuildConfigDir)
 	}
 }
 
@@ -80,6 +80,7 @@ func (d *detectCmd) Exec() error {
 		d.AppDir,
 		d.OrderPath,
 		d.PlatformDir,
+		d.BuildConfigDir,
 		cmd.DefaultLogger,
 	)
 	if err != nil {
@@ -102,9 +103,10 @@ func (d *detectCmd) Exec() error {
 		generator, err := generatorFactory.NewGenerator(
 			d.AppDir,
 			group.GroupExtensions,
-			filepath.Join(d.GeneratedDir),
+			d.GeneratedDir,
 			plan,
 			d.PlatformDir,
+			d.BuildConfigDir,
 			cmd.Stdout, cmd.Stderr,
 			cmd.DefaultLogger,
 		)

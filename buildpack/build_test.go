@@ -46,6 +46,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 			platformDir    string
 			appDir         string
 			layersDir      string
+			buildConfigDir string
 			storeDir       string
 			config         buildpack.BuildConfig
 			logHandler     = memory.New()
@@ -60,6 +61,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 			platformDir = filepath.Join(tmpDir, "platform")
+			buildConfigDir = filepath.Join(tmpDir, "build-config")
 			layersDir = filepath.Join(tmpDir, "launch")
 			appDir = filepath.Join(layersDir, "app")
 			h.Mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
@@ -70,6 +72,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 			config = buildpack.BuildConfig{
 				AppDir:          appDir,
 				PlatformDir:     platformDir,
+				BuildConfigDir:  buildConfigDir,
 				OutputParentDir: layersDir,
 				Out:             stdout,
 				Err:             stderr,
@@ -112,7 +115,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 			when("env", func() {
 				when("clear", func() {
 					it.Before(func() {
-						mockEnv.EXPECT().List().Return(append(os.Environ(), "TEST_ENV=cleared"))
+						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "TEST_ENV=cleared"), nil)
 
 						descriptor.Buildpack.Version = "v1.clear"
 						descriptor.Dir = filepath.Join(storeDir, "A", "v1.clear")
@@ -170,7 +173,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 
 				when("full", func() {
 					it.Before(func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil)
 					})
 
 					it("provides a full env", func() {
@@ -235,7 +238,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("errors when <platform>/env cannot be loaded", func() {
-					mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
+					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(nil, errors.New("some error"))
 					if _, err := descriptor.Build(buildpack.Plan{}, config, mockEnv); err == nil {
 						t.Fatal("Expected error.\n")
 					} else if !strings.Contains(err.Error(), "some error") {
@@ -245,7 +248,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 
 				when("any", func() {
 					it.Before(func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil).AnyTimes()
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), "TEST_ENV=Av1"), nil).AnyTimes()
 					})
 
 					it("ensures the buildpack's layers dir exists and processes build layers", func() {
