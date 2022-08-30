@@ -1,19 +1,27 @@
 package launch
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/BurntSushi/toml"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/buildpacks/lifecycle/api"
 )
 
 type Process struct {
-	Type             string   `toml:"type" json:"type"`
-	Command          string   `toml:"command" json:"command"`
-	Args             []string `toml:"args" json:"args"`
-	Direct           bool     `toml:"direct" json:"direct"`
-	Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
-	BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
-	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	Type             string         `toml:"type" json:"type"`
+	Command          []string       `toml:"-" json:"-"` // ignored
+	RawCommandValue  toml.Primitive `toml:"command" json:"command"`
+	Args             []string       `toml:"args" json:"args"`
+	Direct           bool           `toml:"direct" json:"direct"`
+	Default          bool           `toml:"default,omitempty" json:"default,omitempty"`
+	BuildpackID      string         `toml:"buildpack-id" json:"buildpackID"`
+	WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
 }
 
 func (p Process) NoDefault() Process {
@@ -29,6 +37,64 @@ func ProcessPath(pType string) string {
 type Metadata struct {
 	Processes  []Process   `toml:"processes" json:"processes"`
 	Buildpacks []Buildpack `toml:"buildpacks" json:"buildpacks"`
+}
+
+// DecodeLaunchMetadataTOML reads a launch.toml file
+func DecodeLaunchMetadataTOML(path string, platformAPI *api.Version, launchmd *Metadata) error {
+	// decode the common bits
+	md, err := toml.DecodeFile(path, &launchmd)
+	if err != nil {
+		return err
+	}
+
+	// decode the process.commands, which will differ based on platform API
+	commandsAreStrings := true
+
+	// processes are defined differently depending on API version
+	// and will be decoded into different values
+	for i, process := range launchmd.Processes {
+		if commandsAreStrings {
+			var commandString string
+			if err = md.PrimitiveDecode(process.RawCommandValue, &commandString); err != nil {
+				return err
+			}
+
+			launchmd.Processes[i].Command = []string{commandString}
+		} else {
+			var command []string
+			if err = md.PrimitiveDecode(process.RawCommandValue, &command); err != nil {
+				return err
+			}
+			launchmd.Processes[i].Command = command
+		}
+	}
+
+	return nil
+}
+
+func (m Metadata) Matches(x interface{}) bool {
+	metadatax, ok := x.(Metadata)
+	if !ok {
+		return false
+	}
+
+	// don't compare Processes directly, we will compare those individually next
+	if s := cmp.Diff(metadatax, m, cmpopts.IgnoreFields(Metadata{}, "Processes")); s != "" {
+		return false
+	}
+
+	// we need to ignore the RawCommandValue field because it is a toml.Primitive and is not part of our equality
+	for i, p := range m.Processes {
+		if s := cmp.Diff(metadatax.Processes[i], p, cmpopts.IgnoreFields(Process{}, "RawCommandValue")); s != "" {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m Metadata) String() string {
+	return fmt.Sprintf("%+v %+v", m.Processes, m.Buildpacks)
 }
 
 func (m Metadata) FindProcessType(pType string) (Process, bool) {

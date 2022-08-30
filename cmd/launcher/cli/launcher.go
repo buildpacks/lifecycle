@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -27,7 +26,7 @@ func RunLaunch() error {
 	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
-	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), &md); err != nil {
+	if err := launch.DecodeLaunchMetadataTOML(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), p.API(), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 	if err := verifyBuildpackAPIs(md.Buildpacks); err != nil {
