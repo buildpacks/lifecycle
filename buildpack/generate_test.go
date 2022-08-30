@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/api"
-
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
@@ -18,7 +16,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	llog "github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -29,26 +29,26 @@ func TestGenerate(t *testing.T) {
 
 func testGenerate(t *testing.T, when spec.G, it spec.S) {
 	var (
+		mockCtrl   *gomock.Controller
 		executor   buildpack.GenerateExecutor
+		dirStore   string
 		descriptor buildpack.ExtDescriptor
 
-		// generate config
-		config         buildpack.BuildConfig // TODO: make generate config
+		// generate inputs
+		inputs         buildpack.GenerateInputs
 		tmpDir         string
 		appDir         string
 		outputDir      string
 		platformDir    string
+		mockEnv        *testmock.MockBuildEnv
 		stdout, stderr *bytes.Buffer
-		logHandler     = memory.New()
 
-		// generate inputs
-		mockCtrl *gomock.Controller
-		mockEnv  *testmock.MockBuildEnv
-
-		dirStore string
+		logger     llog.Logger
+		logHandler = memory.New()
 	)
 
 	it.Before(func() {
+		mockCtrl = gomock.NewController(t)
 		executor = &buildpack.DefaultGenerateExecutor{}
 
 		// setup descriptor
@@ -77,20 +77,19 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 		platformDir = filepath.Join(tmpDir, "platform")
 		h.Mkdir(t, outputDir, appDir, filepath.Join(platformDir, "env"))
 
-		// make config
+		// make inputs
+		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
-		config = buildpack.BuildConfig{
-			AppDir:          appDir,
-			PlatformDir:     platformDir,
-			OutputParentDir: outputDir,
-			Out:             stdout,
-			Err:             stderr,
-			Logger:          &log.Logger{Handler: logHandler},
+		inputs = buildpack.GenerateInputs{
+			AppDir:      appDir,
+			PlatformDir: platformDir,
+			Env:         mockEnv,
+			OutputDir:   outputDir,
+			Out:         stdout,
+			Err:         stderr,
 		}
 
-		// generate inputs
-		mockCtrl = gomock.NewController(t)
-		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+		logger = &log.Logger{Handler: logHandler}
 	})
 
 	it.After(func() {
@@ -110,7 +109,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("provides a clear env", func() {
-					if _, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Generate(descriptor, inputs, logger); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 					if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-info-A-v1.clear")),
@@ -121,7 +120,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("sets CNB_ vars", func() {
-					if _, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Generate(descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 
@@ -155,7 +154,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("provides a full env", func() {
-					if _, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Generate(descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-info-A-v1")),
@@ -166,7 +165,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("sets CNB_ vars", func() {
-					if _, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Generate(descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 
@@ -197,7 +196,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 					h.Mkfile(t, "some-data",
 						filepath.Join(platformDir, "env", "SOME_VAR"),
 					)
-					if _, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Generate(descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					testExists(t,
@@ -208,7 +207,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 
 			it("errors when <platform>/env cannot be loaded", func() {
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
-				if _, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv); err == nil {
+				if _, err := executor.Generate(descriptor, inputs, logger); err == nil {
 					t.Fatal("Expected error.\n")
 				} else if !strings.Contains(err.Error(), "some error") {
 					t.Fatalf("Incorrect error: %s\n", err)
@@ -221,14 +220,14 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("errors when the provided buildpack plan is invalid", func() {
-					bpPlan := buildpack.Plan{
+					inputs.Plan = buildpack.Plan{
 						Entries: []buildpack.Require{
 							{
 								Metadata: map[string]interface{}{"a": map[int64]int64{1: 2}}, // map with non-string key type
 							},
 						},
 					}
-					if _, err := executor.Generate(descriptor, bpPlan, config, mockEnv); err == nil {
+					if _, err := executor.Generate(descriptor, inputs, logger); err == nil {
 						t.Fatal("Expected error.\n")
 					} else if !strings.Contains(err.Error(), "toml") {
 						t.Fatalf("Incorrect error: %s\n", err)
@@ -236,7 +235,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("connects stdout and stdin to the terminal", func() {
-					if _, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Generate(descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := cmp.Diff(h.CleanEndings(stdout.String()), "build out: A@v1\n"); s != "" {
@@ -251,7 +250,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 					if err := os.RemoveAll(platformDir); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
-					_, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv)
+					_, err := executor.Generate(descriptor, inputs, logger)
 					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeBuildpack {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
@@ -265,7 +264,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "run.Dockerfile-A-v1"),
 							)
 
-							br, err := executor.Generate(descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Generate(descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
@@ -276,7 +275,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 
 					when("met requires", func() {
 						it("are derived from input plan.toml", func() {
-							bpPlan := buildpack.Plan{
+							inputs.Plan = buildpack.Plan{
 								Entries: []buildpack.Require{
 									{Name: "some-dep"},
 									{Name: "some-other-dep"},
@@ -289,7 +288,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "generate", "build-A-v1.toml"),
 							)
 
-							br, err := executor.Generate(descriptor, bpPlan, config, mockEnv)
+							br, err := executor.Generate(descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
@@ -303,14 +302,14 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("treats the extension root as a pre-populated output directory", func() {
-							bpPlan := buildpack.Plan{
+							inputs.Plan = buildpack.Plan{
 								Entries: []buildpack.Require{
 									{Name: "some-dep"},
 									{Name: "some-other-dep"},
 								},
 							}
 
-							br, err := executor.Generate(descriptor, bpPlan, config, mockEnv)
+							br, err := executor.Generate(descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							t.Log("processes build.toml")

@@ -10,6 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	log "github.com/buildpacks/lifecycle/log"
 )
 
 // MockBuildExecutor is a mock of BuildExecutor interface.
@@ -36,16 +37,16 @@ func (m *MockBuildExecutor) EXPECT() *MockBuildExecutorMockRecorder {
 }
 
 // Build mocks base method.
-func (m *MockBuildExecutor) Build(arg0 *buildpack.BpDescriptor, arg1 buildpack.Plan, arg2 buildpack.BuildConfig, arg3 buildpack.BuildEnv) (buildpack.BuildResult, error) {
+func (m *MockBuildExecutor) Build(arg0 *buildpack.BpDescriptor, arg1 buildpack.BuildInputs, arg2 log.Logger) (buildpack.BuildOutputs, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Build", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(buildpack.BuildResult)
+	ret := m.ctrl.Call(m, "Build", arg0, arg1, arg2)
+	ret0, _ := ret[0].(buildpack.BuildOutputs)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Build indicates an expected call of Build.
-func (mr *MockBuildExecutorMockRecorder) Build(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockBuildExecutorMockRecorder) Build(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockBuildExecutor)(nil).Build), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockBuildExecutor)(nil).Build), arg0, arg1, arg2)
 }

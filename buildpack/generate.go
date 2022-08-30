@@ -1,69 +1,83 @@
 package buildpack
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/log"
 )
 
-const generateCmd = "generate"
+type GenerateInputs struct {
+	AppDir      string
+	OutputDir   string
+	PlatformDir string
+	Env         BuildEnv
+	Out, Err    io.Writer
+	Plan        Plan
+}
+
+type GenerateOutputs struct {
+	Dockerfiles []DockerfileInfo
+	MetRequires []string
+}
 
 //go:generate mockgen -package testmock -destination ../testmock/generate_executor.go github.com/buildpacks/lifecycle/buildpack GenerateExecutor
 type GenerateExecutor interface {
-	Generate(d ExtDescriptor, plan Plan, config BuildConfig, buildEnv BuildEnv) (BuildResult, error)
+	Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error)
 }
 
 type DefaultGenerateExecutor struct{}
 
-func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, plan Plan, config BuildConfig, buildEnv BuildEnv) (BuildResult, error) { // TODO: fix other pointer arguments (Build, Detect)
-	config.Logger.Debug("Creating plan directory")
+func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error) { // TODO: fix other pointer arguments (Build, Detect)
+	logger.Debug("Creating plan directory")
 	planDir, err := ioutil.TempDir("", launch.EscapeID(d.Extension.ID)+"-")
 	if err != nil {
-		return BuildResult{}, err
+		return GenerateOutputs{}, err
 	}
 	defer os.RemoveAll(planDir)
 
-	config.Logger.Debug("Preparing paths")
-	moduleOutputDir, planPath, err := prepareBuildInputPaths(d.Extension.ID, plan, config.OutputParentDir, planDir)
+	logger.Debug("Preparing paths")
+	moduleOutputDir, planPath, err := prepareInputPaths(d.Extension.ID, inputs.Plan, inputs.OutputDir, planDir)
 	if err != nil {
-		return BuildResult{}, err
+		return GenerateOutputs{}, err
 	}
 
-	config.Logger.Debug("Running generate command")
+	logger.Debug("Running generate command")
 	if _, err = os.Stat(filepath.Join(d.WithRootDir, "bin", "generate")); err != nil {
 		if os.IsNotExist(err) {
 			// treat extension root directory as pre-populated output directory
-			return readOutputFilesExt(d, filepath.Join(d.WithRootDir, "generate"), plan)
+			return readOutputFilesExt(d, filepath.Join(d.WithRootDir, "generate"), inputs.Plan)
 		}
-		return BuildResult{}, err
+		return GenerateOutputs{}, err
 	}
-	if err = runGenerateCmd(d, moduleOutputDir, planPath, config, buildEnv); err != nil {
-		return BuildResult{}, err
+	if err = runGenerateCmd(d, moduleOutputDir, planPath, inputs); err != nil {
+		return GenerateOutputs{}, err
 	}
 
-	config.Logger.Debug("Reading output files")
-	return readOutputFilesExt(d, moduleOutputDir, plan)
+	logger.Debug("Reading output files")
+	return readOutputFilesExt(d, moduleOutputDir, inputs.Plan)
 }
 
-func runGenerateCmd(d ExtDescriptor, moduleOutputDir, planPath string, config BuildConfig, env BuildEnv) error {
+func runGenerateCmd(d ExtDescriptor, moduleOutputDir, planPath string, inputs GenerateInputs) error {
 	cmd := exec.Command(
-		filepath.Join(d.WithRootDir, "bin", generateCmd),
+		filepath.Join(d.WithRootDir, "bin", "generate"),
 		moduleOutputDir,
-		config.PlatformDir,
+		inputs.PlatformDir,
 		planPath,
 	) // #nosec G204
-	cmd.Dir = config.AppDir
-	cmd.Stdout = config.Out
-	cmd.Stderr = config.Err
+	cmd.Dir = inputs.AppDir
+	cmd.Stdout = inputs.Out
+	cmd.Stderr = inputs.Err
 
 	var err error
 	if d.Extension.ClearEnv {
-		cmd.Env = env.List()
+		cmd.Env = inputs.Env.List()
 	} else {
-		cmd.Env, err = env.WithPlatform(config.PlatformDir)
+		cmd.Env, err = inputs.Env.WithPlatform(inputs.PlatformDir)
 		if err != nil {
 			return err
 		}
@@ -72,7 +86,7 @@ func runGenerateCmd(d ExtDescriptor, moduleOutputDir, planPath string, config Bu
 		EnvBpPlanPath+"="+planPath,
 		EnvBuildpackDir+"="+d.WithRootDir, // TODO: should be extension dir?
 		EnvOutputDir+"="+moduleOutputDir,
-		EnvPlatformDir+"="+config.PlatformDir,
+		EnvPlatformDir+"="+inputs.PlatformDir,
 	)
 
 	if err := cmd.Run(); err != nil {
@@ -81,8 +95,8 @@ func runGenerateCmd(d ExtDescriptor, moduleOutputDir, planPath string, config Bu
 	return nil
 }
 
-func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan) (BuildResult, error) {
-	br := BuildResult{}
+func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan) (GenerateOutputs, error) {
+	br := GenerateOutputs{}
 	var err error
 
 	// set MetRequires
@@ -94,7 +108,7 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan) (B
 		if os.IsNotExist(err) {
 			return br, nil
 		}
-		return BuildResult{}, err
+		return GenerateOutputs{}, err
 	}
 	br.Dockerfiles = []DockerfileInfo{{ExtensionID: d.Extension.ID, Kind: DockerfileKindRun, Path: runDockerfile}}
 	return br, nil

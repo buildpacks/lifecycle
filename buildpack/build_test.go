@@ -10,9 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/apex/log"
-
 	"github.com/BurntSushi/toml"
+	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
@@ -24,6 +23,7 @@ import (
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	llog "github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -36,26 +36,26 @@ func TestBuild(t *testing.T) {
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
+		mockCtrl   *gomock.Controller
 		executor   *buildpack.DefaultBuildExecutor
+		dirStore   string
 		descriptor buildpack.BpDescriptor
 
-		// build config
-		config         buildpack.BuildConfig
+		// build inputs
+		inputs         buildpack.BuildInputs
 		tmpDir         string
 		appDir         string
 		layersDir      string
 		platformDir    string
+		mockEnv        *testmock.MockBuildEnv
 		stdout, stderr *bytes.Buffer
-		logHandler     = memory.New()
 
-		// build inputs
-		mockEnv  *testmock.MockBuildEnv
-		mockCtrl *gomock.Controller
-
-		dirStore string
+		logger     llog.Logger
+		logHandler = memory.New()
 	)
 
 	it.Before(func() {
+		mockCtrl = gomock.NewController(t)
 		executor = &buildpack.DefaultBuildExecutor{}
 
 		// setup descriptor
@@ -84,20 +84,19 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		platformDir = filepath.Join(tmpDir, "platform")
 		h.Mkdir(t, layersDir, appDir, filepath.Join(platformDir, "env"))
 
-		// make config
+		// make inputs
+		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
-		config = buildpack.BuildConfig{
-			AppDir:          appDir,
-			OutputParentDir: layersDir,
-			PlatformDir:     platformDir,
-			Out:             stdout,
-			Err:             stderr,
-			Logger:          &log.Logger{Handler: logHandler},
+		inputs = buildpack.BuildInputs{
+			AppDir:      appDir,
+			LayersDir:   layersDir,
+			PlatformDir: platformDir,
+			Env:         mockEnv,
+			Out:         stdout,
+			Err:         stderr,
 		}
 
-		// build inputs
-		mockCtrl = gomock.NewController(t)
-		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+		logger = &log.Logger{Handler: logHandler}
 	})
 
 	it.After(func() {
@@ -117,7 +116,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("provides a clear env", func() {
-					if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
 					if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-info-A-v1.clear")),
@@ -128,7 +127,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("sets CNB_ vars", func() {
-					if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 
@@ -162,7 +161,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("provides a full env", func() {
-					if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := cmp.Diff(h.Rdfile(t, filepath.Join(appDir, "build-info-A-v1")),
@@ -173,7 +172,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("sets CNB_ vars", func() {
-					if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 
@@ -204,7 +203,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.Mkfile(t, "some-data",
 						filepath.Join(platformDir, "env", "SOME_VAR"),
 					)
-					if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					testExists(t,
@@ -215,7 +214,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it("errors when <platform>/env cannot be loaded", func() {
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
-				if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err == nil {
+				if _, err := executor.Build(&descriptor, inputs, logger); err == nil {
 					t.Fatal("Expected error.\n")
 				} else if !strings.Contains(err.Error(), "some error") {
 					t.Fatalf("Incorrect error: %s\n", err)
@@ -249,7 +248,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypeOverride),
 						mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypeOverride),
 					)
-					if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					testExists(t,
@@ -259,21 +258,21 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				it("errors when the buildpack's layers dir cannot be created", func() {
 					h.Mkfile(t, "some-data", filepath.Join(layersDir, "A"))
-					_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+					_, err := executor.Build(&descriptor, inputs, logger)
 					if _, ok := err.(*os.PathError); !ok {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
 				})
 
 				it("errors when the provided buildpack plan is invalid", func() {
-					bpPlan := buildpack.Plan{
+					inputs.Plan = buildpack.Plan{
 						Entries: []buildpack.Require{
 							{
 								Metadata: map[string]interface{}{"a": map[int64]int64{1: 2}}, // map with non-string key type
 							},
 						},
 					}
-					if _, err := executor.Build(&descriptor, bpPlan, config, mockEnv); err == nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err == nil {
 						t.Fatal("Expected error.\n")
 					} else if !strings.Contains(err.Error(), "toml") {
 						t.Fatalf("Incorrect error: %s\n", err)
@@ -281,7 +280,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("connects stdout and stdin to the terminal", func() {
-					if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+					if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := cmp.Diff(h.CleanEndings(stdout.String()), "build out: A@v1\n"); s != "" {
@@ -330,7 +329,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(appDir, "layers-A-v1", "layer1.toml"),
 							filepath.Join(appDir, "layers-A-v1", "layer2.toml"),
 						)
-						if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != appendErr {
+						if _, err := executor.Build(&descriptor, inputs, logger); err != appendErr {
 							t.Fatalf("Incorrect error: %s\n", err)
 						}
 					})
@@ -340,7 +339,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					if err := os.RemoveAll(platformDir); err != nil {
 						t.Fatalf("Error: %s\n", err)
 					}
-					_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+					_, err := executor.Build(&descriptor, inputs, logger)
 					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeBuildpack {
 						t.Fatalf("Incorrect error: %s\n", err)
 					}
@@ -358,7 +357,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									filepath.Join(layersDir, "A", "layer.toml"),
 								)
 
-								_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								_, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNil(t, err)
 								h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
 								h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
@@ -375,7 +374,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									filepath.Join(layersDir, "A", "layer.toml"),
 								)
 
-								_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								_, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNil(t, err)
 								h.AssertPathDoesNotExist(t, filepath.Join(layersDir, "A", "layer"))
 								h.AssertPathExists(t, filepath.Join(layersDir, "A", "layer.ignore"))
@@ -393,7 +392,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(appDir, "layers-A-v1", "layer.toml"),
 						)
 
-						_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+						_, err := executor.Build(&descriptor, inputs, logger)
 						h.AssertNotNil(t, err)
 						expected := "the launch, cache and build flags should be in the types table"
 						h.AssertStringContains(t, err.Error(), expected)
@@ -412,7 +411,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									filepath.Join(appDir, "build-A-v1.toml"),
 								)
 
-								br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								br, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, br.BuildBOM, []buildpack.BOMEntry{
@@ -446,7 +445,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								h.Mkfile(t, `{"key": "some-bom-content"}`,
 									filepath.Join(layersDir, buildpackID, "build.sbom.cdx.json"))
 
-								br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								br, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, br.BuildBOM, []buildpack.BOMEntry{
@@ -482,7 +481,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									filepath.Join(appDir, "launch-A-v1.toml"),
 								)
 
-								br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								br, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, br.LaunchBOM, []buildpack.BOMEntry{
@@ -516,7 +515,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								h.Mkfile(t, `{"key": "some-bom-content"}`,
 									filepath.Join(layersDir, buildpackID, "launch.sbom.cdx.json"))
 
-								br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								br, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, br.LaunchBOM, []buildpack.BOMEntry{
@@ -548,7 +547,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
 
-							_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							_, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertError(t, err, "bom entry 'some-dep' has a top level version which is not allowed. The buildpack should instead set metadata.version")
 						})
 					})
@@ -576,10 +575,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.Mkfile(t, "[types]\n  launch = true\n  cache = false",
 								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", otherLayerName)))
 
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, buildpack.BuildResult{
+							h.AssertEq(t, buildpack.BuildOutputs{
 								BOMFiles: []buildpack.BOMFile{
 									{
 										BuildpackID: buildpackID,
@@ -630,7 +629,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.syft.json", layerName)),
 								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName)))
 
-							_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							_, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertError(t, err, fmt.Sprintf("unsupported SBOM file format: '%s'", filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.sbom.some-unknown-format.json", layerName))))
 						})
 
@@ -643,7 +642,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.Mkfile(t, `{"key": "some-bom-content"}`,
 								filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json"))
 
-							_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							_, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertError(t, err, fmt.Sprintf("validating SBOM file '%s' for buildpack: 'A@v1': undeclared SBOM media type: 'application/spdx+json'", filepath.Join(layersDir, buildpackID, "launch.sbom.spdx.json")))
 						})
 					})
@@ -660,7 +659,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
 
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Labels, []buildpack.Label{
@@ -672,7 +671,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					when("met requires", func() {
 						it("are derived from build.toml", func() {
-							bpPlan := buildpack.Plan{
+							inputs.Plan = buildpack.Plan{
 								Entries: []buildpack.Require{
 									{Name: "some-dep"},
 									{Name: "some-other-dep"},
@@ -685,7 +684,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "build-A-v1.toml"),
 							)
 
-							br, err := executor.Build(&descriptor, bpPlan, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.MetRequires, []string{"some-dep", "some-other-dep"})
@@ -697,7 +696,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									"[[unmet]]\n",
 									filepath.Join(appDir, "build-A-v1.toml"),
 								)
-								_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								_, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNotNil(t, err)
 								expected := "name is required"
 								h.AssertStringContains(t, err.Error(), expected)
@@ -709,7 +708,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 										`name = "unknown-dep"`+"\n",
 									filepath.Join(appDir, "build-A-v1.toml"),
 								)
-								_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								_, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNotNil(t, err)
 								expected := "must match a requested dependency"
 								h.AssertStringContains(t, err.Error(), expected)
@@ -730,7 +729,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								// default is false and therefore doesn't appear
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Processes, []launch.Process{
@@ -752,7 +751,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 										`default = true`+"\n",
 									filepath.Join(appDir, "launch-A-v1.toml"),
 								)
-								_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								_, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNotNil(t, err)
 								expected := "multiple default process types aren't allowed"
 								h.AssertStringContains(t, err.Error(), expected)
@@ -770,7 +769,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 										`default = true`+"\n",
 									filepath.Join(appDir, "launch-A-v1.toml"),
 								)
-								_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								_, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNotNil(t, err)
 								expected := "multiple default process types aren't allowed"
 								h.AssertStringContains(t, err.Error(), expected)
@@ -783,7 +782,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									`working-dir = "/working-directory"`,
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 							h.AssertEq(t, len(br.Processes), 1)
 							h.AssertEq(t, br.Processes[0].WorkingDirectory, "/working-directory")
@@ -798,7 +797,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
 
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Slices, []layers.Slice{{Paths: []string{"some-path", "some-other-path"}}})
@@ -813,7 +812,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					when("input plan.toml", func() {
 						it("converts metadata version to top level version in the buildpack plan", func() {
-							bpPlan := buildpack.Plan{
+							inputs.Plan = buildpack.Plan{
 								Entries: []buildpack.Require{
 									{
 										Name:     "some-dep",
@@ -822,7 +821,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								},
 							}
 
-							_, err := executor.Build(&descriptor, bpPlan, config, mockEnv)
+							_, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							testPlan(t,
@@ -865,7 +864,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env"), env.ActionTypePrependPath),
 							mockEnv.EXPECT().AddEnvDir(filepath.Join(layersDir, "A", "layer3", "env.build"), env.ActionTypePrependPath),
 						)
-						if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err != nil {
+						if _, err := executor.Build(&descriptor, inputs, logger); err != nil {
 							t.Fatalf("Unexpected error:\n%s\n", err)
 						}
 						testExists(t,
@@ -875,7 +874,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					when("output plan.toml", func() {
 						it("gets bom entries and unmet requires from the output buildpack plan", func() {
-							bpPlan := buildpack.Plan{
+							inputs.Plan = buildpack.Plan{
 								Entries: []buildpack.Require{
 									{
 										Name:    "some-deprecated-bp-dep",
@@ -917,7 +916,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "build-plan-out-A-v1.toml"),
 							)
 
-							br, err := executor.Build(&descriptor, bpPlan, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.LaunchBOM, []buildpack.BOMEntry{
@@ -960,7 +959,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						it("errors when the output plan is invalid", func() {
 							h.Mkfile(t, "bad-key", filepath.Join(appDir, "build-plan-out-A-v1.toml"))
-							if _, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv); err == nil {
+							if _, err := executor.Build(&descriptor, inputs, logger); err == nil {
 								t.Fatal("Expected error.\n")
 							} else if !strings.Contains(err.Error(), "key") {
 								t.Fatalf("Incorrect error: %s\n", err)
@@ -984,7 +983,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "build-plan-out-A-v1.toml"),
 							)
 
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.LaunchBOM, []buildpack.BOMEntry{
@@ -1021,7 +1020,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									`version = "v1"`+"\n",
 								filepath.Join(appDir, "build-plan-out-A-v1.toml"),
 							)
-							_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							_, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNotNil(t, err)
 							expected := "top level version does not match metadata version"
 							h.AssertStringContains(t, err.Error(), expected)
@@ -1047,7 +1046,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
 
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Processes, []launch.Process{
@@ -1071,7 +1070,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									filepath.Join(appDir, "layers-A-v1", "layer.toml"),
 								)
 
-								_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+								_, err := executor.Build(&descriptor, inputs, logger)
 								h.AssertNil(t, err)
 								expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
 								assertLogEntry(t, logHandler, expected)
@@ -1086,7 +1085,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("gets bom entries from launch.toml and unmet requires from build.toml", func() {
-						bpPlan := buildpack.Plan{
+						inputs.Plan = buildpack.Plan{
 							Entries: []buildpack.Require{
 								{
 									Name:    "some-deprecated-bp-replace-version-dep",
@@ -1128,7 +1127,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join(appDir, "build-A-v1.toml"),
 						)
 
-						br, err := executor.Build(&descriptor, bpPlan, config, mockEnv)
+						br, err := executor.Build(&descriptor, inputs, logger)
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, br.LaunchBOM, []buildpack.BOMEntry{
@@ -1165,7 +1164,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									`version = "some-version"`+"\n",
 								filepath.Join(appDir, "build-A-v1.toml"),
 							)
-							_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							_, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNotNil(t, err)
 							expected := "top level version which is not allowed"
 							h.AssertStringContains(t, err.Error(), expected)
@@ -1180,7 +1179,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									`version = "some-version"`+"\n",
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
-							_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							_, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNotNil(t, err)
 							expected := "top level version which is not allowed"
 							h.AssertStringContains(t, err.Error(), expected)
@@ -1205,7 +1204,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.Mkfile(t, "[types]\n  cache = true",
 								filepath.Join(layersDir, buildpackID, fmt.Sprintf("%s.toml", layerName)))
 
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, len(br.BOMFiles), 0)
@@ -1221,7 +1220,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("does not set environment variables for positional arguments", func() {
-						_, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+						_, err := executor.Build(&descriptor, inputs, logger)
 
 						h.AssertNil(t, err)
 						for _, file := range []string{
@@ -1244,7 +1243,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									`type = "some-type"`+"\n",
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
-							br, err := executor.Build(&descriptor, buildpack.Plan{}, config, mockEnv)
+							br, err := executor.Build(&descriptor, inputs, logger)
 							h.AssertNil(t, err)
 							h.AssertEq(t, len(br.Processes), 1)
 							h.AssertEq(t, br.Processes[0].WorkingDirectory, "")

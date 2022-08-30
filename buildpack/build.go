@@ -25,75 +25,85 @@ const (
 	EnvLayersDir  = "CNB_LAYERS_DIR"
 	EnvBpPlanPath = "CNB_BP_PLAN_PATH"
 
-	EnvOutputDir = "CNB_OUTPUT_DIR"
+	EnvOutputDir = "CNB_OUTPUT_DIR" // TODO: move
 )
 
-type BuildEnv interface { // TODO: move into BuildConfig
+type BuildInputs struct {
+	AppDir      string
+	LayersDir   string
+	PlatformDir string
+	Env         BuildEnv
+	Out, Err    io.Writer
+	Plan        Plan
+}
+
+type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
 	WithPlatform(platformDir string) ([]string, error)
 	List() []string
 }
 
-type BuildConfig struct {
-	AppDir          string
-	OutputParentDir string // TODO: rename
-	PlatformDir     string
-	Out             io.Writer
-	Err             io.Writer
-	Logger          log.Logger
+type BuildOutputs struct {
+	BOMFiles    []BOMFile
+	BuildBOM    []BOMEntry
+	Labels      []Label
+	LaunchBOM   []BOMEntry
+	MetRequires []string
+	Processes   []launch.Process
+	Slices      []layers.Slice
 }
 
 //go:generate mockgen -package testmock -destination ../testmock/build_executor.go github.com/buildpacks/lifecycle/buildpack BuildExecutor
 type BuildExecutor interface {
-	Build(d *BpDescriptor, plan Plan, config BuildConfig, buildEnv BuildEnv) (BuildResult, error)
+	Build(d *BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error)
 }
 
 type DefaultBuildExecutor struct{}
 
-func (e *DefaultBuildExecutor) Build(d *BpDescriptor, plan Plan, config BuildConfig, buildEnv BuildEnv) (BuildResult, error) {
+func (e *DefaultBuildExecutor) Build(d *BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error) {
 	if api.MustParse(d.WithAPI).Equal(api.MustParse("0.2")) {
-		config.Logger.Debug("Updating plan entries")
-		for i := range plan.Entries {
-			plan.Entries[i].convertMetadataToVersion()
+		logger.Debug("Updating plan entries")
+		for i := range inputs.Plan.Entries {
+			inputs.Plan.Entries[i].convertMetadataToVersion()
 		}
 	}
 
-	config.Logger.Debug("Creating plan directory")
+	logger.Debug("Creating plan directory")
 	planDir, err := ioutil.TempDir("", launch.EscapeID(d.Buildpack.ID)+"-")
 	if err != nil {
-		return BuildResult{}, err
+		return BuildOutputs{}, err
 	}
 	defer os.RemoveAll(planDir)
 
-	config.Logger.Debug("Preparing paths")
-	moduleOutputDir, planPath, err := prepareBuildInputPaths(d.Buildpack.ID, plan, config.OutputParentDir, planDir)
+	logger.Debug("Preparing paths")
+	moduleOutputDir, planPath, err := prepareInputPaths(d.Buildpack.ID, inputs.Plan, inputs.LayersDir, planDir)
 	if err != nil {
-		return BuildResult{}, err
+		return BuildOutputs{}, err
 	}
 
-	config.Logger.Debug("Running build command")
-	if err := d.runCmd(moduleOutputDir, planPath, config, buildEnv); err != nil {
-		return BuildResult{}, err
+	logger.Debug("Running build command")
+	if err := d.runCmd(moduleOutputDir, planPath, inputs, inputs.Env); err != nil {
+		return BuildOutputs{}, err
 	}
 
-	config.Logger.Debug("Processing layers")
-	createdLayers, err := d.processLayers(moduleOutputDir, config.Logger)
+	logger.Debug("Processing layers")
+	createdLayers, err := d.processLayers(moduleOutputDir, logger)
 	if err != nil {
-		return BuildResult{}, err
+		return BuildOutputs{}, err
 	}
 
-	config.Logger.Debug("Updating environment")
-	if err := d.setupEnv(createdLayers, buildEnv); err != nil {
-		return BuildResult{}, err
+	logger.Debug("Updating environment")
+	if err := d.setupEnv(createdLayers, inputs.Env); err != nil {
+		return BuildOutputs{}, err
 	}
 
-	config.Logger.Debug("Reading output files")
-	return d.readOutputFilesBp(moduleOutputDir, planPath, plan, createdLayers, config.Logger)
+	logger.Debug("Reading output files")
+	return d.readOutputFilesBp(moduleOutputDir, planPath, inputs.Plan, createdLayers, logger)
 }
 
-func prepareBuildInputPaths(moduleID string, plan Plan, outputParentDir, parentPlanDir string) (string, string, error) {
-	moduleDirName := launch.EscapeID(moduleID) // TODO: this logic should eventually move to the platform package
+func prepareInputPaths(moduleID string, plan Plan, outputParentDir, parentPlanDir string) (string, string, error) {
+	moduleDirName := launch.EscapeID(moduleID) // TODO (needs issue): this logic should eventually move to the platform package
 
 	// Create e.g., <layers>/<buildpack-id> or <output>/<extension-id>
 	moduleOutputDir := filepath.Join(outputParentDir, moduleDirName)
@@ -102,7 +112,7 @@ func prepareBuildInputPaths(moduleID string, plan Plan, outputParentDir, parentP
 	}
 
 	// Create Buildpack Plan
-	childPlanDir := filepath.Join(parentPlanDir, moduleDirName) // TODO: it's unclear if this child directory is necessary; consider removing
+	childPlanDir := filepath.Join(parentPlanDir, moduleDirName) // TODO (needs issue): it's unclear if this child directory is necessary; consider removing
 	if err := os.MkdirAll(childPlanDir, 0777); err != nil {
 		return "", "", err
 	}
@@ -114,7 +124,7 @@ func prepareBuildInputPaths(moduleID string, plan Plan, outputParentDir, parentP
 	return moduleOutputDir, planPath, nil
 }
 
-func (d *BpDescriptor) runCmd(moduleOutputDir, planPath string, config BuildConfig, buildEnv BuildEnv) error {
+func (d *BpDescriptor) runCmd(moduleOutputDir, planPath string, config BuildInputs, buildEnv BuildEnv) error {
 	cmd := exec.Command(
 		filepath.Join(d.WithRootDir, "bin", "build"),
 		moduleOutputDir,
@@ -228,8 +238,8 @@ func (d *BpDescriptor) setupEnv(createdLayers map[string]LayerMetadataFile, buil
 	return nil
 }
 
-func (d *BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger log.Logger) (BuildResult, error) {
-	br := BuildResult{}
+func (d *BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger log.Logger) (BuildOutputs, error) {
+	br := BuildOutputs{}
 	bpFromBpInfo := GroupElement{ID: d.Buildpack.ID, Version: d.Buildpack.Version}
 
 	// setup launch.toml
@@ -243,75 +253,75 @@ func (d *BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanI
 		// read buildpack plan
 		var bpPlanOut Plan
 		if _, err := toml.DecodeFile(bpPlanPath, &bpPlanOut); err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 
 		// set BOM and MetRequires
 		br.LaunchBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, bpPlanOut.toBOM())
 		if err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 		br.MetRequires = names(bpPlanOut.Entries)
 
 		// set BOM files
 		br.BOMFiles, err = d.processSBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
 		if err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 
 		// read launch.toml, return if not exists
 		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
 			return br, nil
 		} else if err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 	} else {
 		// read build.toml
 		var buildTOML BuildTOML
 		buildPath := filepath.Join(bpLayersDir, "build.toml")
 		if _, err := toml.DecodeFile(buildPath, &buildTOML); err != nil && !os.IsNotExist(err) {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 		if _, err := bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM); err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 		br.BuildBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, buildTOML.BOM)
 		if err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 
 		// set MetRequires
 		if err := validateUnmet(buildTOML.Unmet, bpPlanIn); err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 		br.MetRequires = names(bpPlanIn.filter(buildTOML.Unmet).Entries)
 
 		// set BOM files
 		br.BOMFiles, err = d.processSBOMFiles(bpLayersDir, bpFromBpInfo, bpLayers, logger)
 		if err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 
 		// read launch.toml, return if not exists
 		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
 			return br, nil
 		} else if err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 
 		// set BOM
 		br.LaunchBOM, err = bomValidator.ValidateBOM(bpFromBpInfo, launchTOML.BOM)
 		if err != nil {
-			return BuildResult{}, err
+			return BuildOutputs{}, err
 		}
 	}
 
 	if err := overrideDefaultForOldBuildpacks(launchTOML.Processes, d.WithAPI, logger); err != nil {
-		return BuildResult{}, err
+		return BuildOutputs{}, err
 	}
 
 	if err := validateNoMultipleDefaults(launchTOML.Processes); err != nil {
-		return BuildResult{}, err
+		return BuildOutputs{}, err
 	}
 
 	// set data from launch.toml
@@ -386,15 +396,4 @@ func validateNoMultipleDefaults(processes []launch.Process) error {
 		}
 	}
 	return nil
-}
-
-type BuildResult struct { // TODO: make GenerateResult?
-	BOMFiles    []BOMFile
-	BuildBOM    []BOMEntry
-	Dockerfiles []DockerfileInfo
-	Labels      []Label
-	LaunchBOM   []BOMEntry
-	MetRequires []string
-	Processes   []launch.Process
-	Slices      []layers.Slice
 }

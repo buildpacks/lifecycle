@@ -10,6 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	log "github.com/buildpacks/lifecycle/log"
 )
 
 // MockGenerateExecutor is a mock of GenerateExecutor interface.
@@ -36,16 +37,16 @@ func (m *MockGenerateExecutor) EXPECT() *MockGenerateExecutorMockRecorder {
 }
 
 // Generate mocks base method.
-func (m *MockGenerateExecutor) Generate(arg0 buildpack.ExtDescriptor, arg1 buildpack.Plan, arg2 buildpack.BuildConfig, arg3 buildpack.BuildEnv) (buildpack.BuildResult, error) {
+func (m *MockGenerateExecutor) Generate(arg0 buildpack.ExtDescriptor, arg1 buildpack.GenerateInputs, arg2 log.Logger) (buildpack.GenerateOutputs, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Generate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(buildpack.BuildResult)
+	ret := m.ctrl.Call(m, "Generate", arg0, arg1, arg2)
+	ret0, _ := ret[0].(buildpack.GenerateOutputs)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Generate indicates an expected call of Generate.
-func (mr *MockGenerateExecutorMockRecorder) Generate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockGenerateExecutorMockRecorder) Generate(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Generate", reflect.TypeOf((*MockGenerateExecutor)(nil).Generate), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Generate", reflect.TypeOf((*MockGenerateExecutor)(nil).Generate), arg0, arg1, arg2)
 }

@@ -17,15 +17,17 @@ import (
 )
 
 type Generator struct {
-	AppDir      string
-	OutputDir   string
-	PlatformDir string
-	DirStore    DirStore
-	Executor    buildpack.GenerateExecutor
-	Extensions  []buildpack.GroupElement
-	Logger      log.Logger
-	Out, Err    io.Writer
-	Plan        platform.BuildPlan
+	AppDir       string
+	GeneratedDir string // e.g., <layers>/generated
+	OutputDir    string // extensions output parent directory
+	PlatformDir  string
+	DirStore     DirStore
+	Env          BuildEnv
+	Executor     buildpack.GenerateExecutor
+	Extensions   []buildpack.GroupElement
+	Logger       log.Logger
+	Out, Err     io.Writer
+	Plan         platform.BuildPlan
 }
 
 type GeneratorFactory struct {
@@ -46,23 +48,30 @@ func NewGeneratorFactory(
 func (f *GeneratorFactory) NewGenerator(
 	appDir string,
 	extensions []buildpack.GroupElement,
-	outputDir string,
+	generatedDir string,
 	plan platform.BuildPlan,
 	platformDir string,
 	stdout, stderr io.Writer,
 	logger log.Logger,
 ) (*Generator, error) {
-	generator := &Generator{
-		AppDir:      appDir,
-		DirStore:    f.dirStore,
-		Executor:    &buildpack.DefaultGenerateExecutor{},
-		Logger:      logger,
-		OutputDir:   outputDir,
-		Plan:        plan,
-		PlatformDir: platformDir,
-		Out:         stdout,
-		Err:         stderr,
+	extensionOutputParentDir, err := ioutil.TempDir("", "cnb-extensions-generated.")
+	if err != nil {
+		return nil, err
 	}
+	generator := &Generator{
+		AppDir:       appDir,
+		GeneratedDir: generatedDir,
+		OutputDir:    extensionOutputParentDir,
+		PlatformDir:  platformDir,
+		DirStore:     f.dirStore,
+		Env:          env.NewBuildEnv(os.Environ()),
+		Executor:     &buildpack.DefaultGenerateExecutor{},
+		Logger:       logger,
+		Plan:         plan,
+		Out:          stdout,
+		Err:          stderr,
+	}
+
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
 	}
@@ -84,18 +93,11 @@ type GenerateResult struct {
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
+	defer os.RemoveAll(g.OutputDir)
+
 	var dockerfiles []buildpack.DockerfileInfo
-
-	config := g.GenerateConfig()
-	tempOutputDir, err := ioutil.TempDir("", "generated.")
-	if err != nil {
-		return GenerateResult{}, err
-	}
-	defer os.RemoveAll(tempOutputDir)
-	config.OutputParentDir = tempOutputDir
-
-	buildEnv := env.NewBuildEnv(os.Environ())
-	plan := g.Plan
+	inputs := g.GetCommonInputs()
+	filteredPlan := g.Plan
 	for _, ext := range g.Extensions {
 		g.Logger.Debugf("Running generate for extension %s", ext)
 
@@ -106,17 +108,17 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		}
 
 		g.Logger.Debug("Finding plan")
-		foundPlan := plan.Find(buildpack.KindExtension, ext.ID)
+		inputs.Plan = filteredPlan.Find(buildpack.KindExtension, ext.ID)
 
 		g.Logger.Debug("Invoking command")
-		result, err := g.Executor.Generate(*descriptor, foundPlan, config, buildEnv)
+		result, err := g.Executor.Generate(*descriptor, inputs, g.Logger)
 		if err != nil {
 			return GenerateResult{}, err
 		}
 
 		// aggregate build results
 		dockerfiles = append(dockerfiles, result.Dockerfiles...)
-		plan = plan.Filter(result.MetRequires)
+		filteredPlan = filteredPlan.Filter(result.MetRequires)
 
 		g.Logger.Debugf("Finished running generate for extension %s", ext)
 	}
@@ -136,19 +138,20 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	return GenerateResult{RunImage: runImage}, nil
 }
 
-func (g *Generator) GenerateConfig() buildpack.BuildConfig {
-	return buildpack.BuildConfig{
+func (g *Generator) GetCommonInputs() buildpack.GenerateInputs {
+	return buildpack.GenerateInputs{
 		AppDir:      g.AppDir,
-		Err:         g.Err,
-		Logger:      g.Logger,
-		Out:         g.Out,
+		OutputDir:   g.OutputDir,
 		PlatformDir: g.PlatformDir,
+		Env:         g.Env,
+		Out:         g.Out,
+		Err:         g.Err,
 	}
 }
 
 func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
 	for _, dockerfile := range dockerfiles {
-		targetDir := filepath.Join(g.OutputDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
+		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
 		targetPath := filepath.Join(targetDir, "Dockerfile")
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 			return err
@@ -172,7 +175,7 @@ func (g *Generator) checkNewRunImage() (string, error) {
 	// a run.Dockerfile.
 	for i := len(g.Extensions) - 1; i >= 0; i-- {
 		extID := g.Extensions[i].ID
-		runDockerfile := filepath.Join(g.OutputDir, "run", extID, "Dockerfile")
+		runDockerfile := filepath.Join(g.GeneratedDir, "run", extID, "Dockerfile")
 		if _, err := os.Stat(runDockerfile); os.IsNotExist(err) {
 			continue
 		}

@@ -53,23 +53,24 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		return nil, errors.Wrap(err, "cleaning layers SBOM directory")
 	}
 
-	config, err := b.BuildConfig()
+	var (
+		bomFiles  []buildpack.BOMFile
+		buildBOM  []buildpack.BOMEntry
+		labels    []buildpack.Label
+		launchBOM []buildpack.BOMEntry
+		slices    []layers.Slice
+	)
+	currentEnv := env.NewBuildEnv(os.Environ())
+	processMap := newProcessMap()
+	inputs, err := b.GetCommonInputs()
 	if err != nil {
 		return nil, err
 	}
-
-	processMap := newProcessMap()
-	plan := b.Plan
-	var buildBOM []buildpack.BOMEntry
-	var launchBOM []buildpack.BOMEntry
-	var bomFiles []buildpack.BOMFile
-	var slices []layers.Slice
-	var labels []buildpack.Label
-
-	bpEnv := env.NewBuildEnv(os.Environ())
+	filteredPlan := b.Plan
 
 	for _, bp := range b.Group.Group {
 		b.Logger.Debugf("Running build for buildpack %s", bp)
+		inputs.Env = currentEnv
 
 		b.Logger.Debug("Looking up buildpack")
 		bpTOML, err := b.DirStore.LookupBp(bp.ID, bp.Version)
@@ -78,9 +79,9 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		}
 
 		b.Logger.Debug("Finding plan")
-		bpPlan := plan.Find(buildpack.KindBuildpack, bp.ID)
+		inputs.Plan = filteredPlan.Find(buildpack.KindBuildpack, bp.ID)
 
-		br, err := b.BuildExecutor.Build(bpTOML, bpPlan, config, bpEnv)
+		br, err := b.BuildExecutor.Build(bpTOML, inputs, b.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -88,11 +89,12 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debug("Updating buildpack processes")
 		updateDefaultProcesses(br.Processes, api.MustParse(bp.API), b.Platform.API())
 
-		buildBOM = append(buildBOM, br.BuildBOM...)
-		launchBOM = append(launchBOM, br.LaunchBOM...)
 		bomFiles = append(bomFiles, br.BOMFiles...)
+		buildBOM = append(buildBOM, br.BuildBOM...)
+		filteredPlan = filteredPlan.Filter(br.MetRequires)
 		labels = append(labels, br.Labels...)
-		plan = plan.Filter(br.MetRequires)
+		launchBOM = append(launchBOM, br.LaunchBOM...)
+		slices = append(slices, br.Slices...)
 
 		b.Logger.Debug("Updating process list")
 		warning := processMap.add(br.Processes)
@@ -100,13 +102,11 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 			b.Logger.Warn(warning)
 		}
 
-		slices = append(slices, br.Slices...)
-
 		b.Logger.Debugf("Finished running build for buildpack %s", bp)
 	}
 
 	if b.Platform.API().LessThan("0.4") {
-		config.Logger.Debug("Updating BOM entries")
+		b.Logger.Debug("Updating BOM entries")
 		for i := range launchBOM {
 			launchBOM[i].ConvertMetadataToVersion()
 		}
@@ -114,7 +114,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 	if b.Platform.API().AtLeast("0.8") {
 		b.Logger.Debug("Copying SBOM files")
-		err = b.copySBOMFiles(config.OutputParentDir, bomFiles)
+		err = b.copySBOMFiles(inputs.LayersDir, bomFiles)
 		if err != nil {
 			return nil, err
 		}
@@ -143,6 +143,29 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		Processes:                   procList,
 		Slices:                      slices,
 		BuildpackDefaultProcessType: processMap.defaultType,
+	}, nil
+}
+
+func (b *Builder) GetCommonInputs() (buildpack.BuildInputs, error) {
+	appDir, err := filepath.Abs(b.AppDir)
+	if err != nil {
+		return buildpack.BuildInputs{}, err
+	}
+	layersDir, err := filepath.Abs(b.LayersDir)
+	if err != nil {
+		return buildpack.BuildInputs{}, err
+	}
+	platformDir, err := filepath.Abs(b.PlatformDir)
+	if err != nil {
+		return buildpack.BuildInputs{}, err
+	}
+
+	return buildpack.BuildInputs{
+		AppDir:      appDir,
+		LayersDir:   layersDir,
+		PlatformDir: platformDir,
+		Out:         b.Out,
+		Err:         b.Err,
 	}, nil
 }
 
@@ -219,30 +242,6 @@ func updateDefaultProcesses(processes []launch.Process, buildpackAPI *api.Versio
 			processes[i].Default = true
 		}
 	}
-}
-
-func (b *Builder) BuildConfig() (buildpack.BuildConfig, error) {
-	appDir, err := filepath.Abs(b.AppDir)
-	if err != nil {
-		return buildpack.BuildConfig{}, err
-	}
-	platformDir, err := filepath.Abs(b.PlatformDir)
-	if err != nil {
-		return buildpack.BuildConfig{}, err
-	}
-	layersDir, err := filepath.Abs(b.LayersDir)
-	if err != nil {
-		return buildpack.BuildConfig{}, err
-	}
-
-	return buildpack.BuildConfig{
-		AppDir:          appDir,
-		PlatformDir:     platformDir,
-		OutputParentDir: layersDir,
-		Out:             b.Out,
-		Err:             b.Err,
-		Logger:          b.Logger,
-	}, nil
 }
 
 type processMap struct {
