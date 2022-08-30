@@ -17,14 +17,15 @@ import (
 )
 
 type Generator struct {
-	AppDir         string
-	DirStore       DirStore
-	Extensions     []buildpack.GroupElement
-	OutputDir      string
-	Logger         log.Logger
-	Stdout, Stderr io.Writer
-	Plan           platform.BuildPlan
-	PlatformDir    string
+	AppDir      string
+	OutputDir   string
+	PlatformDir string
+	DirStore    DirStore
+	Executor    buildpack.GenerateExecutor
+	Extensions  []buildpack.GroupElement
+	Logger      log.Logger
+	Out, Err    io.Writer
+	Plan        platform.BuildPlan
 }
 
 type GeneratorFactory struct {
@@ -54,12 +55,13 @@ func (f *GeneratorFactory) NewGenerator(
 	generator := &Generator{
 		AppDir:      appDir,
 		DirStore:    f.dirStore,
+		Executor:    &buildpack.DefaultGenerateExecutor{},
 		Logger:      logger,
 		OutputDir:   outputDir,
 		Plan:        plan,
 		PlatformDir: platformDir,
-		Stdout:      stdout,
-		Stderr:      stderr,
+		Out:         stdout,
+		Err:         stderr,
 	}
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
@@ -98,7 +100,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debugf("Running generate for extension %s", ext)
 
 		g.Logger.Debug("Looking up module")
-		descriptor, err := g.DirStore.Lookup(buildpack.KindExtension, ext.ID, ext.Version)
+		descriptor, err := g.DirStore.LookupExt(ext.ID, ext.Version)
 		if err != nil {
 			return GenerateResult{}, err
 		}
@@ -107,7 +109,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		foundPlan := plan.Find(buildpack.KindExtension, ext.ID)
 
 		g.Logger.Debug("Invoking command")
-		result, err := descriptor.Build(foundPlan, config, buildEnv)
+		result, err := g.Executor.Generate(*descriptor, foundPlan, config, buildEnv)
 		if err != nil {
 			return GenerateResult{}, err
 		}
@@ -137,9 +139,9 @@ func (g *Generator) Generate() (GenerateResult, error) {
 func (g *Generator) GenerateConfig() buildpack.BuildConfig {
 	return buildpack.BuildConfig{
 		AppDir:      g.AppDir,
-		Err:         g.Stderr,
+		Err:         g.Err,
 		Logger:      g.Logger,
-		Out:         g.Stdout,
+		Out:         g.Out,
 		PlatformDir: g.PlatformDir,
 	}
 }

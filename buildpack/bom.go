@@ -113,3 +113,12 @@ func (v *legacyBOMValidator) processBOM(buildpack GroupElement, bom []BOMEntry) 
 	}
 	return bom
 }
+
+func WithBuildpack(bp GroupElement, bom []BOMEntry) []BOMEntry {
+	var out []BOMEntry
+	for _, entry := range bom {
+		entry.Buildpack = bp.NoAPI().NoHomepage()
+		out = append(out, entry)
+	}
+	return out
+}

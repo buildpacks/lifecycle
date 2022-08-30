@@ -16,7 +16,9 @@ type CacheHandler interface {
 
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
 type DirStore interface {
-	Lookup(kind, id, version string) (buildpack.BuildModule, error)
+	Lookup(kind, id, version string) (buildpack.Descriptor, error)
+	LookupBp(id, version string) (*buildpack.BpDescriptor, error)
+	LookupExt(id, version string) (*buildpack.ExtDescriptor, error)
 }
 
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle ImageHandler

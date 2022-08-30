@@ -103,7 +103,7 @@ func sbomGlob(layersDir string) (matches []string, err error) {
 	return
 }
 
-func (d *Descriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
+func (d *BpDescriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
 	var (
 		files []BOMFile
 	)
@@ -113,7 +113,7 @@ func (d *Descriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayer
 		return nil, err
 	}
 
-	if api.MustParse(d.API).LessThan("0.7") {
+	if api.MustParse(d.WithAPI).LessThan("0.7") {
 		if len(matches) != 0 {
 			logger.Warnf("the following SBOM files will be ignored for buildpack api version < 0.7 [%s]", strings.Join(matches, ", "))
 		}

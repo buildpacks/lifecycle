@@ -42,7 +42,7 @@ func (a *DockerfileApplier) Apply(dockerfiles []extend.Dockerfile, baseImageRef 
 			Cleanup:        false,
 			CustomPlatform: platforms.DefaultString(),
 			DockerfilePath: dfile.Path,
-			IgnorePaths:    []string{}, // TODO (before merging): make configurable
+			IgnorePaths:    []string{"/layers", "/platform", "/workspace"}, // TODO (before merging): make configurable and test
 			IgnoreVarRun:   true,
 			NoPush:         true,
 			Reproducible:   false, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them

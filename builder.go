@@ -24,6 +24,7 @@ type Platform interface {
 	API() *api.Version
 }
 
+//go:generate mockgen -package testmock -destination testmock/build_env.go github.com/buildpacks/lifecycle BuildEnv
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
@@ -32,15 +33,16 @@ type BuildEnv interface {
 }
 
 type Builder struct {
-	AppDir      string
-	LayersDir   string
-	PlatformDir string
-	Platform    Platform
-	Group       buildpack.Group
-	Plan        platform.BuildPlan
-	Out, Err    io.Writer
-	Logger      log.Logger
-	DirStore    DirStore
+	AppDir        string
+	LayersDir     string
+	PlatformDir   string
+	BuildExecutor buildpack.BuildExecutor
+	DirStore      DirStore
+	Group         buildpack.Group
+	Logger        log.Logger
+	Out, Err      io.Writer
+	Plan          platform.BuildPlan
+	Platform      Platform
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -70,7 +72,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debugf("Running build for buildpack %s", bp)
 
 		b.Logger.Debug("Looking up buildpack")
-		bpTOML, err := b.DirStore.Lookup(buildpack.KindBuildpack, bp.ID, bp.Version)
+		bpTOML, err := b.DirStore.LookupBp(bp.ID, bp.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +80,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debug("Finding plan")
 		bpPlan := plan.Find(buildpack.KindBuildpack, bp.ID)
 
-		br, err := bpTOML.Build(bpPlan, config, bpEnv)
+		br, err := b.BuildExecutor.Build(bpTOML, bpPlan, config, bpEnv)
 		if err != nil {
 			return nil, err
 		}

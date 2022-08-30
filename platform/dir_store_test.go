@@ -30,25 +30,43 @@ func testDirStore(t *testing.T, when spec.G, it spec.S) {
 
 	when(".Lookup", func() {
 		when("kind is buildpack", func() {
-			it("returns buildpack from buildpack.toml", func() {
+			it("returns descriptor from buildpack.toml", func() {
 				bp, err := dirStore.Lookup(buildpack.KindBuildpack, "A", "v1")
 				h.AssertNil(t, err)
 
-				config := bp.ConfigFile()
-				h.AssertEq(t, config.Buildpack.ID, "A")
-				h.AssertEq(t, config.Buildpack.Version, "v1")
+				h.AssertEq(t, bp.API(), "0.7")
+				h.AssertEq(t, bp.Homepage(), "Buildpack A Homepage")
 			})
 		})
 
 		when("kind is extension", func() {
-			it("returns extension from extension.toml", func() {
+			it("returns descriptor from extension.toml", func() {
 				ext, err := dirStore.Lookup(buildpack.KindExtension, "A", "v1")
 				h.AssertNil(t, err)
 
-				config := ext.ConfigFile()
-				h.AssertEq(t, config.Extension.ID, "A")
-				h.AssertEq(t, config.Extension.Version, "v1")
+				h.AssertEq(t, ext.API(), "0.9")
+				h.AssertEq(t, ext.Homepage(), "Extension A Homepage")
 			})
+		})
+	})
+
+	when(".LookupBp", func() {
+		it("returns buildpack from buildpack.toml", func() {
+			bp, err := dirStore.LookupBp("A", "v1")
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, bp.Buildpack.ID, "A")
+			h.AssertEq(t, bp.Buildpack.Version, "v1")
+		})
+	})
+
+	when(".LookupExt", func() {
+		it("returns extension from extension.toml", func() {
+			ext, err := dirStore.LookupExt("A", "v1")
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, ext.Extension.ID, "A")
+			h.AssertEq(t, ext.Extension.Version, "v1")
 		})
 	})
 }

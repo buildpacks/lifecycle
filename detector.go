@@ -24,7 +24,8 @@ var (
 	ErrBuildpack       = errors.New("buildpack(s) failed with err")
 )
 
-type Resolver interface {
+//go:generate mockgen -package testmock -destination testmock/detect_resolver.go github.com/buildpacks/lifecycle DetectResolver
+type DetectResolver interface {
 	Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error)
 }
 
@@ -52,11 +53,12 @@ func NewDetectorFactory(
 type Detector struct {
 	AppDir        string
 	DirStore      DirStore
+	Executor      buildpack.DetectExecutor
 	HasExtensions bool
 	Logger        log.Logger
 	Order         buildpack.Order
 	PlatformDir   string
-	Resolver      Resolver
+	Resolver      DetectResolver
 	Runs          *sync.Map
 }
 
@@ -64,6 +66,7 @@ func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, log
 	detector := &Detector{
 		AppDir:      appDir,
 		DirStore:    f.dirStore,
+		Executor:    &buildpack.DefaultDetectExecutor{},
 		Logger:      logger,
 		PlatformDir: platformDir,
 		Resolver:    &DefaultResolver{Logger: logger},
@@ -97,7 +100,7 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 			if err != nil {
 				return err
 			}
-			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.ConfigFile().API, logger); err != nil {
+			if err = f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), module.API(), logger); err != nil {
 				return err
 			}
 		}
@@ -175,44 +178,45 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 		// Lookup element in store.
 		var (
-			detectable buildpack.BuildModule
+			descriptor buildpack.Descriptor
 			err        error
 		)
-		switch {
-		case groupEl.Extension:
-			detectable, err = d.DirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
-		default:
-			detectable, err = d.DirStore.Lookup(groupEl.Kind(), groupEl.ID, groupEl.Version)
-		}
-		if err != nil {
-			return nil, nil, err
-		}
-		descriptor := detectable.ConfigFile()
+		if groupEl.Kind() == buildpack.KindBuildpack {
+			descriptor, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
+			if err != nil {
+				return nil, nil, err
+			}
 
-		// Resolve order if element is a composite buildpack.
-		if descriptor.IsComposite() {
-			// FIXME: double-check slice safety here
-			// FIXME: cyclical references lead to infinite recursion
-			return d.detectOrder(descriptor.Order, done, group.Group[i+1:], groupEl.Optional, wg)
+			// Resolve order if element is a composite buildpack.
+			if order := descriptor.(*buildpack.BpDescriptor).Order; len(order) > 0 {
+				// FIXME: double-check slice safety here
+				// FIXME: cyclical references lead to infinite recursion
+				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
+			}
+		} else {
+			descriptor, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 
 		// Mark element as done.
-		done = append(done, groupEl.WithAPI(descriptor.API).WithHomepage(descriptor.Info().Homepage))
+		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
 
 		// Run detect if element is a component buildpack or an extension.
 		key := fmt.Sprintf("%s %s", groupEl.Kind(), groupEl.String())
 		wg.Add(1)
-		go func(key string, bp buildpack.BuildModule) {
+		go func(key string, descriptor buildpack.Descriptor) {
 			if _, ok := d.Runs.Load(key); !ok {
 				detectConfig := &buildpack.DetectConfig{
 					AppDir:      d.AppDir,
 					PlatformDir: d.PlatformDir,
 					Logger:      d.Logger,
 				}
-				d.Runs.Store(key, bp.Detect(detectConfig, env.NewBuildEnv(os.Environ())))
+				d.Runs.Store(key, d.Executor.Detect(descriptor, detectConfig, env.NewBuildEnv(os.Environ())))
 			}
 			wg.Done()
-		}(key, detectable)
+		}(key, descriptor)
 	}
 
 	wg.Wait()
@@ -238,7 +242,7 @@ type DefaultResolver struct {
 func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectRun
 	for _, el := range done {
-		key := fmt.Sprintf("%s %s", el.Kind(), el.String())
+		key := fmt.Sprintf("%s %s", el.Kind(), el.String()) // TODO: test that key is consistent across Detect and Resolve
 		t, ok := detectRuns.Load(key)
 		if !ok {
 			return nil, nil, errors.Errorf("missing detection of '%s'", key)

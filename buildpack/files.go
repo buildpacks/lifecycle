@@ -23,6 +23,23 @@ type BOMEntry struct {
 	Buildpack GroupElement `toml:"buildpack" json:"buildpack"`
 }
 
+func (bom *BOMEntry) ConvertMetadataToVersion() {
+	if version, ok := bom.Metadata["version"]; ok {
+		metadataVersion := fmt.Sprintf("%v", version)
+		bom.Version = metadataVersion
+	}
+}
+
+func (bom *BOMEntry) convertVersionToMetadata() {
+	if bom.Version != "" {
+		if bom.Metadata == nil {
+			bom.Metadata = make(map[string]interface{})
+		}
+		bom.Metadata["version"] = bom.Version
+		bom.Version = ""
+	}
+}
+
 type Require struct {
 	Name     string                 `toml:"name" json:"name"`
 	Version  string                 `toml:"version,omitempty" json:"version,omitempty"`

@@ -91,30 +91,30 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, generator.Logger, logger)
 			h.AssertEq(t, generator.Plan, providedPlan)
 			h.AssertEq(t, generator.PlatformDir, "some-platform-dir")
-			h.AssertEq(t, generator.Stdout, stdout)
-			h.AssertEq(t, generator.Stderr, stderr)
+			h.AssertEq(t, generator.Out, stdout)
+			h.AssertEq(t, generator.Err, stderr)
 		})
 	})
 }
 
 func testGenerator(t *testing.T, when spec.G, it spec.S) {
 	var (
-		generator      *lifecycle.Generator
 		mockCtrl       *gomock.Controller
-		dirStore       *testmock.MockDirStore
-		stdout, stderr *bytes.Buffer
+		generator      *lifecycle.Generator
+		tmpDir         string
 		appDir         string
 		outputDir      string
 		platformDir    string
-		tmpDir         string
-
-		logHandler = memory.New()
+		dirStore       *testmock.MockDirStore
+		executor       *testmock.MockGenerateExecutor
+		logHandler     = memory.New()
+		stdout, stderr *bytes.Buffer
 	)
 
 	it.Before(func() {
 		mockCtrl = gomock.NewController(t)
 		dirStore = testmock.NewMockDirStore(mockCtrl)
-		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
+		executor = testmock.NewMockGenerateExecutor(mockCtrl)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
@@ -123,21 +123,22 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		appDir = filepath.Join(outputDir, "app")
 		platformDir = filepath.Join(tmpDir, "platform")
 		h.Mkdir(t, outputDir, appDir, filepath.Join(platformDir, "env"))
+		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 
-		providedExtensions := []buildpack.GroupElement{
-			{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "A Homepage"},
-			{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
-		}
 		generator = &lifecycle.Generator{
-			AppDir:      appDir,
-			DirStore:    dirStore,
-			Extensions:  providedExtensions,
+			AppDir:   appDir,
+			DirStore: dirStore,
+			Executor: executor,
+			Extensions: []buildpack.GroupElement{
+				{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "A Homepage"},
+				{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
+			},
 			Logger:      &log.Logger{Handler: logHandler},
 			OutputDir:   outputDir,
 			Plan:        platform.BuildPlan{},
 			PlatformDir: platformDir,
-			Stderr:      stderr,
-			Stdout:      stdout,
+			Err:         stderr,
+			Out:         stdout,
 		}
 	})
 
@@ -188,22 +189,22 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			}
 			generator.Plan = providedPlan
 
-			extA := testmock.NewMockBuildModule(mockCtrl)
-			extB := testmock.NewMockBuildModule(mockCtrl)
-			dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(extA, nil)
+			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
 			expectedPlanA := buildpack.Plan{Entries: []buildpack.Require{
 				{Name: "some-dep", Version: "v1"},
 				{Name: "some-unmet-dep", Version: "v2"},
 			}}
-			extA.EXPECT().Build(expectedPlanA, gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
+			executor.EXPECT().Generate(extA, expectedPlanA, gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
 				MetRequires: []string{"some-dep"},
 			}, nil)
-			dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(extB, nil)
+			dirStore.EXPECT().LookupExt("B", "v2").Return(&extB, nil)
 			expectedPlanB := buildpack.Plan{Entries: []buildpack.Require{
 				{Name: "some-unmet-dep", Version: "v2"},
 				{Name: "other-dep", Version: "v4"},
 			}}
-			extB.EXPECT().Build(expectedPlanB, gomock.Any(), gomock.Any())
+			executor.EXPECT().Generate(extB, expectedPlanB, gomock.Any(), gomock.Any())
 
 			_, err := generator.Generate()
 			h.AssertNil(t, err)
@@ -211,10 +212,10 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 		it("aggregates dockerfiles from each extension", func() {
 			// Extension A outputs a run.Dockerfile to the provided output directory when invoked.
-			extA := testmock.NewMockBuildModule(mockCtrl)
-			dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(extA, nil)
-			extA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ buildpack.Plan, config buildpack.BuildConfig, _ buildpack.BuildEnv) (buildpack.BuildResult, error) {
+			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
+			executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.ExtDescriptor, _ buildpack.Plan, config buildpack.BuildConfig, _ buildpack.BuildEnv) (buildpack.BuildResult, error) {
 					// check config
 					h.AssertEq(t, config.AppDir, generator.AppDir)
 					h.AssertEq(t, config.PlatformDir, generator.PlatformDir)
@@ -229,30 +230,31 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							{ExtensionID: "A", Path: dockerfilePath1, Kind: "run"},
 						},
 					}, nil
-				})
+				},
+			)
 
 			// Extension B has a pre-populated root directory.
-			extB := testmock.NewMockBuildModule(mockCtrl)
+			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
 			bRootDir := filepath.Join(tmpDir, "extensions", "B", "v2") // TODO: fix this fixture to be more generic; the path doesn't need to be accurate
 			h.Mkdir(t, bRootDir)
 			bDockerfilePath := filepath.Join(bRootDir, "run.Dockerfile")
 			h.Mkfile(t, `FROM other-run-image`, bDockerfilePath)
-			dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(extB, nil)
-			extB.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
+			dirStore.EXPECT().LookupExt("B", "v2").Return(&extB, nil)
+			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
 				Dockerfiles: []buildpack.DockerfileInfo{
 					{ExtensionID: "B", Path: bDockerfilePath, Kind: "run"},
 				},
 			}, nil)
 
 			// Extension C has a pre-populated root directory.
-			extC := testmock.NewMockBuildModule(mockCtrl)
+			extC := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "C", Version: "v1"}}}
 			cRootDir := filepath.Join(tmpDir, "extensions", "C", "v1") // TODO: fix this fixture to be more generic; the path doesn't need to be accurate
 			h.Mkdir(t, cRootDir)
 			cDockerfilePath := filepath.Join(cRootDir, "build.Dockerfile")
 			h.Mkfile(t, `some-build.Dockerfile-content`, cDockerfilePath)
 			h.Mkfile(t, `some-extend-config-content`, filepath.Join(cRootDir, "extend-config.toml"))
-			dirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC, nil)
-			extC.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
+			dirStore.EXPECT().LookupExt("C", "v1").Return(&extC, nil)
+			executor.EXPECT().Generate(extC, gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{
 				Dockerfiles: []buildpack.DockerfileInfo{
 					{ExtensionID: "C", Path: cDockerfilePath, Kind: "build"},
 				},
@@ -284,9 +286,9 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		when("extension generate failed", func() {
 			when("first extension fails", func() {
 				it("errors", func() {
-					bpA := testmock.NewMockBuildModule(mockCtrl)
-					dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(bpA, nil)
-					bpA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
+					extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+					dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
+					executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
 					if _, err := generator.Generate(); err == nil {
 						t.Fatal("Expected error.\n")
@@ -298,12 +300,12 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 			when("later extension fails", func() {
 				it("errors", func() {
-					bpA := testmock.NewMockBuildModule(mockCtrl)
-					dirStore.EXPECT().Lookup(buildpack.KindExtension, "A", "v1").Return(bpA, nil)
-					bpA.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, nil)
-					bpB := testmock.NewMockBuildModule(mockCtrl)
-					dirStore.EXPECT().Lookup(buildpack.KindExtension, "B", "v2").Return(bpB, nil)
-					bpB.EXPECT().Build(gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
+					extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+					dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
+					executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, nil)
+					extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+					dirStore.EXPECT().LookupExt("B", "v2").Return(&extB, nil)
+					executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any(), gomock.Any()).Return(buildpack.BuildResult{}, errors.New("some error"))
 
 					if _, err := generator.Generate(); err == nil {
 						t.Fatal("Expected error.\n")
