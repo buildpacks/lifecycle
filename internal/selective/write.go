@@ -8,8 +8,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 )
 
-// TODO (before merging): add docs comment and tests
-func (l Path) AppendSelectiveImage(img v1.Image) error { // TODO (before merging): add options or create issue
+// TODO: test the functions in this file
+// TODO: add docs comments for this file
+func (l Path) AppendSelectiveImage(img v1.Image) error { // FIXME: add the ability to pass image options
 	if err := l.WriteSelectiveImage(img); err != nil {
 		return err
 	}
@@ -38,7 +39,6 @@ func (l Path) AppendSelectiveImage(img v1.Image) error { // TODO (before merging
 	return l.AppendDescriptor(desc)
 }
 
-// TODO (before merging): add docs comment and tests
 func (l Path) WriteSelectiveImage(img v1.Image) error {
 	// Write the config.
 	cfgName, err := img.ConfigName()
@@ -65,7 +65,6 @@ func (l Path) WriteSelectiveImage(img v1.Image) error {
 	return l.WriteBlob(d, ioutil.NopCloser(bytes.NewReader(manifest)))
 }
 
-// TODO (before merging): add docs comment and tests
 func Write(path string, ii v1.ImageIndex) (Path, error) {
 	layoutPath, err := layout.Write(path, ii)
 	if err != nil {

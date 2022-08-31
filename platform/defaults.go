@@ -3,6 +3,7 @@ package platform
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/buildpacks/lifecycle/api"
 )
@@ -20,6 +21,7 @@ const (
 	EnvGeneratedDir        = "CNB_GENERATED_DIR"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGroupPath           = "CNB_GROUP_PATH"
+	EnvKanikoCacheTTL      = "CNB_KANIKO_CACHE_TTL"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
 	EnvLayersDir           = "CNB_LAYERS_DIR"
 	EnvLogLevel            = "CNB_LOG_LEVEL"
@@ -57,14 +59,15 @@ const (
 )
 
 var (
-	DefaultAppDir        = filepath.Join(rootDir, "workspace")
-	DefaultBuildpacksDir = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultExtensionsDir = filepath.Join(rootDir, "cnb", "extensions")
-	DefaultLauncherPath  = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
-	DefaultLayersDir     = filepath.Join(rootDir, "layers")
-	DefaultOutputDir     = filepath.Join(rootDir, "layers")
-	DefaultPlatformDir   = filepath.Join(rootDir, "platform")
-	DefaultStackPath     = filepath.Join(rootDir, "cnb", "stack.toml")
+	DefaultAppDir         = filepath.Join(rootDir, "workspace")
+	DefaultBuildpacksDir  = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultExtensionsDir  = filepath.Join(rootDir, "cnb", "extensions")
+	DefaultKanikoCacheTTL = 14 * (24 * time.Hour)
+	DefaultLauncherPath   = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
+	DefaultLayersDir      = filepath.Join(rootDir, "layers")
+	DefaultOutputDir      = filepath.Join(rootDir, "layers")
+	DefaultPlatformDir    = filepath.Join(rootDir, "platform")
+	DefaultStackPath      = filepath.Join(rootDir, "cnb", "stack.toml")
 
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
 	PlaceholderGeneratedDir        = filepath.Join("<layers>", "generated")

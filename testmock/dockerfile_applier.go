@@ -10,7 +10,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	extend "github.com/buildpacks/lifecycle/internal/extend"
-	log "github.com/buildpacks/lifecycle/log"
 )
 
 // MockDockerfileApplier is a mock of DockerfileApplier interface.
@@ -37,15 +36,15 @@ func (m *MockDockerfileApplier) EXPECT() *MockDockerfileApplierMockRecorder {
 }
 
 // Apply mocks base method.
-func (m *MockDockerfileApplier) Apply(arg0 []extend.Dockerfile, arg1 string, arg2 log.Logger) error {
+func (m *MockDockerfileApplier) Apply(arg0, arg1 string, arg2 []extend.Dockerfile, arg3 extend.Options) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Apply", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Apply", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Apply indicates an expected call of Apply.
-func (mr *MockDockerfileApplierMockRecorder) Apply(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockDockerfileApplierMockRecorder) Apply(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockDockerfileApplier)(nil).Apply), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockDockerfileApplier)(nil).Apply), arg0, arg1, arg2, arg3)
 }

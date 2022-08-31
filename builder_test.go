@@ -173,22 +173,23 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
-		it.Pend("provides the updated environment to the next buildpack", func() {
+		it("provides the updated environment to the next buildpack", func() {
 			bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
 			executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, logger llog.Logger) (buildpack.BuildOutputs, error) {
-					// TODO: create <layer>/env dir
+					envPtr := inputs.Env.(*env.Env)
+					newEnv := env.NewBuildEnv(append(os.Environ(), "HOME=some-val-from-bpA"))
+					*(envPtr) = *newEnv // modify the provided env
 					return buildpack.BuildOutputs{}, nil
 				},
 			)
 			bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
-			expectedEnv := env.NewBuildEnv(append(os.Environ(), "HOME=modified-by-bpA"))
 
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 			dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 			executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any()).Do(
 				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
-					h.AssertEq(t, inputs.Env, expectedEnv)
+					h.AssertContains(t, inputs.Env.List(), "HOME=some-val-from-bpA")
 					return buildpack.BuildOutputs{}, nil
 				})
 

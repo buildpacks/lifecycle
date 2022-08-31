@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/str"
@@ -59,6 +60,10 @@ func FlagGroupPath(groupPath *string) {
 
 func DefaultGroupPath(platformAPI, layersDir string) string {
 	return defaultPath(platform.DefaultGroupFile, platformAPI, layersDir)
+}
+
+func FlagKanikoCacheTTL(cacheTTL *time.Duration) {
+	flagSet.DurationVar(cacheTTL, "-kaniko-cache-ttl", 0, "path to group.toml")
 }
 
 func FlagLaunchCacheDir(launchCacheDir *string) {

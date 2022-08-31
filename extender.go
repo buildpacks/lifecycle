@@ -1,8 +1,10 @@
 package lifecycle
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/BurntSushi/toml"
 
@@ -13,16 +15,20 @@ import (
 )
 
 type Extender struct {
-	Extensions   []buildpack.GroupElement
-	GeneratedDir string // TODO (before merging): /layers/generated shouldn't get exported in the final image
-	Logger       log.Logger
-
+	AppDir            string
+	GeneratedDir      string
+	GroupPath         string
+	LayersDir         string
+	PlatformDir       string
+	CacheTTL          time.Duration
 	DockerfileApplier DockerfileApplier
+	Extensions        []buildpack.GroupElement
+	Logger            log.Logger
 }
 
 //go:generate mockgen -package testmock -destination testmock/dockerfile_applier.go github.com/buildpacks/lifecycle DockerfileApplier
 type DockerfileApplier interface {
-	Apply(dockerfiles []extend.Dockerfile, baseImageRef string, logger log.Logger) error
+	Apply(workspace string, baseImageRef string, dockerfiles []extend.Dockerfile, options extend.Options) error
 }
 
 type ExtenderFactory struct {
@@ -37,11 +43,24 @@ func NewExtenderFactory(apiVerifier BuildpackAPIVerifier, configHandler ConfigHa
 	}
 }
 
-func (f *ExtenderFactory) NewExtender(dockerfileApplier DockerfileApplier, groupPath string, generatedDir string, logger log.Logger) (*Extender, error) {
+func (f *ExtenderFactory) NewExtender(
+	appDir string,
+	generatedDir string,
+	groupPath string,
+	layersDir string,
+	platformDir string,
+	cacheTTL time.Duration,
+	dockerfileApplier DockerfileApplier,
+	logger log.Logger,
+) (*Extender, error) {
 	extender := &Extender{
+		AppDir:            appDir,
 		GeneratedDir:      generatedDir,
-		Logger:            logger,
+		LayersDir:         layersDir,
+		PlatformDir:       platformDir,
+		CacheTTL:          cacheTTL,
 		DockerfileApplier: dockerfileApplier,
+		Logger:            logger,
 	}
 	if err := f.setExtensions(extender, groupPath, logger); err != nil {
 		return nil, err
@@ -49,13 +68,24 @@ func (f *ExtenderFactory) NewExtender(dockerfileApplier DockerfileApplier, group
 	return extender, nil
 }
 
-func (f *ExtenderFactory) setExtensions(extender *Extender, groupPath string, logger log.Logger) error {
-	var err error
-	if _, extender.Extensions, err = f.configHandler.ReadGroup(groupPath); err != nil {
+func (f *ExtenderFactory) setExtensions(extender *Extender, path string, logger log.Logger) error {
+	_, groupExt, err := f.configHandler.ReadGroup(path)
+	if err != nil {
+		return fmt.Errorf("reading group: %w", err)
+	}
+	for i := range groupExt {
+		groupExt[i].Extension = true
+	}
+	if err = f.verifyAPIs(groupExt, logger); err != nil {
 		return err
 	}
-	for _, el := range extender.Extensions {
-		if err := f.apiVerifier.VerifyBuildpackAPI(buildpack.KindExtension, el.String(), el.API, logger); err != nil {
+	extender.Extensions = groupExt
+	return nil
+}
+
+func (f *ExtenderFactory) verifyAPIs(groupExt []buildpack.GroupElement, logger log.Logger) error {
+	for _, groupEl := range groupExt {
+		if err := f.apiVerifier.VerifyBuildpackAPI(groupEl.Kind(), groupEl.String(), groupEl.API, logger); err != nil {
 			return err
 		}
 	}
@@ -75,7 +105,11 @@ func (e *Extender) ExtendBuild(imageRef string) error {
 			dockerfiles = append(dockerfiles, *buildDockerfile)
 		}
 	}
-	return e.DockerfileApplier.Apply(dockerfiles, imageRef, e.Logger)
+	options := extend.Options{
+		CacheTTL:    e.CacheTTL,
+		IgnorePaths: []string{e.AppDir, e.LayersDir, e.PlatformDir},
+	}
+	return e.DockerfileApplier.Apply(e.AppDir, imageRef, dockerfiles, options)
 }
 
 func (e *Extender) buildDockerfileFor(extID string) (*extend.Dockerfile, error) {

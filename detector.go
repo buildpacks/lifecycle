@@ -204,8 +204,8 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
 
 		// Run detect if element is a component buildpack or an extension.
-		key := fmt.Sprintf("%s %s", groupEl.Kind(), groupEl.String())
 		wg.Add(1)
+		key := keyFor(groupEl)
 		go func(key string, descriptor buildpack.Descriptor) {
 			if _, ok := d.Runs.Load(key); !ok {
 				inputs := buildpack.DetectInputs{
@@ -233,6 +233,10 @@ func hasIDForKind(els []buildpack.GroupElement, kind string, id string) bool {
 	return false
 }
 
+func keyFor(groupEl buildpack.GroupElement) string {
+	return fmt.Sprintf("%s %s", groupEl.Kind(), groupEl.String())
+}
+
 type DefaultResolver struct {
 	Logger log.Logger
 }
@@ -242,7 +246,7 @@ type DefaultResolver struct {
 func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectOutputs
 	for _, el := range done {
-		key := fmt.Sprintf("%s %s", el.Kind(), el.String()) // TODO: test that key is consistent across Detect and Resolve
+		key := keyFor(el) // FIXME: ensure the Detector and Resolver always use the same key
 		t, ok := detectRuns.Load(key)
 		if !ok {
 			return nil, nil, errors.Errorf("missing detection of '%s'", key)

@@ -60,17 +60,16 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		launchBOM []buildpack.BOMEntry
 		slices    []layers.Slice
 	)
-	currentEnv := env.NewBuildEnv(os.Environ())
 	processMap := newProcessMap()
-	inputs, err := b.GetCommonInputs()
+	inputs, err := b.getCommonInputs()
 	if err != nil {
 		return nil, err
 	}
+	inputs.Env = env.NewBuildEnv(os.Environ())
 	filteredPlan := b.Plan
 
 	for _, bp := range b.Group.Group {
 		b.Logger.Debugf("Running build for buildpack %s", bp)
-		inputs.Env = currentEnv
 
 		b.Logger.Debug("Looking up buildpack")
 		bpTOML, err := b.DirStore.LookupBp(bp.ID, bp.Version)
@@ -146,7 +145,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}, nil
 }
 
-func (b *Builder) GetCommonInputs() (buildpack.BuildInputs, error) {
+func (b *Builder) getCommonInputs() (buildpack.BuildInputs, error) {
 	appDir, err := filepath.Abs(b.AppDir)
 	if err != nil {
 		return buildpack.BuildInputs{}, err

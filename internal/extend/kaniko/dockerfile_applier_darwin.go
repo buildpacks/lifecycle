@@ -4,9 +4,8 @@ package kaniko
 
 import (
 	"github.com/buildpacks/lifecycle/internal/extend"
-	"github.com/buildpacks/lifecycle/log"
 )
 
-func (a *DockerfileApplier) Apply(dockerfiles []extend.Dockerfile, baseImageRef string, logger log.Logger) error {
+func (a *DockerfileApplier) Apply(workspace string, baseImageRef string, dockerfiles []extend.Dockerfile, options extend.Options) error {
 	return nil
 }

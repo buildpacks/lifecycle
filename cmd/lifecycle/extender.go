@@ -20,13 +20,14 @@ type extendCmd struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *extendCmd) DefineFlags() {
 	cli.FlagAppDir(&e.AppDir)
-	cli.FlagBuildpacksDir(&e.BuildInputs.BuildpacksDir)
+	cli.FlagBuildpacksDir(&e.BuildpacksDir)
 	cli.FlagGID(&e.GID)
 	cli.FlagGeneratedDir(&e.GeneratedDir)
 	cli.FlagGroupPath(&e.GroupPath)
-	cli.FlagLayersDir(&e.BuildInputs.LayersDir)
-	cli.FlagPlanPath(&e.BuildInputs.PlanPath)
-	cli.FlagPlatformDir(&e.BuildInputs.PlatformDir)
+	cli.FlagKanikoCacheTTL(&e.KanikoCacheTTL)
+	cli.FlagLayersDir(&e.LayersDir)
+	cli.FlagPlanPath(&e.PlanPath)
+	cli.FlagPlatformDir(&e.PlatformDir)
 	cli.FlagUID(&e.UID)
 }
 
@@ -51,32 +52,37 @@ func (e *extendCmd) Privileges() error {
 
 func (e *extendCmd) Exec() error {
 	extenderFactory := lifecycle.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
-	extender, err := extenderFactory.NewExtender(kaniko.NewDockerfileApplier(), e.GroupPath, e.GeneratedDir, cmd.DefaultLogger)
+	extender, err := extenderFactory.NewExtender(
+		e.AppDir,
+		e.GeneratedDir,
+		e.GroupPath,
+		e.LayersDir,
+		e.PlatformDir,
+		e.KanikoCacheTTL,
+		kaniko.NewDockerfileApplier(cmd.DefaultLogger),
+		cmd.DefaultLogger,
+	)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize extender")
 	}
 	if err = extender.ExtendBuild(e.ImageRef); err != nil {
 		return cmd.FailErrCode(err, e.platform.CodeFor(platform.ExtendError), "extend build image")
 	}
-	if err = priv.EnsureOwner(e.UID, e.GID, e.BuildInputs.LayersDir); err != nil {
+	if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
 	}
-	e.BuildInputs, err = e.platform.ResolveBuild(e.BuildInputs)
-	if err != nil {
-		return err
-	}
 	buildCmd := buildCmd{
 		groupPath: e.GroupPath,
-		planPath:  e.BuildInputs.PlanPath,
+		planPath:  e.PlanPath,
 		buildArgs: buildArgs{
-			appDir:        e.BuildInputs.AppDir,
-			buildpacksDir: e.BuildInputs.BuildpacksDir,
-			layersDir:     e.BuildInputs.LayersDir,
+			appDir:        e.AppDir,
+			buildpacksDir: e.BuildpacksDir,
+			layersDir:     e.LayersDir,
 			platform:      e.platform,
-			platformDir:   e.BuildInputs.PlatformDir,
+			platformDir:   e.PlatformDir,
 		},
 	}
 	if err = buildCmd.Privileges(); err != nil {

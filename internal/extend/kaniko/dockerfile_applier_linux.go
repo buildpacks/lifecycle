@@ -8,20 +8,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/GoogleContainerTools/kaniko/pkg/executor"
 	"github.com/GoogleContainerTools/kaniko/pkg/image"
-	"github.com/containerd/containerd/platforms"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 
 	"github.com/buildpacks/lifecycle/internal/extend"
-	"github.com/buildpacks/lifecycle/log"
 )
 
-func (a *DockerfileApplier) Apply(dockerfiles []extend.Dockerfile, baseImageRef string, logger log.Logger) error {
+func (a *DockerfileApplier) Apply(workspace string, baseImageRef string, dockerfiles []extend.Dockerfile, options extend.Options) error {
 	// Configure kaniko
 	executor.InitialFSUnpacked = true // the extender is running in the context of the base image to extend, so there is no need to unpack an FS
 	baseImage, err := readOCI(baseImageRef)
@@ -34,21 +31,7 @@ func (a *DockerfileApplier) Apply(dockerfiles []extend.Dockerfile, baseImageRef 
 
 	// Range over Dockerfiles
 	for idx, dfile := range dockerfiles {
-		opts := config.KanikoOptions{
-			BuildArgs:      append(toList(dfile.Args), fmt.Sprintf(`base_image=%s`, baseImageRef)),
-			Cache:          true,
-			CacheOptions:   config.CacheOptions{CacheDir: a.cacheDir, CacheTTL: 14 * (24 * time.Hour)}, // TODO (before merging): make TTL configurable
-			CacheRepo:      a.cacheImageRef,
-			Cleanup:        false,
-			CustomPlatform: platforms.DefaultString(),
-			DockerfilePath: dfile.Path,
-			IgnorePaths:    []string{"/layers", "/platform", "/workspace"}, // TODO (before merging): make configurable and test
-			IgnoreVarRun:   true,
-			NoPush:         true,
-			Reproducible:   false, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them
-			SnapshotMode:   "full",
-			SrcContext:     a.dockerfileBuildContext,
-		}
+		opts := createOptions(workspace, baseImageRef, dfile, options)
 
 		// Change to root directory; kaniko does this here:
 		// https://github.com/GoogleContainerTools/kaniko/blob/09e70e44d9e9a3fecfcf70cb809a654445837631/cmd/executor/cmd/root.go#L140-L142
@@ -58,7 +41,7 @@ func (a *DockerfileApplier) Apply(dockerfiles []extend.Dockerfile, baseImageRef 
 
 		// Apply Dockerfile
 		var err error
-		logger.Debugf("Applying the Dockerfile at %s...", dfile.Path)
+		a.logger.Debugf("Applying the Dockerfile at %s...", dfile.Path)
 		baseImage, err = executor.DoBuild(&opts)
 		if err != nil {
 			return fmt.Errorf("applying dockerfile: %w", err)
@@ -107,14 +90,6 @@ func readOCI(digestRef string) (v1.Image, error) {
 		return nil, fmt.Errorf("getting image from hash '%s': %w", hash.String(), err)
 	}
 	return v1Image, nil
-}
-
-func toList(args []extend.Arg) []string {
-	var result []string
-	for _, arg := range args {
-		result = append(result, fmt.Sprintf("%s=%s", arg.Name, arg.Value))
-	}
-	return result
 }
 
 func cleanKanikoDir() error {

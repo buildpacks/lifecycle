@@ -312,7 +312,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				```
 				- MUST NOT contain any other `FROM` instructions
 				- MAY contain `ADD`, `ARG`, `COPY`, `ENV`, `LABEL`, `RUN`, `SHELL`, `USER`, and `WORKDIR` instructions
-				- MUST NOT contain any other instructions
+				- SHOULD NOT contain any other instructions
 			*/
 		})
 
