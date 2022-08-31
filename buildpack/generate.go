@@ -48,7 +48,7 @@ func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInput
 	defer os.RemoveAll(planDir)
 
 	logger.Debug("Preparing paths")
-	moduleOutputDir, planPath, err := prepareInputPaths(d.Extension.ID, inputs.Plan, inputs.OutputDir, planDir)
+	extOutputDir, planPath, err := prepareInputPaths(d.Extension.ID, inputs.Plan, inputs.OutputDir, planDir)
 	if err != nil {
 		return GenerateOutputs{}, err
 	}
@@ -61,18 +61,18 @@ func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInput
 		}
 		return GenerateOutputs{}, err
 	}
-	if err = runGenerateCmd(d, moduleOutputDir, planPath, inputs); err != nil {
+	if err = runGenerateCmd(d, extOutputDir, planPath, inputs); err != nil {
 		return GenerateOutputs{}, err
 	}
 
 	logger.Debug("Reading output files")
-	return readOutputFilesExt(d, moduleOutputDir, inputs.Plan)
+	return readOutputFilesExt(d, extOutputDir, inputs.Plan)
 }
 
-func runGenerateCmd(d ExtDescriptor, moduleOutputDir, planPath string, inputs GenerateInputs) error {
+func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs GenerateInputs) error {
 	cmd := exec.Command(
 		filepath.Join(d.WithRootDir, "bin", "generate"),
-		moduleOutputDir,
+		extOutputDir,
 		inputs.PlatformDir,
 		planPath,
 	) // #nosec G204
@@ -92,7 +92,7 @@ func runGenerateCmd(d ExtDescriptor, moduleOutputDir, planPath string, inputs Ge
 	cmd.Env = append(cmd.Env,
 		EnvBpPlanPath+"="+planPath,
 		EnvBuildpackDir+"="+d.WithRootDir,
-		EnvOutputDir+"="+moduleOutputDir,
+		EnvOutputDir+"="+extOutputDir,
 		EnvPlatformDir+"="+inputs.PlatformDir,
 	)
 

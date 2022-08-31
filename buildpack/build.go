@@ -79,18 +79,18 @@ func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger 
 	defer os.RemoveAll(planDir)
 
 	logger.Debug("Preparing paths")
-	moduleOutputDir, planPath, err := prepareInputPaths(d.Buildpack.ID, inputs.Plan, inputs.LayersDir, planDir)
+	bpLayersDir, planPath, err := prepareInputPaths(d.Buildpack.ID, inputs.Plan, inputs.LayersDir, planDir)
 	if err != nil {
 		return BuildOutputs{}, err
 	}
 
 	logger.Debug("Running build command")
-	if err := runBuildCmd(d, moduleOutputDir, planPath, inputs, inputs.Env); err != nil {
+	if err := runBuildCmd(d, bpLayersDir, planPath, inputs, inputs.Env); err != nil {
 		return BuildOutputs{}, err
 	}
 
 	logger.Debug("Processing layers")
-	createdLayers, err := d.processLayers(moduleOutputDir, logger)
+	createdLayers, err := d.processLayers(bpLayersDir, logger)
 	if err != nil {
 		return BuildOutputs{}, err
 	}
@@ -101,20 +101,20 @@ func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger 
 	}
 
 	logger.Debug("Reading output files")
-	return d.readOutputFilesBp(moduleOutputDir, planPath, inputs.Plan, createdLayers, logger)
+	return d.readOutputFilesBp(bpLayersDir, planPath, inputs.Plan, createdLayers, logger)
 }
 
-func prepareInputPaths(moduleID string, plan Plan, outputParentDir, parentPlanDir string) (string, string, error) {
-	moduleDirName := launch.EscapeID(moduleID) // FIXME: this logic should eventually move to the platform package
+func prepareInputPaths(bpID string, plan Plan, layersDir, parentPlanDir string) (string, string, error) {
+	bpDirName := launch.EscapeID(bpID) // FIXME: this logic should eventually move to the platform package
 
 	// Create e.g., <layers>/<buildpack-id> or <output>/<extension-id>
-	moduleOutputDir := filepath.Join(outputParentDir, moduleDirName)
-	if err := os.MkdirAll(moduleOutputDir, 0777); err != nil {
+	bpLayersDir := filepath.Join(layersDir, bpDirName)
+	if err := os.MkdirAll(bpLayersDir, 0777); err != nil {
 		return "", "", err
 	}
 
 	// Create Buildpack Plan
-	childPlanDir := filepath.Join(parentPlanDir, moduleDirName) // FIXME: it's unclear if this child directory is necessary; consider removing
+	childPlanDir := filepath.Join(parentPlanDir, bpDirName) // FIXME: it's unclear if this child directory is necessary; consider removing
 	if err := os.MkdirAll(childPlanDir, 0777); err != nil {
 		return "", "", err
 	}
@@ -123,13 +123,13 @@ func prepareInputPaths(moduleID string, plan Plan, outputParentDir, parentPlanDi
 		return "", "", err
 	}
 
-	return moduleOutputDir, planPath, nil
+	return bpLayersDir, planPath, nil
 }
 
-func runBuildCmd(d BpDescriptor, moduleOutputDir, planPath string, inputs BuildInputs, buildEnv BuildEnv) error {
+func runBuildCmd(d BpDescriptor, bpLayersDir, planPath string, inputs BuildInputs, buildEnv BuildEnv) error {
 	cmd := exec.Command(
 		filepath.Join(d.WithRootDir, "bin", "build"),
-		moduleOutputDir,
+		bpLayersDir,
 		inputs.PlatformDir,
 		planPath,
 	) // #nosec G204
@@ -151,7 +151,7 @@ func runBuildCmd(d BpDescriptor, moduleOutputDir, planPath string, inputs BuildI
 		cmd.Env = append(cmd.Env,
 			EnvPlatformDir+"="+inputs.PlatformDir,
 			EnvBpPlanPath+"="+planPath,
-			EnvLayersDir+"="+moduleOutputDir,
+			EnvLayersDir+"="+bpLayersDir,
 		)
 	}
 

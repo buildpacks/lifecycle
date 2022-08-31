@@ -63,7 +63,7 @@ func DefaultGroupPath(platformAPI, layersDir string) string {
 }
 
 func FlagKanikoCacheTTL(cacheTTL *time.Duration) {
-	flagSet.DurationVar(cacheTTL, "-kaniko-cache-ttl", 0, "path to group.toml")
+	flagSet.DurationVar(cacheTTL, "kaniko-cache-ttl", 0, "path to group.toml")
 }
 
 func FlagLaunchCacheDir(launchCacheDir *string) {
@@ -84,10 +84,6 @@ func FlagNoColor(skip *bool) {
 
 func FlagOrderPath(orderPath *string) {
 	flagSet.StringVar(orderPath, "order", envOrDefault(platform.EnvOrderPath, platform.PlaceholderOrderPath), "path to order.toml")
-}
-
-func FlagOutputDir(dir *string) {
-	flagSet.StringVar(dir, "output-dir", envOrDefault(platform.EnvOutputDir, platform.DefaultOutputDir), "path to output directory")
 }
 
 func DefaultOrderPath(platformAPI, layersDir string) string {

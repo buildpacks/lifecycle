@@ -74,7 +74,7 @@ func (a *DockerfileApplier) Apply(workspace string, baseImageRef string, dockerf
 }
 
 func readOCI(digestRef string) (v1.Image, error) {
-	if !strings.HasPrefix(digestRef, "oci:") { // TODO (before merging): parse reference properly with GGCR
+	if !strings.HasPrefix(digestRef, "oci:") { // TODO: parse reference properly with GGCR
 		return nil, fmt.Errorf("expected '%s' to have prefix 'oci:'", digestRef)
 	}
 	path, err := layout.FromPath(strings.TrimPrefix(digestRef, "oci:"))
@@ -85,7 +85,7 @@ func readOCI(digestRef string) (v1.Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting hash from reference '%s': %w", digestRef, err)
 	}
-	v1Image, err := path.Image(hash) // TODO (before merging): use selective.Image
+	v1Image, err := path.Image(hash) // FIXME: this should be a selective.Image
 	if err != nil {
 		return nil, fmt.Errorf("getting image from hash '%s': %w", hash.String(), err)
 	}

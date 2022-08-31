@@ -98,7 +98,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	for _, ext := range g.Extensions {
 		g.Logger.Debugf("Running generate for extension %s", ext)
 
-		g.Logger.Debug("Looking up module")
+		g.Logger.Debug("Looking up extension")
 		descriptor, err := g.DirStore.LookupExt(ext.ID, ext.Version)
 		if err != nil {
 			return GenerateResult{}, err

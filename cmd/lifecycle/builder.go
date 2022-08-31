@@ -85,16 +85,17 @@ func (ba buildArgs) build(group buildpack.Group, plan platform.BuildPlan) error 
 	}
 
 	builder := &lifecycle.Builder{
-		AppDir:      ba.appDir,
-		LayersDir:   ba.layersDir,
-		PlatformDir: ba.platformDir,
-		Platform:    ba.platform,
-		Group:       group,
-		Plan:        plan,
-		Out:         cmd.Stdout,
-		Err:         cmd.Stderr,
-		Logger:      cmd.DefaultLogger,
-		DirStore:    dirStore,
+		AppDir:        ba.appDir,
+		LayersDir:     ba.layersDir,
+		PlatformDir:   ba.platformDir,
+		BuildExecutor: &buildpack.DefaultBuildExecutor{},
+		DirStore:      dirStore,
+		Group:         group,
+		Logger:        cmd.DefaultLogger,
+		Out:           cmd.Stdout,
+		Err:           cmd.Stderr,
+		Plan:          plan,
+		Platform:      ba.platform,
 	}
 	md, err := builder.Build()
 	if err != nil {

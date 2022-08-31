@@ -234,7 +234,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
 			executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
-					// check config
+					// check inputs
 					h.AssertEq(t, inputs.AppDir, generator.AppDir)
 					h.AssertEq(t, inputs.PlatformDir, generator.PlatformDir)
 
