@@ -81,7 +81,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		b.Logger.Debug("Finding plan")
 		inputs.Plan = filteredPlan.Find(buildpack.KindBuildpack, bp.ID)
 
-		br, err := b.BuildExecutor.Build(bpTOML, inputs, b.Logger)
+		br, err := b.BuildExecutor.Build(*bpTOML, inputs, b.Logger)
 		if err != nil {
 			return nil, err
 		}

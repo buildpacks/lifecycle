@@ -46,8 +46,8 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 				layersDirAbs, err := filepath.Abs(layersDir)
 				h.AssertNil(t, err)
 
-				outputDir := filepath.Join("testdata", "layers")
-				outputDirAbs, err := filepath.Abs(outputDir)
+				generatedDir := filepath.Join("testdata", "layers")
+				generatedDirAbs, err := filepath.Abs(generatedDir)
 				h.AssertNil(t, err)
 
 				platformDir := filepath.Join("testdata", "platform")
@@ -58,11 +58,9 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 					AppDir:        appDir,
 					BuildpacksDir: bpDir,
 					ExtensionsDir: extDir,
+					GeneratedDir:  generatedDir,
 					LayersDir:     layersDir,
 					PlatformDir:   platformDir,
-					GenerateInputs: platform.GenerateInputs{
-						OutputDir: outputDir,
-					},
 				}
 				ret, err := resolver.ResolveDetect(inputs)
 				h.AssertNil(t, err)
@@ -70,7 +68,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertEq(t, ret.BuildpacksDir, bpDirAbs)
 				h.AssertEq(t, ret.ExtensionsDir, extDirAbs)
 				h.AssertEq(t, ret.LayersDir, layersDirAbs)
-				h.AssertEq(t, ret.OutputDir, outputDirAbs)
+				h.AssertEq(t, ret.GeneratedDir, generatedDirAbs)
 				h.AssertEq(t, ret.PlatformDir, platformDirAbs)
 			})
 
@@ -83,7 +81,7 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertEq(t, ret.BuildpacksDir, "")
 					h.AssertEq(t, ret.ExtensionsDir, "")
 					h.AssertEq(t, ret.LayersDir, "")
-					h.AssertEq(t, ret.OutputDir, "")
+					h.AssertEq(t, ret.GeneratedDir, "")
 					h.AssertEq(t, ret.PlatformDir, "")
 				})
 			})

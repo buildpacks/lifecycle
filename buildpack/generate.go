@@ -11,9 +11,16 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
+const (
+	// EnvOutputDir is the absolute path of the extension output directory (read-write); a different copy is provided for each extension;
+	// contents are copied to the generator's <generated> directory
+	EnvOutputDir = "CNB_OUTPUT_DIR"
+	// Also provided during generate: EnvBpPlanPath, EnvBuildpackDir, EnvPlatformDir (see build.go)
+)
+
 type GenerateInputs struct {
 	AppDir      string
-	OutputDir   string
+	OutputDir   string // a temp directory provided by the lifecycle to capture extensions output
 	PlatformDir string
 	Env         BuildEnv
 	Out, Err    io.Writer
@@ -32,7 +39,7 @@ type GenerateExecutor interface {
 
 type DefaultGenerateExecutor struct{}
 
-func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error) { // TODO: fix other pointer arguments (Build, Detect)
+func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error) {
 	logger.Debug("Creating plan directory")
 	planDir, err := ioutil.TempDir("", launch.EscapeID(d.Extension.ID)+"-")
 	if err != nil {
@@ -84,7 +91,7 @@ func runGenerateCmd(d ExtDescriptor, moduleOutputDir, planPath string, inputs Ge
 	}
 	cmd.Env = append(cmd.Env,
 		EnvBpPlanPath+"="+planPath,
-		EnvBuildpackDir+"="+d.WithRootDir, // TODO: should be extension dir?
+		EnvBuildpackDir+"="+d.WithRootDir,
 		EnvOutputDir+"="+moduleOutputDir,
 		EnvPlatformDir+"="+inputs.PlatformDir,
 	)

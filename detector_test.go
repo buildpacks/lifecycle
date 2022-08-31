@@ -620,7 +620,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 			}
 			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
-			executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Return(buildpack.DetectRun{
+			executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{{Name: "some-dep"}},
@@ -643,7 +643,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 			dirStore.EXPECT().LookupBp("B", "v1").Return(bpB1, nil).AnyTimes()
 			bpBerror := errors.New("some-error")
-			executor.EXPECT().Detect(bpB1, gomock.Any(), gomock.Any()).Return(buildpack.DetectRun{
+			executor.EXPECT().Detect(bpB1, gomock.Any(), gomock.Any()).Return(buildpack.DetectOutputs{
 				Output: []byte("detect out: B@v1\ndetect err: B@v1"),
 				Code:   100,
 				Err:    bpBerror,
@@ -665,7 +665,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			if !ok {
 				t.Fatalf("missing detection of '%s'", "A@v1")
 			}
-			if s := cmp.Diff(bpARun, buildpack.DetectRun{
+			if s := cmp.Diff(bpARun, buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{{Name: "some-dep"}},
@@ -689,7 +689,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			if !ok {
 				t.Fatalf("missing detection of '%s'", "B@v1")
 			}
-			if s := cmp.Diff(bpBRun, buildpack.DetectRun{
+			if s := cmp.Diff(bpBRun, buildpack.DetectOutputs{
 				Output: []byte("detect out: B@v1\ndetect err: B@v1"),
 				Code:   100,
 				Err:    bpBerror,
@@ -929,10 +929,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				Code: 100,
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				Code: 100,
 			})
 
@@ -959,10 +959,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				detectRuns := &sync.Map{}
-				detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+				detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 					Code: 100,
 				})
-				detectRuns.Store("Extension B@v1", buildpack.DetectRun{
+				detectRuns.Store("Extension B@v1", buildpack.DetectOutputs{
 					Code: 0,
 				})
 
@@ -989,10 +989,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				Code: 0,
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				Code: 127,
 			})
 
@@ -1017,10 +1017,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				Code: 0,
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				Code: 100,
 			})
 
@@ -1043,10 +1043,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				Code: 0,
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				Output: []byte("detect out: B@v1\ndetect err: B@v1"),
 				Code:   127,
 			})
@@ -1077,7 +1077,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1090,7 +1090,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1100,7 +1100,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack C@v2", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v2", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1110,7 +1110,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack D@v2", buildpack.DetectRun{
+			detectRuns.Store("Buildpack D@v2", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1177,7 +1177,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1187,7 +1187,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				},
 				Code: 100,
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1196,7 +1196,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1234,7 +1234,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1246,7 +1246,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1255,7 +1255,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1291,7 +1291,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1300,7 +1300,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1312,7 +1312,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1366,7 +1366,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1382,7 +1382,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Requires: []buildpack.Require{
@@ -1398,7 +1398,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack C@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack C@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{
@@ -1420,7 +1420,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
-			detectRuns.Store("Buildpack D@v1", buildpack.DetectRun{
+			detectRuns.Store("Buildpack D@v1", buildpack.DetectOutputs{
 				BuildPlan: buildpack.BuildPlan{
 					PlanSections: buildpack.PlanSections{
 						Provides: []buildpack.Provide{

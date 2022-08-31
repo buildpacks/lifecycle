@@ -105,20 +105,6 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when(".ExtendBuild", func() {
-		it("validates the provided Dockerfiles", func() {
-			// TODO (before merging): validate the following conditions:
-			/*
-				build.Dockerfiles:
-				- MUST begin with:
-				```bash
-				ARG base_image
-				FROM ${base_image}
-				```
-				- MUST NOT contain any other `FROM` instructions
-				- MAY contain `ADD`, `ARG`, `COPY`, `ENV`, `LABEL`, `RUN`, `SHELL`, `USER`, and `WORKDIR` instructions
-				- MUST NOT contain any other instructions
-			*/
-		})
 		it("applies the provided Dockerfiles to the build image", func() {
 			h.Mkdir(t, filepath.Join(generatedDir, "build", "B"))
 			h.Mkfile(t, "some build.Dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))

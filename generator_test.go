@@ -104,7 +104,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		generator      *lifecycle.Generator
 		tmpDir         string
 		appDir         string
-		outputDir      string
+		generatedDir   string
 		platformDir    string
 		dirStore       *testmock.MockDirStore
 		executor       *testmock.MockGenerateExecutor
@@ -120,10 +120,10 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		tmpDir, err = ioutil.TempDir("", "lifecycle")
 		h.AssertNil(t, err)
-		outputDir = filepath.Join(tmpDir, "output")
-		appDir = filepath.Join(outputDir, "app")
+		generatedDir = filepath.Join(tmpDir, "output")
+		appDir = filepath.Join(generatedDir, "app")
 		platformDir = filepath.Join(tmpDir, "platform")
-		h.Mkdir(t, outputDir, appDir, filepath.Join(platformDir, "env"))
+		h.Mkdir(t, generatedDir, appDir, filepath.Join(platformDir, "env"))
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 
 		generator = &lifecycle.Generator{
@@ -135,7 +135,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 			},
 			Logger:       &log.Logger{Handler: logHandler},
-			GeneratedDir: outputDir,
+			GeneratedDir: generatedDir,
 			Plan:         platform.BuildPlan{},
 			PlatformDir:  platformDir,
 			Err:          stderr,
@@ -188,7 +188,11 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}
-			expectedInputs := generator.GetCommonInputs()
+			expectedInputs := buildpack.GenerateInputs{
+				AppDir:      appDir,
+				PlatformDir: platformDir,
+				// OutputDir is ephemeral directory
+			}
 
 			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
 			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
@@ -197,9 +201,13 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				{Name: "some-dep", Version: "v1"},
 				{Name: "some-unmet-dep", Version: "v2"},
 			}}
-			executor.EXPECT().Generate(extA, expectedAInputs, gomock.Any()).Return(buildpack.GenerateOutputs{
-				MetRequires: []string{"some-dep"},
-			}, nil)
+			executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
+					h.AssertEq(t, inputs.Plan, expectedAInputs.Plan)
+					h.AssertEq(t, inputs.AppDir, expectedAInputs.AppDir)
+					h.AssertEq(t, inputs.PlatformDir, expectedAInputs.PlatformDir)
+					return buildpack.GenerateOutputs{MetRequires: []string{"some-dep"}}, nil
+				})
 
 			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
 			dirStore.EXPECT().LookupExt("B", "v2").Return(&extB, nil)
@@ -208,7 +216,13 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				{Name: "some-unmet-dep", Version: "v2"},
 				{Name: "other-dep", Version: "v4"},
 			}}
-			executor.EXPECT().Generate(extB, expectedBInputs, gomock.Any())
+			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Do(
+				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
+					h.AssertEq(t, inputs.Plan, expectedBInputs.Plan)
+					h.AssertEq(t, inputs.AppDir, expectedBInputs.AppDir)
+					h.AssertEq(t, inputs.PlatformDir, expectedBInputs.PlatformDir)
+					return buildpack.GenerateOutputs{}, nil
+				})
 
 			_, err := generator.Generate()
 			h.AssertNil(t, err)
@@ -269,22 +283,46 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			t.Log("copies Dockerfiles to the correct locations")
-			aContents := h.MustReadFile(t, filepath.Join(outputDir, "run", "A", "Dockerfile"))
+			aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile"))
 			h.AssertEq(t, string(aContents), `FROM some-run-image`)
-			bContents := h.MustReadFile(t, filepath.Join(outputDir, "run", "B", "Dockerfile"))
+			bContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "B", "Dockerfile"))
 			h.AssertEq(t, string(bContents), `FROM other-run-image`)
-			cContents := h.MustReadFile(t, filepath.Join(outputDir, "build", "C", "Dockerfile"))
+			cContents := h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "Dockerfile"))
 			h.AssertEq(t, string(cContents), `some-build.Dockerfile-content`)
 
 			t.Log("copies the extend-config.toml if exists")
-			configContents := h.MustReadFile(t, filepath.Join(outputDir, "build", "C", "extend-config.toml"))
+			configContents := h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "extend-config.toml"))
 			h.AssertEq(t, string(configContents), `some-extend-config-content`)
 
 			t.Log("does not pollute the output directory")
-			h.AssertPathDoesNotExist(t, filepath.Join(outputDir, "A", "run.Dockerfile"))
+			h.AssertPathDoesNotExist(t, filepath.Join(generatedDir, "A", "run.Dockerfile"))
 
 			t.Log("returns the correct run image")
 			h.AssertEq(t, result.RunImage, "other-run-image")
+		})
+
+		it("validates build.Dockerfiles", func() {
+			// TODO: validate the following conditions:
+			/*
+				build.Dockerfiles:
+				- MUST begin with:
+				```bash
+				ARG base_image
+				FROM ${base_image}
+				```
+				- MUST NOT contain any other `FROM` instructions
+				- MAY contain `ADD`, `ARG`, `COPY`, `ENV`, `LABEL`, `RUN`, `SHELL`, `USER`, and `WORKDIR` instructions
+				- MUST NOT contain any other instructions
+			*/
+		})
+
+		it("validates run.Dockerfiles", func() {
+			// TODO: validate the following conditions:
+			/*
+				run.Dockerfiles:
+				- MAY contain a single `FROM` instruction
+				- MUST NOT contain any other instructions
+			*/
 		})
 
 		when("extension generate failed", func() {

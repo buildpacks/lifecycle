@@ -11,18 +11,12 @@ type DetectInputs struct {
 	AppDir        string
 	BuildpacksDir string
 	ExtensionsDir string
+	GeneratedDir  string
 	GroupPath     string
 	LayersDir     string
 	OrderPath     string
 	PlanPath      string
 	PlatformDir   string
-
-	// TODO (before merging): refactor inputs as this pattern could lead to DetectInputs clobbering GenerateInputs if they share the same fields
-	GenerateInputs
-}
-
-type GenerateInputs struct {
-	OutputDir string
 }
 
 // ResolveDetect accepts a DetectInputs and returns a new DetectInputs with default values filled in,
@@ -67,7 +61,7 @@ func (r *InputsResolver) resolveDetectDirPaths(inputs *DetectInputs) error {
 	if inputs.LayersDir, err = absoluteIfNotEmpty(inputs.LayersDir); err != nil {
 		return err
 	}
-	if inputs.OutputDir, err = absoluteIfNotEmpty(inputs.OutputDir); err != nil {
+	if inputs.GeneratedDir, err = absoluteIfNotEmpty(inputs.GeneratedDir); err != nil {
 		return err
 	}
 	if inputs.PlatformDir, err = absoluteIfNotEmpty(inputs.PlatformDir); err != nil {

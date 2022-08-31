@@ -349,6 +349,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				h.WithArgs(
 					"-analyzed=/layers/analyzed.toml",
 					"-extensions=/cnb/extensions",
+					"-generated=/layers/generated",
 					"-log-level=debug",
 					"-output-dir=/layers",
 				),

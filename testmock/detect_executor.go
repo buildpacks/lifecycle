@@ -10,6 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	log "github.com/buildpacks/lifecycle/log"
 )
 
 // MockDetectExecutor is a mock of DetectExecutor interface.
@@ -36,10 +37,10 @@ func (m *MockDetectExecutor) EXPECT() *MockDetectExecutorMockRecorder {
 }
 
 // Detect mocks base method.
-func (m *MockDetectExecutor) Detect(arg0 buildpack.Descriptor, arg1 *buildpack.DetectConfig, arg2 buildpack.BuildEnv) buildpack.DetectRun {
+func (m *MockDetectExecutor) Detect(arg0 buildpack.Descriptor, arg1 buildpack.DetectInputs, arg2 log.Logger) buildpack.DetectOutputs {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Detect", arg0, arg1, arg2)
-	ret0, _ := ret[0].(buildpack.DetectRun)
+	ret0, _ := ret[0].(buildpack.DetectOutputs)
 	return ret0
 }
 

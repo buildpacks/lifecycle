@@ -118,7 +118,7 @@ func (d *LayersDir) NewLayer(name, buildpackAPI string, logger log.Logger) *Laye
 	}
 }
 
-type Layer struct { // TODO: need to refactor so api and logger won't be part of this struct
+type Layer struct { // FIXME: need to refactor so api and logger won't be part of this struct
 	layerDir
 	api    string
 	logger log.Logger

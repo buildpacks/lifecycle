@@ -130,12 +130,12 @@ replace (
 	github.com/tonistiigi/fsutil => github.com/tonistiigi/fsutil v0.0.0-20201103201449-0834f99b7b85
 )
 
-// TODO (before merging): see if this can be removed
+// TODO: see if this can be removed
 replace (
 	github.com/moby/sys/mount => github.com/moby/sys/mount v0.1.1
 	github.com/moby/sys/mountinfo => github.com/moby/sys/mountinfo v0.4.0
 	github.com/moby/sys/symlink => github.com/moby/sys/symlink v0.1.0
 )
 
-// TODO (before merging): remove
+// TODO: remove
 replace github.com/GoogleContainerTools/kaniko => github.com/natalieparellano/kaniko v0.0.0-20220822204602-3f8af421958f

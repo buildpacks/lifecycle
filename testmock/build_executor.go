@@ -37,7 +37,7 @@ func (m *MockBuildExecutor) EXPECT() *MockBuildExecutorMockRecorder {
 }
 
 // Build mocks base method.
-func (m *MockBuildExecutor) Build(arg0 *buildpack.BpDescriptor, arg1 buildpack.BuildInputs, arg2 log.Logger) (buildpack.BuildOutputs, error) {
+func (m *MockBuildExecutor) Build(arg0 buildpack.BpDescriptor, arg1 buildpack.BuildInputs, arg2 log.Logger) (buildpack.BuildOutputs, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Build", arg0, arg1, arg2)
 	ret0, _ := ret[0].(buildpack.BuildOutputs)

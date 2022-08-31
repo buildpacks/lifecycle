@@ -22,10 +22,12 @@ import (
 )
 
 const (
-	EnvLayersDir  = "CNB_LAYERS_DIR"
+	// EnvBpPlanPath is the absolute path of the filtered build plan, containing relevant Buildpack Plan entries from detection
 	EnvBpPlanPath = "CNB_BP_PLAN_PATH"
-
-	EnvOutputDir = "CNB_OUTPUT_DIR" // TODO: move
+	// EnvLayersDir is the absolute path of the buildpack layers directory (read-write); a different copy is provided for each buildpack;
+	// contents may be saved to either or both of: the final output image or the cache
+	EnvLayersDir = "CNB_LAYERS_DIR"
+	// Also provided during build: EnvBuildpackDir, EnvPlatformDir (see detect.go)
 )
 
 type BuildInputs struct {
@@ -56,12 +58,12 @@ type BuildOutputs struct {
 
 //go:generate mockgen -package testmock -destination ../testmock/build_executor.go github.com/buildpacks/lifecycle/buildpack BuildExecutor
 type BuildExecutor interface {
-	Build(d *BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error)
+	Build(d BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error)
 }
 
 type DefaultBuildExecutor struct{}
 
-func (e *DefaultBuildExecutor) Build(d *BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error) {
+func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger log.Logger) (BuildOutputs, error) {
 	if api.MustParse(d.WithAPI).Equal(api.MustParse("0.2")) {
 		logger.Debug("Updating plan entries")
 		for i := range inputs.Plan.Entries {
@@ -83,7 +85,7 @@ func (e *DefaultBuildExecutor) Build(d *BpDescriptor, inputs BuildInputs, logger
 	}
 
 	logger.Debug("Running build command")
-	if err := d.runCmd(moduleOutputDir, planPath, inputs, inputs.Env); err != nil {
+	if err := runBuildCmd(d, moduleOutputDir, planPath, inputs, inputs.Env); err != nil {
 		return BuildOutputs{}, err
 	}
 
@@ -103,7 +105,7 @@ func (e *DefaultBuildExecutor) Build(d *BpDescriptor, inputs BuildInputs, logger
 }
 
 func prepareInputPaths(moduleID string, plan Plan, outputParentDir, parentPlanDir string) (string, string, error) {
-	moduleDirName := launch.EscapeID(moduleID) // TODO (needs issue): this logic should eventually move to the platform package
+	moduleDirName := launch.EscapeID(moduleID) // FIXME: this logic should eventually move to the platform package
 
 	// Create e.g., <layers>/<buildpack-id> or <output>/<extension-id>
 	moduleOutputDir := filepath.Join(outputParentDir, moduleDirName)
@@ -112,7 +114,7 @@ func prepareInputPaths(moduleID string, plan Plan, outputParentDir, parentPlanDi
 	}
 
 	// Create Buildpack Plan
-	childPlanDir := filepath.Join(parentPlanDir, moduleDirName) // TODO (needs issue): it's unclear if this child directory is necessary; consider removing
+	childPlanDir := filepath.Join(parentPlanDir, moduleDirName) // FIXME: it's unclear if this child directory is necessary; consider removing
 	if err := os.MkdirAll(childPlanDir, 0777); err != nil {
 		return "", "", err
 	}
@@ -124,22 +126,22 @@ func prepareInputPaths(moduleID string, plan Plan, outputParentDir, parentPlanDi
 	return moduleOutputDir, planPath, nil
 }
 
-func (d *BpDescriptor) runCmd(moduleOutputDir, planPath string, config BuildInputs, buildEnv BuildEnv) error {
+func runBuildCmd(d BpDescriptor, moduleOutputDir, planPath string, inputs BuildInputs, buildEnv BuildEnv) error {
 	cmd := exec.Command(
 		filepath.Join(d.WithRootDir, "bin", "build"),
 		moduleOutputDir,
-		config.PlatformDir,
+		inputs.PlatformDir,
 		planPath,
 	) // #nosec G204
-	cmd.Dir = config.AppDir
-	cmd.Stdout = config.Out
-	cmd.Stderr = config.Err
+	cmd.Dir = inputs.AppDir
+	cmd.Stdout = inputs.Out
+	cmd.Stderr = inputs.Err
 
 	var err error
 	if d.Buildpack.ClearEnv {
 		cmd.Env = buildEnv.List()
 	} else {
-		cmd.Env, err = buildEnv.WithPlatform(config.PlatformDir)
+		cmd.Env, err = buildEnv.WithPlatform(inputs.PlatformDir)
 		if err != nil {
 			return err
 		}
@@ -147,7 +149,7 @@ func (d *BpDescriptor) runCmd(moduleOutputDir, planPath string, config BuildInpu
 	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+d.WithRootDir)
 	if api.MustParse(d.WithAPI).AtLeast("0.8") {
 		cmd.Env = append(cmd.Env,
-			EnvPlatformDir+"="+config.PlatformDir,
+			EnvPlatformDir+"="+inputs.PlatformDir,
 			EnvBpPlanPath+"="+planPath,
 			EnvLayersDir+"="+moduleOutputDir,
 		)
@@ -159,7 +161,7 @@ func (d *BpDescriptor) runCmd(moduleOutputDir, planPath string, config BuildInpu
 	return nil
 }
 
-func (d *BpDescriptor) processLayers(layersDir string, logger log.Logger) (map[string]LayerMetadataFile, error) {
+func (d BpDescriptor) processLayers(layersDir string, logger log.Logger) (map[string]LayerMetadataFile, error) {
 	if api.MustParse(d.WithAPI).LessThan("0.6") {
 		return eachLayer(layersDir, d.WithAPI, func(path, buildpackAPI string) (LayerMetadataFile, error) {
 			layerMetadataFile, msg, err := DecodeLayerMetadataFile(path+".toml", buildpackAPI)
@@ -219,7 +221,7 @@ func renameLayerDirIfNeeded(layerMetadataFile LayerMetadataFile, layerDir string
 	return nil
 }
 
-func (d *BpDescriptor) setupEnv(createdLayers map[string]LayerMetadataFile, buildEnv BuildEnv) error {
+func (d BpDescriptor) setupEnv(createdLayers map[string]LayerMetadataFile, buildEnv BuildEnv) error {
 	bpAPI := api.MustParse(d.WithAPI)
 	for path, layerMetadataFile := range createdLayers {
 		if !layerMetadataFile.Build {
@@ -238,7 +240,7 @@ func (d *BpDescriptor) setupEnv(createdLayers map[string]LayerMetadataFile, buil
 	return nil
 }
 
-func (d *BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger log.Logger) (BuildOutputs, error) {
+func (d BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn Plan, bpLayers map[string]LayerMetadataFile, logger log.Logger) (BuildOutputs, error) {
 	br := BuildOutputs{}
 	bpFromBpInfo := GroupElement{ID: d.Buildpack.ID, Version: d.Buildpack.Version}
 

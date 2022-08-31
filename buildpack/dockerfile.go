@@ -7,7 +7,7 @@ const (
 
 type DockerfileInfo struct {
 	ExtensionID string
-	Kind        string // TODO: this could be inferred from the path
+	Kind        string
 	Path        string
 }
 

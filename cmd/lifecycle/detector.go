@@ -29,7 +29,7 @@ func (d *detectCmd) DefineFlags() {
 		cli.FlagGroupPath(&d.GroupPath)
 		cli.FlagLayersDir(&d.LayersDir)
 		cli.FlagOrderPath(&d.OrderPath)
-		cli.FlagOutputDir(&d.OutputDir)
+		cli.FlagOutputDir(&d.GeneratedDir)
 		cli.FlagPlanPath(&d.PlanPath)
 		cli.FlagPlatformDir(&d.PlatformDir)
 	default:
@@ -102,7 +102,7 @@ func (d *detectCmd) Exec() error {
 		generator, err := generatorFactory.NewGenerator(
 			d.AppDir,
 			group.GroupExtensions,
-			filepath.Join(d.OutputDir, "generated"), // TODO (before spec PR): check weirdness here
+			filepath.Join(d.GeneratedDir),
 			plan,
 			d.PlatformDir,
 			cmd.Stdout, cmd.Stderr,

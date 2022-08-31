@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/buildpack/testmock"
+	llog "github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -26,22 +27,23 @@ func TestDetect(t *testing.T) {
 
 func testDetect(t *testing.T, when spec.G, it spec.S) {
 	var (
+		mockCtrl *gomock.Controller
 		executor *buildpack.DefaultDetectExecutor
 
-		// detect config
-		config      buildpack.DetectConfig
+		// detect inputs
+		inputs      buildpack.DetectInputs
 		tmpDir      string
 		platformDir string
-		logHandler  = memory.New()
-
-		// detect inputs
-		mockEnv  *testmock.MockBuildEnv
-		mockCtrl *gomock.Controller
+		mockEnv     *testmock.MockBuildEnv
 
 		someEnv = "ENV_TYPE=some-env"
+
+		logger     llog.Logger
+		logHandler = memory.New()
 	)
 
 	it.Before(func() {
+		mockCtrl = gomock.NewController(t)
 		executor = &buildpack.DefaultDetectExecutor{}
 
 		// setup dirs
@@ -54,16 +56,15 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 		platformDir = filepath.Join(tmpDir, "platform")
 		h.Mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
-		// make config
-		config = buildpack.DetectConfig{
+		// make inputs
+		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+		inputs = buildpack.DetectInputs{
 			AppDir:      appDir,
 			PlatformDir: platformDir,
-			Logger:      &log.Logger{Handler: logHandler},
+			Env:         mockEnv,
 		}
 
-		// detect inputs
-		mockCtrl = gomock.NewController(t)
-		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+		logger = &log.Logger{Handler: logHandler}
 	})
 
 	it.After(func() {
@@ -74,12 +75,12 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 	toappfile := func(data string, paths ...string) {
 		t.Helper()
 		for _, p := range paths {
-			tofile(t, data, filepath.Join(config.AppDir, p))
+			tofile(t, data, filepath.Join(inputs.AppDir, p))
 		}
 	}
 	rdappfile := func(path string) string {
 		t.Helper()
-		return h.Rdfile(t, filepath.Join(config.AppDir, path))
+		return h.Rdfile(t, filepath.Join(inputs.AppDir, path))
 	}
 
 	when("#Detect", func() {
@@ -105,7 +106,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Buildpack.ClearEnv = true // override
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						if typ := rdappfile("detect-env-type-A-v1.clear"); typ != "clear" {
 							t.Fatalf("Unexpected env type: %s\n", typ)
@@ -118,7 +119,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Buildpack.ClearEnv = true // override
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
 						t.Log("sets CNB_BUILDPACK_DIR")
@@ -141,7 +142,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					it("provides a full env", func() {
 						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						if typ := rdappfile("detect-env-type-A-v1"); typ != "full" {
 							t.Fatalf("Unexpected env type: %s\n", typ)
@@ -151,7 +152,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					it("sets CNB_vars", func() {
 						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
 						t.Log("sets CNB_BUILDPACK_DIR")
@@ -172,7 +173,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					it("errors when <platform>/env cannot be loaded", func() {
 						mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
 
-						detectRun := executor.Detect(descriptor, &config, mockEnv)
+						detectRun := executor.Detect(descriptor, inputs, logger)
 
 						h.AssertEq(t, detectRun.Code, -1)
 						err := detectRun.Err
@@ -188,7 +189,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				toappfile("\nbad=toml", "detect-plan-A-v1.toml")
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
 
-				detectRun := executor.Detect(descriptor, &config, mockEnv)
+				detectRun := executor.Detect(descriptor, inputs, logger)
 
 				h.AssertEq(t, detectRun.Code, -1)
 				h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
@@ -205,7 +206,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := executor.Detect(descriptor, &config, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
@@ -222,7 +223,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[or.requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := executor.Detect(descriptor, &config, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
@@ -235,7 +236,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				it("warns if the plan has a top level version", func() {
 					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := executor.Detect(descriptor, &config, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, 0)
 					err := detectRun.Err
@@ -255,7 +256,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
 					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := executor.Detect(descriptor, &config, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, 0)
 					err := detectRun.Err
@@ -278,7 +279,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				it("does not set environment variables for positional arguments", func() {
 					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
 
-					executor.Detect(descriptor, &config, mockEnv)
+					executor.Detect(descriptor, inputs, logger)
 
 					for _, file := range []string{
 						"detect-env-cnb-platform-dir-A-v1",
@@ -304,7 +305,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := executor.Detect(descriptor, &config, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
@@ -322,7 +323,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := executor.Detect(descriptor, &config, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
@@ -356,7 +357,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Extension.ClearEnv = true // override
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						if typ := rdappfile("detect-env-type-A-v1.clear"); typ != "clear" {
 							t.Fatalf("Unexpected env type: %s\n", typ)
@@ -369,7 +370,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Extension.ClearEnv = true // override
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
 						t.Log("sets CNB_BUILDPACK_DIR")
@@ -392,7 +393,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					it("provides a full env", func() {
 						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						if typ := rdappfile("detect-env-type-A-v1"); typ != "full" {
 							t.Fatalf("Unexpected env type: %s\n", typ)
@@ -402,7 +403,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					it("sets CNB_vars", func() {
 						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
 
-						executor.Detect(descriptor, &config, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
 						t.Log("sets CNB_BUILDPACK_DIR")
@@ -423,7 +424,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					it("errors when <platform>/env cannot be loaded", func() {
 						mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
 
-						detectRun := executor.Detect(descriptor, &config, mockEnv)
+						detectRun := executor.Detect(descriptor, inputs, logger)
 
 						h.AssertEq(t, detectRun.Code, -1)
 						err := detectRun.Err
@@ -439,7 +440,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				toappfile("\nbad=toml", "detect-plan-A-v1.toml")
 				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
 
-				detectRun := executor.Detect(descriptor, &config, mockEnv)
+				detectRun := executor.Detect(descriptor, inputs, logger)
 
 				h.AssertEq(t, detectRun.Code, -1)
 				h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
@@ -452,7 +453,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-				detectRun := executor.Detect(descriptor, &config, mockEnv)
+				detectRun := executor.Detect(descriptor, inputs, logger)
 
 				h.AssertEq(t, detectRun.Code, -1)
 				err := detectRun.Err
@@ -466,7 +467,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
 				toappfile("\n[[or.requires]]\n name = \"other-dep\"", "detect-plan-A-v1.toml")
 
-				detectRun := executor.Detect(descriptor, &config, mockEnv)
+				detectRun := executor.Detect(descriptor, inputs, logger)
 
 				h.AssertEq(t, detectRun.Code, -1)
 				err := detectRun.Err
@@ -483,7 +484,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("passes detection", func() {
-					detectRun := executor.Detect(descriptor, &config, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 					h.AssertEq(t, detectRun.Code, 0)
 
 					t.Log("treats the extension root as a pre-populated output directory")
@@ -500,7 +501,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("passes detection", func() {
-						detectRun := executor.Detect(descriptor, &config, mockEnv)
+						detectRun := executor.Detect(descriptor, inputs, logger)
 						h.AssertEq(t, detectRun.Code, 0)
 
 						t.Log("treats the extension root as a pre-populated output directory")

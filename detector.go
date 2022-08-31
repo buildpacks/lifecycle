@@ -208,12 +208,12 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		wg.Add(1)
 		go func(key string, descriptor buildpack.Descriptor) {
 			if _, ok := d.Runs.Load(key); !ok {
-				detectConfig := &buildpack.DetectConfig{
+				inputs := buildpack.DetectInputs{
 					AppDir:      d.AppDir,
 					PlatformDir: d.PlatformDir,
-					Logger:      d.Logger,
+					Env:         env.NewBuildEnv(os.Environ()),
 				}
-				d.Runs.Store(key, d.Executor.Detect(descriptor, detectConfig, env.NewBuildEnv(os.Environ())))
+				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger))
 			}
 			wg.Done()
 		}(key, descriptor)
@@ -240,14 +240,14 @@ type DefaultResolver struct {
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
 // If any required buildpack in the group failed detection or a build plan cannot be resolved, it returns an error.
 func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
-	var groupRuns []buildpack.DetectRun
+	var groupRuns []buildpack.DetectOutputs
 	for _, el := range done {
 		key := fmt.Sprintf("%s %s", el.Kind(), el.String()) // TODO: test that key is consistent across Detect and Resolve
 		t, ok := detectRuns.Load(key)
 		if !ok {
 			return nil, nil, errors.Errorf("missing detection of '%s'", key)
 		}
-		run := t.(buildpack.DetectRun)
+		run := t.(buildpack.DetectOutputs)
 		outputLogf := r.Logger.Debugf
 
 		switch run.Code {
@@ -392,7 +392,7 @@ func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTria
 
 type detectResult struct {
 	buildpack.GroupElement
-	buildpack.DetectRun
+	buildpack.DetectOutputs
 }
 
 func (r *detectResult) options() []detectOption {

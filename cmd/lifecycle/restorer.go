@@ -112,39 +112,17 @@ func (r *restoreCmd) Privileges() error {
 	return nil
 }
 
+func (r *restoreCmd) registryImages() []string {
+	var images []string
+	images = appendNotEmpty(images, r.cacheImageTag)
+	images = appendNotEmpty(images, r.buildImageTag)
+	return images
+}
+
 func (r *restoreCmd) Exec() error {
-	// pull builder image manifest and config
-	if r.platform.API().AtLeast("0.10") && r.buildImageTag != "" {
-		if _, err := os.Stat(kanikoDir); err != nil {
-			if !os.IsNotExist(err) {
-				return cmd.FailErr(err, "read kaniko dir")
-			}
-		} else {
-			// TODO (before merging): make helper or move to lifecycle package
-			ref, auth, err := auth.ReferenceForRepoName(r.keychain, r.buildImageTag)
-			if err != nil {
-				return cmd.FailErr(err, "get build image auth")
-			}
-			remoteImage, err := remote.Image(ref, remote.WithAuth(auth))
-			if err != nil {
-				return cmd.FailErr(err, "read build image")
-			}
-			buildImageHash, err := remoteImage.Digest()
-			if err != nil {
-				return cmd.FailErr(err, "read build image digest")
-			}
-			buildImageDigest := buildImageHash.String()
-			baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
-			if err := os.MkdirAll(baseCacheDir, 0755); err != nil {
-				return cmd.FailErr(err, "create kaniko cache directory")
-			}
-			layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
-			if err != nil {
-				return cmd.FailErr(err, "write layout path")
-			}
-			if err := layoutPath.AppendSelectiveImage(remoteImage); err != nil {
-				return cmd.FailErr(err, "append selective image")
-			}
+	if r.supportsBuildImageExtension() {
+		if err := r.pullBuilderImageIfNeeded(); err != nil {
+			return cmd.FailErr(err, "read builder image")
 		}
 	}
 
@@ -171,11 +149,49 @@ func (r *restoreCmd) Exec() error {
 	return r.restore(appMeta, group, cacheStore)
 }
 
-func (r *restoreCmd) registryImages() []string {
-	var images []string
-	images = appendNotEmpty(images, r.cacheImageTag)
-	images = appendNotEmpty(images, r.buildImageTag)
-	return images
+func (r *restoreArgs) supportsBuildImageExtension() bool {
+	return r.platform.API().AtLeast("0.10")
+}
+
+func (r *restoreCmd) pullBuilderImageIfNeeded() error {
+	if r.buildImageTag == "" {
+		return nil
+	}
+	if _, err := os.Stat(kanikoDir); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to read kaniko directory")
+		}
+		return nil
+	}
+	ref, authr, err := auth.ReferenceForRepoName(r.keychain, r.buildImageTag)
+	if err != nil {
+		return fmt.Errorf("failed to get reference")
+	}
+	remoteImage, err := remote.Image(ref, remote.WithAuth(authr))
+	if err != nil {
+		return fmt.Errorf("failed to read image")
+	}
+	buildImageHash, err := remoteImage.Digest()
+	if err != nil {
+		return fmt.Errorf("failed to get digest")
+	}
+	buildImageDigest := buildImageHash.String()
+	baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
+	if err = os.MkdirAll(baseCacheDir, 0755); err != nil {
+		return fmt.Errorf("failed to create cache directory")
+	}
+	layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
+	if err != nil {
+		return fmt.Errorf("failed to write layout path")
+	}
+	if err = layoutPath.AppendSelectiveImage(remoteImage); err != nil {
+		return fmt.Errorf("failed to append image")
+	}
+	return nil
+}
+
+func (r *restoreArgs) restoresLayerMetadata() bool {
+	return r.platform.API().AtLeast("0.7")
 }
 
 func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
@@ -196,8 +212,4 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
 	}
 	return nil
-}
-
-func (r *restoreArgs) restoresLayerMetadata() bool {
-	return r.platform.API().AtLeast("0.7")
 }

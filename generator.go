@@ -19,10 +19,8 @@ import (
 type Generator struct {
 	AppDir       string
 	GeneratedDir string // e.g., <layers>/generated
-	OutputDir    string // extensions output parent directory
 	PlatformDir  string
 	DirStore     DirStore
-	Env          BuildEnv
 	Executor     buildpack.GenerateExecutor
 	Extensions   []buildpack.GroupElement
 	Logger       log.Logger
@@ -54,17 +52,11 @@ func (f *GeneratorFactory) NewGenerator(
 	stdout, stderr io.Writer,
 	logger log.Logger,
 ) (*Generator, error) {
-	extensionOutputParentDir, err := ioutil.TempDir("", "cnb-extensions-generated.")
-	if err != nil {
-		return nil, err
-	}
 	generator := &Generator{
 		AppDir:       appDir,
 		GeneratedDir: generatedDir,
-		OutputDir:    extensionOutputParentDir,
 		PlatformDir:  platformDir,
 		DirStore:     f.dirStore,
-		Env:          env.NewBuildEnv(os.Environ()),
 		Executor:     &buildpack.DefaultGenerateExecutor{},
 		Logger:       logger,
 		Plan:         plan,
@@ -93,10 +85,15 @@ type GenerateResult struct {
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
-	defer os.RemoveAll(g.OutputDir)
+	inputs := g.getCommonInputs()
+	extensionOutputParentDir, err := ioutil.TempDir("", "cnb-extensions-generated.")
+	if err != nil {
+		return GenerateResult{}, err
+	}
+	defer os.RemoveAll(extensionOutputParentDir)
+	inputs.OutputDir = extensionOutputParentDir
 
 	var dockerfiles []buildpack.DockerfileInfo
-	inputs := g.GetCommonInputs()
 	filteredPlan := g.Plan
 	for _, ext := range g.Extensions {
 		g.Logger.Debugf("Running generate for extension %s", ext)
@@ -138,12 +135,11 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	return GenerateResult{RunImage: runImage}, nil
 }
 
-func (g *Generator) GetCommonInputs() buildpack.GenerateInputs {
+func (g *Generator) getCommonInputs() buildpack.GenerateInputs {
 	return buildpack.GenerateInputs{
 		AppDir:      g.AppDir,
-		OutputDir:   g.OutputDir,
 		PlatformDir: g.PlatformDir,
-		Env:         g.Env,
+		Env:         env.NewBuildEnv(os.Environ()),
 		Out:         g.Out,
 		Err:         g.Err,
 	}
