@@ -65,7 +65,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("kaniko case", func() {
-			var kanikoDir, buildImageDigest, workDir string
+			var kanikoDir, buildImageDigest string
 
 			it.Before(func() {
 				var err error
@@ -90,14 +90,10 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
 				h.AssertNil(t, err)
 				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
-
-				workDir, err = ioutil.TempDir("", "lifecycle-acceptance")
-				h.AssertNil(t, err)
 			})
 
 			it.After(func() {
 				_ = os.RemoveAll(kanikoDir)
-				_ = os.RemoveAll(workDir)
 			})
 
 			when("extending the build image", func() {
@@ -117,7 +113,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 							"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
-							"--volume", fmt.Sprintf("%s:/workspace", workDir),
 						),
 						h.WithArgs(extendArgs...),
 					)
@@ -131,17 +126,12 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(fis), 1) // 1: /kaniko/cache
 
-					t.Log("changing the workspace doesn't break caching")
-					_, err = os.Create(filepath.Join(workDir, "some-file.txt"))
-					h.AssertNil(t, err)
-
 					t.Log("second build extends the build image by pulling from the cache directory")
 					secondOutput := h.DockerRun(t,
 						extendImage,
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 							"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
-							"--volume", fmt.Sprintf("%s:/workspace", workDir),
 						),
 						h.WithArgs(extendArgs...),
 					)
