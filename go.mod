@@ -138,4 +138,4 @@ replace (
 )
 
 // TODO: remove
-replace github.com/GoogleContainerTools/kaniko => github.com/natalieparellano/kaniko v0.0.0-20220822204602-3f8af421958f
+replace github.com/GoogleContainerTools/kaniko => github.com/natalieparellano/kaniko v0.0.0-20220901172631-ec7c5213ed4d

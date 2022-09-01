@@ -9,9 +9,14 @@ import (
 )
 
 // TODO: test the functions in this file
-// TODO: add docs comments for this file
-func (l Path) AppendSelectiveImage(img v1.Image) error { // FIXME: add the ability to pass image options
-	if err := l.WriteSelectiveImage(img); err != nil {
+
+// AppendImage mimics GGCR's `layout` AppendImage in that it appends an image to a `layout.Path`,
+// but the image appended does not include any layers in the `blobs` directory.
+// The returned image will error when Layers(), LayerByDigest(), or LayerByDiffID() are called.
+// This is useful when we need to satisfy the v1.Image interface but do not need to access any layers, such as when extending
+// base images with kaniko.
+func (l Path) AppendImage(img v1.Image) error { // FIXME: add the ability to pass image options
+	if err := l.WriteImage(img); err != nil {
 		return err
 	}
 
@@ -39,7 +44,12 @@ func (l Path) AppendSelectiveImage(img v1.Image) error { // FIXME: add the abili
 	return l.AppendDescriptor(desc)
 }
 
-func (l Path) WriteSelectiveImage(img v1.Image) error {
+// WriteImage mimics GGCR's `layout` WriteImage in that it writes an image config and manifest,
+// but it does not write any layers in the `blobs` directory.
+// The returned image will error when Layers(), LayerByDigest(), or LayerByDiffID() are called.
+// This is useful when we need to satisfy the v1.Image interface but do not need to access any layers,
+// such as when extending base images with kaniko.
+func (l Path) WriteImage(img v1.Image) error {
 	// Write the config.
 	cfgName, err := img.ConfigName()
 	if err != nil {

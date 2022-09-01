@@ -30,7 +30,7 @@ func NewDockerfileApplier(logger log.Logger) *DockerfileApplier {
 
 func createOptions(workspace string, baseImageRef string, dockerfile extend.Dockerfile, options extend.Options) config.KanikoOptions {
 	return config.KanikoOptions{
-		BuildArgs:      append(toList(dockerfile.Args), fmt.Sprintf(`base_image=%s`, baseImageRef)),
+		BuildArgs:      append(toArgList(dockerfile.Args), fmt.Sprintf(`base_image=%s`, baseImageRef)),
 		Cache:          true,
 		CacheOptions:   config.CacheOptions{CacheDir: kanikoCacheDir, CacheTTL: options.CacheTTL},
 		CacheRepo:      kanikoCacheImageRef,
@@ -46,7 +46,7 @@ func createOptions(workspace string, baseImageRef string, dockerfile extend.Dock
 	}
 }
 
-func toList(args []extend.Arg) []string {
+func toArgList(args []extend.Arg) []string {
 	var result []string
 	for _, arg := range args {
 		result = append(result, fmt.Sprintf("%s=%s", arg.Name, arg.Value))

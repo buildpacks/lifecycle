@@ -89,7 +89,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
 				layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
 				h.AssertNil(t, err)
-				h.AssertNil(t, layoutPath.AppendSelectiveImage(remoteImage))
+				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
 
 				workDir, err = ioutil.TempDir("", "lifecycle-acceptance")
 				h.AssertNil(t, err)

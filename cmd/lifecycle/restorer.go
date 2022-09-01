@@ -184,7 +184,7 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 	if err != nil {
 		return fmt.Errorf("failed to write layout path")
 	}
-	if err = layoutPath.AppendSelectiveImage(remoteImage); err != nil {
+	if err = layoutPath.AppendImage(remoteImage); err != nil {
 		return fmt.Errorf("failed to append image")
 	}
 	return nil

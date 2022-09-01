@@ -164,7 +164,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("provides build_id as a build arg to each Dockerfile", func() {
-			// TODO: test that for each expectedDockerfile, dfile.Args includes extend.Arg{Name: "build_id", Value: "some-uuid"}
+			// TODO: test and implement that for each expectedDockerfile, dfile.Args includes extend.Arg{Name: "build_id", Value: "some-uuid"}
 		})
 
 		when("options", func() {

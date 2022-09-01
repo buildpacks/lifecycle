@@ -1081,8 +1081,8 @@ github.com/mwitkow/go-proto-validators v0.2.0/go.mod h1:ZfA1hW+UH/2ZHOWvQ3HnQaU0
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+o7JKHSa8/e818NopupXU1YMK5fe1lsApnBw=
 github.com/nakabonne/nestif v0.3.0/go.mod h1:dI314BppzXjJ4HsCnbo7XzrJHPszZsjnk5wEBSYHI2c=
 github.com/nakabonne/nestif v0.3.1/go.mod h1:9EtoZochLn5iUprVDmDjqGKPofoUEBL8U4Ngq6aY7OE=
-github.com/natalieparellano/kaniko v0.0.0-20220822204602-3f8af421958f h1:IoWcitXZufE48jXCilat15ZqYvwTvL1052CO1CtS6Zk=
-github.com/natalieparellano/kaniko v0.0.0-20220822204602-3f8af421958f/go.mod h1:ah69BmvUoJtgWxob2VUSL5uw31dVooUXzkAljfb10qA=
+github.com/natalieparellano/kaniko v0.0.0-20220901172631-ec7c5213ed4d h1:Hl2OApNh6j6gZRgN1iCuYPqV3aHpUv63PfFrNhXTquw=
+github.com/natalieparellano/kaniko v0.0.0-20220901172631-ec7c5213ed4d/go.mod h1:ah69BmvUoJtgWxob2VUSL5uw31dVooUXzkAljfb10qA=
 github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d/go.mod h1:o96djdrsSGy3AWPyBgZMAGfxZNfgntdJG+11KU4QvbU=
 github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354/go.mod h1:KSVJerMDfblTH7p5MZaTt+8zaT2iEk3AkVb9PQdZuE8=
 github.com/ncw/swift v1.0.47/go.mod h1:23YIA4yWVnGwv2dQlN4bB7egfYX6YLn0Yo/S6zZO/ZM=
