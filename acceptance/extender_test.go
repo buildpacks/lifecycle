@@ -117,7 +117,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(extendArgs...),
 					)
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
-					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl 7.58.0") // output by buildpack, shows that curl was installed on the build image
+					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl was installed on the build image
 					t.Log("sets environment variables from the extended build image in the build context")
 					h.AssertStringContains(t, firstOutput, "CNB_STACK_ID for buildpack: stack-id-from-ext-tree")
 
@@ -136,7 +136,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(extendArgs...),
 					)
 					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")
-					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl 7.58.0") // output by buildpack, shows that curl is still installed in the unpacked cached layer
+					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl is still installed in the unpacked cached layer
 				})
 			})
 		})
