@@ -18,8 +18,8 @@ const (
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	EnvExperimentalMode    = "CNB_PLATFORM_EXPERIMENTAL_FEATURES"
 	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
-	EnvGeneratedDir        = "CNB_GENERATED_DIR"
 	EnvGID                 = "CNB_GROUP_ID"
+	EnvGeneratedDir        = "CNB_GENERATED_DIR"
 	EnvGroupPath           = "CNB_GROUP_PATH"
 	EnvKanikoCacheTTL      = "CNB_KANIKO_CACHE_TTL"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
@@ -27,7 +27,6 @@ const (
 	EnvLogLevel            = "CNB_LOG_LEVEL"
 	EnvNoColor             = "CNB_NO_COLOR" // defaults to false
 	EnvOrderPath           = "CNB_ORDER_PATH"
-	EnvOutputDir           = "CNB_OUTPUT_DIR"
 	EnvPlanPath            = "CNB_PLAN_PATH"
 	EnvPlatformAPI         = "CNB_PLATFORM_API"
 	EnvPlatformDir         = "CNB_PLATFORM_DIR"

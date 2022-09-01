@@ -272,7 +272,7 @@ func (d BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn
 		}
 
 		// read launch.toml, return if not exists
-		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
+		if err := DecodeLaunchTOML(launchPath, d.WithAPI, &launchTOML); os.IsNotExist(err) {
 			return br, nil
 		} else if err != nil {
 			return BuildOutputs{}, err
@@ -305,7 +305,7 @@ func (d BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn
 		}
 
 		// read launch.toml, return if not exists
-		if _, err := toml.DecodeFile(launchPath, &launchTOML); os.IsNotExist(err) {
+		if err := DecodeLaunchTOML(launchPath, d.WithAPI, &launchTOML); os.IsNotExist(err) {
 			return br, nil
 		} else if err != nil {
 			return BuildOutputs{}, err
@@ -329,7 +329,6 @@ func (d BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn
 	// set data from launch.toml
 	br.Labels = append([]Label{}, launchTOML.Labels...)
 	for i := range launchTOML.Processes {
-		launchTOML.Processes[i].BuildpackID = d.Buildpack.ID
 		if api.MustParse(d.WithAPI).LessThan("0.8") {
 			if launchTOML.Processes[i].WorkingDirectory != "" {
 				logger.Warn(fmt.Sprintf("Warning: process working directory isn't supported in this buildpack api version. Ignoring working directory for process '%s'", launchTOML.Processes[i].Type))
@@ -337,7 +336,7 @@ func (d BpDescriptor) readOutputFilesBp(bpLayersDir, bpPlanPath string, bpPlanIn
 			}
 		}
 	}
-	br.Processes = append([]launch.Process{}, launchTOML.Processes...)
+	br.Processes = append([]launch.Process{}, launchTOML.ToLaunchProcessesForBuildpack(d.Buildpack.ID)...)
 	br.Slices = append([]layers.Slice{}, launchTOML.Slices...)
 
 	return br, nil
@@ -370,7 +369,7 @@ func validateUnmet(unmet []Unmet, bpPlan Plan) error {
 	return nil
 }
 
-func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, logger log.Logger) error {
+func overrideDefaultForOldBuildpacks(processes []ProcessEntry, bpAPI string, logger log.Logger) error {
 	if api.MustParse(bpAPI).AtLeast("0.6") {
 		return nil
 	}
@@ -387,7 +386,7 @@ func overrideDefaultForOldBuildpacks(processes []launch.Process, bpAPI string, l
 	return nil
 }
 
-func validateNoMultipleDefaults(processes []launch.Process) error {
+func validateNoMultipleDefaults(processes []ProcessEntry) error {
 	defaultType := ""
 	for _, process := range processes {
 		if process.Default && defaultType != "" {

@@ -721,11 +721,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.Mkfile(t,
 								`[[processes]]`+"\n"+
 									`type = "some-type"`+"\n"+
-									`command = "some-cmd"`+"\n"+
+									`command = ["some-cmd"]`+"\n"+
 									`default = true`+"\n"+
 									`[[processes]]`+"\n"+
 									`type = "web"`+"\n"+
-									`command = "other-cmd"`+"\n",
+									`command = ["other-cmd"]`+"\n",
 								// default is false and therefore doesn't appear
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
@@ -733,8 +733,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Processes, []launch.Process{
-								{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true},
-								{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false},
+								{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true, Direct: true},
+								{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false, Direct: true},
 							})
 						})
 
@@ -743,11 +743,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								h.Mkfile(t,
 									`[[processes]]`+"\n"+
 										`type = "some-type"`+"\n"+
-										`command = "some-cmd"`+"\n"+
+										`command = ["some-cmd"]`+"\n"+
 										`default = true`+"\n"+
 										`[[processes]]`+"\n"+
 										`type = "some-type"`+"\n"+
-										`command = "some-other-cmd"`+"\n"+
+										`command = ["some-other-cmd"]`+"\n"+
 										`default = true`+"\n",
 									filepath.Join(appDir, "launch-A-v1.toml"),
 								)
@@ -761,11 +761,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								h.Mkfile(t,
 									`[[processes]]`+"\n"+
 										`type = "some-type"`+"\n"+
-										`command = "some-cmd"`+"\n"+
+										`command = ["some-cmd"]`+"\n"+
 										`default = true`+"\n"+
 										`[[processes]]`+"\n"+
 										`type = "other-type"`+"\n"+
-										`command = "other-cmd"`+"\n"+
+										`command = ["other-cmd"]`+"\n"+
 										`default = true`+"\n",
 									filepath.Join(appDir, "launch-A-v1.toml"),
 								)
@@ -776,9 +776,60 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							})
 						})
 
+						it("does not allow string command", func() {
+							h.Mkfile(t,
+								"[[processes]]\n"+
+									`command = "some-cmd"`,
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+							_, err := executor.Build(descriptor, inputs, logger)
+							h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type string; destination has type slice")
+						})
+
+						it("returns extra commands as args before defined args", func() {
+							h.Mkfile(t,
+								"[[processes]]\n"+
+									`command = ["some-cmd", "cmd-arg"]`+"\n"+
+									`args = ["first-arg"]`,
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+							br, err := executor.Build(descriptor, inputs, logger)
+							h.AssertNil(t, err)
+							h.AssertEq(t, len(br.Processes), 1)
+							h.AssertEq(t, br.Processes[0].Command, "some-cmd")
+							h.AssertEq(t, br.Processes[0].Args[0], "cmd-arg")
+							h.AssertEq(t, br.Processes[0].Args[1], "first-arg")
+						})
+
+						it("returns direct=true for processes", func() {
+							h.Mkfile(t,
+								"[[processes]]\n"+
+									`command = ["some-cmd", "cmd-arg"]`+"\n"+
+									`args = ["first-arg"]`,
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+							br, err := executor.Build(descriptor, inputs, logger)
+							h.AssertNil(t, err)
+							h.AssertEq(t, len(br.Processes), 1)
+							h.AssertEq(t, br.Processes[0].Command, "some-cmd")
+							h.AssertEq(t, br.Processes[0].Direct, true)
+						})
+
+						it("does not allow direct flag", func() {
+							h.Mkfile(t,
+								"[[processes]]\n"+
+									`command = ["some-cmd"]`+"\n"+
+									`direct = false`,
+								filepath.Join(appDir, "launch-A-v1.toml"),
+							)
+							_, err := executor.Build(descriptor, inputs, logger)
+							h.AssertError(t, err, "process.direct is not supported on this buildpack version")
+						})
+
 						it("sets the working directory", func() {
 							h.Mkfile(t,
 								"[[processes]]\n"+
+									`command = ["some-cmd"]`+"\n"+
 									`working-dir = "/working-directory"`,
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)
@@ -1239,6 +1290,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						it("ignores process working directory and warns", func() {
 							h.Mkfile(t,
 								"[[processes]]\n"+
+									`command = "echo"`+"\n"+
 									`working-dir = "/working-directory"`+"\n"+
 									`type = "some-type"`+"\n",
 								filepath.Join(appDir, "launch-A-v1.toml"),
@@ -1249,6 +1301,48 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, br.Processes[0].WorkingDirectory, "")
 							assertLogEntry(t, logHandler, "Warning: process working directory isn't supported in this buildpack api version. Ignoring working directory for process 'some-type'")
 						})
+					})
+				})
+
+				when("buildpack api < 0.9", func() {
+					it.Before(func() {
+						descriptor.WithAPI = "0.8"
+					})
+
+					it("allows setting direct", func() {
+						h.Mkfile(t,
+							"[[processes]]\n"+
+								`command = "some-cmd"`+"\n"+
+								`direct = false`,
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+						br, err := executor.Build(descriptor, inputs, logger)
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(br.Processes), 1)
+						h.AssertEq(t, br.Processes[0].Direct, false)
+					})
+
+					it("allows setting a single command string", func() {
+						h.Mkfile(t,
+							"[[processes]]\n"+
+								`command = "some-command"`,
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+						br, err := executor.Build(descriptor, inputs, logger)
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(br.Processes), 1)
+						h.AssertEq(t, br.Processes[0].Command, "some-command")
+					})
+
+					it("does not allow commands as list of string", func() {
+						h.Mkfile(t,
+							"[[processes]]\n"+
+								`command = ["some-cmd"]`+"\n"+
+								`direct = false`,
+							filepath.Join(appDir, "launch-A-v1.toml"),
+						)
+						_, err := executor.Build(descriptor, inputs, logger)
+						h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type []interface {}; destination has type string")
 					})
 				})
 			})

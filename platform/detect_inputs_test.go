@@ -30,27 +30,27 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 		when("directory paths", func() {
 			it("resolves absolute paths", func() {
-				appDir := filepath.Join("testdata", "workspace")
+				appDir := "some-app-dir"
 				appDirAbs, err := filepath.Abs(appDir)
 				h.AssertNil(t, err)
 
-				bpDir := filepath.Join("testdata", "cnb", "buildpacks")
+				bpDir := "some-buildpacks-dir"
 				bpDirAbs, err := filepath.Abs(bpDir)
 				h.AssertNil(t, err)
 
-				extDir := filepath.Join("testdata", "cnb", "extensions")
+				extDir := "some-extensions-dir"
 				extDirAbs, err := filepath.Abs(extDir)
 				h.AssertNil(t, err)
 
-				layersDir := filepath.Join("testdata", "layers")
+				layersDir := "some-layers-dir"
 				layersDirAbs, err := filepath.Abs(layersDir)
 				h.AssertNil(t, err)
 
-				generatedDir := filepath.Join("testdata", "layers")
+				generatedDir := "some-generated-dir"
 				generatedDirAbs, err := filepath.Abs(generatedDir)
 				h.AssertNil(t, err)
 
-				platformDir := filepath.Join("testdata", "platform")
+				platformDir := "some-platform-dir"
 				platformDirAbs, err := filepath.Abs(platformDir)
 				h.AssertNil(t, err)
 
