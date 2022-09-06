@@ -72,6 +72,8 @@ func DecodeLaunchMetadataTOML(path string, platformAPI *api.Version, launchmd *M
 	return nil
 }
 
+// Matches is used by goMock to compare two Metadata objects in tests
+// when matching expected calls to methods containing Metadata objects
 func (m Metadata) Matches(x interface{}) bool {
 	metadatax, ok := x.(Metadata)
 	if !ok {
