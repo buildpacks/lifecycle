@@ -115,16 +115,23 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		if result.RunImage == "" {
-			return d.writeDetectData(group, plan)
+		//was a custom runimage configured?
+		if result.RunImage != "" {
+			cmd.DefaultLogger.Debug("Updating analyzed metdata with new runImage")
+			analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
+			if err != nil {
+				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
+			}
+			cmd.DefaultLogger.Debugf("Loaded existing analyzed metdata from '%s'", d.AnalyzedPath)
+			analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
+			if err := d.writeGenerateData(analyzedMD); err != nil {
+				return err
+			}
+			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage)
 		}
-		analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
-		if err != nil {
-			return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
-		}
-		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
-		if err := d.writeGenerateData(analyzedMD); err != nil {
-			return err
+		//was the build plan updated?
+		if result.UsePlan {
+			plan = result.Plan
 		}
 	}
 	return d.writeDetectData(group, plan)

@@ -82,6 +82,8 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 
 type GenerateResult struct {
 	RunImage string
+	Plan     platform.BuildPlan
+	UsePlan  bool
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
@@ -131,8 +133,8 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		return GenerateResult{}, err
 	}
 
-	g.Logger.Debug("Finished build")
-	return GenerateResult{RunImage: runImage}, nil
+	g.Logger.Debugf("Finished build, selected runImage '%s'", runImage)
+	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: runImage}, nil
 }
 
 func (g *Generator) getCommonInputs() buildpack.GenerateInputs {
@@ -171,7 +173,7 @@ func (g *Generator) checkNewRunImage() (string, error) {
 	// a run.Dockerfile.
 	for i := len(g.Extensions) - 1; i >= 0; i-- {
 		extID := g.Extensions[i].ID
-		runDockerfile := filepath.Join(g.GeneratedDir, "run", extID, "Dockerfile")
+		runDockerfile := filepath.Join(g.GeneratedDir, "run", launch.EscapeID(extID), "Dockerfile")
 		if _, err := os.Stat(runDockerfile); os.IsNotExist(err) {
 			continue
 		}
@@ -184,6 +186,7 @@ func (g *Generator) checkNewRunImage() (string, error) {
 		if len(parts) != 2 || parts[0] != "FROM" {
 			return "", fmt.Errorf("failed to parse Dockerfile, expected format 'FROM <image>', got: '%s'", strContents)
 		}
+		g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", strings.TrimSpace(parts[1]), extID)
 		return strings.TrimSpace(parts[1]), nil
 	}
 	return "", nil
