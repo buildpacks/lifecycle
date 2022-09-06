@@ -47,25 +47,33 @@ func DecodeLaunchMetadataTOML(path string, platformAPI *api.Version, launchmd *M
 		return err
 	}
 
+	if err = DecodeProcesses(launchmd.Processes, platformAPI, md); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DecodeProcesses(processes []Process, platformAPI *api.Version, md toml.MetaData) error {
 	// decode the process.commands, which will differ based on platform API
-	commandsAreStrings := true
+	commandsAreStrings := platformAPI.LessThan("0.11")
 
 	// processes are defined differently depending on API version
 	// and will be decoded into different values
-	for i, process := range launchmd.Processes {
+	for i, process := range processes {
 		if commandsAreStrings {
 			var commandString string
-			if err = md.PrimitiveDecode(process.RawCommandValue, &commandString); err != nil {
+			if err := md.PrimitiveDecode(process.RawCommandValue, &commandString); err != nil {
 				return err
 			}
 
-			launchmd.Processes[i].Command = []string{commandString}
+			processes[i].Command = []string{commandString}
 		} else {
 			var command []string
-			if err = md.PrimitiveDecode(process.RawCommandValue, &command); err != nil {
+			if err := md.PrimitiveDecode(process.RawCommandValue, &command); err != nil {
 				return err
 			}
-			launchmd.Processes[i].Command = command
+			processes[i].Command = command
 		}
 	}
 

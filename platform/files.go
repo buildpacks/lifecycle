@@ -94,26 +94,8 @@ func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *Bui
 		return err
 	}
 
-	// decode the process.commands, which will differ based on platform API
-	commandsAreStrings := true
-
-	// processes are defined differently depending on API version
-	// and will be decoded into different values
-	for i, process := range buildmd.Processes {
-		if commandsAreStrings {
-			var commandString string
-			if err = md.PrimitiveDecode(process.RawCommandValue, &commandString); err != nil {
-				return err
-			}
-
-			buildmd.Processes[i].Command = []string{commandString}
-		} else {
-			var command []string
-			if err = md.PrimitiveDecode(process.RawCommandValue, &command); err != nil {
-				return err
-			}
-			buildmd.Processes[i].Command = command
-		}
+	if err = launch.DecodeProcesses(buildmd.Processes, platformAPI, md); err != nil {
+		return err
 	}
 
 	buildmd.PlatformAPI = platformAPI
