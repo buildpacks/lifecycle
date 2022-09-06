@@ -38,6 +38,7 @@ func TestBuilder(t *testing.T) {
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
 //go:generate mockgen -package testmock -destination testmock/build_module.go github.com/buildpacks/lifecycle/buildpack BuildModule
 
+// RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
 var processCmpOpts = []cmp.Option{
 	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue"),
 }

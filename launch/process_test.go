@@ -17,6 +17,7 @@ func TestProcess(t *testing.T) {
 	spec.Run(t, "Process", testProcess, spec.Report(report.Terminal{}))
 }
 
+// RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
 var processCmpOpts = []cmp.Option{
 	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue"),
 }
