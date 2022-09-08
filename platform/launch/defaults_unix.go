@@ -4,5 +4,6 @@
 package launch
 
 const (
+	execExt = ""
 	rootDir = "/"
 )

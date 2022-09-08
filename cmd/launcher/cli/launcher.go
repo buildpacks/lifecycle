@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
@@ -72,7 +73,7 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}
-	_, process := filepath.Split(os.Args[0])
+	process := strings.TrimSuffix(filepath.Base(os.Args[0]), platform.DefaultExecExt)
 	if _, ok := launchMD.FindProcessType(process); ok {
 		return process
 	}
