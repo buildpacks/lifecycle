@@ -77,7 +77,7 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 	process := filepath.Base(os.Args[0])
 	processType := strings.TrimSuffix(process, platform.DefaultExecExt)
 	if _, ok := launchMD.FindProcessType(processType); ok {
-		return process
+		return processType
 	}
 	return ""
 }
