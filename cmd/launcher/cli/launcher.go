@@ -74,7 +74,7 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}
 
-	process := filepath.Base(os.Args[0])
+	_, process := filepath.Split(os.Args[0])
 	processType := strings.TrimSuffix(process, platform.DefaultExecExt)
 	if _, ok := launchMD.FindProcessType(processType); ok {
 		return processType
