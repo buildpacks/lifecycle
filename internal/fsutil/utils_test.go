@@ -51,7 +51,7 @@ func testIO(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, fsutil.Copy(src, dst))
 
-				h.AssertPathExists(t, filepath.Join(dst))
+				h.AssertPathExists(t, dst)
 				h.AssertPathExists(t, filepath.Join(dst, "some_file"))
 				contents := h.MustReadFile(t, filepath.Join(dst, "some_file"))
 				h.AssertEq(t, string(contents), "some-content\n")
