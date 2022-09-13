@@ -79,7 +79,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			when("process contains a period", func() {
 				it("launches that process", func() {
 					cmd := exec.Command("docker", "run", "--rm",
-						"--entrypoint=process.with.period",
+						"--entrypoint=process.with.period"+exe,
 						"--env=CNB_PLATFORM_API="+latestPlatformAPI,
 						launchImage)
 					assertOutput(t, cmd, "Executing process.with.period process-type")
