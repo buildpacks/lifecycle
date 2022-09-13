@@ -74,3 +74,10 @@
   args = ["$WORKER_VAR"]
   direct = false
   buildpack-id = "0.4/buildpack"
+
+[[processes]]
+  type = "process.with.period"
+  command = "echo"
+  args = ["Executing process.with.period process-type"]
+  direct = false
+  buildpack-id = "0.4/buildpack"

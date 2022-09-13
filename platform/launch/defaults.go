@@ -11,6 +11,8 @@ const (
 
 	DefaultPlatformAPI = "0.3"
 	DefaultProcessType = "web"
+
+	DefaultExecExt = execExt
 )
 
 var (
