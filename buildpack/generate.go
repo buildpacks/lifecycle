@@ -57,7 +57,7 @@ func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInput
 	if _, err = os.Stat(filepath.Join(d.WithRootDir, "bin", "generate")); err != nil {
 		if os.IsNotExist(err) {
 			// treat extension root directory as pre-populated output directory
-			return readOutputFilesExt(d, filepath.Join(d.WithRootDir, "generate"), inputs.Plan)
+			return readOutputFilesExt(d, filepath.Join(d.WithRootDir, "generate"), inputs.Plan, logger)
 		}
 		return GenerateOutputs{}, err
 	}
@@ -66,7 +66,7 @@ func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInput
 	}
 
 	logger.Debug("Reading output files")
-	return readOutputFilesExt(d, extOutputDir, inputs.Plan)
+	return readOutputFilesExt(d, extOutputDir, inputs.Plan, logger)
 }
 
 func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs GenerateInputs) error {
@@ -102,21 +102,49 @@ func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs Gener
 	return nil
 }
 
-func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan) (GenerateOutputs, error) {
+func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, logger log.Logger) (GenerateOutputs, error) {
 	br := GenerateOutputs{}
 	var err error
+	var dfInfo DockerfileInfo
+	var found bool
 
 	// set MetRequires
 	br.MetRequires = names(extPlanIn.Entries)
 
 	// set Dockerfiles
-	runDockerfile := filepath.Join(extOutputDir, "run.Dockerfile")
-	if _, err = os.Stat(runDockerfile); err != nil {
-		if os.IsNotExist(err) {
-			return br, nil
-		}
+	if dfInfo, found, err = addDockerfileByPathAndType(d, extOutputDir, "run.Dockerfile", DockerfileKindRun, logger); err != nil {
 		return GenerateOutputs{}, err
+	} else {
+		if found {
+			br.Dockerfiles = append(br.Dockerfiles, dfInfo)
+		}
 	}
-	br.Dockerfiles = []DockerfileInfo{{ExtensionID: d.Extension.ID, Kind: DockerfileKindRun, Path: runDockerfile}}
+
+	if dfInfo, found, err = addDockerfileByPathAndType(d, extOutputDir, "build.Dockerfile", DockerfileKindBuild, logger); err != nil {
+		return GenerateOutputs{}, err
+	} else {
+		if found {
+			br.Dockerfiles = append(br.Dockerfiles, dfInfo)
+		}
+	}
+
+	logger.Debugf("Found '%d' Dockerfiles for processing", len(br.Dockerfiles))
+
 	return br, nil
+}
+
+func addDockerfileByPathAndType(d ExtDescriptor, extOutputDir string, dockerfileName string, dockerfileType string, logger log.Logger) (DockerfileInfo, bool, error) {
+	var err error
+	dockerfile := filepath.Join(extOutputDir, dockerfileName)
+	if _, err = os.Stat(dockerfile); err != nil {
+		// ignore file not found, no dockerfile to add.
+		if !os.IsNotExist(err) {
+			// any other errors are critical.
+			return DockerfileInfo{}, true, err
+		} else {
+			return DockerfileInfo{}, false, nil
+		}
+	} else {
+		return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: dockerfileType, Path: dockerfile}, true, nil
+	}
 }
