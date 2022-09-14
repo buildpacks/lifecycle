@@ -12,6 +12,7 @@ import (
 	"github.com/chrismellard/docker-credential-acr-env/pkg/credhelper"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/google"
 	"github.com/pkg/errors"
 )
 
@@ -38,6 +39,7 @@ func DefaultKeychain(images ...string) (authn.Keychain, error) {
 		NewResolvedKeychain(authn.DefaultKeychain, images...),
 		NewResolvedKeychain(amazonKeychain, images...),
 		NewResolvedKeychain(azureKeychain, images...),
+		NewResolvedKeychain(google.Keychain, images...),
 	), nil
 }
 
