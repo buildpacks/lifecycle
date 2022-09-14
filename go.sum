@@ -164,8 +164,8 @@ github.com/bkielbasa/cyclop v1.2.0/go.mod h1:qOI0yy6A7dYC4Zgsa72Ppm9kONl0RoIlPbz
 github.com/blizzy78/varnamelen v0.3.0/go.mod h1:hbwRdBvoBqxk34XyQ6HA0UH3G0/1TKuv5AC4eaBT0Ec=
 github.com/bombsimon/wsl/v3 v3.3.0/go.mod h1:st10JtZYLE4D5sC7b8xV4zTKZwAQjCH/Hy2Pm1FNZIc=
 github.com/breml/bidichk v0.1.1/go.mod h1:zbfeitpevDUGI7V91Uzzuwrn4Vls8MoBMrwtt78jmso=
-github.com/buildpacks/imgutil v0.0.0-20220805205524-56137f75e24d h1:06r2+NQ34WRTcqshXDvaQqOSeFDa8QPlxmClEYPdYCY=
-github.com/buildpacks/imgutil v0.0.0-20220805205524-56137f75e24d/go.mod h1:S2RQzj190M80SV4VbpoCxeyoVYKjRN8qcIPLXEWNuF0=
+github.com/buildpacks/imgutil v0.0.0-20220913203928-6accc39f0cf9 h1:44evShMGyqmWmuy/w6mD2wsuHsIMldOcptV4LjC2MjM=
+github.com/buildpacks/imgutil v0.0.0-20220913203928-6accc39f0cf9/go.mod h1:YeEEHF5p5VpTAoVbf8pZ5peFuz50TrElzsNpeNELqgA=
 github.com/butuzov/ireturn v0.1.1/go.mod h1:Wh6Zl3IMtTpaIKbmwzqi6olnM9ptYQxxVacMsOEFPoc=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
