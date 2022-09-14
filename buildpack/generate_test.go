@@ -271,6 +271,10 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 							h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
 						})
+
+						it("includes build.Dockerfile", func() {
+							// TODO: add
+						})
 					})
 
 					when("met requires", func() {

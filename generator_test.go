@@ -132,7 +132,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			Executor: executor,
 			Extensions: []buildpack.GroupElement{
 				{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "A Homepage"},
-				{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
+				{ID: "ext/B", Version: "v2", API: api.Buildpack.Latest().String()},
 			},
 			Logger:       &log.Logger{Handler: logHandler},
 			GeneratedDir: generatedDir,
@@ -154,7 +154,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				Entries: []platform.BuildPlanEntry{
 					{
 						Providers: []buildpack.GroupElement{
-							{ID: "A", Version: "v1"}, // not provided to any extension
+							{ID: "A", Version: "v1"}, // not provided to any extension because Extension is false
 						},
 						Requires: []buildpack.Require{
 							{Name: "buildpack-dep", Version: "v1"},
@@ -163,7 +163,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					{
 						Providers: []buildpack.GroupElement{
 							{ID: "A", Version: "v1", Extension: true},
-							{ID: "B", Version: "v2", Extension: true},
+							{ID: "ext/B", Version: "v2", Extension: true},
 						},
 						Requires: []buildpack.Require{
 							{Name: "some-dep", Version: "v1"}, // not provided to B because it is met
@@ -172,18 +172,18 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					{
 						Providers: []buildpack.GroupElement{
 							{ID: "A", Version: "v1", Extension: true},
-							{ID: "B", Version: "v2", Extension: true},
+							{ID: "ext/B", Version: "v2", Extension: true},
 						},
 						Requires: []buildpack.Require{
-							{Name: "some-unmet-dep", Version: "v2"}, // provided to B because it is unmet
+							{Name: "some-unmet-dep", Version: "v2"}, // provided to ext/B because it is unmet
 						},
 					},
 					{
 						Providers: []buildpack.GroupElement{
-							{ID: "B", Version: "v2", Extension: true},
+							{ID: "ext/B", Version: "v2", Extension: true},
 						},
 						Requires: []buildpack.Require{
-							{Name: "other-dep", Version: "v4"}, // only provided to B
+							{Name: "other-dep", Version: "v4"}, // only provided to ext/B
 						},
 					},
 				},
@@ -209,8 +209,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					return buildpack.GenerateOutputs{MetRequires: []string{"some-dep"}}, nil
 				})
 
-			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
-			dirStore.EXPECT().LookupExt("B", "v2").Return(&extB, nil)
+			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
+			dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
 			expectedBInputs := expectedInputs
 			expectedBInputs.Plan = buildpack.Plan{Entries: []buildpack.Require{
 				{Name: "some-unmet-dep", Version: "v2"},
@@ -228,7 +228,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
-		it("aggregates dockerfiles from each extension", func() {
+		it("aggregates dockerfiles from each extension and returns the correct run image in the build result", func() {
 			// Extension A outputs a run.Dockerfile to the provided output directory when invoked.
 			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
 			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
@@ -252,15 +252,15 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			// Extension B has a pre-populated root directory.
-			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
 			bRootDir := filepath.Join(tmpDir, "some-b-root-dir")
 			h.Mkdir(t, bRootDir)
 			bDockerfilePath := filepath.Join(bRootDir, "run.Dockerfile")
 			h.Mkfile(t, `FROM other-run-image`, bDockerfilePath)
-			dirStore.EXPECT().LookupExt("B", "v2").Return(&extB, nil)
+			dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
 			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
 				Dockerfiles: []buildpack.DockerfileInfo{
-					{ExtensionID: "B", Path: bDockerfilePath, Kind: "run"},
+					{ExtensionID: "ext/B", Path: bDockerfilePath, Kind: "run"},
 				},
 			}, nil)
 
@@ -285,7 +285,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			t.Log("copies Dockerfiles to the correct locations")
 			aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile"))
 			h.AssertEq(t, string(aContents), `FROM some-run-image`)
-			bContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "B", "Dockerfile"))
+			bContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "ext_B", "Dockerfile"))
 			h.AssertEq(t, string(bContents), `FROM other-run-image`)
 			cContents := h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "Dockerfile"))
 			h.AssertEq(t, string(cContents), `some-build.Dockerfile-content`)
@@ -345,8 +345,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
 					dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
 					executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{}, nil)
-					extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
-					dirStore.EXPECT().LookupExt("B", "v2").Return(&extB, nil)
+					extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
+					dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
 					executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{}, errors.New("some error"))
 
 					if _, err := generator.Generate(); err == nil {
