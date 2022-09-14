@@ -114,18 +114,14 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, lo
 	// set Dockerfiles
 	if dfInfo, found, err = addDockerfileByPathAndType(d, extOutputDir, "run.Dockerfile", DockerfileKindRun, logger); err != nil {
 		return GenerateOutputs{}, err
-	} else {
-		if found {
-			br.Dockerfiles = append(br.Dockerfiles, dfInfo)
-		}
+	} else if found {
+		br.Dockerfiles = append(br.Dockerfiles, dfInfo)
 	}
 
 	if dfInfo, found, err = addDockerfileByPathAndType(d, extOutputDir, "build.Dockerfile", DockerfileKindBuild, logger); err != nil {
 		return GenerateOutputs{}, err
-	} else {
-		if found {
-			br.Dockerfiles = append(br.Dockerfiles, dfInfo)
-		}
+	} else if found {
+		br.Dockerfiles = append(br.Dockerfiles, dfInfo)
 	}
 
 	logger.Debugf("Found '%d' Dockerfiles for processing", len(br.Dockerfiles))
@@ -141,10 +137,8 @@ func addDockerfileByPathAndType(d ExtDescriptor, extOutputDir string, dockerfile
 		if !os.IsNotExist(err) {
 			// any other errors are critical.
 			return DockerfileInfo{}, true, err
-		} else {
-			return DockerfileInfo{}, false, nil
 		}
-	} else {
-		return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: dockerfileType, Path: dockerfile}, true, nil
+		return DockerfileInfo{}, false, nil
 	}
+	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: dockerfileType, Path: dockerfile}, true, nil
 }

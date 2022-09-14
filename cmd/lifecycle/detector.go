@@ -115,7 +115,7 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		//was a custom runimage configured?
+		// was a custom runimage configured?
 		if result.RunImage != "" {
 			cmd.DefaultLogger.Debug("Updating analyzed metdata with new runImage")
 			analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
@@ -129,7 +129,7 @@ func (d *detectCmd) Exec() error {
 			}
 			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage)
 		}
-		//was the build plan updated?
+		// was the build plan updated?
 		if result.UsePlan {
 			plan = result.Plan
 		}
