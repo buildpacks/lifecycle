@@ -68,6 +68,40 @@ jobs:
             echo $search_output
           fi
       - name: Scan latest release image
+        id: scan-image
         uses: anchore/scan-action@v3
         with:
           image: buildpacksio/lifecycle:${{ steps.read-go.outputs.latest-release-version }}
+      - name: Create issue if needed
+        if: failure() && steps.scan-image.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            #!/usr/bin/env bash
+
+            set -euo pipefail
+
+            title="CVE(s) found"
+            label=cve
+
+            # Create label to use for exact search
+            gh label create "$label" || true
+
+            search_output=$(gh issue list --search "$title" --label "$label")
+
+            GITHUB_WORKFLOW_URL=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+            body="Latest lifecycle release v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"
+
+            if [ -z "${search_output// }" ]
+            then
+              echo "No issues matched search; creating new issue..."
+              gh issue create \
+              --label "type/bug" \
+              --label "status/triage" \
+              --label "$label" \
+              --title "$title" \
+              --body "$body"
+            else
+              echo "Found matching issues:"
+              echo $search_output
+            fi
