@@ -32,6 +32,8 @@ jobs:
 
                 echo "::set-output name=latest-go-version::${LATEST_GO_VERSION}"
                 echo "::set-output name=latest-release-go-version::${LATEST_RELEASE_GO_VERSION}"
+
+                LATEST_RELEASE_VERSION=$(echo $LATEST_RELEASE_VERSION | cut -d \v -f 2)
                 echo "::set-output name=latest-release-version::${LATEST_RELEASE_VERSION}"
             - name: Create issue if needed
               if: ${{ steps.read-go.outputs.latest-go-version != steps.read-go.outputs.latest-release-go-version }}
