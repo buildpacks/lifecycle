@@ -224,6 +224,11 @@ jobs:
             -a tag=${LIFECYCLE_IMAGE_TAG} \
             buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${LIFECYCLE_IMAGE_TAG} buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}
+      - name: Scan image
+        if: github.event_name == 'push'
+        uses: anchore/scan-action@v3
+        with:
+          image: buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}
   pack-acceptance-linux:
     if: github.event_name == 'push'
     needs: build-and-publish
