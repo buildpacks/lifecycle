@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"path/filepath"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -102,7 +101,7 @@ func (d *detectCmd) Exec() error {
 		generator, err := generatorFactory.NewGenerator(
 			d.AppDir,
 			group.GroupExtensions,
-			filepath.Join(d.GeneratedDir),
+			d.GeneratedDir,
 			plan,
 			d.PlatformDir,
 			cmd.Stdout, cmd.Stderr,
