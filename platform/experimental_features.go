@@ -1,7 +1,7 @@
 package platform
 
 import (
-	"errors"
+	"fmt"
 	"os"
 
 	"github.com/buildpacks/lifecycle/log"
@@ -19,11 +19,11 @@ func GuardExperimental(requested string, logger log.Logger) error {
 		break
 	case ModeError:
 		logger.Errorf("Platform requested experimental feature '%s'", requested)
-		logger.Errorf("Experimental features are disabled by %s=%s", EnvExperimentalMode, ModeError)
-		return errors.New("experimental feature")
+		return fmt.Errorf("experimental features are disabled by %s=%s", EnvExperimentalMode, ModeError)
 	case ModeWarn:
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
 	default:
+		// This shouldn't be reached, as ExperimentalMode is always set.
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
 	}
 	return nil
