@@ -94,7 +94,7 @@ func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *Bui
 		return err
 	}
 
-	if err = launch.DecodeProcesses(buildmd.Processes, platformAPI, md); err != nil {
+	if err = launch.DecodeProcesses(buildmd.Processes, md); err != nil {
 		return err
 	}
 

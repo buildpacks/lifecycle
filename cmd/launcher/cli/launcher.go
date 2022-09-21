@@ -26,7 +26,7 @@ func RunLaunch() error {
 	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
-	if err := launch.DecodeLaunchMetadataTOML(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), p.API(), &md); err != nil {
+	if err := launch.DecodeLaunchMetadataTOML(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 	if err := verifyBuildpackAPIs(md.Buildpacks); err != nil {

@@ -9,8 +9,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-
-	"github.com/buildpacks/lifecycle/api"
 )
 
 type Process struct {
@@ -40,41 +38,36 @@ type Metadata struct {
 }
 
 // DecodeLaunchMetadataTOML reads a launch.toml file
-func DecodeLaunchMetadataTOML(path string, platformAPI *api.Version, launchmd *Metadata) error {
+func DecodeLaunchMetadataTOML(path string, launchmd *Metadata) error {
 	// decode the common bits
 	md, err := toml.DecodeFile(path, &launchmd)
 	if err != nil {
 		return err
 	}
 
-	if err = DecodeProcesses(launchmd.Processes, platformAPI, md); err != nil {
+	if err = DecodeProcesses(launchmd.Processes, md); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func DecodeProcesses(processes []Process, platformAPI *api.Version, md toml.MetaData) error {
-	// decode the process.commands, which will differ based on platform API
-	commandsAreStrings := platformAPI.LessThan("0.11")
-
+func DecodeProcesses(processes []Process, md toml.MetaData) error {
+	// decode the process.commands, which will differ based on APIs
 	// processes are defined differently depending on API version
 	// and will be decoded into different values
 	for i, process := range processes {
-		if commandsAreStrings {
-			var commandString string
-			if err := md.PrimitiveDecode(process.RawCommandValue, &commandString); err != nil {
-				return err
-			}
-
+		var commandString string
+		if err := md.PrimitiveDecode(process.RawCommandValue, &commandString); err == nil {
 			processes[i].Command = []string{commandString}
-		} else {
-			var command []string
-			if err := md.PrimitiveDecode(process.RawCommandValue, &command); err != nil {
-				return err
-			}
-			processes[i].Command = command
+			continue
 		}
+
+		var command []string
+		if err := md.PrimitiveDecode(process.RawCommandValue, &command); err != nil {
+			return err
+		}
+		processes[i].Command = command
 	}
 
 	return nil
