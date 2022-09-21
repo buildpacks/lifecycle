@@ -33,7 +33,7 @@ func testDecodeMetataTOML(t *testing.T, when spec.G, it spec.S) {
 			tmpDir, err = ioutil.TempDir("", "test-decode-metadata-toml")
 			h.AssertNil(t, err)
 
-			apiVersion = api.MustParse("0.11")
+			apiVersion = api.MustParse("0.10")
 		})
 
 		it.After(func() {
