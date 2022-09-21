@@ -56,7 +56,7 @@ func DecodeLaunchMetadataTOML(path string, platformAPI *api.Version, launchmd *M
 
 func DecodeProcesses(processes []Process, platformAPI *api.Version, md toml.MetaData) error {
 	// decode the process.commands, which will differ based on platform API
-	commandsAreStrings := platformAPI.LessThan("0.10")
+	commandsAreStrings := platformAPI.LessThan("0.11")
 
 	// processes are defined differently depending on API version
 	// and will be decoded into different values
