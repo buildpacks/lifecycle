@@ -446,7 +446,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
     {
       "type": "some-process-type",
       "direct": true,
-      "command": "/some/command",
+      "command": ["/some/command"],
       "args": ["some", "command", "args"],
       "buildpackID": "buildpack.id"
     }
@@ -454,6 +454,36 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 }
 `
 						h.AssertJSONEq(t, expectedJSON, metadataJSON)
+					})
+				})
+
+				it("process.commands are arrays", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+					h.AssertNil(t, err)
+
+					expectedJSON := `"processes":[{"type":"some-process-type","args":["some","command","args"],"direct":true,"buildpackID":"buildpack.id","command":["/some/command"]}`
+
+					h.AssertStringContains(t, metadataJSON, expectedJSON)
+				})
+
+				when("platform api < 0.10", func() {
+					it.Before(func() {
+						exporter.PlatformAPI = api.MustParse("0.9")
+					})
+
+					it("process.commands are strings", func() {
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+						h.AssertNil(t, err)
+
+						expectedJSON := `"processes":[{"type":"some-process-type","args":["some","command","args"],"direct":true,"buildpackID":"buildpack.id","command":"/some/command"}`
+
+						h.AssertStringContains(t, metadataJSON, expectedJSON)
 					})
 				})
 

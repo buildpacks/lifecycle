@@ -103,26 +103,51 @@ func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *Bui
 	return nil
 }
 
-func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
-	type BuildMetadataProcessSerializer struct {
-		Type             string   `toml:"type" json:"type"`
-		Command          string   `toml:"command" json:"command"`
-		Args             []string `toml:"args" json:"args"`
-		Direct           bool     `toml:"direct" json:"direct"`
-		Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
-		BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
-		WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+type BuildMetadataProcess struct {
+	Type             string       `toml:"type" json:"type"`
+	Commands         []string     `toml:"command" json:"command"`
+	Args             []string     `toml:"args" json:"args"`
+	Direct           bool         `toml:"direct" json:"direct"`
+	Default          bool         `toml:"default,omitempty" json:"default,omitempty"`
+	BuildpackID      string       `toml:"buildpack-id" json:"buildpackID"`
+	WorkingDirectory string       `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	PlatformAPI      *api.Version `toml:"-" json:"-"`
+}
+
+func (mdps *BuildMetadataProcess) MarshalJSON() ([]byte, error) {
+	if mdps.PlatformAPI.LessThan("0.10") {
+		type BuildMetadataProcessSerializer BuildMetadataProcess // prevent infinite recursion when serializing
+		return json.Marshal(&struct {
+			*BuildMetadataProcessSerializer
+			Command string `toml:"command" json:"command"`
+		}{
+			Command:                        mdps.Commands[0],
+			BuildMetadataProcessSerializer: (*BuildMetadataProcessSerializer)(mdps),
+		})
 	}
-	var processes []BuildMetadataProcessSerializer
+
+	type BuildMetadataProcessSerializer BuildMetadataProcess // prevent infinite recursion when serializing
+	return json.Marshal(&struct {
+		*BuildMetadataProcessSerializer
+		Command []string `toml:"command" json:"command"`
+	}{
+		Command:                        mdps.Commands,
+		BuildMetadataProcessSerializer: (*BuildMetadataProcessSerializer)(mdps),
+	})
+}
+
+func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
+	var processes []BuildMetadataProcess
 
 	if md.Processes != nil {
-		processes = []BuildMetadataProcessSerializer{}
+		processes = []BuildMetadataProcess{}
 
 		for _, process := range md.Processes {
-			processes = append(processes, BuildMetadataProcessSerializer{
+			processes = append(processes, BuildMetadataProcess{
+				PlatformAPI:      md.PlatformAPI,
 				Type:             process.Type,
-				Command:          process.Command[0],
-				Args:             append(process.Command[1:], process.Args[0:]...),
+				Commands:         process.Command,
+				Args:             process.Args,
 				Direct:           process.Direct,
 				Default:          process.Default,
 				BuildpackID:      process.BuildpackID,
@@ -135,7 +160,7 @@ func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
 		type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
 		return json.Marshal(&struct {
 			*BuildMetadataSerializer
-			Processes []BuildMetadataProcessSerializer `toml:"processes" json:"processes"`
+			Processes []BuildMetadataProcess `toml:"processes" json:"processes"`
 		}{
 			BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
 			Processes:               processes,
@@ -144,8 +169,8 @@ func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
 	type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
 	return json.Marshal(&struct {
 		*BuildMetadataSerializer
-		Processes []BuildMetadataProcessSerializer `toml:"processes" json:"processes"`
-		BOM       []buildpack.BOMEntry             `json:"bom,omitempty"`
+		Processes []BuildMetadataProcess `toml:"processes" json:"processes"`
+		BOM       []buildpack.BOMEntry   `json:"bom,omitempty"`
 	}{
 		BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
 		BOM:                     []buildpack.BOMEntry{},

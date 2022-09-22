@@ -8,6 +8,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -52,6 +53,50 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				); s != "" {
 					t.Fatalf("Unexpected JSON:\n%s\n", s)
 				}
+			})
+
+			it("serializes process commands", func() {
+				buildMD.Processes = []launch.Process{
+					{
+						Type:    "some-type",
+						Command: []string{"some-command", "some-command-arg"},
+						Args:    []string{"some-arg", "some-arg-2"},
+					},
+				}
+				b, err := buildMD.MarshalJSON()
+				h.AssertNil(t, err)
+				if s := cmp.Diff(string(b),
+					`{"buildpacks":[{"id":"A","version":"v1"}],`+
+						`"launcher":{"version":"","source":{"git":{"repository":"","commit":""}}},`+
+						`"processes":[{"type":"some-type","args":["some-arg","some-arg-2"],"direct":false,"buildpackID":"","command":["some-command","some-command-arg"]}]}`,
+				); s != "" {
+					t.Fatalf("Unexpected JSON:\n%s\n", s)
+				}
+			})
+
+			when("platform api < 0.10", func() {
+				it.Before(func() {
+					buildMD.PlatformAPI = api.MustParse("0.9")
+				})
+
+				it("serializes process.command as string", func() {
+					buildMD.Processes = []launch.Process{
+						{
+							Type:    "some-type",
+							Command: []string{"some-command"},
+							Args:    []string{"some-arg", "some-arg-2"},
+						},
+					}
+					b, err := buildMD.MarshalJSON()
+					h.AssertNil(t, err)
+					if s := cmp.Diff(string(b),
+						`{"buildpacks":[{"id":"A","version":"v1"}],`+
+							`"launcher":{"version":"","source":{"git":{"repository":"","commit":""}}},`+
+							`"processes":[{"type":"some-type","args":["some-arg","some-arg-2"],"direct":false,"buildpackID":"","command":"some-command"}]}`,
+					); s != "" {
+						t.Fatalf("Unexpected JSON:\n%s\n", s)
+					}
+				})
 			})
 
 			when("platform api < 0.9", func() {
