@@ -109,7 +109,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				Processes: []launch.Process{
 					{
 						Type:        "some-process-type",
-						Command:     "/some/command",
+						Command:     []string{"/some/command"},
 						Args:        []string{"some", "command", "args"},
 						Direct:      true,
 						BuildpackID: "buildpack.id",
@@ -1134,7 +1134,7 @@ version = "4.5.6"
 								Processes: []launch.Process{
 									{
 										Type:        "some-process-type",
-										Command:     "/some/command",
+										Command:     []string{"/some/command"},
 										Args:        []string{"some", "command", "args"},
 										Direct:      true,
 										BuildpackID: "buildpack.id",
