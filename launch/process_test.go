@@ -85,17 +85,74 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 				when("exists", func() {
 					it.Before(func() {
 						launcher.DefaultProcessType = "some-type"
+						launcher.Buildpacks = []launch.Buildpack{
+							{ID: "some-buildpack", API: api.Buildpack.Latest().String()},
+						}
 					})
 
-					it("appends cmd to the default process args", func() {
+					it("replaces args with cmd on the default process args", func() {
 						proc, err := launcher.ProcessFor([]string{"user-arg1", "user-arg1"})
 						h.AssertNil(t, err)
 						h.AssertEq(t, proc, launch.Process{
 							Type:        "some-type",
 							Command:     []string{"some-command"},
-							Args:        []string{"some-arg1", "some-arg2", "user-arg1", "user-arg1"},
+							Args:        []string{"user-arg1", "user-arg1"},
 							BuildpackID: "some-buildpack",
 						}, processCmpOpts...)
+					})
+
+					when("there are multiple commands", func() {
+						it.Before(func() {
+							launcher.Processes = []launch.Process{
+								{
+									Type:        "some-type",
+									Command:     []string{"some-command", "some-command-arg"},
+									Args:        []string{"some-arg1", "some-arg2"},
+									BuildpackID: "some-buildpack",
+								},
+							}
+						})
+
+						it("defaults to buildpack provided commands and args", func() {
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc, launch.Process{
+								Type:        "some-type",
+								Command:     []string{"some-command", "some-command-arg"},
+								Args:        []string{"some-arg1", "some-arg2"},
+								BuildpackID: "some-buildpack",
+							}, processCmpOpts...)
+						})
+
+						it("replaces args with cmd on the default process args", func() {
+							proc, err := launcher.ProcessFor([]string{"user-arg1", "user-arg1"})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc, launch.Process{
+								Type:        "some-type",
+								Command:     []string{"some-command", "some-command-arg"},
+								Args:        []string{"user-arg1", "user-arg1"},
+								BuildpackID: "some-buildpack",
+							}, processCmpOpts...)
+						})
+					})
+
+					when("buildpack API < 0.9", func() {
+						it.Before(func() {
+							launcher.Buildpacks = []launch.Buildpack{
+								{ID: "some-buildpack", API: "0.8"},
+							}
+						})
+
+						it("appends cmd to the default process args", func() {
+							proc, err := launcher.ProcessFor([]string{"user-arg1", "user-arg1"})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc, launch.Process{
+								Type:        "some-type",
+								Command:     []string{"some-command"},
+								Args:        []string{"some-arg1", "some-arg2", "user-arg1", "user-arg1"},
+								BuildpackID: "some-buildpack",
+							}, processCmpOpts...)
+						})
 					})
 				})
 

@@ -3,6 +3,7 @@ package launch
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +33,26 @@ func (l *Launcher) ProcessFor(cmd []string) (Process, error) {
 	if !ok {
 		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
 	}
-	process.Args = append(process.Args, cmd...)
+
+	// if there are no user provided args, return the process as is
+	if len(cmd) == 0 {
+		return process, nil
+	}
+
+	// default behavior is to replace process.args with user provided cmd when bp that provided process is > 0.9
+	replaceArgs := true
+	for _, bp := range l.Buildpacks {
+		if bp.ID == process.BuildpackID {
+			replaceArgs = api.MustParse(bp.API).AtLeast("0.9")
+			break
+		}
+	}
+
+	if replaceArgs {
+		process.Args = cmd
+	} else {
+		process.Args = append(process.Args, cmd...)
+	}
 
 	return process, nil
 }
