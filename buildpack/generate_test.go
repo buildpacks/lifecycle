@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -48,6 +49,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
+		h.SkipIf(t, runtime.GOOS == "windows", "Image extensions and/or Dockerfile generation is not supported on Windows")
 		mockCtrl = gomock.NewController(t)
 		executor = &buildpack.DefaultGenerateExecutor{}
 
@@ -273,7 +275,17 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("includes build.Dockerfile", func() {
-							// TODO: add
+							h.Mkfile(t,
+								"",
+								filepath.Join(appDir, "build.Dockerfile-A-v1"),
+							)
+
+							br, err := executor.Generate(descriptor, inputs, logger)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
+							h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindBuild)
+							h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "build.Dockerfile"))
 						})
 					})
 
