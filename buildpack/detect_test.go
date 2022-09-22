@@ -373,8 +373,8 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
-						t.Log("sets CNB_BUILDPACK_DIR")
-						actual = rdappfile("detect-env-cnb-buildpack-dir-A-v1.clear")
+						t.Log("sets CNB_EXTENSION_DIR")
+						actual = rdappfile("detect-env-cnb-extension-dir-A-v1.clear")
 						h.AssertEq(t, actual, descriptor.WithRootDir)
 
 						t.Log("sets CNB_PLATFORM_DIR")
@@ -406,8 +406,8 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
-						t.Log("sets CNB_BUILDPACK_DIR")
-						actual = rdappfile("detect-env-cnb-buildpack-dir-A-v1")
+						t.Log("sets CNB_EXTENSION_DIR")
+						actual = rdappfile("detect-env-cnb-extension-dir-A-v1")
 						h.AssertEq(t, actual, descriptor.WithRootDir)
 
 						t.Log("sets CNB_PLATFORM_DIR")

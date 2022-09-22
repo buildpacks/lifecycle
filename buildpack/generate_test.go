@@ -125,8 +125,8 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					var actual string
-					t.Log("sets CNB_BUILDPACK_DIR")
-					actual = h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1.clear"))
+					t.Log("sets CNB_EXTENSION_DIR")
+					actual = h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-extension-dir-A-v1.clear"))
 					h.AssertEq(t, actual, descriptor.WithRootDir)
 
 					t.Log("sets CNB_PLATFORM_DIR")
@@ -170,8 +170,8 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					var actual string
-					t.Log("sets CNB_BUILDPACK_DIR")
-					actual = h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-buildpack-dir-A-v1"))
+					t.Log("sets CNB_EXTENSION_DIR")
+					actual = h.Rdfile(t, filepath.Join(appDir, "build-env-cnb-extension-dir-A-v1"))
 					h.AssertEq(t, actual, descriptor.WithRootDir)
 
 					t.Log("sets CNB_PLATFORM_DIR")

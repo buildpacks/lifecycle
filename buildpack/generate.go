@@ -15,7 +15,7 @@ const (
 	// EnvOutputDir is the absolute path of the extension output directory (read-write); a different copy is provided for each extension;
 	// contents are copied to the generator's <generated> directory
 	EnvOutputDir = "CNB_OUTPUT_DIR"
-	// Also provided during generate: EnvBpPlanPath, EnvBuildpackDir, EnvPlatformDir (see build.go)
+	// Also provided during generate: EnvExtensionDir (see detect.go); EnvBpPlanPath, EnvPlatformDir (see build.go)
 )
 
 type GenerateInputs struct {
@@ -91,7 +91,7 @@ func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs Gener
 	}
 	cmd.Env = append(cmd.Env,
 		EnvBpPlanPath+"="+planPath,
-		EnvBuildpackDir+"="+d.WithRootDir,
+		EnvExtensionDir+"="+d.WithRootDir,
 		EnvOutputDir+"="+extOutputDir,
 		EnvPlatformDir+"="+inputs.PlatformDir,
 	)

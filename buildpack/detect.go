@@ -18,8 +18,10 @@ import (
 const (
 	// EnvBuildPlanPath is the absolute path of the build plan; a different copy is provided for each buildpack
 	EnvBuildPlanPath = "CNB_BUILD_PLAN_PATH"
-	// EnvBuildpackDir is the absolute path of the buildpack root directory (read-only); a different copy is provided for each buildpack
+	// EnvBuildpackDir is the absolute path of the buildpack root directory (read-only)
 	EnvBuildpackDir = "CNB_BUILDPACK_DIR"
+	// EnvExtensionDir is the absolute path of the extension root directory (read-only)
+	EnvExtensionDir = "CNB_EXTENSION_DIR"
 	// EnvPlatformDir is the absolute path of the platform directory (read-only); a single copy is provided for all buildpacks
 	EnvPlatformDir = "CNB_PLATFORM_DIR"
 )
@@ -67,7 +69,7 @@ func detectBp(d BpDescriptor, inputs DetectInputs, logger log.Logger) DetectOutp
 		return DetectOutputs{Code: -1, Err: err}
 	}
 
-	result := runDetect(&d, platformDir, planPath, appDir, inputs.Env)
+	result := runDetect(&d, platformDir, planPath, appDir, inputs.Env, EnvBuildpackDir)
 	if result.Code != 0 {
 		return result
 	}
@@ -118,7 +120,7 @@ func detectExt(d ExtDescriptor, inputs DetectInputs, logger log.Logger) DetectOu
 			return DetectOutputs{Code: -1, Err: err}
 		}
 	} else {
-		result = runDetect(&d, platformDir, planPath, appDir, inputs.Env)
+		result = runDetect(&d, platformDir, planPath, appDir, inputs.Env, EnvExtensionDir)
 		if result.Code != 0 {
 			return result
 		}
@@ -173,7 +175,7 @@ type detectable interface {
 	RootDir() string
 }
 
-func runDetect(d detectable, platformDir, planPath, appDir string, bpEnv BuildEnv) DetectOutputs {
+func runDetect(d detectable, platformDir, planPath, appDir string, bpEnv BuildEnv, envRootDirKey string) DetectOutputs {
 	out := &bytes.Buffer{}
 	cmd := exec.Command(
 		filepath.Join(d.RootDir(), "bin", "detect"),
@@ -193,7 +195,7 @@ func runDetect(d detectable, platformDir, planPath, appDir string, bpEnv BuildEn
 			return DetectOutputs{Code: -1, Err: err}
 		}
 	}
-	cmd.Env = append(cmd.Env, EnvBuildpackDir+"="+d.RootDir())
+	cmd.Env = append(cmd.Env, envRootDirKey+"="+d.RootDir())
 	if api.MustParse(d.API()).AtLeast("0.8") {
 		cmd.Env = append(
 			cmd.Env,
