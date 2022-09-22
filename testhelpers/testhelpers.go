@@ -55,9 +55,9 @@ func AssertSameInstance(t *testing.T, actual, expected interface{}) {
 }
 
 // Assert deep equality (and provide useful difference as a test failure)
-func AssertEq(t *testing.T, actual, expected interface{}) {
+func AssertEq(t *testing.T, actual, expected interface{}, opts ...cmp.Option) {
 	t.Helper()
-	if diff := cmp.Diff(actual, expected); diff != "" {
+	if diff := cmp.Diff(actual, expected, opts...); diff != "" {
 		t.Fatal(diff)
 	}
 }
