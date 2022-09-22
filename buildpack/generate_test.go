@@ -25,7 +25,9 @@ import (
 )
 
 func TestGenerate(t *testing.T) {
-	spec.Run(t, "unit-generate", testGenerate, spec.Report(report.Terminal{}))
+	if !(runtime.GOOS == "windows") {
+		spec.Run(t, "unit-generate", testGenerate, spec.Report(report.Terminal{}))
+	}
 }
 
 func testGenerate(t *testing.T, when spec.G, it spec.S) {
@@ -49,7 +51,6 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		h.SkipIf(t, runtime.GOOS == "windows", "Image extensions and/or Dockerfile generation is not supported on Windows")
 		mockCtrl = gomock.NewController(t)
 		executor = &buildpack.DefaultGenerateExecutor{}
 
