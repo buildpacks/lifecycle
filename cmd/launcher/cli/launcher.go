@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -27,7 +26,7 @@ func RunLaunch() error {
 	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
-	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), &md); err != nil {
+	if err := launch.DecodeLaunchMetadataTOML(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 	if err := verifyBuildpackAPIs(md.Buildpacks); err != nil {
@@ -73,9 +72,11 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}
-	process := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
-	if _, ok := launchMD.FindProcessType(process); ok {
-		return process
+
+	_, process := filepath.Split(os.Args[0])
+	processType := strings.TrimSuffix(process, platform.DefaultExecExt)
+	if _, ok := launchMD.FindProcessType(processType); ok {
+		return processType
 	}
 	return ""
 }

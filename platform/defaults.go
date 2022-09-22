@@ -16,7 +16,7 @@ const (
 	EnvCacheDir            = "CNB_CACHE_DIR"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
 	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
-	EnvExperimentalMode    = "CNB_PLATFORM_EXPERIMENTAL_FEATURES"
+	EnvExperimentalMode    = "CNB_EXPERIMENTAL_MODE"
 	EnvExtensionsDir       = "CNB_EXTENSIONS_DIR"
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGeneratedDir        = "CNB_GENERATED_DIR"
@@ -41,7 +41,7 @@ const (
 	EnvUID                 = "CNB_USER_ID"
 	EnvUseDaemon           = "CNB_USE_DAEMON" // defaults to false
 
-	DefaultExperimentalMode = ModeWarn
+	DefaultExperimentalMode = ModeError
 	DefaultLogLevel         = "info"
 	DefaultPlatformAPI      = "0.3"
 

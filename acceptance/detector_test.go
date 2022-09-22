@@ -345,6 +345,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					"--user", userID,
 					"--volume", orderPath+":/layers/order.toml",
 					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_EXPERIMENTAL_MODE=warn", // required as the default is `error` if unset
 				),
 				h.WithArgs(
 					"-analyzed=/layers/analyzed.toml",

@@ -30,7 +30,7 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("GuardExperimental", func() {
-		when("CNB_PLATFORM_EXPERIMENTAL_FEATURES=warn", func() {
+		when("CNB_EXPERIMENTAL_MODE=warn", func() {
 			it("warns", func() {
 				platform.ExperimentalMode = platform.ModeWarn
 				err := platform.GuardExperimental("some-feature", logger)
@@ -41,7 +41,7 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("CNB_PLATFORM_EXPERIMENTAL_FEATURES=quiet", func() {
+		when("CNB_EXPERIMENTAL_MODE=quiet", func() {
 			it("succeeds silently", func() {
 				platform.ExperimentalMode = platform.ModeQuiet
 				err := platform.GuardExperimental("some-feature", logger)
@@ -50,16 +50,15 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("CNB_PLATFORM_EXPERIMENTAL_FEATURES=error", func() {
+		when("CNB_EXPERIMENTAL_MODE=error", func() {
 			it("error with exit code 11", func() {
 				platform.ExperimentalMode = platform.ModeError
 				err := platform.GuardExperimental("some-feature", logger)
 				h.AssertNotNil(t, err)
-				h.AssertEq(t, len(logHandler.Entries), 2)
+				h.AssertEq(t, err.Error(), "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error")
+				h.AssertEq(t, len(logHandler.Entries), 1)
 				h.AssertEq(t, logHandler.Entries[0].Level, log.ErrorLevel)
 				h.AssertEq(t, logHandler.Entries[0].Message, "Platform requested experimental feature 'some-feature'")
-				h.AssertEq(t, logHandler.Entries[1].Level, log.ErrorLevel)
-				h.AssertEq(t, logHandler.Entries[1].Message, "Experimental features are disabled by CNB_PLATFORM_EXPERIMENTAL_FEATURES=error")
 			})
 		})
 	})
