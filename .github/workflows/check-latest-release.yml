@@ -1,11 +1,12 @@
 name: Check latest lifecycle release
-"on":
+
+on:
   schedule:
     - cron: 0 2 * * 1,4
-  workflow_dispatch: { }
+  workflow_dispatch: {}
+
 jobs:
-  update:
-    name: Check go version
+  check-release:
     runs-on:
       - ubuntu-latest
     steps:
