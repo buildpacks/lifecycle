@@ -77,7 +77,7 @@ jobs:
         if: failure() && steps.scan-image.outcome == 'failure'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          run: |
+        run: |
             #!/usr/bin/env bash
 
             set -euo pipefail
