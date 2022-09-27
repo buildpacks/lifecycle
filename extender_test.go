@@ -11,6 +11,7 @@ import (
 	"github.com/apex/log/handlers/discard"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -142,12 +143,25 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				Path: filepath.Join(generatedDir, "build", "B", "Dockerfile"),
 				Args: []extend.Arg{{Name: "arg1", Value: "value1"}},
 			}}
-			fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "some-image-ref", expectedDockerfiles, gomock.Any())
+			fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "some-image-ref", gomock.Any(), gomock.Any()).Do(
+				func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
+					h.AssertEq(t, len(dockerfiles), 1)
+					h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
+					h.AssertEq(t, len(dockerfiles[0].Args), 2)
+					h.AssertEq(t, dockerfiles[0].Args[0], expectedDockerfiles[0].Args[0])
+					h.AssertEq(t, dockerfiles[0].Args[1].Name, "build_id")
+					buildID := dockerfiles[0].Args[1].Value
+					_, err := uuid.Parse(buildID)
+					h.AssertNil(t, err)
+
+					return nil
+				},
+			)
 
 			h.AssertNil(t, extender.ExtendBuild("some-image-ref"))
 		})
 
-		when("Dockerfile is provided without config", func() {
+		when("Dockerfile is provided without extend-config.toml", func() {
 			it("applies without error", func() {
 				h.Mkdir(t, filepath.Join(generatedDir, "build", "B"))
 				h.Mkfile(t, "some build.Dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))
@@ -157,14 +171,31 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 					Path: filepath.Join(generatedDir, "build", "B", "Dockerfile"),
 					Args: empty,
 				}}
-				fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "some-image-ref", expectedDockerfiles, gomock.Any())
+				fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "some-image-ref", gomock.Any(), gomock.Any()).Do(
+					func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
+						h.AssertEq(t, len(dockerfiles), 1)
+						h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
+						h.AssertEq(t, len(dockerfiles[0].Args), 1)
+						h.AssertEq(t, dockerfiles[0].Args[0].Name, "build_id")
+
+						return nil
+					},
+				)
 
 				h.AssertNil(t, extender.ExtendBuild("some-image-ref"))
 			})
 		})
 
-		it("provides build_id as a build arg to each Dockerfile", func() {
-			// TODO: test and implement that for each expectedDockerfile, dfile.Args includes extend.Arg{Name: "build_id", Value: "some-uuid"}
+		when("extend-config.toml specifies a build_id", func() {
+			it("errors", func() {
+				h.Mkdir(t, filepath.Join(generatedDir, "build", "B"))
+				h.Mkfile(t, "some build.Dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))
+				h.Mkfile(t, "[[build.args]]\nname=\"build_id\"\nvalue=\"value1\"", filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
+
+				err := extender.ExtendBuild("some-image-ref")
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "image extension provides build arg with key 'build_id' which is not allowed")
+			})
 		})
 
 		when("options", func() {

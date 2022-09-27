@@ -1,18 +1,22 @@
 package lifecycle
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/uuid"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
+
+const buildIDKey = "build_id"
 
 type Extender struct {
 	AppDir            string
@@ -129,11 +133,16 @@ func (e *Extender) buildDockerfileFor(extID string) (*extend.Dockerfile, error) 
 
 	var args []extend.Arg
 	for _, configArg := range config.Build.Args {
+		if configArg.Name == buildIDKey {
+			return nil, errors.New("image extension provides build arg with key 'build_id' which is not allowed")
+		}
 		args = append(args, extend.Arg{
 			Name:  configArg.Name,
 			Value: configArg.Value,
 		})
 	}
+	// prepend build_id to args
+	args = append(args, extend.Arg{Name: buildIDKey, Value: uuid.New().String()})
 
 	return &extend.Dockerfile{
 		Path: dockerfilePath,
