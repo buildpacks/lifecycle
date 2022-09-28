@@ -25,18 +25,31 @@ func TestSelective(t *testing.T) {
 func testSelective(t *testing.T, when spec.G, it spec.S) {
 	when("AppendImage", func() {
 		var (
-			testImage v1.Image
-			tmpDir    string
+			testImage       v1.Image
+			tmpDir          string
+			fileNotFoundMsg string
 		)
 
 		it.Before(func() {
 			testImageName := "busybox"
+			var opts []remote.Option
+			fileNotFoundMsg = "no such file or directory"
 			if runtime.GOOS == "windows" {
 				testImageName = "mcr.microsoft.com/windows/nanoserver:1809"
+				windowsPlatform := v1.Platform{
+					Architecture: "amd64",
+					OS:           "windows",
+					OSVersion:    "10.0.17763.3406",
+				}
+				opts = append(opts, remote.WithPlatform(windowsPlatform))
+				fileNotFoundMsg = "The system cannot find the file specified"
 			}
+
 			ref, authr, err := auth.ReferenceForRepoName(authn.DefaultKeychain, testImageName)
 			h.AssertNil(t, err)
-			testImage, err = remote.Image(ref, remote.WithAuth(authr))
+			opts = append(opts, remote.WithAuth(authr))
+
+			testImage, err = remote.Image(ref, opts...)
 			h.AssertNil(t, err)
 
 			tmpDir, err = ioutil.TempDir("", "")
@@ -88,12 +101,14 @@ func testSelective(t *testing.T, when spec.G, it spec.S) {
 
 			// found layers satisfy v1.Layer interface
 			_, err = foundLayer.DiffID()
-			h.AssertNotNil(t, err)
-			h.AssertStringContains(t, err.Error(), "no such file or directory") // this information could be obtained from the config, but ggcr tries to open the layer when getting this value
+			h.AssertNotNil(t, err) // the diffID could be obtained from the config, but ggcr tries to open the layer when getting this value
+			h.AssertStringContains(t, err.Error(), fileNotFoundMsg)
 			_, err = foundLayer.Compressed()
 			h.AssertNotNil(t, err)
+			h.AssertStringContains(t, err.Error(), fileNotFoundMsg)
 			_, err = foundLayer.Uncompressed()
 			h.AssertNotNil(t, err)
+			h.AssertStringContains(t, err.Error(), fileNotFoundMsg)
 			_, err = foundLayer.Size()
 			h.AssertNil(t, err)
 			_, err = foundLayer.MediaType()
