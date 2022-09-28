@@ -1,11 +1,12 @@
 name: Check latest lifecycle release
-"on":
+
+on:
   schedule:
     - cron: 0 2 * * 1,4
-  workflow_dispatch: { }
+  workflow_dispatch: {}
+
 jobs:
-  update:
-    name: Check go version
+  check-release:
     runs-on:
       - ubuntu-latest
     steps:
@@ -76,7 +77,7 @@ jobs:
         if: failure() && steps.scan-image.outcome == 'failure'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          run: |
+        run: |
             #!/usr/bin/env bash
 
             set -euo pipefail
