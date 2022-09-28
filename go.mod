@@ -2,7 +2,7 @@ module github.com/buildpacks/lifecycle
 
 require (
 	github.com/BurntSushi/toml v1.1.0
-	github.com/GoogleContainerTools/kaniko v1.8.1
+	github.com/GoogleContainerTools/kaniko v1.9.2-0.20220928141902-4d077e2a4084
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20220906183739-a13b39e9d86d
 	github.com/buildpacks/imgutil v0.0.0-20220913203928-6accc39f0cf9
@@ -122,22 +122,12 @@ require (
 
 go 1.18
 
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.10
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.2
 
 // These match the docker/docker's dependencies configured in:
-// https://github.com/moby/moby/blob/v20.10.17/vendor.conf
+// https://github.com/moby/moby/blob/v20.10.18/vendor.conf
 replace (
 	github.com/moby/buildkit => github.com/moby/buildkit v0.8.3
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc92
 	github.com/tonistiigi/fsutil => github.com/tonistiigi/fsutil v0.0.0-20201103201449-0834f99b7b85
 )
-
-// TODO: see if this can be removed
-replace (
-	github.com/moby/sys/mount => github.com/moby/sys/mount v0.1.1
-	github.com/moby/sys/mountinfo => github.com/moby/sys/mountinfo v0.4.0
-	github.com/moby/sys/symlink => github.com/moby/sys/symlink v0.1.0
-)
-
-// TODO: remove
-replace github.com/GoogleContainerTools/kaniko => github.com/natalieparellano/kaniko v0.0.0-20220901172631-ec7c5213ed4d

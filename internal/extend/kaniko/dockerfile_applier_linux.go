@@ -20,7 +20,6 @@ import (
 
 func (a *DockerfileApplier) Apply(workspace string, baseImageRef string, dockerfiles []extend.Dockerfile, options extend.Options) error {
 	// Configure kaniko
-	executor.InitialFSUnpacked = true // the extender is running in the context of the base image to extend, so there is no need to unpack an FS
 	baseImage, err := readOCI(baseImageRef)
 	if err != nil {
 		return fmt.Errorf("getting base image from reference '%s': %w", baseImageRef, err)
