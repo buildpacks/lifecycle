@@ -95,6 +95,7 @@ working-dir = "some-working-directory"
 							WorkingDirectory: "some-working-directory",
 						},
 					}, processCmpOpts...); s != "" {
+						t.Fatalf("Unexpected:\n%s\n", s)
 					}
 				})
 			})
