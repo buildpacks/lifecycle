@@ -26,7 +26,7 @@ type Process struct {
 	WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
 }
 
-// TODO: add comment
+// processSerializer is used to encode a process to toml.
 type processSerializer struct {
 	Type             string   `toml:"type" json:"type"`
 	Command          string   `toml:"command" json:"command"` // command is string
@@ -37,7 +37,7 @@ type processSerializer struct {
 	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
 }
 
-// TODO: create MarshalJSON?
+// MarshalText implements the toml TextMarshaler interface to allow us more control when writing a Process to a toml file.
 func (p Process) MarshalText() ([]byte, error) {
 	serializer := processSerializer{
 		Type:             p.Type,
@@ -56,6 +56,7 @@ func (p Process) MarshalText() ([]byte, error) {
 	return bytes, err
 }
 
+// UnmarshalTOML implements the toml Unmarshaler interface to allow us more control when reading a Process from toml.
 func (p *Process) UnmarshalTOML(data interface{}) error {
 	var tomlString string
 	switch v := data.(type) {
@@ -69,7 +70,6 @@ func (p *Process) UnmarshalTOML(data interface{}) error {
 		return errors.New("could not cast data to string")
 	}
 
-	// TODO: is there a better way to prevent recursion when unmarshalling?
 	// This is the same as launch.Process and exists to allow us to toml.Decode inside of UnmarshalTOML
 	type pProcess struct {
 		Type             string         `toml:"type" json:"type"`
@@ -106,8 +106,6 @@ func (p *Process) UnmarshalTOML(data interface{}) error {
 	}
 
 	*p = Process(newProcess)
-	fmt.Printf("%+v\n", newProcess)
-	fmt.Printf("%+v\n", p)
 	return nil
 }
 
