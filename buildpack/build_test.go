@@ -15,7 +15,6 @@ import (
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -34,11 +33,6 @@ func TestBuild(t *testing.T) {
 	for _, kind := range []string{buildpack.KindBuildpack, buildpack.KindExtension} {
 		spec.Run(t, "unit-build/"+kind, testBuild(kind), spec.Report(report.Terminal{}))
 	}
-}
-
-// RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
-var processCmpOpts = []cmp.Option{
-	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue"),
 }
 
 func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
@@ -775,9 +769,9 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									h.AssertNil(t, err)
 
 									h.AssertEq(t, br.Processes, []launch.Process{
-										{Type: "some-type", Command: []string{"some-cmd"}, BuildpackID: "A", Default: true, Direct: true},
-										{Type: "web", Command: []string{"other-cmd"}, BuildpackID: "A", Default: false, Direct: true},
-									}, processCmpOpts...)
+										{Type: "some-type", Command: "some-cmd", BuildpackID: "A", Default: true, Direct: true},
+										{Type: "web", Command: "other-cmd", BuildpackID: "A", Default: false, Direct: true},
+									})
 								})
 
 								when("there is more than one default=true process", func() {
@@ -838,7 +832,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
 									h.AssertNil(t, err)
 									h.AssertEq(t, len(br.Processes), 1)
-									h.AssertEq(t, br.Processes[0].Command, []string{"some-cmd"})
+									h.AssertEq(t, br.Processes[0].Command, "some-cmd")
 									h.AssertEq(t, br.Processes[0].Args[0], "cmd-arg")
 									h.AssertEq(t, br.Processes[0].Args[1], "first-arg")
 								})
@@ -853,7 +847,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 									br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
 									h.AssertNil(t, err)
 									h.AssertEq(t, len(br.Processes), 1)
-									h.AssertEq(t, br.Processes[0].Command, []string{"some-cmd"})
+									h.AssertEq(t, br.Processes[0].Command, "some-cmd")
 									h.AssertEq(t, br.Processes[0].Direct, true)
 								})
 
@@ -896,7 +890,7 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 										br, err := descriptor.Build(buildpack.Plan{}, config, mockEnv)
 										h.AssertNil(t, err)
 										h.AssertEq(t, len(br.Processes), 1)
-										h.AssertEq(t, br.Processes[0].Command, []string{"some-command"})
+										h.AssertEq(t, br.Processes[0].Command, "some-command")
 									})
 
 									it("sets the working directory", func() {
@@ -1260,9 +1254,9 @@ func testBuild(kind string) func(t *testing.T, when spec.G, it spec.S) {
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, br.Processes, []launch.Process{
-									{Type: "type-with-no-default", Command: []string{"some-cmd"}, BuildpackID: "A", Default: false},
-									{Type: "type-with-default", Command: []string{"other-cmd"}, BuildpackID: "A", Default: false},
-								}, processCmpOpts...)
+									{Type: "type-with-no-default", Command: "some-cmd", BuildpackID: "A", Default: false},
+									{Type: "type-with-default", Command: "other-cmd", BuildpackID: "A", Default: false},
+								})
 								expected := "Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [type-with-default]"
 								assertLogEntry(t, logHandler, expected)
 							})
