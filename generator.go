@@ -1,12 +1,10 @@
 package lifecycle
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
@@ -122,6 +120,11 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debugf("Finished running generate for extension %s", ext)
 	}
 
+	g.Logger.Debug("Validating Dockerfiles")
+	if err := g.validateDockerfiles(dockerfiles); err != nil {
+		return GenerateResult{}, err
+	}
+
 	g.Logger.Debug("Copying Dockerfiles")
 	if err := g.copyDockerfiles(dockerfiles); err != nil {
 		return GenerateResult{}, err
@@ -145,6 +148,22 @@ func (g *Generator) getCommonInputs() buildpack.GenerateInputs {
 		Out:         g.Out,
 		Err:         g.Err,
 	}
+}
+
+func (g *Generator) validateDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
+	for _, dockerfile := range dockerfiles {
+		switch {
+		case dockerfile.Kind == buildpack.DockerfileKindRun:
+			if err := buildpack.VerifyRunDockerfile(dockerfile.Path); err != nil {
+				return err
+			}
+		case dockerfile.Kind == buildpack.DockerfileKindBuild:
+			if err := buildpack.VerifyBuildDockerfile(dockerfile.Path); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
@@ -177,17 +196,14 @@ func (g *Generator) checkNewRunImage() (string, error) {
 		if _, err := os.Stat(runDockerfile); os.IsNotExist(err) {
 			continue
 		}
-		contents, err := ioutil.ReadFile(runDockerfile)
+
+		imageName, err := buildpack.RetrieveFirstFromImageNameFromDockerfile(runDockerfile)
 		if err != nil {
 			return "", err
 		}
-		strContents := string(contents)
-		parts := strings.Split(strContents, " ")
-		if len(parts) != 2 || parts[0] != "FROM" {
-			return "", fmt.Errorf("failed to parse Dockerfile, expected format 'FROM <image>', got: '%s'", strContents)
-		}
-		g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", strings.TrimSpace(parts[1]), extID)
-		return strings.TrimSpace(parts[1]), nil
+
+		g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", imageName, extID)
+		return imageName, nil
 	}
 	return "", nil
 }
