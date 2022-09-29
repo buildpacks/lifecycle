@@ -17,7 +17,7 @@ func TestLaunch(t *testing.T) {
 
 func testLaunch(t *testing.T, when spec.G, it spec.S) {
 	when("Process", func() {
-		when("MarshalTOML", func() {
+		when("MarshalText", func() {
 			it("command is string", func() {
 				process := launch.Process{
 					Type:             "some-type",
@@ -31,14 +31,21 @@ func testLaunch(t *testing.T, when spec.G, it spec.S) {
 
 				bytes, err := process.MarshalText()
 				h.AssertNil(t, err)
-				expected := `type = "some-type"\ncommand = "some-command"\nargs = ["some-arg"]\ndirect = true\ndefault = true\nbuildpack-id = "some-buildpack-id"\nworking-dir = "some-working-directory"\n`
+				expected := `type = "some-type"
+command = "some-command"
+args = ["some-arg"]
+direct = true
+default = true
+buildpack-id = "some-buildpack-id"
+working-dir = "some-working-directory"
+`
 				h.AssertEq(t, string(bytes), expected)
 			})
 		})
 
 		when("UnmarshalTOML", func() {
-			when.Focus("provided command as string", func() {
-				it.Focus("populates a launch process", func() {
+			when("provided command as string", func() {
+				it("populates a launch process", func() {
 					data := `type = "some-type"
 command = "some-command"
 args = ["some-arg"]
@@ -67,7 +74,28 @@ working-dir = "some-working-directory"
 
 			when("provided command as array", func() {
 				it("populates a launch process", func() {
-
+					data := `type = "some-type"
+command = ["some-command", "some-command-arg"]
+args = ["some-arg"]
+direct = true
+default = true
+buildpack-id = "some-buildpack-id"
+working-dir = "some-working-directory"
+`
+					process := launch.Process{}
+					h.AssertNil(t, process.UnmarshalTOML(data))
+					if s := cmp.Diff([]launch.Process{process}, []launch.Process{
+						{
+							Type:             "some-type",
+							Command:          []string{"some-command", "some-command-arg"},
+							Args:             []string{"some-arg"},
+							Direct:           true,
+							Default:          true,
+							BuildpackID:      "some-buildpack-id",
+							WorkingDirectory: "some-working-directory",
+						},
+					}, processCmpOpts...); s != "" {
+					}
 				})
 			})
 		})
