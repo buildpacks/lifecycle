@@ -87,9 +87,10 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	meta.Stack = opts.Stack
 
 	buildMD := &platform.BuildMetadata{}
-	if err := platform.DecodeBuildMetadataTOML(launch.GetMetadataFilePath(opts.LayersDir), e.PlatformAPI, buildMD); err != nil {
+	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(opts.LayersDir), buildMD); err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "read build metadata")
 	}
+	buildMD.PlatformAPI = e.PlatformAPI
 
 	// buildpack-provided layers
 	if err := e.addBuildpackLayers(opts, &meta); err != nil {

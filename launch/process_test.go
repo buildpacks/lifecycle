@@ -3,8 +3,6 @@ package launch_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -17,11 +15,6 @@ func TestProcess(t *testing.T) {
 	spec.Run(t, "Process", testProcess, spec.Report(report.Terminal{}))
 }
 
-// RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
-var processCmpOpts = []cmp.Option{
-	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue"),
-}
-
 func testProcess(t *testing.T, when spec.G, it spec.S) {
 	var (
 		launcher *launch.Launcher
@@ -30,13 +23,13 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 		launcher = &launch.Launcher{Processes: []launch.Process{
 			{
 				Type:        "some-type",
-				Command:     []string{"some-command"},
+				Command:     "some-command",
 				Args:        []string{"some-arg1", "some-arg2"},
 				BuildpackID: "some-buildpack",
 			},
 			{
 				Type:        "other-type",
-				Command:     []string{"other-command"},
+				Command:     "other-command",
 				Args:        []string{"other-arg1", "other-arg2"},
 				BuildpackID: "some-buildpack",
 			},
@@ -56,10 +49,10 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"--", "user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: "user-command",
 								Args:    []string{"user-arg1", "user-arg2"},
 								Direct:  true,
-							}, processCmpOpts...)
+							})
 						})
 					})
 
@@ -68,9 +61,9 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: "user-command",
 								Args:    []string{"user-arg1", "user-arg2"},
-							}, processCmpOpts...)
+							})
 						})
 					})
 
@@ -92,10 +85,10 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						h.AssertEq(t, proc, launch.Process{
 							Type:        "some-type",
-							Command:     []string{"some-command"},
+							Command:     "some-command",
 							Args:        []string{"some-arg1", "some-arg2", "user-arg1", "user-arg1"},
 							BuildpackID: "some-buildpack",
-						}, processCmpOpts...)
+						})
 					})
 				})
 
@@ -132,10 +125,10 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "other-type",
-								Command:     []string{"other-command"},
+								Command:     "other-command",
 								Args:        []string{"other-arg1", "other-arg2"},
 								BuildpackID: "some-buildpack",
-							}, processCmpOpts...)
+							})
 						})
 					})
 
@@ -144,10 +137,10 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"--", "user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: "user-command",
 								Args:    []string{"user-arg1", "user-arg2"},
 								Direct:  true,
-							}, processCmpOpts...)
+							})
 						})
 					})
 
@@ -156,9 +149,9 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: "user-command",
 								Args:    []string{"user-arg1", "user-arg2"},
-							}, processCmpOpts...)
+							})
 						})
 					})
 				})
@@ -174,10 +167,10 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "some-type",
-								Command:     []string{"some-command"},
+								Command:     "some-command",
 								Args:        []string{"some-arg1", "some-arg2"},
 								BuildpackID: "some-buildpack",
-							}, processCmpOpts...)
+							})
 						})
 					})
 
@@ -187,10 +180,10 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "other-type",
-								Command:     []string{"other-command"},
+								Command:     "other-command",
 								Args:        []string{"other-arg1", "other-arg2"},
 								BuildpackID: "some-buildpack",
-							}, processCmpOpts...)
+							})
 						})
 					})
 
@@ -199,10 +192,10 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"--", "user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: "user-command",
 								Args:    []string{"user-arg1", "user-arg2"},
 								Direct:  true,
-							}, processCmpOpts...)
+							})
 						})
 					})
 
@@ -211,9 +204,9 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: "user-command",
 								Args:    []string{"user-arg1", "user-arg2"},
-							}, processCmpOpts...)
+							})
 						})
 					})
 				})

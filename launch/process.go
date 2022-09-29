@@ -70,10 +70,10 @@ func (l *Launcher) userProvidedProcess(cmd []string) (Process, error) {
 		return Process{}, errors.New("when there is no default process a command is required")
 	}
 	if len(cmd) > 1 && cmd[0] == "--" {
-		return Process{Command: []string{cmd[1]}, Args: cmd[2:], Direct: true}, nil
+		return Process{Command: cmd[1], Args: cmd[2:], Direct: true}, nil
 	}
 
-	return Process{Command: []string{cmd[0]}, Args: cmd[1:]}, nil
+	return Process{Command: cmd[0], Args: cmd[1:]}, nil
 }
 
 func getProcessWorkingDirectory(process Process, appDir string) string {
