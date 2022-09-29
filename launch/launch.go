@@ -71,16 +71,7 @@ func (p *Process) UnmarshalTOML(data interface{}) error {
 	}
 
 	// This is the same as launch.Process and exists to allow us to toml.Decode inside of UnmarshalTOML
-	type pProcess struct {
-		Type             string         `toml:"type" json:"type"`
-		Command          []string       `toml:"-" json:"-"` // ignored
-		RawCommandValue  toml.Primitive `toml:"command" json:"command"`
-		Args             []string       `toml:"args" json:"args"`
-		Direct           bool           `toml:"direct" json:"direct"`
-		Default          bool           `toml:"default,omitempty" json:"default,omitempty"`
-		BuildpackID      string         `toml:"buildpack-id" json:"buildpackID"`
-		WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
-	}
+	type pProcess Process
 
 	// unmarshal the common bits
 	newProcess := pProcess{}
