@@ -1,12 +1,13 @@
 package launch
 
 import (
-	"errors"
 	"fmt"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/pkg/errors"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
@@ -35,9 +36,8 @@ type processSerializer struct {
 	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
 }
 
-// TODO: create MarshalJSON
-
-func (p *Process) MarshalTOML() ([]byte, error) {
+// TODO: create MarshalJSON?
+func (p Process) MarshalText() ([]byte, error) {
 	serializer := processSerializer{
 		Type:             p.Type,
 		Command:          p.Command[0],
@@ -56,31 +56,50 @@ func (p *Process) MarshalTOML() ([]byte, error) {
 }
 
 func (p *Process) UnmarshalTOML(data interface{}) error {
-	bytes, ok := data.([]byte)
+	tomlString, ok := data.(string)
 	if !ok {
-		return errors.New("could not cast data to byte array")
+		return errors.New("could not cast data to string")
 	}
 
-	if _, err := toml.Decode(string(bytes), p); err != nil {
+	// TODO: is there a better way to prevent recursion when unmarshalling?
+	// This is the same as launch.Process and exists to allow us to toml.Decode inside of UnmarshalTOML
+	type pProcess struct {
+		Type             string         `toml:"type" json:"type"`
+		Command          []string       `toml:"-" json:"-"` // ignored
+		RawCommandValue  toml.Primitive `toml:"command" json:"command"`
+		Args             []string       `toml:"args" json:"args"`
+		Direct           bool           `toml:"direct" json:"direct"`
+		Default          bool           `toml:"default,omitempty" json:"default,omitempty"`
+		BuildpackID      string         `toml:"buildpack-id" json:"buildpackID"`
+		WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	}
+
+	// unmarshal the common bits
+	newProcess := pProcess{}
+	md, err := toml.Decode(tomlString, &newProcess)
+	if err != nil {
 		return err
 	}
-	fmt.Printf("%+v\n", p)
 
-	//serializer := processSerializer{
-	//	Type:             p.Type,
-	//	Command:          p.Command[0],
-	//	Args:             append(p.Command[1:], p.Args[0:]...),
-	//	Direct:           p.Direct,
-	//	Default:          p.Default,
-	//	BuildpackID:      p.BuildpackID,
-	//	WorkingDirectory: p.WorkingDirectory,
-	//}
-	//bytes, err := encoding.MarshalTOML(&struct {
-	//	*processSerializer
-	//}{
-	//	processSerializer: &serializer,
-	//})
-	//return bytes, err
+	// handle the process.command, which will differ based on APIs
+	var commandWasString bool
+	var commandString string
+	if err := md.PrimitiveDecode(newProcess.RawCommandValue, &commandString); err == nil {
+		commandWasString = true
+		newProcess.Command = []string{commandString}
+	}
+
+	if !commandWasString {
+		var command []string
+		if err := md.PrimitiveDecode(newProcess.RawCommandValue, &command); err != nil {
+			return err
+		}
+		newProcess.Command = command
+	}
+
+	*p = Process(newProcess)
+	fmt.Printf("%+v\n", newProcess)
+	fmt.Printf("%+v\n", p)
 	return nil
 }
 

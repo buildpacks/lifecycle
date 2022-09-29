@@ -118,7 +118,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("correct and full group.toml and plan.toml", func() {
-		it.Focus("succeeds", func() {
+		it("succeeds", func() {
 			h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,

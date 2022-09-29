@@ -3,6 +3,7 @@ package launch_test
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -27,22 +28,16 @@ func testLaunch(t *testing.T, when spec.G, it spec.S) {
 					BuildpackID:      "some-buildpack-id",
 					WorkingDirectory: "some-working-directory",
 				}
-				bytes, err := process.MarshalTOML()
+
+				bytes, err := process.MarshalText()
 				h.AssertNil(t, err)
-				expected := `type = "some-type"
-command = "some-command"
-args = ["some-arg"]
-direct = true
-default = true
-buildpack-id = "some-buildpack-id"
-working-dir = "some-working-directory"
-`
+				expected := `type = "some-type"\ncommand = "some-command"\nargs = ["some-arg"]\ndirect = true\ndefault = true\nbuildpack-id = "some-buildpack-id"\nworking-dir = "some-working-directory"\n`
 				h.AssertEq(t, string(bytes), expected)
 			})
 		})
 
 		when("UnmarshalTOML", func() {
-			when("provided command as string", func() {
+			when.Focus("provided command as string", func() {
 				it.Focus("populates a launch process", func() {
 					data := `type = "some-type"
 command = "some-command"
@@ -52,17 +47,21 @@ default = true
 buildpack-id = "some-buildpack-id"
 working-dir = "some-working-directory"
 `
-					process := &launch.Process{}
-					h.AssertNil(t, process.UnmarshalTOML([]byte(data)))
-					h.AssertEq(t, process, launch.Process{
-						Type:             "some-type",
-						Command:          []string{"some-command"},
-						Args:             []string{"some-arg"},
-						Direct:           true,
-						Default:          true,
-						BuildpackID:      "some-buildpack-id",
-						WorkingDirectory: "some-working-directory",
-					})
+					process := launch.Process{}
+					h.AssertNil(t, process.UnmarshalTOML(data))
+					if s := cmp.Diff([]launch.Process{process}, []launch.Process{
+						{
+							Type:             "some-type",
+							Command:          []string{"some-command"},
+							Args:             []string{"some-arg"},
+							Direct:           true,
+							Default:          true,
+							BuildpackID:      "some-buildpack-id",
+							WorkingDirectory: "some-working-directory",
+						},
+					}, processCmpOpts...); s != "" {
+						t.Fatalf("Unexpected:\n%s\n", s)
+					}
 				})
 			})
 
