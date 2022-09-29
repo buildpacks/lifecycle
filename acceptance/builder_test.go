@@ -118,7 +118,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("correct and full group.toml and plan.toml", func() {
-		it("succeeds", func() {
+		it.Focus("succeeds", func() {
 			h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
@@ -136,6 +136,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+			h.AssertStringContains(t, md.Processes[0].Type, "hello")
 		})
 	})
 
@@ -445,6 +446,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 }
 
 func getBuilderMetadata(t *testing.T, path string) *platform.BuildMetadata {
+	t.Helper()
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 

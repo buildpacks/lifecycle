@@ -4,7 +4,6 @@ package platform
 
 import (
 	"encoding/json"
-
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -141,6 +140,7 @@ func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
 			Processes:               processes,
 		})
 	}
+
 	type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
 	return json.Marshal(&struct {
 		*BuildMetadataSerializer

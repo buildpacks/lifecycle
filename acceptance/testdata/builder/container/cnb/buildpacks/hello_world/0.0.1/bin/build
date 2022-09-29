@@ -24,4 +24,12 @@ echo "plan contents:"
 cat ${plan_path}
 echo
 
+# Set default start command
+cat > "${layers_dir}/launch.toml" << EOL
+[[processes]]
+type = "hello"
+command = "echo world"
+default = true
+EOL
+
 echo "---> Done"

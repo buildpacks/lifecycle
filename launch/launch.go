@@ -1,7 +1,9 @@
 package launch
 
 import (
+	"errors"
 	"fmt"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"path"
 	"path/filepath"
 	"strings"
@@ -20,6 +22,66 @@ type Process struct {
 	Default          bool           `toml:"default,omitempty" json:"default,omitempty"`
 	BuildpackID      string         `toml:"buildpack-id" json:"buildpackID"`
 	WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+}
+
+// TODO: add comment
+type processSerializer struct {
+	Type             string   `toml:"type" json:"type"`
+	Command          string   `toml:"command" json:"command"` // command is string
+	Args             []string `toml:"args" json:"args"`
+	Direct           bool     `toml:"direct" json:"direct"`
+	Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
+	BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
+	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+}
+
+// TODO: create MarshalJSON
+
+func (p *Process) MarshalTOML() ([]byte, error) {
+	serializer := processSerializer{
+		Type:             p.Type,
+		Command:          p.Command[0],
+		Args:             append(p.Command[1:], p.Args[0:]...),
+		Direct:           p.Direct,
+		Default:          p.Default,
+		BuildpackID:      p.BuildpackID,
+		WorkingDirectory: p.WorkingDirectory,
+	}
+	bytes, err := encoding.MarshalTOML(&struct {
+		*processSerializer
+	}{
+		processSerializer: &serializer,
+	})
+	return bytes, err
+}
+
+func (p *Process) UnmarshalTOML(data interface{}) error {
+	bytes, ok := data.([]byte)
+	if !ok {
+		return errors.New("could not cast data to byte array")
+	}
+
+	if _, err := toml.Decode(string(bytes), p); err != nil {
+		return err
+	}
+	fmt.Printf("%+v\n", p)
+
+	//serializer := processSerializer{
+	//	Type:             p.Type,
+	//	Command:          p.Command[0],
+	//	Args:             append(p.Command[1:], p.Args[0:]...),
+	//	Direct:           p.Direct,
+	//	Default:          p.Default,
+	//	BuildpackID:      p.BuildpackID,
+	//	WorkingDirectory: p.WorkingDirectory,
+	//}
+	//bytes, err := encoding.MarshalTOML(&struct {
+	//	*processSerializer
+	//}{
+	//	processSerializer: &serializer,
+	//})
+	//return bytes, err
+	return nil
 }
 
 func (p Process) NoDefault() Process {
