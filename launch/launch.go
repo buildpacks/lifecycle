@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/internal/encoding"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
@@ -56,8 +57,15 @@ func (p Process) MarshalText() ([]byte, error) {
 }
 
 func (p *Process) UnmarshalTOML(data interface{}) error {
-	tomlString, ok := data.(string)
-	if !ok {
+	var tomlString string
+	switch v := data.(type) {
+	case string:
+		tomlString = v
+	case map[string]interface{}:
+		// turn back into a string
+		bytes, _ := encoding.MarshalTOML(v)
+		tomlString = string(bytes)
+	default:
 		return errors.New("could not cast data to string")
 	}
 
@@ -121,34 +129,9 @@ type Metadata struct {
 // DecodeLaunchMetadataTOML reads a launch.toml file
 func DecodeLaunchMetadataTOML(path string, launchmd *Metadata) error {
 	// decode the common bits
-	md, err := toml.DecodeFile(path, &launchmd)
+	_, err := toml.DecodeFile(path, &launchmd)
 	if err != nil {
 		return err
-	}
-
-	if err = DecodeProcesses(launchmd.Processes, md); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func DecodeProcesses(processes []Process, md toml.MetaData) error {
-	// decode the process.commands, which will differ based on APIs
-	// processes are defined differently depending on API version
-	// and will be decoded into different values
-	for i, process := range processes {
-		var commandString string
-		if err := md.PrimitiveDecode(process.RawCommandValue, &commandString); err == nil {
-			processes[i].Command = []string{commandString}
-			continue
-		}
-
-		var command []string
-		if err := md.PrimitiveDecode(process.RawCommandValue, &command); err != nil {
-			return err
-		}
-		processes[i].Command = command
 	}
 
 	return nil

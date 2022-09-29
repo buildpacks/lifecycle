@@ -4,6 +4,7 @@ package platform
 
 import (
 	"encoding/json"
+
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -88,12 +89,8 @@ type BuildMetadata struct {
 // DecodeBuildMetadataTOML reads a metadata.toml file
 func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *BuildMetadata) error {
 	// decode the common bits
-	md, err := toml.DecodeFile(path, &buildmd)
+	_, err := toml.DecodeFile(path, &buildmd)
 	if err != nil {
-		return err
-	}
-
-	if err = launch.DecodeProcesses(buildmd.Processes, md); err != nil {
 		return err
 	}
 
