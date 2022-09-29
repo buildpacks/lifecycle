@@ -74,6 +74,14 @@ func DecodeLaunchTOML(launchPath string, bpAPI string, launchTOML *LaunchTOML) e
 
 // ToLaunchProcess converts a buildpack.ProcessEntry to a launch.Process
 func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
+	// turn the command collection into a single command + args
+	// for the current platform API
+	// note: this will change once the platform API takes a collection of commands
+	var command string
+	if len(p.Command) > 0 {
+		command = p.Command[0]
+	}
+
 	var args []string
 	if len(p.Command) > 1 {
 		args = p.Command[1:]
@@ -90,7 +98,7 @@ func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
 
 	return launch.Process{
 		Type:             p.Type,
-		Command:          []string{p.Command[0]},
+		Command:          command,
 		Args:             append(args, p.Args...),
 		Direct:           direct, // launch.Process requires a value
 		Default:          p.Default,
