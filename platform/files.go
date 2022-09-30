@@ -100,53 +100,22 @@ func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *Bui
 }
 
 func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
-	type BuildMetadataProcessSerializer struct {
-		Type             string   `toml:"type" json:"type"`
-		Command          string   `toml:"command" json:"command"`
-		Args             []string `toml:"args" json:"args"`
-		Direct           bool     `toml:"direct" json:"direct"`
-		Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
-		BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
-		WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
-	}
-	var processes []BuildMetadataProcessSerializer
-
-	if md.Processes != nil {
-		processes = []BuildMetadataProcessSerializer{}
-
-		for _, process := range md.Processes {
-			processes = append(processes, BuildMetadataProcessSerializer{
-				Type:             process.Type,
-				Command:          process.Command[0],
-				Args:             append(process.Command[1:], process.Args[0:]...),
-				Direct:           process.Direct,
-				Default:          process.Default,
-				BuildpackID:      process.BuildpackID,
-				WorkingDirectory: process.WorkingDirectory,
-			})
-		}
-	}
-
 	if md.PlatformAPI == nil || md.PlatformAPI.LessThan("0.9") {
 		type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
 		return json.Marshal(&struct {
 			*BuildMetadataSerializer
-			Processes []BuildMetadataProcessSerializer `toml:"processes" json:"processes"`
 		}{
 			BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
-			Processes:               processes,
 		})
 	}
 
 	type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
 	return json.Marshal(&struct {
 		*BuildMetadataSerializer
-		Processes []BuildMetadataProcessSerializer `toml:"processes" json:"processes"`
-		BOM       []buildpack.BOMEntry             `json:"bom,omitempty"`
+		BOM []buildpack.BOMEntry `json:"bom,omitempty"`
 	}{
 		BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
 		BOM:                     []buildpack.BOMEntry{},
-		Processes:               processes,
 	})
 }
 

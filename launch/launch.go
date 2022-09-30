@@ -1,6 +1,7 @@
 package launch
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -39,7 +40,7 @@ type processSerializer struct {
 
 // MarshalText implements the toml TextMarshaler interface to allow us more control when writing a Process to a toml file.
 func (p Process) MarshalText() ([]byte, error) {
-	serializer := processSerializer{
+	return encoding.MarshalTOML(processSerializer{
 		Type:             p.Type,
 		Command:          p.Command[0],
 		Args:             append(p.Command[1:], p.Args[0:]...),
@@ -47,13 +48,20 @@ func (p Process) MarshalText() ([]byte, error) {
 		Default:          p.Default,
 		BuildpackID:      p.BuildpackID,
 		WorkingDirectory: p.WorkingDirectory,
-	}
-	bytes, err := encoding.MarshalTOML(&struct {
-		*processSerializer
-	}{
-		processSerializer: &serializer,
 	})
-	return bytes, err
+}
+
+// MarhsalJSON implements the json Marshaler interface to allow us more control when writing a Process to a json file.
+func (p Process) MarshalJSON() ([]byte, error) {
+	return json.Marshal(processSerializer{
+		Type:             p.Type,
+		Command:          p.Command[0],
+		Args:             append(p.Command[1:], p.Args[0:]...),
+		Direct:           p.Direct,
+		Default:          p.Default,
+		BuildpackID:      p.BuildpackID,
+		WorkingDirectory: p.WorkingDirectory,
+	})
 }
 
 // UnmarshalTOML implements the toml Unmarshaler interface to allow us more control when reading a Process from toml.
