@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -21,7 +22,7 @@ func TestDecodeMetadataTOML(t *testing.T) {
 }
 
 func testDecodeMetataTOML(t *testing.T, when spec.G, it spec.S) {
-	when("DecodeLaunchMetadataTOML", func() {
+	when("decoding metadata.toml", func() {
 		var (
 			tmpDir string
 		)
@@ -52,7 +53,8 @@ func testDecodeMetataTOML(t *testing.T, when spec.G, it spec.S) {
 
 			metadata := launch.Metadata{}
 
-			h.AssertNil(t, launch.DecodeLaunchMetadataTOML(path, &metadata))
+			_, err := toml.DecodeFile(path, &metadata)
+			h.AssertNil(t, err)
 			h.AssertEq(t, metadata.Processes[0].Command[0], "some-cmd")
 			h.AssertEq(t, metadata.Processes[0].Command[1], "more")
 
@@ -77,7 +79,8 @@ func testDecodeMetataTOML(t *testing.T, when spec.G, it spec.S) {
 
 				metadata := launch.Metadata{}
 
-				h.AssertNil(t, launch.DecodeLaunchMetadataTOML(path, &metadata))
+				_, err := toml.DecodeFile(path, &metadata)
+				h.AssertNil(t, err)
 				h.AssertEq(t, metadata.Processes[0].Command[0], "some-cmd")
 				h.AssertEq(t, metadata.Processes[1].Command[0], "other cmd with spaces")
 			})

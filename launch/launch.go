@@ -123,17 +123,6 @@ type Metadata struct {
 	Buildpacks []Buildpack `toml:"buildpacks" json:"buildpacks"`
 }
 
-// DecodeLaunchMetadataTOML reads a launch.toml file
-func DecodeLaunchMetadataTOML(path string, launchmd *Metadata) error {
-	// decode the common bits
-	_, err := toml.DecodeFile(path, &launchmd)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Matches is used by goMock to compare two Metadata objects in tests
 // when matching expected calls to methods containing Metadata objects
 func (m Metadata) Matches(x interface{}) bool {
