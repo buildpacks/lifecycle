@@ -11,7 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
-	
+
 	"github.com/buildpacks/lifecycle/internal/encoding"
 )
 
