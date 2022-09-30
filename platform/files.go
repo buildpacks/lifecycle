@@ -101,14 +101,8 @@ func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *Bui
 
 func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
 	if md.PlatformAPI == nil || md.PlatformAPI.LessThan("0.9") {
-		type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
-		return json.Marshal(&struct {
-			*BuildMetadataSerializer
-		}{
-			BuildMetadataSerializer: (*BuildMetadataSerializer)(md),
-		})
+		return json.Marshal(*md)
 	}
-
 	type BuildMetadataSerializer BuildMetadata // prevent infinite recursion when serializing
 	return json.Marshal(&struct {
 		*BuildMetadataSerializer
