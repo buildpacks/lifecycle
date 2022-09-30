@@ -71,6 +71,7 @@ func (p *Process) UnmarshalTOML(data interface{}) error {
 	case string:
 		tomlString = v
 	case map[string]interface{}:
+		// when unmarshaling as part of a parent struct, the process is a map[string]interface{}
 		// turn back into a string
 		bytes, _ := encoding.MarshalTOML(v)
 		tomlString = string(bytes)
