@@ -102,6 +102,19 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							BuildpackID: "some-buildpack",
 						}, processCmpOpts...)
 					})
+
+					when("cmd is empty", func() {
+						it("provides command args and default args", func() {
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc, launch.Process{
+								Type:        "type-with-default-args",
+								Command:     []string{"some-command"},
+								Args:        []string{"some-arg1", "some-arg2"},
+								BuildpackID: "some-buildpack",
+							}, processCmpOpts...)
+						})
+					})
 				})
 
 				when("process does not have default arguments", func() {

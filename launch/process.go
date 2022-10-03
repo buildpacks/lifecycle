@@ -32,11 +32,18 @@ func (l *Launcher) ProcessFor(cmd []string) (Process, error) {
 	if !ok {
 		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
 	}
-	if len(process.Command) > 1 {
-		process.Args = process.Command[1:]
-		process.Args = append(process.Args, cmd...)
+
+	switch {
+	case len(process.Command) > 1 && len(cmd) > 0: // process has overridable args and there are user-provided args
+		process.Args = process.Command[1:]          // always-provided args
+		process.Args = append(process.Args, cmd...) // overridable args are omitted
 		process.Command = []string{process.Command[0]}
-	} else {
+	case len(process.Command) > 1: // process has overridable args but there are no user-provided args
+		overridableArgs := process.Args
+		process.Args = process.Command[1:] // always-provided args
+		process.Args = append(process.Args, overridableArgs...)
+		process.Command = []string{process.Command[0]}
+	default: // process does not have overridable args
 		process.Args = append(process.Args, cmd...)
 	}
 
