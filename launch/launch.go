@@ -12,9 +12,12 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 )
 
+// Process represents a process to launch at runtime.
+// NOTE: This struct MUST be kept in sync with `processSerializer` and `processSerializerPlatformLessThan010`.
 type Process struct {
 	Type             string         `toml:"type" json:"type"`
 	Command          []string       `toml:"-" json:"-"` // ignored
@@ -24,10 +27,24 @@ type Process struct {
 	Default          bool           `toml:"default,omitempty" json:"default,omitempty"`
 	BuildpackID      string         `toml:"buildpack-id" json:"buildpackID"`
 	WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	PlatformAPI      *api.Version   `toml:"-" json:"-"`
 }
 
 // processSerializer is used to encode a process to toml.
+// NOTE: This struct MUST be kept in sync with `Process` and `processSerializerPlatformLessThan010`.
 type processSerializer struct {
+	Type             string   `toml:"type" json:"type"`
+	Command          []string `toml:"command" json:"command"` // command is array
+	Args             []string `toml:"args" json:"args"`
+	Direct           bool     `toml:"direct" json:"direct"`
+	Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
+	BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
+	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+}
+
+// processSerializerPlatformLessThan010 is used to encode a process to toml for older platform APIs.
+// NOTE: This struct MUST be kept in sync with `Process` and `processSerializer`.
+type processSerializerPlatformLessThan010 struct {
 	Type             string   `toml:"type" json:"type"`
 	Command          string   `toml:"command" json:"command"` // command is string
 	Args             []string `toml:"args" json:"args"`
@@ -39,28 +56,18 @@ type processSerializer struct {
 
 // MarshalText implements the toml TextMarshaler interface to allow us more control when writing a Process to a toml file.
 func (p Process) MarshalText() ([]byte, error) {
-	return encoding.MarshalTOML(processSerializer{
-		Type:             p.Type,
-		Command:          p.Command[0],
-		Args:             append(p.Command[1:], p.Args[0:]...),
-		Direct:           p.Direct,
-		Default:          p.Default,
-		BuildpackID:      p.BuildpackID,
-		WorkingDirectory: p.WorkingDirectory,
-	})
+	if p.PlatformAPI.AtLeast("0.10") {
+		return encoding.MarshalTOML(p.toProcessSerializer())
+	}
+	return encoding.MarshalTOML(p.toProcessSerializerPlatformLessThan010())
 }
 
 // MarhsalJSON implements the json Marshaler interface to allow us more control when writing a Process to a json file.
 func (p Process) MarshalJSON() ([]byte, error) {
-	return json.Marshal(processSerializer{
-		Type:             p.Type,
-		Command:          p.Command[0],
-		Args:             append(p.Command[1:], p.Args[0:]...),
-		Direct:           p.Direct,
-		Default:          p.Default,
-		BuildpackID:      p.BuildpackID,
-		WorkingDirectory: p.WorkingDirectory,
-	})
+	if p.PlatformAPI.AtLeast("0.10") {
+		return json.Marshal(p.toProcessSerializer())
+	}
+	return json.Marshal(p.toProcessSerializerPlatformLessThan010())
 }
 
 // UnmarshalTOML implements the toml Unmarshaler interface to allow us more control when reading a Process from toml.
@@ -111,6 +118,35 @@ func (p *Process) UnmarshalTOML(data interface{}) error {
 func (p Process) NoDefault() Process {
 	p.Default = false
 	return p
+}
+
+func (p Process) WithPlatformAPI(platformAPI *api.Version) Process {
+	p.PlatformAPI = platformAPI
+	return p
+}
+
+func (p Process) toProcessSerializer() processSerializer {
+	return processSerializer{
+		Type:             p.Type,
+		Command:          p.Command,
+		Args:             p.Args,
+		Direct:           p.Direct,
+		Default:          p.Default,
+		BuildpackID:      p.BuildpackID,
+		WorkingDirectory: p.WorkingDirectory,
+	}
+}
+
+func (p Process) toProcessSerializerPlatformLessThan010() processSerializerPlatformLessThan010 {
+	return processSerializerPlatformLessThan010{
+		Type:             p.Type,
+		Command:          p.Command[0],
+		Args:             append(p.Command[1:], p.Args[0:]...),
+		Direct:           p.Direct,
+		Default:          p.Default,
+		BuildpackID:      p.BuildpackID,
+		WorkingDirectory: p.WorkingDirectory,
+	}
 }
 
 // ProcessPath returns the absolute path to the symlink for a given process type

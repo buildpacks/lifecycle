@@ -95,6 +95,9 @@ func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *Bui
 	}
 
 	buildmd.PlatformAPI = platformAPI
+	for i := range buildmd.Processes {
+		buildmd.Processes[i].PlatformAPI = platformAPI
+	}
 
 	return nil
 }

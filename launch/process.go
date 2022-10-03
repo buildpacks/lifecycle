@@ -32,7 +32,13 @@ func (l *Launcher) ProcessFor(cmd []string) (Process, error) {
 	if !ok {
 		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
 	}
-	process.Args = append(process.Args, cmd...)
+	if len(process.Command) > 1 {
+		process.Args = process.Command[1:]
+		process.Args = append(process.Args, cmd...)
+		process.Command = []string{process.Command[0]}
+	} else {
+		process.Args = append(process.Args, cmd...)
+	}
 
 	return process, nil
 }

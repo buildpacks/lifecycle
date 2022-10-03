@@ -7,6 +7,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -18,28 +19,96 @@ func TestLaunch(t *testing.T) {
 func testLaunch(t *testing.T, when spec.G, it spec.S) {
 	when("Process", func() {
 		when("MarshalText", func() {
-			it("command is string", func() {
+			it("command is array", func() {
 				process := launch.Process{
 					Type:             "some-type",
-					Command:          []string{"some-command"},
-					Args:             []string{"some-arg"},
+					Command:          []string{"some-command", "some-arg1"},
+					Args:             []string{"some-arg2"},
 					Direct:           true,
 					Default:          true,
 					BuildpackID:      "some-buildpack-id",
 					WorkingDirectory: "some-working-directory",
+					PlatformAPI:      api.Platform.Latest(),
 				}
 
 				bytes, err := process.MarshalText()
 				h.AssertNil(t, err)
 				expected := `type = "some-type"
-command = "some-command"
-args = ["some-arg"]
+command = ["some-command", "some-arg1"]
+args = ["some-arg2"]
 direct = true
 default = true
 buildpack-id = "some-buildpack-id"
 working-dir = "some-working-directory"
 `
 				h.AssertEq(t, string(bytes), expected)
+			})
+
+			when("platform API < 0.10", func() {
+				it("command is string", func() {
+					process := launch.Process{
+						Type:             "some-type",
+						Command:          []string{"some-command", "some-arg1"},
+						Args:             []string{"some-arg2"},
+						Direct:           true,
+						Default:          true,
+						BuildpackID:      "some-buildpack-id",
+						WorkingDirectory: "some-working-directory",
+						PlatformAPI:      api.MustParse("0.9"),
+					}
+
+					bytes, err := process.MarshalText()
+					h.AssertNil(t, err)
+					expected := `type = "some-type"
+command = "some-command"
+args = ["some-arg1", "some-arg2"]
+direct = true
+default = true
+buildpack-id = "some-buildpack-id"
+working-dir = "some-working-directory"
+`
+					h.AssertEq(t, string(bytes), expected)
+				})
+			})
+		})
+
+		when("MarshalJSON", func() {
+			it("command is array", func() {
+				process := launch.Process{
+					Type:             "some-type",
+					Command:          []string{"some-command", "some-arg1"},
+					Args:             []string{"some-arg2"},
+					Direct:           true,
+					Default:          true,
+					BuildpackID:      "some-buildpack-id",
+					WorkingDirectory: "some-working-directory",
+					PlatformAPI:      api.Platform.Latest(),
+				}
+
+				bytes, err := process.MarshalJSON()
+				h.AssertNil(t, err)
+				expected := `{"type":"some-type","command":["some-command","some-arg1"],"args":["some-arg2"],"direct":true,"default":true,"buildpackID":"some-buildpack-id","working-dir":"some-working-directory"}`
+				h.AssertEq(t, string(bytes), expected)
+			})
+
+			when("platform API < 0.10", func() {
+				it("command is string", func() {
+					process := launch.Process{
+						Type:             "some-type",
+						Command:          []string{"some-command", "some-arg1"},
+						Args:             []string{"some-arg2"},
+						Direct:           true,
+						Default:          true,
+						BuildpackID:      "some-buildpack-id",
+						WorkingDirectory: "some-working-directory",
+						PlatformAPI:      api.MustParse("0.9"),
+					}
+
+					bytes, err := process.MarshalJSON()
+					h.AssertNil(t, err)
+					expected := `{"type":"some-type","command":"some-command","args":["some-arg1","some-arg2"],"direct":true,"default":true,"buildpackID":"some-buildpack-id","working-dir":"some-working-directory"}`
+					h.AssertEq(t, string(bytes), expected)
+				})
 			})
 		})
 
