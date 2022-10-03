@@ -22,8 +22,8 @@ func testLaunch(t *testing.T, when spec.G, it spec.S) {
 			it("command is array", func() {
 				process := launch.Process{
 					Type:             "some-type",
-					Command:          []string{"some-command", "some-arg1"},
-					Args:             []string{"some-arg2"},
+					Command:          []string{"some-command", "some-command-arg1"},
+					Args:             []string{"some-arg1"},
 					Direct:           true,
 					Default:          true,
 					BuildpackID:      "some-buildpack-id",
@@ -34,8 +34,8 @@ func testLaunch(t *testing.T, when spec.G, it spec.S) {
 				bytes, err := process.MarshalText()
 				h.AssertNil(t, err)
 				expected := `type = "some-type"
-command = ["some-command", "some-arg1"]
-args = ["some-arg2"]
+command = ["some-command", "some-command-arg1"]
+args = ["some-arg1"]
 direct = true
 default = true
 buildpack-id = "some-buildpack-id"
@@ -76,8 +76,8 @@ working-dir = "some-working-directory"
 			it("command is array", func() {
 				process := launch.Process{
 					Type:             "some-type",
-					Command:          []string{"some-command", "some-arg1"},
-					Args:             []string{"some-arg2"},
+					Command:          []string{"some-command", "some-command-arg1"},
+					Args:             []string{"some-arg1"},
 					Direct:           true,
 					Default:          true,
 					BuildpackID:      "some-buildpack-id",
@@ -87,7 +87,7 @@ working-dir = "some-working-directory"
 
 				bytes, err := process.MarshalJSON()
 				h.AssertNil(t, err)
-				expected := `{"type":"some-type","command":["some-command","some-arg1"],"args":["some-arg2"],"direct":true,"default":true,"buildpackID":"some-buildpack-id","working-dir":"some-working-directory"}`
+				expected := `{"type":"some-type","command":["some-command","some-command-arg1"],"args":["some-arg1"],"direct":true,"default":true,"buildpackID":"some-buildpack-id","working-dir":"some-working-directory"}`
 				h.AssertEq(t, string(bytes), expected)
 			})
 
