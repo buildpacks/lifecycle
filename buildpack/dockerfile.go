@@ -1,10 +1,12 @@
 package buildpack
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
-	"os"
-	"strings"
+	"io/ioutil"
+
+	"github.com/moby/buildkit/frontend/dockerfile/instructions"
+	"github.com/moby/buildkit/frontend/dockerfile/parser"
 )
 
 const (
@@ -31,170 +33,89 @@ type ExtendArg struct {
 	Value string `toml:"value"`
 }
 
-type InstructionCallback func(verb string, arg string, lineno int, state map[string]string) (string, error)
-
-func walkDockerInstructions(filename string, handleInstruction InstructionCallback) (string, error) {
-	file, err := os.Open(filename)
+func parseDockerfile(dockerfile string) ([]instructions.Stage, []instructions.ArgCommand, error) {
+	var err error
+	var d []uint8
+	d, err = ioutil.ReadFile(dockerfile)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	var inContinueBlock bool = false
-	var checkLine bool = true
-	var lineNo = 0
-	var state = make(map[string]string)
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineNo++
-
-		//skip comments (docker permits whitespace before #)
-		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix("#", trimmedLine) {
-			continue
-		}
-
-		//does this line start a continuation block?
-		if !inContinueBlock {
-			checkLine = true
-		} else {
-			checkLine = false
-		}
-		if strings.HasSuffix("\\", line) {
-			inContinueBlock = true
-		} else {
-			inContinueBlock = false
-		}
-
-		//if were not in a continuance, then verify the verb at the start of the line
-		if checkLine {
-			split := strings.Split(trimmedLine, " ")
-			verbFromLine := split[0]
-			firstArg := split[1]
-			result, err := handleInstruction(verbFromLine, firstArg, lineNo, state)
-			if err != nil {
-				return "", err
-			} else {
-				if result != "" {
-					return result, nil
-				}
-			}
-		}
+	p, err := parser.Parse(bytes.NewReader(d))
+	if err != nil {
+		return nil, nil, err
 	}
-
-	//if the scanner broke (file too large?) report that & fail.
-	if err := scanner.Err(); err != nil {
-		return "", err
+	stages, metaArgs, err := instructions.Parse(p.AST)
+	if err != nil {
+		return nil, nil, err
 	}
-
-	return "", nil
-}
-
-func verifyRunVerbs(verb string, arg string, lineno int, state map[string]string) (string, error) {
-	var allowed = []string{"FROM"}
-	var found bool = false
-	for _, validVerb := range allowed {
-		if validVerb == verb {
-			found = true
-			if verb == "FROM" {
-				if state["FROM"] == "found" {
-					return "", fmt.Errorf("failed to validate Dockerfile, only one FROM instruction is permitted")
-				} else {
-					state["FROM"] = "found"
-				}
-			}
-			break
-		}
-	}
-	if !found {
-		return "", fmt.Errorf("failed to validate Dockerfile, instruction '%s' on line '%d' is not permitted", verb, lineno)
-	} else {
-		return "", nil
-	}
-}
-
-func verifyBuildVerbs(verb string, arg string, lineno int, state map[string]string) (string, error) {
-	var allowed = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
-	var found bool = false
-	for _, validVerb := range allowed {
-		if validVerb == verb {
-			found = true
-			if verb == "FROM" {
-				if state["FROM"] == "found" {
-					return "", fmt.Errorf("failed to validate Dockerfile, only one FROM instruction is permitted")
-				} else {
-					state["FROM"] = "found"
-				}
-			}
-			break
-		}
-	}
-	if !found {
-		return "", fmt.Errorf("failed to validate Dockerfile, instruction '%s' on line '%d' is not permitted", verb, lineno)
-	} else {
-		return "", nil
-	}
-}
-
-func retrieveFirstFromArg(verb string, arg string, lineno int, state map[string]string) (string, error) {
-	if verb == "FROM" {
-		return arg, nil
-	} else {
-		return "", nil
-	}
-}
-
-func verifyBuildDockerFilePreamble(verb string, arg string, lineno int, state map[string]string) (string, error) {
-	//expect first instruction to be 'ARG'
-	if state["foundArg"] == "" {
-		if verb != "ARG" {
-			return "", fmt.Errorf("build Dockerfile MUST start with ARG instruction, instead found '%s' on line '%d'", verb, lineno)
-		} else {
-			state["foundArg"] = "true"
-			if arg != "base_image" {
-				return "", fmt.Errorf("build Dockerfile MUST start with ARG base_image, instead found '%s %s' on line '%d", verb, arg, lineno)
-			}
-		}
-	} else {
-		//expect second instruction to be 'FROM'
-		if verb != "FROM" {
-			return "", fmt.Errorf("build Dockerfile MUST start with FROM instruction follwing ARG, instead found '%s %s'", verb, arg)
-		} else {
-			if arg != "${base_image}" {
-				return "", fmt.Errorf("build Dockerfile MUST have FROM ${base_image}, instead found '%s %s'", verb, arg)
-			} else {
-				return "DONE", nil
-			}
-		}
-	}
-	return "", nil
+	return stages, metaArgs, nil
 }
 
 func VerifyBuildDockerfile(dockerfile string) error {
-	_, err := walkDockerInstructions(dockerfile, verifyBuildVerbs)
+	stages, margs, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return err
 	}
-	arg, err2 := walkDockerInstructions(dockerfile, verifyBuildDockerFilePreamble)
-	if err2 != nil {
-		return err2
+
+	//validate only 1 FROM
+	if len(stages) > 1 {
+		return fmt.Errorf("build.Dockerfile is not permitted to use multistage build")
 	}
-	if arg != "DONE" {
-		return fmt.Errorf("failed to locate FROM instruction in Dockerfile")
+
+	//validate only permitted Commands
+	var permitted = []string{"from", "add", "arg", "copy", "env", "label", "run", "shell", "user", "workdir"}
+	for _, stage := range stages {
+		for _, command := range stage.Commands {
+			var found bool = false
+			for _, permittedCommand := range permitted {
+				if permittedCommand == command.Name() {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("build.Dockerfile command %s on line %d is not permitted", command.Name(), command.Location()[0].Start.Line)
+			}
+		}
 	}
+
+	//validate build.Dockerfile preamble
+	if len(margs) != 1 {
+		return fmt.Errorf("build.Dockerfile did not start with required ARG command")
+	}
+	if margs[0].Args[0].Key != "base_image" {
+		return fmt.Errorf("build.Dockerfile did not start with required ARG base_image command")
+	}
+	if stages[0].BaseName != "${base_image}" {
+		return fmt.Errorf("build.Dockerfile did not contain required FROM ${base_image} command")
+	}
+
 	return nil
 }
 
 func VerifyRunDockerfile(dockerfile string) error {
-	_, err := walkDockerInstructions(dockerfile, verifyRunVerbs)
-	return err
+	stages, _, err := parseDockerfile(dockerfile)
+	if err != nil {
+		return err
+	}
+
+	//validate only 1 FROM
+	if len(stages) > 1 {
+		return fmt.Errorf("run.Dockerfile is not permitted to use multistage build")
+	}
+
+	//validate no instructions in stage
+	if len(stages[0].Commands) != 0 {
+		return fmt.Errorf("run.Dockerfile is not permitted to have instructions other than FROM")
+	}
+
+	return nil
 }
 
 func RetrieveFirstFromImageNameFromDockerfile(dockerfile string) (string, error) {
-	arg, err := walkDockerInstructions(dockerfile, retrieveFirstFromArg)
-	if arg == "" {
-		return "", fmt.Errorf("failed to locate FROM instruction in Dockerfile")
-	} else {
-		return arg, err
+	ins, _, err := parseDockerfile(dockerfile)
+	if err != nil {
+		return "", err
 	}
+	return ins[0].BaseName, nil
 }
