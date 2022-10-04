@@ -269,7 +269,11 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			cRootDir := filepath.Join(tmpDir, "some-c-root-dir")
 			h.Mkdir(t, cRootDir)
 			cDockerfilePath := filepath.Join(cRootDir, "build.Dockerfile")
-			h.Mkfile(t, `some-build.Dockerfile-content`, cDockerfilePath)
+			h.Mkfile(t, `
+ARG base_image
+FROM ${base_image}
+RUN echo "hello" > world.txt
+`, cDockerfilePath)
 			h.Mkfile(t, `some-extend-config-content`, filepath.Join(cRootDir, "extend-config.toml"))
 			dirStore.EXPECT().LookupExt("C", "v1").Return(&extC, nil)
 			executor.EXPECT().Generate(extC, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
@@ -288,7 +292,11 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			bContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "ext_B", "Dockerfile"))
 			h.AssertEq(t, string(bContents), `FROM other-run-image`)
 			cContents := h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "Dockerfile"))
-			h.AssertEq(t, string(cContents), `some-build.Dockerfile-content`)
+			h.AssertEq(t, string(cContents), `
+ARG base_image
+FROM ${base_image}
+RUN echo "hello" > world.txt
+`)
 
 			t.Log("copies the extend-config.toml if exists")
 			configContents := h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "extend-config.toml"))
@@ -302,27 +310,63 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("validates build.Dockerfiles", func() {
-			// TODO: validate the following conditions:
-			/*
-				build.Dockerfiles:
-				- MUST begin with:
-				```bash
-				ARG base_image
-				FROM ${base_image}
-				```
-				- MUST NOT contain any other `FROM` instructions
-				- MAY contain `ADD`, `ARG`, `COPY`, `ENV`, `LABEL`, `RUN`, `SHELL`, `USER`, and `WORKDIR` instructions
-				- SHOULD NOT contain any other instructions
-			*/
+			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
+			executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
+					// check inputs
+					h.AssertEq(t, inputs.AppDir, generator.AppDir)
+					h.AssertEq(t, inputs.PlatformDir, generator.PlatformDir)
+
+					// create fixture
+					h.Mkdir(t, filepath.Join(inputs.OutputDir, "A"))
+					dockerfilePath1 := filepath.Join(inputs.OutputDir, "A", "build.Dockerfile")
+					h.Mkfile(t, `some-invalid-content`, dockerfilePath1)
+
+					return buildpack.GenerateOutputs{
+						Dockerfiles: []buildpack.DockerfileInfo{
+							{ExtensionID: "A", Path: dockerfilePath1, Kind: "build"},
+						},
+					}, nil
+				},
+			)
+
+			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
+			dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
+			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).AnyTimes()
+
+			_, err := generator.Generate()
+			h.AssertError(t, err, "error parsing build.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
 		})
 
 		it("validates run.Dockerfiles", func() {
-			// TODO: validate the following conditions:
-			/*
-				run.Dockerfiles:
-				- MAY contain a single `FROM` instruction
-				- MUST NOT contain any other instructions
-			*/
+			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
+			executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
+					// check inputs
+					h.AssertEq(t, inputs.AppDir, generator.AppDir)
+					h.AssertEq(t, inputs.PlatformDir, generator.PlatformDir)
+
+					// create fixture
+					h.Mkdir(t, filepath.Join(inputs.OutputDir, "A"))
+					dockerfilePath1 := filepath.Join(inputs.OutputDir, "A", "run.Dockerfile")
+					h.Mkfile(t, `some-invalid-content`, dockerfilePath1)
+
+					return buildpack.GenerateOutputs{
+						Dockerfiles: []buildpack.DockerfileInfo{
+							{ExtensionID: "A", Path: dockerfilePath1, Kind: "run"},
+						},
+					}, nil
+				},
+			)
+
+			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
+			dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
+			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).AnyTimes()
+
+			_, err := generator.Generate()
+			h.AssertError(t, err, "error parsing run.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
 		})
 
 		when("extension generate failed", func() {

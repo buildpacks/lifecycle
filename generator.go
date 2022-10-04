@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -155,11 +156,11 @@ func (g *Generator) validateDockerfiles(dockerfiles []buildpack.DockerfileInfo) 
 		switch {
 		case dockerfile.Kind == buildpack.DockerfileKindRun:
 			if err := buildpack.VerifyRunDockerfile(dockerfile.Path); err != nil {
-				return err
+				return fmt.Errorf("error parsing run.Dockerfile for extension %s: %w", dockerfile.ExtensionID, err)
 			}
 		case dockerfile.Kind == buildpack.DockerfileKindBuild:
-			if err := buildpack.VerifyBuildDockerfile(dockerfile.Path); err != nil {
-				return err
+			if err := buildpack.VerifyBuildDockerfile(dockerfile.Path, g.Logger); err != nil {
+				return fmt.Errorf("error parsing build.Dockerfile for extension %s: %w", dockerfile.ExtensionID, err)
 			}
 		}
 	}

@@ -4,15 +4,20 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
+
+	"github.com/buildpacks/lifecycle/log"
 )
 
 const (
 	DockerfileKindBuild = "build"
 	DockerfileKindRun   = "run"
 )
+
+var permittedCommandsBuild = []string{"from", "add", "arg", "copy", "env", "label", "run", "shell", "user", "workdir"}
 
 type DockerfileInfo struct {
 	ExtensionID string
@@ -51,40 +56,43 @@ func parseDockerfile(dockerfile string) ([]instructions.Stage, []instructions.Ar
 	return stages, metaArgs, nil
 }
 
-func VerifyBuildDockerfile(dockerfile string) error {
+func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 	stages, margs, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return err
 	}
 
-	//validate only 1 FROM
+	// validate only 1 FROM
 	if len(stages) > 1 {
 		return fmt.Errorf("build.Dockerfile is not permitted to use multistage build")
 	}
 
-	//validate only permitted Commands
-	var permitted = []string{"from", "add", "arg", "copy", "env", "label", "run", "shell", "user", "workdir"}
+	// validate only permitted Commands
 	for _, stage := range stages {
 		for _, command := range stage.Commands {
-			var found bool = false
-			for _, permittedCommand := range permitted {
+			found := false
+			for _, permittedCommand := range permittedCommandsBuild {
 				if permittedCommand == command.Name() {
 					found = true
 					break
 				}
 			}
 			if !found {
-				return fmt.Errorf("build.Dockerfile command %s on line %d is not permitted", command.Name(), command.Location()[0].Start.Line)
+				logger.Warnf("build.Dockerfile command %s on line %d is not recommended", strings.ToUpper(command.Name()), command.Location()[0].Start.Line)
 			}
 		}
 	}
 
-	//validate build.Dockerfile preamble
+	// validate build.Dockerfile preamble
 	if len(margs) != 1 {
 		return fmt.Errorf("build.Dockerfile did not start with required ARG command")
 	}
 	if margs[0].Args[0].Key != "base_image" {
 		return fmt.Errorf("build.Dockerfile did not start with required ARG base_image command")
+	}
+	// sanity check to prevent panic
+	if len(stages) == 0 {
+		return fmt.Errorf("build.Dockerfile should have at least one stage")
 	}
 	if stages[0].BaseName != "${base_image}" {
 		return fmt.Errorf("build.Dockerfile did not contain required FROM ${base_image} command")
@@ -94,17 +102,27 @@ func VerifyBuildDockerfile(dockerfile string) error {
 }
 
 func VerifyRunDockerfile(dockerfile string) error {
-	stages, _, err := parseDockerfile(dockerfile)
+	stages, margs, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return err
 	}
 
-	//validate only 1 FROM
+	// validate only 1 FROM
 	if len(stages) > 1 {
 		return fmt.Errorf("run.Dockerfile is not permitted to use multistage build")
 	}
 
-	//validate no instructions in stage
+	// validate FROM does not expect argument
+	if len(margs) > 0 {
+		return fmt.Errorf("run.Dockerfile should not expect arguments")
+	}
+
+	// sanity check to prevent panic
+	if len(stages) == 0 {
+		return fmt.Errorf("run.Dockerfile should have at least one stage")
+	}
+
+	// validate no instructions in stage
 	if len(stages[0].Commands) != 0 {
 		return fmt.Errorf("run.Dockerfile is not permitted to have instructions other than FROM")
 	}
@@ -116,6 +134,10 @@ func RetrieveFirstFromImageNameFromDockerfile(dockerfile string) (string, error)
 	ins, _, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return "", err
+	}
+	// sanity check to prevent panic
+	if len(ins) == 0 {
+		return "", fmt.Errorf("expected at least one instruction")
 	}
 	return ins[0].BaseName, nil
 }
