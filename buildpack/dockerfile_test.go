@@ -38,7 +38,7 @@ func testDockerfile(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		os.RemoveAll(tmpDir)
 	})
 
 	when("verifying dockerfiles", func() {

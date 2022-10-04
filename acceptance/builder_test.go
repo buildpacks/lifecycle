@@ -136,6 +136,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+			h.AssertEq(t, 1, len(md.Processes))
+			h.AssertEq(t, "hello", md.Processes[0].Type)
+			h.AssertEq(t, "echo world", md.Processes[0].Command[0])
+			h.AssertEq(t, 1, len(md.Processes[0].Args))
+			h.AssertEq(t, "arg1", md.Processes[0].Args[0])
+			h.AssertEq(t, false, md.Processes[0].Direct)
+			h.AssertEq(t, "", md.Processes[0].WorkingDirectory)
+			h.AssertEq(t, false, md.Processes[0].Default)
 		})
 	})
 
@@ -445,6 +453,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 }
 
 func getBuilderMetadata(t *testing.T, path string) *platform.BuildMetadata {
+	t.Helper()
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 

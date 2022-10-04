@@ -5,6 +5,7 @@ package platform
 import (
 	"encoding/json"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -83,6 +84,19 @@ type BuildMetadata struct {
 	Slices                      []layers.Slice           `toml:"slices" json:"-"`
 	BuildpackDefaultProcessType string                   `toml:"buildpack-default-process-type,omitempty" json:"buildpack-default-process-type,omitempty"`
 	PlatformAPI                 *api.Version             `toml:"-" json:"-"`
+}
+
+// DecodeBuildMetadataTOML reads a metadata.toml file
+func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *BuildMetadata) error {
+	// decode the common bits
+	_, err := toml.DecodeFile(path, &buildmd)
+	if err != nil {
+		return err
+	}
+
+	buildmd.PlatformAPI = platformAPI
+
+	return nil
 }
 
 func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
