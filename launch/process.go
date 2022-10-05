@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/api"
 )
 
 // ProcessFor creates a process from container cmd
@@ -34,20 +36,38 @@ func (l *Launcher) ProcessFor(cmd []string) (Process, error) {
 	}
 
 	switch {
-	case len(process.Command) > 1 && len(cmd) > 0: // process has overridable args and there are user-provided args
+	case len(process.Command) > 1 && len(cmd) > 0: // process has always-provided args and there are user-provided args
 		process.Args = process.Command[1:]          // always-provided args
-		process.Args = append(process.Args, cmd...) // overridable args are omitted
+		process.Args = append(process.Args, cmd...) // overridable args are omitted, user-provided args are appended
 		process.Command = []string{process.Command[0]}
-	case len(process.Command) > 1: // process has overridable args but there are no user-provided args
+	case len(process.Command) > 1: // process has always-provided args but there are no user-provided args
 		overridableArgs := process.Args
-		process.Args = process.Command[1:] // always-provided args
-		process.Args = append(process.Args, overridableArgs...)
+		process.Args = process.Command[1:]                      // always-provided args
+		process.Args = append(process.Args, overridableArgs...) // overridable args are appended
 		process.Command = []string{process.Command[0]}
-	default: // process does not have overridable args
-		process.Args = append(process.Args, cmd...)
+	default: // process does not have always-provided args
+		// check buildpack API
+		bp, err := l.buildpackForProcess(process)
+		if err != nil {
+			return Process{}, err
+		}
+		if api.MustParse(bp.API).AtLeast("0.9") {
+			process.Args = cmd // user-provided args replace process args
+		} else {
+			process.Args = append(process.Args, cmd...) // user-provided args are appended to process args
+		}
 	}
 
 	return process, nil
+}
+
+func (l *Launcher) buildpackForProcess(process Process) (Buildpack, error) {
+	for _, bp := range l.Buildpacks {
+		if bp.ID == process.BuildpackID {
+			return bp, nil
+		}
+	}
+	return Buildpack{}, fmt.Errorf("failed to find buildpack for process %s with buildpack ID %s", process.Type, process.BuildpackID)
 }
 
 func (l *Launcher) processForLegacy(cmd []string) (Process, error) {
