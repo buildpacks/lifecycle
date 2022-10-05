@@ -143,6 +143,19 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 								BuildpackID: "some-newer-buildpack",
 							}, processCmpOpts...)
 						})
+
+						when("cmd is empty", func() {
+							it("provides and process args", func() {
+								proc, err := launcher.ProcessFor([]string{})
+								h.AssertNil(t, err)
+								h.AssertEq(t, proc, launch.Process{
+									Type:        "type-with-overridable-args",
+									Command:     []string{"some-command"},
+									Args:        []string{"overridable-arg"},
+									BuildpackID: "some-newer-buildpack",
+								}, processCmpOpts...)
+							})
+						})
 					})
 
 					when("older buildpack with API < 0.9", func() {

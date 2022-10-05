@@ -45,16 +45,19 @@ func (l *Launcher) ProcessFor(cmd []string) (Process, error) {
 		process.Args = process.Command[1:]                      // always-provided args
 		process.Args = append(process.Args, overridableArgs...) // overridable args are appended
 		process.Command = []string{process.Command[0]}
-	default: // process does not have always-provided args
+	case len(cmd) == 0: // process does not have always-provided args and there are no user-provided args
+		// nop, process args are provided
+	default: // process does not have always-provided args and there are user-provided args
 		// check buildpack API
 		bp, err := l.buildpackForProcess(process)
 		if err != nil {
 			return Process{}, err
 		}
-		if api.MustParse(bp.API).AtLeast("0.9") {
-			process.Args = cmd // user-provided args replace process args
-		} else {
+		switch {
+		case api.MustParse(bp.API).LessThan("0.9"):
 			process.Args = append(process.Args, cmd...) // user-provided args are appended to process args
+		default:
+			process.Args = cmd // user-provided args replace process args
 		}
 	}
 
