@@ -52,7 +52,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 					BuildpackID: "some-newer-buildpack",
 				},
 				{
-					Type:        "type-with-overridable-args",
+					Type:        "type-with-overridable-arg",
 					Command:     []string{"some-command"},
 					Args:        []string{"overridable-arg"},
 					BuildpackID: "some-newer-buildpack",
@@ -130,14 +130,14 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 				when("process' 'command' does not have args", func() {
 					when("newer buildpack with API >= 0.9", func() {
 						it.Before(func() {
-							launcher.DefaultProcessType = "type-with-overridable-args"
+							launcher.DefaultProcessType = "type-with-overridable-arg"
 						})
 
 						it("replaces process args with cmd", func() {
 							proc, err := launcher.ProcessFor([]string{"user-arg1", "user-arg1"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Type:        "type-with-overridable-args",
+								Type:        "type-with-overridable-arg",
 								Command:     []string{"some-command"},
 								Args:        []string{"user-arg1", "user-arg1"},
 								BuildpackID: "some-newer-buildpack",
@@ -145,11 +145,11 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						when("cmd is empty", func() {
-							it("provides and process args", func() {
+							it("provides process args", func() {
 								proc, err := launcher.ProcessFor([]string{})
 								h.AssertNil(t, err)
 								h.AssertEq(t, proc, launch.Process{
-									Type:        "type-with-overridable-args",
+									Type:        "type-with-overridable-arg",
 									Command:     []string{"some-command"},
 									Args:        []string{"overridable-arg"},
 									BuildpackID: "some-newer-buildpack",
@@ -229,18 +229,31 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 
 				when("exists", func() {
 					it.Before(func() {
-						launcher.DefaultProcessType = "some-type"
+						launcher.DefaultProcessType = "type-with-overridable-arg"
 					})
 
-					it("appends cmd to the default process args", func() {
+					it("appends cmd to process args", func() {
 						proc, err := launcher.ProcessFor([]string{"user-arg1", "user-arg1"})
 						h.AssertNil(t, err)
 						h.AssertEq(t, proc, launch.Process{
-							Type:        "some-type",
+							Type:        "type-with-overridable-arg",
 							Command:     []string{"some-command"},
-							Args:        []string{"some-arg1", "some-arg2", "user-arg1", "user-arg1"},
-							BuildpackID: "some-buildpack",
+							Args:        []string{"overridable-arg", "user-arg1", "user-arg1"},
+							BuildpackID: "some-newer-buildpack",
 						}, processCmpOpts...)
+					})
+
+					when("cmd is empty", func() {
+						it("provides process args", func() {
+							proc, err := launcher.ProcessFor([]string{})
+							h.AssertNil(t, err)
+							h.AssertEq(t, proc, launch.Process{
+								Type:        "type-with-overridable-arg",
+								Command:     []string{"some-command"},
+								Args:        []string{"overridable-arg"},
+								BuildpackID: "some-newer-buildpack",
+							}, processCmpOpts...)
+						})
 					})
 				})
 

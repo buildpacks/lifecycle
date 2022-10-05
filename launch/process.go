@@ -35,29 +35,40 @@ func (l *Launcher) ProcessFor(cmd []string) (Process, error) {
 		return Process{}, fmt.Errorf("process type %s was not found", l.DefaultProcessType)
 	}
 
+	if l.PlatformAPI.LessThan("0.10") {
+		return l.handleUserArgsPlatformLessThan010(process, cmd)
+	}
+	return l.handleUserArgs(process, cmd)
+}
+
+func (l *Launcher) handleUserArgsPlatformLessThan010(process Process, userArgs []string) (Process, error) {
+	process.Args = append(process.Args, userArgs...)
+	return process, nil
+}
+
+func (l *Launcher) handleUserArgs(process Process, userArgs []string) (Process, error) {
 	switch {
-	case len(process.Command) > 1 && len(cmd) > 0: // process has always-provided args and there are user-provided args
-		process.Args = process.Command[1:]          // always-provided args
-		process.Args = append(process.Args, cmd...) // overridable args are omitted, user-provided args are appended
-		process.Command = []string{process.Command[0]}
-	case len(process.Command) > 1: // process has always-provided args but there are no user-provided args
+	case len(process.Command) > 1: // definitely newer buildpack
 		overridableArgs := process.Args
-		process.Args = process.Command[1:]                      // always-provided args
-		process.Args = append(process.Args, overridableArgs...) // overridable args are appended
-		process.Command = []string{process.Command[0]}
-	case len(cmd) == 0: // process does not have always-provided args and there are no user-provided args
-		// nop, process args are provided
-	default: // process does not have always-provided args and there are user-provided args
-		// check buildpack API
+		process.Args = process.Command[1:]             // set always-provided args
+		process.Command = []string{process.Command[0]} // when exec'ing the process we always expect Command to have just one entry
+		if len(userArgs) > 0 {
+			process.Args = append(process.Args, userArgs...)
+		} else {
+			process.Args = append(process.Args, overridableArgs...)
+		}
+	case len(userArgs) == 0:
+		// nothing to do, we just provide whatever the original process args were
+	default:
+		// we have user-provided args, and we need to check the buildpack API to know how to handle them
 		bp, err := l.buildpackForProcess(process)
 		if err != nil {
 			return Process{}, err
 		}
-		switch {
-		case api.MustParse(bp.API).LessThan("0.9"):
-			process.Args = append(process.Args, cmd...) // user-provided args are appended to process args
-		default:
-			process.Args = cmd // user-provided args replace process args
+		if api.MustParse(bp.API).LessThan("0.9") {
+			process.Args = append(process.Args, userArgs...) // user-provided args are appended to process args
+		} else {
+			process.Args = userArgs // user-provided args replace process args
 		}
 	}
 
