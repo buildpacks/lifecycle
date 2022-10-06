@@ -37,7 +37,7 @@ func TestBuild(t *testing.T) {
 
 // RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
 var processCmpOpts = []cmp.Option{
-	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue"),
+	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue", "PlatformAPI"),
 }
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
@@ -792,7 +792,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertError(t, err, "toml: incompatible types: TOML key \"processes.command\" has type string; destination has type slice")
 						})
 
-						it("returns extra commands as args before defined args", func() {
+						it("preserves command args", func() {
 							h.Mkfile(t,
 								"[[processes]]\n"+
 									`command = ["some-cmd", "cmd-arg"]`+"\n"+
@@ -802,15 +802,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							br, err := executor.Build(descriptor, inputs, logger)
 							h.AssertNil(t, err)
 							h.AssertEq(t, len(br.Processes), 1)
-							h.AssertEq(t, br.Processes[0].Command, []string{"some-cmd"})
-							h.AssertEq(t, br.Processes[0].Args[0], "cmd-arg")
-							h.AssertEq(t, br.Processes[0].Args[1], "first-arg")
+							h.AssertEq(t, br.Processes[0].Command, []string{"some-cmd", "cmd-arg"})
+							h.AssertEq(t, br.Processes[0].Args[0], "first-arg")
 						})
 
 						it("returns direct=true for processes", func() {
 							h.Mkfile(t,
 								"[[processes]]\n"+
-									`command = ["some-cmd", "cmd-arg"]`+"\n"+
+									`command = ["some-cmd"]`+"\n"+
 									`args = ["first-arg"]`,
 								filepath.Join(appDir, "launch-A-v1.toml"),
 							)

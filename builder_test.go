@@ -527,6 +527,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Args:        []string{"bpB-arg"},
 							Direct:      false,
 							BuildpackID: "B",
+							PlatformAPI: builder.Platform.API(),
 						},
 						{
 							Type:        "some-other-type",
@@ -534,6 +535,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Args:        []string{"some-other-arg"},
 							Direct:      true,
 							BuildpackID: "B",
+							PlatformAPI: builder.Platform.API(),
 						},
 						{
 							Type:        "some-type",
@@ -541,6 +543,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Args:        []string{"some-arg"},
 							Direct:      true,
 							BuildpackID: "A",
+							PlatformAPI: builder.Platform.API(),
 						},
 					}, processCmpOpts...); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
@@ -611,6 +614,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Args:        []string{"bpC-arg"},
 								Direct:      false,
 								BuildpackID: "C",
+								PlatformAPI: builder.Platform.API(),
 							},
 							{
 								Type:        "some-type",
@@ -618,6 +622,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Args:        []string{"bpB-arg"},
 								Direct:      false,
 								BuildpackID: "B",
+								PlatformAPI: builder.Platform.API(),
 							},
 						}, processCmpOpts...); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -689,6 +694,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Args:        []string{"bpC-arg"},
 								Direct:      false,
 								BuildpackID: "C",
+								PlatformAPI: builder.Platform.API(),
 							},
 							{
 								Type:        "some-type",
@@ -696,6 +702,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Args:        []string{"bpA-arg"},
 								Direct:      false,
 								BuildpackID: "A",
+								PlatformAPI: builder.Platform.API(),
 							},
 						}, processCmpOpts...); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -743,6 +750,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Direct:      false,
 									BuildpackID: "A",
 									Default:     false,
+									PlatformAPI: builder.Platform.API(),
 								},
 							}, processCmpOpts...); s != "" {
 								t.Fatalf("Unexpected:\n%s\n", s)
@@ -792,6 +800,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Args:        []string{"not-web-arg"},
 									Direct:      true,
 									BuildpackID: "A",
+									PlatformAPI: builder.Platform.API(),
 								},
 								{
 									Type:        "web",
@@ -799,6 +808,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
+									PlatformAPI: builder.Platform.API(),
 								},
 							}, processCmpOpts...); s != "" {
 								t.Fatalf("Unexpected:\n%s\n", s)
@@ -806,6 +816,28 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "web")
 						})
 					})
+				})
+
+				it("includes the platform API version", func() {
+					builder.Group.Group = []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: api.Buildpack.Latest().String()},
+					}
+					bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+					executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).Return(buildpack.BuildOutputs{
+						Processes: []launch.Process{
+							{
+								Type:        "some-type",
+								Command:     []string{"some-cmd"},
+								BuildpackID: "A",
+							},
+						},
+					}, nil)
+
+					metadata, err := builder.Build()
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, metadata.Processes[0].PlatformAPI, builder.Platform.API())
 				})
 			})
 
@@ -962,6 +994,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Direct:      false,
 								BuildpackID: "A",
 								Default:     false,
+								PlatformAPI: builder.Platform.API(),
 							},
 						}, processCmpOpts...); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -1004,6 +1037,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Direct:      false,
 								BuildpackID: "A",
 								Default:     false,
+								PlatformAPI: builder.Platform.API(),
 							},
 						}, processCmpOpts...); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
