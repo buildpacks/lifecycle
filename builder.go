@@ -130,7 +130,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}
 
 	b.Logger.Debug("Listing processes")
-	procList := processMap.list()
+	procList := processMap.list(b.Platform.API())
 
 	b.Logger.Debug("Finished build")
 	return &platform.BuildMetadata{
@@ -277,7 +277,7 @@ func (m *processMap) add(listToAdd []launch.Process) string {
 // list returns a sorted array of processes.
 // The array is sorted based on the process types.
 // The list is sorted for reproducibility.
-func (m processMap) list() []launch.Process {
+func (m processMap) list(platformAPI *api.Version) []launch.Process {
 	var keys []string
 	for proc := range m.typeToProcess {
 		keys = append(keys, proc)
@@ -285,7 +285,7 @@ func (m processMap) list() []launch.Process {
 	sort.Strings(keys)
 	result := []launch.Process{}
 	for _, key := range keys {
-		result = append(result, m.typeToProcess[key].NoDefault()) // we set the default to false so it won't be part of metadata.toml
+		result = append(result, m.typeToProcess[key].NoDefault().WithPlatformAPI(platformAPI)) // we set the default to false so it won't be part of metadata.toml
 	}
 	return result
 }

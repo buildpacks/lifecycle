@@ -49,6 +49,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			RunImageRef:     "run-image-reference",
 			AdditionalNames: []string{},
 		}
+		platformAPI = api.Platform.Latest()
 	)
 
 	it.Before(func() {
@@ -113,6 +114,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						Args:        []string{"some", "command", "args"},
 						Direct:      true,
 						BuildpackID: "buildpack.id",
+						PlatformAPI: platformAPI,
 					}},
 			}).
 			DoAndReturn(func(_ launch.Metadata) (layers.Layer, error) {
@@ -141,7 +143,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			},
 			LayerFactory: layerFactory,
 			Logger:       &log.Logger{Handler: logHandler},
-			PlatformAPI:  api.Platform.Latest(),
+			PlatformAPI:  platformAPI,
 		}
 	})
 
@@ -411,16 +413,17 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
 			})
 
-			when("build metadata", func() {
-				when("platform api >= 0.9", func() {
-					it("bom is omitted in the build label", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
+			when("build metadata label", func() {
+				it("contains the expected information", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
 
-						metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
-						h.AssertNil(t, err)
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+					h.AssertNil(t, err)
 
-						expectedJSON := `{
+					t.Log("bom is omitted")
+					t.Log("command is array")
+					expectedJSON := `{
   "buildpacks": [
     {
       "id": "buildpack.id",
@@ -446,21 +449,18 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
     {
       "type": "some-process-type",
       "direct": true,
-      "command": "/some/command",
+      "command": ["/some/command"],
       "args": ["some", "command", "args"],
       "buildpackID": "buildpack.id"
     }
   ]
 }
 `
-						h.AssertJSONEq(t, expectedJSON, metadataJSON)
-					})
+					h.AssertJSONEq(t, expectedJSON, metadataJSON)
 				})
 
 				when("platform api < 0.9", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.8")
-					})
+					platformAPI = api.MustParse("0.8")
 
 					when("metadata.toml is missing bom and has empty process list", func() {
 						it.Before(func() {
@@ -480,7 +480,7 @@ version = "4.5.6"
 							h.AssertNil(t, err)
 						})
 
-						it("bom is null and processes is an empty array in the build label", func() {
+						it("bom is null and processes is an empty array", func() {
 							_, err := exporter.Export(opts)
 							h.AssertNil(t, err)
 
@@ -516,13 +516,14 @@ version = "4.5.6"
 						})
 					})
 
-					it("combines metadata.toml with launcher config to create the build label", func() {
+					it("contains the expected information", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
 						metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 						h.AssertNil(t, err)
 
+						t.Log("command is string")
 						expectedJSON := `{
   "bom": [
     {
@@ -696,10 +697,10 @@ version = "4.5.6"
 						h.AssertEq(t, val, opts.AppDir)
 					})
 				})
+
 				when("platform API <= 0.5", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.5")
-					})
+					platformAPI = api.MustParse("0.5")
+
 					it("doesn't set WorkingDir", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
@@ -1164,8 +1165,9 @@ version = "4.5.6"
 			})
 
 			when("platform API < 0.6", func() {
+				platformAPI = api.MustParse("0.5")
+
 				it.Before(func() {
-					exporter.PlatformAPI = api.MustParse("0.5")
 					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
 				})
 

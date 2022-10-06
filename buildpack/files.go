@@ -74,11 +74,6 @@ func DecodeLaunchTOML(launchPath string, bpAPI string, launchTOML *LaunchTOML) e
 
 // ToLaunchProcess converts a buildpack.ProcessEntry to a launch.Process
 func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
-	var args []string
-	if len(p.Command) > 1 {
-		args = p.Command[1:]
-	}
-
 	// legacy processes will always have a value
 	// new processes will have a nil value but are always direct processes
 	var direct bool
@@ -90,8 +85,8 @@ func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
 
 	return launch.Process{
 		Type:             p.Type,
-		Command:          []string{p.Command[0]},
-		Args:             append(args, p.Args...),
+		Command:          p.Command,
+		Args:             p.Args,
 		Direct:           direct, // launch.Process requires a value
 		Default:          p.Default,
 		BuildpackID:      bpID,
