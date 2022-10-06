@@ -194,21 +194,19 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 		when("run", func() {
 			when("valid", func() {
 				it("succeeds", func() {
-					it("succeeds", func() {
-						dockerfileContents := []string{
-							`FROM some-run-image`,
+					dockerfileContents := []string{
+						`FROM some-run-image`,
+					}
+					for i, content := range dockerfileContents {
+						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
+						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
+						h.AssertNil(t, ioutil.WriteFile(dockerfilePath, []byte(content), 0600))
+						err := buildpack.VerifyRunDockerfile(dockerfilePath)
+						if err != nil {
+							t.Fatalf("Error verifying Dockerfile %d: %s", i, err)
 						}
-						for i, content := range dockerfileContents {
-							dockerfileName := fmt.Sprintf("Dockerfile%d", i)
-							dockerfilePath := filepath.Join(tmpDir, dockerfileName)
-							h.AssertNil(t, ioutil.WriteFile(dockerfilePath, []byte(content), 0600))
-							err := buildpack.VerifyRunDockerfile(dockerfilePath)
-							if err != nil {
-								t.Fatalf("Error verifying Dockerfile %d: %s", i, err)
-							}
-							h.AssertEq(t, len(logHandler.Entries), 0)
-						}
-					})
+						h.AssertEq(t, len(logHandler.Entries), 0)
+					}
 				})
 			})
 

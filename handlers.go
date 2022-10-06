@@ -62,6 +62,10 @@ func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpac
 func ReadGroup(path string) (buildpack.Group, error) {
 	var group buildpack.Group
 	_, err := toml.DecodeFile(path, &group)
+	for e := range group.GroupExtensions {
+		group.GroupExtensions[e].Extension = true
+		group.GroupExtensions[e].Optional = true
+	}
 	return group, err
 }
 
@@ -85,6 +89,7 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	for g, group := range order.OrderExtensions {
 		for e := range group.Group {
 			group.Group[e].Extension = true
+			group.Group[e].Optional = true
 		}
 		order.OrderExtensions[g] = group
 	}

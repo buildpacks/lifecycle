@@ -424,22 +424,44 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("buildpacks", func() {
-				it("includes the provided buildpacks with homepage information", func() {
+				it.Before(func() {
 					bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
 					executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any())
 					bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
 					dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
 					executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any())
+				})
 
+				it("includes the provided buildpacks with homepage information", func() {
 					metadata, err := builder.Build()
 					h.AssertNil(t, err)
-					if s := cmp.Diff(metadata.Buildpacks, []buildpack.GroupElement{
+					h.AssertEq(t, metadata.Buildpacks, []buildpack.GroupElement{
 						{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "Buildpack A Homepage"},
 						{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
-					}); s != "" {
-						t.Fatalf("Unexpected:\n%s\n", s)
+					})
+				})
+			})
+
+			when("extensions", func() {
+				it.Before(func() {
+					bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+					executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any())
+					bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+					dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
+					executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any())
+				})
+
+				it("includes the provided extensions with homepage information", func() {
+					builder.Group.GroupExtensions = []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: "0.9", Homepage: "some-homepage", Extension: true, Optional: true},
 					}
+					metadata, err := builder.Build()
+					h.AssertNil(t, err)
+					h.AssertEq(t, metadata.Extensions, []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: "0.9", Homepage: "some-homepage"}, // this shows that `extension = true` and `optional = true` are not redundantly printed in metadata.toml
+					})
 				})
 			})
 

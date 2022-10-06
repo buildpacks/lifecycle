@@ -133,6 +133,11 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	b.Logger.Debug("Listing processes")
 	procList := processMap.list(b.Platform.API())
 
+	// Don't redundantly print `extension = true` and `optional = true` in metadata.toml and metadata label
+	for i, ext := range b.Group.GroupExtensions {
+		b.Group.GroupExtensions[i] = ext.NoExtension().NoOpt()
+	}
+
 	b.Logger.Debug("Finished build")
 	return &platform.BuildMetadata{
 		BOM:                         launchBOM,

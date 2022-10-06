@@ -108,7 +108,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					}
 
 					t.Log("first build extends the build image by running Dockerfile commands")
-					firstOutput := h.DockerRun(t,
+					firstOutput := h.DockerRunWithCombinedOutput(t,
 						extendImage,
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -128,7 +128,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertEq(t, len(fis), 1) // 1: /kaniko/cache
 
 					t.Log("second build extends the build image by pulling from the cache directory")
-					secondOutput := h.DockerRun(t,
+					secondOutput := h.DockerRunWithCombinedOutput(t,
 						extendImage,
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
