@@ -165,7 +165,7 @@ func assertTarEntries(t *testing.T, tarPath string, expectedEntries []*tar.Heade
 		if header.Typeflag != expected.Typeflag {
 			t.Fatalf("expected entry '%s' to have type %q, got %q", expected.Name, expected.Typeflag, header.Typeflag)
 		}
-		if expected.Mode != 0 && header.Mode != expected.Mode { // TODO: add modes to all expects to remove the 0 hack
+		if expected.Mode != 0 && header.Mode != expected.Mode { // FIXME: add modes to all expects to remove the 0 hack
 			t.Fatalf("expected entry '%s' to have mode %d, got %d", expected.Name, expected.Mode, header.Mode)
 		}
 		assertOSSpecificFields(t, expected, header)

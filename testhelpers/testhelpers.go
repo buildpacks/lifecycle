@@ -215,6 +215,27 @@ func RunE(cmd *exec.Cmd) (output string, exitCode int, err error) {
 	return string(stdout), 0, nil
 }
 
+func RunWithCombinedOutput(t *testing.T, cmd *exec.Cmd) string {
+	t.Helper()
+	txt, _, err := doRunWithCombinedOutput(cmd)
+	AssertNil(t, err)
+	return txt
+}
+
+func doRunWithCombinedOutput(cmd *exec.Cmd) (output string, exitCode int, err error) {
+	rawOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		formattedErr := fmt.Errorf("failed to execute command: %v, %s, %s", cmd.Args, err, string(rawOutput))
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return "", exitError.ExitCode(), formattedErr
+		}
+
+		return "", -1, formattedErr
+	}
+
+	return string(rawOutput), 0, nil
+}
+
 func ComputeSHA256ForFile(t *testing.T, path string) string {
 	t.Helper()
 

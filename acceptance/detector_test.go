@@ -350,8 +350,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				h.WithArgs(
 					"-analyzed=/layers/analyzed.toml",
 					"-extensions=/cnb/extensions",
-					"-log-level=debug",
 					"-generated=/layers/generated",
+					"-log-level=debug",
 				),
 			)
 
@@ -374,9 +374,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			var plan platform.BuildPlan
 			_, err = toml.DecodeFile(foundPlanTOML, &plan)
 			h.AssertNil(t, err)
-			h.AssertEq(t, plan.Entries[0].Requires[0].Name, "some_requirement")
-			h.AssertEq(t, plan.Entries[0].Providers[0].ID, "simple_extension")
-			h.AssertEq(t, plan.Entries[0].Providers[0].Extension, true)
+			h.AssertEq(t, len(plan.Entries), 0) // this shows that the plan was filtered to remove `requires` provided by extensions
 
 			t.Log("runs /bin/generate for extensions")
 			h.AssertStringContains(t, output, "simple_extension: output from /bin/generate")

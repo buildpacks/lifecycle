@@ -58,11 +58,9 @@ func testDetectInputs(platformAPI string) func(t *testing.T, when spec.G, it spe
 					AppDir:        appDir,
 					BuildpacksDir: bpDir,
 					ExtensionsDir: extDir,
+					GeneratedDir:  generatedDir,
 					LayersDir:     layersDir,
 					PlatformDir:   platformDir,
-					GenerateInputs: platform.GenerateInputs{
-						GeneratedDir: generatedDir,
-					},
 				}
 				ret, err := resolver.ResolveDetect(inputs)
 				h.AssertNil(t, err)

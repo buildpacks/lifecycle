@@ -13,21 +13,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
-	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
-
-type Platform interface {
-	API() *api.Version
-	CodeFor(errType platform.LifecycleExitError) int
-	ResolveAnalyze(inputs platform.AnalyzeInputs, logger log.Logger) (platform.AnalyzeInputs, error)
-	ResolveDetect(inputs platform.DetectInputs) (platform.DetectInputs, error)
-}
 
 func main() {
 	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
@@ -52,6 +43,8 @@ func main() {
 		cli.Run(&rebaseCmd{platform: p}, false)
 	case "creator":
 		cli.Run(&createCmd{platform: p}, false)
+	case "extender":
+		cli.Run(&extendCmd{platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
@@ -63,7 +56,7 @@ func main() {
 	}
 }
 
-func subcommand(p Platform) {
+func subcommand(p *platform.Platform) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
@@ -80,6 +73,8 @@ func subcommand(p Platform) {
 		cli.Run(&rebaseCmd{platform: p}, true)
 	case "create":
 		cli.Run(&createCmd{platform: p}, true)
+	case "extend":
+		cli.Run(&extendCmd{platform: p}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
 	}
@@ -239,7 +234,7 @@ func verifyBuildpackApis(group buildpack.Group) error {
 			// but if for some reason it isn't default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // TODO: when builder and exporter are extensions-aware, this function call should be modified to provide the right module kind
+		if err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // FIXME: when exporter is extensions-aware, this function call should be modified to provide the right module kind
 			return err
 		}
 	}

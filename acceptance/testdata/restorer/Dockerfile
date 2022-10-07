@@ -21,6 +21,7 @@ RUN groupadd cnb --gid ${cnb_gid} && \
 # chown the directories so the restorer tests do not have to run as root
 RUN chown -R "${cnb_uid}:${cnb_gid}" "/layers"
 RUN chown -R "${cnb_uid}:${cnb_gid}" "/cache"
+RUN chown -R "${cnb_uid}:${cnb_gid}" "/kaniko"
 
 WORKDIR /layers
 

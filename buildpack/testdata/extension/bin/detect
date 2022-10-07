@@ -14,7 +14,7 @@ echo "detect out: ${bp_id}@${bp_version}"
 
 ls -1 "$platform_dir/env" > "detect-env-${bp_id}-${bp_version}"
 echo -n "$ENV_TYPE" > "detect-env-type-${bp_id}-${bp_version}"
-echo -n "${CNB_BUILDPACK_DIR:-unset}" > "detect-env-cnb-buildpack-dir-${bp_id}-${bp_version}"
+echo -n "${CNB_EXTENSION_DIR:-unset}" > "detect-env-cnb-extension-dir-${bp_id}-${bp_version}"
 echo -n "${CNB_BUILD_PLAN_PATH:-unset}" > "detect-env-cnb-build-plan-path-${bp_id}-${bp_version}"
 echo -n "${CNB_PLATFORM_DIR:-unset}" > "detect-env-cnb-platform-dir-${bp_id}-${bp_version}"
 

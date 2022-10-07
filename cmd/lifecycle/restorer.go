@@ -3,9 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/auth"
@@ -13,13 +17,17 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/layer"
+	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
+const kanikoDir = "/kaniko"
+
 type restoreCmd struct {
 	// flags: inputs
 	analyzedPath  string
+	buildImageTag string
 	cacheDir      string
 	cacheImageTag string
 	groupPath     string
@@ -30,7 +38,7 @@ type restoreCmd struct {
 
 type restoreArgs struct {
 	layersDir  string
-	platform   Platform
+	platform   *platform.Platform
 	skipLayers bool
 
 	// construct if necessary before dropping privileges
@@ -39,15 +47,33 @@ type restoreArgs struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
-	cli.FlagCacheDir(&r.cacheDir)
-	cli.FlagCacheImage(&r.cacheImageTag)
-	cli.FlagGroupPath(&r.groupPath)
-	cli.FlagLayersDir(&r.layersDir)
-	cli.FlagUID(&r.uid)
-	cli.FlagGID(&r.gid)
-	if r.restoresLayerMetadata() {
+	switch {
+	case r.platform.API().AtLeast("0.10"):
+		cli.FlagBuildImage(&r.buildImageTag)
+		cli.FlagCacheDir(&r.cacheDir)
+		cli.FlagCacheImage(&r.cacheImageTag)
+		cli.FlagGroupPath(&r.groupPath)
+		cli.FlagLayersDir(&r.layersDir)
+		cli.FlagUID(&r.uid)
+		cli.FlagGID(&r.gid)
 		cli.FlagAnalyzedPath(&r.analyzedPath)
 		cli.FlagSkipLayers(&r.skipLayers)
+	case r.platform.API().AtLeast("0.7"):
+		cli.FlagCacheDir(&r.cacheDir)
+		cli.FlagCacheImage(&r.cacheImageTag)
+		cli.FlagGroupPath(&r.groupPath)
+		cli.FlagLayersDir(&r.layersDir)
+		cli.FlagUID(&r.uid)
+		cli.FlagGID(&r.gid)
+		cli.FlagAnalyzedPath(&r.analyzedPath)
+		cli.FlagSkipLayers(&r.skipLayers)
+	default:
+		cli.FlagCacheDir(&r.cacheDir)
+		cli.FlagCacheImage(&r.cacheImageTag)
+		cli.FlagGroupPath(&r.groupPath)
+		cli.FlagLayersDir(&r.layersDir)
+		cli.FlagUID(&r.uid)
+		cli.FlagGID(&r.gid)
 	}
 }
 
@@ -77,7 +103,6 @@ func (r *restoreCmd) Privileges() error {
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
-
 	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
@@ -87,7 +112,20 @@ func (r *restoreCmd) Privileges() error {
 	return nil
 }
 
+func (r *restoreCmd) registryImages() []string {
+	var images []string
+	images = appendNotEmpty(images, r.cacheImageTag)
+	images = appendNotEmpty(images, r.buildImageTag)
+	return images
+}
+
 func (r *restoreCmd) Exec() error {
+	if r.supportsBuildImageExtension() {
+		if err := r.pullBuilderImageIfNeeded(); err != nil {
+			return cmd.FailErr(err, "read builder image")
+		}
+	}
+
 	group, err := lifecycle.ReadGroup(r.groupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
@@ -111,11 +149,49 @@ func (r *restoreCmd) Exec() error {
 	return r.restore(appMeta, group, cacheStore)
 }
 
-func (r *restoreCmd) registryImages() []string {
-	if r.cacheImageTag != "" {
-		return []string{r.cacheImageTag}
+func (r *restoreArgs) supportsBuildImageExtension() bool {
+	return r.platform.API().AtLeast("0.10")
+}
+
+func (r *restoreCmd) pullBuilderImageIfNeeded() error {
+	if r.buildImageTag == "" {
+		return nil
 	}
-	return []string{}
+	if _, err := os.Stat(kanikoDir); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("failed to read kaniko directory")
+		}
+		return nil
+	}
+	ref, authr, err := auth.ReferenceForRepoName(r.keychain, r.buildImageTag)
+	if err != nil {
+		return fmt.Errorf("failed to get reference")
+	}
+	remoteImage, err := remote.Image(ref, remote.WithAuth(authr))
+	if err != nil {
+		return fmt.Errorf("failed to read image")
+	}
+	buildImageHash, err := remoteImage.Digest()
+	if err != nil {
+		return fmt.Errorf("failed to get digest")
+	}
+	buildImageDigest := buildImageHash.String()
+	baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
+	if err = os.MkdirAll(baseCacheDir, 0755); err != nil {
+		return fmt.Errorf("failed to create cache directory")
+	}
+	layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
+	if err != nil {
+		return fmt.Errorf("failed to write layout path")
+	}
+	if err = layoutPath.AppendImage(remoteImage); err != nil {
+		return fmt.Errorf("failed to append image")
+	}
+	return nil
+}
+
+func (r *restoreArgs) restoresLayerMetadata() bool {
+	return r.platform.API().AtLeast("0.7")
 }
 
 func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
@@ -136,8 +212,4 @@ func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildp
 		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
 	}
 	return nil
-}
-
-func (r *restoreArgs) restoresLayerMetadata() bool {
-	return r.platform.API().AtLeast("0.7")
 }

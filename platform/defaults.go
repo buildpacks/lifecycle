@@ -3,6 +3,7 @@ package platform
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/buildpacks/lifecycle/api"
 )
@@ -10,6 +11,7 @@ import (
 const (
 	EnvAnalyzedPath        = "CNB_ANALYZED_PATH"
 	EnvAppDir              = "CNB_APP_DIR"
+	EnvBuildImage          = "CNB_BUILD_IMAGE"
 	EnvBuildpacksDir       = "CNB_BUILDPACKS_DIR"
 	EnvCacheDir            = "CNB_CACHE_DIR"
 	EnvCacheImage          = "CNB_CACHE_IMAGE"
@@ -19,6 +21,7 @@ const (
 	EnvGID                 = "CNB_GROUP_ID"
 	EnvGeneratedDir        = "CNB_GENERATED_DIR"
 	EnvGroupPath           = "CNB_GROUP_PATH"
+	EnvKanikoCacheTTL      = "CNB_KANIKO_CACHE_TTL"
 	EnvLaunchCacheDir      = "CNB_LAUNCH_CACHE_DIR"
 	EnvLayersDir           = "CNB_LAYERS_DIR"
 	EnvLogLevel            = "CNB_LOG_LEVEL"
@@ -55,16 +58,18 @@ const (
 )
 
 var (
-	DefaultAppDir        = filepath.Join(rootDir, "workspace")
-	DefaultBuildpacksDir = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultExtensionsDir = filepath.Join(rootDir, "cnb", "extensions")
-	DefaultGeneratedDir  = filepath.Join(rootDir, "layers", "generated")
-	DefaultLauncherPath  = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
-	DefaultLayersDir     = filepath.Join(rootDir, "layers")
-	DefaultPlatformDir   = filepath.Join(rootDir, "platform")
-	DefaultStackPath     = filepath.Join(rootDir, "cnb", "stack.toml")
+	DefaultAppDir         = filepath.Join(rootDir, "workspace")
+	DefaultBuildpacksDir  = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultExtensionsDir  = filepath.Join(rootDir, "cnb", "extensions")
+	DefaultKanikoCacheTTL = 14 * (24 * time.Hour)
+	DefaultLauncherPath   = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
+	DefaultLayersDir      = filepath.Join(rootDir, "layers")
+	DefaultOutputDir      = filepath.Join(rootDir, "layers")
+	DefaultPlatformDir    = filepath.Join(rootDir, "platform")
+	DefaultStackPath      = filepath.Join(rootDir, "cnb", "stack.toml")
 
 	PlaceholderAnalyzedPath        = filepath.Join("<layers>", DefaultAnalyzedFile)
+	PlaceholderGeneratedDir        = filepath.Join("<layers>", "generated")
 	PlaceholderGroupPath           = filepath.Join("<layers>", DefaultGroupFile)
 	PlaceholderOrderPath           = filepath.Join("<layers>", DefaultOrderFile)
 	PlaceholderPlanPath            = filepath.Join("<layers>", DefaultPlanFile)
@@ -77,13 +82,13 @@ func defaultPath(placeholderPath, layersDir string, platformAPI *api.Version) st
 		return defaultOrderPath(layersDir, platformAPI)
 	}
 
-	filename := filepath.Base(placeholderPath)
+	basename := filepath.Base(placeholderPath)
 	if (platformAPI).LessThan("0.5") || (layersDir == "") {
 		// prior to platform api 0.5, the default directory was the working dir.
 		// layersDir is unset when this call comes from the rebaser - will be fixed as part of https://github.com/buildpacks/spec/issues/156
-		return filepath.Join(".", filename)
+		return filepath.Join(".", basename)
 	}
-	return filepath.Join(layersDir, filename)
+	return filepath.Join(layersDir, basename)
 }
 
 func defaultOrderPath(layersDir string, platformAPI *api.Version) string {

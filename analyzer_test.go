@@ -312,7 +312,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 				t.Log("processes group")
 				group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
-				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
+				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, []buildpack.GroupElement{}, nil)
 				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 				t.Log("processes cache")
@@ -366,7 +366,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					t.Log("processes group")
 					group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
-					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
+					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, []buildpack.GroupElement{}, nil)
 					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 					t.Log("processes cache")

@@ -16,7 +16,9 @@ type CacheHandler interface {
 
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
 type DirStore interface {
-	Lookup(kind, id, version string) (buildpack.BuildModule, error)
+	Lookup(kind, id, version string) (buildpack.Descriptor, error)
+	LookupBp(id, version string) (*buildpack.BpDescriptor, error)
+	LookupExt(id, version string) (*buildpack.ExtDescriptor, error)
 }
 
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle ImageHandler
@@ -38,7 +40,7 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
-	ReadGroup(path string) ([]buildpack.GroupElement, error)
+	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 }
 
@@ -48,17 +50,22 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
-func (h *DefaultConfigHandler) ReadGroup(path string) ([]buildpack.GroupElement, error) {
-	group, err := ReadGroup(path)
+func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {
+	var groupFile buildpack.Group
+	groupFile, err = ReadGroup(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "reading buildpack group")
+		return nil, nil, errors.Wrap(err, "reading buildpack group")
 	}
-	return group.Group, nil
+	return groupFile.Group, groupFile.GroupExtensions, nil
 }
 
 func ReadGroup(path string) (buildpack.Group, error) {
 	var group buildpack.Group
 	_, err := toml.DecodeFile(path, &group)
+	for e := range group.GroupExtensions {
+		group.GroupExtensions[e].Extension = true
+		group.GroupExtensions[e].Optional = true
+	}
 	return group, err
 }
 
@@ -82,6 +89,7 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	for g, group := range order.OrderExtensions {
 		for e := range group.Group {
 			group.Group[e].Extension = true
+			group.Group[e].Optional = true
 		}
 		order.OrderExtensions[g] = group
 	}

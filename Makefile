@@ -118,6 +118,7 @@ build-linux-amd64-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
+	ln -sf lifecycle $(OUT_DIR)/extender
 
 build-linux-arm64-symlinks: export GOOS:=linux
 build-linux-arm64-symlinks: export GOARCH:=arm64
@@ -131,6 +132,7 @@ build-linux-arm64-symlinks:
 	ln -sf lifecycle $(OUT_DIR)/exporter
 	ln -sf lifecycle $(OUT_DIR)/rebaser
 	ln -sf lifecycle $(OUT_DIR)/creator
+	ln -sf lifecycle $(OUT_DIR)/extender
 
 build-windows-amd64-lifecycle: $(BUILD_DIR)/windows-amd64/lifecycle/lifecycle.exe
 

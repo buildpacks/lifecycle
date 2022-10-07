@@ -36,10 +36,10 @@ func (m *MockDirStore) EXPECT() *MockDirStoreMockRecorder {
 }
 
 // Lookup mocks base method.
-func (m *MockDirStore) Lookup(arg0, arg1, arg2 string) (buildpack.BuildModule, error) {
+func (m *MockDirStore) Lookup(arg0, arg1, arg2 string) (buildpack.Descriptor, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Lookup", arg0, arg1, arg2)
-	ret0, _ := ret[0].(buildpack.BuildModule)
+	ret0, _ := ret[0].(buildpack.Descriptor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -48,4 +48,34 @@ func (m *MockDirStore) Lookup(arg0, arg1, arg2 string) (buildpack.BuildModule, e
 func (mr *MockDirStoreMockRecorder) Lookup(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lookup", reflect.TypeOf((*MockDirStore)(nil).Lookup), arg0, arg1, arg2)
+}
+
+// LookupBp mocks base method.
+func (m *MockDirStore) LookupBp(arg0, arg1 string) (*buildpack.BpDescriptor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LookupBp", arg0, arg1)
+	ret0, _ := ret[0].(*buildpack.BpDescriptor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LookupBp indicates an expected call of LookupBp.
+func (mr *MockDirStoreMockRecorder) LookupBp(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookupBp", reflect.TypeOf((*MockDirStore)(nil).LookupBp), arg0, arg1)
+}
+
+// LookupExt mocks base method.
+func (m *MockDirStore) LookupExt(arg0, arg1 string) (*buildpack.ExtDescriptor, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LookupExt", arg0, arg1)
+	ret0, _ := ret[0].(*buildpack.ExtDescriptor)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LookupExt indicates an expected call of LookupExt.
+func (mr *MockDirStoreMockRecorder) LookupExt(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LookupExt", reflect.TypeOf((*MockDirStore)(nil).LookupExt), arg0, arg1)
 }

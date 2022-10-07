@@ -1,0 +1,6 @@
+api = "0.9"
+
+[buildpack]
+id = "samples/hello-extensions"
+version = "0.0.1"
+name = "Hello Extensions Buildpack"

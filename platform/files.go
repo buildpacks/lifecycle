@@ -166,7 +166,7 @@ func (p BuildPlan) Find(kind, id string) buildpack.Plan {
 	return buildpack.Plan{Entries: out}
 }
 
-// TODO: ensure at least one claimed entry of each name is provided by the BP
+// FIXME: ensure at least one claimed entry of each name is provided by the BP
 func (p BuildPlan) Filter(metRequires []string) BuildPlan {
 	var out []BuildPlanEntry
 	for _, planEntry := range p.Entries {

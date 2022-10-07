@@ -62,7 +62,7 @@ type exportArgs struct {
 	useDaemon bool
 	uid, gid  int
 
-	platform Platform
+	platform *platform.Platform
 
 	// construct if necessary before dropping privileges
 	docker   client.CommonAPIClient
@@ -167,6 +167,8 @@ func readStack(stackPath string) (platform.StackMetadata, error) {
 		if os.IsNotExist(err) {
 			cmd.DefaultLogger.Infof("no stack metadata found at path '%s'\n", stackPath)
 		} else {
+			cmd.DefaultLogger.Debugf("Stack metadata found at path '%s'\n", stackPath)
+			cmd.DefaultLogger.Debugf("Stack selected runImage '%s' mirrors '%s'\n", stackMD.RunImage.Image, stackMD.RunImage.Mirrors)
 			return platform.StackMetadata{}, err
 		}
 	}
@@ -239,6 +241,7 @@ func (e *exportCmd) populateRunImageRefIfNeeded() error {
 			return errors.New("run image not found in analyzed metadata")
 		}
 		e.runImageRef = e.analyzedMD.RunImage.Reference
+		cmd.DefaultLogger.Debugf("Using runImage from analyzed metadata '%s'\n", e.runImageRef)
 	} else if e.runImageRef == "" {
 		var err error
 		e.runImageRef, err = e.stackMD.BestRunImageMirror(e.targetRegistry)

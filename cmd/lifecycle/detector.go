@@ -13,7 +13,7 @@ import (
 )
 
 type detectCmd struct {
-	platform Platform
+	platform *platform.Platform
 	platform.DetectInputs
 }
 
@@ -25,10 +25,10 @@ func (d *detectCmd) DefineFlags() {
 		cli.FlagAppDir(&d.AppDir)
 		cli.FlagBuildpacksDir(&d.BuildpacksDir)
 		cli.FlagExtensionsDir(&d.ExtensionsDir)
+		cli.FlagGeneratedDir(&d.GeneratedDir)
 		cli.FlagGroupPath(&d.GroupPath)
 		cli.FlagLayersDir(&d.LayersDir)
 		cli.FlagOrderPath(&d.OrderPath)
-		cli.FlagGeneratedDir(&d.GeneratedDir)
 		cli.FlagPlanPath(&d.PlanPath)
 		cli.FlagPlatformDir(&d.PlatformDir)
 	default:
@@ -110,33 +110,27 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize generator")
 		}
-		err = generator.Generate()
+		result, err := generator.Generate()
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		extenderFactory := lifecycle.NewExtenderFactory(
-			&cmd.BuildpackAPIVerifier{},
-			dirStore,
-		)
-		extender, err := extenderFactory.NewExtender(
-			group.GroupExtensions,
-			generator.OutputDir,
-			cmd.DefaultLogger,
-		)
-		if err != nil {
-			return unwrapErrorFailWithMessage(err, "initialize extender")
+		// was a custom runimage configured?
+		if result.RunImage != "" {
+			cmd.DefaultLogger.Debug("Updating analyzed metdata with new runImage")
+			analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
+			if err != nil {
+				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
+			}
+			cmd.DefaultLogger.Debugf("Loaded existing analyzed metdata from '%s'", d.AnalyzedPath)
+			analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
+			if err := d.writeGenerateData(analyzedMD); err != nil {
+				return err
+			}
+			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage)
 		}
-		newRunImage, err := extender.LastRunImage()
-		if err != nil {
-			return cmd.FailErr(err, "determine last run image")
-		}
-		analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
-		if err != nil {
-			return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
-		}
-		analyzedMD.RunImage = &platform.ImageIdentifier{Reference: newRunImage}
-		if err := d.writeGenerateData(analyzedMD); err != nil {
-			return err
+		// was the build plan updated?
+		if result.UsePlan {
+			plan = result.Plan
 		}
 	}
 	return d.writeDetectData(group, plan)
@@ -159,7 +153,7 @@ func (d *detectCmd) unwrapGenerateFail(err error) error {
 	return cmd.FailErrCode(err, d.platform.CodeFor(platform.GenerateError), "build")
 }
 
-func doDetect(detector *lifecycle.Detector, p Platform) (buildpack.Group, platform.BuildPlan, error) {
+func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Group, platform.BuildPlan, error) {
 	group, plan, err := detector.Detect()
 	if err != nil {
 		switch err := err.(type) {

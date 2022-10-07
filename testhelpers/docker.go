@@ -49,6 +49,12 @@ func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
 }
 
+func DockerRunWithCombinedOutput(t *testing.T, image string, ops ...DockerCmdOp) string {
+	t.Helper()
+	args := formatArgs([]string{image}, ops...)
+	return RunWithCombinedOutput(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
+}
+
 // DockerRunAndCopy runs a container and once stopped, outputCtrPath is copied to outputDir
 func DockerRunAndCopy(t *testing.T, containerName, outputDir, outputCtrPath, image string, ops ...DockerCmdOp) string {
 	ops = append(ops, WithFlags("--name", containerName))
@@ -94,7 +100,7 @@ func DockerVolumeExists(t *testing.T, volumeName string) bool {
 	return strings.Contains(output, volumeName)
 }
 
-// TODO: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
+// FIXME: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
 func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: auth})
 	if err != nil {
