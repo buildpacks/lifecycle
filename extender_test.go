@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -24,8 +25,10 @@ import (
 )
 
 func TestExtender(t *testing.T) {
-	spec.Run(t, "unit-new-extender", testExtenderFactory, spec.Report(report.Terminal{}))
-	spec.Run(t, "unit-extender", testExtender, spec.Report(report.Terminal{}))
+	if runtime.GOOS != "windows" {
+		spec.Run(t, "unit-new-extender", testExtenderFactory, spec.Report(report.Terminal{}))
+		spec.Run(t, "unit-extender", testExtender, spec.Report(report.Terminal{}))
+	}
 }
 
 func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
