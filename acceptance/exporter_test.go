@@ -46,6 +46,7 @@ func TestExporter(t *testing.T) {
 
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
+
 	exportTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
 	defer exportTest.Stop(t)
 
@@ -96,6 +97,20 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithArgs(exportArgs...),
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+						if api.MustParse(platformAPI).AtLeast("0.11") {
+
+							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.syft.json)")
+							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.syft.json)")
+
+							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.cdx.json)")
+							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.cdx.json)")
+
+							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.spdx.json)")
+							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.spdx.json)")
+						} else {
+							h.AssertStringDoesNotContain(t, output, "Copying launcher SBOM (sbom.syft.json)")
+						}
 
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
