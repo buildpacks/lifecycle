@@ -18,7 +18,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
-	golang.org/x/sys v0.0.0-20220913153101-76c7481b5158
+	golang.org/x/sys v0.0.0-20221006211917-84dc82d7e875
 )
 
 require (
@@ -34,7 +34,7 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.9.2 // indirect
+	github.com/Microsoft/hcsshim v0.9.3 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.16.14 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.17.5 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.18 // indirect
@@ -51,14 +51,14 @@ require (
 	github.com/aws/smithy-go v1.13.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cilium/ebpf v0.8.0 // indirect
+	github.com/cilium/ebpf v0.9.3 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
 	github.com/containerd/continuity v0.2.2 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.12.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/coreos/etcd v3.3.27+incompatible // indirect
-	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/coreos/go-systemd/v22 v22.4.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/docker/cli v20.10.18+incompatible // indirect
@@ -71,7 +71,7 @@ require (
 	github.com/docker/swarmkit v1.12.1-0.20180726190244-7567d47988d8 // indirect
 	github.com/ePirat/docker-credential-gitlabci v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/godbus/dbus/v5 v5.0.6 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -89,15 +89,15 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/sys/mount v0.3.0 // indirect
-	github.com/moby/sys/mountinfo v0.5.0 // indirect
+	github.com/moby/sys/mountinfo v0.6.2 // indirect
 	github.com/moby/sys/symlink v0.2.0 // indirect
 	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198 // indirect
-	github.com/opencontainers/runc v1.1.0 // indirect
+	github.com/opencontainers/runc v1.1.4 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417 // indirect
-	github.com/opencontainers/selinux v1.10.0 // indirect
+	github.com/opencontainers/selinux v1.10.2 // indirect
 	github.com/otiai10/copy v1.7.0 // indirect
 	github.com/prometheus/client_golang v1.12.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -117,17 +117,17 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220616135557-88e70c0c3a90 // indirect
 	google.golang.org/grpc v1.47.0 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 )
 
 go 1.18
 
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.2
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.6
 
 // These match the docker/docker's dependencies configured in:
 // https://github.com/moby/moby/blob/v20.10.18/vendor.conf
 replace (
 	github.com/moby/buildkit => github.com/moby/buildkit v0.8.3
-	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc92
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc95
 	github.com/tonistiigi/fsutil => github.com/tonistiigi/fsutil v0.0.0-20201103201449-0834f99b7b85
 )
