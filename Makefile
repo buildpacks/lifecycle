@@ -45,7 +45,7 @@ build-linux-amd64: build-linux-amd64-lifecycle build-linux-amd64-symlinks build-
 build-linux-arm64: build-linux-arm64-lifecycle build-linux-arm64-symlinks build-linux-arm64-launcher
 build-windows-amd64: build-windows-amd64-lifecycle build-windows-amd64-symlinks build-windows-amd64-launcher
 
-build-image-linux-amd64: build-linux-amd64 package-linux-amd64
+build-image-linux-amd64: build-linux-amd64 package-linux-amd64 copy-sboms-darwin-amd64
 build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
 build-image-linux-amd64:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -arch amd64 -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)
@@ -212,6 +212,52 @@ $(BUILD_DIR)/darwin-amd64/lifecycle/launcher:
 	mkdir -p $(OUT_DIR)
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
+
+generate-sbom: generate-sbom-lifecycle generate-sbom-launcher
+generate-sbom-lifecycle: generate-sbom-linux-amd64-lifecycle
+generate-sbom-launcher: generate-sbom-linux-amd64-launcher
+
+# GENERATE SBOMs - LINUX - LIFECYCLE
+generate-sbom-linux-amd64-lifecycle: export GOOS:=linux
+generate-sbom-linux-amd64-lifecycle: export GOARCH:=amd64
+generate-sbom-linux-amd64-lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+generate-sbom-linux-amd64-lifecycle:
+	@echo "> Generation lifecycle sbom for linux/amd64...- $(OUT_DIR) $(GOOS) $(GOARCH)"
+	$(GOCMD) run ./tools/sbom/main.go -path $(OUT_DIR)/lifecycle
+
+# GENERATE SBOMs - LINUX - LAUNCHER
+generate-sbom-linux-amd64-launcher: export GOOS:=linux
+generate-sbom-linux-amd64-launcher: export GOARCH:=amd64
+generate-sbom-linux-amd64-launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+generate-sbom-linux-amd64-launcher:
+	@echo "> Generation launcher sbom for linux/amd64..."
+	$(GOCMD) run ./tools/sbom/main.go -path $(OUT_DIR)/launcher
+
+# GENERATE SBOMs - DARWIN
+generate-sbom-darwin-amd64: build-linux-amd64 build-darwin-amd64 generate-sbom-darwin-amd64-lifecycle generate-sbom-darwin-amd64-launcher
+
+copy-sboms-darwin-amd64: generate-sbom-darwin-amd64
+copy-sboms-darwin-amd64: export GOOS:=darwin
+copy-sboms-darwin-amd64: export GOARCH:=amd64
+copy-sboms-darwin-amd64:
+	@echo "> Generation launcher sbom for linux/amd64..."
+	cp $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/*.json $(BUILD_DIR)/linux-$(GOARCH)/lifecycle
+
+# GENERATE SBOMs - DARWIN - LIFECYCLE
+generate-sbom-darwin-amd64-lifecycle: export GOOS:=darwin
+generate-sbom-darwin-amd64-lifecycle: export GOARCH:=amd64
+generate-sbom-darwin-amd64-lifecycle: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+generate-sbom-darwin-amd64-lifecycle:
+	@echo "> Generation lifecycle sbom for darwin/amd64...- $(OUT_DIR)"
+	$(GOCMD) run ./tools/sbom/main.go -path $(OUT_DIR)/lifecycle
+
+# GENERATE SBOMs - DARWIN - LAUNCHER
+generate-sbom-darwin-amd64-launcher: export GOOS:=darwin
+generate-sbom-darwin-amd64-launcher: export GOARCH:=amd64
+generate-sbom-darwin-amd64-launcher: OUT_DIR:=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle
+generate-sbom-darwin-amd64-launcher:
+	@echo "> Generation launcher sbom for darwin/amd64..."
+	$(GOCMD) run ./tools/sbom/main.go -path $(OUT_DIR)/launcher
 
 install-goimports:
 	@echo "> Installing goimports..."
