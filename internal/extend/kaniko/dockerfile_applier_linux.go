@@ -18,11 +18,12 @@ import (
 	"github.com/buildpacks/lifecycle/internal/extend"
 )
 
-func (a *DockerfileApplier) Apply(workspace string, baseImageRef string, dockerfiles []extend.Dockerfile, options extend.Options) error {
+func (a *DockerfileApplier) Apply(workspace string, digest string, dockerfiles []extend.Dockerfile, options extend.Options) error {
 	// Configure kaniko
+	baseImageRef := ociPrefix + filepath.Join(kanikoCacheDir, digest)
 	baseImage, err := readOCI(baseImageRef)
 	if err != nil {
-		return fmt.Errorf("getting base image from reference '%s': %w", baseImageRef, err)
+		return fmt.Errorf("getting base image for digest '%s': %w", digest, err)
 	}
 	image.RetrieveRemoteImage = func(image string, opts config.RegistryOptions, customPlatform string) (v1.Image, error) {
 		return baseImage, nil // force kaniko to return this base image, instead of trying to pull it from a registry

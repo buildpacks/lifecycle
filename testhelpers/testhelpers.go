@@ -362,6 +362,14 @@ func Mkfile(t *testing.T, data string, paths ...string) {
 	}
 }
 
+func TempFile(t *testing.T, dir, pattern string) string {
+	t.Helper()
+	f, err := ioutil.TempFile(dir, pattern)
+	AssertNil(t, err)
+	defer f.Close()
+	return f.Name()
+}
+
 func CleanEndings(s string) string {
 	return strings.ReplaceAll(s, "\r\n", "\n")
 }

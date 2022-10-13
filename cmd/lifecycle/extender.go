@@ -19,6 +19,7 @@ type extendCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *extendCmd) DefineFlags() {
+	cli.FlagAnalyzedPath(&e.AnalyzedPath)
 	cli.FlagAppDir(&e.AppDir)
 	cli.FlagBuildpacksDir(&e.BuildpacksDir)
 	cli.FlagGID(&e.GID)
@@ -33,10 +34,9 @@ func (e *extendCmd) DefineFlags() {
 
 // Args validates arguments and flags, and fills in default values.
 func (e *extendCmd) Args(nargs int, args []string) error {
-	if nargs != 1 {
+	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	e.ImageRef = args[0]
 
 	var err error
 	e.ExtendInputs, err = e.platform.ResolveExtend(e.ExtendInputs)
@@ -53,6 +53,7 @@ func (e *extendCmd) Privileges() error {
 func (e *extendCmd) Exec() error {
 	extenderFactory := lifecycle.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
 	extender, err := extenderFactory.NewExtender(
+		e.AnalyzedPath,
 		e.AppDir,
 		e.GeneratedDir,
 		e.GroupPath,
@@ -65,7 +66,7 @@ func (e *extendCmd) Exec() error {
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize extender")
 	}
-	if err = extender.ExtendBuild(e.ImageRef); err != nil {
+	if err = extender.ExtendBuild(); err != nil {
 		return cmd.FailErrCode(err, e.platform.CodeFor(platform.ExtendError), "extend build image")
 	}
 	if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {

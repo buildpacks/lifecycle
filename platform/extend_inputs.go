@@ -8,6 +8,7 @@ import (
 // ExtendInputs holds the values of command-line flags and args.
 // Fields are the cumulative total of inputs across all supported platform APIs.
 type ExtendInputs struct {
+	AnalyzedPath   string
 	AppDir         string
 	BuildpacksDir  string
 	GeneratedDir   string
@@ -43,6 +44,9 @@ func (r *InputsResolver) ResolveExtend(inputs ExtendInputs) (ExtendInputs, error
 }
 
 func (r *InputsResolver) fillExtendDefaultPaths(inputs *ExtendInputs) {
+	if inputs.AnalyzedPath == PlaceholderAnalyzedPath {
+		inputs.AnalyzedPath = defaultPath(PlaceholderAnalyzedPath, inputs.LayersDir, r.platformAPI)
+	}
 	if inputs.GeneratedDir == PlaceholderGeneratedDir {
 		inputs.GeneratedDir = defaultPath(PlaceholderGeneratedDir, inputs.LayersDir, r.platformAPI)
 	}

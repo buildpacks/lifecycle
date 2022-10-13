@@ -11,11 +11,14 @@ import (
 	"github.com/buildpacks/lifecycle/log"
 )
 
-const kanikoDir = "/kaniko"
+const (
+	kanikoDir = "/kaniko"
+	ociPrefix = "oci:"
+)
 
 var (
 	kanikoCacheDir      = filepath.Join(kanikoDir, "cache", "base")
-	kanikoCacheImageRef = filepath.Join("oci:", kanikoDir, "cache", "layers", "cached")
+	kanikoCacheImageRef = filepath.Join(ociPrefix, kanikoDir, "cache", "layers", "cached")
 )
 
 type DockerfileApplier struct {

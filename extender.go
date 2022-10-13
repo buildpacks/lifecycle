@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/uuid"
 
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -22,6 +23,7 @@ type Extender struct {
 	AppDir            string
 	GeneratedDir      string
 	GroupPath         string
+	ImageRef          string
 	LayersDir         string
 	PlatformDir       string
 	CacheTTL          time.Duration
@@ -32,7 +34,7 @@ type Extender struct {
 
 //go:generate mockgen -package testmock -destination testmock/dockerfile_applier.go github.com/buildpacks/lifecycle DockerfileApplier
 type DockerfileApplier interface {
-	Apply(workspace string, baseImageRef string, dockerfiles []extend.Dockerfile, options extend.Options) error
+	Apply(workspace string, digest string, dockerfiles []extend.Dockerfile, options extend.Options) error
 }
 
 type ExtenderFactory struct {
@@ -48,6 +50,7 @@ func NewExtenderFactory(apiVerifier BuildpackAPIVerifier, configHandler ConfigHa
 }
 
 func (f *ExtenderFactory) NewExtender(
+	analyzedPath string,
 	appDir string,
 	generatedDir string,
 	groupPath string,
@@ -66,10 +69,22 @@ func (f *ExtenderFactory) NewExtender(
 		DockerfileApplier: dockerfileApplier,
 		Logger:            logger,
 	}
+	if err := f.setImageRef(extender, analyzedPath); err != nil {
+		return nil, err
+	}
 	if err := f.setExtensions(extender, groupPath, logger); err != nil {
 		return nil, err
 	}
 	return extender, nil
+}
+
+func (f *ExtenderFactory) setImageRef(extender *Extender, path string) error {
+	analyzedMD, err := f.configHandler.ReadAnalyzed(path)
+	if err != nil {
+		return err
+	}
+	extender.ImageRef = analyzedMD.BuildImage.Reference
+	return nil
 }
 
 func (f *ExtenderFactory) setExtensions(extender *Extender, path string, logger log.Logger) error {
@@ -96,8 +111,8 @@ func (f *ExtenderFactory) verifyAPIs(groupExt []buildpack.GroupElement, logger l
 	return nil
 }
 
-func (e *Extender) ExtendBuild(imageRef string) error {
-	e.Logger.Debugf("Extending %s", imageRef)
+func (e *Extender) ExtendBuild() error {
+	e.Logger.Debugf("Extending %s", e.ImageRef)
 	var dockerfiles []extend.Dockerfile
 	for _, ext := range e.Extensions {
 		buildDockerfile, err := e.buildDockerfileFor(ext.ID)
@@ -113,7 +128,11 @@ func (e *Extender) ExtendBuild(imageRef string) error {
 		CacheTTL:    e.CacheTTL,
 		IgnorePaths: []string{e.AppDir, e.LayersDir, e.PlatformDir},
 	}
-	return e.DockerfileApplier.Apply(e.AppDir, imageRef, dockerfiles, options)
+	digest, err := name.NewDigest(e.ImageRef)
+	if err != nil {
+		return fmt.Errorf("failed to get digest for reference %s: %w", e.ImageRef, err)
+	}
+	return e.DockerfileApplier.Apply(e.AppDir, digest.DigestStr(), dockerfiles, options)
 }
 
 func (e *Extender) buildDockerfileFor(extID string) (*extend.Dockerfile, error) {
