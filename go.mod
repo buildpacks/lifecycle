@@ -131,3 +131,5 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc95
 	github.com/tonistiigi/fsutil => github.com/tonistiigi/fsutil v0.0.0-20201103201449-0834f99b7b85
 )
+
+replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0

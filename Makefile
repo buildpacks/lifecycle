@@ -45,7 +45,7 @@ build-linux-amd64: build-linux-amd64-lifecycle build-linux-amd64-symlinks build-
 build-linux-arm64: build-linux-arm64-lifecycle build-linux-arm64-symlinks build-linux-arm64-launcher
 build-windows-amd64: build-windows-amd64-lifecycle build-windows-amd64-symlinks build-windows-amd64-launcher
 
-build-image-linux-amd64: build-linux-amd64 package-linux-amd64 copy-sboms-darwin-amd64
+build-image-linux-amd64: build-linux-amd64 copy-sboms-darwin-amd64 package-linux-amd64
 build-image-linux-amd64: ARCHIVE_PATH=$(BUILD_DIR)/lifecycle-v$(LIFECYCLE_VERSION)+linux.x86-64.tgz
 build-image-linux-amd64:
 	$(GOCMD) run ./tools/image/main.go -daemon -lifecyclePath $(ARCHIVE_PATH) -os linux -arch amd64 -tag lifecycle:$(LIFECYCLE_IMAGE_TAG)

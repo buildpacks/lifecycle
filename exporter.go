@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"io"
 	"os"
 	"path/filepath"
@@ -66,6 +67,13 @@ type ExportOptions struct {
 
 func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	var err error
+
+	if e.PlatformAPI.AtLeast("0.11") {
+		err := copySboms(opts.LayersDir, e)
+		if err != nil {
+			return platform.ExportReport{}, errors.Wrapf(err, "failed to copy lifecycle/launch sboms")
+		}
+	}
 
 	opts.LayersDir, err = filepath.Abs(opts.LayersDir)
 	if err != nil {
@@ -155,6 +163,60 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	}
 
 	return report, nil
+}
+
+func copySboms(layerDir string, e *Exporter) error {
+
+	//TODO check if files are missing
+
+	targetBuildDir := filepath.Join(layerDir, "sbom", "build", "buildpacksio_lifecycle")
+
+	if err := os.MkdirAll(targetBuildDir, os.ModePerm); err != nil {
+		return errors.Wrapf(err, "failed to create directory %v\n", targetBuildDir)
+	}
+
+	targetLaunchDir := filepath.Join(layerDir, "sbom", "launch", "buildpacksio_lifecycle")
+
+	if err := os.MkdirAll(targetLaunchDir, os.ModePerm); err != nil {
+		return errors.Wrapf(err, "failed to create directory %v\n", targetLaunchDir)
+	}
+
+	extensions := [3]string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
+	components := [2]string{"lifecycle", "launcher"}
+
+	var targetDir string
+	var errs []error
+
+	for _, component := range components {
+
+		if component == "lifecycle" {
+			targetDir = targetBuildDir
+		} else if component == "launcher" {
+			targetDir = targetLaunchDir
+		}
+
+		for _, extension := range extensions {
+			sbomFilename := component + extension
+
+			fullSbomPath := filepath.Join(targetDir, sbomFilename)
+			err := fsutil.Copy("/cnb/lifecycle/"+sbomFilename, fullSbomPath)
+
+			e.Logger.Infof("Copying SBOM (" + sbomFilename + ")")
+
+			if err != nil {
+				errs = append(errs, errors.Wrapf(err, "Fail to copy "+sbomFilename))
+			}
+		}
+
+	}
+
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {

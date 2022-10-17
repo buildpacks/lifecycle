@@ -97,6 +97,19 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
+						if api.MustParse(platformAPI).AtLeast("0.11") {
+							h.AssertStringContains(t, output, "Copying SBOM (launcher.sbom.syft.json)")
+							h.AssertStringContains(t, output, "Copying SBOM (lifecycle.sbom.syft.json)")
+
+							h.AssertStringContains(t, output, "Copying SBOM (launcher.sbom.cdx.json)")
+							h.AssertStringContains(t, output, "Copying SBOM (lifecycle.sbom.cdx.json)")
+
+							h.AssertStringContains(t, output, "Copying SBOM (launcher.sbom.spdx.json)")
+							h.AssertStringContains(t, output, "Copying SBOM (lifecycle.sbom.spdx.json)")
+						} else {
+							h.AssertStringDoesNotContain(t, output, "Copying SBOM (launcher.sbom.syft.json)")
+						}
+
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
 				})
