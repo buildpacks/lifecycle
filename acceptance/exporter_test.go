@@ -46,6 +46,9 @@ func TestExporter(t *testing.T) {
 
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
+
+	copyFakeSboms(t)
+
 	exportTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
 	defer exportTest.Stop(t)
 
@@ -61,6 +64,31 @@ func TestExporter(t *testing.T) {
 
 	for _, platformAPI := range api.Platform.Supported {
 		spec.Run(t, "acceptance-exporter/"+platformAPI.String(), testExporterFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
+	}
+}
+
+func copyFakeSboms(t *testing.T) {
+
+	goos := runtime.GOOS
+
+	// Check Target Daemon != runtime.GOOS
+	if goos == "darwin" {
+		goos = "linux"
+	}
+	buildLifecycleDir, err := filepath.Abs(filepath.Join("..", "out", fmt.Sprintf("%s-%s", goos, runtime.GOARCH), "lifecycle"))
+	if err != nil {
+		t.Log("Fail to locate lifecycle directory")
+	}
+
+	extensions := [3]string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
+	components := [2]string{"lifecycle", "launcher"}
+
+	for _, component := range components {
+		for _, extension := range extensions {
+			if err := encoding.WriteJSON(filepath.Join(buildLifecycleDir, component+extension), "fake data"); err != nil {
+				t.Log("Fail to write:" + component + extension)
+			}
+		}
 	}
 }
 
@@ -98,6 +126,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
 						if api.MustParse(platformAPI).AtLeast("0.11") {
+
 							h.AssertStringContains(t, output, "Copying SBOM (launcher.sbom.syft.json)")
 							h.AssertStringContains(t, output, "Copying SBOM (lifecycle.sbom.syft.json)")
 

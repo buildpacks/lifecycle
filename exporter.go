@@ -167,18 +167,18 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 
 func copySboms(layerDir string, e *Exporter) error {
 
-	//TODO check if files are missing
+	// TODO copy only if SBOMs files are available
+	// TODO create directory only if SBOMs files are available
 
 	targetBuildDir := filepath.Join(layerDir, "sbom", "build", "buildpacksio_lifecycle")
-
-	if err := os.MkdirAll(targetBuildDir, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to create directory %v\n", targetBuildDir)
-	}
-
 	targetLaunchDir := filepath.Join(layerDir, "sbom", "launch", "buildpacksio_lifecycle")
 
+	if err := os.MkdirAll(targetBuildDir, os.ModePerm); err != nil {
+		return errors.Wrapf(err, "Fail to create directory %v\n", targetBuildDir)
+	}
+
 	if err := os.MkdirAll(targetLaunchDir, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to create directory %v\n", targetLaunchDir)
+		return errors.Wrapf(err, "Fail to create directory %v\n", targetLaunchDir)
 	}
 
 	extensions := [3]string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
@@ -198,14 +198,23 @@ func copySboms(layerDir string, e *Exporter) error {
 		for _, extension := range extensions {
 			sbomFilename := component + extension
 
-			fullSbomPath := filepath.Join(targetDir, sbomFilename)
-			err := fsutil.Copy("/cnb/lifecycle/"+sbomFilename, fullSbomPath)
+			srcSbomAbsPath := "/cnb/lifecycle/" + sbomFilename
 
-			e.Logger.Infof("Copying SBOM (" + sbomFilename + ")")
+			_, err := os.Stat(srcSbomAbsPath)
+			if !errors.Is(err, os.ErrNotExist) {
+				destSbomAbsPath := filepath.Join(targetDir, sbomFilename)
 
-			if err != nil {
-				errs = append(errs, errors.Wrapf(err, "Fail to copy "+sbomFilename))
+				err := fsutil.Copy(srcSbomAbsPath, destSbomAbsPath)
+
+				if err != nil {
+					errs = append(errs, errors.Wrapf(err, "Fail to copy "+sbomFilename))
+				}
+
+				e.Logger.Infof("Copying SBOM (" + sbomFilename + ")")
+			} else {
+				e.Logger.Warn(sbomFilename + " is missing")
 			}
+
 		}
 
 	}
