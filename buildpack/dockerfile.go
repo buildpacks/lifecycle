@@ -3,7 +3,6 @@ package buildpack
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"strings"
 
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
@@ -41,7 +40,7 @@ type ExtendArg struct {
 func parseDockerfile(dockerfile string) ([]instructions.Stage, []instructions.ArgCommand, error) {
 	var err error
 	var d []uint8
-	d, err = ioutil.ReadFile(dockerfile)
+	d, err = os.ReadFile(dockerfile)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -188,10 +188,10 @@ func (d *targetDaemon) removeFixtures(t *testing.T) {
 func (r *targetRegistry) start(t *testing.T) {
 	var err error
 
-	r.dockerConfigDir, err = ioutil.TempDir("", "test.docker.config.dir")
+	r.dockerConfigDir, err = os.MkdirTemp("", "test.docker.config.dir")
 	h.AssertNil(t, err)
 
-	sharedRegHandler := registry.New(registry.Logger(log.New(ioutil.Discard, "", log.Lshortfile)))
+	sharedRegHandler := registry.New(registry.Logger(log.New(io.Discard, "", log.Lshortfile)))
 	r.registry = ih.NewDockerRegistry(
 		ih.WithAuth(r.dockerConfigDir),
 		ih.WithSharedHandler(sharedRegHandler),
@@ -345,7 +345,7 @@ func cleanupDaemonFixtures(t *testing.T, fixtures interface{}) {
 }
 
 func minifyMetadata(t *testing.T, path string, metadataStruct interface{}) string {
-	metadata, err := ioutil.ReadFile(path)
+	metadata, err := os.ReadFile(path)
 	h.AssertNil(t, err)
 
 	// Unmarshal and marshal to strip unnecessary whitespace

@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -87,7 +86,7 @@ type GenerateResult struct {
 
 func (g *Generator) Generate() (GenerateResult, error) {
 	inputs := g.getCommonInputs()
-	extensionOutputParentDir, err := ioutil.TempDir("", "cnb-extensions-generated.")
+	extensionOutputParentDir, err := os.MkdirTemp("", "cnb-extensions-generated.")
 	if err != nil {
 		return GenerateResult{}, err
 	}

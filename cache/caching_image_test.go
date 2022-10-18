@@ -2,7 +2,6 @@ package cache_test
 
 import (
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -39,7 +38,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		fakeImage = fakes.NewImage("some-image", "", nil)
-		tmpDir, err = ioutil.TempDir("", "")
+		tmpDir, err = os.MkdirTemp("", "")
 		h.AssertNil(t, err)
 		volumeCache, err = cache.NewVolumeCache(tmpDir)
 		h.AssertNil(t, err)
@@ -142,7 +141,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				rc, err := subject.GetLayer(layerSHA)
 				h.AssertNil(t, err)
 				defer rc.Close()
-				contents, err := ioutil.ReadAll(rc)
+				contents, err := io.ReadAll(rc)
 				h.AssertNil(t, err)
 				h.AssertEq(t, contents, layerData)
 			})
@@ -159,7 +158,7 @@ func testCachingImage(t *testing.T, when spec.G, it spec.S) {
 				rc, err := subject.GetLayer(layerSHA)
 				h.AssertNil(t, err)
 				defer rc.Close()
-				contents, err := ioutil.ReadAll(rc)
+				contents, err := io.ReadAll(rc)
 				h.AssertNil(t, err)
 				h.AssertEq(t, contents, layerData)
 			})

@@ -161,7 +161,7 @@ func (l *Layer) Read() (LayerMetadata, error) {
 		}
 	}
 	var sha string
-	shaBytes, err := ioutil.ReadFile(l.Path() + ".sha")
+	shaBytes, err := os.ReadFile(l.Path() + ".sha")
 	if err != nil && !os.IsNotExist(err) { // if the sha file doesn't exist, an empty sha will be returned
 		return LayerMetadata{}, err
 	}
@@ -193,7 +193,7 @@ func (l *Layer) WriteMetadata(metadata LayerMetadataFile) error {
 }
 
 func (l *Layer) WriteSha(sha string) error {
-	if err := ioutil.WriteFile(l.path+".sha", []byte(sha), 0666); err != nil {
+	if err := os.WriteFile(l.path+".sha", []byte(sha), 0666); err != nil {
 		return err
 	} // #nosec G306
 	return nil

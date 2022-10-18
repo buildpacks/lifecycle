@@ -1,7 +1,6 @@
 package lifecycle_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -111,7 +110,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 		mockCtrl = gomock.NewController(t)
 
 		var err error
-		generatedDir, err = ioutil.TempDir("", "lifecycle")
+		generatedDir, err = os.MkdirTemp("", "lifecycle")
 		h.AssertNil(t, err)
 
 		providedExtensions := []buildpack.GroupElement{

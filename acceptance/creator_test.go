@@ -4,7 +4,6 @@
 package acceptance
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -155,7 +154,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				}
 				// create temp dirs
 				for _, dirPtr := range []*string{&dirCache, &dirLaunchCache, &dirBuild1, &dirRun1, &dirBuild2, &dirRun2} {
-					dir, err := ioutil.TempDir("", "creator-acceptance")
+					dir, err := os.MkdirTemp("", "creator-acceptance")
 					h.AssertNil(t, err)
 					h.AssertNil(t, os.Chmod(dir, 0777)) // Override umask
 

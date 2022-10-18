@@ -1,7 +1,6 @@
 package launch_test
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -29,7 +28,7 @@ func testDecodeMetataTOML(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "test-decode-metadata-toml")
+			tmpDir, err = os.MkdirTemp("", "test-decode-metadata-toml")
 			h.AssertNil(t, err)
 		})
 

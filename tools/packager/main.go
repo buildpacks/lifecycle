@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -61,7 +60,7 @@ func doPackage() error {
 	tw.WithUID(0)
 	tw.WithGID(0)
 
-	templateContents, err := ioutil.ReadFile(descriptorPath)
+	templateContents, err := os.ReadFile(descriptorPath)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Failed to read descriptor file %s", descriptorPath))
 	}
@@ -82,7 +81,7 @@ func doPackage() error {
 		return errors.Wrap(err, fmt.Sprintf("Failed to stat descriptor template file %s", descriptorPath))
 	}
 
-	tempDir, err := ioutil.TempDir("", "lifecycle-descriptor")
+	tempDir, err := os.MkdirTemp("", "lifecycle-descriptor")
 	if err != nil {
 		return errors.Wrap(err, "Failed to create a temp directory")
 	}
@@ -92,7 +91,7 @@ func doPackage() error {
 		return errors.Wrap(err, "Failed to create a temp file")
 	}
 
-	err = ioutil.WriteFile(tempFile.Name(), descriptorContents, descriptorTemplateInfo.Mode())
+	err = os.WriteFile(tempFile.Name(), descriptorContents, descriptorTemplateInfo.Mode())
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Failed to write descriptor contents to file %s", tempFile.Name()))
 	}
