@@ -35,11 +35,12 @@ func testSelective(t *testing.T, when spec.G, it spec.S) {
 			var opts []remote.Option
 			fileNotFoundMsg = "no such file or directory"
 			if runtime.GOOS == "windows" {
-				testImageName = "mcr.microsoft.com/windows/nanoserver:1809"
+				testImageName = "mcr.microsoft.com/windows/nanoserver@sha256:8bd4389d56e69bebf6e4666251fba42f7cce3d5b768d28816884fb4370155fee" // mcr.microsoft.com/windows/nanoserver:1809
+
 				windowsPlatform := v1.Platform{
 					Architecture: "amd64",
 					OS:           "windows",
-					OSVersion:    "10.0.17763.3406",
+					OSVersion:    "10.0.17763.3532",
 				}
 				opts = append(opts, remote.WithPlatform(windowsPlatform))
 				fileNotFoundMsg = "The system cannot find the file specified"
