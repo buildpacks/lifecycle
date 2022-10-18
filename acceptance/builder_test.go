@@ -3,7 +3,6 @@ package acceptance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -66,7 +65,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		containerName = "test-container-" + h.RandString(10)
 		var err error
-		copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+		copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 		h.AssertNil(t, err)
 	})
 
@@ -454,7 +453,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 func getBuilderMetadata(t *testing.T, path string) *platform.BuildMetadata {
 	t.Helper()
-	contents, _ := ioutil.ReadFile(path)
+	contents, _ := os.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
 	var analyzedMd platform.BuildMetadata

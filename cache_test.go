@@ -3,7 +3,7 @@ package lifecycle_test
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -49,7 +49,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			mockCtrl = gomock.NewController(t)
 			layerFactory = testmock.NewMockLayerFactory(mockCtrl)
 
-			tmpDir, err = ioutil.TempDir("", "lifecycle.cacher.layer")
+			tmpDir, err = os.MkdirTemp("", "lifecycle.cacher.layer")
 			h.AssertNil(t, err)
 			h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "artifacts"), 0777))
 
@@ -226,14 +226,14 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("the shas don't match", func() {
 					it.Before(func() {
-						err := ioutil.WriteFile(
+						err := os.WriteFile(
 							filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
 							[]byte(fmt.Sprintf(metadataTemplate, "different-sha", "not-the-sha-you-want")),
 							0600,
 						)
 						h.AssertNil(t, err)
 
-						err = ioutil.WriteFile(
+						err = os.WriteFile(
 							filepath.Join(cacheDir, "committed", "some-layer.tar"),
 							[]byte("some data"),
 							0600,
@@ -354,7 +354,7 @@ func assertCacheHasLayer(t *testing.T, cache lifecycle.Cache, id string) {
 	rc, err := cache.RetrieveLayer(testLayerDigest(id))
 	h.AssertNil(t, err)
 	defer rc.Close()
-	contents, err := ioutil.ReadAll(rc)
+	contents, err := io.ReadAll(rc)
 	h.AssertNil(t, err)
 	h.AssertEq(t, string(contents), testLayerContents(id))
 }
@@ -369,7 +369,7 @@ func initializeCache(t *testing.T, exporter *lifecycle.Exporter, testCache *life
 	*testCache, err = cache.NewVolumeCache(cacheDir)
 	h.AssertNil(t, err)
 
-	h.AssertNil(t, ioutil.WriteFile(
+	h.AssertNil(t, os.WriteFile(
 		filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
 		[]byte(fmt.Sprintf(metadataTemplate, "cache-true-layer-digest", "cache-true-no-sha-layer")),
 		0600,

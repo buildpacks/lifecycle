@@ -2,7 +2,7 @@ package selective
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
@@ -59,7 +59,7 @@ func (l Path) writeImage(img v1.Image) error {
 	if err != nil {
 		return err
 	}
-	if err := l.WriteBlob(cfgName, ioutil.NopCloser(bytes.NewReader(cfgBlob))); err != nil {
+	if err := l.WriteBlob(cfgName, io.NopCloser(bytes.NewReader(cfgBlob))); err != nil {
 		return err
 	}
 
@@ -72,7 +72,7 @@ func (l Path) writeImage(img v1.Image) error {
 	if err != nil {
 		return err
 	}
-	return l.WriteBlob(d, ioutil.NopCloser(bytes.NewReader(manifest)))
+	return l.WriteBlob(d, io.NopCloser(bytes.NewReader(manifest)))
 }
 
 func Write(path string, ii v1.ImageIndex) (Path, error) {

@@ -1,7 +1,6 @@
 package encoding_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +24,7 @@ func testEncoding(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			tmpDir, err = os.MkdirTemp("", "lifecycle.test")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +53,7 @@ func testEncoding(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+			tmpDir, err = os.MkdirTemp("", "lifecycle.test")
 			if err != nil {
 				t.Fatal(err)
 			}

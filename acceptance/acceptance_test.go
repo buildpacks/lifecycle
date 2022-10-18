@@ -2,7 +2,6 @@ package acceptance
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,7 +27,7 @@ var (
 
 func TestVersion(t *testing.T) {
 	var err error
-	buildDir, err = ioutil.TempDir("", "lifecycle-acceptance")
+	buildDir, err = os.MkdirTemp("", "lifecycle-acceptance")
 	h.AssertNil(t, err)
 	defer func() {
 		h.AssertNil(t, os.RemoveAll(buildDir))

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,7 +82,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		// setup dirs
-		tmpDir, err = ioutil.TempDir("", "lifecycle")
+		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		h.AssertNil(t, err)
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")

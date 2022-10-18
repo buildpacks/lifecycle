@@ -3,7 +3,7 @@ package lifecycle_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -57,7 +57,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		layerFactory = testmock.NewMockLayerFactory(mockCtrl)
 
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
+		tmpDir, err = os.MkdirTemp("", "lifecycle.exporter.layer")
 		h.AssertNil(t, err)
 
 		launcherPath, err := filepath.Abs(filepath.Join("testdata", "exporter", "launcher"))
@@ -78,7 +78,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		opts.LayersDir = filepath.Join(tmpDir, "layers")
 		h.AssertNil(t, os.Mkdir(opts.LayersDir, 0777))
-		h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0600))
+		h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0600))
 		opts.AppDir = filepath.Join(tmpDir, "app")
 
 		fakeAppImage = fakes.NewImage(
@@ -464,7 +464,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 					when("metadata.toml is missing bom and has empty process list", func() {
 						it.Before(func() {
-							err := ioutil.WriteFile(filepath.Join(opts.LayersDir, "config", "metadata.toml"), []byte(`
+							err := os.WriteFile(filepath.Join(opts.LayersDir, "config", "metadata.toml"), []byte(`
 processes = []
 
 [[buildpacks]]
@@ -992,7 +992,7 @@ version = "4.5.6"
 			when("there are store.toml files", func() {
 				it.Before(func() {
 					path := filepath.Join(opts.LayersDir, "buildpack.id", "store.toml")
-					h.AssertNil(t, ioutil.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0600))
+					h.AssertNil(t, os.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0600))
 				})
 
 				it("saves store metadata", func() {
@@ -1548,7 +1548,7 @@ func assertHasLayer(t *testing.T, fakeAppImage *fakes.Image, id string) {
 	rc, err := fakeAppImage.GetLayer(testLayerDigest(id))
 	h.AssertNil(t, err)
 	defer rc.Close()
-	contents, err := ioutil.ReadAll(rc)
+	contents, err := io.ReadAll(rc)
 	h.AssertNil(t, err)
 	h.AssertEq(t, string(contents), testLayerContents(id))
 }

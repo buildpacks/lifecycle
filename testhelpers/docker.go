@@ -145,7 +145,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 }
 
 func checkResponse(responseBody io.Reader) error {
-	body, err := ioutil.ReadAll(responseBody)
+	body, err := io.ReadAll(responseBody)
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}

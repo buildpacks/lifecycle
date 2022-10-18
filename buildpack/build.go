@@ -72,7 +72,7 @@ func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger 
 	}
 
 	logger.Debug("Creating plan directory")
-	planDir, err := ioutil.TempDir("", launch.EscapeID(d.Buildpack.ID)+"-")
+	planDir, err := os.MkdirTemp("", launch.EscapeID(d.Buildpack.ID)+"-")
 	if err != nil {
 		return BuildOutputs{}, err
 	}

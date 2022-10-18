@@ -6,8 +6,8 @@ package acceptance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -294,9 +294,9 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 }
 
 func calculateEmptyLayerSha(t *testing.T) string {
-	tmpDir, err := ioutil.TempDir("", "")
+	tmpDir, err := os.MkdirTemp("", "")
 	h.AssertNil(t, err)
 	testLayerEmptyPath := filepath.Join(tmpDir, "empty.tar")
-	h.AssertNil(t, ioutil.WriteFile(testLayerEmptyPath, []byte{}, 0600))
+	h.AssertNil(t, os.WriteFile(testLayerEmptyPath, []byte{}, 0600))
 	return "sha256:" + h.ComputeSHA256ForFile(t, testLayerEmptyPath)
 }

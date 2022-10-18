@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -28,7 +27,7 @@ func testWrite(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "archive-write-test")
+		tmpDir, err = os.MkdirTemp("", "archive-write-test")
 		h.AssertNil(t, err)
 	})
 

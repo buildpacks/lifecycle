@@ -69,7 +69,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			it.Before(func() {
 				var err error
-				kanikoDir, err = ioutil.TempDir("", "lifecycle-acceptance")
+				kanikoDir, err = os.MkdirTemp("", "lifecycle-acceptance")
 				h.AssertNil(t, err)
 
 				// push "builder" image to test registry

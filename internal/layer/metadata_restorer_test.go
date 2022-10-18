@@ -40,7 +40,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
+		layerDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 		h.AssertNil(t, err)
 		useShaFiles = true // notice - the default for platform API >= 0.7 is false (it's set to false in some of the tests)
 		logger = log.Logger{Handler: &discard.Handler{}}

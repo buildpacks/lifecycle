@@ -2,7 +2,6 @@ package layer_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,7 +36,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		layersDir, err = ioutil.TempDir("", "lifecycle.layers-dir.")
+		layersDir, err = os.MkdirTemp("", "lifecycle.layers-dir.")
 		h.AssertNil(t, err)
 
 		sbomRestorer = layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
@@ -89,7 +88,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
+			artifactsDir, err = os.MkdirTemp("", "lifecycle.artifacts-dir.")
 			h.AssertNil(t, err)
 			h.Mkdir(t, filepath.Join(layersDir, "sbom", "launch"))
 			h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "launch", "some-file"))
@@ -153,7 +152,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			artifactsDir, err = ioutil.TempDir("", "lifecycle.artifacts-dir.")
+			artifactsDir, err = os.MkdirTemp("", "lifecycle.artifacts-dir.")
 			h.AssertNil(t, err)
 			h.Mkdir(t, filepath.Join(layersDir, "sbom", "cache"))
 			h.Mkfile(t, "some-bom-data", filepath.Join(layersDir, "sbom", "cache", "some-file"))
@@ -162,7 +161,7 @@ func testSBOMRestorer(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			layerDigest = layer.Digest
 
-			cacheDir, err = ioutil.TempDir("", "lifecycle.cache-dir.")
+			cacheDir, err = os.MkdirTemp("", "lifecycle.cache-dir.")
 			h.AssertNil(t, err)
 			testCache, err = cache.NewVolumeCache(cacheDir)
 			h.AssertNil(t, err)

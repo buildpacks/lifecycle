@@ -4,7 +4,6 @@
 package acceptance
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -59,7 +58,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
-			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 			h.AssertNil(t, err)
 		})
 
@@ -148,7 +147,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertPathExists(t, cachedFile)
 
 					// check restored cache file content is correct
-					contents, err := ioutil.ReadFile(cachedFile)
+					contents, err := os.ReadFile(cachedFile)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(contents), "cached-data\n")
 				})

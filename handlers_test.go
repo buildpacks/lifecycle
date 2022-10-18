@@ -1,7 +1,6 @@
 package lifecycle_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,7 +30,7 @@ func testHandlers(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle.test")
+		tmpDir, err = os.MkdirTemp("", "lifecycle.test")
 		h.AssertNil(t, err)
 
 		groupTOMLContents = `
