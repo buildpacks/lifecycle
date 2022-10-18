@@ -37,12 +37,13 @@ func newApisMustParse(supported []string, deprecated []string) APIs {
 }
 
 // NewApis constructs an instance of APIs
-//  supported must be a superset of deprecated
-//  deprecated APIs greater than 1.0 should should not include minor versions
-//  supported APIs should always include minor versions
-//  Examples:
-//     deprecated API 1 implies all 1.x APIs are deprecated
-//     supported API 1 implies only 1.0 is supported
+//
+//	supported must be a superset of deprecated
+//	deprecated APIs greater than 1.0 should should not include minor versions
+//	supported APIs should always include minor versions
+//	Examples:
+//	   deprecated API 1 implies all 1.x APIs are deprecated
+//	   supported API 1 implies only 1.0 is supported
 func NewAPIs(supported []string, deprecated []string) (APIs, error) {
 	apis := APIs{}
 	for _, api := range supported {

@@ -9,14 +9,15 @@ import (
 )
 
 // ProcessFor creates a process from container cmd
-//   If the Platform API if 0.4 or greater and DefaultProcess is set:
-//     * The default process is returned with `cmd` appended to the process args
-//   If the Platform API is less than 0.4
-//     * If there is exactly one argument and it matches a process type, it returns that process.
-//     * If cmd is empty, it returns the default process
-//   Else
-//     * it constructs a new process from cmd
-//     * If the first element in cmd is `cmd` the process shall be direct
+//
+//	If the Platform API if 0.4 or greater and DefaultProcess is set:
+//	  * The default process is returned with `cmd` appended to the process args
+//	If the Platform API is less than 0.4
+//	  * If there is exactly one argument and it matches a process type, it returns that process.
+//	  * If cmd is empty, it returns the default process
+//	Else
+//	  * it constructs a new process from cmd
+//	  * If the first element in cmd is `cmd` the process shall be direct
 func (l *Launcher) ProcessFor(cmd []string) (Process, error) {
 	if l.PlatformAPI.LessThan("0.4") {
 		return l.processForLegacy(cmd)
