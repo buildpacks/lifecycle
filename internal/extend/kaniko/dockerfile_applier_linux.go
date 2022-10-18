@@ -20,8 +20,8 @@ import (
 
 func (a *DockerfileApplier) Apply(workspace string, digest string, dockerfiles []extend.Dockerfile, options extend.Options) error {
 	// Configure kaniko
-	baseImageRef := ociPrefix + filepath.Join(kanikoCacheDir, digest)
-	baseImage, err := readOCI(baseImageRef)
+	layoutPath := ociPrefix + filepath.Join(kanikoCacheDir, digest)
+	baseImage, err := readOCI(layoutPath)
 	if err != nil {
 		return fmt.Errorf("getting base image for digest '%s': %w", digest, err)
 	}
@@ -30,6 +30,7 @@ func (a *DockerfileApplier) Apply(workspace string, digest string, dockerfiles [
 	}
 
 	// Range over Dockerfiles
+	baseImageRef := fmt.Sprintf("base@%s", digest)
 	for idx, dfile := range dockerfiles {
 		opts := createOptions(workspace, baseImageRef, dfile, options)
 

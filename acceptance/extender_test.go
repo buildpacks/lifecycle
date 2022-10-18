@@ -129,6 +129,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(extendArgs...),
 					)
 					h.AssertStringDoesNotContain(t, firstOutput, "Did not find cache key, pulling remote image...")
+					h.AssertStringDoesNotContain(t, firstOutput, "Error while retrieving image from cache: oci")
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
 					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl was installed on the build image
 					t.Log("sets environment variables from the extended build image in the build context")
@@ -146,7 +147,8 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithArgs(extendArgs...),
 					)
 					h.AssertStringDoesNotContain(t, secondOutput, "Did not find cache key, pulling remote image...")
-					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")
+					h.AssertStringDoesNotContain(t, secondOutput, "Error while retrieving image from cache: oci")
+					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")            // shows that cache layer was used
 					h.AssertStringContains(t, secondOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl is still installed in the unpacked cached layer
 				})
 			})
