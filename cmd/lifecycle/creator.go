@@ -271,7 +271,7 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
-	if !c.skipRestore {
+	if !c.skipRestore || c.platform.API().AtLeast("0.10") {
 		cmd.DefaultLogger.Phase("RESTORING")
 		err := restoreArgs{
 			keychain:   c.keychain,
