@@ -62,40 +62,36 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				h.DockerImageRemove(t, createdImageName)
 			})
 
-			when("first build", func() {
-				when("app", func() {
-					it("is created", func() {
-						createFlags := []string{"-daemon"}
-						createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...)
+			it("creates app", func() {
+				createFlags := []string{"-daemon"}
+				createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...)
 
-						createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
-						createdImageName = "some-created-image-" + h.RandString(10)
-						createArgs = append(createArgs, createdImageName)
+				createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
+				createdImageName = "some-created-image-" + h.RandString(10)
+				createArgs = append(createArgs, createdImageName)
 
-						output := h.DockerRun(t,
-							createImage,
-							h.WithFlags(append(
-								dockerSocketMount,
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
-								"--network", createRegNetwork,
-							)...),
-							h.WithArgs(createArgs...),
-						)
-						h.AssertStringContains(t, output, "Saving "+createdImageName)
+				output := h.DockerRun(t,
+					createImage,
+					h.WithFlags(append(
+						dockerSocketMount,
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
+						"--network", createRegNetwork,
+					)...),
+					h.WithArgs(createArgs...),
+				)
+				h.AssertStringContains(t, output, "Saving "+createdImageName)
 
-						assertImageOSAndArch(t, createdImageName, createTest)
+				assertImageOSAndArch(t, createdImageName, createTest)
 
-						output = h.DockerRun(t,
-							createdImageName,
-							h.WithFlags(
-								"--entrypoint", "/cnb/lifecycle/launcher",
-							),
-							h.WithArgs("env"),
-						)
-						h.AssertStringContains(t, output, "SOME_VAR=some-val") // set by buildpack
-					})
-				})
+				output = h.DockerRun(t,
+					createdImageName,
+					h.WithFlags(
+						"--entrypoint", "/cnb/lifecycle/launcher",
+					),
+					h.WithArgs("env"),
+				)
+				h.AssertStringContains(t, output, "SOME_VAR=some-val") // set by buildpack
 			})
 		})
 
@@ -104,44 +100,40 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				h.DockerImageRemove(t, createdImageName)
 			})
 
-			when("first build", func() {
-				when("app", func() {
-					it("is created", func() {
-						var createFlags []string
-						createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...)
+			it("creates app", func() {
+				var createFlags []string
+				createFlags = append(createFlags, []string{"-run-image", createRegFixtures.ReadOnlyRunImage}...)
 
-						createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
-						createdImageName = createTest.RegRepoName("some-created-image-" + h.RandString(10))
-						createArgs = append(createArgs, createdImageName)
+				createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
+				createdImageName = createTest.RegRepoName("some-created-image-" + h.RandString(10))
+				createArgs = append(createArgs, createdImageName)
 
-						output := h.DockerRun(t,
-							createImage,
-							h.WithFlags(
-								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
-								"--network", createRegNetwork,
-							),
-							h.WithArgs(createArgs...),
-						)
-						h.AssertStringContains(t, output, "Saving "+createdImageName)
+				output := h.DockerRun(t,
+					createImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
+						"--network", createRegNetwork,
+					),
+					h.WithArgs(createArgs...),
+				)
+				h.AssertStringContains(t, output, "Saving "+createdImageName)
 
-						h.Run(t, exec.Command("docker", "pull", createdImageName))
-						assertImageOSAndArch(t, createdImageName, createTest)
+				h.Run(t, exec.Command("docker", "pull", createdImageName))
+				assertImageOSAndArch(t, createdImageName, createTest)
 
-						output = h.DockerRun(t,
-							createdImageName,
-							h.WithFlags(
-								"--entrypoint", "/cnb/lifecycle/launcher",
-							),
-							h.WithArgs("env"),
-						)
-						h.AssertStringContains(t, output, "SOME_VAR=some-val") // set by buildpack
-					})
-				})
+				output = h.DockerRun(t,
+					createdImageName,
+					h.WithFlags(
+						"--entrypoint", "/cnb/lifecycle/launcher",
+					),
+					h.WithArgs("env"),
+				)
+				h.AssertStringContains(t, output, "SOME_VAR=some-val") // set by buildpack
 			})
 		})
 
-		when("SBOM", func() {
+		when("multiple builds", func() {
 			var (
 				container1     string
 				container2     string
@@ -157,8 +149,6 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			)
 
 			it.Before(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized SBOM")
-
 				// assign container names
 				for _, cPtr := range []*string{&container1, &container2, &container3, &container4} {
 					*cPtr = "test-container-" + h.RandString(10)
@@ -178,8 +168,6 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			})
 
 			it.After(func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized SBOM")
-
 				// remove containers if needed
 				for _, container := range []string{container1, container2, container3, container4} {
 					if h.DockerContainerExists(t, container) {
@@ -201,6 +189,8 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				)
 
 				it.Before(func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not support standardized SBOM")
+
 					createFlags = []string{"-daemon"}
 					createFlags = append(createFlags, []string{
 						"-run-image", createRegFixtures.ReadOnlyRunImage,
@@ -227,7 +217,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						)...),
 						h.WithArgs(createArgs...),
 					)
-					h.AssertStringDoesNotContain(t, string(output), "restored with content")
+					h.AssertStringDoesNotContain(t, output, "restored with content")
 					h.AssertPathExists(t, filepath.Join(dirBuild1, "layers", "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
 					h.AssertPathExists(t, filepath.Join(dirBuild1, "layers", "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
 
@@ -250,7 +240,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				})
 
 				when("rebuild with cache", func() {
-					it("is exported in the app image", func() {
+					it("exports SBOM in the app image", func() {
 						startTime := time.Now()
 						// second build
 						output := h.DockerRunAndCopy(t,
@@ -274,12 +264,14 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						if duration > 3*time.Second {
 							t.Fatalf("Expected second build to complete in less than 3 seconds; took %s", duration)
 						}
-						h.AssertStringContains(t, string(output), "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
-						h.AssertStringContains(t, string(output), "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
-						h.AssertStringContains(t, string(output), "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
-						h.AssertStringContains(t, string(output), "Reusing layer 'launch.sbom'")
+						h.AssertStringContains(t, output, "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
+						h.AssertStringContains(t, output, "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
+						h.AssertStringContains(t, output, "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
+						h.AssertStringContains(t, output, "Reusing layer 'launch.sbom'")
 						h.AssertPathExists(t, filepath.Join(dirBuild2, "layers", "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
 						h.AssertPathExists(t, filepath.Join(dirBuild2, "layers", "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
+						t.Log("restores store.toml")
+						h.AssertStringContains(t, output, "store.toml restored with content: [metadata]")
 
 						// second run
 						output = h.DockerRunAndCopy(t,
@@ -301,7 +293,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				})
 
 				when("rebuild with clear cache", func() {
-					it("is exported in the app image", func() {
+					it("exports SBOM in the app image", func() {
 						createArgs = append([]string{ctrPath(creatorPath)}, append(createFlags, "-skip-restore")...)
 						createArgs = append(createArgs, imageName)
 
@@ -321,9 +313,15 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 							)...),
 							h.WithArgs(createArgs...),
 						)
-						h.AssertStringDoesNotContain(t, string(output), "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
-						h.AssertStringDoesNotContain(t, string(output), "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
-						h.AssertStringDoesNotContain(t, string(output), "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
+						h.AssertStringDoesNotContain(t, output, "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
+						h.AssertStringDoesNotContain(t, output, "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
+						h.AssertStringDoesNotContain(t, output, "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
+						// check that store.toml was restored
+						if api.MustParse(platformAPI).AtLeast("0.10") {
+							h.AssertStringContains(t, output, "store.toml restored with content: [metadata]")
+						} else {
+							h.AssertStringDoesNotContain(t, output, "store.toml restored with content")
+						}
 					})
 				})
 			})

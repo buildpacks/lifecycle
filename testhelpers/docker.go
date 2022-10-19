@@ -40,7 +40,7 @@ func DockerBuild(t *testing.T, name, context string, ops ...DockerCmdOp) {
 
 func DockerImageRemove(t *testing.T, name string) {
 	t.Helper()
-	Run(t, exec.Command("docker", "rmi", name)) // #nosec G204
+	Run(t, exec.Command("docker", "rmi", name, "--force")) // #nosec G204
 }
 
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
