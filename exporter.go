@@ -167,9 +167,6 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 
 func copySboms(layerDir string, e *Exporter) error {
 
-	// TODO copy only if SBOMs files are available
-	// TODO create directory only if SBOMs files are available
-
 	targetBuildDir := filepath.Join(layerDir, "sbom", "build", "buildpacksio_lifecycle")
 	targetLaunchDir := filepath.Join(layerDir, "sbom", "launch", "buildpacksio_lifecycle")
 
@@ -202,7 +199,8 @@ func copySboms(layerDir string, e *Exporter) error {
 
 			_, err := os.Stat(srcSbomAbsPath)
 			if !errors.Is(err, os.ErrNotExist) {
-				destSbomAbsPath := filepath.Join(targetDir, sbomFilename)
+				destSbomFilename := strings.Replace(sbomFilename, component+".", "", 1)
+				destSbomAbsPath := filepath.Join(targetDir, destSbomFilename)
 
 				err := fsutil.Copy(srcSbomAbsPath, destSbomAbsPath)
 
@@ -210,7 +208,7 @@ func copySboms(layerDir string, e *Exporter) error {
 					errs = append(errs, errors.Wrapf(err, "Fail to copy "+sbomFilename))
 				}
 
-				e.Logger.Infof("Copying SBOM (" + sbomFilename + ")")
+				e.Logger.Infof("Copying " + component + " SBOM (" + destSbomFilename + ")")
 			} else {
 				e.Logger.Warn(sbomFilename + " is missing")
 			}
