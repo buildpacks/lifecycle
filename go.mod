@@ -5,10 +5,10 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.9.2-0.20220928141902-4d077e2a4084
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20220906183739-a13b39e9d86d
-	github.com/buildpacks/imgutil v0.0.0-20220913203928-6accc39f0cf9
+	github.com/buildpacks/imgutil v0.0.0-20221018214701-f943a399ba46
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20220327082430-c57b701bfc08
 	github.com/containerd/containerd v1.6.2
-	github.com/docker/docker v20.10.18+incompatible
+	github.com/docker/docker v20.10.20+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.11.0
@@ -124,8 +124,8 @@ go 1.18
 
 replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.6
 
-// These match the docker/docker's dependencies configured in:
-// https://github.com/moby/moby/blob/v20.10.18/vendor.conf
+// This matches GoogleContainerTools/kaniko dependencies configured in:
+// https://github.com/GoogleContainerTools/kaniko/blob/f9aaa9fca7bf4077778ed527c1a8a6e09e60c53c/go.mod
 replace (
 	github.com/moby/buildkit => github.com/moby/buildkit v0.8.3
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc95
