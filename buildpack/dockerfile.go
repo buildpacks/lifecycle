@@ -17,7 +17,7 @@ const (
 	DockerfileKindRun   = "run"
 )
 
-var permittedCommandsBuild = []string{"from", "add", "arg", "copy", "env", "label", "run", "shell", "user", "workdir"}
+var permittedCommandsBuild = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
 
 type DockerfileInfo struct {
 	ExtensionID string
@@ -72,7 +72,7 @@ func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 		for _, command := range stage.Commands {
 			found := false
 			for _, permittedCommand := range permittedCommandsBuild {
-				if permittedCommand == command.Name() {
+				if permittedCommand == strings.ToUpper(command.Name()) {
 					found = true
 					break
 				}
