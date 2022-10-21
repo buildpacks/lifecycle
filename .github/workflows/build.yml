@@ -29,12 +29,13 @@ jobs:
         env:
           TEST_COVERAGE: 1
         run: make test
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v1.0.5
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
         with:
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_linux
           fail_ci_if_error: true
+          verbose: true
   test-linux-arm64:
     runs-on: linux-arm64
     steps:
@@ -88,7 +89,7 @@ jobs:
         run: |
           make test
       - name: Prepare Codecov
-        uses: crazy-max/ghaction-chocolatey@v1
+        uses: crazy-max/ghaction-chocolatey@v2
         with:
           args: install codecov -y
       - name: Run Codecov
