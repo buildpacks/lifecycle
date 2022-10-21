@@ -41,25 +41,13 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
 			logger            *log.Logger
+			analyzedMD        platform.AnalyzedMetadata
+			extender          *lifecycle.Extender
 		)
 
-		it.Before(func() {
-			mockController = gomock.NewController(t)
-			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
-			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
-			fakeDirStore = testmock.NewMockDirStore(mockController)
-			extenderFactory = lifecycle.NewExtenderFactory(fakeAPIVerifier, fakeConfigHandler)
-
-			logger = &log.Logger{Handler: &discard.Handler{}}
-		})
-
-		it.After(func() {
-			mockController.Finish()
-		})
-
-		it("configures the extender", func() {
+		createExtender := func() {
 			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path").Return(
-				platform.AnalyzedMetadata{BuildImage: &platform.ImageIdentifier{Reference: "some-image-ref"}}, nil,
+				analyzedMD, nil,
 			)
 			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(
 				[]buildpack.GroupElement{}, []buildpack.GroupElement{{ID: "A", Version: "v1", API: "0.9"}}, nil,
@@ -76,7 +64,8 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
 
 			fakeDockerfileApplier := testmock.NewMockDockerfileApplier(mockController)
-			extender, err := extenderFactory.NewExtender(
+			var err error
+			extender, err = extenderFactory.NewExtender(
 				"some-analyzed-path",
 				"some-app-dir",
 				"some-generated-dir",
@@ -88,6 +77,25 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 				logger,
 			)
 			h.AssertNil(t, err)
+		}
+
+		it.Before(func() {
+			mockController = gomock.NewController(t)
+			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
+			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
+			fakeDirStore = testmock.NewMockDirStore(mockController)
+			extenderFactory = lifecycle.NewExtenderFactory(fakeAPIVerifier, fakeConfigHandler)
+
+			logger = &log.Logger{Handler: &discard.Handler{}}
+		})
+
+		it.After(func() {
+			mockController.Finish()
+		})
+
+		it("configures the extender", func() {
+			analyzedMD = platform.AnalyzedMetadata{BuildImage: &platform.ImageIdentifier{Reference: "some-image-ref"}}
+			createExtender()
 
 			h.AssertEq(t, extender.AppDir, "some-app-dir")
 			h.AssertEq(t, extender.GeneratedDir, "some-generated-dir")
@@ -99,6 +107,13 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 				{ID: "A", Version: "v1", API: "0.9", Extension: true},
 			})
 			h.AssertEq(t, extender.Logger, logger)
+		})
+
+		when("build image is nil", func() {
+			it("does not panic", func() {
+				analyzedMD = platform.AnalyzedMetadata{}
+				createExtender()
+			})
 		})
 	})
 }

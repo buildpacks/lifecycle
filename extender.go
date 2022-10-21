@@ -83,7 +83,9 @@ func (f *ExtenderFactory) setImageRef(extender *Extender, path string) error {
 	if err != nil {
 		return err
 	}
-	extender.ImageRef = analyzedMD.BuildImage.Reference
+	if analyzedMD.BuildImage != nil {
+		extender.ImageRef = analyzedMD.BuildImage.Reference
+	}
 	return nil
 }
 
