@@ -19,7 +19,7 @@ var (
 
 func main() {
 
-	flag.StringVar(&path, "path", "", "path to binary")
+	flag.StringVar(&path, "path", "", "path to a binary file")
 	flag.Parse()
 
 	GenerateSBOM(path)
@@ -40,7 +40,7 @@ func GenerateSBOM(path string) []error {
 	isDirectory, _ := isDirectory(path)
 
 	if isDirectory {
-		return []error{errors.New("path is a directory")}
+		return []error{errors.New("path is a directory, it must be the path to a binary file")}
 	}
 
 	generatedSbom, _ := sbom.Generate(path)

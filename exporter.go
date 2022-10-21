@@ -182,7 +182,6 @@ func copySboms(layerDir string, e *Exporter) error {
 	components := [2]string{"lifecycle", "launcher"}
 
 	var targetDir string
-	var errs []error
 
 	for _, component := range components {
 
@@ -205,7 +204,7 @@ func copySboms(layerDir string, e *Exporter) error {
 				err := fsutil.Copy(srcSbomAbsPath, destSbomAbsPath)
 
 				if err != nil {
-					errs = append(errs, errors.Wrapf(err, "Fail to copy "+sbomFilename))
+					return errors.Wrapf(err, "Fail to copy "+sbomFilename)
 				}
 
 				e.Logger.Infof("Copying " + component + " SBOM (" + destSbomFilename + ")")
@@ -215,12 +214,6 @@ func copySboms(layerDir string, e *Exporter) error {
 
 		}
 
-	}
-
-	for _, err := range errs {
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
