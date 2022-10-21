@@ -1,14 +1,16 @@
 package main
 
 import (
-	h "github.com/buildpacks/lifecycle/testhelpers"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
+	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestSbomGenerator(t *testing.T) {
@@ -18,7 +20,7 @@ func TestSbomGenerator(t *testing.T) {
 func testSbomGenerator(t *testing.T, when spec.G, it spec.S) {
 	when("when given a directory with a simple GO binary", func() {
 		var (
-			tmpDir string
+			tmpDir                  string
 			simpleAppBinaryFullpath string
 		)
 		simpleAppBinaryFilename := "simple-app"
@@ -105,13 +107,13 @@ func testSbomGenerator(t *testing.T, when spec.G, it spec.S) {
 
 	})
 
-	when ("when given an absolute path to a binary file with an executable extension .exe", func() {
+	when("when given an absolute path to a binary file with an executable extension .exe", func() {
 		it("returns the filename without the extension", func() {
 			h.AssertEq(t, GenerateFilename("/windows-amd64/lifecycle/lifecycle.exe"), "lifecycle")
 		})
 	})
 
-	when ("when given an absolute path to a binary file without an extension", func() {
+	when("when given an absolute path to a binary file without an extension", func() {
 		it("returns the filename without the extension", func() {
 			h.AssertEq(t, GenerateFilename("/usr/local/bin/test"), "test")
 		})

@@ -5,12 +5,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/paketo-buildpacks/packit/v2/sbom"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/paketo-buildpacks/packit/v2/sbom"
 )
 
 var (

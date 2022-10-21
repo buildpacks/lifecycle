@@ -3,11 +3,12 @@ package lifecycle
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
