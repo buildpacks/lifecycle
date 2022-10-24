@@ -213,19 +213,20 @@ $(BUILD_DIR)/darwin-amd64/lifecycle/launcher:
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 
-generate-sbom: generate-sbom-lifecycle generate-sbom-launcher
+generate-sbom: generate-sbom-image generate-sbom-lifecycle generate-sbom-launcher
 
-generate-sbom-lifecycle: export GOOS:=linux
-generate-sbom-lifecycle: export GOARCH:=amd64
+generate-sbom-image: export SBOM_GENERATOR_IMAGE:=docker-sbom-generator
+generate-sbom-image:
+	@echo "> Generating docker image for sbom generator"
+	docker build --file tools/sbom/Dockerfile --tag $(SBOM_GENERATOR_IMAGE) --cache-from=$(SBOM_GENERATOR_IMAGE) .
+
 generate-sbom-lifecycle:
-	@echo "> Generation lifecycle sbom for linux/amd64"
-	docker run --workdir=/lifecycle -v $(PWD):/lifecycle golang:1.18.7 sh -c '$(GOCMD) run ./tools/sbom/main.go -path ./out/$(GOOS)-$(GOARCH)/lifecycle/lifecycle'
+	@echo "> Generating SBOM file for lifecycle"
+	docker run -v $(PWD):/lifecycle -it --entrypoint /docker-sbom-generator docker-sbom-generator -path /lifecycle/out/linux-amd64/lifecycle/lifecycle
 
-generate-sbom-launcher: export GOOS:=linux
-generate-sbom-launcher: export GOARCH:=amd64
 generate-sbom-launcher:
-	@echo "> Generation launcher sbom for linux/amd64"
-	docker run --workdir=/lifecycle -v $(PWD):/lifecycle golang:1.18.7 sh -c '$(GOCMD) run ./tools/sbom/main.go -path ./out/$(GOOS)-$(GOARCH)/lifecycle/launcher'
+	@echo "> Generating SBOM file for launcher"
+	docker run -v $(PWD):/lifecycle -it --entrypoint /docker-sbom-generator docker-sbom-generator -path /lifecycle/out/linux-amd64/lifecycle/launcher
 
 install-goimports:
 	@echo "> Installing goimports..."
