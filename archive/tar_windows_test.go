@@ -2,7 +2,6 @@ package archive_test
 
 import (
 	"archive/tar"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -32,7 +31,7 @@ func testTarWindows(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "archive-extract-test")
+		tmpDir, err = os.MkdirTemp("", "archive-extract-test")
 		h.AssertNil(t, err)
 		ftr = &fakeTarReader{}
 		tr = archive.NewNormalizingTarReader(ftr)
