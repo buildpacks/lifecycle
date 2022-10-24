@@ -1,7 +1,6 @@
 package launch
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -181,30 +180,30 @@ func (l *Launcher) doLayerExecD(procType string) dirAction {
 }
 
 func eachLayer(bpDir string, action dirAction) error {
-	return eachInDir(bpDir, action, func(fi os.FileInfo) bool {
-		return fi.IsDir()
+	return eachInDir(bpDir, action, func(entry os.DirEntry) bool {
+		return entry.IsDir()
 	})
 }
 
 func eachFile(dir string, action dirAction) error {
-	return eachInDir(dir, action, func(fi os.FileInfo) bool {
-		return !fi.IsDir()
+	return eachInDir(dir, action, func(entry os.DirEntry) bool {
+		return !entry.IsDir()
 	})
 }
 
-func eachInDir(dir string, action dirAction, predicate func(fi os.FileInfo) bool) error {
-	fis, err := ioutil.ReadDir(dir)
+func eachInDir(dir string, action dirAction, predicate func(entry os.DirEntry) bool) error {
+	entries, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
 		return errors.Wrapf(err, "failed to list files in dir '%s'", dir)
 	}
-	for _, fi := range fis {
-		if !predicate(fi) {
+	for _, entry := range entries {
+		if !predicate(entry) {
 			continue
 		}
-		if err := action(filepath.Join(dir, fi.Name())); err != nil {
+		if err := action(filepath.Join(dir, entry.Name())); err != nil {
 			return err
 		}
 	}

@@ -2,7 +2,6 @@ package launch_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -41,7 +40,7 @@ func testExecD(t *testing.T, when spec.G, it spec.S) {
 			env = testmock.NewMockEnv(mockCtrl)
 
 			var err error
-			tmpDir, err = ioutil.TempDir("", "test-execd")
+			tmpDir, err = os.MkdirTemp("", "test-execd")
 			h.AssertNil(t, err)
 			wd, err := os.Getwd()
 			h.AssertNil(t, err)

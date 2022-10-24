@@ -1,7 +1,6 @@
 package launch_test
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -65,7 +64,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		mockEnv.EXPECT().List().Return(envList).AnyTimes()
 
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle.launcher.")
+		tmpDir, err = os.MkdirTemp("", "lifecycle.launcher.")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -726,7 +725,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 func mkfile(t *testing.T, data string, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		if err := ioutil.WriteFile(p, []byte(data), 0600); err != nil {
+		if err := os.WriteFile(p, []byte(data), 0600); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}
@@ -734,7 +733,7 @@ func mkfile(t *testing.T, data string, paths ...string) {
 
 func rdfile(t *testing.T, path string) string {
 	t.Helper()
-	out, err := ioutil.ReadFile(path)
+	out, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err)
 	}
