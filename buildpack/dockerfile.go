@@ -3,6 +3,7 @@ package buildpack
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
