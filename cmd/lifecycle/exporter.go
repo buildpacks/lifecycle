@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -266,7 +265,7 @@ func (e *exportCmd) validateRunImageInput() error {
 }
 
 func (ea exportArgs) export(group buildpack.Group, cacheStore lifecycle.Cache, analyzedMD platform.AnalyzedMetadata) error {
-	artifactsDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
+	artifactsDir, err := os.MkdirTemp("", "lifecycle.exporter.layer")
 	if err != nil {
 		return cmd.FailErr(err, "create temp directory")
 	}
