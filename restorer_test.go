@@ -3,7 +3,6 @@ package lifecycle_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,10 +55,10 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 			it.Before(func() {
 				var err error
 
-				layersDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
+				layersDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 				h.AssertNil(t, err)
 
-				cacheDir, err = ioutil.TempDir("", "")
+				cacheDir, err = os.MkdirTemp("", "")
 				h.AssertNil(t, err)
 
 				testCache, err = cache.NewVolumeCache(cacheDir)
@@ -239,7 +238,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 					h.RecursiveCopy(t, filepath.Join("testdata", "restorer"), layersDir)
 					var err error
 
-					tarTempDir, err = ioutil.TempDir("", "restorer-test-temp-layer")
+					tarTempDir, err = os.MkdirTemp("", "restorer-test-temp-layer")
 					h.AssertNil(t, err)
 
 					lf := layers.Factory{
@@ -323,7 +322,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 }
 `, cacheFalseLayerSHA, cacheLaunchLayerSHA, cacheOnlyLayerSHA, noGroupLayerSHA, escapedLayerSHA)
 
-					err = ioutil.WriteFile(
+					err = os.WriteFile(
 						filepath.Join(cacheDir, "committed", "io.buildpacks.lifecycle.cache.metadata"),
 						[]byte(contents),
 						0600,
@@ -648,7 +647,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 				it.Before(func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.8"), "Platform API < 0.8 does not restore SBOM")
 
-					tmpDir, err := ioutil.TempDir("", "")
+					tmpDir, err := os.MkdirTemp("", "")
 					h.AssertNil(t, err)
 					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
 					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
@@ -687,12 +686,12 @@ func writeLayer(layersDir, buildpack, name, metadata, sha string) error {
 		return errors.Wrapf(err, "creating buildpack layer directory")
 	}
 	metadataPath := filepath.Join(buildpackDir, name+".toml")
-	if err := ioutil.WriteFile(metadataPath, []byte(metadata), 0600); err != nil {
+	if err := os.WriteFile(metadataPath, []byte(metadata), 0600); err != nil {
 		return errors.Wrapf(err, "writing metadata file")
 	}
 	if sha != "" { // don't write a sha file when sha is an empty string
 		shaPath := filepath.Join(buildpackDir, name+".sha")
-		if err := ioutil.WriteFile(shaPath, []byte(sha), 0600); err != nil {
+		if err := os.WriteFile(shaPath, []byte(sha), 0600); err != nil {
 			return errors.Wrapf(err, "writing sha file")
 		}
 	}
@@ -700,7 +699,7 @@ func writeLayer(layersDir, buildpack, name, metadata, sha string) error {
 }
 
 func TestWriteLayer(t *testing.T) {
-	layersDir, err := ioutil.TempDir("", "test-write-layer")
+	layersDir, err := os.MkdirTemp("", "test-write-layer")
 	if err != nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}

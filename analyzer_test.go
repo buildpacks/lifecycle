@@ -3,7 +3,6 @@ package lifecycle_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,7 +56,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeRegistryHandler = testmock.NewMockRegistryHandler(mockController)
 			logger = &log.Logger{Handler: &discard.Handler{}}
 			var err error
-			tempDir, err = ioutil.TempDir("", "")
+			tempDir, err = os.MkdirTemp("", "")
 			h.AssertNil(t, err)
 		})
 
@@ -437,13 +436,13 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 		it.Before(func() {
 			var err error
 
-			tmpDir, err = ioutil.TempDir("", "analyzer-tests")
+			tmpDir, err = os.MkdirTemp("", "analyzer-tests")
 			h.AssertNil(t, err)
 
-			layersDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
+			layersDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 			h.AssertNil(t, err)
 
-			cacheDir, err = ioutil.TempDir("", "some-cache-dir")
+			cacheDir, err = os.MkdirTemp("", "some-cache-dir")
 			h.AssertNil(t, err)
 
 			testCache, err = cache.NewVolumeCache(cacheDir)

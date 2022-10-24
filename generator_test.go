@@ -2,7 +2,6 @@ package lifecycle_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -121,7 +120,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		executor = testmock.NewMockGenerateExecutor(mockCtrl)
 
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle")
+		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		h.AssertNil(t, err)
 		generatedDir = filepath.Join(tmpDir, "output")
 		appDir = filepath.Join(generatedDir, "app")
