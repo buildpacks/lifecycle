@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"regexp"
 
@@ -18,7 +18,7 @@ import (
 const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
 
 var (
-	amazonKeychain = authn.NewKeychainFromHelper(ecr.NewECRHelper(ecr.WithLogger(ioutil.Discard)))
+	amazonKeychain = authn.NewKeychainFromHelper(ecr.NewECRHelper(ecr.WithLogger(io.Discard)))
 	azureKeychain  = authn.NewKeychainFromHelper(credhelper.NewACRCredentialsHelper())
 )
 
