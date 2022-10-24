@@ -2,7 +2,6 @@ package buildpack_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -49,7 +48,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 		// setup dirs
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle")
+		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}

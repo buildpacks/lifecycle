@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -72,7 +71,7 @@ func (e *DefaultBuildExecutor) Build(d BpDescriptor, inputs BuildInputs, logger 
 	}
 
 	logger.Debug("Creating plan directory")
-	planDir, err := ioutil.TempDir("", launch.EscapeID(d.Buildpack.ID)+"-")
+	planDir, err := os.MkdirTemp("", launch.EscapeID(d.Buildpack.ID)+"-")
 	if err != nil {
 		return BuildOutputs{}, err
 	}
@@ -190,7 +189,7 @@ func (d BpDescriptor) processLayers(layersDir string, logger log.Logger) (map[st
 }
 
 func eachLayer(bpLayersDir, buildpackAPI string, fn func(path, api string) (LayerMetadataFile, error)) (map[string]LayerMetadataFile, error) {
-	files, err := ioutil.ReadDir(bpLayersDir)
+	files, err := os.ReadDir(bpLayersDir)
 	if os.IsNotExist(err) {
 		return map[string]LayerMetadataFile{}, nil
 	} else if err != nil {

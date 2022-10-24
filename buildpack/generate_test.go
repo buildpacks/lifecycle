@@ -3,7 +3,6 @@ package buildpack_test
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -73,7 +72,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		// setup dirs
-		tmpDir, err = ioutil.TempDir("", "lifecycle")
+		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		h.AssertNil(t, err)
 		outputDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(outputDir, "app")
