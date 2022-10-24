@@ -457,9 +457,9 @@ func getBuilderMetadata(t *testing.T, path string) *platform.BuildMetadata {
 	contents, _ := ioutil.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var analyzedMd platform.BuildMetadata
-	_, err := toml.Decode(string(contents), &analyzedMd)
+	var buildMD platform.BuildMetadata
+	_, err := toml.Decode(string(contents), &buildMD)
 	h.AssertNil(t, err)
 
-	return &analyzedMd
+	return &buildMD
 }

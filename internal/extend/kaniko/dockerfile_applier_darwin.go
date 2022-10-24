@@ -6,6 +6,6 @@ import (
 	"github.com/buildpacks/lifecycle/internal/extend"
 )
 
-func (a *DockerfileApplier) Apply(workspace string, baseImageRef string, dockerfiles []extend.Dockerfile, options extend.Options) error {
+func (a *DockerfileApplier) Apply(workspace string, digest string, dockerfiles []extend.Dockerfile, options extend.Options) error {
 	return nil
 }

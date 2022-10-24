@@ -1,13 +1,17 @@
 package lifecycle
 
 import (
+	"fmt"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
 )
+
+var Config = &DefaultConfigHandler{}
 
 //go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle CacheHandler
 type CacheHandler interface {
@@ -40,6 +44,7 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
+	ReadAnalyzed(path string) (platform.AnalyzedMetadata, error)
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 }
@@ -50,11 +55,20 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
+func (h *DefaultConfigHandler) ReadAnalyzed(path string) (platform.AnalyzedMetadata, error) {
+	var analyzedMD platform.AnalyzedMetadata
+	_, err := toml.DecodeFile(path, &analyzedMD)
+	if err != nil {
+		return platform.AnalyzedMetadata{}, fmt.Errorf("failed to read analyzed file: %w", err)
+	}
+	return analyzedMD, nil
+}
+
 func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {
 	var groupFile buildpack.Group
 	groupFile, err = ReadGroup(path)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "reading buildpack group")
+		return nil, nil, fmt.Errorf("failed to read group file: %w", err)
 	}
 	return groupFile.Group, groupFile.GroupExtensions, nil
 }
@@ -84,7 +98,7 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	}
 	_, err := toml.DecodeFile(path, &order)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "reading buildpack order file")
+		return nil, nil, fmt.Errorf("failed to read order file: %w", err)
 	}
 	for g, group := range order.OrderExtensions {
 		for e := range group.Group {

@@ -20,6 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -40,7 +41,43 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
 			logger            *log.Logger
+			analyzedMD        platform.AnalyzedMetadata
+			extender          *lifecycle.Extender
 		)
+
+		createExtender := func() {
+			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path").Return(
+				analyzedMD, nil,
+			)
+			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(
+				[]buildpack.GroupElement{}, []buildpack.GroupElement{{ID: "A", Version: "v1", API: "0.9"}}, nil,
+			)
+			fakeDirStore.EXPECT().LookupExt("A", "v1").Return(&buildpack.ExtDescriptor{
+				WithAPI: "0.9",
+				Extension: buildpack.ExtInfo{
+					BaseInfo: buildpack.BaseInfo{
+						ID:      "A",
+						Version: "v1",
+					},
+				},
+			}, nil).AnyTimes()
+			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
+
+			fakeDockerfileApplier := testmock.NewMockDockerfileApplier(mockController)
+			var err error
+			extender, err = extenderFactory.NewExtender(
+				"some-analyzed-path",
+				"some-app-dir",
+				"some-generated-dir",
+				"some-group-path",
+				"some-layers-dir",
+				"some-platform-dir",
+				7*(24*time.Hour),
+				fakeDockerfileApplier,
+				logger,
+			)
+			h.AssertNil(t, err)
+		}
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
@@ -57,35 +94,12 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the extender", func() {
-			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(
-				[]buildpack.GroupElement{}, []buildpack.GroupElement{{ID: "A", Version: "v1", API: "0.9"}}, nil,
-			)
-			fakeDirStore.EXPECT().LookupExt("A", "v1").Return(&buildpack.ExtDescriptor{
-				WithAPI: "0.9",
-				Extension: buildpack.ExtInfo{
-					BaseInfo: buildpack.BaseInfo{
-						ID:      "A",
-						Version: "v1",
-					},
-				},
-			}, nil).AnyTimes()
-			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
-
-			fakeDockerfileApplier := testmock.NewMockDockerfileApplier(mockController)
-			extender, err := extenderFactory.NewExtender(
-				"some-app-dir",
-				"some-generated-dir",
-				"some-group-path",
-				"some-layers-dir",
-				"some-platform-dir",
-				7*(24*time.Hour),
-				fakeDockerfileApplier,
-				logger,
-			)
-			h.AssertNil(t, err)
+			analyzedMD = platform.AnalyzedMetadata{BuildImage: &platform.ImageIdentifier{Reference: "some-image-ref"}}
+			createExtender()
 
 			h.AssertEq(t, extender.AppDir, "some-app-dir")
 			h.AssertEq(t, extender.GeneratedDir, "some-generated-dir")
+			h.AssertEq(t, extender.ImageRef, "some-image-ref")
 			h.AssertEq(t, extender.LayersDir, "some-layers-dir")
 			h.AssertEq(t, extender.PlatformDir, "some-platform-dir")
 			h.AssertEq(t, extender.CacheTTL, 7*(24*time.Hour))
@@ -93,6 +107,13 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 				{ID: "A", Version: "v1", API: "0.9", Extension: true},
 			})
 			h.AssertEq(t, extender.Logger, logger)
+		})
+
+		when("build image is nil", func() {
+			it("does not panic", func() {
+				analyzedMD = platform.AnalyzedMetadata{}
+				createExtender()
+			})
 		})
 	})
 }
@@ -121,6 +142,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 		fakeDockerfileApplier = testmock.NewMockDockerfileApplier(mockCtrl)
 		extender = &lifecycle.Extender{
 			AppDir:            "some-app-dir",
+			ImageRef:          "some-image-tag@sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38",
 			GeneratedDir:      generatedDir,
 			LayersDir:         "some-layers-dir",
 			PlatformDir:       "some-platform-dir",
@@ -146,7 +168,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				Path: filepath.Join(generatedDir, "build", "B", "Dockerfile"),
 				Args: []extend.Arg{{Name: "arg1", Value: "value1"}},
 			}}
-			fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "some-image-ref", gomock.Any(), gomock.Any()).Do(
+			fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38", gomock.Any(), gomock.Any()).Do(
 				func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
 					h.AssertEq(t, len(dockerfiles), 1)
 					h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
@@ -161,7 +183,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				},
 			)
 
-			h.AssertNil(t, extender.ExtendBuild("some-image-ref"))
+			h.AssertNil(t, extender.ExtendBuild())
 		})
 
 		when("Dockerfile is provided without extend-config.toml", func() {
@@ -174,7 +196,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 					Path: filepath.Join(generatedDir, "build", "B", "Dockerfile"),
 					Args: empty,
 				}}
-				fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "some-image-ref", gomock.Any(), gomock.Any()).Do(
+				fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38", gomock.Any(), gomock.Any()).Do(
 					func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
 						h.AssertEq(t, len(dockerfiles), 1)
 						h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
@@ -185,7 +207,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 
-				h.AssertNil(t, extender.ExtendBuild("some-image-ref"))
+				h.AssertNil(t, extender.ExtendBuild())
 			})
 		})
 
@@ -195,7 +217,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				h.Mkfile(t, "some build.Dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))
 				h.Mkfile(t, "[[build.args]]\nname=\"build_id\"\nvalue=\"value1\"", filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
 
-				err := extender.ExtendBuild("some-image-ref")
+				err := extender.ExtendBuild()
 				h.AssertNotNil(t, err)
 				h.AssertError(t, err, "image extension provides build arg with key 'build_id' which is not allowed")
 			})
@@ -210,7 +232,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 							return nil
 						})
 
-					h.AssertNil(t, extender.ExtendBuild("some-image-ref"))
+					h.AssertNil(t, extender.ExtendBuild())
 				})
 			})
 
@@ -222,7 +244,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 							return nil
 						})
 
-					h.AssertNil(t, extender.ExtendBuild("some-image-ref"))
+					h.AssertNil(t, extender.ExtendBuild())
 				})
 			})
 		})

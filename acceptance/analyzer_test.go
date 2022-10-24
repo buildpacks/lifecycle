@@ -986,14 +986,15 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 }
 
 func assertAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {
-	contents, _ := ioutil.ReadFile(path)
+	contents, err := ioutil.ReadFile(path)
+	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var analyzedMd platform.AnalyzedMetadata
-	_, err := toml.Decode(string(contents), &analyzedMd)
+	var analyzedMD platform.AnalyzedMetadata
+	_, err = toml.Decode(string(contents), &analyzedMD)
 	h.AssertNil(t, err)
 
-	return &analyzedMd
+	return &analyzedMD
 }
 
 func assertLogsAndRestoresAppMetadata(t *testing.T, dir, output string) {

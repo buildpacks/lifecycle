@@ -8,6 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform"
@@ -140,9 +142,9 @@ func (r *restoreCmd) Exec() error {
 
 	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		var analyzedMd platform.AnalyzedMetadata
-		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMd); err == nil {
-			appMeta = analyzedMd.Metadata
+		var analyzedMD platform.AnalyzedMetadata
+		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMD); err == nil {
+			appMeta = analyzedMD.Metadata
 		}
 	}
 
@@ -159,21 +161,21 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 	}
 	if _, err := os.Stat(kanikoDir); err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("failed to read kaniko directory")
+			return fmt.Errorf("failed to read kaniko directory: %w", err)
 		}
 		return nil
 	}
 	ref, authr, err := auth.ReferenceForRepoName(r.keychain, r.buildImageTag)
 	if err != nil {
-		return fmt.Errorf("failed to get reference")
+		return fmt.Errorf("failed to get reference: %w", err)
 	}
 	remoteImage, err := remote.Image(ref, remote.WithAuth(authr))
 	if err != nil {
-		return fmt.Errorf("failed to read image")
+		return fmt.Errorf("failed to read image: %w", err)
 	}
 	buildImageHash, err := remoteImage.Digest()
 	if err != nil {
-		return fmt.Errorf("failed to get digest")
+		return fmt.Errorf("failed to get digest: %w", err)
 	}
 	buildImageDigest := buildImageHash.String()
 	baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
@@ -182,12 +184,22 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 	}
 	layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
 	if err != nil {
-		return fmt.Errorf("failed to write layout path")
+		return fmt.Errorf("failed to write layout path: %w", err)
 	}
 	if err = layoutPath.AppendImage(remoteImage); err != nil {
-		return fmt.Errorf("failed to append image")
+		return fmt.Errorf("failed to append image: %w", err)
 	}
-	return nil
+	// record digest in analyzed.toml
+	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.analyzedPath)
+	if err != nil {
+		return fmt.Errorf("failed to read analyzed metadata: %w", err)
+	}
+	digestRef, err := name.NewDigest(fmt.Sprintf("%s@%s", ref.Context().Name(), buildImageDigest), name.WeakValidation)
+	if err != nil {
+		return fmt.Errorf("failed to get digest reference: %w", err)
+	}
+	analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digestRef.String()}
+	return encoding.WriteTOML(r.analyzedPath, analyzedMD)
 }
 
 func (r *restoreArgs) restoresLayerMetadata() bool {
