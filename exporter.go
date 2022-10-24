@@ -167,31 +167,27 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 }
 
 func copySboms(layerDir string, e *Exporter) error {
-
 	targetBuildDir := filepath.Join(layerDir, "sbom", "build", "buildpacksio_lifecycle")
 	targetLaunchDir := filepath.Join(layerDir, "sbom", "launch", "buildpacksio_lifecycle")
 
 	if err := os.MkdirAll(targetBuildDir, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "Fail to create directory %v\n", targetBuildDir)
+		return errors.Wrapf(err, "fail to create directory %v", targetBuildDir)
 	}
 
 	if err := os.MkdirAll(targetLaunchDir, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "Fail to create directory %v\n", targetLaunchDir)
+		return errors.Wrapf(err, "fail to create directory %v", targetLaunchDir)
 	}
 
 	extensions := [3]string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
 	components := [2]string{"lifecycle", "launcher"}
 
 	var targetDir string
-
 	for _, component := range components {
-
 		if component == "lifecycle" {
 			targetDir = targetBuildDir
 		} else if component == "launcher" {
 			targetDir = targetLaunchDir
 		}
-
 		for _, extension := range extensions {
 			sbomFilename := component + extension
 
@@ -212,11 +208,8 @@ func copySboms(layerDir string, e *Exporter) error {
 			} else {
 				e.Logger.Warn(sbomFilename + " is missing")
 			}
-
 		}
-
 	}
-
 	return nil
 }
 

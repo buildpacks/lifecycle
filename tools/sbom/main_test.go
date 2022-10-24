@@ -26,7 +26,6 @@ func testSbomGenerator(t *testing.T, when spec.G, it spec.S) {
 		simpleAppBinaryFilename := "simple-app"
 
 		it.Before(func() {
-
 			var err error
 			tmpDir, err = ioutil.TempDir("", "simple-go-app")
 			h.AssertNil(t, err)
@@ -49,13 +48,11 @@ func testSbomGenerator(t *testing.T, when spec.G, it spec.S) {
 			defer fout.Close()
 
 			_, err = io.Copy(fout, fin)
-
+			h.AssertNil(t, err)
 			h.AssertPathExists(t, simpleAppBinaryFullpath)
-
 		})
 
 		it("generates an SBOM for that binary", func() {
-
 			errors := GenerateSBOM(simpleAppBinaryFullpath)
 
 			h.AssertEq(t, len(errors), 3)
@@ -80,9 +77,7 @@ func testSbomGenerator(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertStringContains(t, string(syftContent), "github.com/pkg/errors")
 			h.AssertStringContains(t, string(syftContent), "https://raw.githubusercontent.com/anchore/syft/")
-
 		})
-
 	})
 
 	when("when given a directory as parameter", func() {
@@ -97,14 +92,11 @@ func testSbomGenerator(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns an array with one error", func() {
-
-			errors := GenerateSBOM(filepath.Join(tmpDir))
+			errors := GenerateSBOM(tmpDir)
 
 			h.AssertEq(t, len(errors), 1)
 			h.AssertNotNil(t, errors[0])
-
 		})
-
 	})
 
 	when("when given an absolute path to a binary file with an executable extension .exe", func() {
@@ -118,5 +110,4 @@ func testSbomGenerator(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, GenerateFilename("/usr/local/bin/test"), "test")
 		})
 	})
-
 }

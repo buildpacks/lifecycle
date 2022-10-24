@@ -1074,6 +1074,21 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
 			})
+
+			it("should display that the SBOM is missing", func() {
+				exporter.PlatformAPI = api.MustParse("0.11")
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				extensions := [3]string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
+				components := [2]string{"lifecycle", "launcher"}
+
+				for _, component := range components {
+					for _, extension := range extensions {
+						assertLogEntry(t, logHandler, component+extension+" is missing")
+					}
+				}
+			})
 		})
 
 		when("default process", func() {
@@ -1514,47 +1529,6 @@ version = "4.5.6"
 				})
 			})
 		})
-
-		when("the sboms are missing", func() {
-
-			it.Before(func() {
-
-				opts.OrigMetadata = platform.LayersMetadata{
-					Buildpacks: []buildpack.LayersMetadata{{
-						ID:     "bad.buildpack.id",
-						Layers: map[string]buildpack.LayerMetadata{"bad-layer": {SHA: "bad-layer"}},
-					}},
-				}
-
-				exporter = &lifecycle.Exporter{
-					Buildpacks: []buildpack.GroupElement{
-						{ID: "buildpack.id", Version: "1.2.3", API: api.Buildpack.Latest().String()},
-						{ID: "other.buildpack.id", Version: "4.5.6", API: api.Buildpack.Latest().String(), Optional: false},
-					},
-					LayerFactory: layerFactory,
-					Logger:       &log.Logger{Handler: logHandler},
-					PlatformAPI:  api.Platform.Latest(),
-				}
-			})
-
-			it("should display that the SBOM is missing", func() {
-
-				//TODO Manage Error - Checl Platform API
-				exporter.Export(opts)
-				//h.AssertNil(t, err)
-
-				extensions := [3]string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
-				components := [2]string{"lifecycle", "launcher"}
-
-				for _, component := range components {
-					for _, extension := range extensions {
-						assertLogEntry(t, logHandler, component+extension+" is missing")
-					}
-				}
-
-			})
-		})
-
 	})
 }
 

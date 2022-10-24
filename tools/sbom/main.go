@@ -19,7 +19,6 @@ var (
 )
 
 func main() {
-
 	flag.StringVar(&path, "path", "", "path to a binary file")
 	flag.Parse()
 
@@ -35,7 +34,6 @@ const (
 )
 
 func GenerateSBOM(path string) []error {
-
 	fmt.Printf("\nGenerate SBOM from this path: %v", path)
 
 	isDirectory, _ := isDirectory(path)
@@ -58,13 +56,12 @@ func GenerateSBOM(path string) []error {
 	errs = append(errs, writeSbom(filepath.Join(parentDirectory, filename+".sbom.syft.json"), formatter.Formats()[2].Content))
 
 	return errs
-
 }
 
 func writeSbom(sbomFullPath string, content io.Reader) error {
 	syft := bytes.NewBuffer(nil)
 	_, _ = io.Copy(syft, content)
-	return ioutil.WriteFile(sbomFullPath, syft.Bytes(), 0777)
+	return ioutil.WriteFile(sbomFullPath, syft.Bytes(), 0600)
 }
 
 func isDirectory(path string) (bool, error) {
