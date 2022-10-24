@@ -4,7 +4,6 @@ package kaniko
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,7 +93,7 @@ func readOCI(digestRef string) (v1.Image, error) {
 }
 
 func cleanKanikoDir() error {
-	fis, err := ioutil.ReadDir(kanikoDir)
+	fis, err := os.ReadDir(kanikoDir)
 	if err != nil {
 		return fmt.Errorf("reading kaniko dir '%s': %w", kanikoDir, err)
 	}
