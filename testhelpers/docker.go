@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -131,7 +131,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 		"true")...)) // #nosec G204
 	defer Run(t, exec.Command("docker", "rm", containerName)) // #nosec G204
 
-	fis, err := ioutil.ReadDir(srcPath)
+	fis, err := os.ReadDir(srcPath)
 	AssertNil(t, err)
 	for _, fi := range fis {
 		Run(t, exec.Command(
@@ -145,7 +145,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 }
 
 func checkResponse(responseBody io.Reader) error {
-	body, err := ioutil.ReadAll(responseBody)
+	body, err := io.ReadAll(responseBody)
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}
