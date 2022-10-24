@@ -2,7 +2,6 @@ package acceptance
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -61,7 +60,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
-			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 			h.AssertNil(t, err)
 		})
 
@@ -986,7 +985,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 }
 
 func assertAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadata {
-	contents, err := ioutil.ReadFile(path)
+	contents, err := os.ReadFile(path)
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 

@@ -5,7 +5,6 @@ package acceptance
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -71,7 +70,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			it.Before(func() {
 				var err error
-				kanikoDir, err = ioutil.TempDir("", "lifecycle-acceptance")
+				kanikoDir, err = os.MkdirTemp("", "lifecycle-acceptance")
 				h.AssertNil(t, err)
 
 				// push "builder" image to test registry
@@ -136,7 +135,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertStringContains(t, firstOutput, "CNB_STACK_ID for buildpack: stack-id-from-ext-tree")
 
 					t.Log("cleans the kaniko directory")
-					fis, err := ioutil.ReadDir(kanikoDir)
+					fis, err := os.ReadDir(kanikoDir)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(fis), 1) // 1: /kaniko/cache
 
