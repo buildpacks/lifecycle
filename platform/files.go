@@ -21,6 +21,7 @@ type AnalyzedMetadata struct {
 	PreviousImage *ImageIdentifier `toml:"image"`
 	Metadata      LayersMetadata   `toml:"metadata"`
 	RunImage      *ImageIdentifier `toml:"run-image,omitempty"`
+	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
 }
 
 // FIXME: fix key names to be accurate in the daemon case

@@ -15,6 +15,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -193,7 +194,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
-					"/kaniko",
+					"/",
 					restoreImage,
 					h.WithFlags(
 						"--env", "CNB_PLATFORM_API="+platformAPI,
@@ -202,6 +203,10 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					),
 					h.WithArgs("-build-image", restoreRegFixtures.SomeCacheImage), // some-cache-image simulates a builder image in a registry
 				)
+				t.Log("records builder image digest in analyzed.toml")
+				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "analyzed.toml"))
+				h.AssertNil(t, err)
+				h.AssertStringContains(t, analyzedMD.BuildImage.Reference, restoreRegFixtures.SomeCacheImage+"@sha256:")
 				t.Log("writes builder manifest and config to the kaniko cache")
 				fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko", "cache", "base"))
 				h.AssertNil(t, err)

@@ -10,6 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	platform "github.com/buildpacks/lifecycle/platform"
 )
 
 // MockConfigHandler is a mock of ConfigHandler interface.
@@ -33,6 +34,21 @@ func NewMockConfigHandler(ctrl *gomock.Controller) *MockConfigHandler {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockConfigHandler) EXPECT() *MockConfigHandlerMockRecorder {
 	return m.recorder
+}
+
+// ReadAnalyzed mocks base method.
+func (m *MockConfigHandler) ReadAnalyzed(arg0 string) (platform.AnalyzedMetadata, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadAnalyzed", arg0)
+	ret0, _ := ret[0].(platform.AnalyzedMetadata)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadAnalyzed indicates an expected call of ReadAnalyzed.
+func (mr *MockConfigHandlerMockRecorder) ReadAnalyzed(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAnalyzed", reflect.TypeOf((*MockConfigHandler)(nil).ReadAnalyzed), arg0)
 }
 
 // ReadGroup mocks base method.
