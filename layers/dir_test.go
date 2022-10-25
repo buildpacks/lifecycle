@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,7 +30,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 	)
 	it.Before(func() {
 		var err error
-		artifactDir, err := ioutil.TempDir("", "layers.slices.layer")
+		artifactDir, err := os.MkdirTemp("", "layers.slices.layer")
 		h.AssertNil(t, err)
 		factory = &layers.Factory{
 			ArtifactsDir: artifactDir,

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,7 +59,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		executor = testmock.NewMockBuildExecutor(mockCtrl)
 
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle")
+		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		h.AssertNil(t, err)
 		layersDir = filepath.Join(tmpDir, "launch")
 		appDir = filepath.Join(layersDir, "app")
@@ -373,7 +372,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					t.Log("saves the aggregated legacy launch bom to <layers>/sbom/launch/sbom.legacy.json")
 					var foundLaunch []buildpack.BOMEntry
-					launchContents, err := ioutil.ReadFile(filepath.Join(builder.LayersDir, "sbom", "launch", "sbom.legacy.json"))
+					launchContents, err := os.ReadFile(filepath.Join(builder.LayersDir, "sbom", "launch", "sbom.legacy.json"))
 					h.AssertNil(t, err)
 					h.AssertNil(t, json.Unmarshal(launchContents, &foundLaunch))
 					expectedLaunch := []buildpack.BOMEntry{
@@ -398,7 +397,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					t.Log("saves the aggregated legacy build bom to <layers>/sbom/build/sbom.legacy.json")
 					var foundBuild []buildpack.BOMEntry
-					buildContents, err := ioutil.ReadFile(filepath.Join(builder.LayersDir, "sbom", "build", "sbom.legacy.json"))
+					buildContents, err := os.ReadFile(filepath.Join(builder.LayersDir, "sbom", "build", "sbom.legacy.json"))
 					h.AssertNil(t, err)
 					h.AssertNil(t, json.Unmarshal(buildContents, &foundBuild))
 					expectedBuild := []buildpack.BOMEntry{

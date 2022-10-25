@@ -3,7 +3,6 @@ package buildpack
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -158,12 +157,12 @@ func processPlatformPaths(inputs DetectInputs) (string, string, error) {
 }
 
 func processBuildpackPaths() (string, string, error) {
-	planDir, err := ioutil.TempDir("", "plan.")
+	planDir, err := os.MkdirTemp("", "plan.")
 	if err != nil {
 		return "", "", err
 	}
 	planPath := filepath.Join(planDir, "plan.toml")
-	if err = ioutil.WriteFile(planPath, nil, 0600); err != nil {
+	if err = os.WriteFile(planPath, nil, 0600); err != nil {
 		return "", "", err
 	}
 	return planDir, planPath, nil

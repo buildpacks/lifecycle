@@ -184,7 +184,7 @@ func HTTPGetE(url string) (string, error) {
 	if resp.StatusCode >= 300 {
 		return "", fmt.Errorf("HTTP Status was bad: %s => %d", url, resp.StatusCode)
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -337,7 +337,7 @@ func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents
 
 func MustReadFile(t *testing.T, path string) []byte {
 	t.Helper()
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error reading %q: %v", path, err)
 	}
@@ -356,7 +356,7 @@ func Mkdir(t *testing.T, dirs ...string) {
 func Mkfile(t *testing.T, data string, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		if err := ioutil.WriteFile(p, []byte(data), 0600); err != nil {
+		if err := os.WriteFile(p, []byte(data), 0600); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}
@@ -376,7 +376,7 @@ func CleanEndings(s string) string {
 
 func Rdfile(t *testing.T, path string) string {
 	t.Helper()
-	out, err := ioutil.ReadFile(path)
+	out, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err)
 	}

@@ -2,7 +2,6 @@ package buildpack
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,7 +40,7 @@ type DefaultGenerateExecutor struct{}
 
 func (e *DefaultGenerateExecutor) Generate(d ExtDescriptor, inputs GenerateInputs, logger log.Logger) (GenerateOutputs, error) {
 	logger.Debug("Creating plan directory")
-	planDir, err := ioutil.TempDir("", launch.EscapeID(d.Extension.ID)+"-")
+	planDir, err := os.MkdirTemp("", launch.EscapeID(d.Extension.ID)+"-")
 	if err != nil {
 		return GenerateOutputs{}, err
 	}

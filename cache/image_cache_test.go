@@ -2,7 +2,7 @@ package cache_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -38,7 +38,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		tmpDir, err = ioutil.TempDir("", "")
+		tmpDir, err = os.MkdirTemp("", "")
 		h.AssertNil(t, err)
 
 		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
@@ -47,7 +47,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
-		h.AssertNil(t, ioutil.WriteFile(testLayerTarPath, []byte("dummy data"), 0600))
+		h.AssertNil(t, os.WriteFile(testLayerTarPath, []byte("dummy data"), 0600))
 		testLayerSHA = "sha256:" + h.ComputeSHA256ForFile(t, testLayerTarPath)
 	})
 
@@ -129,7 +129,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer rc.Close()
 
-				bytes, err := ioutil.ReadAll(rc)
+				bytes, err := io.ReadAll(rc)
 				h.AssertNil(t, err)
 				h.AssertEq(t, string(bytes), "dummy data")
 			})
@@ -208,7 +208,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					defer rc.Close()
 
-					bytes, err := ioutil.ReadAll(rc)
+					bytes, err := io.ReadAll(rc)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(bytes), "dummy data")
 				})
@@ -250,7 +250,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					defer rc.Close()
 
-					bytes, err := ioutil.ReadAll(rc)
+					bytes, err := io.ReadAll(rc)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(bytes), "dummy data")
 				})
@@ -273,7 +273,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					defer rc.Close()
 
-					bytes, err := ioutil.ReadAll(rc)
+					bytes, err := io.ReadAll(rc)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(bytes), "dummy data")
 				})

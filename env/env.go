@@ -146,7 +146,7 @@ func suffix(s string, suffix ...byte) string {
 }
 
 func delim(dir, name string, def ...byte) []byte {
-	value, err := ioutil.ReadFile(filepath.Join(dir, name+".delim"))
+	value, err := os.ReadFile(filepath.Join(dir, name+".delim"))
 	if err != nil {
 		return def
 	}
@@ -173,7 +173,7 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 				continue
 			}
 		}
-		value, err := ioutil.ReadFile(filepath.Join(dir, f.Name()))
+		value, err := os.ReadFile(filepath.Join(dir, f.Name()))
 		if err != nil {
 			return err
 		}

@@ -3,7 +3,6 @@ package cache_test
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		tmpDir, err = ioutil.TempDir("", "lifecycle.cache.volume_cache")
+		tmpDir, err = os.MkdirTemp("", "lifecycle.cache.volume_cache")
 		h.AssertNil(t, err)
 
 		volumeDir = filepath.Join(tmpDir, "test_volume")
@@ -64,7 +63,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				stagingPath := filepath.Join(volumeDir, "staging")
 				h.AssertNil(t, os.MkdirAll(stagingPath, 0777))
-				h.AssertNil(t, ioutil.WriteFile(filepath.Join(stagingPath, "some-layer.tar"), []byte("some data"), 0600))
+				h.AssertNil(t, os.WriteFile(filepath.Join(stagingPath, "some-layer.tar"), []byte("some data"), 0600))
 			})
 
 			it("clears staging", func() {
@@ -107,7 +106,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		when("backup dir already exists", func() {
 			it.Before(func() {
 				h.AssertNil(t, os.MkdirAll(backupDir, 0777))
-				h.AssertNil(t, ioutil.WriteFile(filepath.Join(backupDir, "some-layer.tar"), []byte("some data"), 0600))
+				h.AssertNil(t, os.WriteFile(filepath.Join(backupDir, "some-layer.tar"), []byte("some data"), 0600))
 			})
 
 			it("clears the backup dir", func() {
@@ -142,7 +141,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 			when("volume contains valid metadata", func() {
 				it.Before(func() {
 					content := []byte(`{"buildpacks": [{"key": "bp.id", "version": "1.2.3", "layers": {"some-layer": {"sha": "some-sha", "data": "some-data", "build": true, "launch": false, "cache": true}}}]}`)
-					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), content, 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), content, 0600))
 				})
 
 				it("returns the metadata", func() {
@@ -172,7 +171,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("volume contains invalid metadata", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), []byte("garbage"), 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), []byte("garbage"), 0600))
 				})
 
 				it("returns empty metadata", func() {
@@ -194,14 +193,14 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		when("#RetrieveLayer", func() {
 			when("layer exists", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
 				})
 
 				it("returns the layer's reader", func() {
 					rc, err := subject.RetrieveLayer("some_sha")
 					h.AssertNil(t, err)
 
-					bytes, err := ioutil.ReadAll(rc)
+					bytes, err := io.ReadAll(rc)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(bytes), "dummy data")
 				})
@@ -218,14 +217,14 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		when("#RetrieveLayerFile", func() {
 			when("layer exists", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
 				})
 
 				it("returns the layer's reader", func() {
 					layerPath, err := subject.RetrieveLayerFile("some_sha")
 					h.AssertNil(t, err)
 
-					bytes, err := ioutil.ReadFile(layerPath)
+					bytes, err := os.ReadFile(layerPath)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(bytes), "dummy data")
 				})
@@ -242,7 +241,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 		when("#Commit", func() {
 			it("should clear the staging dir", func() {
 				layerTarPath := filepath.Join(stagingDir, "some-layer.tar")
-				h.AssertNil(t, ioutil.WriteFile(layerTarPath, []byte("some data"), 0600))
+				h.AssertNil(t, os.WriteFile(layerTarPath, []byte("some data"), 0600))
 
 				err := subject.Commit()
 				h.AssertNil(t, err)
@@ -258,7 +257,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				it.Before(func() {
 					previousContents := []byte(`{"buildpacks": [{"key": "old.bp.id"}]}`)
-					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), previousContents, 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "io.buildpacks.lifecycle.cache.metadata"), previousContents, 0600))
 
 					newMetadata = platform.CacheMetadata{
 						Buildpacks: []buildpack.LayersMetadata{{
@@ -311,7 +310,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				it.Before(func() {
 					tarPath = filepath.Join(tmpDir, "some-layer.tar")
-					h.AssertNil(t, ioutil.WriteFile(tarPath, []byte("dummy data"), 0600))
+					h.AssertNil(t, os.WriteFile(tarPath, []byte("dummy data"), 0600))
 				})
 
 				when("add then commit", func() {
@@ -324,7 +323,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						rc, err := subject.RetrieveLayer("some_sha")
 						h.AssertNil(t, err)
 
-						bytes, err := ioutil.ReadAll(rc)
+						bytes, err := io.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, string(bytes), "dummy data")
 					})
@@ -350,9 +349,9 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("a layer with the same sha already exists", func() {
 					it.Before(func() {
-						existingLayerTar, err := ioutil.TempFile("", "*.tar")
+						existingLayerTar, err := os.CreateTemp("", "*.tar")
 						h.AssertNil(t, err)
-						h.AssertNil(t, ioutil.WriteFile(existingLayerTar.Name(), []byte("existing data"), 0600))
+						h.AssertNil(t, os.WriteFile(existingLayerTar.Name(), []byte("existing data"), 0600))
 						h.AssertNil(t, subject.AddLayerFile(existingLayerTar.Name(), "some_sha"))
 					})
 
@@ -365,7 +364,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						rc, err := subject.RetrieveLayer("some_sha")
 						h.AssertNil(t, err)
 
-						bytes, err := ioutil.ReadAll(rc)
+						bytes, err := io.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, string(bytes), "existing data")
 					})
@@ -399,7 +398,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						rc, err := subject.RetrieveLayer(layerSha)
 						h.AssertNil(t, err)
 
-						bytes, err := ioutil.ReadAll(rc)
+						bytes, err := io.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bytes, layerData)
 					})
@@ -425,9 +424,9 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 				when("a layer with the same sha already exists", func() {
 					it.Before(func() {
-						existingLayerTar, err := ioutil.TempFile("", "*.tar")
+						existingLayerTar, err := os.CreateTemp("", "*.tar")
 						h.AssertNil(t, err)
-						h.AssertNil(t, ioutil.WriteFile(existingLayerTar.Name(), layerData, 0600))
+						h.AssertNil(t, os.WriteFile(existingLayerTar.Name(), layerData, 0600))
 						h.AssertNil(t, subject.AddLayerFile(existingLayerTar.Name(), layerSha))
 					})
 
@@ -440,7 +439,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						rc, err := subject.RetrieveLayer(layerSha)
 						h.AssertNil(t, err)
 
-						bytes, err := ioutil.ReadAll(rc)
+						bytes, err := io.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bytes, layerData)
 					})
@@ -449,7 +448,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 
 			when("#ReuseLayer", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
+					h.AssertNil(t, os.WriteFile(filepath.Join(committedDir, "some_sha.tar"), []byte("dummy data"), 0600))
 				})
 
 				when("reuse then commit", func() {
@@ -462,7 +461,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						rc, err := subject.RetrieveLayer("some_sha")
 						h.AssertNil(t, err)
 
-						bytes, err := ioutil.ReadAll(rc)
+						bytes, err := io.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, string(bytes), "dummy data")
 					})
@@ -484,7 +483,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						rc, err := subject.RetrieveLayer("some_sha")
 						h.AssertNil(t, err)
 
-						bytes, err := ioutil.ReadAll(rc)
+						bytes, err := io.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, string(bytes), "dummy data")
 					})
@@ -493,7 +492,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 				when("a layer with the same sha already exists", func() {
 					it.Before(func() {
 						tarPath := filepath.Join(tmpDir, "some-layer.tar")
-						h.AssertNil(t, ioutil.WriteFile(tarPath, []byte("existing data"), 0600))
+						h.AssertNil(t, os.WriteFile(tarPath, []byte("existing data"), 0600))
 						h.AssertNil(t, subject.AddLayerFile(tarPath, "some_sha"))
 					})
 
@@ -506,7 +505,7 @@ func testVolumeCache(t *testing.T, when spec.G, it spec.S) {
 						rc, err := subject.RetrieveLayer("some_sha")
 						h.AssertNil(t, err)
 
-						bytes, err := ioutil.ReadAll(rc)
+						bytes, err := io.ReadAll(rc)
 						h.AssertNil(t, err)
 						h.AssertEq(t, string(bytes), "existing data")
 					})

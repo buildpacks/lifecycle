@@ -181,19 +181,21 @@ func (b *Builder) getCommonInputs() (buildpack.BuildInputs, error) {
 // Before:
 // /layers
 // └── buildpack.id
-//     ├── A
-//     │   └── ...
-//     ├── A.sbom.cdx.json
-//     └── launch.sbom.cdx.json
+//
+//	├── A
+//	│   └── ...
+//	├── A.sbom.cdx.json
+//	└── launch.sbom.cdx.json
 //
 // After:
 // /layers
 // └── sbom
-//     └── launch
-//         └── buildpack.id
-//             ├── A
-//             │   └── sbom.cdx.json
-//             └── sbom.cdx.json
+//
+//	└── launch
+//	    └── buildpack.id
+//	        ├── A
+//	        │   └── sbom.cdx.json
+//	        └── sbom.cdx.json
 func (b *Builder) copySBOMFiles(layersDir string, bomFiles []buildpack.BOMFile) error {
 	var (
 		buildSBOMDir  = filepath.Join(layersDir, "sbom", "build")

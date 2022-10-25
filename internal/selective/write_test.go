@@ -2,6 +2,7 @@ package selective_test
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -53,7 +54,7 @@ func testSelective(t *testing.T, when spec.G, it spec.S) {
 			testImage, err = remote.Image(ref, opts...)
 			h.AssertNil(t, err)
 
-			tmpDir, err = ioutil.TempDir("", "")
+			tmpDir, err = os.MkdirTemp("", "")
 			h.AssertNil(t, err)
 		})
 

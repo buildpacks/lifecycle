@@ -5,7 +5,6 @@ package acceptance
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -129,7 +128,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
-			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 			h.AssertNil(t, err)
 		})
 
@@ -180,7 +179,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
-			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 			h.AssertNil(t, err)
 		})
 
@@ -219,7 +218,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			// check plan.toml - should be empty since we're using always_detect_order.toml so there is no "actual plan"
 			tempPlanToml := filepath.Join(copyDir, "layers", "custom_plan.toml")
-			planContents, err := ioutil.ReadFile(tempPlanToml)
+			planContents, err := os.ReadFile(tempPlanToml)
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(planContents) == 0, true)
 
@@ -238,7 +237,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
-			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 			h.AssertNil(t, err)
 
 			simpleOrderTOML := filepath.Join("testdata", "detector", "container", "cnb", "orders", "simple_order.toml")
@@ -322,7 +321,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			containerName = "test-container-" + h.RandString(10)
 			var err error
-			copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+			copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 			h.AssertNil(t, err)
 			orderPath, err = filepath.Abs(filepath.Join("testdata", "detector", "container", "cnb", "orders", "order_with_ext.toml"))
 			h.AssertNil(t, err)
@@ -381,7 +380,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			t.Log("copies the generated dockerfiles to the output directory")
 			dockerfilePath := filepath.Join(copyDir, "layers", "generated", "run", "simple_extension", "Dockerfile")
 			h.AssertPathExists(t, dockerfilePath)
-			contents, err := ioutil.ReadFile(dockerfilePath)
+			contents, err := os.ReadFile(dockerfilePath)
 			h.AssertEq(t, string(contents), "FROM some-run-image-from-extension\n")
 			t.Log("records the new run image in analyzed.toml")
 			foundAnalyzedTOML := filepath.Join(copyDir, "layers", "analyzed.toml")
