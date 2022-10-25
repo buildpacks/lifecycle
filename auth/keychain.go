@@ -153,11 +153,13 @@ func (k *ResolvedKeychain) Resolve(resource authn.Resource) (authn.Authenticator
 // Complementary to `BuildEnvVar`.
 //
 // Example Input:
-// 	{"gcr.io": "Bearer asdf=", "docker.io": "Basic qwerty="}
+//
+//	{"gcr.io": "Bearer asdf=", "docker.io": "Basic qwerty="}
 //
 // Example Output:
-//  gcr.io -> Bearer asdf=
-//  docker.io -> Basic qwerty=
+//
+//	gcr.io -> Bearer asdf=
+//	docker.io -> Basic qwerty=
 func ReadEnvVar(envVar string) (map[string]string, error) {
 	authMap := map[string]string{}
 
