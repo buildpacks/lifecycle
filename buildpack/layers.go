@@ -2,7 +2,6 @@ package buildpack
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,7 +33,7 @@ func ReadLayersDir(layersDir string, bp GroupElement, logger log.Logger) (Layers
 		Buildpack: bp,
 	}
 
-	fis, err := ioutil.ReadDir(path)
+	fis, err := os.ReadDir(path)
 	if err != nil && !os.IsNotExist(err) {
 		return LayersDir{}, err
 	}
@@ -134,7 +133,7 @@ func (l *Layer) Name() string {
 }
 
 func (l *Layer) HasLocalContents() bool {
-	_, err := ioutil.ReadDir(l.path)
+	_, err := os.ReadDir(l.path)
 
 	return !os.IsNotExist(err)
 }

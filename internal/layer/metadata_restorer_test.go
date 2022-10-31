@@ -2,7 +2,6 @@ package layer_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,7 +65,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
-				files, err := ioutil.ReadDir(layerDir)
+				files, err := os.ReadDir(layerDir)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(files), 0)
 			})
@@ -82,7 +81,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
-				files, err := ioutil.ReadDir(layerDir)
+				files, err := os.ReadDir(layerDir)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(files), 2)
 
@@ -382,16 +381,16 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
-					files, err := ioutil.ReadDir(layerDir)
+					files, err := os.ReadDir(layerDir)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(files), 2)
 
-					files, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack"))
+					files, err = os.ReadDir(filepath.Join(layerDir, "metadata.buildpack"))
 					h.AssertNil(t, err)
 					// expect 1 file b/c of store.toml
 					h.AssertEq(t, len(files), 1)
 
-					files, err = ioutil.ReadDir(filepath.Join(layerDir, "no.cache.buildpack"))
+					files, err = os.ReadDir(filepath.Join(layerDir, "no.cache.buildpack"))
 					h.AssertNil(t, err)
 					// expect 1 file b/c of store.toml
 					h.AssertEq(t, len(files), 1)

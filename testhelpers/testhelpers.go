@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -254,24 +253,26 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 
 func RecursiveCopy(t *testing.T, src, dst string) {
 	t.Helper()
-	fis, err := ioutil.ReadDir(src)
+	entries, err := os.ReadDir(src)
 	AssertNil(t, err)
-	for _, fi := range fis {
-		if fi.Mode().IsRegular() {
-			CopyFile(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+	for _, entry := range entries {
+		if entry.Type().IsRegular() {
+			CopyFile(t, filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name()))
 		}
-		if fi.IsDir() {
-			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
+		if entry.IsDir() {
+			fi, err := entry.Info()
 			AssertNil(t, err)
-			RecursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			err = os.Mkdir(filepath.Join(dst, entry.Name()), fi.Mode())
+			AssertNil(t, err)
+			RecursiveCopy(t, filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name()))
 		}
-		if fi.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Readlink(filepath.Join(src, fi.Name()))
+		if entry.Type()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(filepath.Join(src, entry.Name()))
 			AssertNil(t, err)
 			if filepath.IsAbs(target) {
 				t.Fatalf("symlinks cannot be absolute")
 			}
-			AssertNil(t, os.Symlink(target, filepath.Join(dst, fi.Name())))
+			AssertNil(t, os.Symlink(target, filepath.Join(dst, entry.Name())))
 		}
 	}
 	modifiedtime := time.Time{}
@@ -364,7 +365,7 @@ func Mkfile(t *testing.T, data string, paths ...string) {
 
 func TempFile(t *testing.T, dir, pattern string) string {
 	t.Helper()
-	f, err := ioutil.TempFile(dir, pattern)
+	f, err := os.CreateTemp(dir, pattern)
 	AssertNil(t, err)
 	defer f.Close()
 	return f.Name()

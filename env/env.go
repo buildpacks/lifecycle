@@ -1,7 +1,6 @@
 package env
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,7 +153,7 @@ func delim(dir, name string, def ...byte) []byte {
 }
 
 func eachEnvFile(dir string, fn func(k, v string) error) error {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
@@ -164,7 +163,7 @@ func eachEnvFile(dir string, fn func(k, v string) error) error {
 		if f.IsDir() {
 			continue
 		}
-		if f.Mode()&os.ModeSymlink != 0 {
+		if f.Type()&os.ModeSymlink != 0 {
 			lnFile, err := os.Stat(filepath.Join(dir, f.Name()))
 			if err != nil {
 				return err

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -190,7 +189,7 @@ func (d BpDescriptor) processLayers(layersDir string, logger log.Logger) (map[st
 }
 
 func eachLayer(bpLayersDir, buildpackAPI string, fn func(path, api string) (LayerMetadataFile, error)) (map[string]LayerMetadataFile, error) {
-	files, err := ioutil.ReadDir(bpLayersDir)
+	files, err := os.ReadDir(bpLayersDir)
 	if os.IsNotExist(err) {
 		return map[string]LayerMetadataFile{}, nil
 	} else if err != nil {

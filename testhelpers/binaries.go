@@ -2,7 +2,6 @@ package testhelpers
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,7 +40,7 @@ func copyLifecycle(t *testing.T, src, dst string) {
 	RecursiveCopy(t, src, dst)
 
 	// Ensure correct permissions
-	fis, err := ioutil.ReadDir(dst)
+	fis, err := os.ReadDir(dst)
 	AssertNil(t, err)
 
 	for _, fi := range fis {

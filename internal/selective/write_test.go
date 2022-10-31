@@ -1,7 +1,6 @@
 package selective_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -66,7 +65,7 @@ func testSelective(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertNil(t, layoutPath.AppendImage(testImage))
 
-			fis, err := ioutil.ReadDir(filepath.Join(tmpDir, "some-image-index", "blobs", "sha256"))
+			fis, err := os.ReadDir(filepath.Join(tmpDir, "some-image-index", "blobs", "sha256"))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(fis), 2) // manifest, config
 			foundImage, err := layoutPath.Image(digest)
