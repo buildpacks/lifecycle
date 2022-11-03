@@ -34,9 +34,10 @@ func TestBuild(t *testing.T) {
 	spec.Run(t, "unit-build", testBuild, spec.Report(report.Terminal{}))
 }
 
-// RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
+// PlatformAPI should be ignored because it isn't set this early in the lifecycle
 var processCmpOpts = []cmp.Option{
-	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue", "PlatformAPI"),
+	cmpopts.IgnoreFields(launch.Process{}, "PlatformAPI"),
+	cmpopts.IgnoreFields(launch.RawCommand{}, "PlatformAPI"),
 }
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
@@ -738,8 +739,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Processes, []launch.Process{
-								{Type: "some-type", Command: []string{"some-cmd"}, BuildpackID: "A", Default: true, Direct: true},
-								{Type: "web", Command: []string{"other-cmd"}, BuildpackID: "A", Default: false, Direct: true},
+								{Type: "some-type", Command: launch.NewRawCommand([]string{"some-cmd"}), BuildpackID: "A", Default: true, Direct: true},
+								{Type: "web", Command: launch.NewRawCommand([]string{"other-cmd"}), BuildpackID: "A", Default: false, Direct: true},
 							}, processCmpOpts...)
 						})
 
@@ -801,7 +802,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							br, err := executor.Build(descriptor, inputs, logger)
 							h.AssertNil(t, err)
 							h.AssertEq(t, len(br.Processes), 1)
-							h.AssertEq(t, br.Processes[0].Command, []string{"some-cmd", "cmd-arg"})
+							h.AssertEq(t, br.Processes[0].Command.Entries, []string{"some-cmd", "cmd-arg"})
 							h.AssertEq(t, br.Processes[0].Args[0], "first-arg")
 						})
 
@@ -815,7 +816,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							br, err := executor.Build(descriptor, inputs, logger)
 							h.AssertNil(t, err)
 							h.AssertEq(t, len(br.Processes), 1)
-							h.AssertEq(t, br.Processes[0].Command, []string{"some-cmd"})
+							h.AssertEq(t, br.Processes[0].Command.Entries, []string{"some-cmd"})
 							h.AssertEq(t, br.Processes[0].Direct, true)
 						})
 
@@ -1105,8 +1106,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, br.Processes, []launch.Process{
-								{Type: "type-with-no-default", Command: []string{"some-cmd"}, BuildpackID: "A", Default: false},
-								{Type: "type-with-default", Command: []string{"other-cmd"}, BuildpackID: "A", Default: false},
+								{Type: "type-with-no-default", Command: launch.NewRawCommand([]string{"some-cmd"}), BuildpackID: "A", Default: false},
+								{Type: "type-with-default", Command: launch.NewRawCommand([]string{"other-cmd"}), BuildpackID: "A", Default: false},
 							}, processCmpOpts...)
 							expected := "Warning: default processes aren't supported in this buildpack api version. Overriding the default value to false for the following processes: [type-with-default]"
 							assertLogEntry(t, logHandler, expected)
@@ -1335,7 +1336,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						br, err := executor.Build(descriptor, inputs, logger)
 						h.AssertNil(t, err)
 						h.AssertEq(t, len(br.Processes), 1)
-						h.AssertEq(t, br.Processes[0].Command, []string{"some-command"})
+						h.AssertEq(t, br.Processes[0].Command.Entries, []string{"some-command"})
 					})
 
 					it("does not allow commands as list of string", func() {

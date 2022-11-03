@@ -135,14 +135,77 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
-			h.AssertEq(t, 1, len(md.Processes))
-			h.AssertEq(t, "hello", md.Processes[0].Type)
-			h.AssertEq(t, "echo world", md.Processes[0].Command[0])
-			h.AssertEq(t, 1, len(md.Processes[0].Args))
-			h.AssertEq(t, "arg1", md.Processes[0].Args[0])
-			h.AssertEq(t, false, md.Processes[0].Direct)
-			h.AssertEq(t, "", md.Processes[0].WorkingDirectory)
-			h.AssertEq(t, false, md.Processes[0].Default)
+			h.AssertEq(t, len(md.Processes), 1)
+			h.AssertEq(t, md.Processes[0].Type, "hello")
+			h.AssertEq(t, len(md.Processes[0].Command.Entries), 1)
+			h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
+			h.AssertEq(t, len(md.Processes[0].Args), 1)
+			h.AssertEq(t, md.Processes[0].Args[0], "arg1")
+			h.AssertEq(t, md.Processes[0].Direct, false)
+			h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
+			h.AssertEq(t, md.Processes[0].Default, false)
+		})
+	})
+
+	when("writing metadata.toml", func() {
+		it("writes and reads successfully", func() {
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
+				ctrPath("/layers"),
+				builderImage,
+				h.WithFlags(
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+				),
+			)
+			// check builder metadata.toml for success test
+			md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
+			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+			h.AssertEq(t, len(md.Processes), 1)
+			h.AssertEq(t, md.Processes[0].Type, "hello")
+			h.AssertEq(t, len(md.Processes[0].Command.Entries), 1)
+			h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
+			h.AssertEq(t, len(md.Processes[0].Args), 1)
+			h.AssertEq(t, md.Processes[0].Args[0], "arg1")
+			h.AssertEq(t, md.Processes[0].Direct, false)
+			h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
+			h.AssertEq(t, md.Processes[0].Default, false)
+		})
+
+		when("the platform < 0.10", func() {
+			it("writes and reads successfully", func() {
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					ctrPath("/layers"),
+					builderImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API=0.9",
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					),
+				)
+				// check builder metadata.toml for success test
+				md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
+				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+				h.AssertEq(t, len(md.Processes), 1)
+				h.AssertEq(t, md.Processes[0].Type, "hello")
+				h.AssertEq(t, len(md.Processes[0].Command.Entries), 1)
+				h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
+				h.AssertEq(t, len(md.Processes[0].Args), 1)
+				h.AssertEq(t, md.Processes[0].Args[0], "arg1")
+				h.AssertEq(t, md.Processes[0].Direct, false)
+				h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
+				h.AssertEq(t, md.Processes[0].Default, false)
+			})
 		})
 	})
 

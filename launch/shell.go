@@ -36,8 +36,8 @@ func (l *Launcher) launchWithShell(self string, proc Process) error {
 		return err
 	}
 	command := ""
-	if len(proc.Command) > 0 {
-		command = strings.Join(proc.Command, " ")
+	if len(proc.Command.Entries) > 0 {
+		command = strings.Join(proc.Command.Entries, " ")
 	}
 	return l.Shell.Launch(ShellProcess{
 		Script:           script,

@@ -19,7 +19,8 @@ func TestProcess(t *testing.T) {
 
 // RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
 var processCmpOpts = []cmp.Option{
-	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue", "PlatformAPI"),
+	cmpopts.IgnoreFields(launch.Process{}, "PlatformAPI"),
+	cmpopts.IgnoreFields(launch.RawCommand{}, "PlatformAPI"),
 }
 
 func testProcess(t *testing.T, when spec.G, it spec.S) {
@@ -35,25 +36,25 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 			Processes: []launch.Process{
 				{
 					Type:        "some-type",
-					Command:     []string{"some-command"},
+					Command:     launch.NewRawCommand([]string{"some-command"}),
 					Args:        []string{"some-arg1", "some-arg2"},
 					BuildpackID: "some-buildpack",
 				},
 				{
 					Type:        "other-type",
-					Command:     []string{"other-command"},
+					Command:     launch.NewRawCommand([]string{"other-command"}),
 					Args:        []string{"other-arg1", "other-arg2"},
 					BuildpackID: "some-buildpack",
 				},
 				{
 					Type:        "type-with-always-and-overridable-args",
-					Command:     []string{"some-command", "always-arg"},
+					Command:     launch.NewRawCommand([]string{"some-command", "always-arg"}),
 					Args:        []string{"overridable-arg"},
 					BuildpackID: "some-newer-buildpack",
 				},
 				{
 					Type:        "type-with-overridable-arg",
-					Command:     []string{"some-command"},
+					Command:     launch.NewRawCommand([]string{"some-command"}),
 					Args:        []string{"overridable-arg"},
 					BuildpackID: "some-newer-buildpack",
 				},
@@ -70,7 +71,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 						proc, err := launcher.ProcessFor([]string{"--", "user-command", "user-arg1", "user-arg2"})
 						h.AssertNil(t, err)
 						h.AssertEq(t, proc, launch.Process{
-							Command: []string{"user-command"},
+							Command: launch.NewRawCommand([]string{"user-command"}),
 							Args:    []string{"user-arg1", "user-arg2"},
 							Direct:  true,
 						}, processCmpOpts...)
@@ -82,7 +83,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 						proc, err := launcher.ProcessFor([]string{"user-command", "user-arg1", "user-arg2"})
 						h.AssertNil(t, err)
 						h.AssertEq(t, proc, launch.Process{
-							Command: []string{"user-command"},
+							Command: launch.NewRawCommand([]string{"user-command"}),
 							Args:    []string{"user-arg1", "user-arg2"},
 						}, processCmpOpts...)
 					})
@@ -107,7 +108,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						h.AssertEq(t, proc, launch.Process{
 							Type:        "type-with-always-and-overridable-args",
-							Command:     []string{"some-command"},
+							Command:     launch.NewRawCommand([]string{"some-command"}),
 							Args:        []string{"always-arg", "user-arg1", "user-arg2"},
 							BuildpackID: "some-newer-buildpack",
 						}, processCmpOpts...)
@@ -119,7 +120,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "type-with-always-and-overridable-args",
-								Command:     []string{"some-command"},
+								Command:     launch.NewRawCommand([]string{"some-command"}),
 								Args:        []string{"always-arg", "overridable-arg"},
 								BuildpackID: "some-newer-buildpack",
 							}, processCmpOpts...)
@@ -138,7 +139,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "type-with-overridable-arg",
-								Command:     []string{"some-command"},
+								Command:     launch.NewRawCommand([]string{"some-command"}),
 								Args:        []string{"user-arg1", "user-arg1"},
 								BuildpackID: "some-newer-buildpack",
 							}, processCmpOpts...)
@@ -150,7 +151,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 								h.AssertNil(t, err)
 								h.AssertEq(t, proc, launch.Process{
 									Type:        "type-with-overridable-arg",
-									Command:     []string{"some-command"},
+									Command:     launch.NewRawCommand([]string{"some-command"}),
 									Args:        []string{"overridable-arg"},
 									BuildpackID: "some-newer-buildpack",
 								}, processCmpOpts...)
@@ -168,7 +169,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "some-type",
-								Command:     []string{"some-command"},
+								Command:     launch.NewRawCommand([]string{"some-command"}),
 								Args:        []string{"some-arg1", "some-arg2", "user-arg1", "user-arg1"},
 								BuildpackID: "some-buildpack",
 							}, processCmpOpts...)
@@ -201,7 +202,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"--", "user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: launch.NewRawCommand([]string{"user-command"}),
 								Args:    []string{"user-arg1", "user-arg2"},
 								Direct:  true,
 							}, processCmpOpts...)
@@ -213,7 +214,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: launch.NewRawCommand([]string{"user-command"}),
 								Args:    []string{"user-arg1", "user-arg2"},
 							}, processCmpOpts...)
 						})
@@ -237,7 +238,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						h.AssertEq(t, proc, launch.Process{
 							Type:        "type-with-overridable-arg",
-							Command:     []string{"some-command"},
+							Command:     launch.NewRawCommand([]string{"some-command"}),
 							Args:        []string{"overridable-arg", "user-arg1", "user-arg1"},
 							BuildpackID: "some-newer-buildpack",
 						}, processCmpOpts...)
@@ -249,7 +250,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "type-with-overridable-arg",
-								Command:     []string{"some-command"},
+								Command:     launch.NewRawCommand([]string{"some-command"}),
 								Args:        []string{"overridable-arg"},
 								BuildpackID: "some-newer-buildpack",
 							}, processCmpOpts...)
@@ -290,7 +291,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "other-type",
-								Command:     []string{"other-command"},
+								Command:     launch.NewRawCommand([]string{"other-command"}),
 								Args:        []string{"other-arg1", "other-arg2"},
 								BuildpackID: "some-buildpack",
 							}, processCmpOpts...)
@@ -302,7 +303,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"--", "user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: launch.NewRawCommand([]string{"user-command"}),
 								Args:    []string{"user-arg1", "user-arg2"},
 								Direct:  true,
 							}, processCmpOpts...)
@@ -314,7 +315,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: launch.NewRawCommand([]string{"user-command"}),
 								Args:    []string{"user-arg1", "user-arg2"},
 							}, processCmpOpts...)
 						})
@@ -332,7 +333,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "some-type",
-								Command:     []string{"some-command"},
+								Command:     launch.NewRawCommand([]string{"some-command"}),
 								Args:        []string{"some-arg1", "some-arg2"},
 								BuildpackID: "some-buildpack",
 							}, processCmpOpts...)
@@ -345,7 +346,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
 								Type:        "other-type",
-								Command:     []string{"other-command"},
+								Command:     launch.NewRawCommand([]string{"other-command"}),
 								Args:        []string{"other-arg1", "other-arg2"},
 								BuildpackID: "some-buildpack",
 							}, processCmpOpts...)
@@ -357,7 +358,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"--", "user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: launch.NewRawCommand([]string{"user-command"}),
 								Args:    []string{"user-arg1", "user-arg2"},
 								Direct:  true,
 							}, processCmpOpts...)
@@ -369,7 +370,7 @@ func testProcess(t *testing.T, when spec.G, it spec.S) {
 							proc, err := launcher.ProcessFor([]string{"user-command", "user-arg1", "user-arg2"})
 							h.AssertNil(t, err)
 							h.AssertEq(t, proc, launch.Process{
-								Command: []string{"user-command"},
+								Command: launch.NewRawCommand([]string{"user-command"}),
 								Args:    []string{"user-arg1", "user-arg2"},
 							}, processCmpOpts...)
 						})
