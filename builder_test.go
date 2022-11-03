@@ -13,7 +13,6 @@ import (
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -32,11 +31,6 @@ import (
 
 func TestBuilder(t *testing.T) {
 	spec.Run(t, "Builder", testBuilder, spec.Report(report.Terminal{}))
-}
-
-// RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
-var processCmpOpts = []cmp.Option{
-	cmpopts.IgnoreFields(launch.Process{}, "RawCommandValue"),
 }
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
@@ -504,14 +498,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						Processes: []launch.Process{
 							{
 								Type:        "some-type",
-								Command:     []string{"some-command"},
+								Command:     launch.NewRawCommand([]string{"some-command"}),
 								Args:        []string{"some-arg"},
 								Direct:      true,
 								BuildpackID: "A",
 							},
 							{
 								Type:        "override-type",
-								Command:     []string{"bpA-command"},
+								Command:     launch.NewRawCommand([]string{"bpA-command"}),
 								Args:        []string{"bpA-arg"},
 								Direct:      true,
 								BuildpackID: "A",
@@ -524,14 +518,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						Processes: []launch.Process{
 							{
 								Type:        "some-other-type",
-								Command:     []string{"some-other-command"},
+								Command:     launch.NewRawCommand([]string{"some-other-command"}),
 								Args:        []string{"some-other-arg"},
 								Direct:      true,
 								BuildpackID: "B",
 							},
 							{
 								Type:        "override-type",
-								Command:     []string{"bpB-command"},
+								Command:     launch.NewRawCommand([]string{"bpB-command"}),
 								Args:        []string{"bpB-arg"},
 								Direct:      false,
 								BuildpackID: "B",
@@ -543,30 +537,33 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					if s := cmp.Diff(metadata.Processes, []launch.Process{
 						{
-							Type:        "override-type",
-							Command:     []string{"bpB-command"},
+							Type: "override-type",
+							Command: launch.NewRawCommand([]string{"bpB-command"}).
+								WithPlatformAPI(builder.Platform.API()),
 							Args:        []string{"bpB-arg"},
 							Direct:      false,
 							BuildpackID: "B",
 							PlatformAPI: builder.Platform.API(),
 						},
 						{
-							Type:        "some-other-type",
-							Command:     []string{"some-other-command"},
+							Type: "some-other-type",
+							Command: launch.NewRawCommand([]string{"some-other-command"}).
+								WithPlatformAPI(builder.Platform.API()),
 							Args:        []string{"some-other-arg"},
 							Direct:      true,
 							BuildpackID: "B",
 							PlatformAPI: builder.Platform.API(),
 						},
 						{
-							Type:        "some-type",
-							Command:     []string{"some-command"},
+							Type: "some-type",
+							Command: launch.NewRawCommand([]string{"some-command"}).
+								WithPlatformAPI(builder.Platform.API()),
 							Args:        []string{"some-arg"},
 							Direct:      true,
 							BuildpackID: "A",
 							PlatformAPI: builder.Platform.API(),
 						},
-					}, processCmpOpts...); s != "" {
+					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
 					}
 					h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
@@ -588,7 +585,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "override-type",
-									Command:     []string{"bpA-command"},
+									Command:     launch.NewRawCommand([]string{"bpA-command"}),
 									Args:        []string{"bpA-arg"},
 									Direct:      true,
 									BuildpackID: "A",
@@ -602,7 +599,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "some-type",
-									Command:     []string{"bpB-command"},
+									Command:     launch.NewRawCommand([]string{"bpB-command"}),
 									Args:        []string{"bpB-arg"},
 									Direct:      false,
 									BuildpackID: "B",
@@ -617,7 +614,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "override-type",
-									Command:     []string{"bpC-command"},
+									Command:     launch.NewRawCommand([]string{"bpC-command"}),
 									Args:        []string{"bpC-arg"},
 									Direct:      false,
 									BuildpackID: "C",
@@ -630,22 +627,24 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						if s := cmp.Diff(metadata.Processes, []launch.Process{
 							{
-								Type:        "override-type",
-								Command:     []string{"bpC-command"},
+								Type: "override-type",
+								Command: launch.NewRawCommand([]string{"bpC-command"}).
+									WithPlatformAPI(builder.Platform.API()),
 								Args:        []string{"bpC-arg"},
 								Direct:      false,
 								BuildpackID: "C",
 								PlatformAPI: builder.Platform.API(),
 							},
 							{
-								Type:        "some-type",
-								Command:     []string{"bpB-command"},
+								Type: "some-type",
+								Command: launch.NewRawCommand([]string{"bpB-command"}).
+									WithPlatformAPI(builder.Platform.API()),
 								Args:        []string{"bpB-arg"},
 								Direct:      false,
 								BuildpackID: "B",
 								PlatformAPI: builder.Platform.API(),
 							},
-						}, processCmpOpts...); s != "" {
+						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
 						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "some-type")
@@ -668,7 +667,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "some-type",
-									Command:     []string{"bpA-command"},
+									Command:     launch.NewRawCommand([]string{"bpA-command"}),
 									Args:        []string{"bpA-arg"},
 									Direct:      false,
 									BuildpackID: "A",
@@ -683,7 +682,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "override-type",
-									Command:     []string{"bpB-command"},
+									Command:     launch.NewRawCommand([]string{"bpB-command"}),
 									Args:        []string{"bpB-arg"},
 									Direct:      true,
 									BuildpackID: "B",
@@ -698,7 +697,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "override-type",
-									Command:     []string{"bpC-command"},
+									Command:     launch.NewRawCommand([]string{"bpC-command"}),
 									Args:        []string{"bpC-arg"},
 									Direct:      false,
 									BuildpackID: "C",
@@ -710,22 +709,24 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						if s := cmp.Diff(metadata.Processes, []launch.Process{
 							{
-								Type:        "override-type",
-								Command:     []string{"bpC-command"},
+								Type: "override-type",
+								Command: launch.NewRawCommand([]string{"bpC-command"}).
+									WithPlatformAPI(builder.Platform.API()),
 								Args:        []string{"bpC-arg"},
 								Direct:      false,
 								BuildpackID: "C",
 								PlatformAPI: builder.Platform.API(),
 							},
 							{
-								Type:        "some-type",
-								Command:     []string{"bpA-command"},
+								Type: "some-type",
+								Command: launch.NewRawCommand([]string{"bpA-command"}).
+									WithPlatformAPI(builder.Platform.API()),
 								Args:        []string{"bpA-arg"},
 								Direct:      false,
 								BuildpackID: "A",
 								PlatformAPI: builder.Platform.API(),
 							},
-						}, processCmpOpts...); s != "" {
+						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
 
@@ -751,7 +752,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Processes: []launch.Process{
 									{
 										Type:        "web",
-										Command:     []string{"web-cmd"},
+										Command:     launch.NewRawCommand([]string{"web-cmd"}),
 										Args:        []string{"web-arg"},
 										Direct:      false,
 										BuildpackID: "A",
@@ -765,15 +766,16 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 							if s := cmp.Diff(metadata.Processes, []launch.Process{
 								{
-									Type:        "web",
-									Command:     []string{"web-cmd"},
+									Type: "web",
+									Command: launch.NewRawCommand([]string{"web-cmd"}).
+										WithPlatformAPI(builder.Platform.API()),
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
 									Default:     false,
 									PlatformAPI: builder.Platform.API(),
 								},
-							}, processCmpOpts...); s != "" {
+							}); s != "" {
 								t.Fatalf("Unexpected:\n%s\n", s)
 							}
 							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
@@ -794,7 +796,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Processes: []launch.Process{
 									{
 										Type:        "web",
-										Command:     []string{"web-cmd"},
+										Command:     launch.NewRawCommand([]string{"web-cmd"}),
 										Args:        []string{"web-arg"},
 										Direct:      false,
 										BuildpackID: "A",
@@ -802,7 +804,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									},
 									{
 										Type:        "not-web",
-										Command:     []string{"not-web-cmd"},
+										Command:     launch.NewRawCommand([]string{"not-web-cmd"}),
 										Args:        []string{"not-web-arg"},
 										Direct:      true,
 										BuildpackID: "A",
@@ -816,22 +818,24 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 							if s := cmp.Diff(metadata.Processes, []launch.Process{
 								{
-									Type:        "not-web",
-									Command:     []string{"not-web-cmd"},
+									Type: "not-web",
+									Command: launch.NewRawCommand([]string{"not-web-cmd"}).
+										WithPlatformAPI(builder.Platform.API()),
 									Args:        []string{"not-web-arg"},
 									Direct:      true,
 									BuildpackID: "A",
 									PlatformAPI: builder.Platform.API(),
 								},
 								{
-									Type:        "web",
-									Command:     []string{"web-cmd"},
+									Type: "web",
+									Command: launch.NewRawCommand([]string{"web-cmd"}).
+										WithPlatformAPI(builder.Platform.API()),
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
 									PlatformAPI: builder.Platform.API(),
 								},
-							}, processCmpOpts...); s != "" {
+							}); s != "" {
 								t.Fatalf("Unexpected:\n%s\n", s)
 							}
 							h.AssertEq(t, metadata.BuildpackDefaultProcessType, "web")
@@ -849,7 +853,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						Processes: []launch.Process{
 							{
 								Type:        "some-type",
-								Command:     []string{"some-cmd"},
+								Command:     launch.NewRawCommand([]string{"some-cmd"}),
 								BuildpackID: "A",
 							},
 						},
@@ -995,7 +999,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "web",
-									Command:     []string{"web-cmd"},
+									Command:     launch.NewRawCommand([]string{"web-cmd"}),
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
@@ -1009,15 +1013,16 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						if s := cmp.Diff(metadata.Processes, []launch.Process{
 							{
-								Type:        "web",
-								Command:     []string{"web-cmd"},
+								Type: "web",
+								Command: launch.NewRawCommand([]string{"web-cmd"}).
+									WithPlatformAPI(builder.Platform.API()),
 								Args:        []string{"web-arg"},
 								Direct:      false,
 								BuildpackID: "A",
 								Default:     false,
 								PlatformAPI: builder.Platform.API(),
 							},
-						}, processCmpOpts...); s != "" {
+						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
 						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")
@@ -1038,7 +1043,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							Processes: []launch.Process{
 								{
 									Type:        "web",
-									Command:     []string{"web-cmd"},
+									Command:     launch.NewRawCommand([]string{"web-cmd"}),
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
@@ -1052,15 +1057,16 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						if s := cmp.Diff(metadata.Processes, []launch.Process{
 							{
-								Type:        "web",
-								Command:     []string{"web-cmd"},
+								Type: "web",
+								Command: launch.NewRawCommand([]string{"web-cmd"}).
+									WithPlatformAPI(builder.Platform.API()),
 								Args:        []string{"web-arg"},
 								Direct:      false,
 								BuildpackID: "A",
 								Default:     false,
 								PlatformAPI: builder.Platform.API(),
 							},
-						}, processCmpOpts...); s != "" {
+						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
 						}
 						h.AssertEq(t, metadata.BuildpackDefaultProcessType, "")

@@ -7,112 +7,22 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 )
 
 // Process represents a process to launch at runtime.
-// NOTE: This struct MUST be kept in sync with `processSerializer` and `processSerializerPlatformLessThan010`.
 type Process struct {
-	Type             string         `toml:"type" json:"type"`
-	Command          []string       `toml:"-" json:"-"` // ignored
-	RawCommandValue  toml.Primitive `toml:"command" json:"command"`
-	Args             []string       `toml:"args" json:"args"`
-	Direct           bool           `toml:"direct" json:"direct"`
-	Default          bool           `toml:"default,omitempty" json:"default,omitempty"`
-	BuildpackID      string         `toml:"buildpack-id" json:"buildpackID"`
-	WorkingDirectory string         `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
-	PlatformAPI      *api.Version   `toml:"-" json:"-"`
-}
-
-// processSerializer is used to encode a process to toml.
-// NOTE: This struct MUST be kept in sync with `Process` and `processSerializerPlatformLessThan010`.
-type processSerializer struct {
-	Type             string   `toml:"type" json:"type"`
-	Command          []string `toml:"command" json:"command"` // command is array
-	Args             []string `toml:"args" json:"args"`
-	Direct           bool     `toml:"direct" json:"direct"`
-	Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
-	BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
-	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
-}
-
-// processSerializerPlatformLessThan010 is used to encode a process to toml for older platform APIs.
-// NOTE: This struct MUST be kept in sync with `Process` and `processSerializer`.
-type processSerializerPlatformLessThan010 struct {
-	Type             string   `toml:"type" json:"type"`
-	Command          string   `toml:"command" json:"command"` // command is string
-	Args             []string `toml:"args" json:"args"`
-	Direct           bool     `toml:"direct" json:"direct"`
-	Default          bool     `toml:"default,omitempty" json:"default,omitempty"`
-	BuildpackID      string   `toml:"buildpack-id" json:"buildpackID"`
-	WorkingDirectory string   `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
-}
-
-// MarshalText implements the toml TextMarshaler interface to allow us more control when writing a Process to a toml file.
-func (p Process) MarshalText() ([]byte, error) {
-	if p.PlatformAPI.AtLeast("0.10") {
-		return encoding.MarshalTOML(p.toProcessSerializer())
-	}
-	return encoding.MarshalTOML(p.toProcessSerializerPlatformLessThan010())
-}
-
-// MarhsalJSON implements the json Marshaler interface to allow us more control when writing a Process to a json file.
-func (p Process) MarshalJSON() ([]byte, error) {
-	if p.PlatformAPI.AtLeast("0.10") {
-		return json.Marshal(p.toProcessSerializer())
-	}
-	return json.Marshal(p.toProcessSerializerPlatformLessThan010())
-}
-
-// UnmarshalTOML implements the toml Unmarshaler interface to allow us more control when reading a Process from toml.
-func (p *Process) UnmarshalTOML(data interface{}) error {
-	var tomlString string
-	switch v := data.(type) {
-	case string:
-		tomlString = v
-	case map[string]interface{}:
-		// when unmarshaling as part of a parent struct, the process is a map[string]interface{}
-		// turn back into a string
-		bytes, _ := encoding.MarshalTOML(v)
-		tomlString = string(bytes)
-	default:
-		return errors.New("could not cast data to string")
-	}
-
-	// This is the same as launch.Process and exists to allow us to toml.Decode inside of UnmarshalTOML
-	type pProcess Process
-
-	// unmarshal the common bits
-	newProcess := pProcess{}
-	md, err := toml.Decode(tomlString, &newProcess)
-	if err != nil {
-		return err
-	}
-
-	// handle the process.command, which will differ based on APIs
-	var commandWasString bool
-	var commandString string
-	if err := md.PrimitiveDecode(newProcess.RawCommandValue, &commandString); err == nil {
-		commandWasString = true
-		newProcess.Command = []string{commandString}
-	}
-
-	if !commandWasString {
-		var command []string
-		if err := md.PrimitiveDecode(newProcess.RawCommandValue, &command); err != nil {
-			return err
-		}
-		newProcess.Command = command
-	}
-
-	*p = Process(newProcess)
-	return nil
+	Type             string       `toml:"type" json:"type"`
+	Command          RawCommand   `toml:"command" json:"command"`
+	Args             []string     `toml:"args" json:"args"`
+	Direct           bool         `toml:"direct" json:"direct"`
+	Default          bool         `toml:"default,omitempty" json:"default,omitempty"`
+	BuildpackID      string       `toml:"buildpack-id" json:"buildpackID"`
+	WorkingDirectory string       `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	PlatformAPI      *api.Version `toml:"-" json:"-"`
 }
 
 func (p Process) NoDefault() Process {
@@ -121,32 +31,90 @@ func (p Process) NoDefault() Process {
 }
 
 func (p Process) WithPlatformAPI(platformAPI *api.Version) Process {
+	// set on the process itself
 	p.PlatformAPI = platformAPI
+	// set on the command as well, this is needed when we serialize the command
+	p.Command.PlatformAPI = platformAPI
+
+	// for platform versions < 0.10
+	// we only support a single command
+	// push any extra entries into the args so they aren't lost
+	if p.PlatformAPI.LessThan("0.10") {
+		p.Args = append(p.Command.Entries[1:], p.Args[0:]...)
+		p.Command.Entries = []string{p.Command.Entries[0]}
+	}
 	return p
 }
 
-func (p Process) toProcessSerializer() processSerializer {
-	return processSerializer{
-		Type:             p.Type,
-		Command:          p.Command,
-		Args:             p.Args,
-		Direct:           p.Direct,
-		Default:          p.Default,
-		BuildpackID:      p.BuildpackID,
-		WorkingDirectory: p.WorkingDirectory,
-	}
+type RawCommand struct {
+	Entries     []string
+	PlatformAPI *api.Version
 }
 
-func (p Process) toProcessSerializerPlatformLessThan010() processSerializerPlatformLessThan010 {
-	return processSerializerPlatformLessThan010{
-		Type:             p.Type,
-		Command:          p.Command[0],
-		Args:             append(p.Command[1:], p.Args[0:]...),
-		Direct:           p.Direct,
-		Default:          p.Default,
-		BuildpackID:      p.BuildpackID,
-		WorkingDirectory: p.WorkingDirectory,
+func NewRawCommand(entries []string) RawCommand {
+	return RawCommand{Entries: entries}
+}
+
+func (c RawCommand) WithPlatformAPI(api *api.Version) RawCommand {
+	c.PlatformAPI = api
+	return c
+}
+
+func (c RawCommand) MarshalTOML() ([]byte, error) {
+	if c.PlatformAPI == nil {
+		return nil, fmt.Errorf("missing PlatformAPI while encoding RawCommand")
 	}
+
+	if c.PlatformAPI.AtLeast("0.10") {
+		buffer := &strings.Builder{}
+		// turn array into toml array
+		buffer.WriteString("[")
+		for i, entry := range c.Entries {
+			if i != 0 {
+				buffer.WriteString(", ")
+			}
+			buffer.WriteString(fmt.Sprintf("%q", entry))
+		}
+		buffer.WriteString("]")
+		return []byte(buffer.String()), nil
+	}
+
+	return []byte(fmt.Sprintf("\"%s\"", c.Entries[0])), nil
+}
+
+func (c RawCommand) MarshalJSON() ([]byte, error) {
+	if c.PlatformAPI == nil {
+		return nil, fmt.Errorf("missing PlatformAPI while encoding RawCommand")
+	}
+
+	if c.PlatformAPI.AtLeast("0.10") {
+		return json.Marshal(c.Entries)
+	}
+
+	return []byte(fmt.Sprintf("\"%s\"", c.Entries[0])), nil
+}
+
+// UnmarshalTOML implements toml.Unmarshaler and is needed because we read metadata.toml
+// this method will attempt to parse the command in either string or array format
+func (c *RawCommand) UnmarshalTOML(data interface{}) error {
+	var values []string
+	// the raw value is either "the-command" or ["the-command", "arg1", "arg2"]
+	// the latter is exposed as []interface{} by toml library and needs conversion
+	switch v := data.(type) {
+	case string:
+		values = []string{v}
+	case []interface{}:
+		s := make([]string, len(v))
+		for i, v := range v {
+			s[i] = fmt.Sprint(v)
+		}
+		values = s
+	default:
+		return fmt.Errorf("unknown command toml type %T", data)
+	}
+
+	*c = NewRawCommand(values)
+	return nil
 }
 
 // ProcessPath returns the absolute path to the symlink for a given process type
@@ -172,9 +140,12 @@ func (m Metadata) Matches(x interface{}) bool {
 		return false
 	}
 
-	// we need to ignore the RawCommandValue field because it is a toml.Primitive and is not part of our equality
+	// we need to ignore the PlatformAPI field because it isn't always set where these are used
+	// and trying to compare it will cause a panic
 	for i, p := range m.Processes {
-		if s := cmp.Diff(metadatax.Processes[i], p, cmpopts.IgnoreFields(Process{}, "RawCommandValue")); s != "" {
+		if s := cmp.Diff(metadatax.Processes[i], p,
+			cmpopts.IgnoreFields(Process{}, "PlatformAPI"),
+			cmpopts.IgnoreFields(RawCommand{}, "PlatformAPI")); s != "" {
 			return false
 		}
 	}

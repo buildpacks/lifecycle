@@ -54,11 +54,11 @@ func testDecodeMetataTOML(t *testing.T, when spec.G, it spec.S) {
 
 			_, err := toml.DecodeFile(path, &metadata)
 			h.AssertNil(t, err)
-			h.AssertEq(t, metadata.Processes[0].Command[0], "some-cmd")
-			h.AssertEq(t, metadata.Processes[0].Command[1], "more")
+			h.AssertEq(t, metadata.Processes[0].Command.Entries[0], "some-cmd")
+			h.AssertEq(t, metadata.Processes[0].Command.Entries[1], "more")
 
-			h.AssertEq(t, metadata.Processes[1].Command[0], "other cmd with spaces")
-			h.AssertEq(t, metadata.Processes[1].Command[1], "other more")
+			h.AssertEq(t, metadata.Processes[1].Command.Entries[0], "other cmd with spaces")
+			h.AssertEq(t, metadata.Processes[1].Command.Entries[1], "other more")
 		})
 
 		when("string commands", func() {
@@ -80,8 +80,8 @@ func testDecodeMetataTOML(t *testing.T, when spec.G, it spec.S) {
 
 				_, err := toml.DecodeFile(path, &metadata)
 				h.AssertNil(t, err)
-				h.AssertEq(t, metadata.Processes[0].Command[0], "some-cmd")
-				h.AssertEq(t, metadata.Processes[1].Command[0], "other cmd with spaces")
+				h.AssertEq(t, metadata.Processes[0].Command.Entries[0], "some-cmd")
+				h.AssertEq(t, metadata.Processes[1].Command.Entries[0], "other cmd with spaces")
 			})
 		})
 	})

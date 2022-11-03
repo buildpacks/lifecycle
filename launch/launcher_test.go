@@ -115,7 +115,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			process = launch.Process{
-				Command: []string{"command"},
+				Command: launch.NewRawCommand([]string{"command"}),
 				Args:    []string{"arg1", "arg2"},
 			}
 		})
@@ -128,9 +128,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 				// set command to something on the real path so exec.LookPath succeeds
 				if runtime.GOOS == "windows" {
-					process.Command = []string{"notepad"}
+					process.Command = launch.NewRawCommand([]string{"notepad"})
 				} else {
-					process.Command = []string{"sh"}
+					process.Command = launch.NewRawCommand([]string{"sh"})
 				}
 
 				mockEnv.EXPECT().Get("PATH").Return("some-path").AnyTimes()

@@ -1,13 +1,16 @@
 package launch_test
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -18,11 +21,12 @@ func TestLaunch(t *testing.T) {
 
 func testLaunch(t *testing.T, when spec.G, it spec.S) {
 	when("Process", func() {
-		when("MarshalText", func() {
+		when("MarshalTOML", func() {
 			it("command is array", func() {
 				process := launch.Process{
-					Type:             "some-type",
-					Command:          []string{"some-command", "some-command-arg1"},
+					Type: "some-type",
+					Command: launch.NewRawCommand([]string{"some-command", "some-command-arg1"}).
+						WithPlatformAPI(api.Platform.Latest()),
 					Args:             []string{"some-arg1"},
 					Direct:           true,
 					Default:          true,
@@ -31,7 +35,7 @@ func testLaunch(t *testing.T, when spec.G, it spec.S) {
 					PlatformAPI:      api.Platform.Latest(),
 				}
 
-				bytes, err := process.MarshalText()
+				bytes, err := encoding.MarshalTOML(process)
 				h.AssertNil(t, err)
 				expected := `type = "some-type"
 command = ["some-command", "some-command-arg1"]
@@ -48,16 +52,15 @@ working-dir = "some-working-directory"
 				it("command is string", func() {
 					process := launch.Process{
 						Type:             "some-type",
-						Command:          []string{"some-command", "some-arg1"},
+						Command:          launch.NewRawCommand([]string{"some-command", "some-arg1"}),
 						Args:             []string{"some-arg2"},
 						Direct:           true,
 						Default:          true,
 						BuildpackID:      "some-buildpack-id",
 						WorkingDirectory: "some-working-directory",
-						PlatformAPI:      api.MustParse("0.9"),
-					}
+					}.WithPlatformAPI(api.MustParse("0.9"))
 
-					bytes, err := process.MarshalText()
+					bytes, err := encoding.MarshalTOML(process)
 					h.AssertNil(t, err)
 					expected := `type = "some-type"
 command = "some-command"
@@ -75,8 +78,9 @@ working-dir = "some-working-directory"
 		when("MarshalJSON", func() {
 			it("command is array", func() {
 				process := launch.Process{
-					Type:             "some-type",
-					Command:          []string{"some-command", "some-command-arg1"},
+					Type: "some-type",
+					Command: launch.NewRawCommand([]string{"some-command", "some-command-arg1"}).
+						WithPlatformAPI(api.Platform.Latest()),
 					Args:             []string{"some-arg1"},
 					Direct:           true,
 					Default:          true,
@@ -85,7 +89,7 @@ working-dir = "some-working-directory"
 					PlatformAPI:      api.Platform.Latest(),
 				}
 
-				bytes, err := process.MarshalJSON()
+				bytes, err := json.Marshal(process)
 				h.AssertNil(t, err)
 				expected := `{"type":"some-type","command":["some-command","some-command-arg1"],"args":["some-arg1"],"direct":true,"default":true,"buildpackID":"some-buildpack-id","working-dir":"some-working-directory"}`
 				h.AssertEq(t, string(bytes), expected)
@@ -95,16 +99,15 @@ working-dir = "some-working-directory"
 				it("command is string", func() {
 					process := launch.Process{
 						Type:             "some-type",
-						Command:          []string{"some-command", "some-arg1"},
+						Command:          launch.NewRawCommand([]string{"some-command", "some-arg1"}),
 						Args:             []string{"some-arg2"},
 						Direct:           true,
 						Default:          true,
 						BuildpackID:      "some-buildpack-id",
 						WorkingDirectory: "some-working-directory",
-						PlatformAPI:      api.MustParse("0.9"),
-					}
+					}.WithPlatformAPI(api.MustParse("0.9"))
 
-					bytes, err := process.MarshalJSON()
+					bytes, err := json.Marshal(process)
 					h.AssertNil(t, err)
 					expected := `{"type":"some-type","command":"some-command","args":["some-arg1","some-arg2"],"direct":true,"default":true,"buildpackID":"some-buildpack-id","working-dir":"some-working-directory"}`
 					h.AssertEq(t, string(bytes), expected)
@@ -124,11 +127,13 @@ buildpack-id = "some-buildpack-id"
 working-dir = "some-working-directory"
 `
 					process := launch.Process{}
-					h.AssertNil(t, process.UnmarshalTOML(data))
+					_, err := toml.Decode(data, &process)
+					h.AssertNil(t, err)
 					if s := cmp.Diff([]launch.Process{process}, []launch.Process{
 						{
-							Type:             "some-type",
-							Command:          []string{"some-command"},
+							Type: "some-type",
+							Command: launch.NewRawCommand([]string{"some-command"}).
+								WithPlatformAPI(api.Platform.Latest()),
 							Args:             []string{"some-arg"},
 							Direct:           true,
 							Default:          true,
@@ -152,11 +157,13 @@ buildpack-id = "some-buildpack-id"
 working-dir = "some-working-directory"
 `
 					process := launch.Process{}
-					h.AssertNil(t, process.UnmarshalTOML(data))
+					_, err := toml.Decode(data, &process)
+					h.AssertNil(t, err)
 					if s := cmp.Diff([]launch.Process{process}, []launch.Process{
 						{
-							Type:             "some-type",
-							Command:          []string{"some-command", "some-command-arg"},
+							Type: "some-type",
+							Command: launch.NewRawCommand([]string{"some-command", "some-command-arg"}).
+								WithPlatformAPI(api.Platform.Latest()),
 							Args:             []string{"some-arg"},
 							Direct:           true,
 							Default:          true,

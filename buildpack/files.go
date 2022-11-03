@@ -85,7 +85,7 @@ func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
 
 	return launch.Process{
 		Type:             p.Type,
-		Command:          p.Command,
+		Command:          launch.NewRawCommand(p.Command),
 		Args:             p.Args,
 		Direct:           direct, // launch.Process requires a value
 		Default:          p.Default,

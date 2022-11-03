@@ -49,10 +49,10 @@ func (l *Launcher) handleUserArgsPlatformLessThan010(process Process, userArgs [
 
 func (l *Launcher) handleUserArgs(process Process, userArgs []string) (Process, error) {
 	switch {
-	case len(process.Command) > 1: // definitely newer buildpack
+	case len(process.Command.Entries) > 1: // definitely newer buildpack
 		overridableArgs := process.Args
-		process.Args = process.Command[1:]             // set always-provided args
-		process.Command = []string{process.Command[0]} // when exec'ing the process we always expect Command to have just one entry
+		process.Args = process.Command.Entries[1:]                     // set always-provided args
+		process.Command.Entries = []string{process.Command.Entries[0]} // when exec'ing the process we always expect Command to have just one entry
 		if len(userArgs) > 0 {
 			process.Args = append(process.Args, userArgs...)
 		} else {
@@ -118,10 +118,10 @@ func (l *Launcher) userProvidedProcess(cmd []string) (Process, error) {
 		return Process{}, errors.New("when there is no default process a command is required")
 	}
 	if len(cmd) > 1 && cmd[0] == "--" {
-		return Process{Command: []string{cmd[1]}, Args: cmd[2:], Direct: true}, nil
+		return Process{Command: RawCommand{Entries: []string{cmd[1]}}, Args: cmd[2:], Direct: true}, nil
 	}
 
-	return Process{Command: []string{cmd[0]}, Args: cmd[1:]}, nil
+	return Process{Command: RawCommand{Entries: []string{cmd[0]}}, Args: cmd[1:]}, nil
 }
 
 func getProcessWorkingDirectory(process Process, appDir string) string {

@@ -109,8 +109,9 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			ProcessTypesLayer(launch.Metadata{
 				Processes: []launch.Process{
 					{
-						Type:        "some-process-type",
-						Command:     []string{"/some/command"},
+						Type: "some-process-type",
+						Command: launch.NewRawCommand([]string{"/some/command"}).
+							WithPlatformAPI(platformAPI),
 						Args:        []string{"some", "command", "args"},
 						Direct:      true,
 						BuildpackID: "buildpack.id",
@@ -1134,8 +1135,9 @@ version = "4.5.6"
 							ProcessTypesLayer(launch.Metadata{
 								Processes: []launch.Process{
 									{
-										Type:        "some-process-type",
-										Command:     []string{"/some/command"},
+										Type: "some-process-type",
+										Command: launch.NewRawCommand([]string{"/some/command"}).
+											WithPlatformAPI(api.Platform.Latest()),
 										Args:        []string{"some", "command", "args"},
 										Direct:      true,
 										BuildpackID: "buildpack.id",

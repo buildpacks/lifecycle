@@ -79,7 +79,7 @@ func (l *Launcher) launchDirect(proc Process) error {
 	if err := l.Setenv("PATH", l.Env.Get("PATH")); err != nil {
 		return errors.Wrap(err, "set path")
 	}
-	binary, err := exec.LookPath(proc.Command[0])
+	binary, err := exec.LookPath(proc.Command.Entries[0])
 	if err != nil {
 		return errors.Wrap(err, "path lookup")
 	}
@@ -87,7 +87,7 @@ func (l *Launcher) launchDirect(proc Process) error {
 		return errors.Wrap(err, "change directory")
 	}
 	if err := l.Exec(binary,
-		append(proc.Command, proc.Args...),
+		append(proc.Command.Entries, proc.Args...),
 		l.Env.List(),
 	); err != nil {
 		return errors.Wrap(err, "direct exec")

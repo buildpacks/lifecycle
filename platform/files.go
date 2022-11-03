@@ -95,9 +95,12 @@ func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *Bui
 		return err
 	}
 
+	// set the platform API on all the appropriate fields
+	// this will allow us to re-encode the metadata.toml file with
+	// the current platform API
 	buildmd.PlatformAPI = platformAPI
 	for i := range buildmd.Processes {
-		buildmd.Processes[i].PlatformAPI = platformAPI
+		buildmd.Processes[i] = buildmd.Processes[i].WithPlatformAPI(platformAPI)
 	}
 
 	return nil
