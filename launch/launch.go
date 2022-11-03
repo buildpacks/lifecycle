@@ -13,6 +13,39 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 )
 
+// Process represents a process to launch at runtime.
+type Process struct {
+	Type             string       `toml:"type" json:"type"`
+	Command          RawCommand   `toml:"command" json:"command"`
+	Args             []string     `toml:"args" json:"args"`
+	Direct           bool         `toml:"direct" json:"direct"`
+	Default          bool         `toml:"default,omitempty" json:"default,omitempty"`
+	BuildpackID      string       `toml:"buildpack-id" json:"buildpackID"`
+	WorkingDirectory string       `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
+	PlatformAPI      *api.Version `toml:"-" json:"-"`
+}
+
+func (p Process) NoDefault() Process {
+	p.Default = false
+	return p
+}
+
+func (p Process) WithPlatformAPI(platformAPI *api.Version) Process {
+	// set on the process itself
+	p.PlatformAPI = platformAPI
+	// set on the command as well, this is needed when we serialize the command
+	p.Command.PlatformAPI = platformAPI
+
+	// for platform versions < 0.10
+	// we only support a single command
+	// push any extra entries into the args so they aren't lost
+	if p.PlatformAPI.LessThan("0.10") {
+		p.Args = append(p.Command.Entries[1:], p.Args[0:]...)
+		p.Command.Entries = []string{p.Command.Entries[0]}
+	}
+	return p
+}
+
 type RawCommand struct {
 	Entries     []string
 	PlatformAPI *api.Version
@@ -82,39 +115,6 @@ func (c *RawCommand) UnmarshalTOML(data interface{}) error {
 
 	*c = NewRawCommand(values)
 	return nil
-}
-
-// Process represents a process to launch at runtime.
-type Process struct {
-	Type             string       `toml:"type" json:"type"`
-	Command          RawCommand   `toml:"command" json:"command"`
-	Args             []string     `toml:"args" json:"args"`
-	Direct           bool         `toml:"direct" json:"direct"`
-	Default          bool         `toml:"default,omitempty" json:"default,omitempty"`
-	BuildpackID      string       `toml:"buildpack-id" json:"buildpackID"`
-	WorkingDirectory string       `toml:"working-dir,omitempty" json:"working-dir,omitempty"`
-	PlatformAPI      *api.Version `toml:"-" json:"-"`
-}
-
-func (p Process) NoDefault() Process {
-	p.Default = false
-	return p
-}
-
-func (p Process) WithPlatformAPI(platformAPI *api.Version) Process {
-	// set on the process itself
-	p.PlatformAPI = platformAPI
-	// set on the command as well, this is needed when we serialize the command
-	p.Command.PlatformAPI = platformAPI
-
-	// for platform versions < 0.10
-	// we only support a single command
-	// push any extra entries into the args so they aren't lost
-	if p.PlatformAPI.LessThan("0.10") {
-		p.Args = append(p.Command.Entries[1:], p.Args[0:]...)
-		p.Command.Entries = []string{p.Command.Entries[0]}
-	}
-	return p
 }
 
 // ProcessPath returns the absolute path to the symlink for a given process type

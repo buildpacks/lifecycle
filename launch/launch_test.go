@@ -2,7 +2,6 @@ package launch_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -22,7 +21,7 @@ func TestLaunch(t *testing.T) {
 
 func testLaunch(t *testing.T, when spec.G, it spec.S) {
 	when("Process", func() {
-		when("MarhsalTOML", func() {
+		when("MarshalTOML", func() {
 			it("command is array", func() {
 				process := launch.Process{
 					Type: "some-type",
@@ -71,7 +70,6 @@ default = true
 buildpack-id = "some-buildpack-id"
 working-dir = "some-working-directory"
 `
-					fmt.Println("RENDERED: " + string(bytes))
 					h.AssertEq(t, string(bytes), expected)
 				})
 			})

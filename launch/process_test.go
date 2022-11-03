@@ -17,7 +17,7 @@ func TestProcess(t *testing.T) {
 	spec.Run(t, "Process", testProcess, spec.Report(report.Terminal{}))
 }
 
-// RawCommandValue should be ignored because it is a toml.Primitive that has not been exported.
+// PlatformAPI should be ignored because it is not always set in these tests
 var processCmpOpts = []cmp.Option{
 	cmpopts.IgnoreFields(launch.Process{}, "PlatformAPI"),
 	cmpopts.IgnoreFields(launch.RawCommand{}, "PlatformAPI"),
