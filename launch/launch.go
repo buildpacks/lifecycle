@@ -91,7 +91,7 @@ func (c RawCommand) MarshalJSON() ([]byte, error) {
 		return json.Marshal(c.Entries)
 	}
 
-	return []byte(fmt.Sprintf("\"%s\"", c.Entries[0])), nil
+	return json.Marshal(c.Entries[0])
 }
 
 // UnmarshalTOML implements toml.Unmarshaler and is needed because we read metadata.toml
