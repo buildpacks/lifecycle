@@ -48,6 +48,28 @@ working-dir = "some-working-directory"
 				h.AssertEq(t, string(bytes), expected)
 			})
 
+			it("handles special characters", func() {
+				marshaled := `type = "some-type"
+command = ["\\r"]
+args = ["\\r"]
+buildpack-id = "some-buildpack-id"
+`
+				var process launch.Process
+				err := toml.Unmarshal([]byte(marshaled), &process)
+				h.AssertNil(t, err)
+				process = process.WithPlatformAPI(api.Platform.Latest())
+
+				bytes, err := encoding.MarshalTOML(process)
+				h.AssertNil(t, err)
+				expected := `type = "some-type"
+command = ["\\r"]
+args = ["\\r"]
+direct = false
+buildpack-id = "some-buildpack-id"
+`
+				h.AssertEq(t, string(bytes), expected)
+			})
+
 			when("platform API < 0.10", func() {
 				it("command is string", func() {
 					process := launch.Process{
