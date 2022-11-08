@@ -276,7 +276,7 @@ buildpack-id = "some-buildpack-id"
 			})
 		})
 
-		when.Pend("UnmarshalJSON", func() {
+		when("UnmarshalJSON", func() {
 			when("input command is string", func() {
 				it("populates a launch process", func() {
 					data := `{"type":"some-type","command":"some-command","args":["some-arg"],"direct":true,"default":true,"buildpackID":"some-buildpack-id","working-dir":"some-working-directory"}`
@@ -305,7 +305,7 @@ buildpack-id = "some-buildpack-id"
 					h.AssertNil(t, err)
 					expected := launch.Process{
 						Type:        "some-type",
-						Command:     launch.RawCommand{Entries: []string{`\\r`}}, // TODO: check
+						Command:     launch.RawCommand{Entries: []string{`\r`}},
 						Args:        []string{`\r`},
 						BuildpackID: "some-buildpack-id",
 					}
@@ -322,7 +322,7 @@ buildpack-id = "some-buildpack-id"
 					if s := cmp.Diff([]launch.Process{process}, []launch.Process{
 						{
 							Type:             "some-type",
-							Command:          launch.NewRawCommand([]string{"some-command", "some-command-arg"}), // TODO: fix
+							Command:          launch.NewRawCommand([]string{"some-command", "some-command-arg"}),
 							Args:             []string{"some-arg"},
 							Direct:           true,
 							Default:          true,
@@ -341,7 +341,7 @@ buildpack-id = "some-buildpack-id"
 					h.AssertNil(t, err)
 					expected := launch.Process{
 						Type:        "some-type",
-						Command:     launch.RawCommand{Entries: []string{`\r`}}, // TODO: fix
+						Command:     launch.RawCommand{Entries: []string{`\r`}},
 						Args:        []string{`\r`},
 						BuildpackID: "some-buildpack-id",
 					}

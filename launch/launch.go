@@ -101,23 +101,43 @@ func (c RawCommand) MarshalJSON() ([]byte, error) {
 // UnmarshalTOML implements toml.Unmarshaler and is needed because we read metadata.toml
 // this method will attempt to parse the command in either string or array format
 func (c *RawCommand) UnmarshalTOML(data interface{}) error {
-	var values []string
+	var entries []string
 	// the raw value is either "the-command" or ["the-command", "arg1", "arg2"]
 	// the latter is exposed as []interface{} by toml library and needs conversion
 	switch v := data.(type) {
 	case string:
-		values = []string{v}
+		entries = []string{v}
 	case []interface{}:
 		s := make([]string, len(v))
-		for i, v := range v {
-			s[i] = fmt.Sprint(v)
+		for i, el := range v {
+			s[i] = fmt.Sprint(el)
 		}
-		values = s
+		entries = s
 	default:
-		return fmt.Errorf("unknown command toml type %T", data)
+		return fmt.Errorf("unknown command type %T with data %v", data, data)
 	}
 
-	*c = NewRawCommand(values)
+	*c = NewRawCommand(entries)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler and is provided to help library consumers who need to read the build metadata label
+// this method will attempt to parse the command in either string or array format
+func (c *RawCommand) UnmarshalJSON(data []byte) error {
+	var entries []string
+	strData := string(data)
+	// first try to decode array
+	err := json.NewDecoder(strings.NewReader(strData)).Decode(&entries)
+	if err != nil {
+		// then try string
+		var s string
+		err = json.NewDecoder(strings.NewReader(strData)).Decode(&s)
+		if err != nil {
+			return err
+		}
+		entries = []string{s}
+	}
+	*c = NewRawCommand(entries)
 	return nil
 }
 
