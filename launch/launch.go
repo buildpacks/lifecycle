@@ -73,13 +73,17 @@ func (c RawCommand) MarshalTOML() ([]byte, error) {
 			if i != 0 {
 				buffer.WriteString(", ")
 			}
-			buffer.WriteString(fmt.Sprintf("%q", entry))
+			escaped, err := json.Marshal(entry) // properly escape special characters in single string
+			if err != nil {
+				return nil, err
+			}
+			buffer.WriteString(string(escaped))
 		}
 		buffer.WriteString("]")
 		return []byte(buffer.String()), nil
 	}
 
-	return []byte(fmt.Sprintf("\"%s\"", c.Entries[0])), nil
+	return json.Marshal(c.Entries[0]) // properly escape special characters in single string
 }
 
 func (c RawCommand) MarshalJSON() ([]byte, error) {
