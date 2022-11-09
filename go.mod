@@ -125,9 +125,6 @@ require (
 
 go 1.18
 
-// Pin BurntSushi/toml due to https://github.com/BurntSushi/toml/issues/360
-replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0
-
 // Ensure we only pull in the latest version of containerd
 replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.9
 
