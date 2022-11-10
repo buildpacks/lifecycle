@@ -11,7 +11,7 @@ require (
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
-	github.com/google/go-containerregistry v0.12.0
+	github.com/google/go-containerregistry v0.12.1
 	github.com/google/uuid v1.3.0
 	github.com/heroku/color v0.0.6
 	github.com/moby/buildkit v0.10.5
