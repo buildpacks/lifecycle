@@ -11,9 +11,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/pkg/errors"
+
+	bp "github.com/buildpacks/lifecycle/buildpack"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/archive"
@@ -65,12 +68,19 @@ func doPackage() error {
 		return errors.Wrap(err, fmt.Sprintf("Failed to read descriptor file %s", descriptorPath))
 	}
 
+	sbomFormats := []string{bp.MediaTypeCycloneDX, bp.MediaTypeSPDX, bp.MediaTypeSyft}
+	var els []string
+	for _, el := range sbomFormats {
+		els = append(els, fmt.Sprintf("%q", el))
+	}
+
 	descriptorContents, err := fillTemplate(templateContents, map[string]interface{}{
 		"lifecycle_version":         version,
 		"apis_buildpack_supported":  api.Buildpack.Supported.String(),
 		"apis_buildpack_deprecated": api.Buildpack.Deprecated.String(),
 		"apis_platform_supported":   api.Platform.Supported.String(),
 		"apis_platform_deprecated":  api.Platform.Deprecated.String(),
+		"sbom_formats":              "[" + strings.Join(els, ", ") + "]",
 	})
 	if err != nil {
 		return errors.Wrap(err, "Failed to fill template")

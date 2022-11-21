@@ -213,6 +213,36 @@ $(BUILD_DIR)/darwin-amd64/lifecycle/launcher:
 	$(GOENV) $(GOBUILD) -o $(OUT_DIR)/launcher -a ./cmd/launcher
 	test $$(du -m $(OUT_DIR)/launcher|cut -f 1) -le 4
 
+generate-sbom: run-syft-windows run-syft-linux-amd64 run-syft-linux-arm64
+
+run-syft-windows: install-syft
+run-syft-windows: export GOOS:=windows
+run-syft-windows: export GOARCH:=amd64
+run-syft-windows:
+	@echo "> Running syft..."
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.exe -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.exe -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
+
+run-syft-linux-amd64: install-syft
+run-syft-linux-amd64: export GOOS:=linux
+run-syft-linux-amd64: export GOARCH:=amd64
+run-syft-linux-amd64:
+	@echo "> Running syft..."
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
+
+run-syft-linux-arm64: install-syft
+run-syft-linux-arm64: export GOOS:=linux
+run-syft-linux-arm64: export GOARCH:=arm64
+run-syft-linux-arm64:
+	@echo "> Running syft..."
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/lifecycle.sbom.cdx.json
+	syft $(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher -o json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.syft.json -o spdx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.spdx.json -o cyclonedx-json=$(BUILD_DIR)/$(GOOS)-$(GOARCH)/lifecycle/launcher.sbom.cdx.json
+
+install-syft:
+	@echo "> Installing syft..."
+	curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
 install-goimports:
 	@echo "> Installing goimports..."
 	$(GOCMD) install golang.org/x/tools/cmd/goimports@v0.1.2
@@ -270,7 +300,7 @@ clean:
 	@echo "> Cleaning workspace..."
 	rm -rf $(BUILD_DIR)
 
-package: package-linux-amd64 package-linux-arm64 package-windows-amd64
+package:  generate-sbom package-linux-amd64 package-linux-arm64 package-windows-amd64
 
 package-linux-amd64: GOOS:=linux
 package-linux-amd64: GOARCH:=amd64

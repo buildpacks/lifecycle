@@ -10,12 +10,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
+
+	"github.com/buildpacks/lifecycle/internal/encoding"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform"
@@ -121,6 +124,7 @@ func (p *PhaseTest) Start(t *testing.T, phaseOp ...func(*testing.T, *PhaseTest))
 	}
 
 	h.MakeAndCopyLifecycle(t, p.targetDaemon.os, p.targetDaemon.arch, p.containerBinaryDir)
+	copyFakeSboms(t)
 	h.DockerBuild(t, p.testImageRef, p.testImageDockerContext, h.WithArgs("-f", filepath.Join(p.testImageDockerContext, dockerfileName)))
 }
 
@@ -362,4 +366,36 @@ func withoutDaemonFixtures(phaseTest *PhaseTest) {
 
 func withoutRegistry(phaseTest *PhaseTest) {
 	phaseTest.targetRegistry = nil
+}
+
+func copyFakeSboms(t *testing.T) {
+	goos := runtime.GOOS
+
+	// Check Target Daemon != runtime.GOOS
+	if goos == "darwin" {
+		goos = "linux"
+	}
+	buildLifecycleDir, err := filepath.Abs(filepath.Join("..", "out", fmt.Sprintf("%s-%s", goos, runtime.GOARCH), "lifecycle"))
+	if err != nil {
+		t.Log("Fail to locate lifecycle directory")
+	}
+
+	extensions := SBOMExtensions()
+	components := SBOMComponents()
+
+	for _, component := range components {
+		for _, extension := range extensions {
+			if err := encoding.WriteJSON(filepath.Join(buildLifecycleDir, component+extension), "fake data"); err != nil {
+				t.Log("Fail to write:" + component + extension)
+			}
+		}
+	}
+}
+
+func SBOMExtensions() []string {
+	return []string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
+}
+
+func SBOMComponents() []string {
+	return []string{"lifecycle", "launcher"}
 }
