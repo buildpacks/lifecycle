@@ -107,7 +107,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				command := exec.Command("docker", "run", "--rm", "--env", "CNB_PLATFORM_API="+platformAPI, restoreImage)
 				output, err := command.CombinedOutput()
 				h.AssertNil(t, err)
-				expected := "Not restoring cached layer data, no cache flag specified"
+				expected := "No cached data will be used, no cache specified"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})

@@ -27,98 +27,67 @@ import (
 const kanikoDir = "/kaniko"
 
 type restoreCmd struct {
-	// flags: inputs
-	analyzedPath  string
-	buildImageTag string
-	cacheDir      string
-	cacheImageTag string
-	groupPath     string
-	uid, gid      int
+	*platform.Platform
 
-	restoreArgs
-}
-
-type restoreArgs struct {
-	layersDir  string
-	platform   *platform.Platform
-	skipLayers bool
-
-	// construct if necessary before dropping privileges
-	keychain authn.Keychain
+	keychain authn.Keychain // construct if necessary before dropping privileges
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
 	switch {
-	case r.platform.API().AtLeast("0.10"):
-		cli.FlagBuildImage(&r.buildImageTag)
-		cli.FlagCacheDir(&r.cacheDir)
-		cli.FlagCacheImage(&r.cacheImageTag)
-		cli.FlagGroupPath(&r.groupPath)
-		cli.FlagLayersDir(&r.layersDir)
-		cli.FlagUID(&r.uid)
-		cli.FlagGID(&r.gid)
-		cli.FlagAnalyzedPath(&r.analyzedPath)
-		cli.FlagSkipLayers(&r.skipLayers)
-	case r.platform.API().AtLeast("0.7"):
-		cli.FlagCacheDir(&r.cacheDir)
-		cli.FlagCacheImage(&r.cacheImageTag)
-		cli.FlagGroupPath(&r.groupPath)
-		cli.FlagLayersDir(&r.layersDir)
-		cli.FlagUID(&r.uid)
-		cli.FlagGID(&r.gid)
-		cli.FlagAnalyzedPath(&r.analyzedPath)
-		cli.FlagSkipLayers(&r.skipLayers)
+	case r.PlatformAPI.AtLeast("0.10"):
+		cli.FlagBuildImage(&r.BuildImageRef)
+		cli.FlagCacheDir(&r.CacheDir)
+		cli.FlagCacheImage(&r.CacheImageRef)
+		cli.FlagGroupPath(&r.GroupPath)
+		cli.FlagLayersDir(&r.LayersDir)
+		cli.FlagUID(&r.UID)
+		cli.FlagGID(&r.GID)
+		cli.FlagAnalyzedPath(&r.AnalyzedPath)
+		cli.FlagSkipLayers(&r.SkipLayers)
+	case r.PlatformAPI.AtLeast("0.7"):
+		cli.FlagCacheDir(&r.CacheDir)
+		cli.FlagCacheImage(&r.CacheImageRef)
+		cli.FlagGroupPath(&r.GroupPath)
+		cli.FlagLayersDir(&r.LayersDir)
+		cli.FlagUID(&r.UID)
+		cli.FlagGID(&r.GID)
+		cli.FlagAnalyzedPath(&r.AnalyzedPath)
+		cli.FlagSkipLayers(&r.SkipLayers)
 	default:
-		cli.FlagCacheDir(&r.cacheDir)
-		cli.FlagCacheImage(&r.cacheImageTag)
-		cli.FlagGroupPath(&r.groupPath)
-		cli.FlagLayersDir(&r.layersDir)
-		cli.FlagUID(&r.uid)
-		cli.FlagGID(&r.gid)
+		cli.FlagCacheDir(&r.CacheDir)
+		cli.FlagCacheImage(&r.CacheImageRef)
+		cli.FlagGroupPath(&r.GroupPath)
+		cli.FlagLayersDir(&r.LayersDir)
+		cli.FlagUID(&r.UID)
+		cli.FlagGID(&r.GID)
 	}
 }
 
 // Args validates arguments and flags, and fills in default values.
-func (r *restoreCmd) Args(nargs int, args []string) error {
+func (r *restoreCmd) Args(nargs int, _ []string) error {
 	if nargs > 0 {
 		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	if r.cacheImageTag == "" && r.cacheDir == "" {
-		cmd.DefaultLogger.Warn("Not restoring cached layer data, no cache flag specified.")
+	if err := platform.ResolveInputs(platform.Restore, &r.LifecycleInputs, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
-
-	if r.groupPath == platform.PlaceholderGroupPath {
-		r.groupPath = cli.DefaultGroupPath(r.platform.API().String(), r.layersDir)
-	}
-
-	if r.analyzedPath == platform.PlaceholderAnalyzedPath {
-		r.analyzedPath = cli.DefaultAnalyzedPath(r.platform.API().String(), r.layersDir)
-	}
-
 	return nil
 }
 
 func (r *restoreCmd) Privileges() error {
 	var err error
-	r.keychain, err = auth.DefaultKeychain(r.registryImages()...)
+	r.keychain, err = auth.DefaultKeychain(r.RegistryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
-	if err := priv.EnsureOwner(r.uid, r.gid, r.layersDir, r.cacheDir); err != nil {
+	if err = priv.EnsureOwner(r.UID, r.GID, r.LayersDir, r.CacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(r.uid, r.gid); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
+	if err = priv.RunAs(r.UID, r.GID); err != nil {
+		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.UID, r.GID))
 	}
 	return nil
-}
-
-func (r *restoreCmd) registryImages() []string {
-	var images []string
-	images = appendNotEmpty(images, r.cacheImageTag)
-	images = appendNotEmpty(images, r.buildImageTag)
-	return images
 }
 
 func (r *restoreCmd) Exec() error {
@@ -128,14 +97,15 @@ func (r *restoreCmd) Exec() error {
 		}
 	}
 
-	group, err := lifecycle.ReadGroup(r.groupPath)
+	group, err := lifecycle.ReadGroup(r.GroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")
 	}
 	if err := verifyBuildpackApis(group); err != nil {
 		return err
 	}
-	cacheStore, err := initCache(r.cacheImageTag, r.cacheDir, r.keychain)
+
+	cacheStore, err := initCache(r.CacheImageRef, r.CacheDir, r.keychain)
 	if err != nil {
 		return err
 	}
@@ -143,7 +113,7 @@ func (r *restoreCmd) Exec() error {
 	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
 		var analyzedMD platform.AnalyzedMetadata
-		if _, err := toml.DecodeFile(r.analyzedPath, &analyzedMD); err == nil {
+		if _, err := toml.DecodeFile(r.AnalyzedPath, &analyzedMD); err == nil {
 			appMeta = analyzedMD.Metadata
 		}
 	}
@@ -151,12 +121,12 @@ func (r *restoreCmd) Exec() error {
 	return r.restore(appMeta, group, cacheStore)
 }
 
-func (r *restoreArgs) supportsBuildImageExtension() bool {
-	return r.platform.API().AtLeast("0.10")
+func (r *restoreCmd) supportsBuildImageExtension() bool {
+	return r.PlatformAPI.AtLeast("0.10")
 }
 
 func (r *restoreCmd) pullBuilderImageIfNeeded() error {
-	if r.buildImageTag == "" {
+	if r.BuildImageRef == "" {
 		return nil
 	}
 	if _, err := os.Stat(kanikoDir); err != nil {
@@ -165,7 +135,7 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 		}
 		return nil
 	}
-	ref, authr, err := auth.ReferenceForRepoName(r.keychain, r.buildImageTag)
+	ref, authr, err := auth.ReferenceForRepoName(r.keychain, r.BuildImageRef)
 	if err != nil {
 		return fmt.Errorf("failed to get reference: %w", err)
 	}
@@ -190,7 +160,7 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 		return fmt.Errorf("failed to append image: %w", err)
 	}
 	// record digest in analyzed.toml
-	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.analyzedPath)
+	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.AnalyzedPath)
 	if err != nil {
 		return fmt.Errorf("failed to read analyzed metadata: %w", err)
 	}
@@ -199,30 +169,29 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 		return fmt.Errorf("failed to get digest reference: %w", err)
 	}
 	analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digestRef.String()}
-	return encoding.WriteTOML(r.analyzedPath, analyzedMD)
+	return encoding.WriteTOML(r.AnalyzedPath, analyzedMD)
 }
 
-func (r *restoreArgs) restoresLayerMetadata() bool {
-	return r.platform.API().AtLeast("0.7")
+func (r *restoreCmd) restoresLayerMetadata() bool {
+	return r.PlatformAPI.AtLeast("0.7")
 }
 
-func (r restoreArgs) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
+func (r *restoreCmd) restore(layerMetadata platform.LayersMetadata, group buildpack.Group, cacheStore lifecycle.Cache) error {
 	restorer := &lifecycle.Restorer{
-		LayersDir:             r.layersDir,
+		LayersDir:             r.LayersDir,
 		Buildpacks:            group.Group,
 		Logger:                cmd.DefaultLogger,
-		Platform:              r.platform,
-		LayerMetadataRestorer: layer.NewDefaultMetadataRestorer(r.layersDir, r.skipLayers, cmd.DefaultLogger),
+		PlatformAPI:           r.PlatformAPI,
+		LayerMetadataRestorer: layer.NewDefaultMetadataRestorer(r.LayersDir, r.SkipLayers, cmd.DefaultLogger),
 		LayersMetadata:        layerMetadata,
 		SBOMRestorer: layer.NewSBOMRestorer(layer.SBOMRestorerOpts{
-			LayersDir: r.layersDir,
+			LayersDir: r.LayersDir,
 			Logger:    cmd.DefaultLogger,
-			Nop:       r.skipLayers,
-		}, r.platform.API()),
+			Nop:       r.SkipLayers,
+		}, r.PlatformAPI),
 	}
-
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RestoreError), "restore")
+		return cmd.FailErrCode(err, r.CodeFor(platform.RestoreError), "restore")
 	}
 	return nil
 }

@@ -54,7 +54,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("platform api < 0.9", func() {
+			when("Platform API < 0.9", func() {
 				it.Before(func() {
 					buildMD.PlatformAPI = api.MustParse("0.8")
 				})

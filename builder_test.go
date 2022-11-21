@@ -73,10 +73,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
 				},
 			},
-			Logger:   &log.Logger{Handler: logHandler},
-			Out:      stdout,
-			Err:      stderr,
-			Platform: platform.NewPlatform(api.Platform.Latest().String()),
+			Logger:      &log.Logger{Handler: logHandler},
+			Out:         stdout,
+			Err:         stderr,
+			PlatformAPI: api.Platform.Latest(),
 		}
 	})
 
@@ -539,29 +539,29 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{
 							Type: "override-type",
 							Command: launch.NewRawCommand([]string{"bpB-command"}).
-								WithPlatformAPI(builder.Platform.API()),
+								WithPlatformAPI(builder.PlatformAPI),
 							Args:        []string{"bpB-arg"},
 							Direct:      false,
 							BuildpackID: "B",
-							PlatformAPI: builder.Platform.API(),
+							PlatformAPI: builder.PlatformAPI,
 						},
 						{
 							Type: "some-other-type",
 							Command: launch.NewRawCommand([]string{"some-other-command"}).
-								WithPlatformAPI(builder.Platform.API()),
+								WithPlatformAPI(builder.PlatformAPI),
 							Args:        []string{"some-other-arg"},
 							Direct:      true,
 							BuildpackID: "B",
-							PlatformAPI: builder.Platform.API(),
+							PlatformAPI: builder.PlatformAPI,
 						},
 						{
 							Type: "some-type",
 							Command: launch.NewRawCommand([]string{"some-command"}).
-								WithPlatformAPI(builder.Platform.API()),
+								WithPlatformAPI(builder.PlatformAPI),
 							Args:        []string{"some-arg"},
 							Direct:      true,
 							BuildpackID: "A",
-							PlatformAPI: builder.Platform.API(),
+							PlatformAPI: builder.PlatformAPI,
 						},
 					}); s != "" {
 						t.Fatalf("Unexpected:\n%s\n", s)
@@ -629,20 +629,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Type: "override-type",
 								Command: launch.NewRawCommand([]string{"bpC-command"}).
-									WithPlatformAPI(builder.Platform.API()),
+									WithPlatformAPI(builder.PlatformAPI),
 								Args:        []string{"bpC-arg"},
 								Direct:      false,
 								BuildpackID: "C",
-								PlatformAPI: builder.Platform.API(),
+								PlatformAPI: builder.PlatformAPI,
 							},
 							{
 								Type: "some-type",
 								Command: launch.NewRawCommand([]string{"bpB-command"}).
-									WithPlatformAPI(builder.Platform.API()),
+									WithPlatformAPI(builder.PlatformAPI),
 								Args:        []string{"bpB-arg"},
 								Direct:      false,
 								BuildpackID: "B",
-								PlatformAPI: builder.Platform.API(),
+								PlatformAPI: builder.PlatformAPI,
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -711,20 +711,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Type: "override-type",
 								Command: launch.NewRawCommand([]string{"bpC-command"}).
-									WithPlatformAPI(builder.Platform.API()),
+									WithPlatformAPI(builder.PlatformAPI),
 								Args:        []string{"bpC-arg"},
 								Direct:      false,
 								BuildpackID: "C",
-								PlatformAPI: builder.Platform.API(),
+								PlatformAPI: builder.PlatformAPI,
 							},
 							{
 								Type: "some-type",
 								Command: launch.NewRawCommand([]string{"bpA-command"}).
-									WithPlatformAPI(builder.Platform.API()),
+									WithPlatformAPI(builder.PlatformAPI),
 								Args:        []string{"bpA-arg"},
 								Direct:      false,
 								BuildpackID: "A",
-								PlatformAPI: builder.Platform.API(),
+								PlatformAPI: builder.PlatformAPI,
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -768,12 +768,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{
 									Type: "web",
 									Command: launch.NewRawCommand([]string{"web-cmd"}).
-										WithPlatformAPI(builder.Platform.API()),
+										WithPlatformAPI(builder.PlatformAPI),
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
 									Default:     false,
-									PlatformAPI: builder.Platform.API(),
+									PlatformAPI: builder.PlatformAPI,
 								},
 							}); s != "" {
 								t.Fatalf("Unexpected:\n%s\n", s)
@@ -820,20 +820,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{
 									Type: "not-web",
 									Command: launch.NewRawCommand([]string{"not-web-cmd"}).
-										WithPlatformAPI(builder.Platform.API()),
+										WithPlatformAPI(builder.PlatformAPI),
 									Args:        []string{"not-web-arg"},
 									Direct:      true,
 									BuildpackID: "A",
-									PlatformAPI: builder.Platform.API(),
+									PlatformAPI: builder.PlatformAPI,
 								},
 								{
 									Type: "web",
 									Command: launch.NewRawCommand([]string{"web-cmd"}).
-										WithPlatformAPI(builder.Platform.API()),
+										WithPlatformAPI(builder.PlatformAPI),
 									Args:        []string{"web-arg"},
 									Direct:      false,
 									BuildpackID: "A",
-									PlatformAPI: builder.Platform.API(),
+									PlatformAPI: builder.PlatformAPI,
 								},
 							}); s != "" {
 								t.Fatalf("Unexpected:\n%s\n", s)
@@ -862,7 +862,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					metadata, err := builder.Build()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, metadata.Processes[0].PlatformAPI, builder.Platform.API())
+					h.AssertEq(t, metadata.Processes[0].PlatformAPI, builder.PlatformAPI)
 				})
 			})
 
@@ -936,7 +936,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.4", func() {
 			it.Before(func() {
-				builder.Platform = platform.NewPlatform("0.3")
+				builder.PlatformAPI = api.MustParse("0.3")
 			})
 
 			when("build metadata", func() {
@@ -981,7 +981,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.6", func() {
 			it.Before(func() {
-				builder.Platform = platform.NewPlatform("0.5")
+				builder.PlatformAPI = api.MustParse("0.5")
 			})
 
 			when("there is a web process", func() {
@@ -1015,12 +1015,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Type: "web",
 								Command: launch.NewRawCommand([]string{"web-cmd"}).
-									WithPlatformAPI(builder.Platform.API()),
+									WithPlatformAPI(builder.PlatformAPI),
 								Args:        []string{"web-arg"},
 								Direct:      false,
 								BuildpackID: "A",
 								Default:     false,
-								PlatformAPI: builder.Platform.API(),
+								PlatformAPI: builder.PlatformAPI,
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -1059,12 +1059,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							{
 								Type: "web",
 								Command: launch.NewRawCommand([]string{"web-cmd"}).
-									WithPlatformAPI(builder.Platform.API()),
+									WithPlatformAPI(builder.PlatformAPI),
 								Args:        []string{"web-arg"},
 								Direct:      false,
 								BuildpackID: "A",
 								Default:     false,
-								PlatformAPI: builder.Platform.API(),
+								PlatformAPI: builder.PlatformAPI,
 							},
 						}); s != "" {
 							t.Fatalf("Unexpected:\n%s\n", s)
@@ -1077,7 +1077,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("platform api < 0.9", func() {
 			it.Before(func() {
-				builder.Platform = platform.NewPlatform("0.8")
+				builder.PlatformAPI = api.MustParse("0.8")
 			})
 
 			when("build metadata", func() {

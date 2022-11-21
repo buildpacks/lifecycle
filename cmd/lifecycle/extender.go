@@ -13,8 +13,7 @@ import (
 )
 
 type extendCmd struct {
-	platform *platform.Platform
-	platform.ExtendInputs
+	*platform.Platform
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
@@ -33,14 +32,11 @@ func (e *extendCmd) DefineFlags() {
 }
 
 // Args validates arguments and flags, and fills in default values.
-func (e *extendCmd) Args(nargs int, args []string) error {
+func (e *extendCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-
-	var err error
-	e.ExtendInputs, err = e.platform.ResolveExtend(e.ExtendInputs)
-	if err != nil {
+	if err := platform.ResolveInputs(platform.Extend, &e.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
@@ -67,7 +63,7 @@ func (e *extendCmd) Exec() error {
 		return unwrapErrorFailWithMessage(err, "initialize extender")
 	}
 	if err = extender.ExtendBuild(); err != nil {
-		return cmd.FailErrCode(err, e.platform.CodeFor(platform.ExtendError), "extend build image")
+		return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend build image")
 	}
 	if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
@@ -75,17 +71,7 @@ func (e *extendCmd) Exec() error {
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
 	}
-	buildCmd := buildCmd{
-		groupPath: e.GroupPath,
-		planPath:  e.PlanPath,
-		buildArgs: buildArgs{
-			appDir:        e.AppDir,
-			buildpacksDir: e.BuildpacksDir,
-			layersDir:     e.LayersDir,
-			platform:      e.platform,
-			platformDir:   e.PlatformDir,
-		},
-	}
+	buildCmd := buildCmd{Platform: e.Platform}
 	if err = buildCmd.Privileges(); err != nil {
 		return err
 	}

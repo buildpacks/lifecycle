@@ -14,64 +14,39 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
-	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
 type createCmd struct {
-	//flags: inputs
-	appDir              string
-	buildpacksDir       string
-	cacheDir            string
-	cacheImageRef       string
-	launchCacheDir      string
-	launcherPath        string
-	layersDir           string
-	orderPath           string
-	outputImageRef      string
-	platformDir         string
-	previousImageRef    string
-	processType         string
-	projectMetadataPath string
-	reportPath          string
-	runImageRef         string
-	stackPath           string
-	targetRegistry      string
-	uid, gid            int
-	skipRestore         bool
-	useDaemon           bool
+	*platform.Platform
 
-	additionalTags str.Slice
-	docker         client.CommonAPIClient // construct if necessary before dropping privileges
-	keychain       authn.Keychain
-	platform       *platform.Platform
-	stackMD        platform.StackMetadata
+	docker   client.CommonAPIClient // construct if necessary before dropping privileges
+	keychain authn.Keychain         // construct if necessary before dropping privileges
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
-	cli.FlagAppDir(&c.appDir)
-	cli.FlagBuildpacksDir(&c.buildpacksDir)
-	cli.FlagCacheDir(&c.cacheDir)
-	cli.FlagCacheImage(&c.cacheImageRef)
-	cli.FlagGID(&c.gid)
-	cli.FlagLaunchCacheDir(&c.launchCacheDir)
-	cli.FlagLauncherPath(&c.launcherPath)
-	cli.FlagLayersDir(&c.layersDir)
-	cli.FlagOrderPath(&c.orderPath)
-	cli.FlagPlatformDir(&c.platformDir)
-	cli.FlagPreviousImage(&c.previousImageRef)
-	cli.FlagReportPath(&c.reportPath)
-	cli.FlagRunImage(&c.runImageRef)
-	cli.FlagSkipRestore(&c.skipRestore)
-	cli.FlagStackPath(&c.stackPath)
-	cli.FlagUID(&c.uid)
-	cli.FlagUseDaemon(&c.useDaemon)
-	cli.FlagTags(&c.additionalTags)
-	cli.FlagProjectMetadataPath(&c.projectMetadataPath)
-	cli.FlagProcessType(&c.processType)
+	cli.FlagAppDir(&c.AppDir)
+	cli.FlagBuildpacksDir(&c.BuildpacksDir)
+	cli.FlagCacheDir(&c.CacheDir)
+	cli.FlagCacheImage(&c.CacheImageRef)
+	cli.FlagGID(&c.GID)
+	cli.FlagLaunchCacheDir(&c.LaunchCacheDir)
+	cli.FlagLauncherPath(&c.LauncherPath)
+	cli.FlagLayersDir(&c.LayersDir)
+	cli.FlagOrderPath(&c.OrderPath)
+	cli.FlagPlatformDir(&c.PlatformDir)
+	cli.FlagPreviousImage(&c.PreviousImageRef)
+	cli.FlagProcessType(&c.DefaultProcessType)
+	cli.FlagProjectMetadataPath(&c.ProjectMetadataPath)
+	cli.FlagReportPath(&c.ReportPath)
+	cli.FlagRunImage(&c.RunImageRef)
+	cli.FlagSkipRestore(&c.SkipLayers)
+	cli.FlagStackPath(&c.StackPath)
+	cli.FlagTags(&c.AdditionalTags)
+	cli.FlagUID(&c.UID)
+	cli.FlagUseDaemon(&c.UseDaemon)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -79,106 +54,57 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
 		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-
-	c.outputImageRef = args[0]
-	if c.launchCacheDir != "" && !c.useDaemon {
-		cmd.DefaultLogger.Warn("Ignoring -launch-cache, only intended for use with -daemon")
-		c.launchCacheDir = ""
+	c.OutputImageRef = args[0]
+	if err := platform.ResolveInputs(platform.Create, &c.LifecycleInputs, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
-
-	if c.cacheImageRef == "" && c.cacheDir == "" {
-		cmd.DefaultLogger.Warn("Not restoring or caching layer data, no cache flag specified.")
-	}
-
-	if c.previousImageRef == "" {
-		c.previousImageRef = c.outputImageRef
-	}
-
-	if err := image.ValidateDestinationTags(c.useDaemon, append(c.additionalTags, c.outputImageRef)...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "validate image tag(s)")
-	}
-
-	if c.projectMetadataPath == platform.PlaceholderProjectMetadataPath {
-		c.projectMetadataPath = cli.DefaultProjectMetadataPath(c.platform.API().String(), c.layersDir)
-	}
-
-	if c.reportPath == platform.PlaceholderReportPath {
-		c.reportPath = cli.DefaultReportPath(c.platform.API().String(), c.layersDir)
-	}
-
-	if c.orderPath == platform.PlaceholderOrderPath {
-		c.orderPath = cli.DefaultOrderPath(c.platform.API().String(), c.layersDir)
-	}
-
-	var err error
-	c.stackMD, err = readStack(c.stackPath)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse stack metadata")
-	}
-
-	c.targetRegistry, err = parseRegistry(c.outputImageRef)
-	if err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse target registry")
-	}
-
-	if err := c.populateRunImage(); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "populate run image")
-	}
-
 	return nil
 }
 
 func (c *createCmd) Privileges() error {
 	var err error
-	c.keychain, err = auth.DefaultKeychain(c.registryImages()...)
+	c.keychain, err = auth.DefaultKeychain(c.RegistryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
-
-	if c.useDaemon {
-		var err error
+	if c.UseDaemon {
 		c.docker, err = priv.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if c.platformAPIVersionGreaterThan06() {
-		if err := image.VerifyRegistryAccess(c, c.keychain); err != nil {
-			return cmd.FailErr(err)
-		}
-	}
-	if err := priv.EnsureOwner(c.uid, c.gid, c.cacheDir, c.launchCacheDir, c.layersDir); err != nil {
+	if err = priv.EnsureOwner(c.UID, c.GID, c.CacheDir, c.LaunchCacheDir, c.LayersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(c.uid, c.gid); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.uid, c.gid))
+	if err = priv.RunAs(c.UID, c.GID); err != nil {
+		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.UID, c.GID))
 	}
-	if err := priv.SetEnvironmentForUser(c.uid); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", c.uid))
+	if err = priv.SetEnvironmentForUser(c.UID); err != nil {
+		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", c.UID))
 	}
 	return nil
 }
 
 func (c *createCmd) Exec() error {
-	cacheStore, err := initCache(c.cacheImageRef, c.cacheDir, c.keychain)
+	cacheStore, err := initCache(c.CacheImageRef, c.CacheDir, c.keychain)
+	if err != nil {
+		return err
+	}
+	dirStore := platform.NewDirStore(c.BuildpacksDir, "")
 	if err != nil {
 		return err
 	}
 
-	dirStore, err := platform.NewDirStore(c.buildpacksDir, "")
-	if err != nil {
-		return err
-	}
-
+	// Analyze, Detect
 	var (
 		analyzedMD platform.AnalyzedMetadata
 		group      buildpack.Group
 		plan       platform.BuildPlan
 	)
-	if c.platform.API().AtLeast("0.7") {
+	if c.PlatformAPI.AtLeast("0.7") {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
-			c.platform.API(),
+			c.PlatformAPI,
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
@@ -186,17 +112,17 @@ func (c *createCmd) Exec() error {
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(
-			c.additionalTags,
-			c.cacheImageRef,
-			c.launchCacheDir,
-			c.layersDir,
+			c.AdditionalTags,
+			c.CacheImageRef,
+			c.LaunchCacheDir,
+			c.LayersDir,
 			"",
 			buildpack.Group{},
 			"",
-			c.outputImageRef,
-			c.previousImageRef,
-			c.runImageRef,
-			c.skipRestore,
+			c.OutputImageRef,
+			c.PreviousImageRef,
+			c.RunImageRef,
+			c.SkipLayers,
 			cmd.DefaultLogger,
 		)
 		if err != nil {
@@ -209,39 +135,39 @@ func (c *createCmd) Exec() error {
 
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
-			c.platform.API(),
+			c.PlatformAPI,
 			&cmd.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(c.AppDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
-		group, plan, err = doDetect(detector, c.platform)
+		group, plan, err = doDetect(detector, c.Platform)
 		if err != nil {
 			return err // pass through error
 		}
 	} else {
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
-			c.platform.API(),
+			c.PlatformAPI,
 			&cmd.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(c.appDir, c.orderPath, c.platformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(c.AppDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
-		group, plan, err = doDetect(detector, c.platform)
+		group, plan, err = doDetect(detector, c.Platform)
 		if err != nil {
 			return err // pass through error
 		}
 
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
-			c.platform.API(),
+			c.PlatformAPI,
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
@@ -249,17 +175,17 @@ func (c *createCmd) Exec() error {
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(
-			c.additionalTags,
-			c.cacheImageRef,
-			c.launchCacheDir,
-			c.layersDir,
-			c.cacheDir,
+			c.AdditionalTags,
+			c.CacheImageRef,
+			c.LaunchCacheDir,
+			c.LayersDir,
+			c.CacheDir,
 			group,
 			"",
-			c.outputImageRef,
-			c.previousImageRef,
-			c.runImageRef,
-			c.skipRestore,
+			c.OutputImageRef,
+			c.PreviousImageRef,
+			c.RunImageRef,
+			c.SkipLayers,
 			cmd.DefaultLogger,
 		)
 		if err != nil {
@@ -271,97 +197,37 @@ func (c *createCmd) Exec() error {
 		}
 	}
 
-	if !c.skipRestore || c.platform.API().AtLeast("0.10") {
+	// Restore
+	if !c.SkipLayers || c.PlatformAPI.AtLeast("0.10") {
 		cmd.DefaultLogger.Phase("RESTORING")
-		err := restoreArgs{
-			keychain:   c.keychain,
-			layersDir:  c.layersDir,
-			platform:   c.platform,
-			skipLayers: c.skipRestore,
-		}.restore(analyzedMD.Metadata, group, cacheStore)
+		restoreCmd := &restoreCmd{
+			Platform: c.Platform,
+			keychain: c.keychain,
+		}
+		err := restoreCmd.restore(analyzedMD.Metadata, group, cacheStore)
 		if err != nil {
 			return err
 		}
 	}
 
-	// send pings to docker daemon while BUILDING to prevent connection closure
-	stopPinging := startPinging(c.docker)
+	// Build
+	stopPinging := startPinging(c.docker) // send pings to docker daemon while building to prevent connection closure
 	cmd.DefaultLogger.Phase("BUILDING")
-	err = buildArgs{
-		buildpacksDir: c.buildpacksDir,
-		layersDir:     c.layersDir,
-		appDir:        c.appDir,
-		platform:      c.platform,
-		platformDir:   c.platformDir,
-	}.build(group, plan)
+	buildCmd := &buildCmd{Platform: c.Platform}
+	err = buildCmd.build(group, plan)
 	stopPinging()
-
 	if err != nil {
 		return err
 	}
 
+	// Export
 	cmd.DefaultLogger.Phase("EXPORTING")
-	return exportArgs{
-		appDir:              c.appDir,
-		docker:              c.docker,
-		gid:                 c.gid,
-		imageNames:          append([]string{c.outputImageRef}, c.additionalTags...),
-		keychain:            c.keychain,
-		launchCacheDir:      c.launchCacheDir,
-		launcherPath:        c.launcherPath,
-		layersDir:           c.layersDir,
-		platform:            c.platform,
-		processType:         c.processType,
-		projectMetadataPath: c.projectMetadataPath,
-		reportPath:          c.reportPath,
-		runImageRef:         c.runImageRef,
-		stackMD:             c.stackMD,
-		stackPath:           c.stackPath,
-		targetRegistry:      c.targetRegistry,
-		uid:                 c.uid,
-		useDaemon:           c.useDaemon,
-	}.export(group, cacheStore, analyzedMD)
-}
-
-func (c *createCmd) registryImages() []string {
-	var registryImages []string
-	registryImages = append(registryImages, c.ReadableRegistryImages()...)
-	return append(registryImages, c.WriteableRegistryImages()...)
-}
-
-func (c *createCmd) platformAPIVersionGreaterThan06() bool {
-	return c.platform.API().AtLeast("0.7")
-}
-
-func (c *createCmd) ReadableRegistryImages() []string {
-	var readableImages []string
-	if !c.useDaemon {
-		readableImages = appendNotEmpty(readableImages, c.previousImageRef, c.runImageRef)
+	exportCmd := &exportCmd{
+		Platform: c.Platform,
+		docker:   c.docker,
+		keychain: c.keychain,
 	}
-	return readableImages
-}
-
-func (c *createCmd) WriteableRegistryImages() []string {
-	var writeableImages []string
-	writeableImages = appendNotEmpty(writeableImages, c.cacheImageRef)
-	if !c.useDaemon {
-		writeableImages = appendNotEmpty(writeableImages, c.outputImageRef)
-		writeableImages = appendNotEmpty(writeableImages, c.additionalTags...)
-	}
-	return writeableImages
-}
-
-func (c *createCmd) populateRunImage() error {
-	if c.runImageRef != "" {
-		return nil
-	}
-
-	var err error
-	c.runImageRef, err = c.stackMD.BestRunImageMirror(c.targetRegistry)
-	if err != nil {
-		return errors.New("-run-image is required when there is no stack metadata available")
-	}
-	return nil
+	return exportCmd.export(group, cacheStore, analyzedMD)
 }
 
 func startPinging(docker client.CommonAPIClient) (stopPinging func()) {

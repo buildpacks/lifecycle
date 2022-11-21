@@ -26,25 +26,23 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	p := platform.NewPlatform(platformAPI)
-
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cli.Run(&detectCmd{platform: p}, false)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPI)}, false)
 	case "analyzer":
-		cli.Run(&analyzeCmd{platform: p}, false)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPI)}, false)
 	case "restorer":
-		cli.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPI)}, false)
 	case "builder":
-		cli.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, false)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPI)}, false)
 	case "exporter":
-		cli.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPI)}, false)
 	case "rebaser":
-		cli.Run(&rebaseCmd{platform: p}, false)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPI)}, false)
 	case "creator":
-		cli.Run(&createCmd{platform: p}, false)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPI)}, false)
 	case "extender":
-		cli.Run(&extendCmd{platform: p}, false)
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPI)}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
@@ -52,29 +50,29 @@ func main() {
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
 		}
-		subcommand(p)
+		subcommand(platformAPI)
 	}
 }
 
-func subcommand(p *platform.Platform) {
+func subcommand(platformAPI string) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cli.Run(&detectCmd{platform: p}, true)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPI)}, true)
 	case "analyze":
-		cli.Run(&analyzeCmd{platform: p}, true)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPI)}, true)
 	case "restore":
-		cli.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, true)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPI)}, true)
 	case "build":
-		cli.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, true)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPI)}, true)
 	case "export":
-		cli.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, true)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPI)}, true)
 	case "rebase":
-		cli.Run(&rebaseCmd{platform: p}, true)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPI)}, true)
 	case "create":
-		cli.Run(&createCmd{platform: p}, true)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPI)}, true)
 	case "extend":
-		cli.Run(&extendCmd{platform: p}, true)
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPI)}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
 	}
@@ -198,15 +196,6 @@ func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
 }
 
 // helpers
-
-func appendNotEmpty(slice []string, elems ...string) []string {
-	for _, v := range elems {
-		if v != "" {
-			slice = append(slice, v)
-		}
-	}
-	return slice
-}
 
 func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecycle.Cache, error) {
 	var (
