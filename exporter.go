@@ -166,7 +166,7 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 }
 
 func SBOMExtensions() []string {
-	return []string{".sbom.cdx.json", ".sbom.spdx.json", ".sbom.syft.json"}
+	return []string{buildpack.ExtensionCycloneDX, buildpack.ExtensionSPDX, buildpack.ExtensionSyft}
 }
 
 func (e *Exporter) copyBuildpacksioSBOMs(opts ExportOptions) error {
@@ -175,7 +175,7 @@ func (e *Exporter) copyBuildpacksioSBOMs(opts ExportOptions) error {
 		return err
 	}
 
-	targetLaunchDir := filepath.Join(opts.LayersDir, "sbom", "launch", launch.EscapeID("buildpacksio/lifecycle"))
+	targetLaunchDir := filepath.Join(opts.LayersDir, "sbom", "launch", launch.EscapeID("buildpacksio/lifecycle"), "launcher")
 	switch {
 	case opts.LauncherConfig.SBOMDir == "" ||
 		opts.LauncherConfig.SBOMDir == platform.DefaultBuildpacksioSBOMDir:
@@ -188,11 +188,11 @@ func (e *Exporter) copyBuildpacksioSBOMs(opts ExportOptions) error {
 
 func (e *Exporter) copyDefaultSBOMsForComponent(component, dstDir string) error {
 	for _, extension := range SBOMExtensions() {
-		srcFilename := component + extension
+		srcFilename := fmt.Sprintf("%s.%s", component, extension)
 		srcPath := filepath.Join(platform.DefaultBuildpacksioSBOMDir, srcFilename)
 		if _, err := os.Stat(srcPath); err != nil {
 			if os.IsNotExist(err) {
-				e.Logger.Warnf("Did not find SBOM %s for %s", srcFilename, component)
+				e.Logger.Warnf("Did not find SBOM %s in %s", srcFilename, platform.DefaultBuildpacksioSBOMDir)
 				continue
 			} else {
 				return err
@@ -202,9 +202,8 @@ func (e *Exporter) copyDefaultSBOMsForComponent(component, dstDir string) error 
 		if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {
 			return err
 		}
-		dstFilename := strings.Replace(srcFilename, component+".", "", 1)
-		dstPath := filepath.Join(dstDir, dstFilename)
-		e.Logger.Debugf("Copying SBOM %s for %s", srcFilename, component)
+		dstPath := filepath.Join(dstDir, extension)
+		e.Logger.Debugf("Copying SBOM %s to %s", srcFilename, dstPath)
 		if err := fsutil.Copy(srcPath, dstPath); err != nil {
 			return err
 		}

@@ -23,6 +23,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -75,7 +76,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			when("first build", func() {
 				when("app", func() {
 					it("is created", func() {
-						exportFlags := []string{"-daemon"}
+						exportFlags := []string{"-daemon", "-log-level", "debug"}
 						if api.MustParse(platformAPI).LessThan("0.7") {
 							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
 						}
@@ -97,23 +98,20 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
 						if api.MustParse(platformAPI).AtLeast("0.11") {
-
-							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.syft.json)")
-							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.syft.json)")
-
-							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.cdx.json)")
-							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.cdx.json)")
-
-							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.spdx.json)")
-							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.spdx.json)")
+							extensions := []string{"sbom.cdx.json", "sbom.spdx.json", "sbom.syft.json"}
+							for _, extension := range extensions {
+								h.AssertStringContains(t, output, fmt.Sprintf("Copying SBOM lifecycle.%s to %s", extension, filepath.Join(path.RootDir, "layers", "sbom", "build", "buildpacksio_lifecycle", extension)))
+								h.AssertStringContains(t, output, fmt.Sprintf("Copying SBOM launcher.%s to %s", extension, filepath.Join(path.RootDir, "layers", "sbom", "launch", "buildpacksio_lifecycle", "launcher", extension)))
+							}
 						} else {
-							h.AssertStringDoesNotContain(t, output, "Copying launcher SBOM (sbom.syft.json)")
+							h.AssertStringDoesNotContain(t, output, "Copying SBOM")
 						}
 
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
 				})
 			})
+
 			when("SOURCE_DATE_EPOCH is set", func() {
 				it("Image CreatedAt is set to SOURCE_DATE_EPOCH", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "SOURCE_DATE_EPOCH support added in 0.9")

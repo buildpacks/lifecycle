@@ -1076,20 +1076,6 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
 			})
-
-			it("should display that the SBOM is missing", func() {
-				exporter.PlatformAPI = api.MustParse("0.11")
-				_, err := exporter.Export(opts)
-				h.AssertNil(t, err)
-
-				extensions := lifecycle.SBOMExtensions()
-
-				for _, component := range []string{"lifecycle", "launcher"} {
-					for _, extension := range extensions {
-						assertLogEntry(t, logHandler, fmt.Sprintf("Did not find SBOM %s for %s", component+extension, component))
-					}
-				}
-			})
 		})
 
 		when("default process", func() {
@@ -1489,6 +1475,44 @@ version = "4.5.6"
 					err,
 					"layer 'buildpack.id:cache-layer-no-contents' is cache=true but has no contents",
 				)
+			})
+		})
+
+		when("buildpacksio SBOM", func() {
+			it.Before(func() {
+				exporter.PlatformAPI = api.MustParse("0.11")
+			})
+
+			when("missing from default directory", func() {
+				it.Before(func() {
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "empty-metadata", "layers"), opts.LayersDir) // don't care
+				})
+
+				it("should display that the SBOM is missing", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					extensions := lifecycle.SBOMExtensions()
+					for _, component := range []string{"lifecycle", "launcher"} {
+						for _, extension := range extensions {
+							assertLogEntry(t, logHandler, fmt.Sprintf("Did not find SBOM %s.%s", component, extension))
+						}
+					}
+				})
+			})
+
+			when("custom launcher SBOM is provided", func() {
+				it.Before(func() {
+					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "launcher-sbom", "layers"), opts.LayersDir)
+					opts.LauncherConfig.SBOMDir = filepath.Join(opts.LayersDir, "some-launcher-sbom-dir")
+				})
+
+				it("copies everything in the launcher SBOM directory", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
+
+					h.AssertPathExists(t, filepath.Join(opts.LayersDir, "sbom", "launch", "buildpacksio_lifecycle", "launcher", "some-sbom-file"))
+				})
 			})
 		})
 
