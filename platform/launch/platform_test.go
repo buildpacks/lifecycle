@@ -20,7 +20,7 @@ func TestPlatform(t *testing.T) {
 func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		when("#NewPlatform", func() {
-			when("platform api >= 0.6", func() {
+			when("Platform API >= 0.6", func() {
 				it.Before(func() {
 					h.SkipIf(t, platformAPI.LessThan("0.6"), "")
 				})
@@ -37,7 +37,7 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				})
 			})
 
-			when("platform api < 0.6", func() {
+			when("Platform API < 0.6", func() {
 				it.Before(func() {
 					h.SkipIf(t, platformAPI.AtLeast("0.6"), "")
 				})

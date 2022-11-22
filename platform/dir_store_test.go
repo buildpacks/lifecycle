@@ -21,7 +21,7 @@ func testDirStore(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		dirStore, err = platform.NewDirStore(
+		dirStore = platform.NewDirStore(
 			filepath.Join("testdata", "cnb", "buildpacks"),
 			filepath.Join("testdata", "cnb", "extensions"),
 		)
