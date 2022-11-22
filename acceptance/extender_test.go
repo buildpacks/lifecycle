@@ -133,6 +133,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl was installed on the build image
 					t.Log("sets environment variables from the extended build image in the build context")
 					h.AssertStringContains(t, firstOutput, "CNB_STACK_ID for buildpack: stack-id-from-ext-tree")
+					h.AssertStringContains(t, firstOutput, "HOME for buildpack: /home/cnb")
 
 					t.Log("cleans the kaniko directory")
 					fis, err := os.ReadDir(kanikoDir)
