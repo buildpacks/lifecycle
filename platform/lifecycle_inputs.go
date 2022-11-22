@@ -250,6 +250,7 @@ func ResolveAbsoluteDirPaths(i *LifecycleInputs, _ log.Logger) error {
 func (i *LifecycleInputs) directoryPaths() []*string {
 	return []*string{
 		&i.AppDir,
+		&i.BuildConfigDir,
 		&i.BuildpacksDir,
 		&i.CacheDir,
 		&i.ExtensionsDir,
