@@ -28,21 +28,22 @@ type Platform interface {
 type BuildEnv interface {
 	AddRootDir(baseDir string) error
 	AddEnvDir(envDir string, defaultAction env.ActionType) error
-	WithPlatform(platformDir string) ([]string, error)
+	WithOverrides(platformDir string, baseConfigDir string) ([]string, error)
 	List() []string
 }
 
 type Builder struct {
-	AppDir        string
-	LayersDir     string
-	PlatformDir   string
-	BuildExecutor buildpack.BuildExecutor
-	DirStore      DirStore
-	Group         buildpack.Group
-	Logger        log.Logger
-	Out, Err      io.Writer
-	Plan          platform.BuildPlan
-	PlatformAPI   *api.Version
+	AppDir         string
+	BuildConfigDir string
+	LayersDir      string
+	PlatformDir    string
+	BuildExecutor  buildpack.BuildExecutor
+	DirStore       DirStore
+	Group          buildpack.Group
+	Logger         log.Logger
+	Out, Err       io.Writer
+	Plan           platform.BuildPlan
+	PlatformAPI    *api.Version
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -61,10 +62,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 		slices    []layers.Slice
 	)
 	processMap := newProcessMap()
-	inputs, err := b.getCommonInputs()
-	if err != nil {
-		return nil, err
-	}
+	inputs := b.getBuildInputs()
 	inputs.Env = env.NewBuildEnv(os.Environ())
 	filteredPlan := b.Plan
 
@@ -113,8 +111,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 
 	if b.PlatformAPI.AtLeast("0.8") {
 		b.Logger.Debug("Copying SBOM files")
-		err = b.copySBOMFiles(inputs.LayersDir, bomFiles)
-		if err != nil {
+		if err := b.copySBOMFiles(inputs.LayersDir, bomFiles); err != nil {
 			return nil, err
 		}
 	}
@@ -150,27 +147,15 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}, nil
 }
 
-func (b *Builder) getCommonInputs() (buildpack.BuildInputs, error) {
-	appDir, err := filepath.Abs(b.AppDir)
-	if err != nil {
-		return buildpack.BuildInputs{}, err
-	}
-	layersDir, err := filepath.Abs(b.LayersDir)
-	if err != nil {
-		return buildpack.BuildInputs{}, err
-	}
-	platformDir, err := filepath.Abs(b.PlatformDir)
-	if err != nil {
-		return buildpack.BuildInputs{}, err
-	}
-
+func (b *Builder) getBuildInputs() buildpack.BuildInputs {
 	return buildpack.BuildInputs{
-		AppDir:      appDir,
-		LayersDir:   layersDir,
-		PlatformDir: platformDir,
-		Out:         b.Out,
-		Err:         b.Err,
-	}, nil
+		AppDir:         b.AppDir,
+		BuildConfigDir: b.BuildConfigDir,
+		LayersDir:      b.LayersDir,
+		PlatformDir:    b.PlatformDir,
+		Out:            b.Out,
+		Err:            b.Err,
+	}
 }
 
 // copySBOMFiles() copies any BOM files written by buildpacks during the Build() process

@@ -31,10 +31,11 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 		executor *buildpack.DefaultDetectExecutor
 
 		// detect inputs
-		inputs      buildpack.DetectInputs
-		tmpDir      string
-		platformDir string
-		mockEnv     *testmock.MockBuildEnv
+		inputs         buildpack.DetectInputs
+		tmpDir         string
+		buildConfigDir string
+		platformDir    string
+		mockEnv        *testmock.MockBuildEnv
 
 		someEnv = "ENV_TYPE=some-env"
 
@@ -53,22 +54,24 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			t.Fatalf("Error: %s\n", err)
 		}
 		appDir := filepath.Join(tmpDir, "app")
+		buildConfigDir = filepath.Join(tmpDir, "build-config")
 		platformDir = filepath.Join(tmpDir, "platform")
 		h.Mkdir(t, appDir, filepath.Join(platformDir, "env"))
 
 		// make inputs
 		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
 		inputs = buildpack.DetectInputs{
-			AppDir:      appDir,
-			PlatformDir: platformDir,
-			Env:         mockEnv,
+			AppDir:         appDir,
+			BuildConfigDir: buildConfigDir,
+			PlatformDir:    platformDir,
+			Env:            mockEnv,
 		}
 
 		logger = &log.Logger{Handler: logHandler}
 	})
 
 	it.After(func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 		mockCtrl.Finish()
 	})
 
@@ -101,7 +104,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			when("env", func() {
 				when("clear", func() {
 					it("provides a clear env", func() {
-						mockEnv.EXPECT().List().Return(append(os.Environ(), "ENV_TYPE=clear"))
+						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
 
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Buildpack.ClearEnv = true // override
@@ -114,7 +117,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("sets CNB_vars", func() {
-						mockEnv.EXPECT().List().Return(append(os.Environ(), "ENV_TYPE=clear"))
+						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
 
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Buildpack.ClearEnv = true // override
@@ -140,7 +143,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 				when("full", func() {
 					it("provides a full env", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
 
 						executor.Detect(descriptor, inputs, logger)
 
@@ -150,7 +153,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("sets CNB_vars", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 						executor.Detect(descriptor, inputs, logger)
 
@@ -171,7 +174,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("errors when <platform>/env cannot be loaded", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(nil, errors.New("some error"))
 
 						detectRun := executor.Detect(descriptor, inputs, logger)
 
@@ -187,7 +190,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 			it("errors and prints the output if the output plan is badly formatted", func() {
 				toappfile("\nbad=toml", "detect-plan-A-v1.toml")
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 				detectRun := executor.Detect(descriptor, inputs, logger)
 
@@ -199,7 +202,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 			when("plan deprecations", func() {
 				it.Before(func() {
-					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 				})
 
 				it("errors if the plan has both a top level version and a metadata version", func() {
@@ -277,7 +280,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not set environment variables for positional arguments", func() {
-					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 					executor.Detect(descriptor, inputs, logger)
 
@@ -299,7 +302,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("errors if the plan has a top level version and a metadata version that are different", func() {
-					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 					toappfile("\n[[provides]]\n name = \"dep2\"", "detect-plan-A-v1.toml")
 					toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
@@ -316,7 +319,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("errors if there is an alternate plan with a top level version and a metadata version that are different", func() {
-					mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 					toappfile("\n[[requires]]\n name = \"dep3-missing\"", "detect-plan-A-v1.toml")
 					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
@@ -354,7 +357,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			when("env", func() {
 				when("clear", func() {
 					it("provides a clear env", func() {
-						mockEnv.EXPECT().List().Return(append(os.Environ(), "ENV_TYPE=clear"))
+						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
 
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Extension.ClearEnv = true // override
@@ -367,7 +370,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("sets CNB_vars", func() {
-						mockEnv.EXPECT().List().Return(append(os.Environ(), "ENV_TYPE=clear"))
+						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
 
 						descriptor.WithRootDir += ".clear"   // override
 						descriptor.Extension.ClearEnv = true // override
@@ -393,7 +396,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 				when("full", func() {
 					it("provides a full env", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
 
 						executor.Detect(descriptor, inputs, logger)
 
@@ -403,7 +406,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("sets CNB_vars", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 						executor.Detect(descriptor, inputs, logger)
 
@@ -424,7 +427,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("errors when <platform>/env cannot be loaded", func() {
-						mockEnv.EXPECT().WithPlatform(platformDir).Return(nil, errors.New("some error"))
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(nil, errors.New("some error"))
 
 						detectRun := executor.Detect(descriptor, inputs, logger)
 
@@ -440,7 +443,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 
 			it("errors and prints the output if the output plan is badly formatted", func() {
 				toappfile("\nbad=toml", "detect-plan-A-v1.toml")
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 				detectRun := executor.Detect(descriptor, inputs, logger)
 
@@ -451,7 +454,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("errors if the plan has requires", func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
@@ -463,7 +466,7 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("errors if there is an alternate plan with requires", func() {
-				mockEnv.EXPECT().WithPlatform(platformDir).Return(append(os.Environ(), someEnv), nil)
+				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
 				toappfile("\n[[provides]]\n name = \"some-dep\"", "detect-plan-A-v1.toml")
 				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
@@ -528,9 +531,9 @@ func tofile(t *testing.T, data string, paths ...string) {
 			t.Fatalf("Error: %s\n", err)
 		}
 		if _, err := f.Write([]byte(data)); err != nil {
-			f.Close()
+			h.AssertNil(t, f.Close())
 			t.Fatalf("Error: %s\n", err)
 		}
-		f.Close()
+		h.AssertNil(t, f.Close())
 	}
 }

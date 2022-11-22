@@ -152,6 +152,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			}}
 			executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertEq(t, inputs.AppDir, builder.AppDir)
+					h.AssertEq(t, inputs.BuildConfigDir, builder.BuildConfigDir)
+					h.AssertEq(t, inputs.PlatformDir, builder.PlatformDir)
 					h.AssertEq(t, inputs.Plan, expectedPlanA)
 					return buildpack.BuildOutputs{
 						MetRequires: []string{"some-dep"},
@@ -164,6 +167,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			}}
 			executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any()).Do(
 				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertEq(t, inputs.AppDir, builder.AppDir)
+					h.AssertEq(t, inputs.BuildConfigDir, builder.BuildConfigDir)
+					h.AssertEq(t, inputs.PlatformDir, builder.PlatformDir)
 					h.AssertEq(t, inputs.Plan, expectedPlanB)
 					return buildpack.BuildOutputs{}, nil
 				})

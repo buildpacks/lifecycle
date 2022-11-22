@@ -9,8 +9,10 @@ import (
 func DefaultBuildInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {
-	case platformAPI.AtLeast("0.5"):
+	case platformAPI.AtLeast("0.11"):
 		inputs = defaultBuildInputs()
+	case platformAPI.AtLeast("0.5"):
+		inputs = defaultBuildInputs05To010()
 	default:
 		inputs = defaultBuildInputs03To04()
 	}
@@ -19,6 +21,12 @@ func DefaultBuildInputs(platformAPI *api.Version) LifecycleInputs {
 }
 
 func defaultBuildInputs() LifecycleInputs {
+	bi := defaultBuildInputs05To010()
+	bi.BuildConfigDir = envOrDefault(EnvBuildConfigDir, DefaultBuildConfigDir)
+	return bi
+}
+
+func defaultBuildInputs05To010() LifecycleInputs {
 	bi := defaultBuildInputs03To04()
 	bi.GroupPath = envOrDefault(EnvGroupPath, placeholderGroupPath)
 	bi.PlanPath = envOrDefault(EnvPlanPath, placeholderPlanPath)

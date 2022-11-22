@@ -38,6 +38,7 @@ func (d *detectCmd) DefineFlags() {
 		cli.FlagOrderPath(&d.OrderPath)
 		cli.FlagPlanPath(&d.PlanPath)
 		cli.FlagPlatformDir(&d.PlatformDir)
+		cli.FlagBuildConfigDir(&d.BuildConfigDir)
 	}
 }
 
@@ -70,6 +71,7 @@ func (d *detectCmd) Exec() error {
 	)
 	detector, err := detectorFactory.NewDetector(
 		d.AppDir,
+		d.BuildConfigDir,
 		d.OrderPath,
 		d.PlatformDir,
 		cmd.DefaultLogger,
@@ -94,6 +96,7 @@ func (d *detectCmd) Exec() error {
 		var generator *lifecycle.Generator
 		generator, err = generatorFactory.NewGenerator(
 			d.AppDir,
+			d.BuildConfigDir,
 			group.GroupExtensions,
 			d.GeneratedDir,
 			plan,

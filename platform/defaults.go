@@ -66,8 +66,9 @@ const (
 // A "builder" image contains a build-time base image, buildpacks, a lifecycle, and configuration.
 // The following are directories and files that are present in a builder image, and are inputs to the lifecycle.
 const (
-	EnvBuildpacksDir = "CNB_BUILDPACKS_DIR"
-	EnvExtensionsDir = "CNB_EXTENSIONS_DIR"
+	EnvBuildConfigDir = "CNB_BUILD_CONFIG_DIR"
+	EnvBuildpacksDir  = "CNB_BUILDPACKS_DIR"
+	EnvExtensionsDir  = "CNB_EXTENSIONS_DIR"
 
 	// EnvOrderPath is the location of the order file, which is used for detection. It contains a list of one or more buildpack groups
 	// to be tested against application source code, so that the appropriate group for a given build can be determined.
@@ -79,8 +80,9 @@ const (
 )
 
 var (
-	DefaultBuildpacksDir = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultExtensionsDir = filepath.Join(rootDir, "cnb", "extensions")
+	DefaultBuildConfigDir = filepath.Join(rootDir, "cnb", "build-config")
+	DefaultBuildpacksDir  = filepath.Join(rootDir, "cnb", "buildpacks")
+	DefaultExtensionsDir  = filepath.Join(rootDir, "cnb", "extensions")
 
 	// DefaultOrderPath is the default order path.
 	DefaultOrderPath = filepath.Join(rootDir, "cnb", "order.toml")

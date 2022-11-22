@@ -9,8 +9,10 @@ import (
 func DefaultDetectInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {
-	case platformAPI.AtLeast("0.10"):
+	case platformAPI.AtLeast("0.11"):
 		inputs = defaultDetectInputs()
+	case platformAPI.AtLeast("0.10"):
+		inputs = defaultDetectInputs010()
 	case platformAPI.AtLeast("0.6"):
 		inputs = defaultDetectInputs06To09()
 	case platformAPI.AtLeast("0.5"):
@@ -23,6 +25,12 @@ func DefaultDetectInputs(platformAPI *api.Version) LifecycleInputs {
 }
 
 func defaultDetectInputs() LifecycleInputs {
+	di := defaultDetectInputs010()
+	di.BuildConfigDir = envOrDefault(EnvBuildConfigDir, DefaultBuildConfigDir)
+	return di
+}
+
+func defaultDetectInputs010() LifecycleInputs {
 	di := defaultDetectInputs06To09()
 	di.AnalyzedPath = envOrDefault(EnvAnalyzedPath, placeholderAnalyzedPath)
 	di.ExtensionsDir = envOrDefault(EnvExtensionsDir, DefaultExtensionsDir)
