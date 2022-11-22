@@ -2,7 +2,6 @@ package launch_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,7 +28,7 @@ func testBash(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		h.SkipIf(t, runtime.GOOS == "windows", "skip bash tests on windows")
 		var err error
-		tmpDir, err = ioutil.TempDir("", "shell-test")
+		tmpDir, err = os.MkdirTemp("", "shell-test")
 		h.AssertNil(t, err)
 		shell = &launch.BashShell{Exec: hl.SyscallExecWithStdout(t, tmpDir)}
 	})

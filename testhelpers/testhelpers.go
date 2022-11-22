@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -55,9 +54,9 @@ func AssertSameInstance(t *testing.T, actual, expected interface{}) {
 }
 
 // Assert deep equality (and provide useful difference as a test failure)
-func AssertEq(t *testing.T, actual, expected interface{}) {
+func AssertEq(t *testing.T, actual, expected interface{}, opts ...cmp.Option) {
 	t.Helper()
-	if diff := cmp.Diff(actual, expected); diff != "" {
+	if diff := cmp.Diff(actual, expected, opts...); diff != "" {
 		t.Fatal(diff)
 	}
 }
@@ -184,7 +183,7 @@ func HTTPGetE(url string) (string, error) {
 	if resp.StatusCode >= 300 {
 		return "", fmt.Errorf("HTTP Status was bad: %s => %d", url, resp.StatusCode)
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -215,6 +214,27 @@ func RunE(cmd *exec.Cmd) (output string, exitCode int, err error) {
 	return string(stdout), 0, nil
 }
 
+func RunWithCombinedOutput(t *testing.T, cmd *exec.Cmd) string {
+	t.Helper()
+	txt, _, err := doRunWithCombinedOutput(cmd)
+	AssertNil(t, err)
+	return txt
+}
+
+func doRunWithCombinedOutput(cmd *exec.Cmd) (output string, exitCode int, err error) {
+	rawOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		formattedErr := fmt.Errorf("failed to execute command: %v, %s, %s", cmd.Args, err, string(rawOutput))
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return "", exitError.ExitCode(), formattedErr
+		}
+
+		return "", -1, formattedErr
+	}
+
+	return string(rawOutput), 0, nil
+}
+
 func ComputeSHA256ForFile(t *testing.T, path string) string {
 	t.Helper()
 
@@ -233,24 +253,26 @@ func ComputeSHA256ForFile(t *testing.T, path string) string {
 
 func RecursiveCopy(t *testing.T, src, dst string) {
 	t.Helper()
-	fis, err := ioutil.ReadDir(src)
+	entries, err := os.ReadDir(src)
 	AssertNil(t, err)
-	for _, fi := range fis {
-		if fi.Mode().IsRegular() {
-			CopyFile(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+	for _, entry := range entries {
+		if entry.Type().IsRegular() {
+			CopyFile(t, filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name()))
 		}
-		if fi.IsDir() {
-			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
+		if entry.IsDir() {
+			fi, err := entry.Info()
 			AssertNil(t, err)
-			RecursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			err = os.Mkdir(filepath.Join(dst, entry.Name()), fi.Mode())
+			AssertNil(t, err)
+			RecursiveCopy(t, filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name()))
 		}
-		if fi.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Readlink(filepath.Join(src, fi.Name()))
+		if entry.Type()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(filepath.Join(src, entry.Name()))
 			AssertNil(t, err)
 			if filepath.IsAbs(target) {
 				t.Fatalf("symlinks cannot be absolute")
 			}
-			AssertNil(t, os.Symlink(target, filepath.Join(dst, fi.Name())))
+			AssertNil(t, os.Symlink(target, filepath.Join(dst, entry.Name())))
 		}
 	}
 	modifiedtime := time.Time{}
@@ -316,7 +338,7 @@ func RandomLayer(t *testing.T, tmpDir string) (path string, sha string, contents
 
 func MustReadFile(t *testing.T, path string) []byte {
 	t.Helper()
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error reading %q: %v", path, err)
 	}
@@ -335,10 +357,18 @@ func Mkdir(t *testing.T, dirs ...string) {
 func Mkfile(t *testing.T, data string, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		if err := ioutil.WriteFile(p, []byte(data), 0600); err != nil {
+		if err := os.WriteFile(p, []byte(data), 0600); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}
+}
+
+func TempFile(t *testing.T, dir, pattern string) string {
+	t.Helper()
+	f, err := os.CreateTemp(dir, pattern)
+	AssertNil(t, err)
+	defer f.Close()
+	return f.Name()
 }
 
 func CleanEndings(s string) string {
@@ -347,7 +377,7 @@ func CleanEndings(s string) string {
 
 func Rdfile(t *testing.T, path string) string {
 	t.Helper()
-	out, err := ioutil.ReadFile(path)
+	out, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Error: %s\n", err)
 	}

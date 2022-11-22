@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 
@@ -30,7 +30,7 @@ func Run(c Command, asSubcommand bool) {
 		noColor      bool
 	)
 
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 	FlagVersion(&printVersion)
 	FlagLogLevel(&logLevel)
 	FlagNoColor(&noColor)

@@ -2,7 +2,6 @@ package launch_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -35,7 +34,7 @@ func testCmd(t *testing.T, when spec.G, it spec.S) {
 		defaultDir, err = os.Getwd()
 		h.AssertNil(t, err)
 		h.SkipIf(t, runtime.GOOS != "windows", "skip cmd tests on unix")
-		tmpDir, err = ioutil.TempDir("", "shell-test")
+		tmpDir, err = os.MkdirTemp("", "shell-test")
 		h.AssertNil(t, err)
 		shell = &launch.CmdShell{Exec: hl.SyscallExecWithStdout(t, tmpDir)}
 	})

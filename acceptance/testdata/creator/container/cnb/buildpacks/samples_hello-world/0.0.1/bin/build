@@ -90,3 +90,9 @@ if test -f ${layers_dir}/build.sbom.cdx.json; then
   exit 1
 fi
 echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/build.sbom.cdx.json
+
+# store.toml
+if test -f ${layers_dir}/store.toml; then
+  echo "${layers_dir}/store.toml restored with content: $(cat ${layers_dir}/store.toml)"
+fi
+printf "[metadata]\n\"some-key\" = \"some-value\"" > ${layers_dir}/store.toml

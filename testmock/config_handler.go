@@ -10,6 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	platform "github.com/buildpacks/lifecycle/platform"
 )
 
 // MockConfigHandler is a mock of ConfigHandler interface.
@@ -35,13 +36,29 @@ func (m *MockConfigHandler) EXPECT() *MockConfigHandlerMockRecorder {
 	return m.recorder
 }
 
+// ReadAnalyzed mocks base method.
+func (m *MockConfigHandler) ReadAnalyzed(arg0 string) (platform.AnalyzedMetadata, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadAnalyzed", arg0)
+	ret0, _ := ret[0].(platform.AnalyzedMetadata)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadAnalyzed indicates an expected call of ReadAnalyzed.
+func (mr *MockConfigHandlerMockRecorder) ReadAnalyzed(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAnalyzed", reflect.TypeOf((*MockConfigHandler)(nil).ReadAnalyzed), arg0)
+}
+
 // ReadGroup mocks base method.
-func (m *MockConfigHandler) ReadGroup(arg0 string) ([]buildpack.GroupElement, error) {
+func (m *MockConfigHandler) ReadGroup(arg0 string) ([]buildpack.GroupElement, []buildpack.GroupElement, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadGroup", arg0)
 	ret0, _ := ret[0].([]buildpack.GroupElement)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].([]buildpack.GroupElement)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ReadGroup indicates an expected call of ReadGroup.

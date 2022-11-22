@@ -2,7 +2,6 @@ package layer_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +39,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		layerDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
+		layerDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 		h.AssertNil(t, err)
 		useShaFiles = true // notice - the default for platform API >= 0.7 is false (it's set to false in some of the tests)
 		logger = log.Logger{Handler: &discard.Handler{}}
@@ -66,7 +65,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
-				files, err := ioutil.ReadDir(layerDir)
+				files, err := os.ReadDir(layerDir)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(files), 0)
 			})
@@ -82,7 +81,7 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 				err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 				h.AssertNil(t, err)
 
-				files, err := ioutil.ReadDir(layerDir)
+				files, err := os.ReadDir(layerDir)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(files), 2)
 
@@ -382,16 +381,16 @@ func testLayerMetadataRestorer(t *testing.T, when spec.G, it spec.S) {
 					err := layerMetadataRestorer.Restore(buildpacks, layersMetadata, cacheMetadata, layerSHAStore)
 					h.AssertNil(t, err)
 
-					files, err := ioutil.ReadDir(layerDir)
+					files, err := os.ReadDir(layerDir)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(files), 2)
 
-					files, err = ioutil.ReadDir(filepath.Join(layerDir, "metadata.buildpack"))
+					files, err = os.ReadDir(filepath.Join(layerDir, "metadata.buildpack"))
 					h.AssertNil(t, err)
 					// expect 1 file b/c of store.toml
 					h.AssertEq(t, len(files), 1)
 
-					files, err = ioutil.ReadDir(filepath.Join(layerDir, "no.cache.buildpack"))
+					files, err = os.ReadDir(filepath.Join(layerDir, "no.cache.buildpack"))
 					h.AssertNil(t, err)
 					// expect 1 file b/c of store.toml
 					h.AssertEq(t, len(files), 1)

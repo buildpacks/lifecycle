@@ -3,7 +3,6 @@ package acceptance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -66,7 +65,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		containerName = "test-container-" + h.RandString(10)
 		var err error
-		copyDir, err = ioutil.TempDir("", "test-docker-copy-")
+		copyDir, err = os.MkdirTemp("", "test-docker-copy-")
 		h.AssertNil(t, err)
 	})
 
@@ -131,11 +130,77 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				),
 			)
 			// check builder metadata.toml for success test
-			md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+			_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
 			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
 			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+		})
+	})
+
+	when("writing metadata.toml", func() {
+		it("writes and reads successfully", func() {
+			h.DockerRunAndCopy(t,
+				containerName,
+				copyDir,
+				ctrPath("/layers"),
+				builderImage,
+				h.WithFlags(
+					"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
+					"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+					"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+				),
+			)
+			// check builder metadata.toml for success test
+			contents, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+
+			// prevent regression of inline table serialization
+			h.AssertStringDoesNotContain(t, contents, "processes =")
+			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
+			h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+			h.AssertEq(t, len(md.Processes), 1)
+			h.AssertEq(t, md.Processes[0].Type, "hello")
+			h.AssertEq(t, len(md.Processes[0].Command.Entries), 1)
+			h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
+			h.AssertEq(t, len(md.Processes[0].Args), 1)
+			h.AssertEq(t, md.Processes[0].Args[0], "arg1")
+			h.AssertEq(t, md.Processes[0].Direct, false)
+			h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
+			h.AssertEq(t, md.Processes[0].Default, false)
+		})
+
+		when("the platform < 0.10", func() {
+			it("writes and reads successfully", func() {
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					ctrPath("/layers"),
+					builderImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API=0.9",
+						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group.toml",
+						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan.toml",
+					),
+				)
+				// check builder metadata.toml for success test
+				contents, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+
+				// prevent regression of inline table serialization
+				h.AssertStringDoesNotContain(t, contents, "processes =")
+				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
+				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
+				h.AssertStringContains(t, md.Buildpacks[0].Version, "0.0.1")
+				h.AssertEq(t, len(md.Processes), 1)
+				h.AssertEq(t, md.Processes[0].Type, "hello")
+				h.AssertEq(t, len(md.Processes[0].Command.Entries), 1)
+				h.AssertEq(t, md.Processes[0].Command.Entries[0], "echo world")
+				h.AssertEq(t, len(md.Processes[0].Args), 1)
+				h.AssertEq(t, md.Processes[0].Args[0], "arg1")
+				h.AssertEq(t, md.Processes[0].Direct, false)
+				h.AssertEq(t, md.Processes[0].WorkingDirectory, "")
+				h.AssertEq(t, md.Processes[0].Default, false)
+			})
 		})
 	})
 
@@ -153,7 +218,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				),
 			)
 			// check builder metadata.toml for success test
-			md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+			_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
 			h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 			h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
@@ -199,7 +264,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 					// check builder metadata.toml for success test
-					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+					_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 					h.AssertEq(t, len(md.Processes), 0)
 				})
 			})
@@ -275,7 +340,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						),
 					)
 					// check builder metadata.toml for success test
-					md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
+					_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers", "config", "metadata.toml"))
 
 					h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 					h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world")
@@ -318,7 +383,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						"--env", "CNB_PLAN_PATH=/cnb/plan_tomls/always_detect_plan_buildpack_2.toml",
 					),
 				)
-				md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
+				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
 
 				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
@@ -340,7 +405,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						"--env", "CNB_GROUP_PATH=/cnb/group_tomls/always_detect_group_buildpack2.toml",
 					),
 				)
-				md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
+				_, md := getBuilderMetadata(t, filepath.Join(copyDir, "layers/different_layer_dir_from_env/config/metadata.toml"))
 
 				h.AssertStringContains(t, md.Buildpacks[0].API, "0.2")
 				h.AssertStringContains(t, md.Buildpacks[0].ID, "hello_world_2")
@@ -444,13 +509,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func getBuilderMetadata(t *testing.T, path string) *platform.BuildMetadata {
-	contents, _ := ioutil.ReadFile(path)
+func getBuilderMetadata(t *testing.T, path string) (string, *platform.BuildMetadata) {
+	t.Helper()
+	contents, _ := os.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var analyzedMd platform.BuildMetadata
-	_, err := toml.Decode(string(contents), &analyzedMd)
+	var buildMD platform.BuildMetadata
+	_, err := toml.Decode(string(contents), &buildMD)
 	h.AssertNil(t, err)
 
-	return &analyzedMd
+	return string(contents), &buildMD
 }

@@ -12,24 +12,21 @@ import (
 )
 
 func TestPlatform(t *testing.T) {
-	for _, api := range api.Platform.Supported {
-		spec.Run(t, "unit-platform/"+api.String(), testPlatform(api), spec.Parallel(), spec.Report(report.Terminal{}))
+	for _, platformAPI := range api.Platform.Supported {
+		spec.Run(t, "unit-platform/"+platformAPI.String(), testPlatform(platformAPI), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
 
 func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
-		when("#NewPlatform", func() {
-			when("platform api >= 0.6", func() {
+		when("#NewPlatformFor", func() {
+			when("Platform API >= 0.6", func() {
 				it.Before(func() {
 					h.SkipIf(t, platformAPI.LessThan("0.6"), "")
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatform(platformAPI.String())
-
-					t.Log("with an inputs resolver")
-					h.AssertNotNil(t, foundPlatform.InputsResolver)
+					foundPlatform := platform.NewPlatformFor(0 /* don't care */, platformAPI.String())
 
 					t.Log("with a default exiter")
 					_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
@@ -40,16 +37,13 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				})
 			})
 
-			when("platform api < 0.6", func() {
+			when("Platform API < 0.6", func() {
 				it.Before(func() {
 					h.SkipIf(t, platformAPI.AtLeast("0.6"), "")
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatform(platformAPI.String())
-
-					t.Log("with an inputs resolver")
-					h.AssertNotNil(t, foundPlatform.InputsResolver)
+					foundPlatform := platform.NewPlatformFor(0 /* don't care */, platformAPI.String())
 
 					t.Log("with a legacy exiter")
 					_, ok := foundPlatform.Exiter.(*platform.LegacyExiter)

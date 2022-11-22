@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -40,13 +40,19 @@ func DockerBuild(t *testing.T, name, context string, ops ...DockerCmdOp) {
 
 func DockerImageRemove(t *testing.T, name string) {
 	t.Helper()
-	Run(t, exec.Command("docker", "rmi", name)) // #nosec G204
+	Run(t, exec.Command("docker", "rmi", name, "--force")) // #nosec G204
 }
 
 func DockerRun(t *testing.T, image string, ops ...DockerCmdOp) string {
 	t.Helper()
 	args := formatArgs([]string{image}, ops...)
 	return Run(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
+}
+
+func DockerRunWithCombinedOutput(t *testing.T, image string, ops ...DockerCmdOp) string {
+	t.Helper()
+	args := formatArgs([]string{image}, ops...)
+	return RunWithCombinedOutput(t, exec.Command("docker", append([]string{"run", "--rm"}, args...)...)) // #nosec G204
 }
 
 // DockerRunAndCopy runs a container and once stopped, outputCtrPath is copied to outputDir
@@ -94,7 +100,7 @@ func DockerVolumeExists(t *testing.T, volumeName string) bool {
 	return strings.Contains(output, volumeName)
 }
 
-// TODO: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
+// FIXME: re-work this function to exec the docker cli, or convert other docker helpers to using the client library.
 func PushImage(dockerCli dockercli.CommonAPIClient, ref string, auth string) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: auth})
 	if err != nil {
@@ -125,7 +131,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 		"true")...)) // #nosec G204
 	defer Run(t, exec.Command("docker", "rm", containerName)) // #nosec G204
 
-	fis, err := ioutil.ReadDir(srcPath)
+	fis, err := os.ReadDir(srcPath)
 	AssertNil(t, err)
 	for _, fi := range fis {
 		Run(t, exec.Command(
@@ -139,7 +145,7 @@ func SeedDockerVolume(t *testing.T, srcPath string) string {
 }
 
 func checkResponse(responseBody io.Reader) error {
-	body, err := ioutil.ReadAll(responseBody)
+	body, err := io.ReadAll(responseBody)
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}

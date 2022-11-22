@@ -6,8 +6,8 @@ package acceptance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -46,6 +46,7 @@ func TestExporter(t *testing.T) {
 
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
+
 	exportTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
 	defer exportTest.Stop(t)
 
@@ -96,6 +97,20 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithArgs(exportArgs...),
 						)
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+						if api.MustParse(platformAPI).AtLeast("0.11") {
+
+							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.syft.json)")
+							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.syft.json)")
+
+							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.cdx.json)")
+							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.cdx.json)")
+
+							h.AssertStringContains(t, output, "Copying launcher SBOM (sbom.spdx.json)")
+							h.AssertStringContains(t, output, "Copying lifecycle SBOM (sbom.spdx.json)")
+						} else {
+							h.AssertStringDoesNotContain(t, output, "Copying launcher SBOM (sbom.syft.json)")
+						}
 
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
@@ -294,9 +309,9 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 }
 
 func calculateEmptyLayerSha(t *testing.T) string {
-	tmpDir, err := ioutil.TempDir("", "")
+	tmpDir, err := os.MkdirTemp("", "")
 	h.AssertNil(t, err)
 	testLayerEmptyPath := filepath.Join(tmpDir, "empty.tar")
-	h.AssertNil(t, ioutil.WriteFile(testLayerEmptyPath, []byte{}, 0600))
+	h.AssertNil(t, os.WriteFile(testLayerEmptyPath, []byte{}, 0600))
 	return "sha256:" + h.ComputeSHA256ForFile(t, testLayerEmptyPath)
 }

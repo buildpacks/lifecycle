@@ -2,10 +2,9 @@ package buildpack_test
 
 import (
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -18,88 +17,88 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/buildpack/testmock"
+	llog "github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestDetect(t *testing.T) {
-	for _, kind := range []string{buildpack.KindBuildpack, buildpack.KindExtension} {
-		spec.Run(t, fmt.Sprintf("unit-detect/"+kind), testDetect(kind), spec.Report(report.Terminal{}))
-	}
+	spec.Run(t, "unit-detect", testDetect, spec.Report(report.Terminal{}))
 }
 
-func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
-	return func(t *testing.T, when spec.G, it spec.S) {
-		var (
-			mockCtrl       *gomock.Controller
-			mockEnv        *testmock.MockBuildEnv
-			detectConfig   buildpack.DetectConfig
-			platformDir    string
-			buildConfigDir string
-			tmpDir         string
-			logHandler     *memory.Handler
+func testDetect(t *testing.T, when spec.G, it spec.S) {
+	var (
+		mockCtrl *gomock.Controller
+		executor *buildpack.DefaultDetectExecutor
 
-			someEnv = "ENV_TYPE=some-env"
-		)
+		// detect inputs
+		inputs         buildpack.DetectInputs
+		tmpDir         string
+		buildConfigDir string
+		platformDir    string
+		mockEnv        *testmock.MockBuildEnv
 
-		it.Before(func() {
-			mockCtrl = gomock.NewController(t)
-			mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+		someEnv = "ENV_TYPE=some-env"
 
-			var err error
-			tmpDir, err = ioutil.TempDir("", "lifecycle")
-			if err != nil {
-				t.Fatalf("Error: %s\n", err)
-			}
-			platformDir = filepath.Join(tmpDir, "platform")
-			buildConfigDir = filepath.Join(tmpDir, "build-config")
-			appDir := filepath.Join(tmpDir, "app")
-			h.Mkdir(t, appDir, filepath.Join(platformDir, "env"))
+		logger     llog.Logger
+		logHandler = memory.New()
+	)
 
-			logHandler = memory.New()
+	it.Before(func() {
+		mockCtrl = gomock.NewController(t)
+		executor = &buildpack.DefaultDetectExecutor{}
 
-			detectConfig = buildpack.DetectConfig{
-				AppDir:         appDir,
-				PlatformDir:    platformDir,
-				BuildConfigDir: buildConfigDir,
-				Logger:         &log.Logger{Handler: logHandler},
-			}
-		})
-
-		it.After(func() {
-			os.RemoveAll(tmpDir)
-			mockCtrl.Finish()
-		})
-
-		toappfile := func(data string, paths ...string) {
-			t.Helper()
-			for _, p := range paths {
-				tofile(t, data, filepath.Join(detectConfig.AppDir, p))
-			}
+		// setup dirs
+		var err error
+		tmpDir, err = os.MkdirTemp("", "lifecycle")
+		if err != nil {
+			t.Fatalf("Error: %s\n", err)
 		}
-		rdappfile := func(path string) string {
-			t.Helper()
-			return h.Rdfile(t, filepath.Join(detectConfig.AppDir, path))
+		appDir := filepath.Join(tmpDir, "app")
+		buildConfigDir = filepath.Join(tmpDir, "build-config")
+		platformDir = filepath.Join(tmpDir, "platform")
+		h.Mkdir(t, appDir, filepath.Join(platformDir, "env"))
+
+		// make inputs
+		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+		inputs = buildpack.DetectInputs{
+			AppDir:         appDir,
+			BuildConfigDir: buildConfigDir,
+			PlatformDir:    platformDir,
+			Env:            mockEnv,
 		}
 
-		when("#Detect", func() {
+		logger = &log.Logger{Handler: logHandler}
+	})
+
+	it.After(func() {
+		_ = os.RemoveAll(tmpDir)
+		mockCtrl.Finish()
+	})
+
+	toappfile := func(data string, paths ...string) {
+		t.Helper()
+		for _, p := range paths {
+			tofile(t, data, filepath.Join(inputs.AppDir, p))
+		}
+	}
+	rdappfile := func(path string) string {
+		t.Helper()
+		return h.Rdfile(t, filepath.Join(inputs.AppDir, path))
+	}
+
+	when("#Detect", func() {
+		when("for buildpack", func() {
 			var (
-				descriptor     *buildpack.Descriptor
+				descriptor     *buildpack.BpDescriptor
 				descriptorPath string
 			)
 
 			it.Before(func() {
-				switch kind {
-				case buildpack.KindBuildpack:
-					descriptorPath = filepath.Join("testdata", strings.ToLower(kind), "by-id", "A", "v1", "buildpack.toml")
-				case buildpack.KindExtension:
-					descriptorPath = filepath.Join("testdata", strings.ToLower(kind), "by-id", "A", "v1", "extension.toml")
-				default:
-					t.Fatalf("unknown module kind: %s", kind)
-				}
+				descriptorPath = filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
 				var err error
-				descriptor, err = buildpack.ReadDescriptor(descriptorPath)
+				descriptor, err = buildpack.ReadBpDescriptor(descriptorPath)
 				h.AssertNil(t, err)
-				descriptor.API = api.Buildpack.Latest().String() // override
+				descriptor.WithAPI = api.Buildpack.Latest().String() // override
 			})
 
 			when("env", func() {
@@ -107,10 +106,10 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					it("provides a clear env", func() {
 						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
 
-						descriptor.Dir += ".clear"        // override
-						descriptor.Info().ClearEnv = true // override
+						descriptor.WithRootDir += ".clear"   // override
+						descriptor.Buildpack.ClearEnv = true // override
 
-						descriptor.Detect(&detectConfig, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						if typ := rdappfile("detect-env-type-A-v1.clear"); typ != "clear" {
 							t.Fatalf("Unexpected env type: %s\n", typ)
@@ -120,15 +119,15 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					it("sets CNB_vars", func() {
 						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
 
-						descriptor.Dir += ".clear"        // override
-						descriptor.Info().ClearEnv = true // override
+						descriptor.WithRootDir += ".clear"   // override
+						descriptor.Buildpack.ClearEnv = true // override
 
-						descriptor.Detect(&detectConfig, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
 						t.Log("sets CNB_BUILDPACK_DIR")
 						actual = rdappfile("detect-env-cnb-buildpack-dir-A-v1.clear")
-						h.AssertEq(t, actual, descriptor.Dir)
+						h.AssertEq(t, actual, descriptor.WithRootDir)
 
 						t.Log("sets CNB_PLATFORM_DIR")
 						actual = rdappfile("detect-env-cnb-platform-dir-A-v1.clear")
@@ -146,7 +145,7 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					it("provides a full env", func() {
 						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
 
-						descriptor.Detect(&detectConfig, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						if typ := rdappfile("detect-env-type-A-v1"); typ != "full" {
 							t.Fatalf("Unexpected env type: %s\n", typ)
@@ -156,12 +155,12 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					it("sets CNB_vars", func() {
 						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
-						descriptor.Detect(&detectConfig, mockEnv)
+						executor.Detect(descriptor, inputs, logger)
 
 						var actual string
 						t.Log("sets CNB_BUILDPACK_DIR")
 						actual = rdappfile("detect-env-cnb-buildpack-dir-A-v1")
-						h.AssertEq(t, actual, descriptor.Dir)
+						h.AssertEq(t, actual, descriptor.WithRootDir)
 
 						t.Log("sets CNB_PLATFORM_DIR")
 						actual = rdappfile("detect-env-cnb-platform-dir-A-v1")
@@ -177,7 +176,7 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					it("errors when <platform>/env cannot be loaded", func() {
 						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(nil, errors.New("some error"))
 
-						detectRun := descriptor.Detect(&detectConfig, mockEnv)
+						detectRun := executor.Detect(descriptor, inputs, logger)
 
 						h.AssertEq(t, detectRun.Code, -1)
 						err := detectRun.Err
@@ -193,7 +192,7 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 				toappfile("\nbad=toml", "detect-plan-A-v1.toml")
 				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
-				detectRun := descriptor.Detect(&detectConfig, mockEnv)
+				detectRun := executor.Detect(descriptor, inputs, logger)
 
 				h.AssertEq(t, detectRun.Code, -1)
 				h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
@@ -203,7 +202,6 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 
 			when("plan deprecations", func() {
 				it.Before(func() {
-					h.SkipIf(t, kind == buildpack.KindExtension, "extensions do not output requires")
 					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 				})
 
@@ -211,14 +209,14 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 				})
 
 				it("errors if there is an alternate plan with both a top level version and a metadata version", func() {
@@ -228,20 +226,20 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[or.requires.metadata]\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key and a "metadata.version" which cannot be specified together. "metadata.version" should be used instead`)
 				})
 
 				it("warns if the plan has a top level version", func() {
 					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, 0)
 					err := detectRun.Err
@@ -249,7 +247,7 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := h.AllLogs(logHandler); !strings.Contains(s,
-						strings.ToLower(kind)+` A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+						`buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {
 						t.Fatalf("Expected log to contain warning:\n%s\n", s)
 					}
@@ -261,7 +259,7 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[or.provides]]\n name = \"dep1-present\"", "detect-plan-A-v1.toml")
 					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, 0)
 					err := detectRun.Err
@@ -269,92 +267,22 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
 					if s := h.AllLogs(logHandler); !strings.Contains(s,
-						strings.ToLower(kind)+` A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
+						`buildpack A has a "version" key. This key is deprecated in build plan requirements in buildpack API 0.3. "metadata.version" should be used instead`,
 					) {
 						t.Fatalf("Expected log to contain warning:\n%s\n", s)
 					}
 				})
 			})
 
-			when("for extension", func() {
-				it.Before(func() {
-					h.SkipIf(t, kind == buildpack.KindBuildpack, "")
-				})
-
-				it("errors if the plan has requires", func() {
-					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
-
-					toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
-
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
-
-					h.AssertEq(t, detectRun.Code, -1)
-					err := detectRun.Err
-					h.AssertEq(t, err.Error(), `extension A outputs "requires" which is not allowed`)
-				})
-
-				it("errors if there is an alternate plan with requires", func() {
-					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
-
-					toappfile("\n[[provides]]\n name = \"some-dep\"", "detect-plan-A-v1.toml")
-					toappfile("\n[[or]]", "detect-plan-A-v1.toml")
-					toappfile("\n[[or.requires]]\n name = \"other-dep\"", "detect-plan-A-v1.toml")
-
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
-
-					h.AssertEq(t, detectRun.Code, -1)
-					err := detectRun.Err
-					h.AssertEq(t, err.Error(), `extension A outputs "requires" which is not allowed`)
-				})
-
-				when("/bin/detect is missing", func() {
-					it.Before(func() {
-						descriptorPath = filepath.Join("testdata", "extension", "by-id", "B", "v1", "extension.toml")
-						var err error
-						descriptor, err = buildpack.ReadDescriptor(filepath.Join("testdata", "extension", "by-id", "B", "v1", "extension.toml"))
-						h.AssertNil(t, err)
-						descriptor.API = api.Buildpack.Latest().String() // override
-					})
-
-					it("passes detection", func() {
-						detectRun := descriptor.Detect(&detectConfig, mockEnv)
-						h.AssertEq(t, detectRun.Code, 0)
-
-						t.Log("treats the extension root as a pre-populated output directory")
-						h.AssertEq(t, detectRun.Provides, []buildpack.Provide{{Name: "some-dep"}})
-					})
-
-					when("plan is missing", func() {
-						it.Before(func() {
-							descriptorPath = filepath.Join("testdata", "extension", "by-id", "C", "v1", "extension.toml")
-							var err error
-							descriptor, err = buildpack.ReadDescriptor(descriptorPath)
-							h.AssertNil(t, err)
-							descriptor.API = api.Buildpack.Latest().String() // override
-						})
-
-						it("passes detection", func() {
-							detectRun := descriptor.Detect(&detectConfig, mockEnv)
-							h.AssertEq(t, detectRun.Code, 0)
-
-							t.Log("treats the extension root as a pre-populated output directory")
-							var empty []buildpack.Provide
-							h.AssertEq(t, detectRun.Provides, empty)
-						})
-					})
-				})
-			})
-
 			when("buildpack api < 0.8", func() {
 				it.Before(func() {
-					h.SkipIf(t, kind == buildpack.KindExtension, "")
-					descriptor.API = "0.7"
+					descriptor.WithAPI = "0.7"
 				})
 
 				it("does not set environment variables for positional arguments", func() {
 					mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
 
-					descriptor.Detect(&detectConfig, mockEnv)
+					executor.Detect(descriptor, inputs, logger)
 
 					for _, file := range []string{
 						"detect-env-cnb-platform-dir-A-v1",
@@ -370,8 +298,7 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 
 			when("buildpack api = 0.2", func() {
 				it.Before(func() {
-					h.SkipIf(t, kind == buildpack.KindExtension, "")
-					descriptor.API = "0.2"
+					descriptor.WithAPI = "0.2"
 				})
 
 				it("errors if the plan has a top level version and a metadata version that are different", func() {
@@ -381,14 +308,14 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[requires]]\n name = \"dep1\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[requires.metadata]\n version = \"some-other-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key that does not match "metadata.version"`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key that does not match "metadata.version"`)
 				})
 
 				it("errors if there is an alternate plan with a top level version and a metadata version that are different", func() {
@@ -399,18 +326,197 @@ func testDetect(kind string) func(t *testing.T, when spec.G, it spec.S) {
 					toappfile("\n[[or.requires]]\n name = \"dep1-present\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
 					toappfile("\n[or.requires.metadata]\n version = \"some-other-version\"", "detect-plan-A-v1.toml")
 
-					detectRun := descriptor.Detect(&detectConfig, mockEnv)
+					detectRun := executor.Detect(descriptor, inputs, logger)
 
 					h.AssertEq(t, detectRun.Code, -1)
 					err := detectRun.Err
 					if err == nil {
 						t.Fatalf("Expected error")
 					}
-					h.AssertEq(t, err.Error(), strings.ToLower(kind)+` A has a "version" key that does not match "metadata.version"`)
+					h.AssertEq(t, err.Error(), `buildpack A has a "version" key that does not match "metadata.version"`)
 				})
 			})
 		})
-	}
+
+		when("for extension", func() {
+			var (
+				descriptor     *buildpack.ExtDescriptor
+				descriptorPath string
+			)
+
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Image extensions are not supported for Windows builds")
+
+				descriptorPath = filepath.Join("testdata", "extension", "by-id", "A", "v1", "extension.toml")
+				var err error
+				descriptor, err = buildpack.ReadExtDescriptor(descriptorPath)
+				h.AssertNil(t, err)
+				descriptor.WithAPI = api.Buildpack.Latest().String() // override
+			})
+
+			when("env", func() {
+				when("clear", func() {
+					it("provides a clear env", func() {
+						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
+
+						descriptor.WithRootDir += ".clear"   // override
+						descriptor.Extension.ClearEnv = true // override
+
+						executor.Detect(descriptor, inputs, logger)
+
+						if typ := rdappfile("detect-env-type-A-v1.clear"); typ != "clear" {
+							t.Fatalf("Unexpected env type: %s\n", typ)
+						}
+					})
+
+					it("sets CNB_vars", func() {
+						mockEnv.EXPECT().WithOverrides("", buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=clear"), nil)
+
+						descriptor.WithRootDir += ".clear"   // override
+						descriptor.Extension.ClearEnv = true // override
+
+						executor.Detect(descriptor, inputs, logger)
+
+						var actual string
+						t.Log("sets CNB_EXTENSION_DIR")
+						actual = rdappfile("detect-env-cnb-extension-dir-A-v1.clear")
+						h.AssertEq(t, actual, descriptor.WithRootDir)
+
+						t.Log("sets CNB_PLATFORM_DIR")
+						actual = rdappfile("detect-env-cnb-platform-dir-A-v1.clear")
+						h.AssertEq(t, actual, platformDir)
+
+						t.Log("sets CNB_BUILD_PLAN_PATH")
+						actual = rdappfile("detect-env-cnb-build-plan-path-A-v1.clear")
+						if isUnset(actual) {
+							t.Fatal("expected CNB_BUILD_PLAN_PATH to be set")
+						}
+					})
+				})
+
+				when("full", func() {
+					it("provides a full env", func() {
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), "ENV_TYPE=full"), nil)
+
+						executor.Detect(descriptor, inputs, logger)
+
+						if typ := rdappfile("detect-env-type-A-v1"); typ != "full" {
+							t.Fatalf("Unexpected env type: %s\n", typ)
+						}
+					})
+
+					it("sets CNB_vars", func() {
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
+
+						executor.Detect(descriptor, inputs, logger)
+
+						var actual string
+						t.Log("sets CNB_EXTENSION_DIR")
+						actual = rdappfile("detect-env-cnb-extension-dir-A-v1")
+						h.AssertEq(t, actual, descriptor.WithRootDir)
+
+						t.Log("sets CNB_PLATFORM_DIR")
+						actual = rdappfile("detect-env-cnb-platform-dir-A-v1")
+						h.AssertEq(t, actual, platformDir)
+
+						t.Log("sets CNB_BUILD_PLAN_PATH")
+						actual = rdappfile("detect-env-cnb-build-plan-path-A-v1")
+						if isUnset(actual) {
+							t.Fatal("expected CNB_BUILD_PLAN_PATH to be set")
+						}
+					})
+
+					it("errors when <platform>/env cannot be loaded", func() {
+						mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(nil, errors.New("some error"))
+
+						detectRun := executor.Detect(descriptor, inputs, logger)
+
+						h.AssertEq(t, detectRun.Code, -1)
+						err := detectRun.Err
+						if err == nil {
+							t.Fatalf("Expected error")
+						}
+						h.AssertEq(t, err.Error(), `some error`)
+					})
+				})
+			})
+
+			it("errors and prints the output if the output plan is badly formatted", func() {
+				toappfile("\nbad=toml", "detect-plan-A-v1.toml")
+				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
+
+				detectRun := executor.Detect(descriptor, inputs, logger)
+
+				h.AssertEq(t, detectRun.Code, -1)
+				h.AssertStringContains(t, string(detectRun.Output), "detect out: A@v1") // the output from the buildpack detect script
+				err := detectRun.Err
+				h.AssertEq(t, err.Error(), `toml: line 2 (last key "bad"): expected value but found "toml" instead`)
+			})
+
+			it("errors if the plan has requires", func() {
+				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
+
+				toappfile("\n[[requires]]\n name = \"dep2\"\n version = \"some-version\"", "detect-plan-A-v1.toml")
+
+				detectRun := executor.Detect(descriptor, inputs, logger)
+
+				h.AssertEq(t, detectRun.Code, -1)
+				err := detectRun.Err
+				h.AssertEq(t, err.Error(), `extension A outputs "requires" which is not allowed`)
+			})
+
+			it("errors if there is an alternate plan with requires", func() {
+				mockEnv.EXPECT().WithOverrides(platformDir, buildConfigDir).Return(append(os.Environ(), someEnv), nil)
+
+				toappfile("\n[[provides]]\n name = \"some-dep\"", "detect-plan-A-v1.toml")
+				toappfile("\n[[or]]", "detect-plan-A-v1.toml")
+				toappfile("\n[[or.requires]]\n name = \"other-dep\"", "detect-plan-A-v1.toml")
+
+				detectRun := executor.Detect(descriptor, inputs, logger)
+
+				h.AssertEq(t, detectRun.Code, -1)
+				err := detectRun.Err
+				h.AssertEq(t, err.Error(), `extension A outputs "requires" which is not allowed`)
+			})
+
+			when("/bin/detect is missing", func() {
+				it.Before(func() {
+					descriptorPath = filepath.Join("testdata", "extension", "by-id", "B", "v1", "extension.toml")
+					var err error
+					descriptor, err = buildpack.ReadExtDescriptor(filepath.Join("testdata", "extension", "by-id", "B", "v1", "extension.toml"))
+					h.AssertNil(t, err)
+					descriptor.WithAPI = api.Buildpack.Latest().String() // override
+				})
+
+				it("passes detection", func() {
+					detectRun := executor.Detect(descriptor, inputs, logger)
+					h.AssertEq(t, detectRun.Code, 0)
+
+					t.Log("treats the extension root as a pre-populated output directory")
+					h.AssertEq(t, detectRun.Provides, []buildpack.Provide{{Name: "some-dep"}})
+				})
+
+				when("plan is missing", func() {
+					it.Before(func() {
+						descriptorPath = filepath.Join("testdata", "extension", "by-id", "C", "v1", "extension.toml")
+						var err error
+						descriptor, err = buildpack.ReadExtDescriptor(descriptorPath)
+						h.AssertNil(t, err)
+						descriptor.WithAPI = api.Buildpack.Latest().String() // override
+					})
+
+					it("passes detection", func() {
+						detectRun := executor.Detect(descriptor, inputs, logger)
+						h.AssertEq(t, detectRun.Code, 0)
+
+						t.Log("treats the extension root as a pre-populated output directory")
+						var empty []buildpack.Provide
+						h.AssertEq(t, detectRun.Provides, empty)
+					})
+				})
+			})
+		})
+	})
 }
 
 func isUnset(actual string) bool {
@@ -425,9 +531,9 @@ func tofile(t *testing.T, data string, paths ...string) {
 			t.Fatalf("Error: %s\n", err)
 		}
 		if _, err := f.Write([]byte(data)); err != nil {
-			f.Close()
+			h.AssertNil(t, f.Close())
 			t.Fatalf("Error: %s\n", err)
 		}
-		f.Close()
+		h.AssertNil(t, f.Close())
 	}
 }

@@ -4,7 +4,6 @@
 package priv
 
 import (
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -60,7 +59,7 @@ func recursiveEnsureOwner(path string, uid, gid int) error {
 	if err := os.Chown(path, uid, gid); err != nil {
 		return err
 	}
-	fis, err := ioutil.ReadDir(path)
+	fis, err := os.ReadDir(path)
 	if err != nil {
 		return err
 	}

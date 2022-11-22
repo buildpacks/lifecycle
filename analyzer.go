@@ -89,7 +89,7 @@ func (f *AnalyzerFactory) NewAnalyzer(
 	}
 
 	if f.platformAPI.AtLeast("0.8") && !skipLayers {
-		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{ // TODO: eventually layer.NewSBOMRestorer should always return the default one, and then we can use the constructor
+		analyzer.SBOMRestorer = &layer.DefaultSBOMRestorer{ // FIXME: eventually layer.NewSBOMRestorer should always return the default one, and then we can use the constructor
 			LayersDir: layersDir,
 			Logger:    logger,
 		}
@@ -134,7 +134,7 @@ func (f *AnalyzerFactory) setBuildpacks(analyzer *Analyzer, group buildpack.Grou
 		return nil
 	}
 	var err error
-	if analyzer.Buildpacks, err = f.configHandler.ReadGroup(path); err != nil {
+	if analyzer.Buildpacks, _, err = f.configHandler.ReadGroup(path); err != nil {
 		return err
 	}
 	for _, bp := range analyzer.Buildpacks {

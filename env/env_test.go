@@ -2,7 +2,6 @@ package env_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,7 +28,7 @@ func testEnv(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle")
+		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		if err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
@@ -387,7 +386,7 @@ func mkdir(t *testing.T, dirs ...string) {
 func mkfile(t *testing.T, data string, paths ...string) {
 	t.Helper()
 	for _, p := range paths {
-		if err := ioutil.WriteFile(p, []byte(data), 0600); err != nil {
+		if err := os.WriteFile(p, []byte(data), 0600); err != nil {
 			t.Fatalf("Error: %s\n", err)
 		}
 	}

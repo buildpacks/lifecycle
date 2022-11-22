@@ -74,19 +74,6 @@ func DecodeLaunchTOML(launchPath string, bpAPI string, launchTOML *LaunchTOML) e
 
 // ToLaunchProcess converts a buildpack.ProcessEntry to a launch.Process
 func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
-	// turn the command collection into a single command + args
-	// for the current platform API
-	// note: this will change once the platform API takes a collection of commands
-	var command string
-	if len(p.Command) > 0 {
-		command = p.Command[0]
-	}
-
-	var args []string
-	if len(p.Command) > 1 {
-		args = p.Command[1:]
-	}
-
 	// legacy processes will always have a value
 	// new processes will have a nil value but are always direct processes
 	var direct bool
@@ -98,8 +85,8 @@ func (p *ProcessEntry) ToLaunchProcess(bpID string) launch.Process {
 
 	return launch.Process{
 		Type:             p.Type,
-		Command:          command,
-		Args:             append(args, p.Args...),
+		Command:          launch.NewRawCommand(p.Command),
+		Args:             p.Args,
 		Direct:           direct, // launch.Process requires a value
 		Default:          p.Default,
 		BuildpackID:      bpID,
@@ -119,6 +106,23 @@ func (lt LaunchTOML) ToLaunchProcessesForBuildpack(bpID string) []launch.Process
 type BOMEntry struct {
 	Require
 	Buildpack GroupElement `toml:"buildpack" json:"buildpack"`
+}
+
+func (bom *BOMEntry) ConvertMetadataToVersion() {
+	if version, ok := bom.Metadata["version"]; ok {
+		metadataVersion := fmt.Sprintf("%v", version)
+		bom.Version = metadataVersion
+	}
+}
+
+func (bom *BOMEntry) convertVersionToMetadata() {
+	if bom.Version != "" {
+		if bom.Metadata == nil {
+			bom.Metadata = make(map[string]interface{})
+		}
+		bom.Metadata["version"] = bom.Version
+		bom.Version = ""
+	}
 }
 
 type Require struct {

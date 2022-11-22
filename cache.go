@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -130,7 +129,7 @@ func (e *Exporter) addSBOMCacheLayer(layersDir string, cacheStore Cache, origMet
 
 func readLayersSBOM(layersDir string, bomType string, logger log.Logger) (LayerDir, error) {
 	path := filepath.Join(layersDir, "sbom", bomType)
-	_, err := ioutil.ReadDir(path)
+	_, err := os.ReadDir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -142,6 +141,6 @@ func readLayersSBOM(layersDir string, bomType string, logger log.Logger) (LayerD
 	logger.Debugf("Found SBOM of type %s for at %s", bomType, path)
 	return &layerDir{
 		path:       path,
-		identifier: fmt.Sprintf("%s.sbom", bomType),
+		identifier: fmt.Sprintf("buildpacksio/lifecycle:%s.sbom", bomType),
 	}, nil
 }

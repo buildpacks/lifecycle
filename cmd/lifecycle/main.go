@@ -13,21 +13,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
-	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
-
-type Platform interface {
-	API() *api.Version
-	CodeFor(errType platform.LifecycleExitError) int
-	ResolveAnalyze(inputs platform.AnalyzeInputs, logger log.Logger) (platform.AnalyzeInputs, error)
-	ResolveDetect(inputs platform.DetectInputs) (platform.DetectInputs, error)
-}
 
 func main() {
 	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
@@ -35,23 +26,23 @@ func main() {
 		cmd.Exit(err)
 	}
 
-	p := platform.NewPlatform(platformAPI)
-
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cli.Run(&detectCmd{platform: p}, false)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPI)}, false)
 	case "analyzer":
-		cli.Run(&analyzeCmd{platform: p}, false)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPI)}, false)
 	case "restorer":
-		cli.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, false)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPI)}, false)
 	case "builder":
-		cli.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, false)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPI)}, false)
 	case "exporter":
-		cli.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, false)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPI)}, false)
 	case "rebaser":
-		cli.Run(&rebaseCmd{platform: p}, false)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPI)}, false)
 	case "creator":
-		cli.Run(&createCmd{platform: p}, false)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPI)}, false)
+	case "extender":
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPI)}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
@@ -59,27 +50,29 @@ func main() {
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
 		}
-		subcommand(p)
+		subcommand(platformAPI)
 	}
 }
 
-func subcommand(p Platform) {
+func subcommand(platformAPI string) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cli.Run(&detectCmd{platform: p}, true)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPI)}, true)
 	case "analyze":
-		cli.Run(&analyzeCmd{platform: p}, true)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPI)}, true)
 	case "restore":
-		cli.Run(&restoreCmd{restoreArgs: restoreArgs{platform: p}}, true)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPI)}, true)
 	case "build":
-		cli.Run(&buildCmd{buildArgs: buildArgs{platform: p}}, true)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPI)}, true)
 	case "export":
-		cli.Run(&exportCmd{exportArgs: exportArgs{platform: p}}, true)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPI)}, true)
 	case "rebase":
-		cli.Run(&rebaseCmd{platform: p}, true)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPI)}, true)
 	case "create":
-		cli.Run(&createCmd{platform: p}, true)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPI)}, true)
+	case "extend":
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPI)}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
 	}
@@ -204,15 +197,6 @@ func verifyReadWriteAccess(imageRef string, keychain authn.Keychain) error {
 
 // helpers
 
-func appendNotEmpty(slice []string, elems ...string) []string {
-	for _, v := range elems {
-		if v != "" {
-			slice = append(slice, v)
-		}
-	}
-	return slice
-}
-
 func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecycle.Cache, error) {
 	var (
 		cacheStore lifecycle.Cache
@@ -239,7 +223,7 @@ func verifyBuildpackApis(group buildpack.Group) error {
 			// but if for some reason it isn't default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // TODO: when builder and exporter are extensions-aware, this function call should be modified to provide the right module kind
+		if err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // FIXME: when exporter is extensions-aware, this function call should be modified to provide the right module kind
 			return err
 		}
 	}

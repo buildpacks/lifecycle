@@ -3,7 +3,6 @@ package lifecycle_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,7 +56,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeRegistryHandler = testmock.NewMockRegistryHandler(mockController)
 			logger = &log.Logger{Handler: &discard.Handler{}}
 			var err error
-			tempDir, err = ioutil.TempDir("", "")
+			tempDir, err = os.MkdirTemp("", "")
 			h.AssertNil(t, err)
 		})
 
@@ -312,7 +311,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 				t.Log("processes group")
 				group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
-				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
+				fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, []buildpack.GroupElement{}, nil)
 				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 				t.Log("processes cache")
@@ -366,7 +365,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					t.Log("processes group")
 					group := []buildpack.GroupElement{{ID: "some-buildpack-id", Version: "some-buildpack-version", API: "0.2"}}
-					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, nil)
+					fakeConfigHandler.EXPECT().ReadGroup("some-legacy-group-path").Return(group, []buildpack.GroupElement{}, nil)
 					fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack-id@some-buildpack-version", "0.2", logger)
 
 					t.Log("processes cache")
@@ -437,13 +436,13 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 		it.Before(func() {
 			var err error
 
-			tmpDir, err = ioutil.TempDir("", "analyzer-tests")
+			tmpDir, err = os.MkdirTemp("", "analyzer-tests")
 			h.AssertNil(t, err)
 
-			layersDir, err = ioutil.TempDir("", "lifecycle-layer-dir")
+			layersDir, err = os.MkdirTemp("", "lifecycle-layer-dir")
 			h.AssertNil(t, err)
 
-			cacheDir, err = ioutil.TempDir("", "some-cache-dir")
+			cacheDir, err = os.MkdirTemp("", "some-cache-dir")
 			h.AssertNil(t, err)
 
 			testCache, err = cache.NewVolumeCache(cacheDir)

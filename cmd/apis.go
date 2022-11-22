@@ -10,8 +10,7 @@ import (
 )
 
 const (
-	EnvDeprecationMode = "CNB_DEPRECATION_MODE"
-
+	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	DefaultDeprecationMode = ModeWarn
 
 	ModeQuiet = "quiet"

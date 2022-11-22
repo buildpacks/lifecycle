@@ -1,10 +1,12 @@
-// Data Format Files for the platform api spec (https://github.com/buildpacks/spec/blob/main/platform.md#data-format).
+// Data Format Files for the Platform API spec (https://github.com/buildpacks/spec/blob/main/platform.md#data-format).
 
 package platform
 
 import (
 	"encoding/json"
+	"os"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 // analyzed.toml
@@ -20,11 +23,24 @@ type AnalyzedMetadata struct {
 	PreviousImage *ImageIdentifier `toml:"image"`
 	Metadata      LayersMetadata   `toml:"metadata"`
 	RunImage      *ImageIdentifier `toml:"run-image,omitempty"`
+	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
 }
 
 // FIXME: fix key names to be accurate in the daemon case
 type ImageIdentifier struct {
 	Reference string `toml:"reference"`
+}
+
+func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {
+	var analyzedMD AnalyzedMetadata
+	if _, err := toml.DecodeFile(analyzedPath, &analyzedMD); err != nil {
+		if os.IsNotExist(err) {
+			logger.Warnf("no analyzed metadata found at path '%s'", analyzedPath)
+			return AnalyzedMetadata{}, nil
+		}
+		return AnalyzedMetadata{}, err
+	}
+	return analyzedMD, nil
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadataCompat`
@@ -83,6 +99,25 @@ type BuildMetadata struct {
 	Slices                      []layers.Slice           `toml:"slices" json:"-"`
 	BuildpackDefaultProcessType string                   `toml:"buildpack-default-process-type,omitempty" json:"buildpack-default-process-type,omitempty"`
 	PlatformAPI                 *api.Version             `toml:"-" json:"-"`
+}
+
+// DecodeBuildMetadataTOML reads a metadata.toml file
+func DecodeBuildMetadataTOML(path string, platformAPI *api.Version, buildmd *BuildMetadata) error {
+	// decode the common bits
+	_, err := toml.DecodeFile(path, &buildmd)
+	if err != nil {
+		return err
+	}
+
+	// set the platform API on all the appropriate fields
+	// this will allow us to re-encode the metadata.toml file with
+	// the current platform API
+	buildmd.PlatformAPI = platformAPI
+	for i, process := range buildmd.Processes {
+		buildmd.Processes[i] = process.WithPlatformAPI(platformAPI)
+	}
+
+	return nil
 }
 
 func (md *BuildMetadata) MarshalJSON() ([]byte, error) {
@@ -149,7 +184,7 @@ func (p BuildPlan) Find(kind, id string) buildpack.Plan {
 	return buildpack.Plan{Entries: out}
 }
 
-// TODO: ensure at least one claimed entry of each name is provided by the BP
+// FIXME: ensure at least one claimed entry of each name is provided by the BP
 func (p BuildPlan) Filter(metRequires []string) BuildPlan {
 	var out []BuildPlanEntry
 	for _, planEntry := range p.Entries {
@@ -234,7 +269,7 @@ func (sm *StackMetadata) BestRunImageMirror(registry string) (string, error) {
 	runImageMirrors = append(runImageMirrors, sm.RunImage.Mirrors...)
 	runImageRef, err := byRegistry(registry, runImageMirrors)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to find run-image")
+		return "", errors.Wrap(err, "failed to find run image")
 	}
 	return runImageRef, nil
 }
@@ -254,4 +289,16 @@ func byRegistry(reg string, imgs []string) (string, error) {
 		}
 	}
 	return imgs[0], nil
+}
+
+func ReadStack(stackPath string, logger log.Logger) (StackMetadata, error) {
+	var stackMD StackMetadata
+	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
+		if os.IsNotExist(err) {
+			logger.Infof("no stack metadata found at path '%s'\n", stackPath)
+			return StackMetadata{}, nil
+		}
+		return StackMetadata{}, err
+	}
+	return stackMD, nil
 }

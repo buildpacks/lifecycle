@@ -17,8 +17,7 @@ import (
 )
 
 type analyzeCmd struct {
-	platform Platform
-	platform.AnalyzeInputs
+	*platform.Platform
 
 	docker   client.CommonAPIClient // construct if necessary before dropping privileges
 	keychain authn.Keychain         // construct if necessary before dropping privileges
@@ -27,7 +26,7 @@ type analyzeCmd struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
 	switch {
-	case a.platform.API().AtLeast("0.9"):
+	case a.PlatformAPI.AtLeast("0.9"):
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
@@ -40,7 +39,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagTags(&a.AdditionalTags)
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
-	case a.platform.API().AtLeast("0.7"):
+	case a.PlatformAPI.AtLeast("0.7"):
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
@@ -53,10 +52,10 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagUseDaemon(&a.UseDaemon)
 	default:
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
-		cli.FlagCacheDir(&a.LegacyCacheDir)
+		cli.FlagCacheDir(&a.CacheDir)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
-		cli.FlagGroupPath(&a.LegacyGroupPath)
+		cli.FlagGroupPath(&a.GroupPath)
 		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagSkipLayers(&a.SkipLayers)
 		cli.FlagUID(&a.UID)
@@ -70,17 +69,14 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		err := fmt.Errorf("received %d arguments, but expected 1", nargs)
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	a.AnalyzeInputs.OutputImageRef = args[0]
-
-	var err error
-	a.AnalyzeInputs, err = a.platform.ResolveAnalyze(a.AnalyzeInputs, cmd.DefaultLogger)
-	if err != nil {
+	a.LifecycleInputs.OutputImageRef = args[0]
+	if err := platform.ResolveInputs(platform.Analyze, &a.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
 
-// Privileges validates the needed privileges
+// Privileges validates the needed privileges.
 func (a *analyzeCmd) Privileges() error {
 	var err error
 	a.keychain, err = auth.DefaultKeychain(a.RegistryImages()...)
@@ -88,25 +84,24 @@ func (a *analyzeCmd) Privileges() error {
 		return cmd.FailErr(err, "resolve keychain")
 	}
 	if a.UseDaemon {
-		var err error
 		a.docker, err = priv.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := priv.EnsureOwner(a.UID, a.GID, a.LayersDir, a.LegacyCacheDir, a.LaunchCacheDir); err != nil {
+	if err = priv.EnsureOwner(a.UID, a.GID, a.LayersDir, a.CacheDir, a.LaunchCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
-	if err := priv.RunAs(a.UID, a.GID); err != nil {
+	if err = priv.RunAs(a.UID, a.GID); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", a.UID, a.GID))
 	}
 	return nil
 }
 
-// Exec executes the command
+// Exec executes the command.
 func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
-		a.platform.API(),
+		a.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
@@ -118,9 +113,9 @@ func (a *analyzeCmd) Exec() error {
 		a.CacheImageRef,
 		a.LaunchCacheDir,
 		a.LayersDir,
-		a.LegacyCacheDir,
+		a.CacheDir,
 		buildpack.Group{},
-		a.LegacyGroupPath,
+		a.GroupPath,
 		a.OutputImageRef,
 		a.PreviousImageRef,
 		a.RunImageRef,
@@ -130,12 +125,10 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize analyzer")
 	}
-
 	analyzedMD, err := analyzer.Analyze()
 	if err != nil {
-		return cmd.FailErrCode(err, a.platform.CodeFor(platform.AnalyzeError), "analyze")
+		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
 	}
-
 	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
 		return cmd.FailErr(err, "write analyzed")
 	}

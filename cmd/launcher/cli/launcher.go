@@ -10,12 +10,13 @@ import (
 	"github.com/heroku/color"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/launch"
 	platform "github.com/buildpacks/lifecycle/platform/launch"
 )
+
+const KindBuildpack = "buildpack"
 
 func RunLaunch() error {
 	color.Disable(boolEnv(platform.EnvNoColor))
@@ -73,9 +74,11 @@ func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) stri
 		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}
-	process := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
-	if _, ok := launchMD.FindProcessType(process); ok {
-		return process
+
+	_, process := filepath.Split(os.Args[0])
+	processType := strings.TrimSuffix(process, platform.DefaultExecExt)
+	if _, ok := launchMD.FindProcessType(processType); ok {
+		return processType
 	}
 	return ""
 }
@@ -87,7 +90,7 @@ func verifyBuildpackAPIs(bps []launch.Buildpack) error {
 			// but if for some reason we do, default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.ID, bp.API, cmd.DefaultLogger); err != nil {
+		if err := cmd.VerifyBuildpackAPI(KindBuildpack, bp.ID, bp.API, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}

@@ -1,13 +1,17 @@
 package lifecycle
 
 import (
+	"fmt"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
 )
+
+var Config = &DefaultConfigHandler{}
 
 //go:generate mockgen -package testmock -destination testmock/cache_handler.go github.com/buildpacks/lifecycle CacheHandler
 type CacheHandler interface {
@@ -16,7 +20,9 @@ type CacheHandler interface {
 
 //go:generate mockgen -package testmock -destination testmock/dir_store.go github.com/buildpacks/lifecycle DirStore
 type DirStore interface {
-	Lookup(kind, id, version string) (buildpack.BuildModule, error)
+	Lookup(kind, id, version string) (buildpack.Descriptor, error)
+	LookupBp(id, version string) (*buildpack.BpDescriptor, error)
+	LookupExt(id, version string) (*buildpack.ExtDescriptor, error)
 }
 
 //go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle ImageHandler
@@ -38,7 +44,8 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
-	ReadGroup(path string) ([]buildpack.GroupElement, error)
+	ReadAnalyzed(path string) (platform.AnalyzedMetadata, error)
+	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 }
 
@@ -48,17 +55,31 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
-func (h *DefaultConfigHandler) ReadGroup(path string) ([]buildpack.GroupElement, error) {
-	group, err := ReadGroup(path)
+func (h *DefaultConfigHandler) ReadAnalyzed(path string) (platform.AnalyzedMetadata, error) {
+	var analyzedMD platform.AnalyzedMetadata
+	_, err := toml.DecodeFile(path, &analyzedMD)
 	if err != nil {
-		return nil, errors.Wrap(err, "reading buildpack group")
+		return platform.AnalyzedMetadata{}, fmt.Errorf("failed to read analyzed file: %w", err)
 	}
-	return group.Group, nil
+	return analyzedMD, nil
+}
+
+func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {
+	var groupFile buildpack.Group
+	groupFile, err = ReadGroup(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read group file: %w", err)
+	}
+	return groupFile.Group, groupFile.GroupExtensions, nil
 }
 
 func ReadGroup(path string) (buildpack.Group, error) {
 	var group buildpack.Group
 	_, err := toml.DecodeFile(path, &group)
+	for e := range group.GroupExtensions {
+		group.GroupExtensions[e].Extension = true
+		group.GroupExtensions[e].Optional = true
+	}
 	return group, err
 }
 
@@ -77,11 +98,12 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	}
 	_, err := toml.DecodeFile(path, &order)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "reading buildpack order file")
+		return nil, nil, fmt.Errorf("failed to read order file: %w", err)
 	}
 	for g, group := range order.OrderExtensions {
 		for e := range group.Group {
 			group.Group[e].Extension = true
+			group.Group[e].Optional = true
 		}
 		order.OrderExtensions[g] = group
 	}

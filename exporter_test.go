@@ -3,7 +3,7 @@ package lifecycle_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -49,6 +49,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			RunImageRef:     "run-image-reference",
 			AdditionalNames: []string{},
 		}
+		platformAPI = api.Platform.Latest()
 	)
 
 	it.Before(func() {
@@ -56,7 +57,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		layerFactory = testmock.NewMockLayerFactory(mockCtrl)
 
 		var err error
-		tmpDir, err = ioutil.TempDir("", "lifecycle.exporter.layer")
+		tmpDir, err = os.MkdirTemp("", "lifecycle.exporter.layer")
 		h.AssertNil(t, err)
 
 		launcherPath, err := filepath.Abs(filepath.Join("testdata", "exporter", "launcher"))
@@ -77,7 +78,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 
 		opts.LayersDir = filepath.Join(tmpDir, "layers")
 		h.AssertNil(t, os.Mkdir(opts.LayersDir, 0777))
-		h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0600))
+		h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "launcher"), []byte("some-launcher"), 0600))
 		opts.AppDir = filepath.Join(tmpDir, "app")
 
 		fakeAppImage = fakes.NewImage(
@@ -108,11 +109,13 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			ProcessTypesLayer(launch.Metadata{
 				Processes: []launch.Process{
 					{
-						Type:        "some-process-type",
-						Command:     "/some/command",
+						Type: "some-process-type",
+						Command: launch.NewRawCommand([]string{"/some/command"}).
+							WithPlatformAPI(platformAPI),
 						Args:        []string{"some", "command", "args"},
 						Direct:      true,
 						BuildpackID: "buildpack.id",
+						PlatformAPI: platformAPI,
 					}},
 			}).
 			DoAndReturn(func(_ launch.Metadata) (layers.Layer, error) {
@@ -141,7 +144,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			},
 			LayerFactory: layerFactory,
 			Logger:       &log.Logger{Handler: logHandler},
-			PlatformAPI:  api.Platform.Latest(),
+			PlatformAPI:  platformAPI,
 		}
 	})
 
@@ -237,7 +240,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						h.AssertContains(t, fakeAppImage.ReusedLayers(), "launch.sbom-digest")
-						assertReuseLayerLog(t, logHandler, "launch.sbom")
+						assertReuseLayerLog(t, logHandler, "buildpacksio/lifecycle:launch.sbom")
 					})
 				})
 			})
@@ -255,7 +258,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				assertHasLayer(t, fakeAppImage, "config")
-				assertAddLayerLog(t, logHandler, "config")
+				assertAddLayerLog(t, logHandler, "buildpacksio/lifecycle:config")
 			})
 
 			it("reuses launcher layer if the sha matches the sha in the metadata", func() {
@@ -411,16 +414,17 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
 			})
 
-			when("build metadata", func() {
-				when("platform api >= 0.9", func() {
-					it("bom is omitted in the build label", func() {
-						_, err := exporter.Export(opts)
-						h.AssertNil(t, err)
+			when("build metadata label", func() {
+				it("contains the expected information", func() {
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
 
-						metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
-						h.AssertNil(t, err)
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
+					h.AssertNil(t, err)
 
-						expectedJSON := `{
+					t.Log("bom is omitted")
+					t.Log("command is array")
+					expectedJSON := `{
   "buildpacks": [
     {
       "id": "buildpack.id",
@@ -446,25 +450,22 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
     {
       "type": "some-process-type",
       "direct": true,
-      "command": "/some/command",
+      "command": ["/some/command"],
       "args": ["some", "command", "args"],
       "buildpackID": "buildpack.id"
     }
   ]
 }
 `
-						h.AssertJSONEq(t, expectedJSON, metadataJSON)
-					})
+					h.AssertJSONEq(t, expectedJSON, metadataJSON)
 				})
 
 				when("platform api < 0.9", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.8")
-					})
+					platformAPI = api.MustParse("0.8")
 
 					when("metadata.toml is missing bom and has empty process list", func() {
 						it.Before(func() {
-							err := ioutil.WriteFile(filepath.Join(opts.LayersDir, "config", "metadata.toml"), []byte(`
+							err := os.WriteFile(filepath.Join(opts.LayersDir, "config", "metadata.toml"), []byte(`
 processes = []
 
 [[buildpacks]]
@@ -480,7 +481,7 @@ version = "4.5.6"
 							h.AssertNil(t, err)
 						})
 
-						it("bom is null and processes is an empty array in the build label", func() {
+						it("bom is null and processes is an empty array", func() {
 							_, err := exporter.Export(opts)
 							h.AssertNil(t, err)
 
@@ -516,13 +517,14 @@ version = "4.5.6"
 						})
 					})
 
-					it("combines metadata.toml with launcher config to create the build label", func() {
+					it("contains the expected information", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
 						metadataJSON, err := fakeAppImage.Label("io.buildpacks.build.metadata")
 						h.AssertNil(t, err)
 
+						t.Log("command is string")
 						expectedJSON := `{
   "bom": [
     {
@@ -696,10 +698,10 @@ version = "4.5.6"
 						h.AssertEq(t, val, opts.AppDir)
 					})
 				})
+
 				when("platform API <= 0.5", func() {
-					it.Before(func() {
-						exporter.PlatformAPI = api.MustParse("0.5")
-					})
+					platformAPI = api.MustParse("0.5")
+
 					it("doesn't set WorkingDir", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
@@ -870,7 +872,7 @@ version = "4.5.6"
 						h.AssertNil(t, err)
 
 						assertHasLayer(t, fakeAppImage, "launch.sbom")
-						assertAddLayerLog(t, logHandler, "launch.sbom")
+						assertAddLayerLog(t, logHandler, "buildpacksio/lifecycle:launch.sbom")
 
 						var result struct {
 							BOM struct {
@@ -900,7 +902,7 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 
 				assertHasLayer(t, fakeAppImage, "config")
-				assertAddLayerLog(t, logHandler, "config")
+				assertAddLayerLog(t, logHandler, "buildpacksio/lifecycle:config")
 			})
 
 			it("creates a launcher layer", func() {
@@ -991,7 +993,7 @@ version = "4.5.6"
 			when("there are store.toml files", func() {
 				it.Before(func() {
 					path := filepath.Join(opts.LayersDir, "buildpack.id", "store.toml")
-					h.AssertNil(t, ioutil.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0600))
+					h.AssertNil(t, os.WriteFile(path, []byte("[metadata]\n  key = \"val\""), 0600))
 				})
 
 				it("saves store metadata", func() {
@@ -1073,6 +1075,21 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
 			})
+
+			it("should display that the SBOM is missing", func() {
+				exporter.PlatformAPI = api.MustParse("0.11")
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				extensions := exporter.SBOMExtensions()
+				components := exporter.SBOMComponents()
+
+				for _, component := range components {
+					for _, extension := range extensions {
+						assertLogEntry(t, logHandler, component+extension+" is missing")
+					}
+				}
+			})
 		})
 
 		when("default process", func() {
@@ -1133,8 +1150,9 @@ version = "4.5.6"
 							ProcessTypesLayer(launch.Metadata{
 								Processes: []launch.Process{
 									{
-										Type:        "some-process-type",
-										Command:     "/some/command",
+										Type: "some-process-type",
+										Command: launch.NewRawCommand([]string{"/some/command"}).
+											WithPlatformAPI(api.Platform.Latest()),
 										Args:        []string{"some", "command", "args"},
 										Direct:      true,
 										BuildpackID: "buildpack.id",
@@ -1164,8 +1182,9 @@ version = "4.5.6"
 			})
 
 			when("platform API < 0.6", func() {
+				platformAPI = api.MustParse("0.5")
+
 				it.Before(func() {
-					exporter.PlatformAPI = api.MustParse("0.5")
 					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "default-process", "metadata-with-no-default", "layers"), opts.LayersDir)
 				})
 
@@ -1546,7 +1565,7 @@ func assertHasLayer(t *testing.T, fakeAppImage *fakes.Image, id string) {
 	rc, err := fakeAppImage.GetLayer(testLayerDigest(id))
 	h.AssertNil(t, err)
 	defer rc.Close()
-	contents, err := ioutil.ReadAll(rc)
+	contents, err := io.ReadAll(rc)
 	h.AssertNil(t, err)
 	h.AssertEq(t, string(contents), testLayerContents(id))
 }

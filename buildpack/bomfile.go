@@ -19,9 +19,9 @@ const (
 )
 
 const (
-	mediaTypeCycloneDX   = "application/vnd.cyclonedx+json"
-	mediaTypeSPDX        = "application/spdx+json"
-	mediaTypeSyft        = "application/vnd.syft+json"
+	MediaTypeCycloneDX   = "application/vnd.cyclonedx+json"
+	MediaTypeSPDX        = "application/spdx+json"
+	MediaTypeSyft        = "application/vnd.syft+json"
 	mediaTypeUnsupported = "unsupported"
 )
 
@@ -42,11 +42,11 @@ type BOMFile struct {
 // will return an error to indicate an unsupported format
 func (b *BOMFile) Name() (string, error) {
 	switch b.mediaType() {
-	case mediaTypeCycloneDX:
+	case MediaTypeCycloneDX:
 		return "sbom.cdx.json", nil
-	case mediaTypeSPDX:
+	case MediaTypeSPDX:
 		return "sbom.spdx.json", nil
-	case mediaTypeSyft:
+	case MediaTypeSyft:
 		return "sbom.syft.json", nil
 	default:
 		return "", errors.Errorf("unsupported SBOM format: '%s'", b.Path)
@@ -58,11 +58,11 @@ func (b *BOMFile) mediaType() string {
 
 	switch {
 	case strings.HasSuffix(name, ".sbom.cdx.json"):
-		return mediaTypeCycloneDX
+		return MediaTypeCycloneDX
 	case strings.HasSuffix(name, ".sbom.spdx.json"):
-		return mediaTypeSPDX
+		return MediaTypeSPDX
 	case strings.HasSuffix(name, ".sbom.syft.json"):
-		return mediaTypeSyft
+		return MediaTypeSyft
 	default:
 		return mediaTypeUnsupported
 	}
@@ -103,7 +103,7 @@ func sbomGlob(layersDir string) (matches []string, err error) {
 	return
 }
 
-func (d *Descriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
+func (d *BpDescriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayers map[string]LayerMetadataFile, logger log.Logger) ([]BOMFile, error) {
 	var (
 		files []BOMFile
 	)
@@ -113,7 +113,7 @@ func (d *Descriptor) processSBOMFiles(layersDir string, bp GroupElement, bpLayer
 		return nil, err
 	}
 
-	if api.MustParse(d.API).LessThan("0.7") {
+	if api.MustParse(d.WithAPI).LessThan("0.7") {
 		if len(matches) != 0 {
 			logger.Warnf("the following SBOM files will be ignored for buildpack api version < 0.7 [%s]", strings.Join(matches, ", "))
 		}

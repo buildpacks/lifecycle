@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -265,7 +264,7 @@ func lifecycleLayer() (string, error) {
 	ntr := archive.NewNormalizingTarReader(tr)
 	ntr.PrependDir("/cnb/")
 
-	lf, err := ioutil.TempFile("", "lifecycle-layer")
+	lf, err := os.CreateTemp("", "lifecycle-layer")
 	if err != nil {
 		return "", errors.Errorf("Failed to create temp layer file: %s", err)
 	}
@@ -330,7 +329,7 @@ func pullImage(dockerCli dockercli.CommonAPIClient, ref string) error {
 		}
 	}
 	defer rc.Close()
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+	if _, err := io.Copy(io.Discard, rc); err != nil {
 		return err
 	}
 	return nil
