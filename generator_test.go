@@ -239,6 +239,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
 					// check inputs
 					h.AssertEq(t, inputs.AppDir, generator.AppDir)
+					h.AssertEq(t, inputs.BuildConfigDir, generator.BuildConfigDir)
 					h.AssertEq(t, inputs.PlatformDir, generator.PlatformDir)
 
 					// create fixture
