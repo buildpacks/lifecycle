@@ -15,12 +15,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpacks/imgutil"
-
-	"github.com/google/go-containerregistry/pkg/authn"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cache"

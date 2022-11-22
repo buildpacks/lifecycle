@@ -27,6 +27,9 @@ type createCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
+	if c.PlatformAPI.AtLeast("0.11") {
+		cli.FlagLauncherSBOMDir(&c.LauncherSBOMDir)
+	}
 	cli.FlagAppDir(&c.AppDir)
 	cli.FlagBuildpacksDir(&c.BuildpacksDir)
 	cli.FlagCacheDir(&c.CacheDir)

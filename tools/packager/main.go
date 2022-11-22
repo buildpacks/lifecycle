@@ -16,10 +16,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	bp "github.com/buildpacks/lifecycle/buildpack"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/archive"
+	bp "github.com/buildpacks/lifecycle/buildpack"
 )
 
 var (

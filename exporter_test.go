@@ -25,6 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -1081,12 +1082,11 @@ version = "4.5.6"
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
-				extensions := exporter.SBOMExtensions()
-				components := exporter.SBOMComponents()
+				extensions := lifecycle.SBOMExtensions()
 
-				for _, component := range components {
+				for _, component := range []string{"lifecycle", "launcher"} {
 					for _, extension := range extensions {
-						assertLogEntry(t, logHandler, component+extension+" is missing")
+						assertLogEntry(t, logHandler, fmt.Sprintf("Did not find SBOM %s for %s", component+extension, component))
 					}
 				}
 			})
@@ -1104,7 +1104,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
-						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(path.RootDir, "cnb", "process", "some-process-type"+path.ExecExt))
 					})
 
 					it("doesn't set CNB_PROCESS_TYPE", func() {
@@ -1139,7 +1139,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						assertLogEntry(t, logHandler, "no default process type")
-						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(path.RootDir, "cnb", "lifecycle", "launcher"+path.ExecExt))
 					})
 				})
 
@@ -1167,7 +1167,7 @@ version = "4.5.6"
 					it("sets the ENTRYPOINT to this process type", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(path.RootDir, "cnb", "process", "some-process-type"+path.ExecExt))
 					})
 
 					it("doesn't set CNB_PROCESS_TYPE", func() {
@@ -1196,7 +1196,7 @@ version = "4.5.6"
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						assertLogEntry(t, logHandler, "default process type 'some-non-existing-process-type' not present in list [some-process-type]")
-						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(path.RootDir, "cnb", "lifecycle", "launcher"+path.ExecExt))
 					})
 				})
 
@@ -1204,7 +1204,7 @@ version = "4.5.6"
 					it("sets the ENTRYPOINT to the only process", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
-						assertHasEntrypoint(t, fakeAppImage, filepath.Join(rootDir, "cnb", "process", "some-process-type"+execExt))
+						assertHasEntrypoint(t, fakeAppImage, filepath.Join(path.RootDir, "cnb", "process", "some-process-type"+path.ExecExt))
 					})
 				})
 			})

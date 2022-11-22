@@ -1,6 +1,10 @@
 package launch
 
-import "path/filepath"
+import (
+	"path/filepath"
+
+	"github.com/buildpacks/lifecycle/internal/path"
+)
 
 const (
 	EnvAppDir      = "CNB_APP_DIR"
@@ -12,10 +16,10 @@ const (
 	DefaultPlatformAPI = "0.3"
 	DefaultProcessType = "web"
 
-	DefaultExecExt = execExt
+	DefaultExecExt = path.ExecExt
 )
 
 var (
-	DefaultAppDir    = filepath.Join(rootDir, "workspace")
-	DefaultLayersDir = filepath.Join(rootDir, "layers")
+	DefaultAppDir    = filepath.Join(path.RootDir, "workspace")
+	DefaultLayersDir = filepath.Join(path.RootDir, "layers")
 )

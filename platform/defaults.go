@@ -3,6 +3,8 @@ package platform
 import (
 	"path/filepath"
 	"time"
+
+	"github.com/buildpacks/lifecycle/internal/path"
 )
 
 // # Platform Inputs to the Lifecycle and their Default Values
@@ -79,14 +81,14 @@ const (
 )
 
 var (
-	DefaultBuildpacksDir = filepath.Join(rootDir, "cnb", "buildpacks")
-	DefaultExtensionsDir = filepath.Join(rootDir, "cnb", "extensions")
+	DefaultBuildpacksDir = filepath.Join(path.RootDir, "cnb", "buildpacks")
+	DefaultExtensionsDir = filepath.Join(path.RootDir, "cnb", "extensions")
 
 	// DefaultOrderPath is the default order path.
-	DefaultOrderPath = filepath.Join(rootDir, "cnb", "order.toml")
+	DefaultOrderPath = filepath.Join(path.RootDir, "cnb", "order.toml")
 
 	// DefaultStackPath is the default stack path.
-	DefaultStackPath = filepath.Join(rootDir, "cnb", "stack.toml")
+	DefaultStackPath = filepath.Join(path.RootDir, "cnb", "stack.toml")
 )
 
 // ## Provided at Build Time
@@ -101,9 +103,9 @@ const (
 
 // The following are the default locations of input directories if not specified.
 var (
-	DefaultAppDir      = filepath.Join(rootDir, "workspace")
-	DefaultLayersDir   = filepath.Join(rootDir, "layers")
-	DefaultPlatformDir = filepath.Join(rootDir, "platform")
+	DefaultAppDir      = filepath.Join(path.RootDir, "workspace")
+	DefaultLayersDir   = filepath.Join(path.RootDir, "layers")
+	DefaultPlatformDir = filepath.Join(path.RootDir, "platform")
 )
 
 // The following instruct the lifecycle where to write files and data during the build.
@@ -190,6 +192,9 @@ const (
 	DefaultProjectMetadataFile = "project-metadata.toml"
 )
 
-// DefaultLauncherPath is the default location of the launcher executable during the build.
-// The launcher is exported in the output application image and is used to start application processes at runtime.
-var DefaultLauncherPath = filepath.Join(rootDir, "cnb", "lifecycle", "launcher"+execExt)
+var (
+	// DefaultLauncherPath is the default location of the launcher executable during the build.
+	// The launcher is exported in the output application image and is used to start application processes at runtime.
+	DefaultLauncherPath        = filepath.Join(path.RootDir, "cnb", "lifecycle", "launcher"+path.ExecExt)
+	DefaultBuildpacksioSBOMDir = filepath.Join(path.RootDir, "cnb", "lifecycle")
+)

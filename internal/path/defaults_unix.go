@@ -1,8 +1,9 @@
 //go:build linux || darwin
 // +build linux darwin
 
-package paths
+package path
 
 const (
-	rootDir = "/"
+	ExecExt = ``
+	RootDir = `/`
 )
