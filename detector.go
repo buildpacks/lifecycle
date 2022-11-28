@@ -51,26 +51,28 @@ func NewDetectorFactory(
 }
 
 type Detector struct {
-	AppDir        string
-	DirStore      DirStore
-	Executor      buildpack.DetectExecutor
-	HasExtensions bool
-	Logger        log.Logger
-	Order         buildpack.Order
-	PlatformDir   string
-	Resolver      DetectResolver
-	Runs          *sync.Map
+	AppDir         string
+	BuildConfigDir string
+	DirStore       DirStore
+	Executor       buildpack.DetectExecutor
+	HasExtensions  bool
+	Logger         log.Logger
+	Order          buildpack.Order
+	PlatformDir    string
+	Resolver       DetectResolver
+	Runs           *sync.Map
 }
 
-func (f *DetectorFactory) NewDetector(appDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
 	detector := &Detector{
-		AppDir:      appDir,
-		DirStore:    f.dirStore,
-		Executor:    &buildpack.DefaultDetectExecutor{},
-		Logger:      logger,
-		PlatformDir: platformDir,
-		Resolver:    &DefaultResolver{Logger: logger},
-		Runs:        &sync.Map{},
+		AppDir:         appDir,
+		BuildConfigDir: buildConfigDir,
+		DirStore:       f.dirStore,
+		Executor:       &buildpack.DefaultDetectExecutor{},
+		Logger:         logger,
+		PlatformDir:    platformDir,
+		Resolver:       &DefaultResolver{Logger: logger},
+		Runs:           &sync.Map{},
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
@@ -209,9 +211,10 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 		go func(key string, descriptor buildpack.Descriptor) {
 			if _, ok := d.Runs.Load(key); !ok {
 				inputs := buildpack.DetectInputs{
-					AppDir:      d.AppDir,
-					PlatformDir: d.PlatformDir,
-					Env:         env.NewBuildEnv(os.Environ()),
+					AppDir:         d.AppDir,
+					BuildConfigDir: d.BuildConfigDir,
+					PlatformDir:    d.PlatformDir,
+					Env:            env.NewBuildEnv(os.Environ()),
 				}
 				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger))
 			}

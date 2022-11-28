@@ -68,9 +68,6 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 
 				logger := log.Logger{Handler: logHandler, Level: log.DebugLevel}
 
-				p := platform.NewPlatform(platformAPI)
-				h.AssertNil(t, err)
-
 				mockCtrl = gomock.NewController(t)
 				sbomRestorer = testmock.NewMockSBOMRestorer(mockCtrl)
 				if api.MustParse(platformAPI).AtLeast("0.8") {
@@ -86,7 +83,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 					},
 					LayerMetadataRestorer: layer.NewDefaultMetadataRestorer(layersDir, skipLayers, &logger),
 					SBOMRestorer:          sbomRestorer,
-					Platform:              p,
+					PlatformAPI:           api.MustParse(platformAPI),
 				}
 			})
 
@@ -350,7 +347,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
-					it("keeps layer metadatata", func() {
+					it("keeps layer metadata", func() {
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.toml"))
 						h.AssertEq(t, string(got), meta)
 					})
@@ -380,7 +377,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
-					it("keeps layer metadatata", func() {
+					it("keeps layer metadata", func() {
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-false.toml"))
 						h.AssertEq(t, string(got), meta)
 					})
@@ -495,7 +492,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
-					it("keeps layer metadatata", func() {
+					it("keeps layer metadata", func() {
 						got := h.MustReadFile(t, filepath.Join(layersDir, "escaped_buildpack_id", "escaped-bp-layer.toml"))
 						h.AssertEq(t, string(got), meta)
 					})
@@ -606,7 +603,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 						h.AssertNil(t, restorer.Restore(testCache))
 					})
 
-					it("keeps layer metadatata for all layers", func() {
+					it("keeps layer metadata for all layers", func() {
 						got := h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-only.toml"))
 						h.AssertEq(t, string(got), cacheOnlyMeta)
 						got = h.MustReadFile(t, filepath.Join(layersDir, "buildpack.id", "cache-launch.toml"))

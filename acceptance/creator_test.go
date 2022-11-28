@@ -266,7 +266,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						h.AssertStringContains(t, output, "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
 						h.AssertStringContains(t, output, "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")
 						h.AssertStringContains(t, output, "some-launch-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-cache-true-bom-content\"}")
-						h.AssertStringContains(t, output, "Reusing layer 'launch.sbom'")
+						h.AssertStringContains(t, output, "Reusing layer 'buildpacksio/lifecycle:launch.sbom'")
 						h.AssertPathExists(t, filepath.Join(dirBuild2, "layers", "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
 						h.AssertPathExists(t, filepath.Join(dirBuild2, "layers", "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
 						t.Log("restores store.toml")

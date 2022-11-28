@@ -22,31 +22,23 @@ import (
 )
 
 type rebaseCmd struct {
+	*platform.Platform
+
+	docker   client.CommonAPIClient // construct if necessary before dropping privileges
+	keychain authn.Keychain         // construct if necessary before dropping privileges
+
 	appImage imgutil.Image
-	//flags: inputs
-	imageNames            []string
-	reportPath            string
-	runImageRef           string
-	deprecatedRunImageRef string
-	useDaemon             bool
-	uid, gid              int
-
-	platform *platform.Platform
-
-	// set if necessary before dropping privileges
-	docker   client.CommonAPIClient
-	keychain authn.Keychain
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *rebaseCmd) DefineFlags() {
-	cli.FlagGID(&r.gid)
-	cli.FlagReportPath(&r.reportPath)
-	cli.FlagRunImage(&r.runImageRef)
-	cli.FlagUID(&r.uid)
-	cli.FlagUseDaemon(&r.useDaemon)
+	cli.FlagGID(&r.GID)
+	cli.FlagReportPath(&r.ReportPath)
+	cli.FlagRunImage(&r.RunImageRef)
+	cli.FlagUID(&r.UID)
+	cli.FlagUseDaemon(&r.UseDaemon)
 
-	cli.DeprecatedFlagRunImage(&r.deprecatedRunImageRef)
+	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -54,45 +46,33 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
 		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	r.imageNames = args
-	if err := image.ValidateDestinationTags(r.useDaemon, r.imageNames...); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "validate image tag(s)")
+	r.OutputImageRef = args[0]
+	r.AdditionalTags = args[1:]
+	if err := platform.ResolveInputs(platform.Rebase, &r.LifecycleInputs, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
-
-	if r.deprecatedRunImageRef != "" && r.runImageRef != "" {
-		return cmd.FailErrCode(errors.New("supply only one of -run-image or (deprecated) -image"), cmd.CodeForInvalidArgs, "parse arguments")
-	}
-	if r.deprecatedRunImageRef != "" {
-		r.runImageRef = r.deprecatedRunImageRef
-	}
-
-	if r.reportPath == platform.PlaceholderReportPath {
-		r.reportPath = cli.DefaultReportPath(r.platform.API().String(), "")
-	}
-
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.platform.CodeFor(platform.RebaseError), "set app image")
+		return cmd.FailErrCode(errors.New(err.Error()), r.CodeFor(platform.RebaseError), "set app image")
 	}
-
 	return nil
 }
 
 func (r *rebaseCmd) Privileges() error {
 	var err error
-	r.keychain, err = auth.DefaultKeychain(r.registryImages()...)
+	r.keychain, err = auth.DefaultKeychain(r.RegistryImages()...)
 	if err != nil {
 		return cmd.FailErr(err, "resolve keychain")
 	}
 
-	if r.useDaemon {
+	if r.UseDaemon {
 		var err error
 		r.docker, err = priv.DockerClient()
 		if err != nil {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err := priv.RunAs(r.uid, r.gid); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.uid, r.gid))
+	if err := priv.RunAs(r.UID, r.GID); err != nil {
+		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.UID, r.GID))
 	}
 	return nil
 }
@@ -100,17 +80,17 @@ func (r *rebaseCmd) Privileges() error {
 func (r *rebaseCmd) Exec() error {
 	var err error
 	var newBaseImage imgutil.Image
-	if r.useDaemon {
+	if r.UseDaemon {
 		newBaseImage, err = local.NewImage(
-			r.runImageRef,
+			r.RunImageRef,
 			r.docker,
-			local.FromBaseImage(r.runImageRef),
+			local.FromBaseImage(r.RunImageRef),
 		)
 	} else {
 		newBaseImage, err = remote.NewImage(
-			r.runImageRef,
+			r.RunImageRef,
 			r.keychain,
-			remote.FromBaseImage(r.runImageRef),
+			remote.FromBaseImage(r.RunImageRef),
 		)
 	}
 	if err != nil || !newBaseImage.Found() {
@@ -119,50 +99,42 @@ func (r *rebaseCmd) Exec() error {
 
 	rebaser := &lifecycle.Rebaser{
 		Logger:      cmd.DefaultLogger,
-		PlatformAPI: r.platform.API(),
+		PlatformAPI: r.PlatformAPI,
 	}
-	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.imageNames[1:])
+	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.AdditionalTags)
 	if err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "rebase")
+		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "rebase")
 	}
 
-	if err := encoding.WriteTOML(r.reportPath, &report); err != nil {
-		return cmd.FailErrCode(err, r.platform.CodeFor(platform.RebaseError), "write rebase report")
+	if err := encoding.WriteTOML(r.ReportPath, &report); err != nil {
+		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "write rebase report")
 	}
 	return nil
 }
 
-func (r *rebaseCmd) registryImages() []string {
-	registryImages := r.imageNames
-	if r.runImageRef != "" {
-		registryImages = append(registryImages, r.runImageRef)
-	}
-	return registryImages
-}
-
 func (r *rebaseCmd) setAppImage() error {
-	ref, err := name.ParseReference(r.imageNames[0], name.WeakValidation)
+	ref, err := name.ParseReference(r.OutputImageRef, name.WeakValidation)
 	if err != nil {
 		return err
 	}
 	registry := ref.Context().RegistryStr()
 
-	if r.useDaemon {
+	if r.UseDaemon {
 		r.appImage, err = local.NewImage(
-			r.imageNames[0],
+			r.OutputImageRef,
 			r.docker,
-			local.FromBaseImage(r.imageNames[0]),
+			local.FromBaseImage(r.OutputImageRef),
 		)
 	} else {
 		var keychain authn.Keychain
-		keychain, err = auth.DefaultKeychain(r.imageNames[0])
+		keychain, err = auth.DefaultKeychain(r.OutputImageRef)
 		if err != nil {
 			return err
 		}
 		r.appImage, err = remote.NewImage(
-			r.imageNames[0],
+			r.OutputImageRef,
 			keychain,
-			remote.FromBaseImage(r.imageNames[0]),
+			remote.FromBaseImage(r.OutputImageRef),
 		)
 	}
 	if err != nil || !r.appImage.Found() {
@@ -174,11 +146,11 @@ func (r *rebaseCmd) setAppImage() error {
 		return err
 	}
 
-	if r.runImageRef == "" {
+	if r.RunImageRef == "" {
 		if md.Stack.RunImage.Image == "" {
 			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
 		}
-		r.runImageRef, err = md.Stack.BestRunImageMirror(registry)
+		r.RunImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {
 			return err
 		}

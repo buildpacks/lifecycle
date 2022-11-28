@@ -240,7 +240,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 						h.AssertContains(t, fakeAppImage.ReusedLayers(), "launch.sbom-digest")
-						assertReuseLayerLog(t, logHandler, "launch.sbom")
+						assertReuseLayerLog(t, logHandler, "buildpacksio/lifecycle:launch.sbom")
 					})
 				})
 			})
@@ -258,7 +258,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				assertHasLayer(t, fakeAppImage, "config")
-				assertAddLayerLog(t, logHandler, "config")
+				assertAddLayerLog(t, logHandler, "buildpacksio/lifecycle:config")
 			})
 
 			it("reuses launcher layer if the sha matches the sha in the metadata", func() {
@@ -872,7 +872,7 @@ version = "4.5.6"
 						h.AssertNil(t, err)
 
 						assertHasLayer(t, fakeAppImage, "launch.sbom")
-						assertAddLayerLog(t, logHandler, "launch.sbom")
+						assertAddLayerLog(t, logHandler, "buildpacksio/lifecycle:launch.sbom")
 
 						var result struct {
 							BOM struct {
@@ -902,7 +902,7 @@ version = "4.5.6"
 				h.AssertNil(t, err)
 
 				assertHasLayer(t, fakeAppImage, "config")
-				assertAddLayerLog(t, logHandler, "config")
+				assertAddLayerLog(t, logHandler, "buildpacksio/lifecycle:config")
 			})
 
 			it("creates a launcher layer", func() {
@@ -1074,6 +1074,21 @@ version = "4.5.6"
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(opts.AdditionalNames, fakeAppImage.Name())...)
+			})
+
+			it("should display that the SBOM is missing", func() {
+				exporter.PlatformAPI = api.MustParse("0.11")
+				_, err := exporter.Export(opts)
+				h.AssertNil(t, err)
+
+				extensions := exporter.SBOMExtensions()
+				components := exporter.SBOMComponents()
+
+				for _, component := range components {
+					for _, extension := range extensions {
+						assertLogEntry(t, logHandler, component+extension+" is missing")
+					}
+				}
 			})
 		})
 

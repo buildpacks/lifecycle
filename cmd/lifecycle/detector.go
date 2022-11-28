@@ -13,14 +13,13 @@ import (
 )
 
 type detectCmd struct {
-	platform *platform.Platform
-	platform.DetectInputs
+	*platform.Platform
 }
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
 	switch {
-	case d.platform.API().AtLeast("0.10"):
+	case d.PlatformAPI.AtLeast("0.10"):
 		cli.FlagAnalyzedPath(&d.AnalyzedPath)
 		cli.FlagAppDir(&d.AppDir)
 		cli.FlagBuildpacksDir(&d.BuildpacksDir)
@@ -39,18 +38,16 @@ func (d *detectCmd) DefineFlags() {
 		cli.FlagOrderPath(&d.OrderPath)
 		cli.FlagPlanPath(&d.PlanPath)
 		cli.FlagPlatformDir(&d.PlatformDir)
+		cli.FlagBuildConfigDir(&d.BuildConfigDir)
 	}
 }
 
 // Args validates arguments and flags, and fills in default values.
-func (d *detectCmd) Args(nargs int, args []string) error {
+func (d *detectCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-
-	var err error
-	d.DetectInputs, err = d.platform.ResolveDetect(d.DetectInputs)
-	if err != nil {
+	if err := platform.ResolveInputs(platform.Detect, &d.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
@@ -65,18 +62,16 @@ func (d *detectCmd) Privileges() error {
 }
 
 func (d *detectCmd) Exec() error {
-	dirStore, err := platform.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
-	if err != nil {
-		return err
-	}
+	dirStore := platform.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
 	detectorFactory := lifecycle.NewDetectorFactory(
-		d.platform.API(),
+		d.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
 	detector, err := detectorFactory.NewDetector(
 		d.AppDir,
+		d.BuildConfigDir,
 		d.OrderPath,
 		d.PlatformDir,
 		cmd.DefaultLogger,
@@ -89,7 +84,7 @@ func (d *detectCmd) Exec() error {
 			return err
 		}
 	}
-	group, plan, err := doDetect(detector, d.platform)
+	group, plan, err := doDetect(detector, d.Platform)
 	if err != nil {
 		return err // pass through error
 	}
@@ -98,8 +93,10 @@ func (d *detectCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			dirStore,
 		)
-		generator, err := generatorFactory.NewGenerator(
+		var generator *lifecycle.Generator
+		generator, err = generatorFactory.NewGenerator(
 			d.AppDir,
+			d.BuildConfigDir,
 			group.GroupExtensions,
 			d.GeneratedDir,
 			plan,
@@ -110,20 +107,22 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize generator")
 		}
-		result, err := generator.Generate()
+		var result lifecycle.GenerateResult
+		result, err = generator.Generate()
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		// was a custom runimage configured?
+		// was a custom run image configured?
 		if result.RunImage != "" {
-			cmd.DefaultLogger.Debug("Updating analyzed metdata with new runImage")
-			analyzedMD, err := parseAnalyzedMD(cmd.DefaultLogger, d.AnalyzedPath)
+			cmd.DefaultLogger.Debug("Updating analyzed metadata with new runImage")
+			var analyzedMD platform.AnalyzedMetadata
+			analyzedMD, err = platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
 			if err != nil {
 				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
 			}
-			cmd.DefaultLogger.Debugf("Loaded existing analyzed metdata from '%s'", d.AnalyzedPath)
+			cmd.DefaultLogger.Debugf("Loaded existing analyzed metadata from '%s'", d.AnalyzedPath)
 			analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
-			if err := d.writeGenerateData(analyzedMD); err != nil {
+			if err = d.writeGenerateData(analyzedMD); err != nil {
 				return err
 			}
 			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage)
@@ -147,10 +146,10 @@ func unwrapErrorFailWithMessage(err error, msg string) error {
 func (d *detectCmd) unwrapGenerateFail(err error) error {
 	if err, ok := err.(*buildpack.Error); ok {
 		if err.Type == buildpack.ErrTypeBuildpack {
-			return cmd.FailErrCode(err.Cause(), d.platform.CodeFor(platform.FailedGenerateWithErrors), "build")
+			return cmd.FailErrCode(err.Cause(), d.CodeFor(platform.FailedGenerateWithErrors), "build")
 		}
 	}
-	return cmd.FailErrCode(err, d.platform.CodeFor(platform.GenerateError), "build")
+	return cmd.FailErrCode(err, d.CodeFor(platform.GenerateError), "build")
 }
 
 func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Group, platform.BuildPlan, error) {

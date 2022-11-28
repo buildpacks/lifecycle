@@ -52,7 +52,7 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 				proc2,
 			}})
 			h.AssertNil(t, err)
-			h.AssertEq(t, configLayer.ID, "process-types")
+			h.AssertEq(t, configLayer.ID, "buildpacksio/lifecycle:process-types")
 			var mode int64 = 0755
 			if runtime.GOOS == "windows" {
 				mode = 0777
@@ -114,7 +114,7 @@ func testLauncherLayers(t *testing.T, when spec.G, it spec.S) {
 		it("creates a layer with the launcher", func() {
 			launcherLayer, err := factory.LauncherLayer(filepath.Join("testdata", "fake-launcher"))
 			h.AssertNil(t, err)
-			h.AssertEq(t, launcherLayer.ID, "launcher")
+			h.AssertEq(t, launcherLayer.ID, "buildpacksio/lifecycle:launcher")
 			var mode int64 = 0755
 			if runtime.GOOS == "windows" {
 				mode = 0777
