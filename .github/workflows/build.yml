@@ -262,7 +262,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
+          git checkout $(git describe --abbrev=0 --tags  --exclude *-rc*) # check out the latest tag
           LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
           LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
@@ -280,7 +280,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - name: Add runner IP to daemon insecure-registries and firewall
         shell: powershell
         run: |
@@ -328,7 +328,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout $(git describe --abbrev=0 --tags) # check out the latest tag
+          git checkout $(git describe --abbrev=0 --tags  --exclude *-rc*) # check out the latest tag
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
