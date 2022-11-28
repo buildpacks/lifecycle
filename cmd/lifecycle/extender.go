@@ -71,6 +71,9 @@ func (e *extendCmd) Exec() error {
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
 		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
 	}
+	if err = priv.SetEnvironmentForUser(e.UID); err != nil {
+		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", e.UID))
+	}
 	buildCmd := buildCmd{Platform: e.Platform}
 	if err = buildCmd.Privileges(); err != nil {
 		return err
