@@ -128,7 +128,7 @@ jobs:
 
           ## Lifecycle Image
 
-          An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
+          An OCI image containing the lifecycle binaries is available at index.docker.io/natalieparellano/lifecycle:${{ env.LIFECYCLE_VERSION }}.
           EOF
       - name: Create Pre Release
         if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1

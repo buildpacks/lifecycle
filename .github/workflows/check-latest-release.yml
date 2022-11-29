@@ -72,7 +72,7 @@ jobs:
         id: scan-image
         uses: anchore/scan-action@v3
         with:
-          image: buildpacksio/lifecycle:${{ steps.read-go.outputs.latest-release-version }}
+          image: index.docker.io/natalieparellano/lifecycle:${{ steps.read-go.outputs.latest-release-version }}
       - name: Create issue if needed
         if: failure() && steps.scan-image.outcome == 'failure'
         env:
