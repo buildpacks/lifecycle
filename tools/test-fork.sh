@@ -42,7 +42,7 @@ if [[ $registry == *"ghcr.io"* ]]; then
   sed -i '' "s/secrets.DOCKER_PASSWORD/secrets.GITHUB_TOKEN/g" .github/workflows/*.yml
 fi
 
-echo "Using public key from fork (assumes private key and passphrase have been added to GitHub secrets)"
+echo "Using public key from fork (assumes base-64 encoded COSIGN_PRIVATE_KEY and COSIGN_PASSWORD have been added to GitHub secrets)"
 cp $2 cosign.pub
 
 echo "Removing arm tests (these require a self-hosted runner)"
