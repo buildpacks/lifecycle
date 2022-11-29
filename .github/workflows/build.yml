@@ -29,13 +29,6 @@ jobs:
         env:
           TEST_COVERAGE: 1
         run: echo test
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./out/tests/coverage-unit.txt
-          flags: unit,os_linux
-          fail_ci_if_error: true
-          verbose: true
   test-windows:
     runs-on: windows-2019
     steps:
@@ -76,13 +69,6 @@ jobs:
           TEST_COVERAGE: 1
         run: |
           echo test
-      - name: Prepare Codecov
-        uses: crazy-max/ghaction-chocolatey@v2
-        with:
-          args: install codecov -y
-      - name: Run Codecov
-        run: |
-          codecov.exe -f .\out\tests\coverage-unit.txt -v --flag os_windows
   build-and-publish:
     needs:
       - test-linux-amd64
