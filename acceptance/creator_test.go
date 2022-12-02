@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/internal/path"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -328,6 +330,56 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						}
 					})
 				})
+			})
+		})
+
+		when("layout case", func() {
+			var (
+				containerName string
+				err           error
+				layoutDir     string
+				tmpDir        string
+			)
+
+			it.Before(func() {
+				// creates the directory to save all the OCI images on disk
+				tmpDir, err = os.MkdirTemp("", "layout")
+				h.AssertNil(t, err)
+
+				containerName = "test-container-" + h.RandString(10)
+				layoutDir = filepath.Join(path.RootDir, "layout-repo")
+			})
+
+			it.After(func() {
+				if h.DockerContainerExists(t, containerName) {
+					h.Run(t, exec.Command("docker", "rm", containerName))
+				}
+				h.DockerImageRemove(t, createdImageName)
+
+				// removes all images created
+				os.RemoveAll(tmpDir)
+
+			})
+
+			it("creates app", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+				var createFlags []string
+				createFlags = append(createFlags, []string{"-layout", "-run-image", "busybox"}...)
+
+				createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
+				createdImageName = "some-created-image-" + h.RandString(10)
+				createArgs = append(createArgs, createdImageName)
+
+				output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, createImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_EXPERIMENTAL_MODE=warn",
+					),
+					h.WithArgs(createArgs...))
+
+				h.AssertStringContains(t, output, "Saving /layout-repo/index.docker.io/library/"+createdImageName+"/latest")
+				index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", createdImageName+"/latest"))
+				h.AssertEq(t, len(index.Manifests), 1)
 			})
 		})
 	}

@@ -36,6 +36,7 @@ type LifecycleInputs struct {
 	LauncherPath          string
 	LauncherSBOMDir       string
 	LayersDir             string
+	LayoutDir             string
 	LogLevel              string
 	OrderPath             string
 	OutputImageRef        string
@@ -50,6 +51,7 @@ type LifecycleInputs struct {
 	GID                   int
 	SkipLayers            bool
 	UseDaemon             bool
+	UseLayout             bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
 	KanikoCacheTTL        time.Duration
 }
@@ -105,6 +107,7 @@ var (
 	ErrSupplyOnlyOneRunImage         = "supply only one of -run-image or (deprecated) -image"
 	ErrRunImageUnsupported           = "-run-image is unsupported"
 	ErrImageUnsupported              = "-image is unsupported"
+	ErrMultipleTargetsUnsupported    = "exporting to multiples targets is not allowed"
 	MsgIgnoringLaunchCache           = "Ignoring -launch-cache, only intended for use with -daemon"
 )
 
@@ -122,6 +125,7 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 			CheckLaunchCache,
 			ValidateImageRefs,
 			ValidateTargetsAreSameRegistry,
+			ValidateSingleTargetProvided,
 		)
 	case Build:
 		// nop
@@ -241,6 +245,7 @@ func (i *LifecycleInputs) directoryPaths() []*string {
 		&i.LaunchCacheDir,
 		&i.LayersDir,
 		&i.PlatformDir,
+		&i.LayoutDir,
 	}
 }
 
@@ -319,6 +324,13 @@ func ValidateImageRefs(i *LifecycleInputs, _ log.Logger) error {
 func ValidateOutputImageProvided(i *LifecycleInputs, logger log.Logger) error {
 	if i.OutputImageRef == "" {
 		return errors.New(ErrOutputImageRequired)
+	}
+	return nil
+}
+
+func ValidateSingleTargetProvided(i *LifecycleInputs, _ log.Logger) error {
+	if i.UseLayout && i.UseDaemon {
+		return errors.New(ErrMultipleTargetsUnsupported)
 	}
 	return nil
 }

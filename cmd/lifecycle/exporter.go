@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/buildpacks/imgutil/layout"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -41,6 +44,10 @@ type exportData struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
+	if e.PlatformAPI.AtLeast("0.12") {
+		cli.FlagLayoutDir(&e.LayoutDir)
+		cli.FlagUseLayout(&e.UseLayout)
+	}
 	if e.PlatformAPI.AtLeast("0.11") {
 		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
 	}
@@ -80,6 +87,11 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	if err != nil {
 		return err
 	}
+	if e.UseLayout {
+		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -96,7 +108,7 @@ func (e *exportCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err = priv.EnsureOwner(e.UID, e.GID, e.CacheDir, e.LaunchCacheDir); err != nil {
+	if err = priv.EnsureOwner(e.UID, e.GID, e.CacheDir, e.LaunchCacheDir, e.LayoutDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
@@ -163,9 +175,12 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		appImage   imgutil.Image
 		runImageID string
 	)
-	if e.UseDaemon {
+	switch {
+	case e.UseLayout:
+		appImage, runImageID, err = e.initLayoutAppImage(analyzedMD)
+	case e.UseDaemon:
 		appImage, runImageID, err = e.initDaemonAppImage(analyzedMD)
-	} else {
+	default:
 		appImage, runImageID, err = e.initRemoteAppImage(analyzedMD)
 	}
 	if err != nil {
@@ -267,6 +282,46 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	}
 
 	runImage, err := remote.NewImage(e.RunImageRef, e.keychain, remote.FromBaseImage(e.RunImageRef))
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "access run image")
+	}
+	runImageID, err := runImage.Identifier()
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "get run image reference")
+	}
+	return appImage, runImageID.String(), nil
+}
+
+func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+	var opts = []layout.ImageOption{
+		layout.FromBaseImagePath(analyzedMD.RunImage.Name),
+	}
+
+	cmd.DefaultLogger.Infof("Using run image: %s\n", analyzedMD.RunImage.Name)
+
+	if analyzedMD.PreviousImage != nil {
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImage.Name)
+		opts = append(opts, layout.WithPreviousImage(analyzedMD.PreviousImage.Name))
+	}
+
+	if !e.customSourceDateEpoch().IsZero() {
+		opts = append(opts, layout.WithCreatedAt(e.customSourceDateEpoch()))
+	}
+
+	outputImageRefPath, err := layout.ParseRefToPath(e.OutputImageRef)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "parsing output image reference")
+	}
+	appPath := filepath.Join(e.LayoutDir, outputImageRefPath)
+	cmd.DefaultLogger.Infof("Using app image: %s\n", appPath)
+
+	appImage, err := layout.NewImage(appPath, opts...)
+
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "create new app image")
+	}
+
+	runImage, err := layout.NewImage(analyzedMD.RunImage.Name)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}

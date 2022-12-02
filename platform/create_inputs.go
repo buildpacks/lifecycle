@@ -14,8 +14,10 @@ import (
 func DefaultCreateInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {
-	case platformAPI.AtLeast("0.11"):
+	case platformAPI.AtLeast("0.12"):
 		inputs = defaultCreateInputs()
+	case platformAPI.AtLeast("0.11"):
+		inputs = defaultCreateInputs011()
 	case platformAPI.AtLeast("0.6"):
 		inputs = defaultCreateInputs06To010()
 	case platformAPI.AtLeast("0.5"):
@@ -28,6 +30,13 @@ func DefaultCreateInputs(platformAPI *api.Version) LifecycleInputs {
 }
 
 func defaultCreateInputs() LifecycleInputs {
+	ci := defaultCreateInputs011()
+	ci.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
+	ci.UseLayout = boolEnv(EnvUseLayout)
+	return ci
+}
+
+func defaultCreateInputs011() LifecycleInputs {
 	ci := defaultCreateInputs06To010()
 	ci.BuildConfigDir = envOrDefault(EnvBuildConfigDir, DefaultBuildConfigDir)
 	ci.LauncherSBOMDir = DefaultBuildpacksioSBOMDir

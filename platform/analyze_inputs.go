@@ -13,10 +13,12 @@ import (
 func DefaultAnalyzeInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {
-	case platformAPI.AtLeast("0.9"):
+	case platformAPI.AtLeast("0.12"):
 		inputs = defaultAnalyzeInputs()
+	case platformAPI.AtLeast("0.9"):
+		inputs = defaultAnalyzeInputs09To011()
 	case platformAPI.AtLeast("0.7"):
-		inputs = defaultAnalyzeInputs07()
+		inputs = defaultAnalyzeInputs07To08()
 	case platformAPI.AtLeast("0.5"):
 		inputs = defaultAnalyzeInputs05To06()
 	default:
@@ -27,12 +29,19 @@ func DefaultAnalyzeInputs(platformAPI *api.Version) LifecycleInputs {
 }
 
 func defaultAnalyzeInputs() LifecycleInputs {
-	ai := defaultAnalyzeInputs07()
+	ai := defaultAnalyzeInputs09To011()
+	ai.UseLayout = boolEnv(EnvUseLayout)
+	ai.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
+	return ai
+}
+
+func defaultAnalyzeInputs09To011() LifecycleInputs {
+	ai := defaultAnalyzeInputs07To08()
 	ai.LaunchCacheDir = os.Getenv(EnvLaunchCacheDir)
 	return ai
 }
 
-func defaultAnalyzeInputs07() LifecycleInputs {
+func defaultAnalyzeInputs07To08() LifecycleInputs {
 	ai := defaultAnalyzeInputs05To06()
 	ai.AdditionalTags = str.Slice{}
 	ai.CacheDir = "" // removed

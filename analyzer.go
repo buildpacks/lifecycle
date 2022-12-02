@@ -18,7 +18,7 @@ type AnalyzerFactory struct {
 	apiVerifier     BuildpackAPIVerifier
 	cacheHandler    CacheHandler
 	configHandler   ConfigHandler
-	imageHandler    ImageHandler
+	imageHandler    image.Handler
 	registryHandler RegistryHandler
 }
 
@@ -27,7 +27,7 @@ func NewAnalyzerFactory(
 	apiVerifier BuildpackAPIVerifier,
 	cacheHandler CacheHandler,
 	configHandler ConfigHandler,
-	imageHandler ImageHandler,
+	imageHandler image.Handler,
 	registryHandler RegistryHandler,
 ) *AnalyzerFactory {
 	return &AnalyzerFactory{
@@ -113,7 +113,7 @@ func (f *AnalyzerFactory) ensureRegistryAccess(
 ) error {
 	var readImages, writeImages []string
 	writeImages = append(writeImages, cacheImageRef)
-	if !f.imageHandler.Docker() {
+	if !(f.imageHandler.Docker() || f.imageHandler.Layout()) {
 		readImages = append(readImages, previousImageRef, runImageRef)
 		writeImages = append(writeImages, outputImageRef)
 		writeImages = append(writeImages, additionalTags...)
@@ -249,6 +249,7 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	a.Logger.Debugf("Analyzing image %q", identifier.String())
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
+		Name:      image.Name(),
 	}, nil
 }
 

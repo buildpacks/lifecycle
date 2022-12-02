@@ -29,6 +29,7 @@ type AnalyzedMetadata struct {
 // FIXME: fix key names to be accurate in the daemon case
 type ImageIdentifier struct {
 	Reference string `toml:"reference"`
+	Name      string `toml:"name"` // TODO find a good name for it
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {

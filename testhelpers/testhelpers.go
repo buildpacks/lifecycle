@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+
 	"github.com/apex/log/handlers/memory"
 	"github.com/google/go-cmp/cmp"
 )
@@ -423,4 +425,19 @@ func AssertNoLogEntry(t *testing.T, logHandler *memory.Handler, expected string)
 			t.Fatalf("Expected log entries: %s not to contain \n'%s'", fmtMessage, expected)
 		}
 	}
+}
+
+func ReadIndexManifest(t *testing.T, path string) *v1.IndexManifest {
+	indexPath := filepath.Join(path, "index.json")
+	AssertPathExists(t, filepath.Join(path, "oci-layout"))
+	AssertPathExists(t, indexPath)
+
+	// check index file
+	data, err := os.ReadFile(indexPath)
+	AssertNil(t, err)
+
+	index := &v1.IndexManifest{}
+	err = json.Unmarshal(data, index)
+	AssertNil(t, err)
+	return index
 }

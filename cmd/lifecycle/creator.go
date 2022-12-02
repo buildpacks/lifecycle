@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/buildpacks/lifecycle/image"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -27,6 +29,10 @@ type createCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
+	if c.PlatformAPI.AtLeast("0.12") {
+		cli.FlagLayoutDir(&c.LayoutDir)
+		cli.FlagUseLayout(&c.UseLayout)
+	}
 	if c.PlatformAPI.AtLeast("0.11") {
 		cli.FlagBuildConfigDir(&c.BuildConfigDir)
 		cli.FlagLauncherSBOMDir(&c.LauncherSBOMDir)
@@ -62,6 +68,11 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	if err := platform.ResolveInputs(platform.Create, &c.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
+	if c.UseLayout {
+		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -77,7 +88,7 @@ func (c *createCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err = priv.EnsureOwner(c.UID, c.GID, c.CacheDir, c.LaunchCacheDir, c.LayersDir); err != nil {
+	if err = priv.EnsureOwner(c.UID, c.GID, c.CacheDir, c.LaunchCacheDir, c.LayersDir, c.LayoutDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(c.UID, c.GID); err != nil {
@@ -112,7 +123,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			NewImageHandler(c.docker, c.keychain),
+			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(
@@ -175,7 +186,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			NewImageHandler(c.docker, c.keychain),
+			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(

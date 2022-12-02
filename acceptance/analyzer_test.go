@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/internal/path"
+
 	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -979,6 +981,37 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertStringContains(t, string(output), expected)
 					})
 				})
+			})
+		})
+
+		when("layout case", func() {
+			it("writes analyzed.toml", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+
+				var analyzeFlags []string
+				analyzeFlags = append(analyzeFlags, []string{
+					"-layout",
+					"-run-image", "busybox",
+				}...)
+				var execArgs []string
+				execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+				execArgs = append(execArgs, "my-app")
+
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					ctrPath("/layers/analyzed.toml"),
+					analyzeImage,
+					h.WithFlags(
+						"--env", "CNB_EXPERIMENTAL_MODE=warn",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+					),
+					h.WithArgs(execArgs...),
+				)
+
+				analyzer := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+				h.AssertNotNil(t, analyzer.RunImage)
+				h.AssertEq(t, analyzer.RunImage.Name, filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest"))
 			})
 		})
 	}
