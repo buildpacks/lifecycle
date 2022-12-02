@@ -5,7 +5,8 @@ import (
 )
 
 // DefaultDetectInputs accepts a Platform API version and returns a set of lifecycle inputs
-//   with default values filled in for the `detect` phase.
+//
+//	with default values filled in for the `detect` phase.
 func DefaultDetectInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {

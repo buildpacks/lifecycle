@@ -9,7 +9,8 @@ import (
 )
 
 // DefaultRebaseInputs accepts a Platform API version and returns a set of lifecycle inputs
-//   with default values filled in for the `rebase` phase.
+//
+//	with default values filled in for the `rebase` phase.
 func DefaultRebaseInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {

@@ -10,7 +10,8 @@ import (
 )
 
 // DefaultCreateInputs accepts a Platform API version and returns a set of lifecycle inputs
-//   with default values filled in for the `create` phase.
+//
+//	with default values filled in for the `create` phase.
 func DefaultCreateInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {

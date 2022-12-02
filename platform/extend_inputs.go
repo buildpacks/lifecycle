@@ -8,7 +8,8 @@ import (
 )
 
 // DefaultExtendInputs accepts a Platform API version and returns a set of lifecycle inputs
-//   with default values filled in for the `extend` phase.
+//
+//	with default values filled in for the `extend` phase.
 func DefaultExtendInputs(platformAPI *api.Version) LifecycleInputs {
 	return LifecycleInputs{
 		AnalyzedPath:   envOrDefault(EnvAnalyzedPath, placeholderAnalyzedPath),     // <analyzed>
