@@ -69,6 +69,10 @@ func FlagLauncherPath(launcherPath *string) {
 	flagSet.StringVar(launcherPath, "launcher", *launcherPath, "path to launcher binary")
 }
 
+func FlagLauncherSBOMDir(launcherSBOMDir *string) {
+	flagSet.StringVar(launcherSBOMDir, "launcher-sbom", *launcherSBOMDir, "path to launcher SBOM directory")
+}
+
 func FlagLayersDir(layersDir *string) {
 	flagSet.StringVar(layersDir, "layers", *layersDir, "path to layers directory")
 }

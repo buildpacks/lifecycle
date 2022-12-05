@@ -29,6 +29,7 @@ type createCmd struct {
 func (c *createCmd) DefineFlags() {
 	if c.PlatformAPI.AtLeast("0.11") {
 		cli.FlagBuildConfigDir(&c.BuildConfigDir)
+		cli.FlagLauncherSBOMDir(&c.LauncherSBOMDir)
 	}
 	cli.FlagAppDir(&c.AppDir)
 	cli.FlagBuildpacksDir(&c.BuildpacksDir)

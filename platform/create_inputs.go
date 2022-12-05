@@ -30,6 +30,7 @@ func DefaultCreateInputs(platformAPI *api.Version) LifecycleInputs {
 func defaultCreateInputs() LifecycleInputs {
 	ci := defaultCreateInputs06To010()
 	ci.BuildConfigDir = envOrDefault(EnvBuildConfigDir, DefaultBuildConfigDir)
+	ci.LauncherSBOMDir = DefaultBuildpacksioSBOMDir
 	return ci
 }
 

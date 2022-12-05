@@ -1,5 +1,6 @@
-package paths
+package path
 
 const (
-	rootDir = `c:\`
+	ExecExt = `.exe`
+	RootDir = `c:\`
 )

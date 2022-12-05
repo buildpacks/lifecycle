@@ -41,6 +41,9 @@ type exportData struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
+	if e.PlatformAPI.AtLeast("0.11") {
+		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
+	}
 	cli.FlagAnalyzedPath(&e.AnalyzedPath)
 	cli.FlagAppDir(&e.AppDir)
 	cli.FlagCacheDir(&e.CacheDir)
@@ -178,7 +181,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		AdditionalNames:    e.AdditionalTags,
 		AppDir:             e.AppDir,
 		DefaultProcessType: e.DefaultProcessType,
-		LauncherConfig:     launcherConfig(e.LauncherPath),
+		LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
 		LayersDir:          e.LayersDir,
 		OrigMetadata:       analyzedMD.Metadata,
 		Project:            projectMD,
@@ -274,9 +277,10 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	return appImage, runImageID.String(), nil
 }
 
-func launcherConfig(launcherPath string) lifecycle.LauncherConfig {
+func launcherConfig(launcherPath, launcherSBOMDir string) lifecycle.LauncherConfig {
 	return lifecycle.LauncherConfig{
-		Path: launcherPath,
+		Path:    launcherPath,
+		SBOMDir: launcherSBOMDir,
 		Metadata: platform.LauncherMetadata{
 			Version: cmd.Version,
 			Source: platform.SourceMetadata{

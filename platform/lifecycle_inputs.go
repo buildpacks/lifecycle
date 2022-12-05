@@ -34,6 +34,7 @@ type LifecycleInputs struct {
 	KanikoDir             string
 	LaunchCacheDir        string
 	LauncherPath          string
+	LauncherSBOMDir       string
 	LayersDir             string
 	LogLevel              string
 	OrderPath             string
