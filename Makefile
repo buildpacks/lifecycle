@@ -342,4 +342,3 @@ docker-run-windows:
 	docker run -v lifecycle-out:c:/lifecycle/out -e LIFECYCLE_VERSION -e PLATFORM_API -e BUILDPACK_API -v gopathcache:c:/gopath -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' --isolation=process --interactive --tty --rm $(SOURCE_COMPILATION_IMAGE) $(DOCKER_CMD)
 	docker run -v lifecycle-out:c:/lifecycle/out --rm $(SOURCE_COMPILATION_IMAGE) tar -cf- out | tar -xf-
 	@docker volume rm -f lifecycle-out
-

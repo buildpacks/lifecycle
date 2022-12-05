@@ -68,10 +68,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 
-			detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
+			detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, detector.AppDir, "some-app-dir")
+			h.AssertEq(t, detector.BuildConfigDir, "some-build-config-dir")
 			h.AssertNotNil(t, detector.DirStore)
 			h.AssertEq(t, detector.HasExtensions, false)
 			h.AssertEq(t, detector.Logger, logger)
@@ -128,7 +129,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
 				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
-				detector, err := detectorFactory.NewDetector("some-app-dir", "some-order-path", "some-platform-dir", logger)
+				detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -170,6 +171,29 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.After(func() {
 			mockCtrl.Finish()
+		})
+
+		it("provides detect inputs to each group element", func() {
+			bpA1 := &buildpack.BpDescriptor{
+				WithAPI:   "0.3",
+				Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+			}
+			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+			executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Do(
+				func(_ buildpack.Descriptor, inputs buildpack.DetectInputs, _ log.Logger) buildpack.DetectOutputs {
+					h.AssertEq(t, inputs.AppDir, detector.AppDir)
+					h.AssertEq(t, inputs.BuildConfigDir, detector.BuildConfigDir)
+					h.AssertEq(t, inputs.PlatformDir, detector.PlatformDir)
+					return buildpack.DetectOutputs{}
+				})
+
+			group := []buildpack.GroupElement{
+				{ID: "A", Version: "v1", API: "0.3", Optional: true},
+			}
+			resolver.EXPECT().Resolve(group, detector.Runs)
+
+			detector.Order = buildpack.Order{{Group: group}}
+			_, _, _ = detector.Detect()
 		})
 
 		it("should expand order-containing buildpack IDs", func() {

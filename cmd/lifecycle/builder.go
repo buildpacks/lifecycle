@@ -21,12 +21,23 @@ type buildCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (b *buildCmd) DefineFlags() {
-	cli.FlagAppDir(&b.AppDir)
-	cli.FlagBuildpacksDir(&b.BuildpacksDir)
-	cli.FlagGroupPath(&b.GroupPath)
-	cli.FlagLayersDir(&b.LayersDir)
-	cli.FlagPlanPath(&b.PlanPath)
-	cli.FlagPlatformDir(&b.PlatformDir)
+	switch {
+	case b.PlatformAPI.AtLeast("0.11"):
+		cli.FlagAppDir(&b.AppDir)
+		cli.FlagBuildConfigDir(&b.BuildConfigDir)
+		cli.FlagBuildpacksDir(&b.BuildpacksDir)
+		cli.FlagGroupPath(&b.GroupPath)
+		cli.FlagLayersDir(&b.LayersDir)
+		cli.FlagPlanPath(&b.PlanPath)
+		cli.FlagPlatformDir(&b.PlatformDir)
+	default:
+		cli.FlagAppDir(&b.AppDir)
+		cli.FlagBuildpacksDir(&b.BuildpacksDir)
+		cli.FlagGroupPath(&b.GroupPath)
+		cli.FlagLayersDir(&b.LayersDir)
+		cli.FlagPlanPath(&b.PlanPath)
+		cli.FlagPlatformDir(&b.PlatformDir)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -61,17 +72,18 @@ func (b *buildCmd) Exec() error {
 
 func (b *buildCmd) build(group buildpack.Group, plan platform.BuildPlan) error {
 	builder := &lifecycle.Builder{
-		AppDir:        b.AppDir,
-		LayersDir:     b.LayersDir,
-		PlatformDir:   b.PlatformDir,
-		BuildExecutor: &buildpack.DefaultBuildExecutor{},
-		DirStore:      platform.NewDirStore(b.BuildpacksDir, ""),
-		Group:         group,
-		Logger:        cmd.DefaultLogger,
-		Out:           cmd.Stdout,
-		Err:           cmd.Stderr,
-		Plan:          plan,
-		PlatformAPI:   b.PlatformAPI,
+		AppDir:         b.AppDir,
+		BuildConfigDir: b.BuildConfigDir,
+		LayersDir:      b.LayersDir,
+		PlatformDir:    b.PlatformDir,
+		BuildExecutor:  &buildpack.DefaultBuildExecutor{},
+		DirStore:       platform.NewDirStore(b.BuildpacksDir, ""),
+		Group:          group,
+		Logger:         cmd.DefaultLogger,
+		Out:            cmd.Stdout,
+		Err:            cmd.Stderr,
+		Plan:           plan,
+		PlatformAPI:    b.PlatformAPI,
 	}
 	md, err := builder.Build()
 	if err != nil {

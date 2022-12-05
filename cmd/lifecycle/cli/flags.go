@@ -21,6 +21,10 @@ func FlagAppDir(appDir *string) {
 	flagSet.StringVar(appDir, "app", *appDir, "path to app directory")
 }
 
+func FlagBuildConfigDir(buildConfigDir *string) {
+	flagSet.StringVar(buildConfigDir, "build-config", *buildConfigDir, "path to build config directory")
+}
+
 func FlagBuildImage(buildImage *string) {
 	flagSet.StringVar(buildImage, "build-image", *buildImage, "build image tag name")
 }

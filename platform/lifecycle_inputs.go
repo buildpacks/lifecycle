@@ -21,8 +21,9 @@ type LifecycleInputs struct {
 	PlatformAPI           *api.Version
 	AnalyzedPath          string
 	AppDir                string
-	BuildpacksDir         string
+	BuildConfigDir        string
 	BuildImageRef         string
+	BuildpacksDir         string
 	CacheDir              string
 	CacheImageRef         string
 	DefaultProcessType    string
@@ -250,6 +251,7 @@ func ResolveAbsoluteDirPaths(i *LifecycleInputs, _ log.Logger) error {
 func (i *LifecycleInputs) directoryPaths() []*string {
 	return []*string{
 		&i.AppDir,
+		&i.BuildConfigDir,
 		&i.BuildpacksDir,
 		&i.CacheDir,
 		&i.ExtensionsDir,

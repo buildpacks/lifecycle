@@ -77,17 +77,17 @@ func (mr *MockBuildEnvMockRecorder) List() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockBuildEnv)(nil).List))
 }
 
-// WithPlatform mocks base method.
-func (m *MockBuildEnv) WithPlatform(arg0 string) ([]string, error) {
+// WithOverrides mocks base method.
+func (m *MockBuildEnv) WithOverrides(arg0, arg1 string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WithPlatform", arg0)
+	ret := m.ctrl.Call(m, "WithOverrides", arg0, arg1)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// WithPlatform indicates an expected call of WithPlatform.
-func (mr *MockBuildEnvMockRecorder) WithPlatform(arg0 interface{}) *gomock.Call {
+// WithOverrides indicates an expected call of WithOverrides.
+func (mr *MockBuildEnvMockRecorder) WithOverrides(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithPlatform", reflect.TypeOf((*MockBuildEnv)(nil).WithPlatform), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithOverrides", reflect.TypeOf((*MockBuildEnv)(nil).WithOverrides), arg0, arg1)
 }

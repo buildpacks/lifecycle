@@ -271,6 +271,11 @@ jobs:
     needs: build-and-publish
     runs-on: windows-2019
     steps:
+      - name: Set git to use LF and symlinks
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global core.symlinks true
       - uses: actions/checkout@v2
         with:
           repository: 'buildpacks/pack'
