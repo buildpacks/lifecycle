@@ -148,7 +148,7 @@ func (r *rebaseCmd) setAppImage() error {
 
 	if r.RunImageRef == "" {
 		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-image is required when there is no stack metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
+			return cmd.FailErrCode(errors.New("-run-image is required when there is no stack metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
 		}
 		r.RunImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {
