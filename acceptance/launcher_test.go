@@ -45,7 +45,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		when("exec.d", func() {
 			it("executes the binaries and modifies env before running profiles", func() {
 				cmd := exec.Command("docker", "run", "--rm",
-					"--entrypoint=exec.d-checker",
+					"--entrypoint=exec.d-checker"+exe,
 					"--env=VAR_FROM_EXEC_D=orig-val",
 					launchImage)
 
