@@ -45,8 +45,9 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		when("exec.d", func() {
 			it("executes the binaries and modifies env before running profiles", func() {
 				cmd := exec.Command("docker", "run", "--rm",
+					"--entrypoint=exec.d-checker",
 					"--env=VAR_FROM_EXEC_D=orig-val",
-					launchImage, "exec.d-checker")
+					launchImage)
 
 				helper := "helper" + exe
 				execDHelper := ctrPath("/layers", execDBpDir, "some_layer/exec.d", helper)
@@ -141,14 +142,14 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 		when("there is no CMD provided", func() {
 			when("CNB_PROCESS_TYPE is NOT set", func() {
 				it("web is the default process-type", func() {
-					cmd := exec.Command("docker", "run", "--rm", launchImage)
+					cmd := exec.Command("docker", "run", "--rm", "--env=CNB_PLATFORM_API=0.3", launchImage)
 					assertOutput(t, cmd, "Executing web process-type")
 				})
 			})
 
 			when("CNB_PROCESS_TYPE is set", func() {
 				it("should run the specified CNB_PROCESS_TYPE", func() {
-					cmd := exec.Command("docker", "run", "--rm", "--env", "CNB_PROCESS_TYPE=direct-process", launchImage)
+					cmd := exec.Command("docker", "run", "--rm", "--env=CNB_PLATFORM_API=0.3", "--env=CNB_PROCESS_TYPE=direct-process", launchImage)
 					if runtime.GOOS == "windows" {
 						assertOutput(t, cmd, "Usage: ping")
 					} else {
@@ -160,7 +161,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		when("process-type provided in CMD", func() {
 			it("launches that process-type", func() {
-				cmd := exec.Command("docker", "run", "--rm", launchImage, "direct-process")
+				cmd := exec.Command("docker", "run", "--rm", "--env=CNB_PLATFORM_API=0.3", launchImage, "direct-process")
 				expected := "Executing direct-process process-type"
 				if runtime.GOOS == "windows" {
 					expected = "Usage: ping"
@@ -169,7 +170,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets env vars from process specific directories", func() {
-				cmd := exec.Command("docker", "run", "--rm", launchImage, "worker")
+				cmd := exec.Command("docker", "run", "--rm", "--env=CNB_PLATFORM_API=0.3", launchImage, "worker")
 				expected := "worker-process-val"
 				assertOutput(t, cmd, expected)
 			})
@@ -180,6 +181,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 				it("runs command as script", func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
 					cmd := exec.Command("docker", "run", "--rm",
+						"--env=CNB_PLATFORM_API=0.3",
 						"--env", "VAR1=val1",
 						"--env", "VAR2=val with space",
 						launchImage, "indirect-process-with-script",
@@ -200,6 +202,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 							val2 = "val with space"
 						}
 						cmd := exec.Command("docker", "run", "--rm",
+							"--env=CNB_PLATFORM_API=0.3",
 							"--env", "VAR1=val1",
 							"--env", "VAR2="+val2,
 							launchImage, "indirect-process-with-args",
@@ -214,7 +217,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					it("args become arguments to bash", func() {
 						h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
 						cmd := exec.Command("docker", "run", "--rm",
-							launchImage, "legacy-indirect-process-with-args",
+							"--env=CNB_PLATFORM_API=0.3", launchImage, "legacy-indirect-process-with-args",
 						)
 						assertOutput(t, cmd, "'arg' 'arg with spaces'")
 					})
@@ -222,7 +225,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 					it("script must be explicitly written to accept bash args", func() {
 						h.SkipIf(t, runtime.GOOS == "windows", "scripts are unsupported on windows")
 						cmd := exec.Command("docker", "run", "--rm",
-							launchImage, "legacy-indirect-process-with-incorrect-args",
+							"--env=CNB_PLATFORM_API=0.3", launchImage, "legacy-indirect-process-with-incorrect-args",
 						)
 						output, err := cmd.CombinedOutput()
 						h.AssertNotNil(t, err)
@@ -232,7 +235,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sources scripts from process specific directories", func() {
-				cmd := exec.Command("docker", "run", "--rm", launchImage, "profile-checker")
+				cmd := exec.Command("docker", "run", "--rm", "--env=CNB_PLATFORM_API=0.3", launchImage, "profile-checker")
 				expected := "sourced bp profile\nsourced bp profile-checker profile\nsourced app profile\nval-from-profile"
 				assertOutput(t, cmd, expected)
 			})
@@ -240,6 +243,7 @@ func testLauncher(t *testing.T, when spec.G, it spec.S) {
 
 		it("respects CNB_APP_DIR and CNB_LAYERS_DIR environment variables", func() {
 			cmd := exec.Command("docker", "run", "--rm",
+				"--env=CNB_PLATFORM_API=0.3",
 				"--env", "CNB_APP_DIR="+ctrPath("/other-app"),
 				"--env", "CNB_LAYERS_DIR=/other-layers",
 				launchImage) // #nosec G204

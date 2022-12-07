@@ -13,4 +13,6 @@ RUN copy helper.exe c:\layers\0.6_buildpack\some_layer\exec.d\exec.d-checker\hel
 
 ENV PATH="c:\cnb\process;c:\cnb\lifecycle;C:\Windows\system32;C:\Windows;"
 
+RUN mklink c:\cnb\process\exec.d-checker c:\cnb\lifecycle\launcher
+
 ENTRYPOINT ["c:\\cnb\\lifecycle\\launcher"]

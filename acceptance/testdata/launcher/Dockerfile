@@ -13,4 +13,6 @@ COPY --from=builder /go/helper /layers/0.5_buildpack/some_layer/exec.d/exec.d-ch
 
 ENV PATH="/cnb/process:/cnb/lifecycle:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+RUN ln -s /cnb/lifecycle/launcher /cnb/process/exec.d-checker  # register process type for newer platform API
+
 ENTRYPOINT ["/cnb/lifecycle/launcher"]
