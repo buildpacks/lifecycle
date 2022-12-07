@@ -13,7 +13,7 @@ const (
 	EnvPlatformAPI = "CNB_PLATFORM_API"
 	EnvProcessType = "CNB_PROCESS_TYPE"
 
-	DefaultPlatformAPI = "0.3"
+	DefaultPlatformAPI = "0.7"
 	DefaultProcessType = "web"
 
 	DefaultExecExt = path.ExecExt
