@@ -10,7 +10,7 @@ import (
 )
 
 // DefaultExportInputs accepts a Platform API version and returns a set of lifecycle inputs
-//   with default values filled in for the `export` phase.
+// with default values filled in for the `export` phase.
 func DefaultExportInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {
