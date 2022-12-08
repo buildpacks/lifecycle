@@ -51,7 +51,7 @@ func Run(c Command, asSubcommand bool) {
 	if printVersion {
 		cmd.ExitWithVersion()
 	}
-	if err := cmd.SetLogLevel(logLevel); err != nil {
+	if err := cmd.DefaultLogger.SetLevel(logLevel); err != nil {
 		cmd.Exit(err)
 	}
 	if err := c.Args(flagSet.NArg(), flagSet.Args()); err != nil {

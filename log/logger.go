@@ -1,5 +1,9 @@
 package log
 
+import (
+	"io"
+)
+
 type Logger interface {
 	Debug(msg string)
 	Debugf(fmt string, v ...interface{})
@@ -12,4 +16,10 @@ type Logger interface {
 
 	Error(msg string)
 	Errorf(fmt string, v ...interface{})
+}
+
+type LoggerWriterWithLevel interface {
+	Logger
+	io.Writer
+	LogLevel() string
 }

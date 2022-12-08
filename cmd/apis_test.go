@@ -27,7 +27,7 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		logHandler = memory.New()
-		logger = &cmd.Logger{Logger: &log.Logger{Handler: logHandler}}
+		logger = &llog.DefaultLogger{Logger: &log.Logger{Handler: logHandler}}
 	})
 
 	when("VerifyPlatformAPI", func() {

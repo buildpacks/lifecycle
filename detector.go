@@ -1,7 +1,9 @@
 package lifecycle
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 
@@ -56,14 +58,15 @@ type Detector struct {
 	DirStore       DirStore
 	Executor       buildpack.DetectExecutor
 	HasExtensions  bool
-	Logger         log.Logger
+	Logger         log.LoggerWriterWithLevel
+	MultiLogger    *log.MultiLogger
 	Order          buildpack.Order
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
 }
 
-func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerWriterWithLevel) (*Detector, error) {
 	detector := &Detector{
 		AppDir:         appDir,
 		BuildConfigDir: buildConfigDir,
@@ -71,10 +74,12 @@ func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platfor
 		Executor:       &buildpack.DefaultDetectExecutor{},
 		Logger:         logger,
 		PlatformDir:    platformDir,
-		Resolver:       &DefaultResolver{Logger: logger},
 		Runs:           &sync.Map{},
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
+		return nil, err
+	}
+	if err := f.setResolverAndMultiLogger(detector, logger); err != nil {
 		return nil, err
 	}
 	return detector, nil
@@ -110,8 +115,28 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 	return nil
 }
 
+func (f *DetectorFactory) setResolverAndMultiLogger(detector *Detector, logger log.LoggerWriterWithLevel) error {
+	multiLogger := log.NewMultiLogger(&bytes.Buffer{}, &bytes.Buffer{})
+	if err := multiLogger.SetLevel(logger.LogLevel()); err != nil {
+		return fmt.Errorf("failed to set log level: %w", err)
+	}
+	detector.Resolver = NewDefaultDetectResolver(multiLogger)
+	detector.MultiLogger = multiLogger
+	return nil
+}
+
 func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {
-	return d.DetectOrder(d.Order)
+	group, plan, detectErr := d.DetectOrder(d.Order)
+	var copyErr error
+	if detectErr != nil {
+		_, copyErr = io.Copy(d.Logger, d.MultiLogger.InfoReader())
+	} else {
+		_, copyErr = io.Copy(d.Logger, d.MultiLogger.DefaultReader())
+	}
+	if copyErr != nil {
+		return buildpack.Group{}, platform.BuildPlan{}, fmt.Errorf("failed to copy log: %w", copyErr)
+	}
+	return group, plan, detectErr
 }
 
 func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
@@ -240,13 +265,17 @@ func keyFor(groupEl buildpack.GroupElement) string {
 	return fmt.Sprintf("%s %s", groupEl.Kind(), groupEl.String())
 }
 
-type DefaultResolver struct {
+type DefaultDetectResolver struct {
 	Logger log.Logger
+}
+
+func NewDefaultDetectResolver(logger log.Logger) *DefaultDetectResolver {
+	return &DefaultDetectResolver{Logger: logger}
 }
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
 // If any required buildpack in the group failed detection or a build plan cannot be resolved, it returns an error.
-func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+func (r *DefaultDetectResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectOutputs
 	for _, el := range done {
 		key := keyFor(el) // FIXME: ensure the Detector and Resolver always use the same key
@@ -255,10 +284,12 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *syn
 			return nil, nil, errors.Errorf("missing detection of '%s'", key)
 		}
 		run := t.(buildpack.DetectOutputs)
+
 		outputLogf := r.Logger.Debugf
 
 		switch run.Code {
 		case CodeDetectPass, CodeDetectFail:
+			// nop
 		default:
 			outputLogf = r.Logger.Infof
 		}
@@ -354,7 +385,7 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *syn
 	return found, plan, nil
 }
 
-func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
+func (r *DefaultDetectResolver) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
 	r.Logger.Debugf("Resolving plan... (try #%d)", i)
 
 	var deps depMap

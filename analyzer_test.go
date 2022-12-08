@@ -476,7 +476,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 			if testing.Verbose() {
 				analyzer.Logger = cmd.DefaultLogger
-				h.AssertNil(t, cmd.SetLogLevel("debug"))
+				h.AssertNil(t, cmd.DefaultLogger.SetLevel("debug"))
 			}
 		})
 
