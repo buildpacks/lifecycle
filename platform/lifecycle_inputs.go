@@ -78,25 +78,6 @@ func (i *LifecycleInputs) RegistryImages() []string {
 	return ret
 }
 
-func (i *LifecycleInputs) ReadableRegistryImages() []string {
-	var ret []string
-	if i.UseDaemon {
-		return ret
-	}
-	ret = appendOnce(ret, i.PreviousImageRef, i.BuildImageRef, i.RunImageRef, i.DeprecatedRunImageRef)
-	return ret
-}
-
-func (i *LifecycleInputs) WriteableRegistryImages() []string {
-	var ret []string
-	ret = appendOnce(ret, i.CacheImageRef)
-	if i.UseDaemon {
-		return ret
-	}
-	ret = appendOnce(ret, i.DestinationImages()...)
-	return ret
-}
-
 func appendOnce(list []string, els ...string) []string {
 	for _, el := range els {
 		if el == "" {
