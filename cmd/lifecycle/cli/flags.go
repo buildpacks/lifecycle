@@ -6,9 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/lifecycle/internal/str"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)

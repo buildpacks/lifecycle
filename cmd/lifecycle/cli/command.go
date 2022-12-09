@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 // Command defines the interface for running the lifecycle phases
@@ -54,6 +55,13 @@ func Run(c Command, asSubcommand bool) {
 	if err := cmd.SetLogLevel(logLevel); err != nil {
 		cmd.Exit(err)
 	}
+
+	// Warn when CNB_PLATFORM_API is unset
+	if os.Getenv(platform.EnvPlatformAPI) == "" {
+		cmd.DefaultLogger.Warnf("%s is unset; using Platform API version %s", platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+		cmd.DefaultLogger.Infof("%s should be set to avoid breaking changes when upgrading the lifecycle", platform.EnvPlatformAPI)
+	}
+
 	if err := c.Args(flagSet.NArg(), flagSet.Args()); err != nil {
 		cmd.Exit(err)
 	}

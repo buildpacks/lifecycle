@@ -19,7 +19,7 @@ import (
 // the default version is used.
 const (
 	EnvPlatformAPI     = "CNB_PLATFORM_API"
-	DefaultPlatformAPI = "0.7"
+	DefaultPlatformAPI = "0.3"
 )
 
 // Most configuration options for the lifecycle can be provided as either command-line flags or environment variables.
