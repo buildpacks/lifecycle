@@ -21,28 +21,23 @@ import (
 )
 
 func main() {
-	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
-		cmd.Exit(err)
-	}
-
 	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
 	case "detector":
-		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPI)}, false)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPIWithExitOnError())}, false)
 	case "analyzer":
-		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPI)}, false)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPIWithExitOnError())}, false)
 	case "restorer":
-		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPI)}, false)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPIWithExitOnError())}, false)
 	case "builder":
-		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPI)}, false)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPIWithExitOnError())}, false)
 	case "exporter":
-		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPI)}, false)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPIWithExitOnError())}, false)
 	case "rebaser":
-		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPI)}, false)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPIWithExitOnError())}, false)
 	case "creator":
-		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPI)}, false)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPIWithExitOnError())}, false)
 	case "extender":
-		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPI)}, false)
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPIWithExitOnError())}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
@@ -50,8 +45,16 @@ func main() {
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
 		}
-		subcommand(platformAPI)
+		subcommand(platformAPIWithExitOnError())
 	}
+}
+
+func platformAPIWithExitOnError() string {
+	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
+		cmd.Exit(err)
+	}
+	return platformAPI
 }
 
 func subcommand(platformAPI string) {
