@@ -58,7 +58,7 @@ func Run(c Command, asSubcommand bool) {
 
 	// Warn when CNB_PLATFORM_API is unset
 	if os.Getenv(platform.EnvPlatformAPI) == "" {
-		cmd.DefaultLogger.Warnf("%s is unset; using Platform API version %s", platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+		cmd.DefaultLogger.Warnf("%s is unset; using Platform API version '%s'", platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
 		cmd.DefaultLogger.Infof("%s should be set to avoid breaking changes when upgrading the lifecycle", platform.EnvPlatformAPI)
 	}
 
