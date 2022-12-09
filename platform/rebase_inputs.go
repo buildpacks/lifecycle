@@ -39,7 +39,7 @@ func defaultRebaseInputs03() LifecycleInputs {
 	}
 }
 
-func FillRebaseRunImage(i *LifecycleInputs, logger log.Logger) error {
+func ValidateRebaseRunImage(i *LifecycleInputs, _ log.Logger) error {
 	switch {
 	case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
 		return errors.New(ErrSupplyOnlyOneRunImage)
@@ -47,6 +47,6 @@ func FillRebaseRunImage(i *LifecycleInputs, logger log.Logger) error {
 		i.RunImageRef = i.DeprecatedRunImageRef
 		return nil
 	default:
-		return fillRunImageFromStackTOMLIfNeeded(i, logger)
+		return nil
 	}
 }

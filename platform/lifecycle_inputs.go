@@ -168,7 +168,7 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 		// nop
 	case Rebase:
 		ops = append(ops,
-			FillRebaseRunImage,
+			ValidateRebaseRunImage,
 			ValidateOutputImageProvided,
 			ValidateImageRefs,
 			ValidateTargetsAreSameRegistry,
