@@ -1,7 +1,6 @@
 package log
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"sync"
@@ -11,13 +10,11 @@ import (
 )
 
 var _ Logger = &DefaultLogger{}
-var _ LoggerWriterWithLevel = &DefaultLogger{}
+var _ LoggerHandlerWithLevel = &DefaultLogger{}
 
 // DefaultLogger extends `github.com/apex/log` `log.Logger`
 type DefaultLogger struct {
 	*log.Logger
-	io.Reader
-	io.Writer
 }
 
 func NewDefaultLogger(writer io.Writer) *DefaultLogger {
@@ -27,17 +24,19 @@ func NewDefaultLogger(writer io.Writer) *DefaultLogger {
 				writer: writer,
 			},
 		},
-		Reader: &bytes.Buffer{}, // placeholder reader
-		Writer: writer,
 	}
+}
+
+func (l *DefaultLogger) HandleLog(entry *log.Entry) error {
+	return l.Handler.HandleLog(entry)
+}
+
+func (l *DefaultLogger) LogLevel() log.Level {
+	return l.Level
 }
 
 func (l *DefaultLogger) Phase(name string) {
 	l.Infof(phaseStyle("===> %s", name))
-}
-
-func (l *DefaultLogger) LogLevel() string {
-	return l.Level.String()
 }
 
 func (l *DefaultLogger) SetLevel(requested string) error {

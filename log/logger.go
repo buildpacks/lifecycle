@@ -1,8 +1,6 @@
 package log
 
-import (
-	"io"
-)
+import "github.com/apex/log"
 
 type Logger interface {
 	Debug(msg string)
@@ -18,8 +16,8 @@ type Logger interface {
 	Errorf(fmt string, v ...interface{})
 }
 
-type LoggerWriterWithLevel interface {
+type LoggerHandlerWithLevel interface {
 	Logger
-	io.Writer
-	LogLevel() string
+	HandleLog(entry *log.Entry) error
+	LogLevel() log.Level
 }

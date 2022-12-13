@@ -1,12 +1,12 @@
 package lifecycle
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"sync"
 
+	apexlog "github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -58,15 +58,16 @@ type Detector struct {
 	DirStore       DirStore
 	Executor       buildpack.DetectExecutor
 	HasExtensions  bool
-	Logger         log.LoggerWriterWithLevel
-	MultiLogger    *log.MultiLogger
+	Logger         log.LoggerHandlerWithLevel
+	MemHandler     *memory.Handler
 	Order          buildpack.Order
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
 }
 
-func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerWriterWithLevel) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+	memHandler := memory.New()
 	detector := &Detector{
 		AppDir:         appDir,
 		BuildConfigDir: buildConfigDir,
@@ -74,12 +75,11 @@ func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platfor
 		Executor:       &buildpack.DefaultDetectExecutor{},
 		Logger:         logger,
 		PlatformDir:    platformDir,
+		Resolver:       NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
 		Runs:           &sync.Map{},
+		MemHandler:     memHandler,
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
-		return nil, err
-	}
-	if err := f.setResolverAndMultiLogger(detector, logger); err != nil {
 		return nil, err
 	}
 	return detector, nil
@@ -115,26 +115,14 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 	return nil
 }
 
-func (f *DetectorFactory) setResolverAndMultiLogger(detector *Detector, logger log.LoggerWriterWithLevel) error {
-	multiLogger := log.NewMultiLogger(&bytes.Buffer{}, &bytes.Buffer{})
-	if err := multiLogger.SetLevel(logger.LogLevel()); err != nil {
-		return fmt.Errorf("failed to set log level: %w", err)
-	}
-	detector.Resolver = NewDefaultDetectResolver(multiLogger)
-	detector.MultiLogger = multiLogger
-	return nil
-}
-
 func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {
 	group, plan, detectErr := d.DetectOrder(d.Order)
-	var copyErr error
-	if detectErr != nil {
-		_, copyErr = io.Copy(d.Logger, d.MultiLogger.InfoReader())
-	} else {
-		_, copyErr = io.Copy(d.Logger, d.MultiLogger.DefaultReader())
-	}
-	if copyErr != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, fmt.Errorf("failed to copy log: %w", copyErr)
+	for _, e := range d.MemHandler.Entries {
+		if detectErr != nil || e.Level >= d.Logger.LogLevel() {
+			if err := d.Logger.HandleLog(e); err != nil {
+				return buildpack.Group{}, platform.BuildPlan{}, fmt.Errorf("failed to handle log entry: %w", err)
+			}
+		}
 	}
 	return group, plan, detectErr
 }

@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	apexlog "github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -34,7 +36,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			fakeAPIVerifier   *testmock.MockBuildpackAPIVerifier
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
-			logger            log.LoggerWriterWithLevel
+			logger            log.LoggerHandlerWithLevel
 			mockController    *gomock.Controller
 		)
 
@@ -159,12 +161,12 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			resolver = testmock.NewMockDetectResolver(mockCtrl)
 
 			detector = &lifecycle.Detector{
-				DirStore:    dirStore,
-				Executor:    executor,
-				Logger:      log.NewDefaultLogger(new(bytes.Buffer)),
-				MultiLogger: log.NewMultiLogger(new(bytes.Buffer), new(bytes.Buffer)),
-				Resolver:    resolver,
-				Runs:        &sync.Map{},
+				DirStore:   dirStore,
+				Executor:   executor,
+				Logger:     log.NewDefaultLogger(new(bytes.Buffer)),
+				MemHandler: memory.New(),
+				Resolver:   resolver,
+				Runs:       &sync.Map{},
 			}
 		})
 
@@ -920,17 +922,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when(".Resolve", func() {
 		var (
-			resolver    *lifecycle.DefaultDetectResolver
-			multiLogger *log.MultiLogger
-			defaultLog  *bytes.Buffer
-			infoLog     *bytes.Buffer
+			resolver   *lifecycle.DefaultDetectResolver
+			logHandler *memory.Handler
+			logger     *log.DefaultLogger
 		)
 
 		it.Before(func() {
-			defaultLog = &bytes.Buffer{}
-			infoLog = &bytes.Buffer{}
-			multiLogger = log.NewMultiLogger(defaultLog, infoLog)
-			resolver = lifecycle.NewDefaultDetectResolver(multiLogger)
+			logHandler = memory.New()
+			logger = &log.DefaultLogger{Logger: &apexlog.Logger{Handler: logHandler}}
+			resolver = lifecycle.NewDefaultDetectResolver(logger)
 		})
 
 		it("fails if the group is empty", func() {
@@ -939,7 +939,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := cmp.Diff(h.AllLogsFromReader(t, defaultLog),
+			if s := cmp.Diff(h.AllLogs(logHandler),
 				"======== Results ========\n"+
 					"fail: no viable buildpacks in group\n",
 			); s != "" {
@@ -966,7 +966,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"skip: A@v1\n"+
 					"skip: B@v1\n"+
@@ -996,7 +996,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Unexpected error:\n%s\n", err)
 				}
 
-				if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+				if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 					"======== Results ========\n"+
 						"skip: A@v1\n"+
 						"pass: B@v1\n"+
@@ -1026,7 +1026,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"pass: A@v1\n"+
 					"err:  B@v1 (127)\n",
@@ -1037,141 +1037,61 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		when("log output", func() {
 			it.Before(func() {
-				h.AssertNil(t, multiLogger.SetLevel("info"))
+				h.AssertNil(t, logger.SetLevel("info"))
 			})
 
-			when("default logger", func() {
-				it("outputs detect pass and fail as debug level", func() {
-					group := []buildpack.GroupElement{
-						{ID: "A", Version: "v1", Optional: false},
-						{ID: "B", Version: "v1", Optional: false},
-					}
+			it("outputs detect pass and fail as debug level", func() {
+				group := []buildpack.GroupElement{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}
 
-					detectRuns := &sync.Map{}
-					detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
-						Code: 0,
-					})
-					detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
-						Code: 100,
-					})
-
-					_, _, err := resolver.Resolve(group, detectRuns)
-					if err != lifecycle.ErrFailedDetection {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-
-					if s := h.AllLogsFromReader(t, defaultLog); s != "" {
-						t.Fatalf("Unexpected log:\n%s\n", s)
-					}
+				detectRuns := &sync.Map{}
+				detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
+					Code: 0,
+				})
+				detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
+					Code: 100,
 				})
 
-				it("outputs detect errors as info level", func() {
-					group := []buildpack.GroupElement{
-						{ID: "A", Version: "v1", Optional: false},
-						{ID: "B", Version: "v1", Optional: false},
-					}
+				_, _, err := resolver.Resolve(group, detectRuns)
+				if err != lifecycle.ErrFailedDetection {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
 
-					detectRuns := &sync.Map{}
-					detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
-						Code: 0,
-					})
-					detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
-						Output: []byte("detect out: B@v1\ndetect err: B@v1"),
-						Code:   127,
-					})
-
-					_, _, err := resolver.Resolve(group, detectRuns)
-					if err != lifecycle.ErrBuildpack {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-
-					if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
-						"======== Output: B@v1 ========\n"+
-							"detect out: B@v1\n"+
-							"detect err: B@v1\n"+
-							"err:  B@v1 (127)\n",
-					) {
-						t.Fatalf("Unexpected log:\n%s\n", s)
-					}
-				})
+				if s := h.AllLogs(logHandler); s != "" {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
 			})
 
-			when("info logger", func() {
-				it("outputs detect pass and fail as info level", func() {
-					group := []buildpack.GroupElement{
-						{ID: "A", Version: "v1", Optional: false},
-						{ID: "B", Version: "v1", Optional: false},
-					}
+			it("outputs detect errors as info level", func() {
+				group := []buildpack.GroupElement{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}
 
-					detectRuns := &sync.Map{}
-					detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
-						Code: 0,
-					})
-					detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
-						Output: []byte("detect out: B@v1"),
-						Code:   100,
-					})
-
-					_, _, err := resolver.Resolve(group, detectRuns)
-					if err != lifecycle.ErrFailedDetection {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-
-					if s := h.AllLogsFromReader(t, defaultLog); s != "" {
-						t.Fatalf("Unexpected log:\n%s\n", s)
-					}
-
-					if s := h.AllLogsFromReader(t, infoLog); !strings.HasSuffix(s,
-						"======== Output: B@v1 ========\n"+
-							"detect out: B@v1\n"+
-							"======== Results ========\n"+
-							"pass: A@v1\n"+
-							"fail: B@v1\n",
-					) {
-						t.Fatalf("Unexpected log:\n%s\n", s)
-					}
+				detectRuns := &sync.Map{}
+				detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
+					Code: 0,
+				})
+				detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
+					Output: []byte("detect out: B@v1\ndetect err: B@v1"),
+					Code:   127,
 				})
 
-				it("outputs detect errors as info level", func() {
-					group := []buildpack.GroupElement{
-						{ID: "A", Version: "v1", Optional: false},
-						{ID: "B", Version: "v1", Optional: false},
-					}
+				_, _, err := resolver.Resolve(group, detectRuns)
+				if err != lifecycle.ErrBuildpack {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
 
-					detectRuns := &sync.Map{}
-					detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
-						Code: 0,
-					})
-					detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
-						Output: []byte("detect out: B@v1\ndetect err: B@v1"),
-						Code:   127,
-					})
-
-					_, _, err := resolver.Resolve(group, detectRuns)
-					if err != lifecycle.ErrBuildpack {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
-
-					if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
-						"======== Output: B@v1 ========\n"+
-							"detect out: B@v1\n"+
-							"detect err: B@v1\n"+
-							"err:  B@v1 (127)\n",
-					) {
-						t.Fatalf("Unexpected log:\n%s\n", s)
-					}
-
-					if s := h.AllLogsFromReader(t, infoLog); !strings.HasSuffix(s,
-						"======== Output: B@v1 ========\n"+
-							"detect out: B@v1\n"+
-							"detect err: B@v1\n"+
-							"======== Results ========\n"+
-							"pass: A@v1\n"+
-							"err:  B@v1 (127)\n",
-					) {
-						t.Fatalf("Unexpected log:\n%s\n", s)
-					}
-				})
+				if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
+					"======== Output: B@v1 ========\n"+
+						"detect out: B@v1\n"+
+						"detect err: B@v1\n"+
+						"err:  B@v1 (127)\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
 			})
 		})
 
@@ -1260,7 +1180,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected entries:\n%+v\n", entries)
 			}
 
-			if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"pass: A@v1\n"+
 					"pass: C@v2\n"+
@@ -1321,7 +1241,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"skip: A@v1\n"+
 					"pass: B@v1\n"+
@@ -1378,7 +1298,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected error:\n%s\n", err)
 			}
 
-			if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"pass: A@v1\n"+
 					"pass: B@v1\n"+
@@ -1449,7 +1369,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected entries:\n%+v\n", entries)
 			}
 
-			if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 				"======== Results ========\n"+
 					"pass: A@v1\n"+
 					"pass: B@v1\n"+
@@ -1576,7 +1496,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Unexpected entries:\n%+v\n", entries)
 			}
 
-			if s := h.AllLogsFromReader(t, defaultLog); !strings.HasSuffix(s,
+			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
 				"Resolving plan... (try #16)\n"+
 					"skip: D@v1 requires dep9-missing\n"+
 					"skip: D@v1 provides unused dep10-missing\n"+

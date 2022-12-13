@@ -384,19 +384,12 @@ func Rdfile(t *testing.T, path string) string {
 	return CleanEndings(string(out))
 }
 
-func AllLogsFromHandler(logHandler *memory.Handler) string {
+func AllLogs(logHandler *memory.Handler) string {
 	var out string
 	for _, le := range logHandler.Entries {
 		out = out + le.Message + "\n"
 	}
 	return CleanEndings(out)
-}
-
-func AllLogsFromReader(t *testing.T, buffer *bytes.Buffer) string {
-	t.Helper()
-	data, err := io.ReadAll(buffer)
-	AssertNil(t, err)
-	return string(data)
 }
 
 func AssertLogEntry(t *testing.T, logHandler *memory.Handler, expected string) {
