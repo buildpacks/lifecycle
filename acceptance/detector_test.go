@@ -106,7 +106,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				"docker",
 				"run",
 				"--rm",
-				"--env", "CNB_ORDER_PATH=/cnb/orders/empty_order.toml",
+				"--env", "CNB_ORDER_PATH=/cnb/orders/fail_detect_order.toml",
 				"--env", "CNB_PLATFORM_API="+latestPlatformAPI,
 				detectImage,
 			)
@@ -116,9 +116,16 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			if !ok {
 				t.Fatalf("expected an error of type exec.ExitError")
 			}
-			h.AssertEq(t, failErr.ExitCode(), 20) // platform code for cmd.FailedDetect
-			expected := "No buildpack groups passed detection."
-			h.AssertStringContains(t, string(output), expected)
+			h.AssertEq(t, failErr.ExitCode(), 20) // platform code for failed detect
+
+			expected1 := `======== Output: fail_detect_buildpack@some_version ========
+Opted out of detection
+======== Results ========
+fail: fail_detect_buildpack@some_version
+`
+			h.AssertStringContains(t, string(output), expected1)
+			expected2 := "No buildpack groups passed detection."
+			h.AssertStringContains(t, string(output), expected2)
 		})
 	})
 
@@ -140,7 +147,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("writes group.toml and plan.toml at the default locations", func() {
-			h.DockerRunAndCopy(t,
+			output := h.DockerRunAndCopy(t,
 				containerName,
 				copyDir,
 				"/layers",
@@ -170,6 +177,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Name, "some_requirement")
 			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["some_metadata_key"], "some_metadata_val")
 			h.AssertEq(t, buildPlan.Entries[0].Requires[0].Metadata["version"], "some_version")
+
+			// check output
+			h.AssertStringContains(t, output, "simple_buildpack simple_buildpack_version")
+			h.AssertStringDoesNotContain(t, output, "======== Results ========") // log output is info level as detect passed
 		})
 	})
 
@@ -408,7 +419,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				if !ok {
 					t.Fatalf("expected an error of type exec.ExitError")
 				}
-				h.AssertEq(t, failErr.ExitCode(), 100) // platform code for cmd.FailedDetect
+				h.AssertEq(t, failErr.ExitCode(), 100) // platform code for failed detect
 				expected := "No buildpack groups passed detection."
 				h.AssertStringContains(t, string(output), expected)
 			})

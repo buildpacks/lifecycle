@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+echo "Opted out of detection"
+
+exit 100

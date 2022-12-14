@@ -2,13 +2,13 @@ package lifecycle_test
 
 import (
 	"errors"
+	"io"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/discard"
+	apexlog "github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -28,45 +29,48 @@ func TestDetector(t *testing.T) {
 }
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
-	when("#NewDetector", func() {
-		var (
-			detectorFactory   *lifecycle.DetectorFactory
-			fakeAPIVerifier   *testmock.MockBuildpackAPIVerifier
-			fakeConfigHandler *testmock.MockConfigHandler
-			fakeDirStore      *testmock.MockDirStore
-			logger            *log.Logger
-			mockController    *gomock.Controller
+	var (
+		mockController *gomock.Controller
+
+		apiVerifier   *testmock.MockBuildpackAPIVerifier
+		configHandler *testmock.MockConfigHandler
+		dirStore      *testmock.MockDirStore
+		logger        log.LoggerHandlerWithLevel
+
+		detectorFactory *lifecycle.DetectorFactory
+	)
+
+	it.Before(func() {
+		mockController = gomock.NewController(t)
+
+		apiVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
+		configHandler = testmock.NewMockConfigHandler(mockController)
+		dirStore = testmock.NewMockDirStore(mockController)
+		logger = log.NewDefaultLogger(io.Discard)
+
+		detectorFactory = lifecycle.NewDetectorFactory(
+			api.Platform.Latest(),
+			apiVerifier,
+			configHandler,
+			dirStore,
 		)
+	})
 
-		it.Before(func() {
-			mockController = gomock.NewController(t)
-			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
-			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
-			fakeDirStore = testmock.NewMockDirStore(mockController)
-			logger = &log.Logger{Handler: &discard.Handler{}}
+	it.After(func() {
+		mockController.Finish()
+	})
 
-			detectorFactory = lifecycle.NewDetectorFactory(
-				api.Platform.Latest(),
-				fakeAPIVerifier,
-				fakeConfigHandler,
-				fakeDirStore,
-			)
-		})
-
-		it.After(func() {
-			mockController.Finish()
-		})
-
+	when("#NewDetector", func() {
 		it("configures the detector", func() {
 			order := buildpack.Order{
 				buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
 			}
-			fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+			configHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
 
 			t.Log("verifies buildpack apis")
 			bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
-			fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
-			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
+			dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+			apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 
 			detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 			h.AssertNil(t, err)
@@ -75,10 +79,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, detector.BuildConfigDir, "some-build-config-dir")
 			h.AssertNotNil(t, detector.DirStore)
 			h.AssertEq(t, detector.HasExtensions, false)
-			h.AssertEq(t, detector.Logger, logger)
 			h.AssertEq(t, detector.Order, order)
 			h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
-			_, ok := detector.Resolver.(*lifecycle.DefaultResolver)
+			_, ok := detector.Resolver.(*lifecycle.DefaultDetectResolver)
 			h.AssertEq(t, ok, true)
 			h.AssertNotNil(t, detector.Runs)
 		})
@@ -113,21 +116,21 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
+				configHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
 
 				t.Log("verifies buildpack apis")
 				bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 				bpB1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 				extC1 := &buildpack.BpDescriptor{WithAPI: "0.10"}
 				extD1 := &buildpack.BpDescriptor{WithAPI: "0.10"}
-				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
-				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2", logger)
-				fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10", logger)
-				fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
 				detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
@@ -135,10 +138,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, detector.AppDir, "some-app-dir")
 				h.AssertNotNil(t, detector.DirStore)
 				h.AssertEq(t, detector.HasExtensions, true)
-				h.AssertEq(t, detector.Logger, logger)
 				h.AssertEq(t, detector.Order, expectedOrder)
 				h.AssertEq(t, detector.PlatformDir, "some-platform-dir")
-				_, ok := detector.Resolver.(*lifecycle.DefaultResolver)
+				_, ok := detector.Resolver.(*lifecycle.DefaultDetectResolver)
 				h.AssertEq(t, ok, true)
 				h.AssertNotNil(t, detector.Runs)
 			})
@@ -148,29 +150,26 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when(".Detect", func() {
 		var (
 			detector *lifecycle.Detector
-			dirStore *testmock.MockDirStore
 			executor *testmock.MockDetectExecutor
 			resolver *testmock.MockDetectResolver
-			mockCtrl *gomock.Controller
 		)
 
 		it.Before(func() {
-			mockCtrl = gomock.NewController(t)
-			dirStore = testmock.NewMockDirStore(mockCtrl)
-			executor = testmock.NewMockDetectExecutor(mockCtrl)
-			resolver = testmock.NewMockDetectResolver(mockCtrl)
-
-			detector = &lifecycle.Detector{
-				DirStore: dirStore,
-				Executor: executor,
-				Logger:   nil,
-				Resolver: resolver,
-				Runs:     &sync.Map{},
-			}
-		})
-
-		it.After(func() {
-			mockCtrl.Finish()
+			configHandler.EXPECT().ReadOrder(gomock.Any()).Return(buildpack.Order{}, buildpack.Order{}, nil)
+			var err error
+			detector, err = detectorFactory.NewDetector(
+				"some-app-dir",
+				"some-build-config-dir",
+				"some-order-path",
+				"some-platform-dir",
+				logger,
+			)
+			h.AssertNil(t, err)
+			// override factory-provided services
+			executor = testmock.NewMockDetectExecutor(mockController)
+			resolver = testmock.NewMockDetectResolver(mockController)
+			detector.Executor = executor
+			detector.Resolver = resolver
 		})
 
 		it("provides detect inputs to each group element", func() {
@@ -196,7 +195,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			_, _, _ = detector.Detect()
 		})
 
-		it("should expand order-containing buildpack IDs", func() {
+		it("expands order-containing buildpack IDs", func() {
 			// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 			// The order that other calls are written in is the order that they happen in.
 
@@ -383,7 +382,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should select the first passing group", func() {
+		it("selects the first passing group", func() {
 			// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 			// The order that other calls are written in is the order that they happen in.
 
@@ -560,7 +559,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should convert top level versions to metadata versions", func() {
+		it("converts top level versions to metadata versions", func() {
 			bpA1 := &buildpack.BpDescriptor{
 				WithAPI:   "0.3",
 				Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
@@ -638,7 +637,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should update detect runs for each buildpack", func() {
+		it("updates detect runs for each buildpack", func() {
 			bpA1 := &buildpack.BpDescriptor{
 				WithAPI:   "0.3",
 				Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
@@ -921,18 +920,18 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 	when(".Resolve", func() {
 		var (
+			resolver   *lifecycle.DefaultDetectResolver
 			logHandler *memory.Handler
-			resolver   *lifecycle.DefaultResolver
+			logger     *log.DefaultLogger
 		)
 
 		it.Before(func() {
 			logHandler = memory.New()
-			resolver = &lifecycle.DefaultResolver{
-				Logger: &log.Logger{Handler: logHandler},
-			}
+			logger = &log.DefaultLogger{Logger: &apexlog.Logger{Handler: logHandler}}
+			resolver = lifecycle.NewDefaultDetectResolver(logger)
 		})
 
-		it("should fail if the group is empty", func() {
+		it("fails if the group is empty", func() {
 			_, _, err := resolver.Resolve([]buildpack.GroupElement{}, &sync.Map{})
 			if err != lifecycle.ErrFailedDetection {
 				t.Fatalf("Unexpected error:\n%s\n", err)
@@ -946,7 +945,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should fail if the group has no viable buildpacks, even if no required buildpacks fail", func() {
+		it("fails if the group has no viable buildpacks, even if no required buildpacks fail", func() {
 			group := []buildpack.GroupElement{
 				{ID: "A", Version: "v1", Optional: true},
 				{ID: "B", Version: "v1", Optional: true},
@@ -976,7 +975,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("there are extensions", func() {
-			it("should fail if the group has no viable buildpacks, even if no required buildpacks fail", func() {
+			it("fails if the group has no viable buildpacks, even if no required buildpacks fail", func() {
 				group := []buildpack.GroupElement{
 					{ID: "A", Version: "v1", Optional: true},
 					{ID: "B", Version: "v1", Extension: true, Optional: true},
@@ -1006,7 +1005,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		it("should fail with specific error if any bp detect fails in an unexpected way", func() {
+		it("fails with specific error if any bp detect fails in an unexpected way", func() {
 			group := []buildpack.GroupElement{
 				{ID: "A", Version: "v1", Optional: false},
 				{ID: "B", Version: "v1", Optional: false},
@@ -1034,65 +1033,67 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should not output detect pass and fail as info level", func() {
-			group := []buildpack.GroupElement{
-				{ID: "A", Version: "v1", Optional: false},
-				{ID: "B", Version: "v1", Optional: false},
-			}
-
-			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
-				Code: 0,
-			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
-				Code: 100,
+		when("log output", func() {
+			it.Before(func() {
+				h.AssertNil(t, logger.SetLevel("info"))
 			})
 
-			resolver.Logger = &log.Logger{Handler: logHandler, Level: log.InfoLevel}
+			it("outputs detect pass and fail as debug level", func() {
+				group := []buildpack.GroupElement{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}
 
-			_, _, err := resolver.Resolve(group, detectRuns)
-			if err != lifecycle.ErrFailedDetection {
-				t.Fatalf("Unexpected error:\n%s\n", err)
-			}
+				detectRuns := &sync.Map{}
+				detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
+					Code: 0,
+				})
+				detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
+					Code: 100,
+				})
 
-			if s := h.AllLogs(logHandler); s != "" {
-				t.Fatalf("Unexpected log:\n%s\n", s)
-			}
+				_, _, err := resolver.Resolve(group, detectRuns)
+				if err != lifecycle.ErrFailedDetection {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := h.AllLogs(logHandler); s != "" {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
+
+			it("outputs detect errors as info level", func() {
+				group := []buildpack.GroupElement{
+					{ID: "A", Version: "v1", Optional: false},
+					{ID: "B", Version: "v1", Optional: false},
+				}
+
+				detectRuns := &sync.Map{}
+				detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
+					Code: 0,
+				})
+				detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
+					Output: []byte("detect out: B@v1\ndetect err: B@v1"),
+					Code:   127,
+				})
+
+				_, _, err := resolver.Resolve(group, detectRuns)
+				if err != lifecycle.ErrBuildpack {
+					t.Fatalf("Unexpected error:\n%s\n", err)
+				}
+
+				if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
+					"======== Output: B@v1 ========\n"+
+						"detect out: B@v1\n"+
+						"detect err: B@v1\n"+
+						"err:  B@v1 (127)\n",
+				) {
+					t.Fatalf("Unexpected log:\n%s\n", s)
+				}
+			})
 		})
 
-		it("should output detect errors as info level", func() {
-			group := []buildpack.GroupElement{
-				{ID: "A", Version: "v1", Optional: false},
-				{ID: "B", Version: "v1", Optional: false},
-			}
-
-			detectRuns := &sync.Map{}
-			detectRuns.Store("Buildpack A@v1", buildpack.DetectOutputs{
-				Code: 0,
-			})
-			detectRuns.Store("Buildpack B@v1", buildpack.DetectOutputs{
-				Output: []byte("detect out: B@v1\ndetect err: B@v1"),
-				Code:   127,
-			})
-
-			resolver.Logger = &log.Logger{Handler: logHandler, Level: log.InfoLevel}
-
-			_, _, err := resolver.Resolve(group, detectRuns)
-			if err != lifecycle.ErrBuildpack {
-				t.Fatalf("Unexpected error:\n%s\n", err)
-			}
-
-			if s := h.AllLogs(logHandler); !strings.HasSuffix(s,
-				"======== Output: B@v1 ========\n"+
-					"detect out: B@v1\n"+
-					"detect err: B@v1\n"+
-					"err:  B@v1 (127)\n",
-			) {
-				t.Fatalf("Unexpected log:\n%s\n", s)
-			}
-		})
-
-		it("should return a build plan with matched dependencies", func() {
+		it("returns a build plan with matched dependencies", func() {
 			group := []buildpack.GroupElement{
 				{ID: "A", Version: "v1", API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "C", Version: "v2", API: "0.2"},
@@ -1193,7 +1194,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should fail if all requires are not provided first", func() {
+		it("fails if all requires are not provided first", func() {
 			group := []buildpack.GroupElement{
 				{ID: "A", Version: "v1", Optional: true},
 				{ID: "B", Version: "v1"},
@@ -1250,7 +1251,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should fail if all provides are not required after", func() {
+		it("fails if all provides are not required after", func() {
 			group := []buildpack.GroupElement{
 				{ID: "A", Version: "v1"},
 				{ID: "B", Version: "v1"},
@@ -1307,7 +1308,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should succeed if unmet provides/requires are optional", func() {
+		it("succeeds if unmet provides/requires are optional", func() {
 			group := []buildpack.GroupElement{
 				{ID: "A", Version: "v1", Optional: true},
 				{ID: "B", Version: "v1", API: "0.2"},
@@ -1381,7 +1382,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("should fallback to alternate build plans", func() {
+		it("falls back to alternate build plans", func() {
 			group := []buildpack.GroupElement{
 				{ID: "A", Version: "v1", Optional: true, API: "0.3", Homepage: "Buildpack A Homepage"},
 				{ID: "B", Version: "v1", Optional: true, API: "0.2"},

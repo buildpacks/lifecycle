@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 
+	apexlog "github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -56,14 +58,20 @@ type Detector struct {
 	DirStore       DirStore
 	Executor       buildpack.DetectExecutor
 	HasExtensions  bool
-	Logger         log.Logger
+	Logger         log.LoggerHandlerWithLevel
 	Order          buildpack.Order
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
+
+	// If detect fails, we want to print debug statements as info level.
+	// memHandler holds all log entries; we'll iterate through them at the end of detect,
+	// providing them to the detector's logger according to the desired log level.
+	memHandler *memory.Handler
 }
 
-func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.Logger) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+	memHandler := memory.New()
 	detector := &Detector{
 		AppDir:         appDir,
 		BuildConfigDir: buildConfigDir,
@@ -71,8 +79,9 @@ func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platfor
 		Executor:       &buildpack.DefaultDetectExecutor{},
 		Logger:         logger,
 		PlatformDir:    platformDir,
-		Resolver:       &DefaultResolver{Logger: logger},
+		Resolver:       NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
 		Runs:           &sync.Map{},
+		memHandler:     memHandler,
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
@@ -111,7 +120,15 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 }
 
 func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {
-	return d.DetectOrder(d.Order)
+	group, plan, detectErr := d.DetectOrder(d.Order)
+	for _, e := range d.memHandler.Entries {
+		if detectErr != nil || e.Level >= d.Logger.LogLevel() {
+			if err := d.Logger.HandleLog(e); err != nil {
+				return buildpack.Group{}, platform.BuildPlan{}, fmt.Errorf("failed to handle log entry: %w", err)
+			}
+		}
+	}
+	return group, plan, detectErr
 }
 
 func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
@@ -240,13 +257,17 @@ func keyFor(groupEl buildpack.GroupElement) string {
 	return fmt.Sprintf("%s %s", groupEl.Kind(), groupEl.String())
 }
 
-type DefaultResolver struct {
+type DefaultDetectResolver struct {
 	Logger log.Logger
+}
+
+func NewDefaultDetectResolver(logger log.Logger) *DefaultDetectResolver {
+	return &DefaultDetectResolver{Logger: logger}
 }
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
 // If any required buildpack in the group failed detection or a build plan cannot be resolved, it returns an error.
-func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+func (r *DefaultDetectResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectOutputs
 	for _, el := range done {
 		key := keyFor(el) // FIXME: ensure the Detector and Resolver always use the same key
@@ -255,10 +276,12 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *syn
 			return nil, nil, errors.Errorf("missing detection of '%s'", key)
 		}
 		run := t.(buildpack.DetectOutputs)
+
 		outputLogf := r.Logger.Debugf
 
 		switch run.Code {
 		case CodeDetectPass, CodeDetectFail:
+			// nop
 		default:
 			outputLogf = r.Logger.Infof
 		}
@@ -354,7 +377,7 @@ func (r *DefaultResolver) Resolve(done []buildpack.GroupElement, detectRuns *syn
 	return found, plan, nil
 }
 
-func (r *DefaultResolver) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
+func (r *DefaultDetectResolver) runTrial(i int, trial detectTrial) (depMap, detectTrial, error) {
 	r.Logger.Debugf("Resolving plan... (try #%d)", i)
 
 	var deps depMap
