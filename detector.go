@@ -59,11 +59,12 @@ type Detector struct {
 	Executor       buildpack.DetectExecutor
 	HasExtensions  bool
 	Logger         log.LoggerHandlerWithLevel
-	MemHandler     *memory.Handler
 	Order          buildpack.Order
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
+
+	memHandler *memory.Handler
 }
 
 func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
@@ -77,7 +78,7 @@ func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platfor
 		PlatformDir:    platformDir,
 		Resolver:       NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
 		Runs:           &sync.Map{},
-		MemHandler:     memHandler,
+		memHandler:     memHandler,
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
@@ -117,7 +118,7 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 
 func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {
 	group, plan, detectErr := d.DetectOrder(d.Order)
-	for _, e := range d.MemHandler.Entries {
+	for _, e := range d.memHandler.Entries {
 		if detectErr != nil || e.Level >= d.Logger.LogLevel() {
 			if err := d.Logger.HandleLog(e); err != nil {
 				return buildpack.Group{}, platform.BuildPlan{}, fmt.Errorf("failed to handle log entry: %w", err)

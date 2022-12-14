@@ -1,7 +1,6 @@
 package lifecycle_test
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"reflect"
@@ -30,45 +29,48 @@ func TestDetector(t *testing.T) {
 }
 
 func testDetector(t *testing.T, when spec.G, it spec.S) {
-	when("#NewDetector", func() {
-		var (
-			detectorFactory   *lifecycle.DetectorFactory
-			fakeAPIVerifier   *testmock.MockBuildpackAPIVerifier
-			fakeConfigHandler *testmock.MockConfigHandler
-			fakeDirStore      *testmock.MockDirStore
-			logger            log.LoggerHandlerWithLevel
-			mockController    *gomock.Controller
+	var (
+		mockController *gomock.Controller
+
+		apiVerifier   *testmock.MockBuildpackAPIVerifier
+		configHandler *testmock.MockConfigHandler
+		dirStore      *testmock.MockDirStore
+		logger        log.LoggerHandlerWithLevel
+
+		detectorFactory *lifecycle.DetectorFactory
+	)
+
+	it.Before(func() {
+		mockController = gomock.NewController(t)
+
+		apiVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
+		configHandler = testmock.NewMockConfigHandler(mockController)
+		dirStore = testmock.NewMockDirStore(mockController)
+		logger = log.NewDefaultLogger(io.Discard)
+
+		detectorFactory = lifecycle.NewDetectorFactory(
+			api.Platform.Latest(),
+			apiVerifier,
+			configHandler,
+			dirStore,
 		)
+	})
 
-		it.Before(func() {
-			mockController = gomock.NewController(t)
-			fakeAPIVerifier = testmock.NewMockBuildpackAPIVerifier(mockController)
-			fakeConfigHandler = testmock.NewMockConfigHandler(mockController)
-			fakeDirStore = testmock.NewMockDirStore(mockController)
-			logger = log.NewDefaultLogger(io.Discard)
+	it.After(func() {
+		mockController.Finish()
+	})
 
-			detectorFactory = lifecycle.NewDetectorFactory(
-				api.Platform.Latest(),
-				fakeAPIVerifier,
-				fakeConfigHandler,
-				fakeDirStore,
-			)
-		})
-
-		it.After(func() {
-			mockController.Finish()
-		})
-
+	when("#NewDetector", func() {
 		it("configures the detector", func() {
 			order := buildpack.Order{
 				buildpack.Group{Group: []buildpack.GroupElement{{ID: "A", Version: "v1"}}},
 			}
-			fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
+			configHandler.EXPECT().ReadOrder("some-order-path").Return(order, nil, nil)
 
 			t.Log("verifies buildpack apis")
 			bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
-			fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
-			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
+			dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+			apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 
 			detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 			h.AssertNil(t, err)
@@ -114,21 +116,21 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				fakeConfigHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
+				configHandler.EXPECT().ReadOrder("some-order-path").Return(orderBp, orderExt, nil)
 
 				t.Log("verifies buildpack apis")
 				bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 				bpB1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 				extC1 := &buildpack.BpDescriptor{WithAPI: "0.10"}
 				extD1 := &buildpack.BpDescriptor{WithAPI: "0.10"}
-				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
-				fakeDirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2", logger)
-				fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10", logger)
-				fakeDirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
-				fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "B", "v1").Return(bpB1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "B@v1", "0.2", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "C", "v1").Return(extC1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "C@v1", "0.10", logger)
+				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
+				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
 				detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
@@ -148,30 +150,26 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 	when(".Detect", func() {
 		var (
 			detector *lifecycle.Detector
-			dirStore *testmock.MockDirStore
 			executor *testmock.MockDetectExecutor
 			resolver *testmock.MockDetectResolver
-			mockCtrl *gomock.Controller
 		)
 
 		it.Before(func() {
-			mockCtrl = gomock.NewController(t)
-			dirStore = testmock.NewMockDirStore(mockCtrl)
-			executor = testmock.NewMockDetectExecutor(mockCtrl)
-			resolver = testmock.NewMockDetectResolver(mockCtrl)
-
-			detector = &lifecycle.Detector{
-				DirStore:   dirStore,
-				Executor:   executor,
-				Logger:     log.NewDefaultLogger(new(bytes.Buffer)),
-				MemHandler: memory.New(),
-				Resolver:   resolver,
-				Runs:       &sync.Map{},
-			}
-		})
-
-		it.After(func() {
-			mockCtrl.Finish()
+			configHandler.EXPECT().ReadOrder(gomock.Any()).Return(buildpack.Order{}, buildpack.Order{}, nil)
+			var err error
+			detector, err = detectorFactory.NewDetector(
+				"some-app-dir",
+				"some-build-config-dir",
+				"some-order-path",
+				"some-platform-dir",
+				logger,
+			)
+			h.AssertNil(t, err)
+			// override factory-provided services
+			executor = testmock.NewMockDetectExecutor(mockController)
+			resolver = testmock.NewMockDetectResolver(mockController)
+			detector.Executor = executor
+			detector.Resolver = resolver
 		})
 
 		it("provides detect inputs to each group element", func() {
