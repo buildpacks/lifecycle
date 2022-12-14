@@ -64,6 +64,9 @@ type Detector struct {
 	Resolver       DetectResolver
 	Runs           *sync.Map
 
+	// If detect fails, we want to print debug statements as info level.
+	// memHandler holds all log entries; we'll iterate through them at the end of detect,
+	// providing them to the detector's logger according to the desired log level.
 	memHandler *memory.Handler
 }
 
