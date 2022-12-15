@@ -9,7 +9,7 @@ import (
 )
 
 // DefaultAnalyzeInputs accepts a Platform API version and returns a set of lifecycle inputs
-//   with default values filled in for the `analyze` phase.
+// with default values filled in for the `analyze` phase.
 func DefaultAnalyzeInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {

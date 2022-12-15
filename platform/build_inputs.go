@@ -5,7 +5,7 @@ import (
 )
 
 // DefaultBuildInputs accepts a Platform API version and returns a set of lifecycle inputs
-//   with default values filled in for the `build` phase.
+// with default values filled in for the `build` phase.
 func DefaultBuildInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {

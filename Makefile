@@ -30,7 +30,7 @@ LDFLAGS+=-X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)'
 GOBUILD:=go build $(GOFLAGS) -ldflags "$(LDFLAGS)"
 GOTEST=$(GOCMD) test $(GOFLAGS)
 BUILD_DIR?=$(PWD)$/out
-WINDOWS_COMPILATION_IMAGE?=golang:1.18-windowsservercore-1809
+WINDOWS_COMPILATION_IMAGE?=golang:1.19-windowsservercore-1809
 SOURCE_COMPILATION_IMAGE?=lifecycle-img
 BUILD_CTR?=lifecycle-ctr
 DOCKER_CMD?=make test
@@ -274,7 +274,7 @@ format: install-goimports
 
 tidy:
 	@echo "> Tidying modules..."
-	$(GOCMD) mod tidy -compat=1.18
+	$(GOCMD) mod tidy
 
 test: unit acceptance
 
