@@ -155,8 +155,7 @@ const (
 	EnvLaunchCacheDir = "CNB_LAUNCH_CACHE_DIR"
 
 	// EnvSkipLayers when true will instruct the lifecycle to ignore layers from a previously built image.
-	EnvSkipLayers = "CNB_ANALYZE_SKIP_LAYERS"
-	// FIXME: the spec calls this CNB_SKIP_LAYERS; either the spec or the lifecycle is wrong
+	EnvSkipLayers = "CNB_SKIP_LAYERS"
 
 	// EnvSkipRestore is used when running the creator, and is equivalent to passing EnvSkipLayers to both the analyzer and
 	// the restorer in the 5-phase invocation.
