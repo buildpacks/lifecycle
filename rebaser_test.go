@@ -353,5 +353,14 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, err, "stack not defined on app image")
 			})
 		})
+
+		when("outputImageRef is different than app image name", func() {
+			it("saves using outputImageRef, not the app image name", func() {
+				outputImageRef := "fizz"
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames, outputImageRef)
+				h.AssertNil(t, err)
+				h.AssertContains(t, fakeAppImage.SavedNames(), append(additionalNames, outputImageRef)...)
+			})
+		})
 	})
 }
