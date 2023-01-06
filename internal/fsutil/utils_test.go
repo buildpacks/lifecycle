@@ -79,4 +79,17 @@ func testIO(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#FilesWithExtensions", func() {
+		when("called with directory and extensions", func() {
+			it("filters the files", func() {
+				src := "testdata"
+				exts := []string{".txt", ".json"}
+				files, err := fsutil.FilesWithExtensions(src, exts)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(files), 2)
+				h.AssertContains(t, files, filepath.Join(src, "file2.txt"), filepath.Join(src, "file3.json"))
+			})
+		})
+	})
 }
