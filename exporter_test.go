@@ -1507,11 +1507,11 @@ version = "4.5.6"
 					opts.LauncherConfig.SBOMDir = filepath.Join(opts.LayersDir, "some-launcher-sbom-dir")
 				})
 
-				it("copies everything in the launcher SBOM directory", func() {
+				it("copies sboms from the launcher SBOM directory", func() {
 					_, err := exporter.Export(opts)
 					h.AssertNil(t, err)
 
-					h.AssertPathExists(t, filepath.Join(opts.LayersDir, "sbom", "launch", "buildpacksio_lifecycle", "launcher", "some-sbom-file"))
+					h.AssertPathExists(t, filepath.Join(opts.LayersDir, "sbom", "launch", "buildpacksio_lifecycle", "launcher", "some-sbom-file.sbom.spdx.json"))
 				})
 			})
 		})
