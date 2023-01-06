@@ -25,7 +25,7 @@ type RebaseReport struct {
 	Image platform.ImageReport `toml:"image"`
 }
 
-func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string) (RebaseReport, error) {
+func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, additionalNames []string, outputImageRef string) (RebaseReport, error) {
 	var origMetadata platform.LayersMetadataCompat
 	if err := image.DecodeLabel(appImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
@@ -86,6 +86,7 @@ func (r *Rebaser) Rebase(appImage imgutil.Image, newBaseImage imgutil.Image, add
 		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
 
+	appImage.Rename(outputImageRef)
 	report := RebaseReport{}
 	report.Image, err = saveImage(appImage, additionalNames, r.Logger)
 	if err != nil {
