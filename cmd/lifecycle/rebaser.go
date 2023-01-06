@@ -102,7 +102,7 @@ func (r *rebaseCmd) Exec() error {
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: r.PlatformAPI,
 	}
-	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.AdditionalTags)
+	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.AdditionalTags, r.OutputImageRef)
 	if err != nil {
 		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "rebase")
 	}
@@ -129,7 +129,7 @@ func (r *rebaseCmd) setAppImage() error {
 
 	if r.UseDaemon {
 		r.appImage, err = local.NewImage(
-			r.OutputImageRef,
+			targetImageRef,
 			r.docker,
 			local.FromBaseImage(targetImageRef),
 		)
@@ -140,7 +140,7 @@ func (r *rebaseCmd) setAppImage() error {
 			return err
 		}
 		r.appImage, err = remote.NewImage(
-			r.OutputImageRef,
+			targetImageRef,
 			keychain,
 			remote.FromBaseImage(targetImageRef),
 		)
