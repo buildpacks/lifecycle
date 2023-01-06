@@ -1504,6 +1504,8 @@ version = "4.5.6"
 			when("custom launcher SBOM is provided", func() {
 				it.Before(func() {
 					h.RecursiveCopy(t, filepath.Join("testdata", "exporter", "launcher-sbom", "layers"), opts.LayersDir)
+					// later we'll assert that this file doesn't get copied, but that's only meaningful if it exists at the source
+					h.AssertPathExists(t, filepath.Join(opts.LayersDir, "some-launcher-sbom-dir", "a-regular-file.txt"))
 					opts.LauncherConfig.SBOMDir = filepath.Join(opts.LayersDir, "some-launcher-sbom-dir")
 				})
 
@@ -1512,6 +1514,7 @@ version = "4.5.6"
 					h.AssertNil(t, err)
 
 					h.AssertPathExists(t, filepath.Join(opts.LayersDir, "sbom", "launch", "buildpacksio_lifecycle", "launcher", "some-sbom-file.sbom.spdx.json"))
+					h.AssertPathDoesNotExist(t, filepath.Join(opts.LayersDir, "sbom", "launch", "buildpacksio_lifecycle", "launcher", "a-regular-file.txt"))
 				})
 			})
 		})
