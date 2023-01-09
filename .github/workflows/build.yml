@@ -18,7 +18,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version-file: 'go.mod'
       - name: Install jq
         run: |
           mkdir -p deps/bin
@@ -43,7 +43,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version-file: 'go.mod'
       - name: Test
         run: |
           make format || true
@@ -60,7 +60,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version-file: 'go.mod'
       - name: Add runner IP to daemon insecure-registries and firewall
         shell: powershell
         run: |
@@ -108,7 +108,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version-file: 'go.mod'
       - name: Install Cosign
         uses: sigstore/cosign-installer@v1.0.0
         with:
@@ -244,7 +244,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version-file: 'pack/go.mod'
       - uses: actions/download-artifact@v2
         with:
           name: version
@@ -280,7 +280,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version-file: 'pack/go.mod'
       - name: Add runner IP to daemon insecure-registries and firewall
         shell: powershell
         run: |
