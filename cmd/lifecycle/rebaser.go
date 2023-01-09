@@ -102,7 +102,7 @@ func (r *rebaseCmd) Exec() error {
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: r.PlatformAPI,
 	}
-	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.AdditionalTags, r.OutputImageRef)
+	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
 	if err != nil {
 		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "rebase")
 	}
