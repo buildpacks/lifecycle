@@ -86,7 +86,6 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
 	report := RebaseReport{}
-	workingImage.Rename("") // unset name
 	report.Image, err = saveImageAs(workingImage, outputImageRef, additionalNames, r.Logger)
 	if err != nil {
 		return RebaseReport{}, err

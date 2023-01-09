@@ -76,6 +76,15 @@ outer:
 	}
 }
 
+func AssertDoesNotContain(t *testing.T, slice []string, element string) {
+	t.Helper()
+	for _, actual := range slice {
+		if diff := cmp.Diff(actual, element); diff == "" {
+			t.Fatalf("Expected %+v not to contain: %s", slice, element)
+		}
+	}
+}
+
 func AssertStringContains(t *testing.T, str string, expected string) {
 	t.Helper()
 	if !strings.Contains(str, expected) {

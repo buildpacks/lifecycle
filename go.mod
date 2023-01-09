@@ -1,5 +1,7 @@
 module github.com/buildpacks/lifecycle
 
+replace github.com/buildpacks/imgutil => github.com/joeybrown-sf/imgutil v0.0.0-20230109163644-1c47df232fe2
+
 require (
 	github.com/BurntSushi/toml v1.2.1
 	github.com/GoogleContainerTools/kaniko v1.9.2-0.20220928141902-4d077e2a4084
