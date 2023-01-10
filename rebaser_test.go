@@ -364,7 +364,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("outputImageRef is different than app image name", func() {
+		when("outputImageRef is different than workingImage name", func() {
 			it("saves using outputImageRef, not the app image name", func() {
 				outputImageRef := "fizz"
 				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, outputImageRef, additionalNames)
