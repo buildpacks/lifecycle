@@ -1,13 +1,11 @@
 module github.com/buildpacks/lifecycle
 
-replace github.com/buildpacks/imgutil => github.com/joeybrown-sf/imgutil v0.0.0-20230109163644-1c47df232fe2
-
 require (
 	github.com/BurntSushi/toml v1.2.1
 	github.com/GoogleContainerTools/kaniko v1.9.2-0.20220928141902-4d077e2a4084
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20221206183240-3b42f427f89a
-	github.com/buildpacks/imgutil v0.0.0-20221128174954-533a87656dc4
+	github.com/buildpacks/imgutil v0.0.0-20230109221445-3a4729624abe
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396
 	github.com/containerd/containerd v1.6.13
 	github.com/docker/docker v20.10.21+incompatible

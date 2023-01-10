@@ -37,8 +37,6 @@ func (r *rebaseCmd) DefineFlags() {
 	cli.FlagRunImage(&r.RunImageRef)
 	cli.FlagUID(&r.UID)
 	cli.FlagUseDaemon(&r.UseDaemon)
-	cli.FlagPreviousImage(&r.PreviousImageRef)
-
 	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
 
 	if r.PlatformAPI.AtLeast("0.11") {
