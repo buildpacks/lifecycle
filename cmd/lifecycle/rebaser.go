@@ -40,6 +40,10 @@ func (r *rebaseCmd) DefineFlags() {
 	cli.FlagPreviousImage(&r.PreviousImageRef)
 
 	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
+
+	if r.PlatformAPI.AtLeast("0.11") {
+		cli.FlagPreviousImage(&r.PreviousImageRef)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.
