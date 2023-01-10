@@ -370,7 +370,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, outputImageRef, additionalNames)
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), append(additionalNames, outputImageRef)...)
-				h.AssertDoesNotContain(t, fakeAppImage.SavedNames(), "some-repo/previous-image")
+				h.AssertDoesNotContain(t, fakeAppImage.SavedNames(), fakePreviousImage.Name())
 			})
 		})
 	})
