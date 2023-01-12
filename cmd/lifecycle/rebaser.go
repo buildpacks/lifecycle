@@ -37,8 +37,11 @@ func (r *rebaseCmd) DefineFlags() {
 	cli.FlagRunImage(&r.RunImageRef)
 	cli.FlagUID(&r.UID)
 	cli.FlagUseDaemon(&r.UseDaemon)
-
 	cli.DeprecatedFlagRunImage(&r.DeprecatedRunImageRef)
+
+	if r.PlatformAPI.AtLeast("0.11") {
+		cli.FlagPreviousImage(&r.PreviousImageRef)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -101,7 +104,7 @@ func (r *rebaseCmd) Exec() error {
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: r.PlatformAPI,
 	}
-	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.AdditionalTags)
+	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
 	if err != nil {
 		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "rebase")
 	}
@@ -113,7 +116,14 @@ func (r *rebaseCmd) Exec() error {
 }
 
 func (r *rebaseCmd) setAppImage() error {
-	ref, err := name.ParseReference(r.OutputImageRef, name.WeakValidation)
+	var targetImageRef string
+	if len(r.PreviousImageRef) > 0 {
+		targetImageRef = r.PreviousImageRef
+	} else {
+		targetImageRef = r.OutputImageRef
+	}
+
+	ref, err := name.ParseReference(targetImageRef, name.WeakValidation)
 	if err != nil {
 		return err
 	}
@@ -121,20 +131,20 @@ func (r *rebaseCmd) setAppImage() error {
 
 	if r.UseDaemon {
 		r.appImage, err = local.NewImage(
-			r.OutputImageRef,
+			targetImageRef,
 			r.docker,
-			local.FromBaseImage(r.OutputImageRef),
+			local.FromBaseImage(targetImageRef),
 		)
 	} else {
 		var keychain authn.Keychain
-		keychain, err = auth.DefaultKeychain(r.OutputImageRef)
+		keychain, err = auth.DefaultKeychain(targetImageRef)
 		if err != nil {
 			return err
 		}
 		r.appImage, err = remote.NewImage(
-			r.OutputImageRef,
+			targetImageRef,
 			keychain,
-			remote.FromBaseImage(r.OutputImageRef),
+			remote.FromBaseImage(targetImageRef),
 		)
 	}
 	if err != nil || !r.appImage.Found() {

@@ -28,11 +28,12 @@ func TestRebaser(t *testing.T) {
 
 func testRebaser(t *testing.T, when spec.G, it spec.S) {
 	var (
-		rebaser          *lifecycle.Rebaser
-		fakeAppImage     *fakes.Image
-		fakeNewBaseImage *fakes.Image
-		additionalNames  []string
-		md               platform.LayersMetadataCompat
+		rebaser           *lifecycle.Rebaser
+		fakeAppImage      *fakes.Image
+		fakeNewBaseImage  *fakes.Image
+		fakePreviousImage *fakes.Image
+		additionalNames   []string
+		md                platform.LayersMetadataCompat
 	)
 
 	it.Before(func() {
@@ -54,6 +55,15 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		)
 		h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 
+		fakePreviousImage = fakes.NewImage(
+			"some-repo/previous-image",
+			"previous-layer-sha",
+			local.IDIdentifier{
+				ImageID: "previous-run-id",
+			},
+		)
+		h.AssertNil(t, fakePreviousImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
+
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
 		rebaser = &lifecycle.Rebaser{
@@ -70,25 +80,25 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		when("app image and run image exist", func() {
 			it("updates the base image of the app image", func() {
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
 				h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 			})
 
 			it("saves to all names", func() {
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
 				h.AssertContains(t, fakeAppImage.SavedNames(), "some-repo/app-image", "some-repo/app-image:foo", "some-repo/app-image:bar")
 			})
 
 			it("adds all names to report", func() {
-				report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
 				h.AssertContains(t, report.Image.Tags, "some-repo/app-image", "some-repo/app-image:foo", "some-repo/app-image:bar")
 			})
 
 			it("sets the top layer in the metadata", func() {
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
 				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
 
@@ -96,7 +106,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets the run image reference in the metadata", func() {
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
 				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
 
@@ -108,7 +118,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					platform.LayerMetadataLabel,
 					`{"app": [{"sha": "123456"}], "buildpacks":[{"key": "buildpack.id", "layers": {}}]}`,
 				))
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
 				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
 
@@ -144,7 +154,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("syncs matching labels", func() {
-					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 					h.AssertNil(t, err)
 
 					for _, test := range tests {
@@ -170,7 +180,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("add the digest to the report", func() {
-					report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+					report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, report.Image.Digest, fakeRemoteDigest)
@@ -192,7 +202,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("doesn't set the manifest size in the report.toml", func() {
-							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, report.Image.ManifestSize, int64(0))
@@ -208,7 +218,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("add the manifest size to the report", func() {
-							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, report.Image.ManifestSize, fakeRemoteManifestSize)
@@ -222,7 +232,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("doesn't set the manifest size in the report.toml", func() {
-							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+							report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, report.Image.ManifestSize, int64(0))
@@ -233,7 +243,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 			when("image has an ID identifier", func() {
 				it("add the imageID to the report", func() {
-					report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+					report, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, report.Image.ImageID, "some-image-id")
@@ -243,7 +253,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 			when("validating mixins", func() {
 				when("there are no mixin labels", func() {
 					it("allows rebase", func() {
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 					})
@@ -252,7 +262,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				when("there are invalid mixin labels", func() {
 					it("returns an error", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "thisisn'tvalid!"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertError(t, err, "get app image mixins: failed to unmarshal context of label 'io.buildpacks.stack.mixins': invalid character 'h' in literal true (expecting 'r')")
 					})
 				})
@@ -261,7 +271,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					it("allows rebase", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "null"))
 						h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.MixinsLabel, "null"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 					})
@@ -271,7 +281,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					it("allows rebase", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "null"))
 						h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\"]"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 					})
@@ -281,7 +291,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					it("allows rebase", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
 						h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 					})
@@ -291,7 +301,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					it("allows rebase", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
 						h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\", \"mixin-3\"]"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 					})
@@ -301,7 +311,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					it("allows rebase", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
 						h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"mixin-2\"]"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 					})
@@ -311,7 +321,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					it("allows rebase", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
 						h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.MixinsLabel, "[\"run:mixin-1\", \"run:mixin-2\"]"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
 					})
@@ -321,7 +331,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					it("does not allow rebase", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel(platform.MixinsLabel, "[\"mixin-1\", \"run:mixin-2\"]"))
 						h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.MixinsLabel, "[\"run:mixin-2\"]"))
-						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 						h.AssertError(t, err, "missing required mixin(s): mixin-1")
 					})
 				})
@@ -333,7 +343,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, fakeAppImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 				h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.cflinuxfs3"))
 
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertError(t, err, "incompatible stack: 'io.buildpacks.stacks.cflinuxfs3' is not compatible with 'io.buildpacks.stacks.bionic'")
 			})
 
@@ -341,7 +351,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, fakeAppImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 				h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, ""))
 
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertError(t, err, "stack not defined on new base image")
 			})
 
@@ -349,8 +359,18 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, fakeAppImage.SetLabel(platform.StackIDLabel, ""))
 				h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.cflinuxfs3"))
 
-				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, additionalNames)
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertError(t, err, "stack not defined on app image")
+			})
+		})
+
+		when("outputImageRef is different than workingImage name", func() {
+			it("saves using outputImageRef, not the app image name", func() {
+				outputImageRef := "fizz"
+				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, outputImageRef, additionalNames)
+				h.AssertNil(t, err)
+				h.AssertContains(t, fakeAppImage.SavedNames(), append(additionalNames, outputImageRef)...)
+				h.AssertDoesNotContain(t, fakeAppImage.SavedNames(), fakePreviousImage.Name())
 			})
 		})
 	})
