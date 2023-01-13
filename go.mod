@@ -8,7 +8,7 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20230109221445-3a4729624abe
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396
 	github.com/containerd/containerd v1.6.13
-	github.com/docker/docker v20.10.21+incompatible
+	github.com/docker/docker v20.10.22+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.12.1
