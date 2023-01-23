@@ -181,9 +181,31 @@ func (e *Exporter) copyBuildpacksioSBOMs(opts ExportOptions) error {
 		opts.LauncherConfig.SBOMDir == platform.DefaultBuildpacksioSBOMDir:
 		return e.copyDefaultSBOMsForComponent("launcher", targetLaunchDir)
 	default:
-		// if provided a custom launcher SBOM directory, just copy everything in the directory
-		return fsutil.Copy(opts.LauncherConfig.SBOMDir, targetLaunchDir)
+		// if provided a custom launcher SBOM directory, copy all files that look like sboms in that directory
+		return e.copyLauncherSBOMs(opts.LauncherConfig.SBOMDir, targetLaunchDir)
 	}
+}
+
+func (e *Exporter) copyLauncherSBOMs(srcDir string, dstDir string) error {
+	sboms, err := fsutil.FilesWithExtensions(srcDir, SBOMExtensions())
+	if err != nil {
+		e.Logger.Warnf("Failed to list contents of directory %s", srcDir)
+		return err
+	}
+
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		return err
+	}
+
+	for _, sbom := range sboms {
+		dstPath := filepath.Join(dstDir, filepath.Base(sbom))
+		err = fsutil.Copy(sbom, dstPath)
+		if err != nil {
+			e.Logger.Warnf("failed while copying SBOM from %s to %s", sbom, dstPath)
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *Exporter) copyDefaultSBOMsForComponent(component, dstDir string) error {
