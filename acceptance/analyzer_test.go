@@ -985,33 +985,55 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("layout case", func() {
-			it("writes analyzed.toml", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+			when("experimental mode is enabled", func() {
+				it("writes analyzed.toml", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
 
-				var analyzeFlags []string
-				analyzeFlags = append(analyzeFlags, []string{
-					"-layout",
-					"-run-image", "busybox",
-				}...)
-				var execArgs []string
-				execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
-				execArgs = append(execArgs, "my-app")
+					var analyzeFlags []string
+					analyzeFlags = append(analyzeFlags, []string{
+						"-layout",
+						"-run-image", "busybox",
+					}...)
+					var execArgs []string
+					execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+					execArgs = append(execArgs, "my-app")
 
-				h.DockerRunAndCopy(t,
-					containerName,
-					copyDir,
-					ctrPath("/layers/analyzed.toml"),
-					analyzeImage,
-					h.WithFlags(
-						"--env", "CNB_EXPERIMENTAL_MODE=warn",
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						ctrPath("/layers/analyzed.toml"),
+						analyzeImage,
+						h.WithFlags(
+							"--env", "CNB_EXPERIMENTAL_MODE=warn",
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+						),
+						h.WithArgs(execArgs...),
+					)
+
+					analyzer := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+					h.AssertNotNil(t, analyzer.RunImage)
+					h.AssertEq(t, analyzer.RunImage.Name, filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest"))
+				})
+			})
+
+			when("experimental mode is not enabled", func() {
+				it("error message", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+					cmd := exec.Command(
+						"docker", "run", "--rm",
 						"--env", "CNB_PLATFORM_API="+platformAPI,
-					),
-					h.WithArgs(execArgs...),
-				)
+						analyzeImage,
+						ctrPath(analyzerPath),
+						"-layout",
+						"-run-image", "busybox",
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
 
-				analyzer := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-				h.AssertNotNil(t, analyzer.RunImage)
-				h.AssertEq(t, analyzer.RunImage.Name, filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest"))
+					h.AssertNotNil(t, err)
+					expected := "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error"
+					h.AssertStringContains(t, string(output), expected)
+				})
 			})
 		})
 	}

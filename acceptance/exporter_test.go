@@ -276,84 +276,105 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				layoutDir     string
 				tmpDir        string
 			)
+			when("experimental mode is enabled", func() {
+				it.Before(func() {
+					// creates the directory to save all the OCI images on disk
+					tmpDir, err = os.MkdirTemp("", "layout")
+					h.AssertNil(t, err)
 
-			it.Before(func() {
-				// creates the directory to save all the OCI images on disk
-				tmpDir, err = os.MkdirTemp("", "layout")
-				h.AssertNil(t, err)
+					containerName = "test-container-" + h.RandString(10)
+				})
 
-				containerName = "test-container-" + h.RandString(10)
-			})
+				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					// removes all images created
+					os.RemoveAll(tmpDir)
+				})
 
-			it.After(func() {
-				if h.DockerContainerExists(t, containerName) {
-					h.Run(t, exec.Command("docker", "rm", containerName))
-				}
-				// removes all images created
-				os.RemoveAll(tmpDir)
-			})
+				when("default layout directory", func() {
+					when("first build", func() {
+						when("app", func() {
+							it.Before(func() {
+								exportedImageName = "my-default-layout-app"
+								layoutDir = filepath.Join(path.RootDir, "layout-repo")
+							})
 
-			when("default layout directory", func() {
-				when("first build", func() {
-					when("app", func() {
-						it.Before(func() {
-							exportedImageName = "my-default-layout-app"
-							layoutDir = filepath.Join(path.RootDir, "layout-repo")
+							it("is created", func() {
+								var exportFlags []string
+								h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+								exportFlags = append(exportFlags, []string{"-layout", "-analyzed", "/layers/layout-analyzed.toml"}...)
+								exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+								exportArgs = append(exportArgs, exportedImageName)
+
+								output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, exportImage,
+									h.WithFlags(
+										"--env", "CNB_EXPERIMENTAL_MODE=warn",
+										"--env", "CNB_PLATFORM_API="+platformAPI,
+									),
+									h.WithArgs(exportArgs...))
+
+								h.AssertStringContains(t, output, "Saving /layout-repo/index.docker.io/library/my-default-layout-app/latest")
+
+								// assert the image was saved on disk in OCI layout format
+								index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
+								h.AssertEq(t, len(index.Manifests), 1)
+							})
 						})
+					})
+				})
 
-						it("is created", func() {
-							var exportFlags []string
-							h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
-							exportFlags = append(exportFlags, []string{"-layout", "-analyzed", "/layers/layout-analyzed.toml"}...)
-							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-							exportArgs = append(exportArgs, exportedImageName)
+				when("custom layout directory", func() {
+					when("first build", func() {
+						when("app", func() {
+							it.Before(func() {
+								exportedImageName = "my-custom-layout-app"
+								layoutDir = filepath.Join(path.RootDir, "my-layout-dir")
+							})
 
-							output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, exportImage,
-								h.WithFlags(
-									"--env", "CNB_EXPERIMENTAL_MODE=warn",
-									"--env", "CNB_PLATFORM_API="+platformAPI,
-								),
-								h.WithArgs(exportArgs...))
+							it("is created", func() {
+								var exportFlags []string
+								h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+								exportFlags = append(exportFlags, []string{"-layout", "-layout-dir", layoutDir, "-analyzed", "/layers/layout-analyzed.toml"}...)
+								exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+								exportArgs = append(exportArgs, exportedImageName)
 
-							h.AssertStringContains(t, output, "Saving /layout-repo/index.docker.io/library/my-default-layout-app/latest")
+								output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, exportImage,
+									h.WithFlags(
+										"--env", "CNB_EXPERIMENTAL_MODE=warn",
+										"--env", "CNB_PLATFORM_API="+platformAPI,
+									),
+									h.WithArgs(exportArgs...))
 
-							// assert the image was saved on disk in OCI layout format
-							index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
-							h.AssertEq(t, len(index.Manifests), 1)
+								h.AssertStringContains(t, output, "Saving /my-layout-dir/index.docker.io/library/my-custom-layout-app/latest")
+
+								// assert the image was saved on disk in OCI layout format
+								index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
+								h.AssertEq(t, len(index.Manifests), 1)
+							})
 						})
 					})
 				})
 			})
 
-			when("custom layout directory", func() {
-				when("first build", func() {
-					when("app", func() {
-						it.Before(func() {
-							exportedImageName = "my-custom-layout-app"
-							layoutDir = filepath.Join(path.RootDir, "my-layout-dir")
-						})
+			when("experimental mode is not enabled", func() {
+				it("error message", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
 
-						it("is created", func() {
-							var exportFlags []string
-							h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
-							exportFlags = append(exportFlags, []string{"-layout", "-layout-dir", layoutDir, "-analyzed", "/layers/layout-analyzed.toml"}...)
-							exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-							exportArgs = append(exportArgs, exportedImageName)
+					cmd := exec.Command(
+						"docker", "run", "--rm",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						exportImage,
+						ctrPath(exporterPath),
+						"-layout",
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
 
-							output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, exportImage,
-								h.WithFlags(
-									"--env", "CNB_EXPERIMENTAL_MODE=warn",
-									"--env", "CNB_PLATFORM_API="+platformAPI,
-								),
-								h.WithArgs(exportArgs...))
-
-							h.AssertStringContains(t, output, "Saving /my-layout-dir/index.docker.io/library/my-custom-layout-app/latest")
-
-							// assert the image was saved on disk in OCI layout format
-							index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
-							h.AssertEq(t, len(index.Manifests), 1)
-						})
-					})
+					h.AssertNotNil(t, err)
+					expected := "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error"
+					h.AssertStringContains(t, string(output), expected)
 				})
 			})
 		})

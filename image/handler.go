@@ -12,6 +12,11 @@ type Handler interface {
 	Layout() bool
 }
 
+// NewHandler creates a new Handler according to the arguments provided, following these rules:
+// - WHEN layoutDir is defined and useLayout is true then it returns a LayoutHandler
+// - WHEN a docker client is provided then it returns a LocalHandler
+// - WHEN an auth.Keychain is provided then it returns a RemoteHandler
+// - Otherwise nil is returned
 func NewHandler(docker client.CommonAPIClient, keychain authn.Keychain, layoutDir string, useLayout bool) Handler {
 	if layoutDir != "" && useLayout {
 		return &LayoutHandler{

@@ -36,184 +36,216 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 		imageTag     string
 	)
 
-	when("no registry is provided then defaults to docker", func() {
+	when("layout handler", func() {
 		it.Before(func() {
 			layoutDir = platform.DefaultLayoutRepoDir
-			imageHandler = image.NewLayoutImageHandler(layoutDir)
+			imageHandler = image.NewHandler(nil, nil, layoutDir, true)
+			h.AssertNotNil(t, imageHandler)
 		})
 
-		when("no repo is provided", func() {
-			when("no tag or digest are provided", func() {
-				it.Before(func() {
-					imageRef = "my-full-stack-run"
-					imageTag = "latest"
-				})
-
-				it("creates image path with defaults and latest tag", func() {
-					image, err := imageHandler.InitImage(imageRef)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
-				})
-			})
-
-			when("tag is provided", func() {
-				it.Before(func() {
-					imageRef = "my-full-stack-run"
-					imageTag = "bionic"
-				})
-
-				it("creates image path with defaults and tag provided", func() {
-					image, err := imageHandler.InitImage(tag(imageRef, imageTag))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
-				})
-			})
-
-			when("digest is provided", func() {
-				it.Before(func() {
-					imageRef = "my-full-stack-run"
-					imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
-				})
-
-				it("creates image path with defaults and digest provided", func() {
-					image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, "sha256", imageDigest))
-				})
+		when("#Docker", func() {
+			it("return false", func() {
+				h.AssertEq(t, imageHandler.Docker(), false)
 			})
 		})
 
-		when("repo is provided", func() {
-			when("no tag or digest are provided", func() {
-				it.Before(func() {
-					imageRef = "cnb/my-full-stack-run"
-					imageTag = "latest"
-				})
-
-				it("creates an image path with repo provided and latest tag", func() {
-					image, err := imageHandler.InitImage(imageRef)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, imageTag))
-				})
-			})
-
-			when("tag is provided", func() {
-				it.Before(func() {
-					imageRef = "cnb/my-full-stack-run"
-					imageTag = "bionic"
-				})
-
-				it("creates image path with repo and tag provided", func() {
-					image, err := imageHandler.InitImage(tag(imageRef, imageTag))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, imageTag))
-				})
-			})
-
-			when("digest is provided", func() {
-				it.Before(func() {
-					imageRef = "cnb/my-full-stack-run"
-					imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
-				})
-
-				it("creates image path with repo and digest provided", func() {
-					image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, "sha256", imageDigest))
-				})
-			})
-		})
-	})
-
-	when("registry is provided", func() {
-		it.Before(func() {
-			registry = "my-registry.com"
-			layoutDir = platform.DefaultLayoutRepoDir
-			imageHandler = image.NewLayoutImageHandler(layoutDir)
-		})
-
-		when("no repo is provided", func() {
-			when("none tag", func() {
-				it.Before(func() {
-					imageRef = registry + "/my-full-stack-run"
-					imageTag = "latest"
-				})
-
-				it("creates an image path with registry provided and latest tag", func() {
-					image, err := imageHandler.InitImage(imageRef)
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
-				})
-			})
-
-			when("tag is provided", func() {
-				it.Before(func() {
-					imageRef = registry + "/my-full-stack-run"
-					imageTag = "bionic"
-				})
-
-				it("creates an image path with registry and tag provided", func() {
-					image, err := imageHandler.InitImage(tag(imageRef, imageTag))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
-				})
-			})
-
-			when("digest is provided", func() {
-				it.Before(func() {
-					imageRef = registry + "/my-full-stack-run"
-					imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
-				})
-
-				it("creates an image path with registry and digest provided", func() {
-					image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, "sha256", imageDigest))
-				})
+		when("#Layout", func() {
+			it("return true", func() {
+				h.AssertEq(t, imageHandler.Layout(), true)
 			})
 		})
 
-		when("repo is provided", func() {
-			when("no tag or digest are provided", func() {
-				it.Before(func() {
-					imageRef = registry + "/cnb/my-full-stack-run"
-					imageTag = "latest"
+		when("#InitImage", func() {
+			when("no registry is provided then defaults to docker", func() {
+				when("no repo is provided", func() {
+					when("no tag or digest are provided", func() {
+						it.Before(func() {
+							imageRef = "my-full-stack-run"
+							imageTag = "latest"
+						})
+
+						it("creates image path with defaults and latest tag", func() {
+							image, err := imageHandler.InitImage(imageRef)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
+						})
+					})
+
+					when("tag is provided", func() {
+						it.Before(func() {
+							imageRef = "my-full-stack-run"
+							imageTag = "bionic"
+						})
+
+						it("creates image path with defaults and tag provided", func() {
+							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
+						})
+					})
+
+					when("digest is provided", func() {
+						it.Before(func() {
+							imageRef = "my-full-stack-run"
+							imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
+						})
+
+						it("creates image path with defaults and digest provided", func() {
+							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, "sha256", imageDigest))
+						})
+					})
+
+					when("no image reference is provided", func() {
+						it("nil image is return", func() {
+							image, err := imageHandler.InitImage("")
+							h.AssertNil(t, err)
+							h.AssertNil(t, image)
+						})
+					})
+
+					when("image reference is not well formed", func() {
+						it("err is return", func() {
+							_, err := imageHandler.InitImage("my-bad-image-reference::latest")
+							h.AssertNotNil(t, err)
+						})
+					})
 				})
 
-				it("creates an image path with registry and repo provided and latest tag", func() {
-					image, err := imageHandler.InitImage(imageRef)
-					h.AssertNil(t, err)
+				when("repo is provided", func() {
+					when("no tag or digest are provided", func() {
+						it.Before(func() {
+							imageRef = "cnb/my-full-stack-run"
+							imageTag = "latest"
+						})
 
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
+						it("creates an image path with repo provided and latest tag", func() {
+							image, err := imageHandler.InitImage(imageRef)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, imageTag))
+						})
+					})
+
+					when("tag is provided", func() {
+						it.Before(func() {
+							imageRef = "cnb/my-full-stack-run"
+							imageTag = "bionic"
+						})
+
+						it("creates image path with repo and tag provided", func() {
+							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, imageTag))
+						})
+					})
+
+					when("digest is provided", func() {
+						it.Before(func() {
+							imageRef = "cnb/my-full-stack-run"
+							imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
+						})
+
+						it("creates image path with repo and digest provided", func() {
+							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, "sha256", imageDigest))
+						})
+					})
 				})
 			})
 
-			when("tag is provided", func() {
+			when("registry is provided", func() {
 				it.Before(func() {
-					imageRef = registry + "/cnb/my-full-stack-run"
-					imageTag = "bionic"
+					registry = "my-registry.com"
+					layoutDir = platform.DefaultLayoutRepoDir
+					imageHandler = image.NewLayoutImageHandler(layoutDir)
 				})
 
-				it("creates image path with registry, repo and tag provided", func() {
-					image, err := imageHandler.InitImage(tag(imageRef, imageTag))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
-				})
-			})
+				when("no repo is provided", func() {
+					when("none tag", func() {
+						it.Before(func() {
+							imageRef = registry + "/my-full-stack-run"
+							imageTag = "latest"
+						})
 
-			when("digest is provided", func() {
-				it.Before(func() {
-					imageRef = registry + "/cnb/my-full-stack-run"
-					imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
+						it("creates an image path with registry provided and latest tag", func() {
+							image, err := imageHandler.InitImage(imageRef)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
+						})
+					})
+
+					when("tag is provided", func() {
+						it.Before(func() {
+							imageRef = registry + "/my-full-stack-run"
+							imageTag = "bionic"
+						})
+
+						it("creates an image path with registry and tag provided", func() {
+							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
+						})
+					})
+
+					when("digest is provided", func() {
+						it.Before(func() {
+							imageRef = registry + "/my-full-stack-run"
+							imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
+						})
+
+						it("creates an image path with registry and digest provided", func() {
+							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, "sha256", imageDigest))
+						})
+					})
 				})
 
-				it("creates image path with registry, repo and digest provided", func() {
-					image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
-					h.AssertNil(t, err)
-					h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, "sha256", imageDigest))
+				when("repo is provided", func() {
+					when("no tag or digest are provided", func() {
+						it.Before(func() {
+							imageRef = registry + "/cnb/my-full-stack-run"
+							imageTag = "latest"
+						})
+
+						it("creates an image path with registry and repo provided and latest tag", func() {
+							image, err := imageHandler.InitImage(imageRef)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
+						})
+					})
+
+					when("tag is provided", func() {
+						it.Before(func() {
+							imageRef = registry + "/cnb/my-full-stack-run"
+							imageTag = "bionic"
+						})
+
+						it("creates image path with registry, repo and tag provided", func() {
+							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
+						})
+					})
+
+					when("digest is provided", func() {
+						it.Before(func() {
+							imageRef = registry + "/cnb/my-full-stack-run"
+							imageDigest = "f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab"
+						})
+
+						it("creates image path with registry, repo and digest provided", func() {
+							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
+							h.AssertNil(t, err)
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, "sha256", imageDigest))
+						})
+					})
 				})
 			})
 		})
