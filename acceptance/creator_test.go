@@ -183,8 +183,9 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 
 			when("multiple builds", func() {
 				var (
-					createFlags []string
-					createArgs  []string
+					createFlags          []string
+					createArgs           []string
+					duration1, duration2 time.Duration
 				)
 
 				it.Before(func() {
@@ -200,6 +201,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 					createArgs = append([]string{ctrPath(creatorPath)}, createFlags...)
 					createArgs = append(createArgs, imageName)
 
+					startTime := time.Now()
 					// first build
 					output := h.DockerRunAndCopy(t,
 						container1,
@@ -216,6 +218,8 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						)...),
 						h.WithArgs(createArgs...),
 					)
+					duration1 = time.Now().Sub(startTime)
+					t.Logf("First build duration: %s", duration1)
 					h.AssertStringDoesNotContain(t, output, "restored with content")
 					h.AssertPathExists(t, filepath.Join(dirBuild1, "layers", "sbom", "build", "samples_hello-world", "sbom.cdx.json"))
 					h.AssertPathExists(t, filepath.Join(dirBuild1, "layers", "sbom", "build", "samples_hello-world", "some-build-layer", "sbom.cdx.json"))
@@ -258,10 +262,11 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 							h.WithArgs(createArgs...),
 						)
 						// check that launch cache was used
-						duration := time.Now().Sub(startTime)
-						t.Logf("Build duration: %s", duration)
-						if duration > 3*time.Second {
-							t.Fatalf("Expected second build to complete in less than 3 seconds; took %s", duration)
+						duration2 = time.Now().Sub(startTime)
+						t.Logf("Second build duration: %s", duration2)
+						if duration2+time.Duration(0.1*float64(time.Second)) >= duration1 {
+							t.Logf("Second build output: %s", output)
+							t.Fatalf("Expected second build to complete 0.1s faster than first build; first build took %s, second build took %s", duration1, duration2)
 						}
 						h.AssertStringContains(t, output, "some-layer.sbom.cdx.json restored with content: {\"key\": \"some-launch-true-bom-content\"}")
 						h.AssertStringContains(t, output, "some-cache-layer.sbom.cdx.json restored with content: {\"key\": \"some-cache-true-bom-content\"}")

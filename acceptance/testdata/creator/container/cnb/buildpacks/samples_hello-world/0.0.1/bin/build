@@ -28,7 +28,15 @@ fi
 
 echo -n "{\"key\": \"some-launch-true-bom-content\"}" > ${layers_dir}/some-layer.sbom.cdx.json
 
-cat <<EOF > "$layers_dir"/some-layer.toml
+if test -f ${layers_dir}/some-layer.toml; then
+  # mimic not downloading new content
+  echo "nop"
+else
+  # mimic downloading new content
+  sleep 1
+fi
+
+cat <<EOF > ${layers_dir}/some-layer.toml
 [types]
   launch = true
 EOF
@@ -42,7 +50,7 @@ fi
 
 echo -n "{\"key\": \"some-cache-true-bom-content\"}" > ${layers_dir}/some-cache-layer.sbom.cdx.json
 
-cat <<EOF > "$layers_dir"/some-cache-layer.toml
+cat <<EOF > ${layers_dir}/some-cache-layer.toml
 [types]
   cache = true
 EOF
@@ -56,7 +64,7 @@ fi
 
 echo -n "{\"key\": \"some-launch-true-cache-true-bom-content\"}" > ${layers_dir}/some-launch-cache-layer.sbom.cdx.json
 
-cat <<EOF > "$layers_dir"/some-launch-cache-layer.toml
+cat <<EOF > ${layers_dir}/some-launch-cache-layer.toml
 [types]
   launch = true
   cache = true
@@ -72,7 +80,7 @@ fi
 
 echo -n "{\"key\": \"some-bom-content\"}" > ${layers_dir}/some-build-layer.sbom.cdx.json
 
-cat <<EOF > "$layers_dir"/some-build-layer.toml
+cat <<EOF > ${layers_dir}/some-build-layer.toml
 [types]
   build = true
 EOF
