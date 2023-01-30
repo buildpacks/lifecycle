@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/buildpacks/imgutil/layout"
@@ -292,16 +293,24 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	return appImage, runImageID.String(), nil
 }
 
+func parseLayoutImageReferencce(identifier *platform.ImageIdentifier) (string, string) {
+	referenceSplit := strings.SplitN(identifier.Reference, "@", 2)
+	path := referenceSplit[0]
+	digest := referenceSplit[1]
+	return path, digest
+}
+
 func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+	cmd.DefaultLogger.Infof("Using run image reference: %s\n", analyzedMD.RunImage.Reference)
+	runImagePath, _ := parseLayoutImageReferencce(analyzedMD.RunImage)
 	var opts = []layout.ImageOption{
-		layout.FromBaseImagePath(analyzedMD.RunImage.Name),
+		layout.FromBaseImagePath(runImagePath),
 	}
 
-	cmd.DefaultLogger.Infof("Using run image: %s\n", analyzedMD.RunImage.Name)
-
 	if analyzedMD.PreviousImage != nil {
-		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImage.Name)
-		opts = append(opts, layout.WithPreviousImage(analyzedMD.PreviousImage.Name))
+		previousImagePath, _ := parseLayoutImageReferencce(analyzedMD.PreviousImage)
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", previousImagePath)
+		opts = append(opts, layout.WithPreviousImage(previousImagePath))
 	}
 
 	if !e.customSourceDateEpoch().IsZero() {
@@ -321,7 +330,7 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
 
-	runImage, err := layout.NewImage(analyzedMD.RunImage.Name)
+	runImage, err := layout.NewImage(runImagePath)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}

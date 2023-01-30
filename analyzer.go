@@ -249,7 +249,6 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdent
 	a.Logger.Debugf("Analyzing image %q", identifier.String())
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
-		Name:      image.Name(),
 	}, nil
 }
 

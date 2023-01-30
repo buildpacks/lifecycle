@@ -1012,7 +1012,10 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					analyzer := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
 					h.AssertNotNil(t, analyzer.RunImage)
-					h.AssertEq(t, analyzer.RunImage.Name, filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest"))
+					analyzedImagePath := filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest")
+					// run-image digest from testdata/container/layout-repo/index.docker.io/library/busybox/latest
+					reference := fmt.Sprintf("%s@%s", analyzedImagePath, "sha256:f75f3d1a317fc82c793d567de94fc8df2bece37acd5f2bd364a0d91a0d1f3dab")
+					h.AssertEq(t, analyzer.RunImage.Reference, reference)
 				})
 			})
 
