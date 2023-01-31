@@ -5,8 +5,9 @@ import (
 	"strings"
 )
 
+// BuildEnvIncludelist are env vars that are passed-through where the builder would supply them and then lifecycle would pass it through to the buildpack
 var BuildEnvIncludelist = []string{
-	"CNB_STACK_ID",
+	"CNB_STACK_ID", // (TODO) deprecated as of api vx.x.x
 	"HOSTNAME",
 	"HOME",
 	"HTTPS_PROXY",

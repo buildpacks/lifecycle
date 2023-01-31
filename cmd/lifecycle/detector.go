@@ -74,6 +74,7 @@ func (d *detectCmd) Exec() error {
 		d.BuildConfigDir,
 		d.OrderPath,
 		d.PlatformDir,
+		d.AnalyzedPath,
 		cmd.DefaultLogger,
 	)
 	if err != nil {
@@ -115,14 +116,8 @@ func (d *detectCmd) Exec() error {
 		// was a custom run image configured?
 		if result.RunImage != "" {
 			cmd.DefaultLogger.Debug("Updating analyzed metadata with new runImage")
-			var analyzedMD platform.AnalyzedMetadata
-			analyzedMD, err = platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
-			if err != nil {
-				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
-			}
-			cmd.DefaultLogger.Debugf("Loaded existing analyzed metadata from '%s'", d.AnalyzedPath)
-			analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
-			if err = d.writeGenerateData(analyzedMD); err != nil {
+			detector.AnalyzeMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
+			if err = d.writeGenerateData(detector.AnalyzeMD); err != nil {
 				return err
 			}
 			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage)

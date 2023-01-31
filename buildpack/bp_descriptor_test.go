@@ -29,5 +29,60 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack A Homepage")
 			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
 		})
+
+		it("reads new target fields", func() {
+			path := filepath.Join("testdata", "buildpack", "by-id", "D", "v1", "buildpack.toml")
+			descriptor, err := buildpack.ReadBpDescriptor(path)
+			h.AssertNil(t, err)
+			// common sanity checks
+			h.AssertEq(t, descriptor.WithAPI, "0.12")
+			h.AssertEq(t, descriptor.Buildpack.ID, "D")
+			h.AssertEq(t, descriptor.Buildpack.Name, "Buildpack D")
+			h.AssertEq(t, descriptor.Buildpack.Version, "v1")
+			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack D Homepage")
+			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
+			// specific behaviors for this test
+			h.AssertEq(t, len(descriptor.Targets), 1)
+			h.AssertEq(t, descriptor.Targets[0].Arch, "IA64")
+			h.AssertEq(t, descriptor.Targets[0].Os, "OpenVMS")
+			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "VSI OpenVMS")
+			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "V8.4-2L3")
+		})
+
+		it("translates one special stack value into target values", func() {
+			path := filepath.Join("testdata", "buildpack", "by-id", "B", "v1", "buildpack.toml")
+			descriptor, err := buildpack.ReadBpDescriptor(path)
+			h.AssertNil(t, err)
+			// common sanity checks
+			h.AssertEq(t, descriptor.WithAPI, "0.7")
+			h.AssertEq(t, descriptor.Buildpack.ID, "B")
+			h.AssertEq(t, descriptor.Buildpack.Name, "Buildpack B")
+			h.AssertEq(t, descriptor.Buildpack.Version, "v1")
+			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack B Homepage")
+			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
+			// specific behaviors for this test
+			h.AssertEq(t, descriptor.Stacks[0].ID, "io.buildpacks.stacks.bionic")
+			h.AssertEq(t, len(descriptor.Targets), 1)
+			h.AssertEq(t, descriptor.Targets[0].Arch, "x86_64")
+			h.AssertEq(t, descriptor.Targets[0].Os, "linux")
+			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "ubuntu")
+			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "18.04")
+		})
+
+		it("does not translate non-special stack values", func() {
+			path := filepath.Join("testdata", "buildpack", "by-id", "C", "v1", "buildpack.toml")
+			descriptor, err := buildpack.ReadBpDescriptor(path)
+			h.AssertNil(t, err)
+			// common sanity assertions
+			h.AssertEq(t, descriptor.WithAPI, "0.12")
+			h.AssertEq(t, descriptor.Buildpack.ID, "C")
+			h.AssertEq(t, descriptor.Buildpack.Name, "Buildpack C")
+			h.AssertEq(t, descriptor.Buildpack.Version, "v1")
+			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack C Homepage")
+			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
+			// specific behaviors for this test
+			h.AssertEq(t, descriptor.Stacks[0].ID, "some.non-magic.value")
+			h.AssertEq(t, len(descriptor.Targets), 0)
+		})
 	})
 }

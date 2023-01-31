@@ -63,6 +63,7 @@ type Detector struct {
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
+	AnalyzeMD      platform.AnalyzedMetadata
 
 	// If detect fails, we want to print debug statements as info level.
 	// memHandler holds all log entries; we'll iterate through them at the end of detect,
@@ -70,7 +71,7 @@ type Detector struct {
 	memHandler *memory.Handler
 }
 
-func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, analyzedPath string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
 	memHandler := memory.New()
 	detector := &Detector{
 		AppDir:         appDir,
@@ -86,6 +87,14 @@ func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platfor
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
 	}
+
+	var amd platform.AnalyzedMetadata
+	amd, err := platform.ReadAnalyzed(analyzedPath, logger)
+	if err != nil {
+		return nil, fmt.Errorf("parse analyzed metadata from file %s : %v", analyzedPath, err)
+	}
+	detector.AnalyzeMD = amd
+
 	return detector, nil
 }
 
@@ -195,7 +204,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			return d.detectOrder(groupEl.OrderExtensions, done, group.Group[i+1:], true, wg)
 		}
 
-		// Lookup element in store.
+		// Lookup element in store.  <-- "the store" is the directory where all the buildpacks are.
 		var (
 			descriptor buildpack.Descriptor
 			err        error
@@ -205,6 +214,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			if err != nil {
 				return nil, nil, err
 			}
+			// TODO : check descriptor target against the target that's been passed in (except, we haven't passed it in yet.)
 
 			// Resolve order if element is a composite buildpack.
 			if order := descriptor.(*buildpack.BpDescriptor).Order; len(order) > 0 {
@@ -233,7 +243,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					PlatformDir:    d.PlatformDir,
 					Env:            env.NewBuildEnv(os.Environ()),
 				}
-				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger))
+				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger)) // this is where we finally invoke bin/detect
 			}
 			wg.Done()
 		}(key, descriptor)

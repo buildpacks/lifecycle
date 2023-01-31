@@ -9,10 +9,31 @@ import (
 )
 
 type BpDescriptor struct {
-	WithAPI     string `toml:"api"`
-	Buildpack   BpInfo `toml:"buildpack"`
-	Order       Order  `toml:"order"`
-	WithRootDir string `toml:"-"`
+	WithAPI     string           `toml:"api"`
+	Buildpack   BpInfo           `toml:"buildpack"`
+	Order       Order            `toml:"order"`
+	WithRootDir string           `toml:"-"`
+	Targets     []TargetMetadata `toml:"targets"`
+	Stacks      []StackMetadata  `tome:"stacks"` // just for backwards compat so we can check if it's the bionic stack, which we translate to a target
+
+}
+
+type StackMetadata struct {
+	ID     string   `toml:"id"`
+	Mixins []string `tomls:"mixins"`
+}
+
+type TargetMetadata struct {
+	ImageID       string                 `json:"image-id" toml:"image-id"`
+	Os            string                 `json:"os" toml:"os"`
+	Arch          string                 `json:"arch" toml:"arch"`
+	ArchVariant   string                 `json:"arch-variant" toml:"arch-variant"`
+	Distributions []DistributionMetadata `json:"distributions" toml:"distributions"`
+}
+
+type DistributionMetadata struct {
+	Name    string `json:"name" toml:"name"`
+	Version string `json:"version" toml:"version"`
 }
 
 type BpInfo struct {
@@ -37,6 +58,15 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 	}
 	if descriptor.WithRootDir, err = filepath.Abs(filepath.Dir(path)); err != nil {
 		return &BpDescriptor{}, err
+	}
+
+	// Question:  the issue doesn't actually say this, but imo we would only do the replacement IFF there's no explicit targets, right?
+	if len(descriptor.Targets) == 0 {
+		for _, stack := range descriptor.Stacks {
+			if stack.ID == "io.buildpacks.stacks.bionic" {
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{Os: "linux", Arch: "x86_64", Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+			}
+		}
 	}
 	return descriptor, nil
 }
