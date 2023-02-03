@@ -261,6 +261,8 @@ github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b/go.mod h1:obH5gd0Bsq
 github.com/bugsnag/panicwrap v0.0.0-20151223152923-e2c28503fcd0/go.mod h1:D/8v3kj0zr8ZAKg1AQ6crr+5VwKN5eIywRkfhyM/+dE=
 github.com/buildpacks/imgutil v0.0.0-20230127225206-ddd69aceb928 h1:NPc0K7APsdBmKuMSXjaeV/IVCdqB3LFRsi1uSQlVaSo=
 github.com/buildpacks/imgutil v0.0.0-20230127225206-ddd69aceb928/go.mod h1:zL5lZzgFuv9l36n52FjomVrUHpyuZf6r1UHKaZ4LeSQ=
+github.com/buildpacks/imgutil v0.0.0-20230203224758-32072eab009a h1:UguoluLb7QovRRbT40f57CxIwlkAOO5UpmLbXjYID+c=
+github.com/buildpacks/imgutil v0.0.0-20230203224758-32072eab009a/go.mod h1:zL5lZzgFuv9l36n52FjomVrUHpyuZf6r1UHKaZ4LeSQ=
 github.com/caarlos0/ctrlc v1.0.0/go.mod h1:CdXpj4rmq0q/1Eb44M9zi2nKB0QraNKuRGYGrrHhcQw=
 github.com/campoy/unique v0.0.0-20180121183637-88950e537e7e/go.mod h1:9IOqJGCPMSc6E5ydlp5NIonxObaeu/Iub/X03EKPVYo=
 github.com/cavaliercoder/go-cpio v0.0.0-20180626203310-925f9528c45e/go.mod h1:oDpT4efm8tSYHXV5tHSdRvBet/b/QzxZ+XyyPehvm3A=

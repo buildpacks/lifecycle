@@ -36,7 +36,6 @@ type LifecycleInputs struct {
 	LauncherPath          string
 	LauncherSBOMDir       string
 	LayersDir             string
-	LayoutDir             string
 	LogLevel              string
 	OrderPath             string
 	OutputImageRef        string
@@ -245,7 +244,6 @@ func (i *LifecycleInputs) directoryPaths() []*string {
 		&i.LaunchCacheDir,
 		&i.LayersDir,
 		&i.PlatformDir,
-		&i.LayoutDir,
 	}
 }
 

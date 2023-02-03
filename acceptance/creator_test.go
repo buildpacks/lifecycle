@@ -337,7 +337,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 			var (
 				containerName string
 				err           error
-				layoutDir     string
+				rootDir       string
 				tmpDir        string
 			)
 			when("experimental mode is enabled", func() {
@@ -347,7 +347,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 					h.AssertNil(t, err)
 
 					containerName = "test-container-" + h.RandString(10)
-					layoutDir = filepath.Join(path.RootDir, "layout-repo")
+					rootDir = path.RootDir
 				})
 
 				it.After(func() {
@@ -370,15 +370,15 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 					createdImageName = "some-created-image-" + h.RandString(10)
 					createArgs = append(createArgs, createdImageName)
 
-					output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, createImage,
+					output := h.DockerRunAndCopy(t, containerName, tmpDir, rootDir, createImage,
 						h.WithFlags(
 							"--env", "CNB_PLATFORM_API="+platformAPI,
 							"--env", "CNB_EXPERIMENTAL_MODE=warn",
 						),
 						h.WithArgs(createArgs...))
 
-					h.AssertStringContains(t, output, "Saving /layout-repo/index.docker.io/library/"+createdImageName+"/latest")
-					index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", createdImageName+"/latest"))
+					h.AssertStringContains(t, output, "Saving /index.docker.io/library/"+createdImageName+"/latest")
+					index := h.ReadIndexManifest(t, filepath.Join(tmpDir, rootDir, "index.docker.io", "library", createdImageName+"/latest"))
 					h.AssertEq(t, len(index.Manifests), 1)
 				})
 			})

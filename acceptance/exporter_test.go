@@ -273,7 +273,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			var (
 				containerName string
 				err           error
-				layoutDir     string
+				rootDir       string
 				tmpDir        string
 			)
 			when("experimental mode is enabled", func() {
@@ -298,7 +298,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						when("app", func() {
 							it.Before(func() {
 								exportedImageName = "my-default-layout-app"
-								layoutDir = filepath.Join(path.RootDir, "layout-repo")
+								rootDir = path.RootDir
 							})
 
 							it("is created", func() {
@@ -308,49 +308,17 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 								exportArgs = append(exportArgs, exportedImageName)
 
-								output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, exportImage,
+								output := h.DockerRunAndCopy(t, containerName, tmpDir, rootDir, exportImage,
 									h.WithFlags(
 										"--env", "CNB_EXPERIMENTAL_MODE=warn",
 										"--env", "CNB_PLATFORM_API="+platformAPI,
 									),
 									h.WithArgs(exportArgs...))
 
-								h.AssertStringContains(t, output, "Saving /layout-repo/index.docker.io/library/my-default-layout-app/latest")
+								h.AssertStringContains(t, output, "Saving /index.docker.io/library/my-default-layout-app/latest")
 
 								// assert the image was saved on disk in OCI layout format
-								index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
-								h.AssertEq(t, len(index.Manifests), 1)
-							})
-						})
-					})
-				})
-
-				when("custom layout directory", func() {
-					when("first build", func() {
-						when("app", func() {
-							it.Before(func() {
-								exportedImageName = "my-custom-layout-app"
-								layoutDir = filepath.Join(path.RootDir, "my-layout-dir")
-							})
-
-							it("is created", func() {
-								var exportFlags []string
-								h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
-								exportFlags = append(exportFlags, []string{"-layout", "-layout-dir", layoutDir, "-analyzed", "/layers/layout-analyzed.toml"}...)
-								exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
-								exportArgs = append(exportArgs, exportedImageName)
-
-								output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, exportImage,
-									h.WithFlags(
-										"--env", "CNB_EXPERIMENTAL_MODE=warn",
-										"--env", "CNB_PLATFORM_API="+platformAPI,
-									),
-									h.WithArgs(exportArgs...))
-
-								h.AssertStringContains(t, output, "Saving /my-layout-dir/index.docker.io/library/my-custom-layout-app/latest")
-
-								// assert the image was saved on disk in OCI layout format
-								index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
+								index := h.ReadIndexManifest(t, filepath.Join(tmpDir, rootDir, "index.docker.io", "library", exportedImageName, "latest"))
 								h.AssertEq(t, len(index.Manifests), 1)
 							})
 						})
@@ -415,9 +383,9 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "layout-analyzed.toml.placeholder")
 	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
+	// Values from image acceptance/testdata/exporter/container/ in OCI layout format
 	analyzedMD.RunImage = &platform.ImageIdentifier{
-		Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33",
+		Reference: "/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33",
 	}
 	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 }

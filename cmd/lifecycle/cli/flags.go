@@ -12,10 +12,6 @@ import (
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
 
-func FlagLayoutDir(layoutDir *string) {
-	flagSet.StringVar(layoutDir, "layout-dir", *layoutDir, "path to OCI layout format directory where the images are saved")
-}
-
 func FlagUseLayout(useLayout *bool) {
 	flagSet.BoolVar(useLayout, "layout", *useLayout, "enables the capability of resolving image from/to in OCI layout format on disk")
 }

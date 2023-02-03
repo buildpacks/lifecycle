@@ -31,7 +31,6 @@ func DefaultExportInputs(platformAPI *api.Version) LifecycleInputs {
 
 func defaultExportInputs() LifecycleInputs {
 	ei := defaultExportInputs011()
-	ei.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
 	ei.UseLayout = boolEnv(EnvUseLayout)
 	return ei
 }
@@ -96,7 +95,6 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 			return fillRunImageFromStackTOMLIfNeeded(i, logger)
 		}
 	} else {
-		logger.Infof("analyzed path: %s", i.AnalyzedPath)
 		switch {
 		case i.RunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
 			return errors.New(ErrRunImageUnsupported)

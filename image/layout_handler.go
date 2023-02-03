@@ -8,12 +8,12 @@ import (
 )
 
 type LayoutHandler struct {
-	layoutDir string
+	rootDir string
 }
 
-func NewLayoutImageHandler(layoutDir string) *LayoutHandler {
+func NewLayoutImageHandler(rootDir string) *LayoutHandler {
 	return &LayoutHandler{
-		layoutDir: layoutDir,
+		rootDir: rootDir,
 	}
 }
 
@@ -42,5 +42,5 @@ func (h *LayoutHandler) parseRef(imageRef string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(h.layoutDir, path), nil
+	return filepath.Join(h.rootDir, path), nil
 }

@@ -19,10 +19,9 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-
 	"github.com/apex/log/handlers/memory"
 	"github.com/google/go-cmp/cmp"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 func RandString(n int) string {

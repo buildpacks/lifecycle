@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/buildpacks/lifecycle/internal/path"
+
 	"github.com/buildpacks/lifecycle/image"
 
 	"github.com/docker/docker/client"
@@ -30,7 +32,6 @@ type createCmd struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
 	if c.PlatformAPI.AtLeast("0.12") {
-		cli.FlagLayoutDir(&c.LayoutDir)
 		cli.FlagUseLayout(&c.UseLayout)
 	}
 	if c.PlatformAPI.AtLeast("0.11") {
@@ -88,7 +89,7 @@ func (c *createCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err = priv.EnsureOwner(c.UID, c.GID, c.CacheDir, c.LaunchCacheDir, c.LayersDir, c.LayoutDir); err != nil {
+	if err = priv.EnsureOwner(c.UID, c.GID, c.CacheDir, c.LaunchCacheDir, c.LayersDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(c.UID, c.GID); err != nil {
@@ -123,7 +124,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
+			image.NewHandler(c.docker, c.keychain, path.RootDir, c.UseLayout),
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(
@@ -186,7 +187,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
+			image.NewHandler(c.docker, c.keychain, path.RootDir, c.UseLayout),
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(

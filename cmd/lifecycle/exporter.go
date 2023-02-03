@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/lifecycle/internal/path"
+
 	"github.com/buildpacks/imgutil/layout"
 
 	"github.com/BurntSushi/toml"
@@ -46,7 +48,6 @@ type exportData struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
 	if e.PlatformAPI.AtLeast("0.12") {
-		cli.FlagLayoutDir(&e.LayoutDir)
 		cli.FlagUseLayout(&e.UseLayout)
 	}
 	if e.PlatformAPI.AtLeast("0.11") {
@@ -109,7 +110,7 @@ func (e *exportCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err = priv.EnsureOwner(e.UID, e.GID, e.CacheDir, e.LaunchCacheDir, e.LayoutDir); err != nil {
+	if err = priv.EnsureOwner(e.UID, e.GID, e.CacheDir, e.LaunchCacheDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
@@ -293,22 +294,14 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	return appImage, runImageID.String(), nil
 }
 
-func parseLayoutImageReferencce(identifier *platform.ImageIdentifier) (string, string) {
-	referenceSplit := strings.SplitN(identifier.Reference, "@", 2)
-	path := referenceSplit[0]
-	digest := referenceSplit[1]
-	return path, digest
-}
-
 func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
-	cmd.DefaultLogger.Infof("Using run image reference: %s\n", analyzedMD.RunImage.Reference)
-	runImagePath, _ := parseLayoutImageReferencce(analyzedMD.RunImage)
+	runImagePath, _ := e.parseLayoutImageReferencce(analyzedMD.RunImage)
 	var opts = []layout.ImageOption{
 		layout.FromBaseImagePath(runImagePath),
 	}
 
 	if analyzedMD.PreviousImage != nil {
-		previousImagePath, _ := parseLayoutImageReferencce(analyzedMD.PreviousImage)
+		previousImagePath, _ := e.parseLayoutImageReferencce(analyzedMD.PreviousImage)
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", previousImagePath)
 		opts = append(opts, layout.WithPreviousImage(previousImagePath))
 	}
@@ -321,7 +314,7 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "parsing output image reference")
 	}
-	appPath := filepath.Join(e.LayoutDir, outputImageRefPath)
+	appPath := filepath.Join(path.RootDir, outputImageRefPath)
 	cmd.DefaultLogger.Infof("Using app image: %s\n", appPath)
 
 	appImage, err := layout.NewImage(appPath, opts...)
@@ -371,4 +364,11 @@ func (e *exportCmd) customSourceDateEpoch() time.Time {
 		return time.Unix(seconds, 0)
 	}
 	return time.Time{}
+}
+
+func (e *exportCmd) parseLayoutImageReferencce(identifier *platform.ImageIdentifier) (string, string) {
+	referenceSplit := strings.SplitN(identifier.Reference, "@", 2)
+	path := referenceSplit[0]
+	digest := referenceSplit[1]
+	return path, digest
 }
