@@ -20,11 +20,9 @@ type BpDescriptor struct {
 
 type StackMetadata struct {
 	ID     string   `toml:"id"`
-	Mixins []string `tomls:"mixins"`
 }
 
 type TargetMetadata struct {
-	ImageID       string                 `json:"image-id" toml:"image-id"` // TODO: what is this field and why is it here?
 	Os            string                 `json:"os" toml:"os"`
 	Arch          string                 `json:"arch" toml:"arch"`
 	ArchVariant   string                 `json:"arch-variant" toml:"arch-variant"`
@@ -60,7 +58,6 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 		return &BpDescriptor{}, err
 	}
 
-	// Question:  the issue doesn't actually say this, but imo we would only do the replacement IFF there's no explicit targets, right?
 	if len(descriptor.Targets) == 0 {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
@@ -91,20 +88,30 @@ func (d *BpDescriptor) String() string {
 	return d.Buildpack.Name + " " + d.Buildpack.Version
 }
 
-// Equals compares the two structs but they have to be really entirely identical, note this may be to strict IRL? how to tell?
+// Equals compares the two structs, treating optional fields (ArchVariant and Distributions) as wildcards if empty 
 func (t *TargetMetadata) Equals(o *TargetMetadata) bool {
-	if t.Arch != o.Arch || t.ArchVariant != o.ArchVariant || t.Os != o.Os || len(t.Distributions) != len(o.Distributions) {
-		return false
+	if t.Arch != o.Arch || t.Os != o.Os {
+      return false
 	}
-	// this could be more efficient but the lists are probably short...
-	for _, tdist := range t.Distributions {
-		for _, odist := range o.Distributions {
-			if tdist.Name == odist.Name && tdist.Version == odist.Version {
-				continue
-			}
-			return false
-		}
-	}
+  if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+    return false
+  }
+
+  if len(t.Distributions) > 0 && len(o.Distributions) > 0 {
+    // this could be more efficient but the lists are probably short...
+    for _, tdist := range t.Distributions {
+      found := false
+      for _, odist := range o.Distributions {
+        if tdist.Name == odist.Name && tdist.Version == odist.Version {
+          found = true
+          continue
+        }
+      }
+      if !found {
+        return false
+      }
+    }
+  }
 	return true
 }
 
