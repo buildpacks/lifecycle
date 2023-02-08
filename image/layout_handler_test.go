@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/internal/path"
-
 	"github.com/google/go-containerregistry/pkg/name"
+
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/lifecycle/image"
 
@@ -30,7 +30,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 	var (
 		imageHandler image.Handler
 		registry     string
-		rootDir      string
+		layoutDir    string
 		imageRef     string
 		imageDigest  string
 		imageTag     string
@@ -38,8 +38,8 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 
 	when("layout handler", func() {
 		it.Before(func() {
-			rootDir = path.RootDir
-			imageHandler = image.NewHandler(nil, nil, rootDir, true)
+			layoutDir = platform.DefaultLayoutRepoDir
+			imageHandler = image.NewHandler(nil, nil, layoutDir, true)
 			h.AssertNotNil(t, imageHandler)
 		})
 
@@ -68,7 +68,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 							image, err := imageHandler.InitImage(imageRef)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
 						})
 					})
 
@@ -81,7 +81,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates image path with defaults and tag provided", func() {
 							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, imageTag))
 						})
 					})
 
@@ -94,7 +94,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates image path with defaults and digest provided", func() {
 							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, defaultDockerRegistry, defaultDockerRepo, imageRef, "sha256", imageDigest))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, defaultDockerRepo, imageRef, "sha256", imageDigest))
 						})
 					})
 
@@ -125,7 +125,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 							image, err := imageHandler.InitImage(imageRef)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, defaultDockerRegistry, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, imageTag))
 						})
 					})
 
@@ -138,7 +138,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates image path with repo and tag provided", func() {
 							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, defaultDockerRegistry, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, imageTag))
 						})
 					})
 
@@ -151,7 +151,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates image path with repo and digest provided", func() {
 							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, defaultDockerRegistry, imageRef, "sha256", imageDigest))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, defaultDockerRegistry, imageRef, "sha256", imageDigest))
 						})
 					})
 				})
@@ -160,8 +160,8 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 			when("registry is provided", func() {
 				it.Before(func() {
 					registry = "my-registry.com"
-					rootDir = path.RootDir
-					imageHandler = image.NewLayoutImageHandler(rootDir)
+					layoutDir = platform.DefaultLayoutRepoDir
+					imageHandler = image.NewLayoutImageHandler(layoutDir)
 				})
 
 				when("no repo is provided", func() {
@@ -175,7 +175,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 							image, err := imageHandler.InitImage(imageRef)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
 						})
 					})
 
@@ -188,7 +188,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates an image path with registry and tag provided", func() {
 							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
 						})
 					})
 
@@ -201,7 +201,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates an image path with registry and digest provided", func() {
 							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, imageRef, "sha256", imageDigest))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, "sha256", imageDigest))
 						})
 					})
 				})
@@ -217,7 +217,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 							image, err := imageHandler.InitImage(imageRef)
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
 						})
 					})
 
@@ -230,7 +230,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates image path with registry, repo and tag provided", func() {
 							image, err := imageHandler.InitImage(tag(imageRef, imageTag))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, imageRef, imageTag))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, imageTag))
 						})
 					})
 
@@ -243,7 +243,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 						it("creates image path with registry, repo and digest provided", func() {
 							image, err := imageHandler.InitImage(sha256(imageRef, imageDigest))
 							h.AssertNil(t, err)
-							h.AssertEq(t, image.Name(), filepath.Join(rootDir, imageRef, "sha256", imageDigest))
+							h.AssertEq(t, image.Name(), filepath.Join(layoutDir, imageRef, "sha256", imageDigest))
 						})
 					})
 				})

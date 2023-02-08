@@ -54,10 +54,12 @@ const EnvUseDaemon = "CNB_USE_DAEMON"
 
 // ## Provided to handle inputs and outputs in OCI layout format
 
-// EnvUseLayout configures to read the inputs images like `run-image` or `previous-image` in OCI layout format instead of a
-// registry or daemon.
+// lifecycle can be configured to read the inputs images like `run-image` or `previous-image` in OCI layout format instead of a
+// registry or daemon. Also, it can export the final application image on disk in the same format.
+// The following environment variables must be set to configure the behavior of the lifecycle
 const (
-	EnvUseLayout = "CNB_USE_LAYOUT"
+	EnvLayoutRepoDir = "CNB_LAYOUT_REPO_DIR"
+	EnvUseLayout     = "CNB_USE_LAYOUT"
 )
 
 // ## Provided by the Base Image
@@ -113,9 +115,10 @@ const (
 
 // The following are the default locations of input directories if not specified.
 var (
-	DefaultAppDir      = filepath.Join(path.RootDir, "workspace")
-	DefaultLayersDir   = filepath.Join(path.RootDir, "layers")
-	DefaultPlatformDir = filepath.Join(path.RootDir, "platform")
+	DefaultAppDir        = filepath.Join(path.RootDir, "workspace")
+	DefaultLayersDir     = filepath.Join(path.RootDir, "layers")
+	DefaultPlatformDir   = filepath.Join(path.RootDir, "platform")
+	DefaultLayoutRepoDir = filepath.Join(path.RootDir, "layout-repo")
 )
 
 // The following instruct the lifecycle where to write files and data during the build.

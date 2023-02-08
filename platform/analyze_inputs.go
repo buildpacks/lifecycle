@@ -31,6 +31,7 @@ func DefaultAnalyzeInputs(platformAPI *api.Version) LifecycleInputs {
 func defaultAnalyzeInputs() LifecycleInputs {
 	ai := defaultAnalyzeInputs09To011()
 	ai.UseLayout = boolEnv(EnvUseLayout)
+	ai.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
 	return ai
 }
 

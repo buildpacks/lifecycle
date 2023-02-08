@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buildpacks/lifecycle/internal/path"
-
 	"github.com/buildpacks/imgutil/layout"
 
 	"github.com/BurntSushi/toml"
@@ -48,6 +46,7 @@ type exportData struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
 	if e.PlatformAPI.AtLeast("0.12") {
+		cli.FlagLayoutDir(&e.LayoutDir)
 		cli.FlagUseLayout(&e.UseLayout)
 	}
 	if e.PlatformAPI.AtLeast("0.11") {
@@ -110,7 +109,7 @@ func (e *exportCmd) Privileges() error {
 			return cmd.FailErr(err, "initialize docker client")
 		}
 	}
-	if err = priv.EnsureOwner(e.UID, e.GID, e.CacheDir, e.LaunchCacheDir); err != nil {
+	if err = priv.EnsureOwner(e.UID, e.GID, e.CacheDir, e.LaunchCacheDir, e.LayoutDir); err != nil {
 		return cmd.FailErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
@@ -314,7 +313,7 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "parsing output image reference")
 	}
-	appPath := filepath.Join(path.RootDir, outputImageRefPath)
+	appPath := filepath.Join(e.LayoutDir, outputImageRefPath)
 	cmd.DefaultLogger.Infof("Using app image: %s\n", appPath)
 
 	appImage, err := layout.NewImage(appPath, opts...)

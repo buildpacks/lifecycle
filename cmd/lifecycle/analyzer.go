@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/internal/path"
-
 	"github.com/buildpacks/lifecycle/image"
 
 	"github.com/docker/docker/client"
@@ -31,6 +29,7 @@ type analyzeCmd struct {
 func (a *analyzeCmd) DefineFlags() {
 	// additive changes
 	if a.Platform.API().AtLeast("0.12") {
+		cli.FlagLayoutDir(&a.LayoutDir)
 		cli.FlagUseLayout(&a.UseLayout)
 	}
 	if a.Platform.API().AtLeast("0.9") {
@@ -108,7 +107,7 @@ func (a *analyzeCmd) Exec() error {
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
-		image.NewHandler(a.docker, a.keychain, path.RootDir, a.UseLayout),
+		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout),
 		NewRegistryHandler(a.keychain),
 	)
 	analyzer, err := factory.NewAnalyzer(
