@@ -13,7 +13,7 @@ RUN groupadd cnb --gid ${cnb_gid} && \
 
 # chown the directories so the tests do not have to run as root
 RUN chown -R "${cnb_uid}:${cnb_gid}" "/layers"
-RUN chown -R "${cnb_uid}:${cnb_gid}" "/index.docker.io"
+RUN chown -R "${cnb_uid}:${cnb_gid}" "/layout-repo"
 
 WORKDIR /layers
 
