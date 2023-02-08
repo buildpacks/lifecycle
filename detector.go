@@ -206,22 +206,42 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 		// Lookup element in store.  <-- "the store" is the directory where all the buildpacks are.
 		var (
-			descriptor buildpack.Descriptor
-			err        error
+			descriptor   buildpack.Descriptor
+			bpDescriptor *buildpack.BpDescriptor
+			err          error
 		)
 		if groupEl.Kind() == buildpack.KindBuildpack {
-			descriptor, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
+			bpDescriptor, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
 			if err != nil {
 				return nil, nil, err
 			}
-			// TODO : check descriptor target against the target that's been passed in (except, we haven't passed it in yet.)
+
+			targetMatch := false
+			// if the analyze phase didn't place any constraints, then no further checks are needed
+			if d.AnalyzeMD.Metadata.RunImage.Target.Equals(&buildpack.TargetMetadata{}) {
+				targetMatch = true
+			} else {
+				for _, target := range bpDescriptor.Targets {
+					if target.Equals(&d.AnalyzeMD.Metadata.RunImage.Target) {
+						targetMatch = true
+						break
+					}
+				}
+			}
+			if !targetMatch && !groupEl.Optional {
+				// sample output: unable to satisfy Target OS/Arch constriaints: { MacOS ARM64  [{MacOS some kind of big cat}]}
+				return nil, nil, buildpack.NewError(
+					fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.Metadata.RunImage.Target),
+					buildpack.ErrTypeFailedDetection)
+			}
 
 			// Resolve order if element is a composite buildpack.
-			if order := descriptor.(*buildpack.BpDescriptor).Order; len(order) > 0 {
+			if order := bpDescriptor.Order; len(order) > 0 {
 				// FIXME: double-check slice safety here
 				// FIXME: cyclical references lead to infinite recursion
 				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
 			}
+			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
 		} else {
 			descriptor, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
 			if err != nil {

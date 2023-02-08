@@ -24,7 +24,7 @@ type StackMetadata struct {
 }
 
 type TargetMetadata struct {
-	ImageID       string                 `json:"image-id" toml:"image-id"`
+	ImageID       string                 `json:"image-id" toml:"image-id"` // TODO: what is this field and why is it here?
 	Os            string                 `json:"os" toml:"os"`
 	Arch          string                 `json:"arch" toml:"arch"`
 	ArchVariant   string                 `json:"arch-variant" toml:"arch-variant"`
@@ -89,6 +89,23 @@ func (d *BpDescriptor) RootDir() string {
 
 func (d *BpDescriptor) String() string {
 	return d.Buildpack.Name + " " + d.Buildpack.Version
+}
+
+// Equals compares the two structs but they have to be really entirely identical, note this may be to strict IRL? how to tell?
+func (t *TargetMetadata) Equals(o *TargetMetadata) bool {
+	if t.Arch != o.Arch || t.ArchVariant != o.ArchVariant || t.Os != o.Os || len(t.Distributions) != len(o.Distributions) {
+		return false
+	}
+	// this could be more efficient but the lists are probably short...
+	for _, tdist := range t.Distributions {
+		for _, odist := range o.Distributions {
+			if tdist.Name == odist.Name && tdist.Version == odist.Version {
+				continue
+			}
+			return false
+		}
+	}
+	return true
 }
 
 func (bg Group) Append(group ...Group) Group {

@@ -794,6 +794,67 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 			})
+
+			when("A Target is provided from AnalyzeMD", func() {
+				it("errors if the buildpacks don't share that target arch/os", func() {
+					detector.AnalyzeMD.Metadata.RunImage.Target.Os = "MacOS" // sure, why not?
+					detector.AnalyzeMD.Metadata.RunImage.Target.Arch = "ARM64"
+					detector.AnalyzeMD.Metadata.RunImage.Target.Distributions = []buildpack.DistributionMetadata{{Name: "MacOS", Version: "some kind of big cat"}}
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+						Targets: []buildpack.TargetMetadata{
+							{Arch: "P6", ArchVariant: "Pentium Pro", Os: "Win95",
+								Distributions: []buildpack.DistributionMetadata{
+									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+							{Arch: "Pentium M", Os: "Win98", Distributions: []buildpack.DistributionMetadata{{Name: "Windows 2000", Version: "Server"}}},
+						},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+
+					group := []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: "0.3"},
+					}
+
+					detector.Order = buildpack.Order{{Group: group}}
+					_, _, err := detector.Detect()
+					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
+						t.Fatalf("Unexpected error:\n%s\n", err)
+					}
+				})
+				it("totally works if the constraints are met", func() {
+					detector.AnalyzeMD.Metadata.RunImage.Target.Os = "MacOS" // sure, why not?
+					detector.AnalyzeMD.Metadata.RunImage.Target.Arch = "ARM64"
+					detector.AnalyzeMD.Metadata.RunImage.Target.Distributions = []buildpack.DistributionMetadata{{Name: "MacOS", Version: "snow cheetah"}}
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+						Targets: []buildpack.TargetMetadata{
+							{Arch: "P6", ArchVariant: "Pentium Pro", Os: "Win95",
+								Distributions: []buildpack.DistributionMetadata{
+									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+							{Arch: "ARM64", Os: "MacOS", Distributions: []buildpack.DistributionMetadata{{Name: "MacOS", Version: "snow cheetah"}}},
+						},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
+
+					group := []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: "0.12"},
+					}
+					resolver.EXPECT().Resolve(group, detector.Runs).Return(
+						[]buildpack.GroupElement{},
+						[]platform.BuildPlanEntry{},
+						nil,
+					)
+
+					detector.Order = buildpack.Order{{Group: group}}
+					_, _, err := detector.Detect()
+					h.AssertNil(t, err)
+				})
+			})
 		})
 
 		when("there are extensions", func() {
