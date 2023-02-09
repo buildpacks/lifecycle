@@ -99,7 +99,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 			var stackMD *platform.StackMetadata
 
 			it.Before(func() {
-				stackMD = &platform.StackMetadata{RunImage: platform.StackRunImageMetadata{
+				stackMD = &platform.StackMetadata{RunImage: platform.RunImageMetadata{
 					Image: "first.com/org/repo",
 					Mirrors: []string{
 						"myorg/myrepo",

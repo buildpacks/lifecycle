@@ -56,6 +56,27 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var createdImageName string
 
+		when("called with run", func() {
+			it("uses the provided run.toml path", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept -run")
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+platformAPI,
+					"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
+					"--network", createRegNetwork,
+					createImage,
+					ctrPath(creatorPath),
+					"-run", "/cnb/run.toml",
+					createRegFixtures.SomeAppImage,
+				) // #nosec G204
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "ensure registry read access to some-run-image-from-run-toml"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
+
 		when("daemon case", func() {
 			it.After(func() {
 				h.DockerImageRemove(t, createdImageName)

@@ -77,7 +77,9 @@ const (
 	EnvOrderPath     = "CNB_ORDER_PATH"
 	DefaultOrderFile = "order.toml"
 
-	// EnvStackPath is the location of the stack file, which contains information about the runtime base image.
+	// EnvRunPath is the location of the run file, which contains information about the runtime base image.
+	EnvRunPath = "CNB_RUN_PATH"
+	// EnvStackPath is the location of the (deprecated) stack file, which contains information about the runtime base image.
 	EnvStackPath = "CNB_STACK_PATH"
 )
 
@@ -89,6 +91,8 @@ var (
 	// DefaultOrderPath is the default order path.
 	DefaultOrderPath = filepath.Join(path.RootDir, "cnb", "order.toml")
 
+	// DefaultRunPath is the default run path.
+	DefaultRunPath = filepath.Join(path.RootDir, "cnb", "run.toml")
 	// DefaultStackPath is the default stack path.
 	DefaultStackPath = filepath.Join(path.RootDir, "cnb", "stack.toml")
 )

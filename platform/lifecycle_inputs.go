@@ -45,6 +45,7 @@ type LifecycleInputs struct {
 	ProjectMetadataPath   string
 	ReportPath            string
 	RunImageRef           string
+	RunPath               string
 	StackPath             string
 	UID                   int
 	GID                   int
@@ -102,6 +103,7 @@ func notIn(list []string, str string) bool {
 var (
 	ErrOutputImageRequired           = "image argument is required"
 	ErrRunImageRequiredWhenNoStackMD = "-run-image is required when there is no stack metadata available"
+	ErrRunImageRequiredWhenNoRunMD   = "-run-image is required when there is no run metadata available"
 	ErrSupplyOnlyOneRunImage         = "supply only one of -run-image or (deprecated) -image"
 	ErrRunImageUnsupported           = "-run-image is unsupported"
 	ErrImageUnsupported              = "-image is unsupported"
@@ -185,8 +187,33 @@ func CheckLaunchCache(i *LifecycleInputs, logger log.Logger) error {
 	return nil
 }
 
-// fillRunImageFromStackTOMLIfNeeded updates the provided lifecycle inputs to include the run image from stack.toml if it is missing.
-// When there are multiple run images in stack.toml, the run image with registry matching the output image is selected.
+// fillRunImageFromRunTOMLIfNeeded updates the provided lifecycle inputs to include the run image from run.toml if the run image input it is missing.
+// When there are multiple images in run.toml, the first image is selected.
+// When there are registry mirrors for the selected image, the image with registry matching the output image is selected.
+func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) error {
+	if i.RunImageRef != "" {
+		return nil
+	}
+	targetRegistry, err := parseRegistry(i.OutputImageRef)
+	if err != nil {
+		return err
+	}
+	runMD, err := ReadRun(i.RunPath, logger)
+	if err != nil {
+		return err
+	}
+	if len(runMD.Images) == 0 {
+		return errors.New(ErrRunImageRequiredWhenNoRunMD)
+	}
+	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry)
+	if err != nil {
+		return errors.New(ErrRunImageRequiredWhenNoRunMD)
+	}
+	return nil
+}
+
+// fillRunImageFromStackTOMLIfNeeded updates the provided lifecycle inputs to include the run image from stack.toml if the run image input it is missing.
+// When there are registry mirrors in stack.toml, the image with registry matching the output image is selected.
 func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) error {
 	if i.RunImageRef != "" {
 		return nil
