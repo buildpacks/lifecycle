@@ -136,8 +136,8 @@ func (e *exportCmd) Exec() error {
 func (e *exportCmd) registryImages() []string {
 	registryImages := e.RegistryImages()
 	if !e.UseDaemon {
-		if e.persistedData.analyzedMD.PreviousImage != nil {
-			registryImages = append(registryImages, e.persistedData.analyzedMD.PreviousImage.Reference)
+		if e.persistedData.analyzedMD.PreviousImageRef != "" {
+			registryImages = append(registryImages, e.persistedData.analyzedMD.PreviousImageRef)
 		}
 	}
 	return registryImages
@@ -225,9 +225,9 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		local.FromBaseImage(e.RunImageRef),
 	}
 
-	if analyzedMD.PreviousImage != nil {
-		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.PreviousImage.Reference)
-		opts = append(opts, local.WithPreviousImage(analyzedMD.PreviousImage.Reference))
+	if analyzedMD.PreviousImageRef != "" {
+		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.PreviousImageRef)
+		opts = append(opts, local.WithPreviousImage(analyzedMD.PreviousImageRef))
 	}
 
 	if !e.customSourceDateEpoch().IsZero() {
@@ -264,9 +264,9 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		remote.FromBaseImage(e.RunImageRef),
 	}
 
-	if analyzedMD.PreviousImage != nil {
-		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImage.Reference)
-		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImage.Reference))
+	if analyzedMD.PreviousImageRef != "" {
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef)
+		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImageRef))
 	}
 
 	if !e.customSourceDateEpoch().IsZero() {

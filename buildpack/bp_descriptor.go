@@ -19,7 +19,7 @@ type BpDescriptor struct {
 }
 
 type StackMetadata struct {
-	ID     string   `toml:"id"`
+	ID string `toml:"id"`
 }
 
 type TargetMetadata struct {
@@ -88,30 +88,30 @@ func (d *BpDescriptor) String() string {
 	return d.Buildpack.Name + " " + d.Buildpack.Version
 }
 
-// Equals compares the two structs, treating optional fields (ArchVariant and Distributions) as wildcards if empty 
+// Equals compares the two structs, treating optional fields (ArchVariant and Distributions) as wildcards if empty
 func (t *TargetMetadata) Equals(o *TargetMetadata) bool {
 	if t.Arch != o.Arch || t.Os != o.Os {
-      return false
+		return false
 	}
-  if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
-    return false
-  }
+	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+		return false
+	}
 
-  if len(t.Distributions) > 0 && len(o.Distributions) > 0 {
-    // this could be more efficient but the lists are probably short...
-    for _, tdist := range t.Distributions {
-      found := false
-      for _, odist := range o.Distributions {
-        if tdist.Name == odist.Name && tdist.Version == odist.Version {
-          found = true
-          continue
-        }
-      }
-      if !found {
-        return false
-      }
-    }
-  }
+	if len(t.Distributions) > 0 && len(o.Distributions) > 0 {
+		// this could be more efficient but the lists are probably short...
+		for _, tdist := range t.Distributions {
+			found := false
+			for _, odist := range o.Distributions {
+				if tdist.Name == odist.Name && tdist.Version == odist.Version {
+					found = true
+					continue
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+	}
 	return true
 }
 

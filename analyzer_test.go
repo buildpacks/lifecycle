@@ -572,7 +572,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, md.PreviousImage.Reference, "s0m3D1g3sT")
+					h.AssertEq(t, md.PreviousImageRef, "s0m3D1g3sT")
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
 				})
 
@@ -607,7 +607,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertNil(t, md.PreviousImage)
+					h.AssertEq(t, md.PreviousImageRef, "")
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})

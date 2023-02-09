@@ -218,11 +218,11 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 			targetMatch := false
 			// if the analyze phase didn't place any constraints, then no further checks are needed
-			if d.AnalyzeMD.Metadata.RunImage.Target.Equals(&buildpack.TargetMetadata{}) {
+			if d.AnalyzeMD.RunImage.Target.Equals(&buildpack.TargetMetadata{}) {
 				targetMatch = true
 			} else {
 				for _, target := range bpDescriptor.Targets {
-					if target.Equals(&d.AnalyzeMD.Metadata.RunImage.Target) {
+					if target.Equals(&d.AnalyzeMD.RunImage.Target) {
 						targetMatch = true
 						break
 					}
@@ -231,7 +231,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			if !targetMatch && !groupEl.Optional {
 				// sample output: unable to satisfy Target OS/Arch constriaints: { MacOS ARM64  [{MacOS some kind of big cat}]}
 				return nil, nil, buildpack.NewError(
-					fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.Metadata.RunImage.Target),
+					fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.RunImage.Target),
 					buildpack.ErrTypeFailedDetection)
 			}
 

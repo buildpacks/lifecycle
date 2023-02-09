@@ -20,10 +20,10 @@ import (
 // analyzed.toml
 
 type AnalyzedMetadata struct {
-	PreviousImage *ImageIdentifier `toml:"image"`
-	Metadata      LayersMetadata   `toml:"metadata"`
-	RunImage      *ImageIdentifier `toml:"run-image,omitempty"`
-	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
+	PreviousImageRef string           `toml:"image-ref"`
+	Metadata         LayersMetadata   `toml:"metadata"`
+	RunImage         RunImage         `toml:"run-image,omitempty"` //  TODO:  how we get a pointer back in there? *ImageIdentifier `toml:"run-image,omitempty"`
+	BuildImage       *ImageIdentifier `toml:"build-image,omitempty"`
 }
 
 // FIXME: fix key names to be accurate in the daemon case
@@ -51,9 +51,9 @@ func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, err
 			name = "ubuntu"
 			versions = "18.04"
 		*/
-		analyzedMD.Metadata.RunImage.Target.Os = "linux"
-		analyzedMD.Metadata.RunImage.Target.Arch = "x86_64"
-		analyzedMD.Metadata.RunImage.Target.Distributions = []buildpack.DistributionMetadata{buildpack.DistributionMetadata{Name: "ubuntu", Version: "18.04"}}
+		analyzedMD.RunImage.Target.Os = "linux"
+		analyzedMD.RunImage.Target.Arch = "x86_64"
+		analyzedMD.RunImage.Target.Distributions = []buildpack.DistributionMetadata{buildpack.DistributionMetadata{Name: "ubuntu", Version: "18.04"}}
 	}
 
 	return analyzedMD, nil
@@ -104,8 +104,12 @@ type PreviousImageRunImageMetadata struct {
 }
 
 type RunImageMetadata struct {
-	TopLayer  string                   `json:"topLayer" toml:"top-layer"`
-	Reference string                   `json:"reference" toml:"reference"`
+	TopLayer  string `json:"topLayer" toml:"top-layer"`
+	Reference string `json:"reference" toml:"reference"`
+}
+
+type RunImage struct {
+	Reference string                   `toml:"reference"`
 	Target    buildpack.TargetMetadata `json:"target" toml:"target"`
 }
 
