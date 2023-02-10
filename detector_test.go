@@ -73,7 +73,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
 			af := h.TempFile(t, "", "analyzed.toml")
 
-			detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", af, logger)
+			detector, err := detectorFactory.NewDetector(af, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -134,7 +134,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
 				af := h.TempFile(t, "", "analyzed.toml")
-				detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", af, logger)
+				detector, err := detectorFactory.NewDetector(af, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -161,11 +161,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			af := h.TempFile(t, "", "analyzed.toml")
 			var err error
 			detector, err = detectorFactory.NewDetector(
+				af,
 				"some-app-dir",
 				"some-build-config-dir",
 				"some-order-path",
 				"some-platform-dir",
-				af,
 				logger,
 			)
 			h.AssertNil(t, err)

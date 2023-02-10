@@ -71,7 +71,7 @@ type Detector struct {
 	memHandler *memory.Handler
 }
 
-func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, analyzedPath string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(analyzedPath, appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
 	memHandler := memory.New()
 	detector := &Detector{
 		AppDir:         appDir,

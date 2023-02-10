@@ -70,11 +70,11 @@ func (d *detectCmd) Exec() error {
 		dirStore,
 	)
 	detector, err := detectorFactory.NewDetector(
+		d.AnalyzedPath,
 		d.AppDir,
 		d.BuildConfigDir,
 		d.OrderPath,
 		d.PlatformDir,
-		d.AnalyzedPath,
 		cmd.DefaultLogger,
 	)
 	if err != nil {
