@@ -1,18 +1,13 @@
 package platform
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
-
-	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/str"
-	"github.com/buildpacks/lifecycle/log"
 )
 
 // LifecycleInputs holds the values of command-line flags and args i.e., platform inputs to the lifecycle.
@@ -53,6 +48,85 @@ type LifecycleInputs struct {
 	UseDaemon             bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
 	KanikoCacheTTL        time.Duration
+}
+
+func NewLifecycleInputs(platformAPI *api.Version) LifecycleInputs {
+	inputs := LifecycleInputs{
+		// Operator config
+
+		LogLevel:    envOrDefault(EnvLogLevel, DefaultLogLevel),
+		PlatformAPI: platformAPI,
+		UseDaemon:   boolEnv(EnvUseDaemon),
+
+		// Provided by the base image
+
+		UID: intEnv(EnvUID),
+		GID: intEnv(EnvGID),
+
+		// Provided by the builder image
+
+		BuildConfigDir: envOrDefault(EnvBuildConfigDir, DefaultBuildConfigDir),
+		BuildpacksDir:  envOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir),
+		ExtensionsDir:  envOrDefault(EnvExtensionsDir, DefaultExtensionsDir),
+		RunPath:        envOrDefault(EnvRunPath, DefaultRunPath),
+		StackPath:      envOrDefault(EnvStackPath, DefaultStackPath),
+
+		// Provided at build time
+
+		AppDir:      envOrDefault(EnvAppDir, DefaultAppDir),
+		LayersDir:   envOrDefault(EnvLayersDir, DefaultLayersDir),
+		OrderPath:   envOrDefault(EnvOrderPath, placeholderOrderPath), // the lifecycle will look for <layers>/order.toml and if not present fall back to /cnb/order.toml
+		PlatformDir: envOrDefault(EnvPlatformDir, DefaultPlatformDir),
+
+		// The following instruct the lifecycle where to write files and data during the build
+
+		AnalyzedPath: envOrDefault(EnvAnalyzedPath, placeholderAnalyzedPath),
+		GeneratedDir: envOrDefault(EnvGeneratedDir, placeholderGeneratedDir),
+		GroupPath:    envOrDefault(EnvGroupPath, placeholderGroupPath),
+		PlanPath:     envOrDefault(EnvPlanPath, placeholderPlanPath),
+		ReportPath:   envOrDefault(EnvReportPath, placeholderReportPath),
+
+		// Configuration options with respect to caching
+
+		CacheDir:       "", // no default
+		CacheImageRef:  "", // no default
+		KanikoCacheTTL: timeEnvOrDefault(EnvKanikoCacheTTL, DefaultKanikoCacheTTL),
+		KanikoDir:      "/kaniko",
+		LaunchCacheDir: "", // no default
+		SkipLayers:     boolEnv(EnvSkipLayers),
+
+		// Images used by the lifecycle during the build
+
+		AdditionalTags:        nil, // no default
+		BuildImageRef:         "",  // no default
+		DeprecatedRunImageRef: "",  // no default
+		OutputImageRef:        "",  // no default
+		PreviousImageRef:      "",  // no default
+		RunImageRef:           "",  // no default
+
+		// Configuration options for the output application image
+
+		DefaultProcessType:  "", // no default
+		LauncherPath:        DefaultLauncherPath,
+		LauncherSBOMDir:     DefaultBuildpacksioSBOMDir,
+		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, placeholderProjectMetadataPath),
+	}
+
+	if platformAPI.LessThan("0.5") {
+		inputs.AnalyzedPath = envOrDefault(EnvAnalyzedPath, DefaultAnalyzedFile)
+		inputs.GeneratedDir = envOrDefault(EnvGeneratedDir, DefaultGeneratedDir)
+		inputs.GroupPath = envOrDefault(EnvGroupPath, DefaultGroupFile)
+		inputs.PlanPath = envOrDefault(EnvPlanPath, DefaultPlanFile)
+		inputs.ProjectMetadataPath = envOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataFile)
+		inputs.ReportPath = envOrDefault(EnvReportPath, DefaultReportFile)
+	}
+
+	if platformAPI.LessThan("0.6") {
+		// The default location for order.toml is /cnb/order.toml
+		inputs.OrderPath = envOrDefault(EnvOrderPath, DefaultOrderPath)
+	}
+
+	return inputs
 }
 
 func (i *LifecycleInputs) DestinationImages() []string {
@@ -100,207 +174,6 @@ func notIn(list []string, str string) bool {
 	return true
 }
 
-var (
-	ErrOutputImageRequired           = "image argument is required"
-	ErrRunImageRequiredWhenNoStackMD = "-run-image is required when there is no stack metadata available"
-	ErrRunImageRequiredWhenNoRunMD   = "-run-image is required when there is no run metadata available"
-	ErrSupplyOnlyOneRunImage         = "supply only one of -run-image or (deprecated) -image"
-	ErrRunImageUnsupported           = "-run-image is unsupported"
-	ErrImageUnsupported              = "-image is unsupported"
-	MsgIgnoringLaunchCache           = "Ignoring -launch-cache, only intended for use with -daemon"
-)
-
-func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
-	// order of operations is important
-	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
-	switch phase {
-	case Analyze:
-		if i.PlatformAPI.LessThan("0.7") {
-			ops = append(ops, CheckCache)
-		}
-		ops = append(ops,
-			FillAnalyzeImages,
-			ValidateOutputImageProvided,
-			CheckLaunchCache,
-			ValidateImageRefs,
-			ValidateTargetsAreSameRegistry,
-		)
-	case Build:
-		// nop
-	case Create:
-		ops = append(ops,
-			FillCreateImages,
-			ValidateOutputImageProvided,
-			CheckCache,
-			CheckLaunchCache,
-			ValidateImageRefs,
-			ValidateTargetsAreSameRegistry,
-		)
-	case Detect:
-		// nop
-	case Export:
-		ops = append(ops,
-			FillExportRunImage,
-			ValidateOutputImageProvided,
-			CheckCache,
-			CheckLaunchCache,
-			ValidateImageRefs,
-			ValidateTargetsAreSameRegistry,
-		)
-	case Extend:
-		// nop
-	case Rebase:
-		ops = append(ops,
-			ValidateRebaseRunImage,
-			ValidateOutputImageProvided,
-			ValidateImageRefs,
-			ValidateTargetsAreSameRegistry,
-		)
-	case Restore:
-		ops = append(ops, CheckCache)
-	}
-
-	var err error
-	for _, op := range ops {
-		if err = op(i, logger); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// operations
-
-type LifecycleInputsOperation func(i *LifecycleInputs, logger log.Logger) error
-
-func CheckCache(i *LifecycleInputs, logger log.Logger) error {
-	if i.CacheImageRef == "" && i.CacheDir == "" {
-		logger.Warn("No cached data will be used, no cache specified.")
-	}
-	return nil
-}
-
-func CheckLaunchCache(i *LifecycleInputs, logger log.Logger) error {
-	if !i.UseDaemon && i.LaunchCacheDir != "" {
-		logger.Warn(MsgIgnoringLaunchCache)
-	}
-	return nil
-}
-
-// fillRunImageFromRunTOMLIfNeeded updates the provided lifecycle inputs to include the run image from run.toml if the run image input it is missing.
-// When there are multiple images in run.toml, the first image is selected.
-// When there are registry mirrors for the selected image, the image with registry matching the output image is selected.
-func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) error {
-	if i.RunImageRef != "" {
-		return nil
-	}
-	targetRegistry, err := parseRegistry(i.OutputImageRef)
-	if err != nil {
-		return err
-	}
-	runMD, err := ReadRun(i.RunPath, logger)
-	if err != nil {
-		return err
-	}
-	if len(runMD.Images) == 0 {
-		return errors.New(ErrRunImageRequiredWhenNoRunMD)
-	}
-	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry)
-	if err != nil {
-		return errors.New(ErrRunImageRequiredWhenNoRunMD)
-	}
-	return nil
-}
-
-// fillRunImageFromStackTOMLIfNeeded updates the provided lifecycle inputs to include the run image from stack.toml if the run image input it is missing.
-// When there are registry mirrors in stack.toml, the image with registry matching the output image is selected.
-func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) error {
-	if i.RunImageRef != "" {
-		return nil
-	}
-	targetRegistry, err := parseRegistry(i.OutputImageRef)
-	if err != nil {
-		return err
-	}
-	stackMD, err := ReadStack(i.StackPath, logger)
-	if err != nil {
-		return err
-	}
-	i.RunImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
-	if err != nil {
-		return errors.New(ErrRunImageRequiredWhenNoStackMD)
-	}
-	return nil
-}
-
-func parseRegistry(providedRef string) (string, error) {
-	ref, err := name.ParseReference(providedRef, name.WeakValidation)
-	if err != nil {
-		return "", err
-	}
-	return ref.Context().RegistryStr(), nil
-}
-
-func ResolveAbsoluteDirPaths(i *LifecycleInputs, _ log.Logger) error {
-	toUpdate := i.directoryPaths()
-	for _, dir := range toUpdate {
-		if *dir == "" {
-			continue
-		}
-		abs, err := filepath.Abs(*dir)
-		if err != nil {
-			return err
-		}
-		*dir = abs
-	}
-	return nil
-}
-
-func (i *LifecycleInputs) directoryPaths() []*string {
-	return []*string{
-		&i.AppDir,
-		&i.BuildConfigDir,
-		&i.BuildpacksDir,
-		&i.CacheDir,
-		&i.ExtensionsDir,
-		&i.GeneratedDir,
-		&i.KanikoDir,
-		&i.LaunchCacheDir,
-		&i.LayersDir,
-		&i.PlatformDir,
-	}
-}
-
-const placeholderLayersDir = "<layers>"
-
-var (
-	placeholderAnalyzedPath        = filepath.Join(placeholderLayersDir, DefaultAnalyzedFile)
-	placeholderGeneratedDir        = filepath.Join(placeholderLayersDir, DefaultGeneratedDir)
-	placeholderGroupPath           = filepath.Join(placeholderLayersDir, DefaultGroupFile)
-	placeholderOrderPath           = filepath.Join(placeholderLayersDir, DefaultOrderFile)
-	placeholderPlanPath            = filepath.Join(placeholderLayersDir, DefaultPlanFile)
-	placeholderProjectMetadataPath = filepath.Join(placeholderLayersDir, DefaultProjectMetadataFile)
-	placeholderReportPath          = filepath.Join(placeholderLayersDir, DefaultReportFile)
-)
-
-func UpdatePlaceholderPaths(i *LifecycleInputs, _ log.Logger) error {
-	toUpdate := i.placeholderPaths()
-	for _, pp := range toUpdate {
-		switch {
-		case *pp == "":
-			continue
-		case *pp == placeholderOrderPath:
-			*pp = i.defaultOrderPath()
-		case strings.Contains(*pp, placeholderLayersDir):
-			filename := filepath.Base(*pp)
-			*pp = filepath.Join(i.configDir(), filename)
-		default:
-			// nop
-		}
-	}
-	return nil
-}
-
 func (i *LifecycleInputs) defaultOrderPath() string {
 	if i.PlatformAPI.LessThan("0.6") {
 		return DefaultOrderPath
@@ -332,52 +205,6 @@ func (i *LifecycleInputs) placeholderPaths() []*string {
 	}
 }
 
-// ValidateImageRefs ensures all provided image references are valid.
-func ValidateImageRefs(i *LifecycleInputs, _ log.Logger) error {
-	for _, imageRef := range i.Images() {
-		_, err := name.ParseReference(imageRef, name.WeakValidation)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func ValidateOutputImageProvided(i *LifecycleInputs, logger log.Logger) error {
-	if i.OutputImageRef == "" {
-		return errors.New(ErrOutputImageRequired)
-	}
-	return nil
-}
-
-// ValidateTargetsAreSameRegistry ensures all output images are on the same registry.
-func ValidateTargetsAreSameRegistry(i *LifecycleInputs, _ log.Logger) error {
-	if i.UseDaemon {
-		return nil
-	}
-	return ValidateSameRegistry(i.DestinationImages()...)
-}
-
-func ValidateSameRegistry(tags ...string) error {
-	var (
-		reg        string
-		registries = map[string]struct{}{}
-	)
-	for _, imageRef := range tags {
-		ref, err := name.ParseReference(imageRef, name.WeakValidation)
-		if err != nil {
-			return err
-		}
-		reg = ref.Context().RegistryStr()
-		registries[reg] = struct{}{}
-	}
-
-	if len(registries) > 1 {
-		return errors.New("writing to multiple registries is unsupported")
-	}
-	return nil
-}
-
 // shared helpers
 
 func boolEnv(k string) bool {
@@ -403,4 +230,16 @@ func intEnv(k string) int {
 		return 0
 	}
 	return d
+}
+
+func timeEnvOrDefault(key string, defaultVal time.Duration) time.Duration {
+	envTTL := os.Getenv(key)
+	if envTTL == "" {
+		return defaultVal
+	}
+	ttl, err := time.ParseDuration(envTTL)
+	if err != nil {
+		return defaultVal
+	}
+	return ttl
 }

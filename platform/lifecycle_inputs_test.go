@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 
@@ -18,8 +19,72 @@ func TestLifecycleInputs(t *testing.T) {
 }
 
 func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
+	when("#NewLifecycleInputs", func() {
+		var platformAPI *api.Version
+
+		when("Platform API > 0.5", func() {
+			it.Before(func() {
+				platformAPI = api.Platform.Latest()
+			})
+
+			it("expects and writes files in the layers directory", func() {
+				inputs := platform.NewLifecycleInputs(platformAPI)
+				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join("<layers>", "analyzed.toml"))
+				h.AssertEq(t, inputs.GroupPath, filepath.Join("<layers>", "group.toml"))
+				h.AssertEq(t, inputs.PlanPath, filepath.Join("<layers>", "plan.toml"))
+				h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join("<layers>", "project-metadata.toml"))
+				h.AssertEq(t, inputs.ReportPath, filepath.Join("<layers>", "report.toml"))
+			})
+
+			it("expects order.toml in the layers directory", func() {
+				inputs := platform.NewLifecycleInputs(platformAPI)
+				h.AssertEq(t, inputs.OrderPath, filepath.Join("<layers>", "order.toml"))
+			})
+		})
+
+		when("Platform API = 0.5", func() {
+			it.Before(func() {
+				platformAPI = api.MustParse("0.5")
+			})
+
+			it("expects and writes files in the layers directory", func() {
+				inputs := platform.NewLifecycleInputs(platformAPI)
+				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join("<layers>", "analyzed.toml"))
+				h.AssertEq(t, inputs.GroupPath, filepath.Join("<layers>", "group.toml"))
+				h.AssertEq(t, inputs.PlanPath, filepath.Join("<layers>", "plan.toml"))
+				h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join("<layers>", "project-metadata.toml"))
+				h.AssertEq(t, inputs.ReportPath, filepath.Join("<layers>", "report.toml"))
+			})
+
+			it("expects order.toml in the /cnb directory", func() {
+				inputs := platform.NewLifecycleInputs(platformAPI)
+				h.AssertEq(t, inputs.OrderPath, filepath.Join(path.RootDir, "cnb", "order.toml"))
+			})
+		})
+
+		when("Platform API < 0.5", func() {
+			it.Before(func() {
+				platformAPI = api.MustParse("0.4")
+			})
+
+			it("expects and writes files in the working directory", func() {
+				inputs := platform.NewLifecycleInputs(platformAPI)
+				h.AssertEq(t, inputs.AnalyzedPath, "analyzed.toml")
+				h.AssertEq(t, inputs.GroupPath, "group.toml")
+				h.AssertEq(t, inputs.PlanPath, "plan.toml")
+				h.AssertEq(t, inputs.ProjectMetadataPath, "project-metadata.toml")
+				h.AssertEq(t, inputs.ReportPath, "report.toml")
+			})
+
+			it("expects order.toml in the /cnb directory", func() {
+				inputs := platform.NewLifecycleInputs(platformAPI)
+				h.AssertEq(t, inputs.OrderPath, filepath.Join(path.RootDir, "cnb", "order.toml"))
+			})
+		})
+	})
+
 	when("#UpdatePlaceholderPaths", func() {
-		when("blank", func() {
+		when("updating blank path", func() {
 			it("does nothing", func() {
 				i := &platform.LifecycleInputs{
 					AnalyzedPath: "",
@@ -31,7 +96,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("order.toml", func() {
+		when("updating order.toml", func() {
 			when("at layers directory", func() {
 				when("exists", func() {
 					var tmpDir string
@@ -72,8 +137,8 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("placeholders", func() {
-			it("directory is the layers directory", func() {
+		when("updating placeholder path", func() {
+			it("updates the directory to the layers directory", func() {
 				i := &platform.LifecycleInputs{
 					AnalyzedPath: filepath.Join("<layers>", "analyzed.toml"),
 					LayersDir:    "some-layers-dir",
@@ -84,7 +149,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("Platform API < 0.5", func() {
-				it("directory is the working directory", func() {
+				it("updates the directory to the working directory", func() {
 					i := &platform.LifecycleInputs{
 						AnalyzedPath: filepath.Join("<layers>", "analyzed.toml"),
 						LayersDir:    "some-layers-dir",
@@ -96,7 +161,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("layers is unset", func() {
-				it("directory is the working directory", func() {
+				it("updates the directory to the working directory", func() {
 					i := &platform.LifecycleInputs{
 						AnalyzedPath: filepath.Join("<layers>", "analyzed.toml"),
 						LayersDir:    "",
@@ -108,7 +173,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("not placeholders", func() {
+		when("updating non-placeholder path", func() {
 			it("uses the path that was provided", func() {
 				i := &platform.LifecycleInputs{
 					AnalyzedPath: "some-path",

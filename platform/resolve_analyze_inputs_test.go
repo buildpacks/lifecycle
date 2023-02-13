@@ -19,11 +19,11 @@ import (
 
 func TestAnalyzeInputs(t *testing.T) {
 	for _, api := range api.Platform.Supported {
-		spec.Run(t, "unit-analyze-inputs/"+api.String(), testAnalyzeInputs(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
+		spec.Run(t, "unit-analyze-inputs/"+api.String(), testResolveAnalyzeInputs(api.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
 
-func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
+func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var (
 			inputs     platform.LifecycleInputs
@@ -32,7 +32,7 @@ func testAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G, it sp
 		)
 
 		it.Before(func() {
-			inputs = platform.DefaultAnalyzeInputs(api.MustParse(platformAPI))
+			inputs = platform.NewLifecycleInputs(api.MustParse(platformAPI))
 			inputs.OutputImageRef = "some-output-image" // satisfy validation
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}

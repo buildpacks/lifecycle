@@ -26,22 +26,8 @@ type Platform struct {
 func NewPlatformFor(phase LifecyclePhase, platformAPI string) *Platform {
 	var lifecycleInputs LifecycleInputs
 	switch phase {
-	case Analyze:
-		lifecycleInputs = DefaultAnalyzeInputs(api.MustParse(platformAPI))
-	case Detect:
-		lifecycleInputs = DefaultDetectInputs(api.MustParse(platformAPI))
-	case Restore:
-		lifecycleInputs = DefaultRestoreInputs(api.MustParse(platformAPI))
-	case Extend:
-		lifecycleInputs = DefaultExtendInputs(api.MustParse(platformAPI))
-	case Build:
-		lifecycleInputs = DefaultBuildInputs(api.MustParse(platformAPI))
-	case Export:
-		lifecycleInputs = DefaultExportInputs(api.MustParse(platformAPI))
-	case Create:
-		lifecycleInputs = DefaultCreateInputs(api.MustParse(platformAPI))
-	case Rebase:
-		lifecycleInputs = DefaultRebaseInputs(api.MustParse(platformAPI))
+	case Analyze, Detect, Restore, Extend, Build, Export, Create, Rebase:
+		lifecycleInputs = NewLifecycleInputs(api.MustParse(platformAPI))
 	default:
 		// nop
 	}
