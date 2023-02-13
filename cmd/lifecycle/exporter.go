@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/buildpacks/imgutil/layout"
+	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -317,10 +318,16 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	cmd.DefaultLogger.Infof("Using app image: %s\n", appPath)
 
 	appImage, err := layout.NewImage(appPath, opts...)
-
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "create new app image")
 	}
+
+	// set org.opencontainers.image.ref.name
+	reference, err := name.ParseReference(e.OutputImageRef, name.WeakValidation)
+	if err != nil {
+		return nil, "", err
+	}
+	appImage.AnnotateRefName(reference.Identifier())
 
 	runImage, err := layout.NewImage(runImagePath)
 	if err != nil {
