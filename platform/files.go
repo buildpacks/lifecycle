@@ -40,22 +40,6 @@ func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, err
 		}
 		return AnalyzedMetadata{}, err
 	}
-
-	// TODO api version check or smthg, right?
-	if analyzedMD.Metadata.Stack.RunImage.Image == "io.buildpacks.stacks.bionic" {
-		/*
-			[[targets]]
-			os = "linux"
-			arch = "x86_64"
-			[[targets.distributions]]
-			name = "ubuntu"
-			versions = "18.04"
-		*/
-		analyzedMD.RunImage.Target.Os = "linux"
-		analyzedMD.RunImage.Target.Arch = "x86_64"
-		analyzedMD.RunImage.Target.Distributions = []buildpack.DistributionMetadata{buildpack.DistributionMetadata{Name: "ubuntu", Version: "18.04"}}
-	}
-
 	return analyzedMD, nil
 }
 

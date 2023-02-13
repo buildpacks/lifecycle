@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/buildpacks/lifecycle/api"
 )
 
 type BpDescriptor struct {
@@ -58,7 +60,12 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 		return &BpDescriptor{}, err
 	}
 
-	if len(descriptor.Targets) == 0 {
+	apiVersion, err := api.NewVersion(descriptor.WithAPI)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(descriptor.Targets) == 0 && apiVersion.AtLeast("0.12") {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
 				descriptor.Targets = append(descriptor.Targets, TargetMetadata{Os: "linux", Arch: "x86_64", Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
