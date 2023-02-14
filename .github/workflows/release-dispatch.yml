@@ -15,3 +15,4 @@ jobs:
           token: ${{ secrets.PLATFORM_GITHUB_TOKEN }}
           event-type: lifecycle-release
           repository: buildpacks/samples
+          client-payload: '{"version": "${{ github.event.release.tag_name }}"}'
