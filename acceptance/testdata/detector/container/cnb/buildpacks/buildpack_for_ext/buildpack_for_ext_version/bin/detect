@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+echo "ENV"
+env
+
 plan_path=$2
 
 cat >> "${plan_path}" <<EOL

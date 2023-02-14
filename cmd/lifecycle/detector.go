@@ -18,28 +18,24 @@ type detectCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
-	switch {
-	case d.PlatformAPI.AtLeast("0.10"):
-		cli.FlagAnalyzedPath(&d.AnalyzedPath)
-		cli.FlagAppDir(&d.AppDir)
-		cli.FlagBuildpacksDir(&d.BuildpacksDir)
-		cli.FlagExtensionsDir(&d.ExtensionsDir)
-		cli.FlagGeneratedDir(&d.GeneratedDir)
-		cli.FlagGroupPath(&d.GroupPath)
-		cli.FlagLayersDir(&d.LayersDir)
-		cli.FlagOrderPath(&d.OrderPath)
-		cli.FlagPlanPath(&d.PlanPath)
-		cli.FlagPlatformDir(&d.PlatformDir)
-	default:
-		cli.FlagAppDir(&d.AppDir)
-		cli.FlagBuildpacksDir(&d.BuildpacksDir)
-		cli.FlagGroupPath(&d.GroupPath)
-		cli.FlagLayersDir(&d.LayersDir)
-		cli.FlagOrderPath(&d.OrderPath)
-		cli.FlagPlanPath(&d.PlanPath)
-		cli.FlagPlatformDir(&d.PlatformDir)
+	if d.PlatformAPI.AtLeast("0.12") {
+		cli.FlagRunPath(&d.RunPath)
+	}
+	if d.PlatformAPI.AtLeast("0.11") {
 		cli.FlagBuildConfigDir(&d.BuildConfigDir)
 	}
+	if d.PlatformAPI.AtLeast("0.10") {
+		cli.FlagAnalyzedPath(&d.AnalyzedPath)
+		cli.FlagExtensionsDir(&d.ExtensionsDir)
+		cli.FlagGeneratedDir(&d.GeneratedDir)
+	}
+	cli.FlagAppDir(&d.AppDir)
+	cli.FlagBuildpacksDir(&d.BuildpacksDir)
+	cli.FlagGroupPath(&d.GroupPath)
+	cli.FlagLayersDir(&d.LayersDir)
+	cli.FlagOrderPath(&d.OrderPath)
+	cli.FlagPlanPath(&d.PlanPath)
+	cli.FlagPlatformDir(&d.PlatformDir)
 }
 
 // Args validates arguments and flags, and fills in default values.
