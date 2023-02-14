@@ -88,25 +88,25 @@ func NewLifecycleInputs(platformAPI *api.Version) LifecycleInputs {
 
 		// Configuration options with respect to caching
 
-		CacheDir:       "", // no default
-		CacheImageRef:  "", // no default
+		CacheDir:       os.Getenv(EnvCacheDir),
+		CacheImageRef:  os.Getenv(EnvCacheImage),
 		KanikoCacheTTL: timeEnvOrDefault(EnvKanikoCacheTTL, DefaultKanikoCacheTTL),
 		KanikoDir:      "/kaniko",
-		LaunchCacheDir: "", // no default
+		LaunchCacheDir: os.Getenv(EnvLaunchCacheDir),
 		SkipLayers:     boolEnv(EnvSkipLayers),
 
 		// Images used by the lifecycle during the build
 
 		AdditionalTags:        nil, // no default
-		BuildImageRef:         "",  // no default
-		DeprecatedRunImageRef: "",  // no default
-		OutputImageRef:        "",  // no default
-		PreviousImageRef:      "",  // no default
-		RunImageRef:           "",  // no default
+		BuildImageRef:         os.Getenv(EnvBuildImage),
+		DeprecatedRunImageRef: "", // no default
+		OutputImageRef:        "", // no default
+		PreviousImageRef:      os.Getenv(EnvPreviousImage),
+		RunImageRef:           os.Getenv(EnvRunImage),
 
 		// Configuration options for the output application image
 
-		DefaultProcessType:  "", // no default
+		DefaultProcessType:  os.Getenv(EnvProcessType),
 		LauncherPath:        DefaultLauncherPath,
 		LauncherSBOMDir:     DefaultBuildpacksioSBOMDir,
 		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, placeholderProjectMetadataPath),
