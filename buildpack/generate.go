@@ -140,5 +140,5 @@ func addDockerfileByPathAndType(d ExtDescriptor, extOutputDir string, dockerfile
 		}
 		return DockerfileInfo{}, false, nil
 	}
-	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: dockerfileType, Path: dockerfile}, true, nil
+	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: dockerfileType, Path: dockerfile, WithAPI: d.WithAPI}, true, nil
 }

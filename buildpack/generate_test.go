@@ -275,6 +275,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 							h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 							h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
+							h.AssertEq(t, br.Dockerfiles[0].WithAPI, descriptor.WithAPI)
 						})
 
 						it("includes build.Dockerfile", func() {
@@ -289,6 +290,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 							h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindBuild)
 							h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "build.Dockerfile"))
+							h.AssertEq(t, br.Dockerfiles[0].WithAPI, descriptor.WithAPI)
 						})
 					})
 
