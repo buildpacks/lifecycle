@@ -95,8 +95,8 @@ func (d *BpDescriptor) String() string {
 	return d.Buildpack.Name + " " + d.Buildpack.Version
 }
 
-// Equals compares the two structs, treating optional fields (ArchVariant and Distributions) as wildcards if empty
-func (t *TargetMetadata) Equals(o *TargetMetadata) bool {
+// Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
+func (t *TargetMetadata) Satisfies(o *TargetMetadata) bool {
 	if t.Arch != o.Arch || t.Os != o.Os {
 		return false
 	}
@@ -104,6 +104,7 @@ func (t *TargetMetadata) Equals(o *TargetMetadata) bool {
 		return false
 	}
 
+	// if either of the lengths of Distributions are zero, treat it as a wildcard.
 	if len(t.Distributions) > 0 && len(o.Distributions) > 0 {
 		// this could be more efficient but the lists are probably short...
 		for _, tdist := range t.Distributions {

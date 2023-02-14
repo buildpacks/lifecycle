@@ -218,11 +218,11 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 			targetMatch := false
 			// if the analyze phase didn't place any constraints, then no further checks are needed
-			if d.AnalyzeMD.RunImage.Target.Equals(&buildpack.TargetMetadata{}) {
+			if d.AnalyzeMD.RunImage.Target.Satisfies(&buildpack.TargetMetadata{}) {
 				targetMatch = true
 			} else {
 				for _, target := range bpDescriptor.Targets {
-					if target.Equals(&d.AnalyzeMD.RunImage.Target) {
+					if target.Satisfies(&d.AnalyzeMD.RunImage.Target) {
 						targetMatch = true
 						break
 					}

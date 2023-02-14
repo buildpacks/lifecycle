@@ -22,7 +22,7 @@ import (
 type AnalyzedMetadata struct {
 	PreviousImageRef string           `toml:"image-ref"`
 	Metadata         LayersMetadata   `toml:"metadata"`
-	RunImage         RunImage         `toml:"run-image,omitempty"` //  TODO:  how we get a pointer back in there? *ImageIdentifier `toml:"run-image,omitempty"`
+	RunImage         RunImage         `toml:"run-image,omitempty"`
 	BuildImage       *ImageIdentifier `toml:"build-image,omitempty"`
 }
 

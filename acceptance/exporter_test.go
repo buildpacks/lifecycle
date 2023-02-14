@@ -373,18 +373,18 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
 	placeHolderPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml.placeholder")
 	analyzedMD := assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
+	analyzedMD.RunImage = platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml.placeholder")
 	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.PreviousImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
+	analyzedMD.PreviousImageRef = phaseTest.targetRegistry.fixtures.SomeAppImage
+	analyzedMD.RunImage = platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "other_layers", "analyzed.toml.placeholder")
 	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
+	analyzedMD.RunImage = platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "layout-analyzed.toml.placeholder")
