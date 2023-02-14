@@ -1,0 +1,17 @@
+name: release-dispatch
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  send-release-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.PLATFORM_GITHUB_TOKEN }}
+          event-type: lifecycle-release
+          repository: buildpacks/samples
