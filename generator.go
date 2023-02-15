@@ -48,6 +48,7 @@ func (f *GeneratorFactory) NewGenerator(
 	generatedDir string,
 	plan platform.BuildPlan,
 	platformDir string,
+	runPath string,
 	stdout, stderr io.Writer,
 	logger log.Logger,
 ) (*Generator, error) {
@@ -81,14 +82,9 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 }
 
 type GenerateResult struct {
-	RunImage RunImage
+	RunImage platform.RunImage
 	Plan     platform.BuildPlan
 	UsePlan  bool
-}
-
-type RunImage struct {
-	Image  string
-	Extend bool
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
@@ -138,7 +134,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		return GenerateResult{}, err
 	}
 
-	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: RunImage{Image: newBase, Extend: extend}}, nil
+	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: platform.RunImage{Reference: newBase, Extend: extend}}, nil
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {

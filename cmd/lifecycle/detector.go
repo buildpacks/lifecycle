@@ -97,6 +97,7 @@ func (d *detectCmd) Exec() error {
 			d.GeneratedDir,
 			plan,
 			d.PlatformDir,
+			d.RunPath,
 			cmd.Stdout, cmd.Stderr,
 			cmd.DefaultLogger,
 		)
@@ -109,7 +110,7 @@ func (d *detectCmd) Exec() error {
 			return d.unwrapGenerateFail(err)
 		}
 		// was a custom run image configured?
-		if result.RunImage.Image != "" {
+		if result.RunImage.Reference != "" {
 			cmd.DefaultLogger.Debug("Updating analyzed metadata with new runImage")
 			var analyzedMD platform.AnalyzedMetadata
 			analyzedMD, err = platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
@@ -117,11 +118,11 @@ func (d *detectCmd) Exec() error {
 				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
 			}
 			cmd.DefaultLogger.Debugf("Loaded existing analyzed metadata from '%s'", d.AnalyzedPath)
-			analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage.Image}
+			analyzedMD.RunImage = &platform.RunImage{Reference: result.RunImage.Reference}
 			if err = d.writeGenerateData(analyzedMD); err != nil {
 				return err
 			}
-			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage.Image)
+			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage.Reference)
 		}
 		// was the build plan updated?
 		if result.UsePlan {

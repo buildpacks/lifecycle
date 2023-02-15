@@ -22,13 +22,18 @@ import (
 type AnalyzedMetadata struct {
 	PreviousImage *ImageIdentifier `toml:"image"`
 	Metadata      LayersMetadata   `toml:"metadata"`
-	RunImage      *ImageIdentifier `toml:"run-image,omitempty"`
+	RunImage      *RunImage        `toml:"run-image,omitempty"`
 	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
 }
 
 // FIXME: fix key names to be accurate in the daemon case
 type ImageIdentifier struct {
 	Reference string `toml:"reference"`
+}
+
+type RunImage struct {
+	Reference string `toml:"reference"`
+	Extend    bool   `toml:"extend,omitempty"`
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {

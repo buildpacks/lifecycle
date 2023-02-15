@@ -191,7 +191,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		appMeta         platform.LayersMetadata
 		cacheMeta       platform.CacheMetadata
 		previousImageID *platform.ImageIdentifier
-		runImageID      *platform.ImageIdentifier
+		runImage        *platform.RunImage
 	)
 
 	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
@@ -212,9 +212,12 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.RunImage != nil {
-		runImageID, err = a.getImageIdentifier(a.RunImage)
+		runImageID, err := a.getImageIdentifier(a.RunImage)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
+		}
+		if runImageID != nil {
+			runImage = &platform.RunImage{Reference: runImageID.Reference}
 		}
 	}
 
@@ -232,7 +235,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 	return platform.AnalyzedMetadata{
 		PreviousImage: previousImageID,
-		RunImage:      runImageID,
+		RunImage:      runImage,
 		Metadata:      appMeta,
 	}, nil
 }

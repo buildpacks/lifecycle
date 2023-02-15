@@ -81,6 +81,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 				"some-output-dir",
 				providedPlan,
 				"some-platform-dir",
+				"some-run-path",
 				stdout, stderr,
 				logger,
 			)
@@ -359,7 +360,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					result, err := generator.Generate()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, result.RunImage.Image, "")
+					h.AssertEq(t, result.RunImage.Reference, "")
 					t.Log("sets extend to true in the result")
 					h.AssertEq(t, result.RunImage.Extend, true)
 
@@ -401,7 +402,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					result, err := generator.Generate()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, result.RunImage.Image, "some-new-base-image")
+					h.AssertEq(t, result.RunImage.Reference, "some-new-base-image")
 					t.Log("sets extend to true in the result")
 					h.AssertEq(t, result.RunImage.Extend, true)
 
@@ -444,7 +445,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						result, err := generator.Generate()
 						h.AssertNil(t, err)
 
-						h.AssertEq(t, result.RunImage.Image, "some-other-base-image")
+						h.AssertEq(t, result.RunImage.Reference, "some-other-base-image")
 						h.AssertEq(t, result.RunImage.Extend, false)
 
 						t.Log("copies Dockerfiles to the correct locations")
