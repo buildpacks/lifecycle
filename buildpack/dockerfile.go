@@ -23,9 +23,7 @@ const (
 
 	baseImageArgName = "base_image"
 	baseImageArgRef  = "${base_image}"
-)
 
-var (
 	errArgumentsNotPermitted            = "run.Dockerfile should not expect arguments"
 	errBuildMissingRequiredARGCommand   = "build.Dockerfile did not start with required ARG command"
 	errBuildMissingRequiredFROMCommand  = "build.Dockerfile did not contain required FROM ${base_image} command"
@@ -193,16 +191,4 @@ func verifyRunDockerfile09(dockerfile string) error {
 	}
 
 	return nil
-}
-
-func RetrieveFirstFromImageNameFromDockerfile(dockerfile string) (string, error) {
-	ins, _, err := parseDockerfile(dockerfile)
-	if err != nil {
-		return "", err
-	}
-	// sanity check to prevent panic
-	if len(ins) == 0 {
-		return "", fmt.Errorf(errMissingRequiredInstruction, dockerfile)
-	}
-	return ins[0].BaseName, nil
 }

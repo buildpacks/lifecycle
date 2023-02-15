@@ -81,9 +81,14 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 }
 
 type GenerateResult struct {
-	RunImage string
+	RunImage RunImage
 	Plan     platform.BuildPlan
 	UsePlan  bool
+}
+
+type RunImage struct {
+	Image  string
+	Extend bool
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
@@ -122,19 +127,18 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debugf("Finished running generate for extension %s", ext)
 	}
 
-	g.Logger.Debug("Copying Dockerfiles")
-	if err := g.copyDockerfiles(dockerfiles); err != nil {
-		return GenerateResult{}, err
-	}
-
 	g.Logger.Debug("Checking for new run image")
-	runImage, err := g.checkNewRunImage()
+	newBase, newBaseIdx, extend := g.checkNewRunImage(dockerfiles)
 	if err != nil {
 		return GenerateResult{}, err
 	}
 
-	g.Logger.Debugf("Finished build, selected runImage '%s'", runImage)
-	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: runImage}, nil
+	g.Logger.Debug("Copying Dockerfiles")
+	if err = g.copyDockerfiles(dockerfiles, newBaseIdx); err != nil {
+		return GenerateResult{}, err
+	}
+
+	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: RunImage{Image: newBase, Extend: extend}}, nil
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
@@ -148,13 +152,17 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 	}
 }
 
-func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
-	for _, dockerfile := range dockerfiles {
+func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo, newBaseIdx int) error {
+	for currentIdx, dockerfile := range dockerfiles {
 		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
-		targetPath := filepath.Join(targetDir, "Dockerfile")
+		var targetPath = filepath.Join(targetDir, "Dockerfile")
+		if dockerfile.Kind == buildpack.DockerfileKindRun && currentIdx < newBaseIdx {
+			targetPath += ".ignore"
+		}
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 			return err
 		}
+		g.Logger.Debugf("Copying %s to %s", dockerfile.Path, targetPath)
 		if err := fsutil.Copy(dockerfile.Path, targetPath); err != nil {
 			return err
 		}
@@ -169,23 +177,22 @@ func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) erro
 	return nil
 }
 
-func (g *Generator) checkNewRunImage() (string, error) {
+func (g *Generator) checkNewRunImage(dockerfiles []buildpack.DockerfileInfo) (newBase string, newBaseIdx int, extend bool) {
 	// There may be extensions that contribute only a build.Dockerfile; work backward through extensions until we find
 	// a run.Dockerfile.
-	for i := len(g.Extensions) - 1; i >= 0; i-- {
-		extID := g.Extensions[i].ID
-		runDockerfile := filepath.Join(g.GeneratedDir, "run", launch.EscapeID(extID), "Dockerfile")
-		if _, err := os.Stat(runDockerfile); os.IsNotExist(err) {
+	for i := len(dockerfiles) - 1; i >= 0; i-- {
+		if dockerfiles[i].Kind != buildpack.DockerfileKindRun {
 			continue
 		}
-
-		imageName, err := buildpack.RetrieveFirstFromImageNameFromDockerfile(runDockerfile)
-		if err != nil {
-			return "", err
+		if dockerfiles[i].NewBase != "" {
+			newBase = dockerfiles[i].NewBase
+			newBaseIdx = i
+			g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", newBase, dockerfiles[i].ExtensionID)
+			break
 		}
-
-		g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", imageName, extID)
-		return imageName, nil
+		if dockerfiles[i].NewBase == "" {
+			extend = true
+		}
 	}
-	return "", nil
+	return newBase, newBaseIdx, extend
 }
