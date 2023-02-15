@@ -109,16 +109,23 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		// was a custom run image configured?
-		if result.RunImage.Reference != "" {
-			cmd.DefaultLogger.Debug("Updating analyzed metadata with new runImage")
+		if newRunImage(result) || origRunImageExtend(result) {
+			cmd.DefaultLogger.Debug("Updating analyzed metadata")
+			// load existing data
 			var analyzedMD platform.AnalyzedMetadata
 			analyzedMD, err = platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
 			if err != nil {
 				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
 			}
 			cmd.DefaultLogger.Debugf("Loaded existing analyzed metadata from '%s'", d.AnalyzedPath)
-			analyzedMD.RunImage = &platform.RunImage{Reference: result.RunImage.Reference}
+			// update
+			if newRunImage(result) {
+				analyzedMD.RunImage = &result.RunImage // target data is cleared
+			}
+			if origRunImageExtend(result) {
+				analyzedMD.RunImage.Extend = true
+			}
+			// write new data
 			if err = d.writeGenerateData(analyzedMD); err != nil {
 				return err
 			}
@@ -130,6 +137,14 @@ func (d *detectCmd) Exec() error {
 		}
 	}
 	return d.writeDetectData(group, plan)
+}
+
+func newRunImage(result lifecycle.GenerateResult) bool {
+	return result.RunImage.Reference != ""
+}
+
+func origRunImageExtend(result lifecycle.GenerateResult) bool {
+	return result.RunImage.Reference == "" && result.RunImage.Extend
 }
 
 func unwrapErrorFailWithMessage(err error, msg string) error {
