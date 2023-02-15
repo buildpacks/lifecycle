@@ -17,6 +17,12 @@ import (
 const (
 	DockerfileKindBuild = "build"
 	DockerfileKindRun   = "run"
+
+	buildDockerfileName = "build.Dockerfile"
+	runDockerfileName   = "run.Dockerfile"
+
+	baseImageArgName = "base_image"
+	baseImageArgRef  = "${base_image}"
 )
 
 var (
@@ -30,12 +36,13 @@ var (
 	warnCommandNotRecommended           = "%s command %s on line %d is not recommended"
 )
 
-var permittedCommandsBuild = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
+var permittedCommands = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
 
 type DockerfileInfo struct {
 	ExtensionID string
 	Kind        string
 	Path        string
+	NewBase     string
 }
 
 type ExtendConfig struct {
@@ -77,21 +84,21 @@ func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 
 	// validate only 1 FROM
 	if len(stages) > 1 {
-		return fmt.Errorf(errMultiStageNotPermitted, "build.Dockerfile")
+		return fmt.Errorf(errMultiStageNotPermitted, buildDockerfileName)
 	}
 
 	// validate only permitted Commands
 	for _, stage := range stages {
 		for _, command := range stage.Commands {
 			found := false
-			for _, permittedCommand := range permittedCommandsBuild {
+			for _, permittedCommand := range permittedCommands {
 				if permittedCommand == strings.ToUpper(command.Name()) {
 					found = true
 					break
 				}
 			}
 			if !found {
-				logger.Warnf(warnCommandNotRecommended, "build.Dockerfile", strings.ToUpper(command.Name()), command.Location()[0].Start.Line)
+				logger.Warnf(warnCommandNotRecommended, buildDockerfileName, strings.ToUpper(command.Name()), command.Location()[0].Start.Line)
 			}
 		}
 	}
@@ -100,61 +107,63 @@ func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 	if len(margs) != 1 {
 		return errors.New(errBuildMissingRequiredARGCommand)
 	}
-	if margs[0].Args[0].Key != "base_image" {
+	if margs[0].Args[0].Key != baseImageArgName {
 		return errors.New(errBuildMissingRequiredARGCommand)
 	}
 	// sanity check to prevent panic
 	if len(stages) == 0 {
-		return fmt.Errorf(errMissingRequiredStage, "build.Dockerfile")
+		return fmt.Errorf(errMissingRequiredStage, buildDockerfileName)
 	}
 
-	if stages[0].BaseName != "${base_image}" {
+	if stages[0].BaseName != baseImageArgRef {
 		return errors.New(errBuildMissingRequiredFROMCommand)
 	}
 
 	return nil
 }
 
-func VerifyRunDockerfile(dockerfile string, buildpackAPI *api.Version, logger log.Logger) error {
+func VerifyRunDockerfile(dockerfile string, buildpackAPI *api.Version, logger log.Logger) (string, error) {
 	if buildpackAPI.LessThan("0.10") {
-		return verifyRunDockerfile09(dockerfile)
+		return "", verifyRunDockerfile09(dockerfile)
 	}
 	return verifyRunDockerfile(dockerfile, logger)
 }
 
-func verifyRunDockerfile(dockerfile string, logger log.Logger) error {
+func verifyRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
 	stages, _, err := parseDockerfile(dockerfile)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// validate only 1 FROM
 	if len(stages) > 1 {
-		return fmt.Errorf(errMultiStageNotPermitted, "run.Dockerfile")
+		return "", fmt.Errorf(errMultiStageNotPermitted, runDockerfileName)
+	}
+	if len(stages) == 0 {
+		return "", fmt.Errorf(errMissingRequiredStage, runDockerfileName)
 	}
 
+	var newBase string
 	// validate only permitted Commands
 	for _, stage := range stages {
+		if stage.BaseName != baseImageArgRef {
+			newBase = stage.BaseName
+		}
 		for _, command := range stage.Commands {
 			found := false
-			for _, permittedCommand := range permittedCommandsBuild {
+			for _, permittedCommand := range permittedCommands {
 				if permittedCommand == strings.ToUpper(command.Name()) {
 					found = true
 					break
 				}
 			}
 			if !found {
-				logger.Warnf(warnCommandNotRecommended, "run.Dockerfile", strings.ToUpper(command.Name()), command.Location()[0].Start.Line)
+				logger.Warnf(warnCommandNotRecommended, runDockerfileName, strings.ToUpper(command.Name()), command.Location()[0].Start.Line)
 			}
 		}
 	}
 
-	// sanity check to prevent panic
-	if len(stages) == 0 {
-		return fmt.Errorf(errMissingRequiredStage, "run.Dockerfile")
-	}
-
-	return nil
+	return newBase, nil
 }
 
 func verifyRunDockerfile09(dockerfile string) error {
@@ -165,7 +174,7 @@ func verifyRunDockerfile09(dockerfile string) error {
 
 	// validate only 1 FROM
 	if len(stages) > 1 {
-		return fmt.Errorf(errMultiStageNotPermitted, "run.Dockerfile")
+		return fmt.Errorf(errMultiStageNotPermitted, runDockerfileName)
 	}
 
 	// validate FROM does not expect argument
@@ -175,7 +184,7 @@ func verifyRunDockerfile09(dockerfile string) error {
 
 	// sanity check to prevent panic
 	if len(stages) == 0 {
-		return fmt.Errorf(errMissingRequiredStage, "run.Dockerfile")
+		return fmt.Errorf(errMissingRequiredStage, runDockerfileName)
 	}
 
 	// validate no instructions in stage
