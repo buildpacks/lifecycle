@@ -110,7 +110,7 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		if newRunImage(result) || origRunImageExtend(result) {
+		if result.RunImage.Reference != "" || origRunImageExtend(result) {
 			cmd.DefaultLogger.Debug("Updating analyzed metadata")
 			// load existing data
 			var analyzedMD platform.AnalyzedMetadata
@@ -120,7 +120,7 @@ func (d *detectCmd) Exec() error {
 			}
 			cmd.DefaultLogger.Debugf("Loaded existing analyzed metadata from '%s'", d.AnalyzedPath)
 			// update
-			if newRunImage(result) {
+			if newRunImage(result, analyzedMD.RunImage.Reference) {
 				analyzedMD.RunImage = &result.RunImage // target data is cleared
 			}
 			if origRunImageExtend(result) {
@@ -130,7 +130,7 @@ func (d *detectCmd) Exec() error {
 			if err = d.writeGenerateData(analyzedMD); err != nil {
 				return err
 			}
-			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage.Reference)
+			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new run image: '%s'", result.RunImage.Reference)
 		}
 		// was the build plan updated?
 		if result.UsePlan {
@@ -140,8 +140,8 @@ func (d *detectCmd) Exec() error {
 	return d.writeDetectData(group, plan)
 }
 
-func newRunImage(result lifecycle.GenerateResult) bool {
-	return result.RunImage.Reference != ""
+func newRunImage(result lifecycle.GenerateResult, origRunImageRef string) bool {
+	return result.RunImage.Reference != "" && result.RunImage.Reference != origRunImageRef
 }
 
 func origRunImageExtend(result lifecycle.GenerateResult) bool {
