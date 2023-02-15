@@ -87,6 +87,7 @@ func (d *detectCmd) Exec() error {
 	if group.HasExtensions() {
 		generatorFactory := lifecycle.NewGeneratorFactory(
 			&cmd.BuildpackAPIVerifier{},
+			lifecycle.Config,
 			dirStore,
 		)
 		var generator *lifecycle.Generator

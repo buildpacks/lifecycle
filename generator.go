@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -24,20 +25,24 @@ type Generator struct {
 	Logger         log.Logger
 	Out, Err       io.Writer
 	Plan           platform.BuildPlan
+	RunMetadata    platform.RunMetadata
 }
 
 type GeneratorFactory struct {
-	apiVerifier BuildpackAPIVerifier
-	dirStore    DirStore
+	apiVerifier   BuildpackAPIVerifier
+	configHandler ConfigHandler
+	dirStore      DirStore
 }
 
 func NewGeneratorFactory(
 	apiVerifier BuildpackAPIVerifier,
+	configHandler ConfigHandler,
 	dirStore DirStore,
 ) *GeneratorFactory {
 	return &GeneratorFactory{
-		apiVerifier: apiVerifier,
-		dirStore:    dirStore,
+		apiVerifier:   apiVerifier,
+		configHandler: configHandler,
+		dirStore:      dirStore,
 	}
 }
 
@@ -68,6 +73,9 @@ func (f *GeneratorFactory) NewGenerator(
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
 	}
+	if err := f.setRunMD(generator, runPath, logger); err != nil {
+		return nil, err
+	}
 	return generator, nil
 }
 
@@ -79,6 +87,12 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 		}
 	}
 	return nil
+}
+
+func (f *GeneratorFactory) setRunMD(generator *Generator, runPath string, logger log.Logger) error {
+	var err error
+	generator.RunMetadata, err = f.configHandler.ReadRun(runPath, logger)
+	return err
 }
 
 type GenerateResult struct {
@@ -128,6 +142,9 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	if err != nil {
 		return GenerateResult{}, err
 	}
+	if !containsMatch(g.RunMetadata.Images, newBase) {
+		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", newBase)
+	}
 
 	g.Logger.Debug("Copying Dockerfiles")
 	if err = g.copyDockerfiles(dockerfiles, newBaseIdx); err != nil {
@@ -135,6 +152,19 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}
 
 	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: platform.RunImage{Reference: newBase, Extend: extend}}, nil
+}
+
+func containsMatch(images []platform.RunImageMetadata, imageName string) bool {
+	if len(images) == 0 {
+		// if no run image metadata was provided, consider it a match
+		return true
+	}
+	for _, image := range images {
+		if image.Image == imageName {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
