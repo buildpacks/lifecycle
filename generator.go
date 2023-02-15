@@ -19,6 +19,7 @@ type Generator struct {
 	BuildConfigDir string
 	GeneratedDir   string // e.g., <layers>/generated
 	PlatformDir    string
+	AnalyzedMD     platform.AnalyzedMetadata
 	DirStore       DirStore
 	Executor       buildpack.GenerateExecutor
 	Extensions     []buildpack.GroupElement
@@ -47,6 +48,7 @@ func NewGeneratorFactory(
 }
 
 func (f *GeneratorFactory) NewGenerator(
+	analyzedPath string,
 	appDir string,
 	buildConfigDir string,
 	extensions []buildpack.GroupElement,
@@ -73,6 +75,9 @@ func (f *GeneratorFactory) NewGenerator(
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
 	}
+	if err := f.setAnalyzedMD(generator, analyzedPath); err != nil {
+		return nil, err
+	}
 	if err := f.setRunMD(generator, runPath, logger); err != nil {
 		return nil, err
 	}
@@ -89,6 +94,12 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 	return nil
 }
 
+func (f *GeneratorFactory) setAnalyzedMD(generator *Generator, analyzedPath string) error {
+	var err error
+	generator.AnalyzedMD, err = f.configHandler.ReadAnalyzed(analyzedPath)
+	return err
+}
+
 func (f *GeneratorFactory) setRunMD(generator *Generator, runPath string, logger log.Logger) error {
 	var err error
 	generator.RunMetadata, err = f.configHandler.ReadRun(runPath, logger)
@@ -96,9 +107,9 @@ func (f *GeneratorFactory) setRunMD(generator *Generator, runPath string, logger
 }
 
 type GenerateResult struct {
-	RunImage platform.RunImage
-	Plan     platform.BuildPlan
-	UsePlan  bool
+	AnalyzedMD platform.AnalyzedMetadata
+	Plan       platform.BuildPlan
+	UsePlan    bool
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
@@ -138,12 +149,12 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}
 
 	g.Logger.Debug("Checking for new run image")
-	newBase, newBaseIdx, extend := g.checkNewRunImage(dockerfiles)
+	base, newBaseIdx, extend := g.checkNewRunImage(dockerfiles)
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	if !containsMatch(g.RunMetadata.Images, newBase) {
-		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", newBase)
+	if !containsMatch(g.RunMetadata.Images, base) {
+		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", base)
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
@@ -151,7 +162,23 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		return GenerateResult{}, err
 	}
 
-	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: platform.RunImage{Reference: newBase, Extend: extend}}, nil
+	newAnalyzedMD := g.AnalyzedMD
+	if newRunImage(base, g.AnalyzedMD) {
+		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", base)
+		newAnalyzedMD.RunImage = &platform.RunImage{ // target data is cleared
+			Reference: base,
+			Extend:    extend,
+		}
+	} else if extend && g.AnalyzedMD.RunImage != nil {
+		g.Logger.Debug("Updating analyzed metadata with run image extend")
+		newAnalyzedMD.RunImage.Extend = true
+	}
+
+	return GenerateResult{
+		AnalyzedMD: newAnalyzedMD,
+		Plan:       filteredPlan,
+		UsePlan:    true,
+	}, nil
 }
 
 func containsMatch(images []platform.RunImageMetadata, imageName string) bool {
@@ -221,4 +248,14 @@ func (g *Generator) checkNewRunImage(dockerfiles []buildpack.DockerfileInfo) (ne
 		}
 	}
 	return newBase, newBaseIdx, extend
+}
+
+func newRunImage(base string, analyzedMD platform.AnalyzedMetadata) bool {
+	if base == "" {
+		return false
+	}
+	if analyzedMD.RunImage == nil {
+		return true
+	}
+	return base != analyzedMD.RunImage.Reference
 }

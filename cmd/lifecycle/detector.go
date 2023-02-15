@@ -92,6 +92,7 @@ func (d *detectCmd) Exec() error {
 		)
 		var generator *lifecycle.Generator
 		generator, err = generatorFactory.NewGenerator(
+			d.AnalyzedPath,
 			d.AppDir,
 			d.BuildConfigDir,
 			group.GroupExtensions,
@@ -110,27 +111,9 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		if result.RunImage.Reference != "" || origRunImageExtend(result) {
-			cmd.DefaultLogger.Debug("Updating analyzed metadata")
-			// load existing data
-			var analyzedMD platform.AnalyzedMetadata
-			analyzedMD, err = platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
-			if err != nil {
-				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
-			}
-			cmd.DefaultLogger.Debugf("Loaded existing analyzed metadata from '%s'", d.AnalyzedPath)
-			// update
-			if newRunImage(result, analyzedMD.RunImage.Reference) {
-				analyzedMD.RunImage = &result.RunImage // target data is cleared
-			}
-			if origRunImageExtend(result) {
-				analyzedMD.RunImage.Extend = true
-			}
-			// write new data
-			if err = d.writeGenerateData(analyzedMD); err != nil {
-				return err
-			}
-			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new run image: '%s'", result.RunImage.Reference)
+
+		if err = d.writeGenerateData(result.AnalyzedMD); err != nil {
+			return err
 		}
 		// was the build plan updated?
 		if result.UsePlan {
@@ -138,14 +121,6 @@ func (d *detectCmd) Exec() error {
 		}
 	}
 	return d.writeDetectData(group, plan)
-}
-
-func newRunImage(result lifecycle.GenerateResult, origRunImageRef string) bool {
-	return result.RunImage.Reference != "" && result.RunImage.Reference != origRunImageRef
-}
-
-func origRunImageExtend(result lifecycle.GenerateResult) bool {
-	return result.RunImage.Reference == "" && result.RunImage.Extend
 }
 
 func unwrapErrorFailWithMessage(err error, msg string) error {

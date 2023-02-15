@@ -64,6 +64,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the generator", func() {
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
+			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path").Return(platform.AnalyzedMetadata{RunImage: &platform.RunImage{Reference: "some-run-image-ref"}}, nil)
 			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(platform.RunMetadata{Images: []platform.RunImageMetadata{{Image: "some-run-image"}}}, nil)
 
 			providedPlan := platform.BuildPlan{Entries: []platform.BuildPlanEntry{
@@ -77,6 +78,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 				},
 			}}
 			generator, err := generatorFactory.NewGenerator(
+				"some-analyzed-path",
 				"some-app-dir",
 				"some-build-config-dir",
 				[]buildpack.GroupElement{
@@ -91,6 +93,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			)
 			h.AssertNil(t, err)
 
+			h.AssertEq(t, generator.AnalyzedMD, platform.AnalyzedMetadata{RunImage: &platform.RunImage{Reference: "some-run-image-ref"}})
 			h.AssertEq(t, generator.AppDir, "some-app-dir")
 			h.AssertNotNil(t, generator.DirStore)
 			h.AssertEq(t, generator.Extensions, []buildpack.GroupElement{
@@ -136,9 +139,10 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 
 		generator = &lifecycle.Generator{
-			AppDir:   appDir,
-			DirStore: dirStore,
-			Executor: executor,
+			AnalyzedMD: platform.AnalyzedMetadata{},
+			AppDir:     appDir,
+			DirStore:   dirStore,
+			Executor:   executor,
 			Extensions: []buildpack.GroupElement{
 				{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "A Homepage"},
 				{ID: "ext/B", Version: "v2", API: api.Buildpack.Latest().String()},
@@ -343,7 +347,13 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("all run.Dockerfiles declare `FROM ${base_image}`", func() {
-				it("returns an empty run image in the result", func() {
+				it("returns the original run image in the result", func() {
+					generator.AnalyzedMD = platform.AnalyzedMetadata{
+						RunImage: &platform.RunImage{
+							Reference: "some-existing-run-image",
+						},
+					}
+
 					// mock generate for extension A
 					dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
 					executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
@@ -365,9 +375,9 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					result, err := generator.Generate()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, result.RunImage.Reference, "")
+					h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-existing-run-image")
 					t.Log("sets extend to true in the result")
-					h.AssertEq(t, result.RunImage.Extend, true)
+					h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, true)
 
 					t.Log("copies Dockerfiles to the correct locations")
 					aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile"))
@@ -377,6 +387,12 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 			when("run.Dockerfiles use FROM to switch the run image", func() {
 				it("returns the last image referenced in the `FROM` statement of the last run.Dockerfile not to declare `FROM ${base_image}`", func() {
+					generator.AnalyzedMD = platform.AnalyzedMetadata{
+						RunImage: &platform.RunImage{
+							Reference: "some-existing-run-image",
+						},
+					}
+
 					// mock generate for extension A
 					dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
 					executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
@@ -407,9 +423,9 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 					result, err := generator.Generate()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, result.RunImage.Reference, "some-new-base-image")
+					h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-new-base-image")
 					t.Log("sets extend to true in the result")
-					h.AssertEq(t, result.RunImage.Extend, true)
+					h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, true)
 
 					t.Log("copies Dockerfiles to the correct locations")
 					aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile"))
@@ -450,8 +466,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						result, err := generator.Generate()
 						h.AssertNil(t, err)
 
-						h.AssertEq(t, result.RunImage.Reference, "some-other-base-image")
-						h.AssertEq(t, result.RunImage.Extend, false)
+						h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-other-base-image")
+						h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, false)
 
 						t.Log("copies Dockerfiles to the correct locations")
 						t.Log("renames earlier run.Dockerfiles to Dockerfile.ignore in the output directory")
@@ -494,7 +510,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							result, err := generator.Generate()
 							h.AssertNil(t, err)
 
-							h.AssertEq(t, result.RunImage.Reference, "some-run-image")
+							h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-run-image")
 						})
 					})
 
