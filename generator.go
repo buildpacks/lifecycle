@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -123,11 +122,6 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debugf("Finished running generate for extension %s", ext)
 	}
 
-	g.Logger.Debug("Validating Dockerfiles")
-	if err := g.validateDockerfiles(dockerfiles); err != nil {
-		return GenerateResult{}, err
-	}
-
 	g.Logger.Debug("Copying Dockerfiles")
 	if err := g.copyDockerfiles(dockerfiles); err != nil {
 		return GenerateResult{}, err
@@ -152,22 +146,6 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 		Out:            g.Out,
 		Err:            g.Err,
 	}
-}
-
-func (g *Generator) validateDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
-	for _, dockerfile := range dockerfiles {
-		switch {
-		case dockerfile.Kind == buildpack.DockerfileKindRun:
-			if err := buildpack.VerifyRunDockerfile(dockerfile.Path); err != nil {
-				return fmt.Errorf("error parsing run.Dockerfile for extension %s: %w", dockerfile.ExtensionID, err)
-			}
-		case dockerfile.Kind == buildpack.DockerfileKindBuild:
-			if err := buildpack.VerifyBuildDockerfile(dockerfile.Path, g.Logger); err != nil {
-				return fmt.Errorf("error parsing build.Dockerfile for extension %s: %w", dockerfile.ExtensionID, err)
-			}
-		}
-	}
-	return nil
 }
 
 func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {

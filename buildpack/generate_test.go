@@ -265,7 +265,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 					when("dockerfiles", func() {
 						it("includes run.Dockerfile", func() {
 							h.Mkfile(t,
-								"",
+								"FROM some-image",
 								filepath.Join(appDir, "run.Dockerfile-A-v1"),
 							)
 
@@ -275,12 +275,12 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 							h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 							h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
-							h.AssertEq(t, br.Dockerfiles[0].WithAPI, descriptor.WithAPI)
 						})
 
 						it("includes build.Dockerfile", func() {
 							h.Mkfile(t,
-								"",
+								"ARG base_image\n"+
+									"FROM ${base_image}",
 								filepath.Join(appDir, "build.Dockerfile-A-v1"),
 							)
 
@@ -290,7 +290,25 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 							h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindBuild)
 							h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "build.Dockerfile"))
-							h.AssertEq(t, br.Dockerfiles[0].WithAPI, descriptor.WithAPI)
+						})
+
+						it("validates build.Dockerfiles", func() {
+							h.Mkfile(t,
+								"SOME-INVALID-CONTENT",
+								filepath.Join(appDir, "build.Dockerfile-A-v1"),
+							)
+
+							_, err := executor.Generate(descriptor, inputs, logger)
+							h.AssertError(t, err, "failed to parse build.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
+						})
+
+						it("validates run.Dockerfiles", func() {
+							h.Mkfile(t,
+								"SOME-INVALID-CONTENT",
+								filepath.Join(appDir, "run.Dockerfile-A-v1"),
+							)
+							_, err := executor.Generate(descriptor, inputs, logger)
+							h.AssertError(t, err, "failed to parse run.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
 						})
 					})
 

@@ -313,66 +313,6 @@ RUN echo "hello" > world.txt
 			h.AssertEq(t, result.RunImage, "other-run-image")
 		})
 
-		it("validates build.Dockerfiles", func() {
-			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
-			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-			executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
-					// check inputs
-					h.AssertEq(t, inputs.AppDir, generator.AppDir)
-					h.AssertEq(t, inputs.PlatformDir, generator.PlatformDir)
-
-					// create fixture
-					h.Mkdir(t, filepath.Join(inputs.OutputDir, "A"))
-					dockerfilePath1 := filepath.Join(inputs.OutputDir, "A", "build.Dockerfile")
-					h.Mkfile(t, `some-invalid-content`, dockerfilePath1)
-
-					return buildpack.GenerateOutputs{
-						Dockerfiles: []buildpack.DockerfileInfo{
-							{ExtensionID: "A", Path: dockerfilePath1, Kind: "build"},
-						},
-					}, nil
-				},
-			)
-
-			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
-			dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).AnyTimes()
-
-			_, err := generator.Generate()
-			h.AssertError(t, err, "error parsing build.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
-		})
-
-		it("validates run.Dockerfiles", func() {
-			extA := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
-			dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-			executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ buildpack.ExtDescriptor, inputs buildpack.GenerateInputs, _ llog.Logger) (buildpack.GenerateOutputs, error) {
-					// check inputs
-					h.AssertEq(t, inputs.AppDir, generator.AppDir)
-					h.AssertEq(t, inputs.PlatformDir, generator.PlatformDir)
-
-					// create fixture
-					h.Mkdir(t, filepath.Join(inputs.OutputDir, "A"))
-					dockerfilePath1 := filepath.Join(inputs.OutputDir, "A", "run.Dockerfile")
-					h.Mkfile(t, `some-invalid-content`, dockerfilePath1)
-
-					return buildpack.GenerateOutputs{
-						Dockerfiles: []buildpack.DockerfileInfo{
-							{ExtensionID: "A", Path: dockerfilePath1, Kind: "run"},
-						},
-					}, nil
-				},
-			)
-
-			extB := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "ext/B", Version: "v1"}}}
-			dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).AnyTimes()
-
-			_, err := generator.Generate()
-			h.AssertError(t, err, "error parsing run.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
-		})
-
 		when("extension generate failed", func() {
 			when("first extension fails", func() {
 				it("errors", func() {

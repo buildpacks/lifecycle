@@ -36,7 +36,6 @@ type DockerfileInfo struct {
 	ExtensionID string
 	Kind        string
 	Path        string
-	WithAPI     string
 }
 
 type ExtendConfig struct {
@@ -116,7 +115,7 @@ func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 	return nil
 }
 
-func VerifyRunDockerfile(dockerfile string, buildpackAPI *api.Version, logger log.Logger) error { // TODO: fix callers
+func VerifyRunDockerfile(dockerfile string, buildpackAPI *api.Version, logger log.Logger) error {
 	if buildpackAPI.LessThan("0.10") {
 		return verifyRunDockerfile09(dockerfile)
 	}
