@@ -193,6 +193,11 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 }
 
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+	// used below to mark each item as "done" by appending it to the done list
+	markDone := func(groupEl buildpack.GroupElement, descriptor buildpack.Descriptor) {
+		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
+	}
+
 	for i, groupEl := range group.Group {
 		// Continue if element has already been processed.
 		if hasIDForKind(done, groupEl.Kind(), groupEl.ID) {
@@ -217,8 +222,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			}
 
 			targetMatch := false
-			// if the analyze phase didn't place any constraints, then no further checks are needed
-			if d.AnalyzeMD.RunImage.Target.Satisfies(&buildpack.TargetMetadata{}) {
+			if d.AnalyzeMD.RunImage.Target.IsWildcard() {
 				targetMatch = true
 			} else {
 				for _, target := range bpDescriptor.Targets {
@@ -229,10 +233,14 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				}
 			}
 			if !targetMatch && !groupEl.Optional {
-				// sample output: unable to satisfy Target OS/Arch constriaints: { MacOS ARM64  [{MacOS some kind of big cat}]}
-				return nil, nil, buildpack.NewError(
-					fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.RunImage.Target),
-					buildpack.ErrTypeFailedDetection)
+				markDone(groupEl, bpDescriptor)
+				d.Runs.Store(
+					keyFor(groupEl),
+					buildpack.DetectOutputs{
+						Code: -1,
+						Err:  fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.RunImage.Target),
+					})
+				continue
 			}
 
 			// Resolve order if element is a composite buildpack.
@@ -249,8 +257,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			}
 		}
 
-		// Mark element as done.
-		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
+		markDone(groupEl, descriptor)
 
 		// Run detect if element is a component buildpack or an extension.
 		wg.Add(1)

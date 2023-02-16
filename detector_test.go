@@ -797,7 +797,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			when("A Target is provided from AnalyzeMD", func() {
 				it("errors if the buildpacks don't share that target arch/os", func() {
-					detector.AnalyzeMD.RunImage.Target.Os = "MacOS" // sure, why not?
+					detector.AnalyzeMD.RunImage.Target.Os = "MacOS"
 					detector.AnalyzeMD.RunImage.Target.Arch = "ARM64"
 					detector.AnalyzeMD.RunImage.Target.Distributions = []buildpack.DistributionMetadata{{Name: "MacOS", Version: "some kind of big cat"}}
 
@@ -813,18 +813,26 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 
+					resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).DoAndReturn(
+						func(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+							h.AssertEq(t, len(done), 1)
+							val, ok := detectRuns.Load("Buildpack A@v1")
+							h.AssertEq(t, ok, true)
+							outs := val.(buildpack.DetectOutputs)
+							h.AssertEq(t, outs.Code, -1)
+							h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constriaints")
+							return []buildpack.GroupElement{}, []platform.BuildPlanEntry{}, nil
+						})
+
 					group := []buildpack.GroupElement{
 						{ID: "A", Version: "v1", API: "0.3"},
 					}
-
 					detector.Order = buildpack.Order{{Group: group}}
-					_, _, err := detector.Detect()
-					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
-						t.Fatalf("Unexpected error:\n%s\n", err)
-					}
+					_, _, err := detector.Detect() // even though the returns from this are directly from the mock above, if we don't check the returns the linter declares we've done it wrong and fails on the lack of assertions.
+					h.AssertNil(t, err)
 				})
 				it("totally works if the constraints are met", func() {
-					detector.AnalyzeMD.RunImage.Target.Os = "MacOS" // sure, why not?
+					detector.AnalyzeMD.RunImage.Target.Os = "MacOS"
 					detector.AnalyzeMD.RunImage.Target.Arch = "ARM64"
 					detector.AnalyzeMD.RunImage.Target.Distributions = []buildpack.DistributionMetadata{{Name: "MacOS", Version: "snow cheetah"}}
 
@@ -844,6 +852,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					group := []buildpack.GroupElement{
 						{ID: "A", Version: "v1", API: "0.12"},
 					}
+					// the most meaningful assertion in this test is that `group` is the first argument to Resolve, meaning that the buildpack matched.
 					resolver.EXPECT().Resolve(group, detector.Runs).Return(
 						[]buildpack.GroupElement{},
 						[]platform.BuildPlanEntry{},
