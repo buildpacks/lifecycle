@@ -12,7 +12,7 @@ jobs:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.PLATFORM_GITHUB_TOKEN }}
+          token: ${{ secrets.IMPLEMENTATION_GITHUB_TOKEN }}
           event-type: lifecycle-release
           repository: buildpacks/samples
           client-payload: '{"version": "${{ github.event.release.tag_name }}"}'
