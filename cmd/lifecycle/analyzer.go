@@ -48,7 +48,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagTags(&a.AdditionalTags)
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
-	} else {
+	default:
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
 		cli.FlagCacheDir(&a.CacheDir)
 		cli.FlagCacheImage(&a.CacheImageRef)
