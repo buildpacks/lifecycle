@@ -28,7 +28,7 @@ type analyzeCmd struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
 	if a.PlatformAPI.AtLeast("0.12") {
-  	cli.FlagLayoutDir(&a.LayoutDir)
+		cli.FlagLayoutDir(&a.LayoutDir)
 		cli.FlagUseLayout(&a.UseLayout)
 		cli.FlagRunPath(&a.RunPath)
 	}

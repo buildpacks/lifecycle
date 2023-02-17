@@ -327,7 +327,7 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	if err != nil {
 		return nil, "", err
 	}
-	appImage.AnnotateRefName(reference.Identifier())
+	_ = appImage.AnnotateRefName(reference.Identifier()) // TODO: handle error
 
 	runImage, err := layout.NewImage(runImagePath)
 	if err != nil {
