@@ -1039,7 +1039,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("experimental mode is not enabled", func() {
-				it("error message", func() {
+				it("errors", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
 					cmd := exec.Command(
 						"docker", "run", "--rm",

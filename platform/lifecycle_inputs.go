@@ -109,7 +109,7 @@ var (
 	ErrSupplyOnlyOneRunImage         = "supply only one of -run-image or (deprecated) -image"
 	ErrRunImageUnsupported           = "-run-image is unsupported"
 	ErrImageUnsupported              = "-image is unsupported"
-	ErrMultipleTargetsUnsupported    = "exporting to multiples targets is not allowed"
+	ErrMultipleTargetsUnsupported    = "exporting to multiple targets is unsupported"
 	MsgIgnoringLaunchCache           = "Ignoring -launch-cache, only intended for use with -daemon"
 )
 
