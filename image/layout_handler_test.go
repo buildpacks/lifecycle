@@ -7,8 +7,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/lifecycle/image"
 
 	"github.com/sclevine/spec"
@@ -38,20 +36,14 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 
 	when("layout handler", func() {
 		it.Before(func() {
-			layoutDir = platform.DefaultLayoutRepoDir
+			layoutDir = "layout-repo"
 			imageHandler = image.NewHandler(nil, nil, layoutDir, true)
 			h.AssertNotNil(t, imageHandler)
 		})
 
-		when("#Docker", func() {
-			it("return false", func() {
-				h.AssertEq(t, imageHandler.Docker(), false)
-			})
-		})
-
-		when("#Layout", func() {
-			it("return true", func() {
-				h.AssertEq(t, imageHandler.Layout(), true)
+		when("#Kind", func() {
+			it("return layout", func() {
+				h.AssertEq(t, imageHandler.Kind(), image.LayoutKind)
 			})
 		})
 
@@ -160,7 +152,7 @@ func testLayoutImageHandler(t *testing.T, when spec.G, it spec.S) {
 			when("registry is provided", func() {
 				it.Before(func() {
 					registry = "my-registry.com"
-					layoutDir = platform.DefaultLayoutRepoDir
+					layoutDir = "layout-repo"
 					imageHandler = image.NewLayoutImageHandler(layoutDir)
 				})
 

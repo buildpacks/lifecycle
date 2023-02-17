@@ -304,7 +304,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							it("is created", func() {
 								var exportFlags []string
 								h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
-								exportFlags = append(exportFlags, []string{"-layout", "-analyzed", "/layers/layout-analyzed.toml"}...)
+								exportFlags = append(exportFlags, []string{"-layout", "-layout-dir", layoutDir, "-analyzed", "/layers/layout-analyzed.toml"}...)
 								exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
 								exportArgs = append(exportArgs, exportedImageName)
 
@@ -359,6 +359,10 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("experimental mode is not enabled", func() {
+				it.Before(func() {
+					layoutDir = filepath.Join(path.RootDir, "layout-dir")
+				})
+
 				it("errors", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
 
@@ -368,6 +372,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportImage,
 						ctrPath(exporterPath),
 						"-layout",
+						"-layout-dir", layoutDir,
 						"some-image",
 					) // #nosec G204
 					output, err := cmd.CombinedOutput()

@@ -34,20 +34,6 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 	return m.recorder
 }
 
-// Docker mocks base method.
-func (m *MockHandler) Docker() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Docker")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// Docker indicates an expected call of Docker.
-func (mr *MockHandlerMockRecorder) Docker() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Docker", reflect.TypeOf((*MockHandler)(nil).Docker))
-}
-
 // InitImage mocks base method.
 func (m *MockHandler) InitImage(arg0 string) (imgutil.Image, error) {
 	m.ctrl.T.Helper()
@@ -63,16 +49,16 @@ func (mr *MockHandlerMockRecorder) InitImage(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitImage", reflect.TypeOf((*MockHandler)(nil).InitImage), arg0)
 }
 
-// Layout mocks base method.
-func (m *MockHandler) Layout() bool {
+// Kind mocks base method.
+func (m *MockHandler) Kind() string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Layout")
-	ret0, _ := ret[0].(bool)
+	ret := m.ctrl.Call(m, "Kind")
+	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// Layout indicates an expected call of Layout.
-func (mr *MockHandlerMockRecorder) Layout() *gomock.Call {
+// Kind indicates an expected call of Kind.
+func (mr *MockHandlerMockRecorder) Kind() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Layout", reflect.TypeOf((*MockHandler)(nil).Layout))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Kind", reflect.TypeOf((*MockHandler)(nil).Kind))
 }

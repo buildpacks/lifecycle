@@ -31,7 +31,7 @@ func DefaultCreateInputs(platformAPI *api.Version) LifecycleInputs {
 
 func defaultCreateInputs() LifecycleInputs {
 	ci := defaultCreateInputs011()
-	ci.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
+	ci.LayoutDir = envOrDefault(EnvLayoutRepoDir, ci.LayoutDir)
 	ci.UseLayout = boolEnv(EnvUseLayout)
 	ci.RunPath = envOrDefault(EnvRunPath, DefaultRunPath)
 	return ci

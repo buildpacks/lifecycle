@@ -15,6 +15,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/image"
+
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -83,8 +85,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					runImage := fakes.NewImage("some-run-image-ref", "", nil)
 
 					t.Log("ensures registry access")
-					fakeImageHandler.EXPECT().Docker().Return(false)
-					fakeImageHandler.EXPECT().Layout().Return(true)
+					fakeImageHandler.EXPECT().Kind().Return(image.LayoutKind).AnyTimes()
 					// Only caching must be checked for writing access
 					fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref"})
 					// we don't expect any read access check when -layout is used
@@ -94,7 +95,6 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					t.Log("processes previous image")
 					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
-					fakeImageHandler.EXPECT().Docker().Return(false)
 
 					t.Log("processes run image")
 					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
@@ -137,8 +137,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				runImage := fakes.NewImage("some-run-image-ref", "", nil)
 
 				t.Log("ensures registry access")
-				fakeImageHandler.EXPECT().Docker().Return(false)
-				fakeImageHandler.EXPECT().Layout().Return(false)
+				fakeImageHandler.EXPECT().Kind().Return(image.RemoteKind).AnyTimes()
 				fakeRegistryHandler.EXPECT().EnsureReadAccess([]string{"some-previous-image-ref", "some-run-image-ref"})
 				fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref", "some-output-image-ref", "some-additional-tag"})
 
@@ -146,7 +145,6 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 				t.Log("processes previous image")
 				fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
-				fakeImageHandler.EXPECT().Docker().Return(false)
 
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
@@ -189,13 +187,12 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					runImage := fakes.NewImage("some-run-image-ref", "", nil)
 
 					t.Log("ensures registry access")
-					fakeImageHandler.EXPECT().Docker().Return(true)
+					fakeImageHandler.EXPECT().Kind().Return(image.LocalKind).AnyTimes()
 					fakeRegistryHandler.EXPECT().EnsureReadAccess()
 					fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref"})
 
 					t.Log("processes previous image")
 					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
-					fakeImageHandler.EXPECT().Docker().Return(true)
 
 					t.Log("processes run image")
 					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
@@ -230,12 +227,10 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 			when("skip layers", func() {
 				it("does not restore sbom data", func() {
-					fakeImageHandler.EXPECT().Docker()
-					fakeImageHandler.EXPECT().Layout().Return(false)
+					fakeImageHandler.EXPECT().Kind().Return(image.RemoteKind).AnyTimes()
 					fakeRegistryHandler.EXPECT().EnsureReadAccess(gomock.Any())
 					fakeRegistryHandler.EXPECT().EnsureWriteAccess(gomock.Any())
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
-					fakeImageHandler.EXPECT().Docker()
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 
 					analyzer, err := analyzerFactory.NewAnalyzer(
@@ -276,14 +271,12 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				runImage := fakes.NewImage("some-run-image-ref", "", nil)
 
 				t.Log("ensures registry access")
-				fakeImageHandler.EXPECT().Docker().Return(false)
-				fakeImageHandler.EXPECT().Layout().Return(false)
+				fakeImageHandler.EXPECT().Kind().Return(image.RemoteKind).AnyTimes()
 				fakeRegistryHandler.EXPECT().EnsureReadAccess([]string{"some-previous-image-ref", "some-run-image-ref"})
 				fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref", "some-output-image-ref", "some-additional-tag"})
 
 				t.Log("processes previous image")
 				fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
-				fakeImageHandler.EXPECT().Docker().Return(false)
 
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
@@ -324,13 +317,12 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 					runImage := fakes.NewImage("some-run-image-ref", "", nil)
 
 					t.Log("ensures registry access")
-					fakeImageHandler.EXPECT().Docker().Return(true)
+					fakeImageHandler.EXPECT().Kind().Return(image.LocalKind).AnyTimes()
 					fakeRegistryHandler.EXPECT().EnsureReadAccess()
 					fakeRegistryHandler.EXPECT().EnsureWriteAccess([]string{"some-cache-image-ref"})
 
 					t.Log("processes previous image")
 					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
-					fakeImageHandler.EXPECT().Docker().Return(true)
 
 					t.Log("processes run image")
 					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
@@ -377,7 +369,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 				t.Log("processes previous image")
 				fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
-				fakeImageHandler.EXPECT().Docker().Return(false)
+				fakeImageHandler.EXPECT().Kind().Return(image.RemoteKind)
 
 				t.Log("processes run image")
 				fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
@@ -431,7 +423,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 
 					t.Log("processes previous image")
 					fakeImageHandler.EXPECT().InitImage("some-previous-image-ref").Return(previousImage, nil)
-					fakeImageHandler.EXPECT().Docker().Return(true)
+					fakeImageHandler.EXPECT().Kind().Return(image.LocalKind)
 
 					t.Log("processes run image")
 					fakeImageHandler.EXPECT().InitImage("some-run-image-ref").Return(runImage, nil)
@@ -462,7 +454,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				it("uses the provided group", func() {
 					fakeCacheHandler.EXPECT().InitCache(gomock.Any(), gomock.Any())
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
-					fakeImageHandler.EXPECT().Docker()
+					fakeImageHandler.EXPECT().Kind().Return(image.RemoteKind)
 					fakeImageHandler.EXPECT().InitImage(gomock.Any())
 
 					providedGroup := buildpack.Group{Group: []buildpack.GroupElement{{ID: "some-buildpack-id"}}}

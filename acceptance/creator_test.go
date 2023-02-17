@@ -385,7 +385,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				it("creates app", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
 					var createFlags []string
-					createFlags = append(createFlags, []string{"-layout", "-run-image", "busybox"}...)
+					createFlags = append(createFlags, []string{"-layout", "-layout-dir", layoutDir, "-run-image", "busybox"}...)
 
 					createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
 					createdImageName = "some-created-image-" + h.RandString(10)
@@ -414,6 +414,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 						createImage,
 						ctrPath(creatorPath),
 						"-layout",
+						"-layout-dir", layoutDir,
 						"-run-image", "busybox",
 						"some-image",
 					) // #nosec G204

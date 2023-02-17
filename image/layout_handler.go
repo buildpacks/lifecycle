@@ -7,6 +7,8 @@ import (
 	"github.com/buildpacks/imgutil/layout"
 )
 
+const LayoutKind = "layout"
+
 type LayoutHandler struct {
 	layoutDir string
 }
@@ -29,12 +31,8 @@ func (h *LayoutHandler) InitImage(imageRef string) (imgutil.Image, error) {
 	return layout.NewImage(path, layout.FromBaseImagePath(path))
 }
 
-func (h *LayoutHandler) Docker() bool {
-	return false
-}
-
-func (h *LayoutHandler) Layout() bool {
-	return true
+func (h *LayoutHandler) Kind() string {
+	return LayoutKind
 }
 
 func (h *LayoutHandler) parseRef(imageRef string) (string, error) {

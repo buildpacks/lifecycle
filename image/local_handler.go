@@ -6,6 +6,8 @@ import (
 	"github.com/docker/docker/client"
 )
 
+const LocalKind = "docker"
+
 type LocalHandler struct {
 	docker client.CommonAPIClient
 }
@@ -22,10 +24,6 @@ func (h *LocalHandler) InitImage(imageRef string) (imgutil.Image, error) {
 	)
 }
 
-func (h *LocalHandler) Docker() bool {
-	return true
-}
-
-func (h *LocalHandler) Layout() bool {
-	return false
+func (h *LocalHandler) Kind() string {
+	return LocalKind
 }

@@ -1005,6 +1005,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("layout case", func() {
+			layoutDir := filepath.Join(path.RootDir, "layout-repo")
 			when("experimental mode is enabled", func() {
 				it("writes analyzed.toml", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
@@ -1012,6 +1013,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					var analyzeFlags []string
 					analyzeFlags = append(analyzeFlags, []string{
 						"-layout",
+						"-layout-dir", layoutDir,
 						"-run-image", "busybox",
 					}...)
 					var execArgs []string
@@ -1044,6 +1046,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					cmd := exec.Command(
 						"docker", "run", "--rm",
 						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_LAYOUT_DIR="+layoutDir,
 						analyzeImage,
 						ctrPath(analyzerPath),
 						"-layout",

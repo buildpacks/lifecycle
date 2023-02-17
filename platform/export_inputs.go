@@ -31,7 +31,7 @@ func DefaultExportInputs(platformAPI *api.Version) LifecycleInputs {
 
 func defaultExportInputs() LifecycleInputs {
 	ei := defaultExportInputs011()
-	ei.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
+	ei.LayoutDir = envOrDefault(EnvLayoutRepoDir, ei.LayoutDir)
 	ei.UseLayout = boolEnv(EnvUseLayout)
 	return ei
 }

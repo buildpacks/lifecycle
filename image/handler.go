@@ -8,8 +8,7 @@ import (
 
 type Handler interface {
 	InitImage(imageRef string) (imgutil.Image, error)
-	Docker() bool
-	Layout() bool
+	Kind() string
 }
 
 // NewHandler creates a new Handler according to the arguments provided, following these rules:

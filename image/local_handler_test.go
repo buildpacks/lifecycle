@@ -28,15 +28,9 @@ func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotNil(t, imageHandler)
 		})
 
-		when("#Docker", func() {
-			it("return true", func() {
-				h.AssertEq(t, imageHandler.Docker(), true)
-			})
-		})
-
-		when("#Layout", func() {
-			it("return false", func() {
-				h.AssertEq(t, imageHandler.Layout(), false)
+		when("#Kind", func() {
+			it("return layout", func() {
+				h.AssertEq(t, imageHandler.Kind(), image.LocalKind)
 			})
 		})
 

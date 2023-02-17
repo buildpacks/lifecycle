@@ -110,6 +110,7 @@ var (
 	ErrRunImageUnsupported           = "-run-image is unsupported"
 	ErrImageUnsupported              = "-image is unsupported"
 	ErrMultipleTargetsUnsupported    = "exporting to multiple targets is unsupported"
+	ErrLayoutDirRequired             = "defining a layout directory is required when OCI Layout feature is enabled. Use -layout-dir flag or CNB_LAYOUT_DIR environment variable"
 	MsgIgnoringLaunchCache           = "Ignoring -launch-cache, only intended for use with -daemon"
 )
 
@@ -128,6 +129,7 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 			ValidateImageRefs,
 			ValidateTargetsAreSameRegistry,
 			ValidateSingleTargetProvided,
+			ValidateLayoutInputsProvided,
 		)
 	case Build:
 		// nop
@@ -139,6 +141,8 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 			CheckLaunchCache,
 			ValidateImageRefs,
 			ValidateTargetsAreSameRegistry,
+			ValidateSingleTargetProvided,
+			ValidateLayoutInputsProvided,
 		)
 	case Detect:
 		// nop
@@ -150,6 +154,8 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 			CheckLaunchCache,
 			ValidateImageRefs,
 			ValidateTargetsAreSameRegistry,
+			ValidateSingleTargetProvided,
+			ValidateLayoutInputsProvided,
 		)
 	case Extend:
 		// nop
@@ -358,6 +364,13 @@ func ValidateOutputImageProvided(i *LifecycleInputs, logger log.Logger) error {
 func ValidateSingleTargetProvided(i *LifecycleInputs, _ log.Logger) error {
 	if i.UseLayout && i.UseDaemon {
 		return errors.New(ErrMultipleTargetsUnsupported)
+	}
+	return nil
+}
+
+func ValidateLayoutInputsProvided(i *LifecycleInputs, logger log.Logger) error {
+	if i.UseLayout && i.LayoutDir == "" {
+		return errors.New(ErrLayoutDirRequired)
 	}
 	return nil
 }

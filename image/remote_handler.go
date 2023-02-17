@@ -6,6 +6,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 )
 
+const RemoteKind = "remote"
+
 type RemoteHandler struct {
 	keychain authn.Keychain
 }
@@ -22,10 +24,6 @@ func (h *RemoteHandler) InitImage(imageRef string) (imgutil.Image, error) {
 	)
 }
 
-func (h *RemoteHandler) Docker() bool {
-	return false
-}
-
-func (h *RemoteHandler) Layout() bool {
-	return false
+func (h *RemoteHandler) Kind() string {
+	return RemoteKind
 }
