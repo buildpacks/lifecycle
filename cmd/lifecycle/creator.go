@@ -32,6 +32,7 @@ func (c *createCmd) DefineFlags() {
 	if c.PlatformAPI.AtLeast("0.12") {
 		cli.FlagLayoutDir(&c.LayoutDir)
 		cli.FlagUseLayout(&c.UseLayout)
+		cli.FlagRunPath(&c.RunPath)
 	}
 	if c.PlatformAPI.AtLeast("0.11") {
 		cli.FlagBuildConfigDir(&c.BuildConfigDir)

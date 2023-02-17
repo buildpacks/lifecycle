@@ -33,6 +33,7 @@ func defaultCreateInputs() LifecycleInputs {
 	ci := defaultCreateInputs011()
 	ci.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
 	ci.UseLayout = boolEnv(EnvUseLayout)
+	ci.RunPath = envOrDefault(EnvRunPath, DefaultRunPath)
 	return ci
 }
 
@@ -93,7 +94,9 @@ func FillCreateImages(i *LifecycleInputs, logger log.Logger) error {
 	case i.DeprecatedRunImageRef != "":
 		i.RunImageRef = i.DeprecatedRunImageRef
 		return nil
-	default:
+	case i.PlatformAPI.LessThan("0.12"):
 		return fillRunImageFromStackTOMLIfNeeded(i, logger)
+	default:
+		return fillRunImageFromRunTOMLIfNeeded(i, logger)
 	}
 }

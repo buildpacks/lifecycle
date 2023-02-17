@@ -32,6 +32,7 @@ func defaultAnalyzeInputs() LifecycleInputs {
 	ai := defaultAnalyzeInputs09To011()
 	ai.UseLayout = boolEnv(EnvUseLayout)
 	ai.LayoutDir = envOrDefault(EnvLayoutRepoDir, DefaultLayoutRepoDir)
+	ai.RunPath = envOrDefault(EnvRunPath, DefaultRunPath)
 	return ai
 }
 
@@ -81,5 +82,8 @@ func FillAnalyzeImages(i *LifecycleInputs, logger log.Logger) error {
 	if i.PlatformAPI.LessThan("0.7") {
 		return nil
 	}
-	return fillRunImageFromStackTOMLIfNeeded(i, logger)
+	if i.PlatformAPI.LessThan("0.12") {
+		return fillRunImageFromStackTOMLIfNeeded(i, logger)
+	}
+	return fillRunImageFromRunTOMLIfNeeded(i, logger)
 }

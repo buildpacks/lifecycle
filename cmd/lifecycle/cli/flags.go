@@ -124,6 +124,10 @@ func FlagRunImage(runImage *string) {
 	flagSet.StringVar(runImage, "run-image", *runImage, "reference to run image")
 }
 
+func FlagRunPath(runPath *string) {
+	flagSet.StringVar(runPath, "run", *runPath, "path to run.toml")
+}
+
 func FlagSkipLayers(skipLayers *bool) {
 	flagSet.BoolVar(skipLayers, "skip-layers", *skipLayers, "do not provide layer metadata to buildpacks")
 }

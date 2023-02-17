@@ -179,8 +179,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("group path is provided", func() {
-			it("uses the provided group path", func() {
+		when("called with group (on older platforms)", func() {
+			it("uses the provided group.toml path", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -group flag")
 
 				h.DockerSeedRunAndCopy(t,
@@ -229,8 +229,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("analyzed path is provided", func() {
-			it("uses the provided analyzed path", func() {
+		when("called with analyzed", func() {
+			it("uses the provided analyzed.toml path", func() {
 				analyzeFlags := []string{"-analyzed", ctrPath("/some-dir/some-analyzed.toml")}
 				if api.MustParse(platformAPI).AtLeast("0.7") {
 					analyzeFlags = append(analyzeFlags, "-run-image", analyzeRegFixtures.ReadOnlyRunImage)
@@ -254,6 +254,27 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-analyzed.toml"))
+			})
+		})
+
+		when("called with run", func() {
+			it("uses the provided run.toml path", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept -run")
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+platformAPI,
+					"--env", "CNB_REGISTRY_AUTH="+analyzeRegAuthConfig,
+					"--network", analyzeRegNetwork,
+					analyzeImage,
+					ctrPath(analyzerPath),
+					"-run", "/cnb/run.toml",
+					analyzeRegFixtures.SomeAppImage,
+				) // #nosec G204
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "ensure registry read access to some-run-image-from-run-toml"
+				h.AssertStringContains(t, string(output), expected)
 			})
 		})
 
@@ -358,7 +379,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("app image exists", func() {
-				it("does not restore app metadata", func() {
+				it("does not restore app metadata to the layers directory", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 restores app metadata")
 
 					analyzeFlags := []string{"-daemon", "-run-image", "some-run-image"}
@@ -382,7 +403,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
 				})
 
-				it("restores app metadata", func() {
+				it("restores app metadata to the layers directory (on older platforms)", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not restore app metadata")
 					output := h.DockerRunAndCopy(t,
 						containerName,
@@ -429,7 +450,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 
-			when("cache is provided", func() {
+			when("cache is provided (on older platforms)", func() {
 				when("cache image case", func() {
 					when("cache image is in a daemon", func() {
 						it("ignores the cache", func() {
@@ -831,7 +852,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 
-			when("cache is provided", func() {
+			when("cache is provided (on older platforms)", func() {
 				when("cache image case", func() {
 					when("auth registry", func() {
 						when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
