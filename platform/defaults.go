@@ -119,9 +119,9 @@ const (
 
 // The following are the default locations of input directories if not specified.
 var (
-	DefaultAppDir        = filepath.Join(path.RootDir, "workspace")
-	DefaultLayersDir     = filepath.Join(path.RootDir, "layers")
-	DefaultPlatformDir   = filepath.Join(path.RootDir, "platform")
+	DefaultAppDir      = filepath.Join(path.RootDir, "workspace")
+	DefaultLayersDir   = filepath.Join(path.RootDir, "layers")
+	DefaultPlatformDir = filepath.Join(path.RootDir, "platform")
 )
 
 // The following instruct the lifecycle where to write files and data during the build.
