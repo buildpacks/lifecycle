@@ -16,6 +16,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -33,6 +34,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		subject           *cache.ImageCache
 		testLayerTarPath  string
 		testLayerSHA      string
+		testLogger        log.Logger
 	)
 
 	it.Before(func() {
@@ -44,7 +46,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 		fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
 
-		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
 		h.AssertNil(t, os.WriteFile(testLayerTarPath, []byte("dummy data"), 0600))
@@ -295,7 +297,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
 				})
 				it("should delete original image", func() {
 					err := subject.DeleteOrigImage()
@@ -308,7 +310,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
 				})
 				it("should not delete original image", func() {
 					err := subject.DeleteOrigImage()

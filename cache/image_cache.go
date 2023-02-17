@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 )
 
@@ -21,16 +22,18 @@ type ImageCache struct {
 	committed bool
 	origImage imgutil.Image
 	newImage  imgutil.Image
+	logger    log.Logger
 }
 
-func NewImageCache(origImage imgutil.Image, newImage imgutil.Image) *ImageCache {
+func NewImageCache(origImage imgutil.Image, newImage imgutil.Image, logger log.Logger) *ImageCache {
 	return &ImageCache{
 		origImage: origImage,
 		newImage:  newImage,
+		logger:    logger,
 	}
 }
 
-func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, error) {
+func NewImageCacheFromName(name string, keychain authn.Keychain, logger log.Logger) (*ImageCache, error) {
 	origImage, err := remote.NewImage(
 		name,
 		keychain,
@@ -51,7 +54,7 @@ func NewImageCacheFromName(name string, keychain authn.Keychain) (*ImageCache, e
 		return nil, fmt.Errorf("creating new cache image %q: %v", name, err)
 	}
 
-	return NewImageCache(origImage, emptyImage), nil
+	return NewImageCache(origImage, emptyImage, logger), nil
 }
 
 func (c *ImageCache) Exists() bool {
@@ -115,7 +118,7 @@ func (c *ImageCache) Commit() error {
 	if origImgExists {
 		// Deleting the original image is for cleanup only and should not fail the commit.
 		if err := c.DeleteOrigImage(); err != nil {
-			fmt.Printf("Unable to delete previous cache image: %v", err)
+			c.logger.Warnf("Unable to delete previous cache image: %v", err)
 		}
 	}
 	c.origImage = c.newImage
