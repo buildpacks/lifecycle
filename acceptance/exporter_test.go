@@ -24,7 +24,6 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/path"
-	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -287,21 +286,22 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 }
 
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
-	placeHolderPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml.placeholder")
-	analyzedMD := assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+	placeholderPaths := []string{
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
+	}
 
-	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml.placeholder")
-	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.PreviousImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}
-	analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
-
-	placeHolderPath = filepath.Join("testdata", "exporter", "container", "other_layers", "analyzed.toml.placeholder")
-	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+	for _, placeholderPath := range placeholderPaths {
+		if _, err := os.Stat(placeholderPath); os.IsNotExist(err) {
+			continue
+		}
+		analyzedMD := assertAnalyzedMetadata(t, placeholderPath)
+		if analyzedMD.RunImage != nil {
+			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
+		}
+		encoding.WriteTOML(strings.TrimSuffix(placeholderPath, ".placeholder"), analyzedMD)
+	}
 }
 
 func calculateEmptyLayerSha(t *testing.T) string {

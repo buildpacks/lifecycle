@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -38,7 +39,7 @@ func TestRestorer(t *testing.T) {
 
 	testImageDockerContext := filepath.Join("testdata", "restorer")
 	restoreTest = NewPhaseTest(t, "restorer", testImageDockerContext)
-	restoreTest.Start(t)
+	restoreTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
 	defer restoreTest.Stop(t)
 
 	restoreImage = restoreTest.testImageRef
@@ -80,7 +81,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("called with -analyzed", func() {
+		when("called with -analyzed (on older platforms)", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -analyzed flag")
 				command := exec.Command("docker", "run", "--rm", restoreImage, "-analyzed some-file-location")
@@ -91,7 +92,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("called with -skip-layers", func() {
+		when("called with -skip-layers (on older platforms)", func() {
 			it("errors", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 supports -skip-layers flag")
 				command := exec.Command("docker", "run", "--rm", restoreImage, "-skip-layers true")
@@ -188,9 +189,9 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("using kaniko cache", func() {
-			it("accepts -build-image", func() {
-				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "Platform API < 0.10 does not use kaniko")
+		when("restoring builder image metadata", func() {
+			it("accepts -build-image and saves the metadata to /kaniko/cache", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "Platform API < 0.10 does not restore builder image metadata")
 				h.DockerRunAndCopy(t,
 					containerName,
 					copyDir,
@@ -208,10 +209,45 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertNil(t, err)
 				h.AssertStringContains(t, analyzedMD.BuildImage.Reference, restoreRegFixtures.SomeCacheImage+"@sha256:")
 				t.Log("writes builder manifest and config to the kaniko cache")
+				ref, err := name.ParseReference(analyzedMD.BuildImage.Reference)
+				h.AssertNil(t, err)
 				fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko", "cache", "base"))
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(fis), 1)
-				h.AssertPathExists(t, filepath.Join(copyDir, "kaniko", "cache", "base", fis[0].Name(), "oci-layout"))
+				h.AssertPathExists(t, filepath.Join(copyDir, "kaniko", "cache", "base", ref.Identifier(), "oci-layout"))
+			})
+		})
+
+		when("restoring run image metadata", func() {
+			it("saves metadata to /kaniko/cache", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not restore run image metadata")
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					"/",
+					restoreImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "DOCKER_CONFIG=/docker-config",
+						"--network", restoreRegNetwork,
+					),
+					h.WithArgs(
+						"-analyzed", "/layers/some-analyzed.toml",
+						"-log-level", "debug",
+					),
+				)
+				t.Log("updates run image reference in analyzed.toml to include digest")
+				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-analyzed.toml"))
+				h.AssertNil(t, err)
+				h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
+				// TODO: assert on target data
+				t.Log("writes run image manifest and config to the kaniko cache")
+				ref, err := name.ParseReference(analyzedMD.RunImage.Reference)
+				h.AssertNil(t, err)
+				fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko", "cache", "base"))
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(fis), 1)
+				h.AssertPathExists(t, filepath.Join(copyDir, "kaniko", "cache", "base", ref.Identifier(), "oci-layout"))
 			})
 		})
 	}

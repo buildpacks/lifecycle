@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -22,7 +23,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -90,9 +90,10 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				buildImageDigest := buildImageHash.String()
 				baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
 				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
-				layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
+				var sparseImage imgutil.Image
+				sparseImage, err = sparse.NewImage(filepath.Join(baseCacheDir, digest.DigestStr()), remoteImage)
 				h.AssertNil(t, err)
-				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
+				h.AssertNil(t, sparseImage.Save())
 
 				// write build image reference in analyzed.toml
 				analyzedMD := platform.AnalyzedMetadata{BuildImage: &platform.ImageIdentifier{Reference: fmt.Sprintf("%s@%s", extendTest.RegRepoName(extendImage), buildImageDigest)}}

@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 
 	"github.com/buildpacks/lifecycle"
@@ -19,7 +21,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
-	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -34,34 +35,22 @@ type restoreCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (r *restoreCmd) DefineFlags() {
-	switch {
-	case r.PlatformAPI.AtLeast("0.10"):
-		cli.FlagBuildImage(&r.BuildImageRef)
-		cli.FlagCacheDir(&r.CacheDir)
-		cli.FlagCacheImage(&r.CacheImageRef)
-		cli.FlagGroupPath(&r.GroupPath)
-		cli.FlagLayersDir(&r.LayersDir)
-		cli.FlagUID(&r.UID)
-		cli.FlagGID(&r.GID)
-		cli.FlagAnalyzedPath(&r.AnalyzedPath)
-		cli.FlagSkipLayers(&r.SkipLayers)
-	case r.PlatformAPI.AtLeast("0.7"):
-		cli.FlagCacheDir(&r.CacheDir)
-		cli.FlagCacheImage(&r.CacheImageRef)
-		cli.FlagGroupPath(&r.GroupPath)
-		cli.FlagLayersDir(&r.LayersDir)
-		cli.FlagUID(&r.UID)
-		cli.FlagGID(&r.GID)
-		cli.FlagAnalyzedPath(&r.AnalyzedPath)
-		cli.FlagSkipLayers(&r.SkipLayers)
-	default:
-		cli.FlagCacheDir(&r.CacheDir)
-		cli.FlagCacheImage(&r.CacheImageRef)
-		cli.FlagGroupPath(&r.GroupPath)
-		cli.FlagLayersDir(&r.LayersDir)
-		cli.FlagUID(&r.UID)
-		cli.FlagGID(&r.GID)
+	if r.PlatformAPI.AtLeast("0.12") {
+		cli.FlagGeneratedDir(&r.GeneratedDir)
 	}
+	if r.PlatformAPI.AtLeast("0.10") {
+		cli.FlagBuildImage(&r.BuildImageRef)
+	}
+	if r.PlatformAPI.AtLeast("0.7") {
+		cli.FlagAnalyzedPath(&r.AnalyzedPath)
+		cli.FlagSkipLayers(&r.SkipLayers)
+	}
+	cli.FlagCacheDir(&r.CacheDir)
+	cli.FlagCacheImage(&r.CacheImageRef)
+	cli.FlagGroupPath(&r.GroupPath)
+	cli.FlagLayersDir(&r.LayersDir)
+	cli.FlagUID(&r.UID)
+	cli.FlagGID(&r.GID)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -91,10 +80,41 @@ func (r *restoreCmd) Privileges() error {
 }
 
 func (r *restoreCmd) Exec() error {
-	if r.supportsBuildImageExtension() {
-		if err := r.pullBuilderImageIfNeeded(); err != nil {
-			return cmd.FailErr(err, "read builder image")
+	var analyzedMD platform.AnalyzedMetadata
+	if _, err := toml.DecodeFile(r.AnalyzedPath, &analyzedMD); err == nil {
+		if r.supportsBuildImageExtension() {
+			_, digest, err := r.pullSparse(r.BuildImageRef)
+			if err != nil {
+				return cmd.FailErr(err, "read builder image")
+			}
+			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digest.String()}
 		}
+		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
+			_, digest, err := r.pullSparse(analyzedMD.RunImage.Reference)
+			if err != nil {
+				return cmd.FailErr(err, "read run image")
+			}
+			analyzedMD.RunImage = &platform.RunImage{
+				Reference: digest.String(),
+				Extend:    true,
+				// TODO: add target data
+			}
+		} else if needsUpdating(analyzedMD.RunImage) {
+			_, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
+			if err != nil {
+				return cmd.FailErr(err, "read run image")
+			}
+			analyzedMD.RunImage = &platform.RunImage{
+				Reference: digest.String(),
+				Extend:    analyzedMD.RunImage.Extend,
+				// TODO: add target data
+			}
+		}
+		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
+			return cmd.FailErr(err, "write analyzed metadata")
+		}
+	} else {
+		cmd.DefaultLogger.Warnf("Not using analyzed data, usable file not found: %s", err)
 	}
 
 	group, err := lifecycle.ReadGroup(r.GroupPath)
@@ -112,64 +132,75 @@ func (r *restoreCmd) Exec() error {
 
 	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		var analyzedMD platform.AnalyzedMetadata
-		if _, err := toml.DecodeFile(r.AnalyzedPath, &analyzedMD); err == nil {
-			appMeta = analyzedMD.Metadata
-		}
+		appMeta = analyzedMD.Metadata
 	}
 
 	return r.restore(appMeta, group, cacheStore)
+}
+
+func needsPulling(runImage *platform.RunImage) bool {
+	return runImage != nil && runImage.Extend
+}
+
+func needsUpdating(runImage *platform.RunImage) bool {
+	// TODO
+	return false
 }
 
 func (r *restoreCmd) supportsBuildImageExtension() bool {
 	return r.PlatformAPI.AtLeast("0.10")
 }
 
-func (r *restoreCmd) pullBuilderImageIfNeeded() error {
-	if r.BuildImageRef == "" {
-		return nil
+func (r *restoreCmd) supportsRunImageExtension() bool {
+	return r.PlatformAPI.AtLeast("0.12")
+}
+
+func (r *restoreCmd) pullSparse(imageRef string) (image v1.Image, digest name.Digest, err error) {
+	if imageRef == "" {
+		return nil, name.Digest{}, nil
 	}
+	baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
+	if err := os.MkdirAll(baseCacheDir, 0755); err != nil {
+		return nil, name.Digest{}, fmt.Errorf("failed to create cache directory: %w", err)
+	}
+	// get remote image
+	remoteImage, digest, err := newRemoteImage(imageRef, r.keychain)
+	if err != nil {
+		return nil, name.Digest{}, fmt.Errorf("failed to get remote image: %w", err)
+	}
+	// check for usable kaniko dir
 	if _, err := os.Stat(kanikoDir); err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("failed to read kaniko directory: %w", err)
+			return nil, name.Digest{}, fmt.Errorf("failed to read kaniko directory: %w", err)
 		}
-		return nil
+		return nil, name.Digest{}, nil
 	}
-	ref, authr, err := auth.ReferenceForRepoName(r.keychain, r.BuildImageRef)
-	if err != nil {
-		return fmt.Errorf("failed to get reference: %w", err)
+	// save to disk
+	var sparseImage imgutil.Image
+	if sparseImage, err = sparse.NewImage(filepath.Join(baseCacheDir, digest.DigestStr()), remoteImage); err != nil {
+		return nil, name.Digest{}, fmt.Errorf("failed to create sparse image: %w", err)
 	}
-	remoteImage, err := remote.Image(ref, remote.WithAuth(authr))
-	if err != nil {
-		return fmt.Errorf("failed to read image: %w", err)
+	if err = sparseImage.Save(); err != nil {
+		return nil, name.Digest{}, fmt.Errorf("failed to save sparse image: %w", err)
 	}
-	buildImageHash, err := remoteImage.Digest()
-	if err != nil {
-		return fmt.Errorf("failed to get digest: %w", err)
+	return remoteImage, digest, nil
+}
+
+func newRemoteImage(imageRef string, keychain authn.Keychain) (image v1.Image, digest name.Digest, err error) {
+	ref, authr, authErr := auth.ReferenceForRepoName(keychain, imageRef)
+	if authErr != nil {
+		err = authErr
+		return
 	}
-	buildImageDigest := buildImageHash.String()
-	baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
-	if err = os.MkdirAll(baseCacheDir, 0755); err != nil {
-		return fmt.Errorf("failed to create cache directory")
+	if image, err = remote.Image(ref, remote.WithAuth(authr)); err != nil {
+		return
 	}
-	layoutPath, err := selective.Write(filepath.Join(baseCacheDir, buildImageDigest), empty.Index)
-	if err != nil {
-		return fmt.Errorf("failed to write layout path: %w", err)
+	var imageHash v1.Hash
+	if imageHash, err = image.Digest(); err != nil {
+		return
 	}
-	if err = layoutPath.AppendImage(remoteImage); err != nil {
-		return fmt.Errorf("failed to append image: %w", err)
-	}
-	// record digest in analyzed.toml
-	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.AnalyzedPath)
-	if err != nil {
-		return fmt.Errorf("failed to read analyzed metadata: %w", err)
-	}
-	digestRef, err := name.NewDigest(fmt.Sprintf("%s@%s", ref.Context().Name(), buildImageDigest), name.WeakValidation)
-	if err != nil {
-		return fmt.Errorf("failed to get digest reference: %w", err)
-	}
-	analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digestRef.String()}
-	return encoding.WriteTOML(r.AnalyzedPath, analyzedMD)
+	digest, err = name.NewDigest(fmt.Sprintf("%s@%s", ref.Context().Name(), imageHash.String()), name.WeakValidation)
+	return
 }
 
 func (r *restoreCmd) restoresLayerMetadata() bool {
