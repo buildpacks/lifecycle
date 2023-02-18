@@ -118,7 +118,7 @@ func (c *ImageCache) Commit() error {
 	if origImgExists {
 		// Deleting the original image is for cleanup only and should not fail the commit.
 		if err := c.DeleteOrigImage(); err != nil {
-			c.logger.Warnf("Unable to delete previous cache image: %v", err)
+			c.logger.Warnf("Unable to delete previous cache image: %v", err.Error())
 		}
 	}
 	c.origImage = c.newImage
