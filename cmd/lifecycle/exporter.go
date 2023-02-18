@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/buildpacks/imgutil/layout"
@@ -295,15 +294,22 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 }
 
 func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
-	runImagePath, _ := e.parseLayoutImageReferencce(analyzedMD.RunImage)
+	runImageIdentifier, err := layout.ParseIdentifier(analyzedMD.RunImage.Reference)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "parsing run image reference")
+	}
+
 	var opts = []layout.ImageOption{
-		layout.FromBaseImagePath(runImagePath),
+		layout.FromBaseImagePath(runImageIdentifier.Path),
 	}
 
 	if analyzedMD.PreviousImage != nil {
-		previousImagePath, _ := e.parseLayoutImageReferencce(analyzedMD.PreviousImage)
-		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", previousImagePath)
-		opts = append(opts, layout.WithPreviousImage(previousImagePath))
+		previousImageReference, err := layout.ParseIdentifier(analyzedMD.PreviousImage.Reference)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "parsing previous image reference")
+		}
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", previousImageReference.Path)
+		opts = append(opts, layout.WithPreviousImage(previousImageReference.Path))
 	}
 
 	if !e.customSourceDateEpoch().IsZero() {
@@ -331,7 +337,7 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		return nil, "", err
 	}
 
-	runImage, err := layout.NewImage(runImagePath)
+	runImage, err := layout.NewImage(runImageIdentifier.Path)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}
@@ -372,11 +378,4 @@ func (e *exportCmd) customSourceDateEpoch() time.Time {
 		return time.Unix(seconds, 0)
 	}
 	return time.Time{}
-}
-
-func (e *exportCmd) parseLayoutImageReferencce(identifier *platform.ImageIdentifier) (string, string) {
-	referenceSplit := strings.SplitN(identifier.Reference, "@", 2)
-	path := referenceSplit[0]
-	digest := referenceSplit[1]
-	return path, digest
 }
