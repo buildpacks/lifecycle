@@ -29,7 +29,7 @@ func testLocalImageHandler(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("#Kind", func() {
-			it("return layout", func() {
+			it("returns local", func() {
 				h.AssertEq(t, imageHandler.Kind(), image.LocalKind)
 			})
 		})

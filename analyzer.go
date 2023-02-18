@@ -113,7 +113,7 @@ func (f *AnalyzerFactory) ensureRegistryAccess(
 ) error {
 	var readImages, writeImages []string
 	writeImages = append(writeImages, cacheImageRef)
-	if !(f.imageHandler.Kind() == image.LocalKind || f.imageHandler.Kind() == image.LayoutKind) {
+	if f.imageHandler.Kind() == image.RemoteKind {
 		readImages = append(readImages, previousImageRef, runImageRef)
 		writeImages = append(writeImages, outputImageRef)
 		writeImages = append(writeImages, additionalTags...)

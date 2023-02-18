@@ -54,7 +54,7 @@ const EnvUseDaemon = "CNB_USE_DAEMON"
 
 // ## Provided to handle inputs and outputs in OCI layout format
 
-// The lifecycle can be configured to read the inputs images like `run-image` or `previous-image` in OCI layout format instead of a
+// The lifecycle can be configured to read the input images like `run-image` or `previous-image` in OCI layout format instead of from a
 // registry or daemon. Also, it can export the final application image on disk in the same format.
 // The following environment variables must be set to configure the behavior of the lifecycle when exporting to OCI layout format.
 const (
