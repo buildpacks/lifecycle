@@ -99,7 +99,7 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string) 
 		err        error
 	)
 	if cacheImageRef != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain)
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain, cmd.DefaultLogger)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating image cache")
 		}
@@ -206,7 +206,7 @@ func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecyc
 		err        error
 	)
 	if cacheImageTag != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain)
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, cmd.DefaultLogger)
 		if err != nil {
 			return nil, cmd.FailErr(err, "create image cache")
 		}
