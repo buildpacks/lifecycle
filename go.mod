@@ -129,7 +129,7 @@ go 1.19
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0
 
 // Ensure we only pull in the latest version of containerd
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.15
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.18
 
 // Ensure compatibility with kaniko; match dependencies configured in:
 // https://github.com/GoogleContainerTools/kaniko/blob/f9aaa9fca7bf4077778ed527c1a8a6e09e60c53c/go.mod (v1.9.1)
