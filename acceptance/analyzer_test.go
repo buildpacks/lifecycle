@@ -16,6 +16,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -999,6 +1000,64 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						expected := "validating registry write access: ensure registry read/write access to " + analyzeRegFixtures.InaccessibleImage
 						h.AssertStringContains(t, string(output), expected)
 					})
+				})
+			})
+		})
+
+		when("layout case", func() {
+			layoutDir := filepath.Join(path.RootDir, "layout-repo")
+			when("experimental mode is enabled", func() {
+				it("writes analyzed.toml", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+
+					var analyzeFlags []string
+					analyzeFlags = append(analyzeFlags, []string{
+						"-layout",
+						"-layout-dir", layoutDir,
+						"-run-image", "busybox",
+					}...)
+					var execArgs []string
+					execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+					execArgs = append(execArgs, "my-app")
+
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						ctrPath("/layers/analyzed.toml"),
+						analyzeImage,
+						h.WithFlags(
+							"--env", "CNB_EXPERIMENTAL_MODE=warn",
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+						),
+						h.WithArgs(execArgs...),
+					)
+
+					analyzer := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+					h.AssertNotNil(t, analyzer.RunImage)
+					analyzedImagePath := filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest")
+					reference := fmt.Sprintf("%s@%s", analyzedImagePath, "sha256:1afaac0c6907aaf5fce478e2e82c00a5ce58deca23bf34739509f29affb2c631")
+					h.AssertEq(t, analyzer.RunImage.Reference, reference)
+				})
+			})
+
+			when("experimental mode is not enabled", func() {
+				it("errors", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+					cmd := exec.Command(
+						"docker", "run", "--rm",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_LAYOUT_DIR="+layoutDir,
+						analyzeImage,
+						ctrPath(analyzerPath),
+						"-layout",
+						"-run-image", "busybox",
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
+
+					h.AssertNotNil(t, err)
+					expected := "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error"
+					h.AssertStringContains(t, string(output), expected)
 				})
 			})
 		})

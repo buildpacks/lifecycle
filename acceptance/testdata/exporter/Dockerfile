@@ -13,7 +13,12 @@ RUN groupadd cnb --gid ${cnb_gid} && \
 
 # chown the directories so the tests do not have to run as root
 RUN chown -R "${cnb_uid}:${cnb_gid}" "/layers"
+RUN chown -R "${cnb_uid}:${cnb_gid}" "/layout-repo"
 RUN chown -R "${cnb_uid}:${cnb_gid}" "/other_layers"
+
+# create and chown a custom oci layout directory to export images
+RUN mkdir /my-layout-dir
+RUN chown -R "${cnb_uid}:${cnb_gid}" "/my-layout-dir"
 
 WORKDIR /layers
 

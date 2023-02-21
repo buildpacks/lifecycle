@@ -18,7 +18,7 @@ type AnalyzerFactory struct {
 	apiVerifier     BuildpackAPIVerifier
 	cacheHandler    CacheHandler
 	configHandler   ConfigHandler
-	imageHandler    ImageHandler
+	imageHandler    image.Handler
 	registryHandler RegistryHandler
 }
 
@@ -27,7 +27,7 @@ func NewAnalyzerFactory(
 	apiVerifier BuildpackAPIVerifier,
 	cacheHandler CacheHandler,
 	configHandler ConfigHandler,
-	imageHandler ImageHandler,
+	imageHandler image.Handler,
 	registryHandler RegistryHandler,
 ) *AnalyzerFactory {
 	return &AnalyzerFactory{
@@ -113,7 +113,7 @@ func (f *AnalyzerFactory) ensureRegistryAccess(
 ) error {
 	var readImages, writeImages []string
 	writeImages = append(writeImages, cacheImageRef)
-	if !f.imageHandler.Docker() {
+	if f.imageHandler.Kind() == image.RemoteKind {
 		readImages = append(readImages, previousImageRef, runImageRef)
 		writeImages = append(writeImages, outputImageRef)
 		writeImages = append(writeImages, additionalTags...)
@@ -160,7 +160,7 @@ func (f *AnalyzerFactory) setPrevious(analyzer *Analyzer, imageRef string, launc
 	if err != nil {
 		return errors.Wrap(err, "getting previous image")
 	}
-	if launchCacheDir == "" || !f.imageHandler.Docker() {
+	if launchCacheDir == "" || f.imageHandler.Kind() != image.LocalKind {
 		return nil
 	}
 

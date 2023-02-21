@@ -14,8 +14,10 @@ import (
 func DefaultExportInputs(platformAPI *api.Version) LifecycleInputs {
 	var inputs LifecycleInputs
 	switch {
-	case platformAPI.AtLeast("0.11"):
+	case platformAPI.AtLeast("0.12"):
 		inputs = defaultExportInputs()
+	case platformAPI.AtLeast("0.11"):
+		inputs = defaultExportInputs011()
 	case platformAPI.AtLeast("0.7"):
 		inputs = defaultExportInputs07To010()
 	case platformAPI.AtLeast("0.5"):
@@ -28,6 +30,13 @@ func DefaultExportInputs(platformAPI *api.Version) LifecycleInputs {
 }
 
 func defaultExportInputs() LifecycleInputs {
+	ei := defaultExportInputs011()
+	ei.LayoutDir = envOrDefault(EnvLayoutRepoDir, ei.LayoutDir)
+	ei.UseLayout = boolEnv(EnvUseLayout)
+	return ei
+}
+
+func defaultExportInputs011() LifecycleInputs {
 	ei := defaultExportInputs07To010()
 	ei.LauncherSBOMDir = DefaultBuildpacksioSBOMDir
 	return ei
