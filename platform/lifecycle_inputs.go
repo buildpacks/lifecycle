@@ -23,6 +23,8 @@ type LifecycleInputs struct {
 	CacheImageRef         string
 	DefaultProcessType    string
 	DeprecatedRunImageRef string
+	ExtendKind            string
+	ExtendedDir           string
 	ExtensionsDir         string
 	GeneratedDir          string
 	GroupPath             string
@@ -51,12 +53,17 @@ type LifecycleInputs struct {
 }
 
 func NewLifecycleInputs(platformAPI *api.Version) LifecycleInputs {
+	var skipLayers bool
+	if boolEnv(EnvSkipLayers) || boolEnv(EnvSkipRestore) {
+		skipLayers = true
+	}
 	inputs := LifecycleInputs{
 		// Operator config
 
 		LogLevel:    envOrDefault(EnvLogLevel, DefaultLogLevel),
 		PlatformAPI: platformAPI,
 		UseDaemon:   boolEnv(EnvUseDaemon),
+		ExtendKind:  envOrDefault(EnvExtendKind, DefaultExtendKind),
 
 		// Provided by the base image
 
@@ -81,6 +88,7 @@ func NewLifecycleInputs(platformAPI *api.Version) LifecycleInputs {
 		// The following instruct the lifecycle where to write files and data during the build
 
 		AnalyzedPath: envOrDefault(EnvAnalyzedPath, placeholderAnalyzedPath),
+		ExtendedDir:  envOrDefault(EnvExtendedDir, placeholderExtendedDir),
 		GeneratedDir: envOrDefault(EnvGeneratedDir, placeholderGeneratedDir),
 		GroupPath:    envOrDefault(EnvGroupPath, placeholderGroupPath),
 		PlanPath:     envOrDefault(EnvPlanPath, placeholderPlanPath),
@@ -93,7 +101,7 @@ func NewLifecycleInputs(platformAPI *api.Version) LifecycleInputs {
 		KanikoCacheTTL: timeEnvOrDefault(EnvKanikoCacheTTL, DefaultKanikoCacheTTL),
 		KanikoDir:      "/kaniko",
 		LaunchCacheDir: os.Getenv(EnvLaunchCacheDir),
-		SkipLayers:     boolEnv(EnvSkipLayers),
+		SkipLayers:     skipLayers,
 
 		// Images used by the lifecycle during the build
 
@@ -196,6 +204,7 @@ func (i *LifecycleInputs) configDir() string {
 func (i *LifecycleInputs) placeholderPaths() []*string {
 	return []*string{
 		&i.AnalyzedPath,
+		&i.ExtendedDir,
 		&i.GeneratedDir,
 		&i.GroupPath,
 		&i.OrderPath,

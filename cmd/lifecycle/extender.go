@@ -18,6 +18,10 @@ type extendCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *extendCmd) DefineFlags() {
+	if e.PlatformAPI.AtLeast("0.12") {
+		cli.FlagExtendKind(&e.ExtendKind)
+		cli.FlagExtendedDir(&e.ExtendedDir)
+	}
 	cli.FlagAnalyzedPath(&e.AnalyzedPath)
 	cli.FlagAppDir(&e.AppDir)
 	cli.FlagBuildpacksDir(&e.BuildpacksDir)

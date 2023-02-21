@@ -250,6 +250,7 @@ const placeholderLayersDir = "<layers>"
 
 var (
 	placeholderAnalyzedPath        = filepath.Join(placeholderLayersDir, DefaultAnalyzedFile)
+	placeholderExtendedDir         = filepath.Join(placeholderLayersDir, DefaultExtendedDir)
 	placeholderGeneratedDir        = filepath.Join(placeholderLayersDir, DefaultGeneratedDir)
 	placeholderGroupPath           = filepath.Join(placeholderLayersDir, DefaultGroupFile)
 	placeholderOrderPath           = filepath.Join(placeholderLayersDir, DefaultOrderFile)

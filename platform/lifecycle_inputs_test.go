@@ -34,6 +34,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, inputs.LogLevel, "info")
 			h.AssertEq(t, inputs.PlatformAPI, platformAPI)
 			h.AssertEq(t, inputs.UseDaemon, false)
+			h.AssertEq(t, inputs.ExtendKind, "build")
 			h.AssertEq(t, inputs.UID, 0)
 			h.AssertEq(t, inputs.GID, 0)
 			h.AssertEq(t, inputs.BuildConfigDir, platform.DefaultBuildConfigDir)
@@ -65,6 +66,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				h.AssertNil(t, os.Setenv(platform.EnvLogLevel, "debug"))
 				h.AssertNil(t, os.Setenv(platform.EnvUseDaemon, "true"))
+				h.AssertNil(t, os.Setenv(platform.EnvExtendKind, "run"))
 				h.AssertNil(t, os.Setenv(platform.EnvUID, "1234"))
 				h.AssertNil(t, os.Setenv(platform.EnvGID, "5678"))
 				h.AssertNil(t, os.Setenv(platform.EnvBuildConfigDir, "some-build-config-dir"))
@@ -74,13 +76,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Setenv(platform.EnvStackPath, "some-stack-path"))
 				h.AssertNil(t, os.Setenv(platform.EnvAppDir, "some-app-dir"))
 				h.AssertNil(t, os.Setenv(platform.EnvLayersDir, "some-layers-dir"))
-				h.AssertNil(t, os.Setenv(platform.EnvOrderPath, "some-order-path"))
 				h.AssertNil(t, os.Setenv(platform.EnvPlatformDir, "some-platform-dir"))
-				h.AssertNil(t, os.Setenv(platform.EnvAnalyzedPath, "some-analyzed-path"))
-				h.AssertNil(t, os.Setenv(platform.EnvGeneratedDir, "some-generated-dir"))
-				h.AssertNil(t, os.Setenv(platform.EnvGroupPath, "some-group-path"))
-				h.AssertNil(t, os.Setenv(platform.EnvPlanPath, "some-plan-path"))
-				h.AssertNil(t, os.Setenv(platform.EnvReportPath, "some-report-path"))
 				h.AssertNil(t, os.Setenv(platform.EnvCacheDir, "some-cache-dir"))
 				h.AssertNil(t, os.Setenv(platform.EnvCacheImage, "some-cache-image"))
 				h.AssertNil(t, os.Setenv(platform.EnvKanikoCacheTTL, "1h0m0s"))
@@ -96,6 +92,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			it.After(func() {
 				h.AssertNil(t, os.Unsetenv(platform.EnvLogLevel))
 				h.AssertNil(t, os.Unsetenv(platform.EnvUseDaemon))
+				h.AssertNil(t, os.Unsetenv(platform.EnvExtendKind))
 				h.AssertNil(t, os.Unsetenv(platform.EnvUID))
 				h.AssertNil(t, os.Unsetenv(platform.EnvGID))
 				h.AssertNil(t, os.Unsetenv(platform.EnvBuildConfigDir))
@@ -105,13 +102,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Unsetenv(platform.EnvStackPath))
 				h.AssertNil(t, os.Unsetenv(platform.EnvAppDir))
 				h.AssertNil(t, os.Unsetenv(platform.EnvLayersDir))
-				h.AssertNil(t, os.Unsetenv(platform.EnvOrderPath))
 				h.AssertNil(t, os.Unsetenv(platform.EnvPlatformDir))
-				h.AssertNil(t, os.Unsetenv(platform.EnvAnalyzedPath))
-				h.AssertNil(t, os.Unsetenv(platform.EnvGeneratedDir))
-				h.AssertNil(t, os.Unsetenv(platform.EnvGroupPath))
-				h.AssertNil(t, os.Unsetenv(platform.EnvPlanPath))
-				h.AssertNil(t, os.Unsetenv(platform.EnvReportPath))
 				h.AssertNil(t, os.Unsetenv(platform.EnvCacheDir))
 				h.AssertNil(t, os.Unsetenv(platform.EnvCacheImage))
 				h.AssertNil(t, os.Unsetenv(platform.EnvKanikoCacheTTL))
@@ -125,8 +116,9 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns lifecycle inputs with env values fill in", func() {
 				h.AssertEq(t, inputs.LogLevel, "debug")
-				h.AssertEq(t, inputs.PlatformAPI, platformAPI)
+				h.AssertEq(t, inputs.PlatformAPI, platformAPI) // read from the environment before the constructor is invoked
 				h.AssertEq(t, inputs.UseDaemon, true)
+				h.AssertEq(t, inputs.ExtendKind, "run")
 				h.AssertEq(t, inputs.UID, 1234)
 				h.AssertEq(t, inputs.GID, 5678)
 				h.AssertEq(t, inputs.BuildConfigDir, "some-build-config-dir")
@@ -140,18 +132,12 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, inputs.CacheDir, "some-cache-dir")
 				h.AssertEq(t, inputs.CacheImageRef, "some-cache-image")
 				h.AssertEq(t, inputs.KanikoCacheTTL, 1*time.Hour)
-				h.AssertEq(t, inputs.KanikoDir, "/kaniko")
 				h.AssertEq(t, inputs.LaunchCacheDir, "some-launch-cache-dir")
 				h.AssertEq(t, inputs.SkipLayers, true)
-				h.AssertEq(t, inputs.AdditionalTags, str.Slice(nil))
 				h.AssertEq(t, inputs.BuildImageRef, "some-build-image")
-				h.AssertEq(t, inputs.DeprecatedRunImageRef, "")
-				h.AssertEq(t, inputs.OutputImageRef, "")
 				h.AssertEq(t, inputs.PreviousImageRef, "some-previous-image")
 				h.AssertEq(t, inputs.RunImageRef, "some-run-image")
 				h.AssertEq(t, inputs.DefaultProcessType, "some-process-type")
-				h.AssertEq(t, inputs.LauncherPath, platform.DefaultLauncherPath)
-				h.AssertEq(t, inputs.LauncherSBOMDir, platform.DefaultBuildpacksioSBOMDir)
 			})
 		})
 
@@ -160,6 +146,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 
 			it("expects and writes files in the layers directory", func() {
 				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join("<layers>", "analyzed.toml"))
+				h.AssertEq(t, inputs.ExtendedDir, filepath.Join("<layers>", "extended"))
 				h.AssertEq(t, inputs.GeneratedDir, filepath.Join("<layers>", "generated"))
 				h.AssertEq(t, inputs.GroupPath, filepath.Join("<layers>", "group.toml"))
 				h.AssertEq(t, inputs.PlanPath, filepath.Join("<layers>", "plan.toml"))
@@ -263,11 +250,13 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			it("updates the directory to the layers directory", func() {
 				i := &platform.LifecycleInputs{
 					AnalyzedPath: filepath.Join("<layers>", "analyzed.toml"),
+					ExtendedDir:  filepath.Join("<layers>", "extended"),
 					LayersDir:    "some-layers-dir",
 					PlatformAPI:  api.Platform.Latest(),
 				}
 				h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
 				h.AssertEq(t, i.AnalyzedPath, filepath.Join("some-layers-dir", "analyzed.toml"))
+				h.AssertEq(t, i.ExtendedDir, filepath.Join("some-layers-dir", "extended"))
 			})
 
 			when("Platform API < 0.5", func() {

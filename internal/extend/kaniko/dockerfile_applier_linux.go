@@ -85,7 +85,7 @@ func readOCI(digestRef string) (v1.Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting hash from reference '%s': %w", digestRef, err)
 	}
-	v1Image, err := path.Image(hash) // // FIXME: we may want to implement path.Image(h) in the `selective` package so that trying to access layers on this image errors with a helpful message
+	v1Image, err := path.Image(hash) // // FIXME: we may want to implement path.Image(h) in the imgutil 'sparse' package so that trying to access layers on this image errors with a helpful message
 	if err != nil {
 		return nil, fmt.Errorf("getting image from hash '%s': %w", hash.String(), err)
 	}
