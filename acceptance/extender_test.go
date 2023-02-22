@@ -66,10 +66,12 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 		})
 
 		when("kaniko case", func() {
-			var kanikoDir, analyzedPath string
+			var extendedDir, kanikoDir, analyzedPath string
 
 			it.Before(func() {
 				var err error
+				extendedDir, err = os.MkdirTemp("", "lifecycle-acceptance")
+				h.AssertNil(t, err)
 				kanikoDir, err = os.MkdirTemp("", "lifecycle-acceptance")
 				h.AssertNil(t, err)
 
@@ -186,10 +188,11 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					extendFlags := []string{
 						"--env", "CNB_PLATFORM_API=" + platformAPI,
 						"--volume", fmt.Sprintf("%s:/layers/analyzed.toml", analyzedPath),
+						"--volume", fmt.Sprintf("%s:/layers/extended", extendedDir),
 						"--volume", fmt.Sprintf("%s:/kaniko", kanikoDir),
 					}
 
-					t.Log("first build extends the build image by running Dockerfile commands")
+					t.Log("first build extends the run image by running Dockerfile commands")
 					firstOutput := h.DockerRunWithCombinedOutput(t,
 						extendImage,
 						h.WithFlags(extendFlags...),
@@ -198,10 +201,9 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertStringDoesNotContain(t, firstOutput, "Did not find cache key, pulling remote image...")
 					h.AssertStringDoesNotContain(t, firstOutput, "Error while retrieving image from cache: oci")
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
-					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl was installed on the build image
-					t.Log("sets environment variables from the extended build image in the build context")
-					h.AssertStringContains(t, firstOutput, "CNB_STACK_ID for buildpack: stack-id-from-ext-tree")
-					h.AssertStringContains(t, firstOutput, "HOME for buildpack: /home/cnb")
+					t.Log("does not run the build phase")
+					h.AssertStringDoesNotContain(t, firstOutput, "Hello Extensions buildpack\ncurl")
+					t.Log("outputs extended image layers to the extended directory") // TODO
 
 					t.Log("cleans the kaniko directory")
 					fis, err := os.ReadDir(kanikoDir)
@@ -216,8 +218,10 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					)
 					h.AssertStringDoesNotContain(t, secondOutput, "Did not find cache key, pulling remote image...")
 					h.AssertStringDoesNotContain(t, secondOutput, "Error while retrieving image from cache: oci")
-					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")            // shows that cache layer was used
-					h.AssertStringContains(t, secondOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl is still installed in the unpacked cached layer
+					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates") // shows that cache layer was used
+					t.Log("does not run the build phase")
+					h.AssertStringDoesNotContain(t, secondOutput, "Hello Extensions buildpack\ncurl")
+					t.Log("outputs extended image layers to the extended directory") // TODO
 				})
 			})
 		})
