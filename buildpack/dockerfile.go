@@ -28,7 +28,6 @@ const (
 	errBuildMissingRequiredARGCommand   = "build.Dockerfile did not start with required ARG command"
 	errBuildMissingRequiredFROMCommand  = "build.Dockerfile did not contain required FROM ${base_image} command"
 	errMissingRequiredStage             = "%s should have at least one stage"
-	errMissingRequiredInstruction       = "%s should have at least one instruction"
 	errMultiStageNotPermitted           = "%s is not permitted to use multistage build"
 	errRunOtherInstructionsNotPermitted = "run.Dockerfile is not permitted to have instructions other than FROM"
 	warnCommandNotRecommended           = "%s command %s on line %d is not recommended"

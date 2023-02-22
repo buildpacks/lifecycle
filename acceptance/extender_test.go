@@ -13,9 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -23,6 +22,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -80,6 +80,8 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				// mimic what the restorer would have done in the previous phase:
 
 				// warm kaniko cache
+
+				// get remote image
 				os.Setenv("DOCKER_CONFIG", extendTest.targetRegistry.dockerConfigDir)
 				ref, auth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, extendTest.RegRepoName(extendImage))
 				h.AssertNil(t, err)
@@ -90,11 +92,12 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				baseImageDigest := baseImageHash.String()
 				baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
 				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
-				var sparseImage imgutil.Image
-				sparseImage, err = sparse.NewImage(filepath.Join(baseCacheDir, baseImageDigest), remoteImage)
+				// write image at layout path
+				selectivePath := filepath.Join(baseCacheDir, baseImageDigest)
+				layoutPath, err := selective.Write(selectivePath, empty.Index)
 				h.AssertNil(t, err)
-				h.AssertNil(t, sparseImage.Save())
-				t.Logf("Saved sparse image %s", sparseImage.Name())
+				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
+				t.Logf("Saved selective image %s", selectivePath)
 
 				// write image reference in analyzed.toml
 				analyzedMD := platform.AnalyzedMetadata{
