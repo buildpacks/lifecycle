@@ -8,3 +8,5 @@ ENV CNB_STACK_ID=stack-id-from-ext-tree
 
 ARG build_id=0
 RUN echo ${build_id}
+
+LABEL io.buildpacks.rebasable=false

@@ -191,3 +191,8 @@ func verifyRunDockerfile09(dockerfile string) (string, error) {
 
 	return stages[0].BaseName, nil
 }
+
+func VerifyExtendConfig(config string) error {
+	// TODO
+	return nil
+}

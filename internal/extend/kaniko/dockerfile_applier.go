@@ -17,25 +17,27 @@ const (
 )
 
 var (
-	kanikoCacheDir      = filepath.Join(kanikoDir, "cache", "base")
+	kanikoBaseCacheDir  = filepath.Join(kanikoDir, "cache", "base")
 	kanikoCacheImageRef = filepath.Join(ociPrefix, kanikoDir, "cache", "layers", "cached")
 )
 
 type DockerfileApplier struct {
-	logger log.Logger
+	outputDir string
+	logger    log.Logger
 }
 
-func NewDockerfileApplier(logger log.Logger) *DockerfileApplier {
+func NewDockerfileApplier(outputDir string, logger log.Logger) *DockerfileApplier {
 	return &DockerfileApplier{
-		logger: logger,
+		outputDir: outputDir,
+		logger:    logger,
 	}
 }
 
-func createOptions(workspace string, baseImageRef string, dockerfile extend.Dockerfile, options extend.Options) config.KanikoOptions {
+func createOptions(dockerfileBuildContext string, baseImageRef string, dockerfile extend.Dockerfile, options extend.Options) config.KanikoOptions {
 	return config.KanikoOptions{
 		BuildArgs:         append(toArgList(dockerfile.Args), fmt.Sprintf(`base_image=%s`, baseImageRef)),
 		Cache:             true,
-		CacheOptions:      config.CacheOptions{CacheDir: kanikoCacheDir, CacheTTL: options.CacheTTL},
+		CacheOptions:      config.CacheOptions{CacheDir: kanikoBaseCacheDir, CacheTTL: options.CacheTTL},
 		CacheRunLayers:    true,
 		CacheRepo:         kanikoCacheImageRef,
 		Cleanup:           false,
@@ -47,7 +49,7 @@ func createOptions(workspace string, baseImageRef string, dockerfile extend.Dock
 		NoPush:            true,
 		Reproducible:      false, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them
 		SnapshotMode:      "full",
-		SrcContext:        workspace,
+		SrcContext:        dockerfileBuildContext,
 	}
 }
 

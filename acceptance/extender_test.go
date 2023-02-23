@@ -55,6 +55,9 @@ func TestExtender(t *testing.T) {
 	extendRegFixtures = extendTest.targetRegistry.fixtures
 
 	for _, platformAPI := range api.Platform.Supported {
+		if platformAPI.LessThan("0.10") {
+			continue
+		}
 		spec.Run(t, "acceptance-extender/"+platformAPI.String(), testExtenderFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
@@ -203,12 +206,15 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
 					t.Log("does not run the build phase")
 					h.AssertStringDoesNotContain(t, firstOutput, "Hello Extensions buildpack\ncurl")
-					t.Log("outputs extended image layers to the extended directory") // TODO
-
-					t.Log("cleans the kaniko directory")
-					fis, err := os.ReadDir(kanikoDir)
+					t.Log("outputs extended image layers to the extended directory")
+					images, err := os.ReadDir(extendedDir)
 					h.AssertNil(t, err)
-					h.AssertEq(t, len(fis), 1) // 1: /kaniko/cache
+					h.AssertEq(t, len(images), 1) // sha256:<extended image digest>
+					assertExpectedImage(t, filepath.Join(extendedDir, images[0].Name()))
+					t.Log("cleans the kaniko directory")
+					caches, err := os.ReadDir(kanikoDir)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(caches), 1) // 1: /kaniko/cache
 
 					t.Log("second build extends the build image by pulling from the cache directory")
 					secondOutput := h.DockerRunWithCombinedOutput(t,
@@ -221,9 +227,27 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates") // shows that cache layer was used
 					t.Log("does not run the build phase")
 					h.AssertStringDoesNotContain(t, secondOutput, "Hello Extensions buildpack\ncurl")
-					t.Log("outputs extended image layers to the extended directory") // TODO
+					t.Log("outputs extended image layers to the extended directory")
+					images, err = os.ReadDir(extendedDir)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(images), 2) // sha256:<first extended image digest>, sha256:<second extended image digest>
+					t.Log("cleans the kaniko directory")
+					caches, err = os.ReadDir(kanikoDir)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(caches), 1) // 1: /kaniko/cache
 				})
 			})
 		})
 	}
+}
+
+func assertExpectedImage(t *testing.T, imagePath string) {
+	fis, err := os.ReadDir(imagePath)
+	h.AssertNil(t, err)
+	h.AssertEq(t, len(fis), 3) // blobs, index.json, oci-layout
+	fis, err = os.ReadDir(filepath.Join(imagePath, "blobs", "sha256"))
+	h.AssertNil(t, err)
+	h.AssertEq(t, len(fis), 4) // manifest, config, curl (1), tree (1)
+	// TODO: assert layers
+	// TODO: assert label
 }

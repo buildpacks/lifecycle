@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,15 +8,12 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/uuid"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
-
-const buildIDKey = "build_id"
 
 type Extender struct {
 	AppDir            string
@@ -114,16 +110,24 @@ func (f *ExtenderFactory) verifyAPIs(groupExt []buildpack.GroupElement, logger l
 }
 
 func (e *Extender) ExtendBuild() error {
+	return e.extend(buildpack.DockerfileKindBuild)
+}
+
+func (e *Extender) ExtendRun() error {
+	return e.extend(buildpack.DockerfileKindRun)
+}
+
+func (e *Extender) extend(kind string) error {
 	e.Logger.Debugf("Extending %s", e.ImageRef)
 	var dockerfiles []extend.Dockerfile
 	for _, ext := range e.Extensions {
-		buildDockerfile, err := e.buildDockerfileFor(ext.ID)
+		dockerfile, err := e.dockerfileFor(kind, ext.ID)
 		if err != nil {
 			return err
 		}
-		if buildDockerfile != nil {
-			e.Logger.Debugf("Found build Dockerfile for extension '%s'", ext.ID)
-			dockerfiles = append(dockerfiles, *buildDockerfile)
+		if dockerfile != nil {
+			e.Logger.Debugf("Found %s Dockerfile for extension '%s'", kind, ext.ID)
+			dockerfiles = append(dockerfiles, *dockerfile)
 		}
 	}
 	options := extend.Options{
@@ -137,13 +141,13 @@ func (e *Extender) ExtendBuild() error {
 	return e.DockerfileApplier.Apply(e.AppDir, digest.DigestStr(), dockerfiles, options)
 }
 
-func (e *Extender) buildDockerfileFor(extID string) (*extend.Dockerfile, error) {
-	dockerfilePath := filepath.Join(e.GeneratedDir, "build", launch.EscapeID(extID), "Dockerfile")
+func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error) {
+	dockerfilePath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "Dockerfile")
 	if _, err := os.Stat(dockerfilePath); err != nil {
 		return nil, nil
 	}
 
-	configPath := filepath.Join(e.GeneratedDir, "build", launch.EscapeID(extID), "extend-config.toml")
+	configPath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "extend-config.toml")
 	var config buildpack.ExtendConfig
 	_, err := toml.DecodeFile(configPath, &config)
 	if err != nil {
@@ -153,20 +157,16 @@ func (e *Extender) buildDockerfileFor(extID string) (*extend.Dockerfile, error) 
 	}
 
 	var args []extend.Arg
-	for _, configArg := range config.Build.Args {
-		if configArg.Name == buildIDKey {
-			return nil, errors.New("image extension provides build arg with key 'build_id' which is not allowed")
-		}
-		args = append(args, extend.Arg{
-			Name:  configArg.Name,
-			Value: configArg.Value,
-		})
+	for _, arg := range config.Build.Args {
+		args = append(args, toExtendArg(arg))
 	}
-	// prepend build_id to args
-	args = append(args, extend.Arg{Name: buildIDKey, Value: uuid.New().String()})
 
 	return &extend.Dockerfile{
 		Path: dockerfilePath,
 		Args: args,
 	}, nil
+}
+
+func toExtendArg(arg buildpack.ExtendArg) extend.Arg {
+	return extend.Arg{Name: arg.Name, Value: arg.Value}
 }
