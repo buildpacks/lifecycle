@@ -9,8 +9,9 @@ import (
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/discard"
-	"github.com/apex/log/handlers/memory"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/fake"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
+	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -26,7 +28,7 @@ import (
 func TestExtender(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		spec.Run(t, "unit-new-extender", testExtenderFactory, spec.Report(report.Terminal{}))
-		spec.Run(t, "unit-extender", testExtender, spec.Report(report.Terminal{}))
+		spec.Run(t, "unit-extender", testExtender, spec.Sequential(), spec.Report(report.Terminal{}))
 	}
 }
 
@@ -104,7 +106,6 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, extender.Extensions, []buildpack.GroupElement{
 				{ID: "A", Version: "v1", API: "0.9", Extension: true},
 			})
-			h.AssertEq(t, extender.Logger, logger)
 		})
 
 		when("build image is nil", func() {
@@ -117,191 +118,131 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 }
 
 func testExtender(t *testing.T, when spec.G, it spec.S) {
-	var (
-		extender              *lifecycle.Extender
-		fakeDockerfileApplier *testmock.MockDockerfileApplier
-		mockCtrl              *gomock.Controller
-		generatedDir          string
+	when("Extend", func() {
+		var (
+			extender              *lifecycle.Extender
+			fakeDockerfileApplier *testmock.MockDockerfileApplier
+			mockCtrl              *gomock.Controller
+			extendedDir           string
+			generatedDir          string
+			someFakeImage         *fake.FakeImage
 
-		logHandler = memory.New()
-	)
+			logger *log.Logger
+		)
 
-	it.Before(func() {
-		mockCtrl = gomock.NewController(t)
+		it.Before(func() {
+			mockCtrl = gomock.NewController(t)
 
-		var err error
-		generatedDir, err = os.MkdirTemp("", "lifecycle")
-		h.AssertNil(t, err)
+			var err error
+			extendedDir, err = os.MkdirTemp("", "lifecycle")
+			h.AssertNil(t, err)
+			generatedDir, err = os.MkdirTemp("", "lifecycle")
+			h.AssertNil(t, err)
 
-		providedExtensions := []buildpack.GroupElement{
-			{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "A Homepage"},
-			{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
-		}
-		fakeDockerfileApplier = testmock.NewMockDockerfileApplier(mockCtrl)
-		extender = &lifecycle.Extender{
-			AppDir:            "some-app-dir",
-			ImageRef:          "some-image-tag@sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38",
-			GeneratedDir:      generatedDir,
-			LayersDir:         "some-layers-dir",
-			PlatformDir:       "some-platform-dir",
-			CacheTTL:          7 * (24 * time.Hour),
-			DockerfileApplier: fakeDockerfileApplier,
-			Extensions:        providedExtensions,
-			Logger:            &log.Logger{Handler: logHandler},
-		}
-	})
+			someFakeImage = &fake.FakeImage{}
 
-	it.After(func() {
-		os.RemoveAll(generatedDir)
-		mockCtrl.Finish()
-	})
+			providedExtensions := []buildpack.GroupElement{
+				{ID: "A", Version: "v1", API: api.Buildpack.Latest().String(), Homepage: "A Homepage"},
+				{ID: "B", Version: "v2", API: api.Buildpack.Latest().String()},
+			}
+			fakeDockerfileApplier = testmock.NewMockDockerfileApplier(mockCtrl)
+			extender = &lifecycle.Extender{
+				AppDir:            "some-app-dir",
+				ImageRef:          "some-image-tag@sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38",
+				ExtendedDir:       extendedDir,
+				GeneratedDir:      generatedDir,
+				LayersDir:         "some-layers-dir",
+				PlatformDir:       "some-platform-dir",
+				CacheTTL:          7 * (24 * time.Hour),
+				DockerfileApplier: fakeDockerfileApplier,
+				Extensions:        providedExtensions,
+			}
 
-	when(".ExtendBuild", func() {
-		it("applies the provided Dockerfiles to the build image", func() {
-			h.Mkdir(t, filepath.Join(generatedDir, "build", "B"))
-			h.Mkfile(t, "some build.Dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))
-			h.Mkfile(t, "[[build.args]]\nname=\"arg1\"\nvalue=\"value1\"", filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
-
-			expectedDockerfiles := []extend.Dockerfile{{
-				Path: filepath.Join(generatedDir, "build", "B", "Dockerfile"),
-				Args: []extend.Arg{{Name: "arg1", Value: "value1"}},
-			}}
-			fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38", gomock.Any(), gomock.Any()).Do(
-				func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
-					h.AssertEq(t, len(dockerfiles), 1)
-					h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
-					h.AssertEq(t, len(dockerfiles[0].Args), 1)
-					h.AssertEq(t, dockerfiles[0].Args[0], expectedDockerfiles[0].Args[0])
-
-					return nil
-				},
-			)
-
-			h.AssertNil(t, extender.ExtendBuild())
+			logger = &log.Logger{Handler: &discard.Handler{}}
 		})
 
-		when("Dockerfile is provided without extend-config.toml", func() {
-			it("applies without error", func() {
+		it.After(func() {
+			_ = os.RemoveAll(generatedDir)
+			mockCtrl.Finish()
+		})
+
+		when("Dockerfile kind build", func() {
+			it("applies the Dockerfile with the expected args and opts", func() {
 				h.Mkdir(t, filepath.Join(generatedDir, "build", "B"))
-				h.Mkfile(t, "some build.Dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))
+				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "build", "B", "Dockerfile"))
+				h.Mkfile(t, "[[build.args]]\nname=\"arg1\"\nvalue=\"value1\"", filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
 
-				var empty []extend.Arg
-				expectedDockerfiles := []extend.Dockerfile{{
+				// TODO: expectedDockerfileA
+				expectedDockerfileB := extend.Dockerfile{
 					Path: filepath.Join(generatedDir, "build", "B", "Dockerfile"),
-					Args: empty,
-				}}
-				fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38", gomock.Any(), gomock.Any()).Do(
-					func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
-						h.AssertEq(t, len(dockerfiles), 1)
-						h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
-						h.AssertEq(t, len(dockerfiles[0].Args), 0)
+					Args: []extend.Arg{{Name: "arg1", Value: "value1"}},
+				}
 
-						return nil
-					},
-				)
+				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+				fakeDockerfileApplier.EXPECT().Apply(
+					gomock.Any(),
+					someFakeImage,
+					gomock.Any(), // TODO: make concrete
+					logger,
+				).DoAndReturn(
+					func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
+						h.AssertEq(t, len(dockerfile.Args), 4) // TODO: assert build_id, user_id, group_id
+						h.AssertEq(t, dockerfile.Args[3], expectedDockerfileB.Args[0])
 
-				h.AssertNil(t, extender.ExtendBuild())
+						return someFakeImage, nil
+					})
+				someFakeImage.ConfigFileReturns(&v1.ConfigFile{Config: v1.Config{
+					Env: []string{"SOME_VAR=some-val"},
+				}}, nil)
+				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
+
+				h.AssertNil(t, extender.Extend("build", logger))
+				h.AssertEq(t, os.Getenv("SOME_VAR"), "some-val")
+				h.AssertNil(t, os.Unsetenv("SOME_VAR"))
 			})
 		})
 
-		when("options", func() {
-			when(":ignorepaths", func() {
-				it("has <workspace>, <layers>, and <platform>", func() {
-					fakeDockerfileApplier.EXPECT().Apply(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do( // FIXME: this test (and others that use `Do` or `DoAndReturn`) could be made simpler using a custom matcher
-						func(_ string, _ string, _ []extend.Dockerfile, options extend.Options) error {
-							h.AssertEq(t, options.IgnorePaths, []string{"some-app-dir", "some-layers-dir", "some-platform-dir"})
-							return nil
-						})
-
-					h.AssertNil(t, extender.ExtendBuild())
-				})
-			})
-
-			when(":cacheTTL", func() {
-				it("passes it to the extend options", func() {
-					fakeDockerfileApplier.EXPECT().Apply(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
-						func(_ string, _ string, _ []extend.Dockerfile, options extend.Options) error {
-							h.AssertEq(t, options.CacheTTL, 7*(24*time.Hour))
-							return nil
-						})
-
-					h.AssertNil(t, extender.ExtendBuild())
-				})
-			})
-		})
-	})
-
-	when(".ExtendRun", func() {
-		it("applies the provided Dockerfiles to the run image", func() {
-			h.Mkdir(t, filepath.Join(generatedDir, "run", "B"))
-			h.Mkfile(t, "some run.Dockerfile content", filepath.Join(generatedDir, "run", "B", "Dockerfile"))
-			h.Mkfile(t, "[[build.args]]\nname=\"arg1\"\nvalue=\"value1\"", filepath.Join(generatedDir, "run", "B", "extend-config.toml"))
-
-			expectedDockerfiles := []extend.Dockerfile{{
-				Path: filepath.Join(generatedDir, "run", "B", "Dockerfile"),
-				Args: []extend.Arg{{Name: "arg1", Value: "value1"}},
-			}}
-			fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38", gomock.Any(), gomock.Any()).Do(
-				func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
-					h.AssertEq(t, len(dockerfiles), 1)
-					h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
-					h.AssertEq(t, len(dockerfiles[0].Args), 1)
-					h.AssertEq(t, dockerfiles[0].Args[0], expectedDockerfiles[0].Args[0])
-
-					return nil
-				},
-			)
-
-			h.AssertNil(t, extender.ExtendRun())
-		})
-
-		when("Dockerfile is provided without extend-config.toml", func() {
-			it("applies without error", func() {
+		when("Dockerfile kind run", func() {
+			it.Focus("applies the Dockerfile with the expected args and opts", func() {
 				h.Mkdir(t, filepath.Join(generatedDir, "run", "B"))
-				h.Mkfile(t, "some run.Dockerfile content", filepath.Join(generatedDir, "run", "B", "Dockerfile"))
+				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "run", "B", "Dockerfile"))
+				h.Mkfile(t, "[[build.args]]\nname=\"arg1\"\nvalue=\"value1\"", filepath.Join(generatedDir, "run", "B", "extend-config.toml"))
 
-				var empty []extend.Arg
-				expectedDockerfiles := []extend.Dockerfile{{
+				// TODO: expectedDockerfileA
+				expectedDockerfileB := extend.Dockerfile{
 					Path: filepath.Join(generatedDir, "run", "B", "Dockerfile"),
-					Args: empty,
-				}}
-				fakeDockerfileApplier.EXPECT().Apply("some-app-dir", "sha256:9412cff392ca11c0d7b9df015808c4e40aff218fbe324df6490b9552ba82be38", gomock.Any(), gomock.Any()).Do(
-					func(_ string, _ string, dockerfiles []extend.Dockerfile, _ extend.Options) error {
-						h.AssertEq(t, len(dockerfiles), 1)
-						h.AssertEq(t, dockerfiles[0].Path, expectedDockerfiles[0].Path)
-						h.AssertEq(t, len(dockerfiles[0].Args), 0)
+					Args: []extend.Arg{{Name: "arg1", Value: "value1"}},
+				}
 
-						return nil
-					},
-				)
+				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+				someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+				fakeDockerfileApplier.EXPECT().Apply(
+					gomock.Any(),
+					someFakeImage,
+					gomock.Any(),
+					logger,
+				).DoAndReturn(
+					func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+						h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
+						t.Log(dockerfile.Args)
+						h.AssertEq(t, len(dockerfile.Args), 4) // TODO: assert build_id, user_id, group_id
+						h.AssertEq(t, dockerfile.Args[3], expectedDockerfileB.Args[0])
 
-				h.AssertNil(t, extender.ExtendRun())
-			})
-		})
+						return someFakeImage, nil
+					})
+				// save selective
+				imageHash := v1.Hash{Algorithm: "sha256", Hex: "some-image-hex"}
+				someFakeImage.DigestReturns(imageHash, nil)
+				someFakeImage.ConfigNameReturns(v1.Hash{Algorithm: "sha256", Hex: "some-config-hex"}, nil)
+				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
-		when("options", func() {
-			when(":ignorepaths", func() {
-				it("has <workspace>, <layers>, and <platform>", func() {
-					fakeDockerfileApplier.EXPECT().Apply(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do( // FIXME: this test (and others that use `Do` or `DoAndReturn`) could be made simpler using a custom matcher
-						func(_ string, _ string, _ []extend.Dockerfile, options extend.Options) error {
-							h.AssertEq(t, options.IgnorePaths, []string{"some-app-dir", "some-layers-dir", "some-platform-dir"})
-							return nil
-						})
-
-					h.AssertNil(t, extender.ExtendRun())
-				})
-			})
-
-			when(":cacheTTL", func() {
-				it("passes it to the extend options", func() {
-					fakeDockerfileApplier.EXPECT().Apply(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
-						func(_ string, _ string, _ []extend.Dockerfile, options extend.Options) error {
-							h.AssertEq(t, options.CacheTTL, 7*(24*time.Hour))
-							return nil
-						})
-
-					h.AssertNil(t, extender.ExtendRun())
-				})
+				h.AssertNil(t, extender.Extend("run", logger))
+				outputImagePath := filepath.Join(extendedDir, imageHash.String())
+				h.AssertPathExists(t, outputImagePath)
+				fis, err := os.ReadDir(outputImagePath)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(fis), 3)
 			})
 		})
 	})

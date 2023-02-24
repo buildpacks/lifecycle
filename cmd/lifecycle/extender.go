@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/extend/kaniko"
@@ -55,12 +56,13 @@ func (e *extendCmd) Exec() error {
 	extender, err := extenderFactory.NewExtender(
 		e.AnalyzedPath,
 		e.AppDir,
+		e.ExtendedDir,
 		e.GeneratedDir,
 		e.GroupPath,
 		e.LayersDir,
 		e.PlatformDir,
 		e.KanikoCacheTTL,
-		kaniko.NewDockerfileApplier(e.ExtendedDir, cmd.DefaultLogger),
+		&kaniko.DockerfileApplier{},
 		cmd.DefaultLogger,
 	)
 	if err != nil {
@@ -68,7 +70,7 @@ func (e *extendCmd) Exec() error {
 	}
 	switch e.ExtendKind {
 	case "build": // TODO: make constant
-		if err = extender.ExtendBuild(); err != nil {
+		if err = extender.Extend(buildpack.DockerfileKindBuild, cmd.DefaultLogger); err != nil {
 			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend build image")
 		}
 		if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
@@ -86,7 +88,7 @@ func (e *extendCmd) Exec() error {
 		}
 		return buildCmd.Exec()
 	case "run":
-		if err = extender.ExtendRun(); err != nil {
+		if err = extender.Extend(buildpack.DockerfileKindRun, cmd.DefaultLogger); err != nil {
 			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend run image")
 		}
 	default:

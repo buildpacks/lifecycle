@@ -120,6 +120,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 			it.After(func() {
 				_ = os.RemoveAll(kanikoDir)
+				_ = os.RemoveAll(extendedDir)
 			})
 
 			when("extending the build image", func() {

@@ -12,6 +12,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.13.0
+	github.com/google/uuid v1.3.0
 	github.com/heroku/color v0.0.6
 	github.com/moby/buildkit v0.11.1
 	github.com/pkg/errors v0.9.1
