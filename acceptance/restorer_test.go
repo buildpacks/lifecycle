@@ -240,7 +240,6 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-analyzed.toml"))
 				h.AssertNil(t, err)
 				h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
-				// TODO: assert on target data
 				t.Log("writes run image manifest and config to the kaniko cache")
 				ref, err := name.ParseReference(analyzedMD.RunImage.Reference)
 				h.AssertNil(t, err)

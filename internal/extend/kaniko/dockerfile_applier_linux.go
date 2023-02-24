@@ -10,6 +10,7 @@ import (
 	"github.com/GoogleContainerTools/kaniko/pkg/executor"
 	"github.com/GoogleContainerTools/kaniko/pkg/image"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/log"
@@ -37,5 +38,6 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 
 	// apply Dockerfile
 	logger.Debugf("Applying Dockerfile at %s to '%s'...", dockerfile.Path, baseImageRef)
-	return executor.DoBuild(&opts)
+	extendedImage, err := executor.DoBuild(&opts)
+	return mutate.CreatedAt(extendedImage, v1.Time{})
 }

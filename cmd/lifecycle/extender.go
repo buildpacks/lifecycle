@@ -69,8 +69,8 @@ func (e *extendCmd) Exec() error {
 		return unwrapErrorFailWithMessage(err, "initialize extender")
 	}
 	switch e.ExtendKind {
-	case "build": // TODO: make constant
-		if err = extender.Extend(buildpack.DockerfileKindBuild, cmd.DefaultLogger); err != nil {
+	case buildpack.DockerfileKindBuild:
+		if err = extender.Extend(e.ExtendKind, cmd.DefaultLogger); err != nil {
 			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend build image")
 		}
 		if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
@@ -87,12 +87,12 @@ func (e *extendCmd) Exec() error {
 			return err
 		}
 		return buildCmd.Exec()
-	case "run":
-		if err = extender.Extend(buildpack.DockerfileKindRun, cmd.DefaultLogger); err != nil {
+	case buildpack.DockerfileKindRun:
+		if err = extender.Extend(e.ExtendKind, cmd.DefaultLogger); err != nil {
 			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend run image")
 		}
 	default:
-		// TODO: fail invalid arguments
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs)
 	}
 	return nil
 }

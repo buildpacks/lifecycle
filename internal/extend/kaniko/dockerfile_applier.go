@@ -89,7 +89,7 @@ func createOptions(baseImageRef string, dockerfile extend.Dockerfile, options ex
 		IgnoreVarRun:      true,
 		InitialFSUnpacked: true, // The executor is running in the context of the image being extended, so there is no need to unpack the filesystem
 		NoPush:            true,
-		Reproducible:      true, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them
+		Reproducible:      false, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them
 		SnapshotMode:      "full",
 		SrcContext:        options.BuildContext,
 	}

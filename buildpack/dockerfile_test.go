@@ -260,45 +260,45 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 					}
 				})
 			})
-		})
 
-		when("Buildpack API < 0.10", func() {
-			it.Before(func() {
-				buildpackAPI = api.MustParse("0.9")
-			})
+			when("Buildpack API < 0.10", func() {
+				it.Before(func() {
+					buildpackAPI = api.MustParse("0.9")
+				})
 
-			when("invalid", func() {
-				it("errors", func() {
-					type testCase struct {
-						dockerfileContent string
-						expectedError     string
-					}
-					testCases := []testCase{
-						{
-							dockerfileContent: ``,
-							expectedError:     "file with no instructions",
-						},
-						{
-							dockerfileContent: `
+				when("invalid", func() {
+					it("errors", func() {
+						type testCase struct {
+							dockerfileContent string
+							expectedError     string
+						}
+						testCases := []testCase{
+							{
+								dockerfileContent: ``,
+								expectedError:     "file with no instructions",
+							},
+							{
+								dockerfileContent: `
 ARG base_image=0
 FROM ${base_image}
 `,
-							expectedError: "run.Dockerfile should not expect arguments",
-						},
-						{
-							dockerfileContent: `
+								expectedError: "run.Dockerfile should not expect arguments",
+							},
+							{
+								dockerfileContent: `
 FROM some-run-image
 RUN echo "hello" > /world.txt
 `,
-							expectedError: "run.Dockerfile is not permitted to have instructions other than FROM",
-						},
-					}
-					for i, tc := range testCases {
-						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
-						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
-						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, buildpackAPI, logger)
-						h.AssertError(t, err, tc.expectedError)
-					}
+								expectedError: "run.Dockerfile is not permitted to have instructions other than FROM",
+							},
+						}
+						for i, tc := range testCases {
+							dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
+							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
+							_, err := buildpack.VerifyRunDockerfile(dockerfilePath, buildpackAPI, logger)
+							h.AssertError(t, err, tc.expectedError)
+						}
+					})
 				})
 			})
 		})

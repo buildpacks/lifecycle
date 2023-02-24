@@ -68,6 +68,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			extender, err = extenderFactory.NewExtender(
 				"some-analyzed-path",
 				"some-app-dir",
+				"some-extended-dir",
 				"some-generated-dir",
 				"some-group-path",
 				"some-layers-dir",
@@ -98,6 +99,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			createExtender()
 
 			h.AssertEq(t, extender.AppDir, "some-app-dir")
+			h.AssertEq(t, extender.ExtendedDir, "some-extended-dir")
 			h.AssertEq(t, extender.GeneratedDir, "some-generated-dir")
 			h.AssertEq(t, extender.ImageRef, "some-image-ref")
 			h.AssertEq(t, extender.LayersDir, "some-layers-dir")

@@ -97,7 +97,6 @@ func (r *restoreCmd) Exec() error {
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference: digest.String(),
 				Extend:    true,
-				// TODO: add target data
 			}
 		} else if needsUpdating(analyzedMD.RunImage) {
 			_, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
@@ -107,7 +106,6 @@ func (r *restoreCmd) Exec() error {
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference: digest.String(),
 				Extend:    analyzedMD.RunImage.Extend,
-				// TODO: add target data
 			}
 		}
 		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
@@ -143,7 +141,6 @@ func needsPulling(runImage *platform.RunImage) bool {
 }
 
 func needsUpdating(runImage *platform.RunImage) bool {
-	// TODO
 	return false
 }
 
