@@ -31,6 +31,7 @@ type LifecycleInputs struct {
 	LauncherPath          string
 	LauncherSBOMDir       string
 	LayersDir             string
+	LayoutDir             string
 	LogLevel              string
 	OrderPath             string
 	OutputImageRef        string
@@ -46,6 +47,7 @@ type LifecycleInputs struct {
 	GID                   int
 	SkipLayers            bool
 	UseDaemon             bool
+	UseLayout             bool
 	AdditionalTags        str.Slice // str.Slice satisfies the `Value` interface required by the `flag` package
 	KanikoCacheTTL        time.Duration
 }
@@ -57,6 +59,7 @@ func NewLifecycleInputs(platformAPI *api.Version) LifecycleInputs {
 		LogLevel:    envOrDefault(EnvLogLevel, DefaultLogLevel),
 		PlatformAPI: platformAPI,
 		UseDaemon:   boolEnv(EnvUseDaemon),
+		UseLayout:   boolEnv(EnvUseLayout),
 
 		// Provided by the base image
 
@@ -75,6 +78,7 @@ func NewLifecycleInputs(platformAPI *api.Version) LifecycleInputs {
 
 		AppDir:      envOrDefault(EnvAppDir, DefaultAppDir),
 		LayersDir:   envOrDefault(EnvLayersDir, DefaultLayersDir),
+		LayoutDir:   os.Getenv(EnvLayoutDir),
 		OrderPath:   envOrDefault(EnvOrderPath, placeholderOrderPath), // the lifecycle will look for <layers>/order.toml and if not present fall back to /cnb/order.toml
 		PlatformDir: envOrDefault(EnvPlatformDir, DefaultPlatformDir),
 

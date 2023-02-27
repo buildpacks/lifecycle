@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/buildpacks/lifecycle/image"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -28,6 +30,8 @@ type createCmd struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (c *createCmd) DefineFlags() {
 	if c.PlatformAPI.AtLeast("0.12") {
+		cli.FlagLayoutDir(&c.LayoutDir)
+		cli.FlagUseLayout(&c.UseLayout)
 		cli.FlagRunPath(&c.RunPath)
 	}
 	if c.PlatformAPI.AtLeast("0.11") {
@@ -64,6 +68,11 @@ func (c *createCmd) Args(nargs int, args []string) error {
 	c.OutputImageRef = args[0]
 	if err := platform.ResolveInputs(platform.Create, &c.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+	}
+	if c.UseLayout {
+		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -115,7 +124,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			NewImageHandler(c.docker, c.keychain),
+			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(
@@ -178,7 +187,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			NewImageHandler(c.docker, c.keychain),
+			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(

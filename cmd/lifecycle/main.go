@@ -5,10 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
@@ -99,7 +96,7 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string) 
 		err        error
 	)
 	if cacheImageRef != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain)
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageRef, ch.keychain, cmd.DefaultLogger)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating image cache")
 		}
@@ -110,42 +107,6 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string) 
 		}
 	}
 	return cacheStore, nil
-}
-
-type DefaultImageHandler struct {
-	docker   client.CommonAPIClient
-	keychain authn.Keychain
-}
-
-func NewImageHandler(docker client.CommonAPIClient, keychain authn.Keychain) *DefaultImageHandler {
-	return &DefaultImageHandler{
-		docker:   docker,
-		keychain: keychain,
-	}
-}
-
-func (h *DefaultImageHandler) InitImage(imageRef string) (imgutil.Image, error) {
-	if imageRef == "" {
-		return nil, nil
-	}
-
-	if h.docker != nil {
-		return local.NewImage(
-			imageRef,
-			h.docker,
-			local.FromBaseImage(imageRef),
-		)
-	}
-
-	return remote.NewImage(
-		imageRef,
-		h.keychain,
-		remote.FromBaseImage(imageRef),
-	)
-}
-
-func (h *DefaultImageHandler) Docker() bool {
-	return h.docker != nil
 }
 
 type DefaultRegistryHandler struct {
@@ -206,7 +167,7 @@ func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecyc
 		err        error
 	)
 	if cacheImageTag != "" {
-		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain)
+		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, cmd.DefaultLogger)
 		if err != nil {
 			return nil, cmd.FailErr(err, "create image cache")
 		}
