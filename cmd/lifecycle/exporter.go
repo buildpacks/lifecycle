@@ -60,7 +60,6 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagGroupPath(&e.GroupPath)
 	cli.FlagLaunchCacheDir(&e.LaunchCacheDir)
 	cli.FlagLauncherPath(&e.LauncherPath)
-	cli.FlagLayersDir(&e.LayersDir)
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
@@ -79,7 +78,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 	e.OutputImageRef = args[0]
 	e.AdditionalTags = args[1:]
-	if err := platform.ResolveInputs(platform.Export, &e.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Export, e.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	// read analyzed metadata for use in later stages

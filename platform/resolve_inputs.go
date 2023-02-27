@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -23,7 +22,7 @@ var (
 
 func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
 	// order of operations is important
-	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
+	ops := []LifecycleInputsOperation{ResolveAbsoluteDirPaths}
 	switch phase {
 	case Analyze:
 		if i.PlatformAPI.LessThan("0.7") {
@@ -244,36 +243,6 @@ func (i *LifecycleInputs) directoryPaths() []*string {
 		&i.LayersDir,
 		&i.PlatformDir,
 	}
-}
-
-const placeholderLayersDir = "<layers>"
-
-var (
-	placeholderAnalyzedPath        = filepath.Join(placeholderLayersDir, DefaultAnalyzedFile)
-	placeholderGeneratedDir        = filepath.Join(placeholderLayersDir, DefaultGeneratedDir)
-	placeholderGroupPath           = filepath.Join(placeholderLayersDir, DefaultGroupFile)
-	placeholderOrderPath           = filepath.Join(placeholderLayersDir, DefaultOrderFile)
-	placeholderPlanPath            = filepath.Join(placeholderLayersDir, DefaultPlanFile)
-	placeholderProjectMetadataPath = filepath.Join(placeholderLayersDir, DefaultProjectMetadataFile)
-	placeholderReportPath          = filepath.Join(placeholderLayersDir, DefaultReportFile)
-)
-
-func UpdatePlaceholderPaths(i *LifecycleInputs, _ log.Logger) error {
-	toUpdate := i.placeholderPaths()
-	for _, pp := range toUpdate {
-		switch {
-		case *pp == "":
-			continue
-		case *pp == placeholderOrderPath:
-			*pp = i.defaultOrderPath()
-		case strings.Contains(*pp, placeholderLayersDir):
-			filename := filepath.Base(*pp)
-			*pp = filepath.Join(i.configDir(), filename)
-		default:
-			// nop
-		}
-	}
-	return nil
 }
 
 // ValidateImageRefs ensures all provided image references are valid.

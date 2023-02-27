@@ -45,7 +45,6 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagGID(&c.GID)
 	cli.FlagLaunchCacheDir(&c.LaunchCacheDir)
 	cli.FlagLauncherPath(&c.LauncherPath)
-	cli.FlagLayersDir(&c.LayersDir)
 	cli.FlagOrderPath(&c.OrderPath)
 	cli.FlagPlatformDir(&c.PlatformDir)
 	cli.FlagPreviousImage(&c.PreviousImageRef)
@@ -66,7 +65,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	c.OutputImageRef = args[0]
-	if err := platform.ResolveInputs(platform.Create, &c.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Create, c.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	if c.UseLayout {

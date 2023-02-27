@@ -40,7 +40,6 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagCacheDir(&r.CacheDir)
 		cli.FlagCacheImage(&r.CacheImageRef)
 		cli.FlagGroupPath(&r.GroupPath)
-		cli.FlagLayersDir(&r.LayersDir)
 		cli.FlagUID(&r.UID)
 		cli.FlagGID(&r.GID)
 		cli.FlagAnalyzedPath(&r.AnalyzedPath)
@@ -49,7 +48,6 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagCacheDir(&r.CacheDir)
 		cli.FlagCacheImage(&r.CacheImageRef)
 		cli.FlagGroupPath(&r.GroupPath)
-		cli.FlagLayersDir(&r.LayersDir)
 		cli.FlagUID(&r.UID)
 		cli.FlagGID(&r.GID)
 		cli.FlagAnalyzedPath(&r.AnalyzedPath)
@@ -58,7 +56,6 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagCacheDir(&r.CacheDir)
 		cli.FlagCacheImage(&r.CacheImageRef)
 		cli.FlagGroupPath(&r.GroupPath)
-		cli.FlagLayersDir(&r.LayersDir)
 		cli.FlagUID(&r.UID)
 		cli.FlagGID(&r.GID)
 	}
@@ -69,7 +66,7 @@ func (r *restoreCmd) Args(nargs int, _ []string) error {
 	if nargs > 0 {
 		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	if err := platform.ResolveInputs(platform.Restore, &r.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Restore, r.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil

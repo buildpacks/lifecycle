@@ -22,15 +22,28 @@ func TestLifecycleInputs(t *testing.T) {
 func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 	when("#NewLifecycleInputs", func() {
 		var (
-			platformAPI = api.Platform.Latest()
-			inputs      platform.LifecycleInputs
+			platformAPI       = api.Platform.Latest()
+			tmpDir, layersDir string
+			inputs            *platform.LifecycleInputs
 		)
 
 		it.Before(func() {
-			inputs = platform.NewLifecycleInputs(platformAPI)
+			var err error
+			tmpDir, err = os.MkdirTemp("", "lifecycle.test")
+			h.AssertNil(t, err)
+			layersDir = filepath.Join(tmpDir, layersDir)
+			h.AssertNil(t, os.MkdirAll(layersDir, 0755))
+		})
+
+		it.After(func() {
+			os.RemoveAll(tmpDir)
 		})
 
 		it("returns lifecycle inputs with default values fill in", func() {
+			var err error
+			inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+			h.AssertNil(t, err)
+
 			h.AssertEq(t, inputs.AdditionalTags, str.Slice(nil))
 			h.AssertEq(t, inputs.AppDir, platform.DefaultAppDir)
 			h.AssertEq(t, inputs.BuildConfigDir, platform.DefaultBuildConfigDir)
@@ -47,10 +60,10 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, inputs.LaunchCacheDir, "")
 			h.AssertEq(t, inputs.LauncherPath, platform.DefaultLauncherPath)
 			h.AssertEq(t, inputs.LauncherSBOMDir, platform.DefaultBuildpacksioSBOMDir)
-			h.AssertEq(t, inputs.LayersDir, platform.DefaultLayersDir)
+			h.AssertEq(t, inputs.LayersDir, layersDir) // from constructor
 			h.AssertEq(t, inputs.LogLevel, "info")
 			h.AssertEq(t, inputs.OutputImageRef, "")
-			h.AssertEq(t, inputs.PlatformAPI, platformAPI)
+			h.AssertEq(t, inputs.PlatformAPI, platformAPI) // from constructor
 			h.AssertEq(t, inputs.PlatformDir, platform.DefaultPlatformDir)
 			h.AssertEq(t, inputs.PreviousImageRef, "")
 			h.AssertEq(t, inputs.RunImageRef, "")
@@ -77,7 +90,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Setenv(platform.EnvGroupPath, "some-group-path"))
 				h.AssertNil(t, os.Setenv(platform.EnvKanikoCacheTTL, "1h0m0s"))
 				h.AssertNil(t, os.Setenv(platform.EnvLaunchCacheDir, "some-launch-cache-dir"))
-				h.AssertNil(t, os.Setenv(platform.EnvLayersDir, "some-layers-dir"))
 				h.AssertNil(t, os.Setenv(platform.EnvLayoutDir, "some-layout-dir"))
 				h.AssertNil(t, os.Setenv(platform.EnvLogLevel, "debug"))
 				h.AssertNil(t, os.Setenv(platform.EnvOrderPath, "some-order-path"))
@@ -93,7 +105,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Setenv(platform.EnvUID, "1234"))
 				h.AssertNil(t, os.Setenv(platform.EnvUseDaemon, "true"))
 				h.AssertNil(t, os.Setenv(platform.EnvUseLayout, "true"))
-				inputs = platform.NewLifecycleInputs(platformAPI)
 			})
 
 			it.After(func() {
@@ -110,7 +121,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Unsetenv(platform.EnvGroupPath))
 				h.AssertNil(t, os.Unsetenv(platform.EnvKanikoCacheTTL))
 				h.AssertNil(t, os.Unsetenv(platform.EnvLaunchCacheDir))
-				h.AssertNil(t, os.Unsetenv(platform.EnvLayersDir))
 				h.AssertNil(t, os.Unsetenv(platform.EnvLayoutDir))
 				h.AssertNil(t, os.Unsetenv(platform.EnvLogLevel))
 				h.AssertNil(t, os.Unsetenv(platform.EnvOrderPath))
@@ -129,6 +139,10 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns lifecycle inputs with env values fill in", func() {
+				var err error
+				inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+				h.AssertNil(t, err)
+
 				h.AssertEq(t, inputs.AdditionalTags, str.Slice(nil))
 				h.AssertEq(t, inputs.AppDir, "some-app-dir")
 				h.AssertEq(t, inputs.BuildConfigDir, "some-build-config-dir")
@@ -145,7 +159,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, inputs.LaunchCacheDir, "some-launch-cache-dir")
 				h.AssertEq(t, inputs.LauncherPath, platform.DefaultLauncherPath)
 				h.AssertEq(t, inputs.LauncherSBOMDir, platform.DefaultBuildpacksioSBOMDir)
-				h.AssertEq(t, inputs.LayersDir, "some-layers-dir")
 				h.AssertEq(t, inputs.LogLevel, "debug")
 				h.AssertEq(t, inputs.OutputImageRef, "")
 				h.AssertEq(t, inputs.PlatformAPI, platformAPI)
@@ -164,16 +177,42 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			platformAPI = api.Platform.Latest()
 
 			it("expects and writes files in the layers directory", func() {
-				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join("<layers>", "analyzed.toml"))
-				h.AssertEq(t, inputs.GeneratedDir, filepath.Join("<layers>", "generated"))
-				h.AssertEq(t, inputs.GroupPath, filepath.Join("<layers>", "group.toml"))
-				h.AssertEq(t, inputs.PlanPath, filepath.Join("<layers>", "plan.toml"))
-				h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join("<layers>", "project-metadata.toml"))
-				h.AssertEq(t, inputs.ReportPath, filepath.Join("<layers>", "report.toml"))
+				var err error
+				inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join(layersDir, "analyzed.toml"))
+				h.AssertEq(t, inputs.GeneratedDir, filepath.Join(layersDir, "generated"))
+				h.AssertEq(t, inputs.GroupPath, filepath.Join(layersDir, "group.toml"))
+				h.AssertEq(t, inputs.PlanPath, filepath.Join(layersDir, "plan.toml"))
+				h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join(layersDir, "project-metadata.toml"))
+				h.AssertEq(t, inputs.ReportPath, filepath.Join(layersDir, "report.toml"))
 			})
 
-			it("expects order.toml in the layers directory", func() {
-				h.AssertEq(t, inputs.OrderPath, filepath.Join("<layers>", "order.toml"))
+			when("order.toml", func() {
+				when("exists in layers directory", func() {
+					it.Before(func() {
+						h.Mkfile(t, "", filepath.Join(layersDir, "order.toml"))
+					})
+
+					it("expects order.toml in the layers directory", func() {
+						var err error
+						inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, inputs.OrderPath, filepath.Join(layersDir, "order.toml"))
+					})
+				})
+
+				when("not exists in layers directory", func() {
+					it("expects order.toml in the /cnb directory", func() {
+						var err error
+						inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, inputs.OrderPath, platform.DefaultOrderPath)
+					})
+				})
 			})
 		})
 
@@ -181,14 +220,22 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			platformAPI = api.MustParse("0.5")
 
 			it("expects and writes files in the layers directory", func() {
-				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join("<layers>", "analyzed.toml"))
-				h.AssertEq(t, inputs.GroupPath, filepath.Join("<layers>", "group.toml"))
-				h.AssertEq(t, inputs.PlanPath, filepath.Join("<layers>", "plan.toml"))
-				h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join("<layers>", "project-metadata.toml"))
-				h.AssertEq(t, inputs.ReportPath, filepath.Join("<layers>", "report.toml"))
+				var err error
+				inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, inputs.AnalyzedPath, filepath.Join(layersDir, "analyzed.toml"))
+				h.AssertEq(t, inputs.GroupPath, filepath.Join(layersDir, "group.toml"))
+				h.AssertEq(t, inputs.PlanPath, filepath.Join(layersDir, "plan.toml"))
+				h.AssertEq(t, inputs.ProjectMetadataPath, filepath.Join(layersDir, "project-metadata.toml"))
+				h.AssertEq(t, inputs.ReportPath, filepath.Join(layersDir, "report.toml"))
 			})
 
 			it("expects order.toml in the /cnb directory", func() {
+				var err error
+				inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+				h.AssertNil(t, err)
+
 				h.AssertEq(t, inputs.OrderPath, platform.DefaultOrderPath)
 			})
 		})
@@ -197,6 +244,10 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			platformAPI = api.MustParse("0.4")
 
 			it("expects and writes files in the working directory", func() {
+				var err error
+				inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+				h.AssertNil(t, err)
+
 				h.AssertEq(t, inputs.AnalyzedPath, "analyzed.toml")
 				h.AssertEq(t, inputs.GroupPath, "group.toml")
 				h.AssertEq(t, inputs.PlanPath, "plan.toml")
@@ -205,110 +256,11 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("expects order.toml in the /cnb directory", func() {
+				var err error
+				inputs = platform.NewLifecycleInputs(platformAPI, layersDir)
+				h.AssertNil(t, err)
+
 				h.AssertEq(t, inputs.OrderPath, platform.DefaultOrderPath)
-			})
-		})
-	})
-
-	when("#UpdatePlaceholderPaths", func() {
-		when("updating blank path", func() {
-			it("does nothing", func() {
-				i := &platform.LifecycleInputs{
-					AnalyzedPath: "",
-					LayersDir:    "some-layers-dir",
-					PlatformAPI:  api.Platform.Latest(),
-				}
-				h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
-				h.AssertEq(t, i.AnalyzedPath, "")
-			})
-		})
-
-		when("updating order.toml", func() {
-			when("at layers directory", func() {
-				when("exists", func() {
-					var tmpDir string
-
-					it.Before(func() {
-						var err error
-						tmpDir, err = os.MkdirTemp("", "lifecycle")
-						h.AssertNil(t, err)
-					})
-
-					it.After(func() {
-						os.RemoveAll(tmpDir)
-					})
-
-					it("uses order.toml at layers directory", func() {
-						h.Mkfile(t, "", filepath.Join(tmpDir, "order.toml"))
-						i := &platform.LifecycleInputs{
-							OrderPath:   filepath.Join("<layers>", "order.toml"),
-							LayersDir:   tmpDir,
-							PlatformAPI: api.Platform.Latest(),
-						}
-						h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
-						h.AssertEq(t, i.OrderPath, filepath.Join(tmpDir, "order.toml"))
-					})
-				})
-
-				when("not exists", func() {
-					it("falls back to /cnb/order.toml", func() {
-						i := &platform.LifecycleInputs{
-							OrderPath:   filepath.Join("<layers>", "order.toml"),
-							LayersDir:   "some-layers-dir",
-							PlatformAPI: api.Platform.Latest(),
-						}
-						h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
-						h.AssertEq(t, i.OrderPath, platform.DefaultOrderPath)
-					})
-				})
-			})
-		})
-
-		when("updating placeholder path", func() {
-			it("updates the directory to the layers directory", func() {
-				i := &platform.LifecycleInputs{
-					AnalyzedPath: filepath.Join("<layers>", "analyzed.toml"),
-					LayersDir:    "some-layers-dir",
-					PlatformAPI:  api.Platform.Latest(),
-				}
-				h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
-				h.AssertEq(t, i.AnalyzedPath, filepath.Join("some-layers-dir", "analyzed.toml"))
-			})
-
-			when("Platform API < 0.5", func() {
-				it("updates the directory to the working directory", func() {
-					i := &platform.LifecycleInputs{
-						AnalyzedPath: filepath.Join("<layers>", "analyzed.toml"),
-						LayersDir:    "some-layers-dir",
-						PlatformAPI:  api.MustParse("0.4"),
-					}
-					h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
-					h.AssertEq(t, i.AnalyzedPath, "analyzed.toml")
-				})
-			})
-
-			when("layers is unset", func() {
-				it("updates the directory to the working directory", func() {
-					i := &platform.LifecycleInputs{
-						AnalyzedPath: filepath.Join("<layers>", "analyzed.toml"),
-						LayersDir:    "",
-						PlatformAPI:  api.Platform.Latest(),
-					}
-					h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
-					h.AssertEq(t, i.AnalyzedPath, "analyzed.toml")
-				})
-			})
-		})
-
-		when("updating non-placeholder path", func() {
-			it("uses the path that was provided", func() {
-				i := &platform.LifecycleInputs{
-					AnalyzedPath: "some-path",
-					LayersDir:    "some-layers-dir",
-					PlatformAPI:  api.Platform.Latest(),
-				}
-				h.AssertNil(t, platform.UpdatePlaceholderPaths(i, nil))
-				h.AssertEq(t, i.AnalyzedPath, "some-path")
 			})
 		})
 	})

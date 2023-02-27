@@ -41,7 +41,6 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
-		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagPreviousImage(&a.PreviousImageRef)
 		cli.FlagRunImage(&a.RunImageRef)
 		cli.FlagStackPath(&a.StackPath)
@@ -54,7 +53,6 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
 		cli.FlagGroupPath(&a.GroupPath)
-		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagSkipLayers(&a.SkipLayers)
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
@@ -68,7 +66,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	a.LifecycleInputs.OutputImageRef = args[0]
-	if err := platform.ResolveInputs(platform.Analyze, &a.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Analyze, a.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	if a.UseLayout {
