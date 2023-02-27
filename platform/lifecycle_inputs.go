@@ -54,6 +54,9 @@ type LifecycleInputs struct {
 
 func NewLifecycleInputs(platformAPI *api.Version, layersDir string) *LifecycleInputs {
 	// FIXME: api compatibility should be validated here
+	if layersDir == "" {
+		layersDir = envOrDefault(EnvLayersDir, DefaultLayersDir)
+	}
 
 	orderPath := filepath.Join(layersDir, DefaultOrderFile)
 	if _, err := os.Stat(orderPath); err != nil {

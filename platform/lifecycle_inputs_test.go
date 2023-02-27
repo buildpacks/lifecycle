@@ -174,6 +174,16 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("provided layers directory is blank", func() {
+			it("falls back to the default value", func() {
+				var err error
+				inputs = platform.NewLifecycleInputs(platformAPI, "")
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, inputs.LayersDir, platform.DefaultLayersDir)
+			})
+		})
+
 		when("Platform API > 0.5", func() {
 			platformAPI = api.Platform.Latest()
 
