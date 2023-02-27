@@ -2,6 +2,7 @@ package lifecycle_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -167,6 +168,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
+			_ = os.RemoveAll(extendedDir)
 			_ = os.RemoveAll(generatedDir)
 			mockCtrl.Finish()
 		})
@@ -227,6 +229,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						return someFakeImage, nil
 					})
+				someFakeImage.ConfigFileReturnsOnCall(1, firstConfig, nil)
 
 				// second dockerfile
 
@@ -234,7 +237,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 					User: "2345:6789",
 					Env:  []string{"SOME_VAR=some-val"},
 				}}
-				someFakeImage.ConfigFileReturnsOnCall(1, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
 					someFakeImage,
@@ -259,8 +262,9 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						return someFakeImage, nil
 					})
+				someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
 
-				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(4, secondConfig, nil)
 				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 				h.AssertNil(t, extender.Extend("build", logger))
@@ -270,56 +274,160 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("run base image", func() {
-			it("applies the Dockerfile with the expected args and opts", func() {
-				h.Mkdir(t, filepath.Join(generatedDir, "run", "B"))
-				h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "run", "B", "Dockerfile"))
-				h.Mkfile(t, "[[run.args]]\nname=\"arg1\"\nvalue=\"value1\"", filepath.Join(generatedDir, "run", "B", "extend-config.toml"))
-
-				expectedDockerfileB := extend.Dockerfile{
-					Path: filepath.Join(generatedDir, "run", "B", "Dockerfile"),
-					Args: []extend.Arg{{Name: "arg1", Value: "value1"}},
+			type testCase struct {
+				firstDockerfileRebasable  bool
+				secondDockerfileRebasable bool
+				expectedImageSHA          string
+			}
+			var (
+				rebasableSHA    = "sha256:2407b98f3bcee33d24f47fc3d7beaf0928b3fa799a8a84aa9f9f239fcded6e62"
+				notRebasableSHA = "sha256:cc3b90b798b76e7d41de01d4f02f2917694ef0b09d0d923314c8d6c31c4ae8e9"
+			)
+			for _, tc := range []testCase{
+				{
+					firstDockerfileRebasable:  true,
+					secondDockerfileRebasable: true,
+					expectedImageSHA:          rebasableSHA,
+				},
+				{
+					firstDockerfileRebasable:  true,
+					secondDockerfileRebasable: false,
+					expectedImageSHA:          notRebasableSHA,
+				},
+				{
+					firstDockerfileRebasable:  false,
+					secondDockerfileRebasable: true,
+					expectedImageSHA:          notRebasableSHA,
+				},
+				{
+					firstDockerfileRebasable:  false,
+					secondDockerfileRebasable: false,
+					expectedImageSHA:          notRebasableSHA,
+				},
+			} {
+				tc := tc
+				when := when
+				desc := func(b bool) string {
+					if b {
+						return "rebasable"
+					}
+					return "not rebasable"
 				}
+				when(fmt.Sprintf("first Dockerfile is %s, second Dockerfile is %s", desc(tc.firstDockerfileRebasable), desc(tc.secondDockerfileRebasable)), func() {
+					it("applies the Dockerfile with the expected args and opts", func() {
+						expectedDockerfileA := extend.Dockerfile{
+							Path: filepath.Join(generatedDir, "run", "A", "Dockerfile"),
+							Args: []extend.Arg{{Name: "argA", Value: "valueA"}},
+						}
+						h.Mkdir(t, filepath.Join(generatedDir, "run", "A"))
+						h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "run", "A", "Dockerfile"))
+						buf := new(bytes.Buffer)
+						data := extend.Config{Run: extend.BuildConfig{Args: expectedDockerfileA.Args}}
+						h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
+						h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "run", "A", "extend-config.toml"))
 
-				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
-				someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
-				someFakeImage.ConfigFileReturns(&v1.ConfigFile{Config: v1.Config{User: "1234:5678"}}, nil)
-				fakeDockerfileApplier.EXPECT().Apply(
-					gomock.Any(),
-					someFakeImage,
-					extend.Options{
-						BuildContext: "some-app-dir",
-						IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
-						CacheTTL:     7 * (24 * time.Hour),
-					},
-					logger,
-				).DoAndReturn(
-					func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
-						h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
-						h.AssertEq(t, len(dockerfile.Args), 4) // build_id, user_id, group_id
-						h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
-						_, err := uuid.Parse(dockerfile.Args[0].Value)
+						expectedDockerfileB := extend.Dockerfile{
+							Path: filepath.Join(generatedDir, "run", "B", "Dockerfile"),
+							Args: []extend.Arg{{Name: "argB", Value: "valueB"}},
+						}
+						h.Mkdir(t, filepath.Join(generatedDir, "run", "B"))
+						h.Mkfile(t, "some dockerfile content", filepath.Join(generatedDir, "run", "B", "Dockerfile"))
+						buf = new(bytes.Buffer)
+						data = extend.Config{Run: extend.BuildConfig{Args: expectedDockerfileB.Args}}
+						h.AssertNil(t, toml.NewEncoder(buf).Encode(data))
+						h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "run", "B", "extend-config.toml"))
+
+						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
+						someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+
+						// first dockerfile
+
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.firstDockerfileRebasable)},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							someFakeImage,
+							extend.Options{
+								BuildContext: "some-app-dir",
+								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
+								CacheTTL:     7 * (24 * time.Hour),
+							},
+							logger,
+						).DoAndReturn(
+							func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+								h.AssertEq(t, dockerfile.Path, expectedDockerfileA.Path)
+								h.AssertEq(t, len(dockerfile.Args), 4) // build_id, user_id, group_id
+								h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
+								_, err := uuid.Parse(dockerfile.Args[0].Value)
+								h.AssertNil(t, err)
+								h.AssertEq(t, dockerfile.Args[1].Name, "user_id")
+								h.AssertEq(t, dockerfile.Args[1].Value, "1234")
+								h.AssertEq(t, dockerfile.Args[2].Name, "group_id")
+								h.AssertEq(t, dockerfile.Args[2].Value, "5678")
+								h.AssertEq(t, dockerfile.Args[3], expectedDockerfileA.Args[0])
+
+								return someFakeImage, nil
+							})
+						someFakeImage.ConfigFileReturnsOnCall(1, firstConfig, nil)
+
+						// second dockerfile
+
+						secondConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.secondDockerfileRebasable)},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
+						fakeDockerfileApplier.EXPECT().Apply(
+							gomock.Any(),
+							someFakeImage,
+							extend.Options{
+								BuildContext: "some-app-dir",
+								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
+								CacheTTL:     7 * (24 * time.Hour),
+							},
+							logger,
+						).DoAndReturn(
+							func(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger llog.Logger) (v1.Image, error) {
+								h.AssertEq(t, dockerfile.Path, expectedDockerfileB.Path)
+								h.AssertEq(t, len(dockerfile.Args), 4) // build_id, user_id, group_id
+								h.AssertEq(t, dockerfile.Args[0].Name, "build_id")
+								_, err := uuid.Parse(dockerfile.Args[0].Value)
+								h.AssertNil(t, err)
+								h.AssertEq(t, dockerfile.Args[1].Name, "user_id")
+								h.AssertEq(t, dockerfile.Args[1].Value, "1234")
+								h.AssertEq(t, dockerfile.Args[2].Name, "group_id")
+								h.AssertEq(t, dockerfile.Args[2].Value, "5678")
+								h.AssertEq(t, dockerfile.Args[3], expectedDockerfileB.Args[0])
+
+								return someFakeImage, nil
+							})
+						someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
+
+						// set label
+
+						someFakeImage.ConfigFileReturnsOnCall(4, secondConfig, nil)
+						someFakeImage.ConfigFileReturnsOnCall(5, secondConfig, nil)
+
+						// save selective
+
+						imageHash := v1.Hash{Algorithm: "sha256", Hex: "some-image-hex"}
+						someFakeImage.DigestReturns(imageHash, nil)
+						someFakeImage.ConfigNameReturns(v1.Hash{Algorithm: "sha256", Hex: "some-config-hex"}, nil)
+
+						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
+
+						h.AssertNil(t, extender.Extend("run", logger))
+						outputImagePath := filepath.Join(extendedDir, tc.expectedImageSHA)
+						h.AssertPathExists(t, outputImagePath)
+						fis, err := os.ReadDir(outputImagePath)
 						h.AssertNil(t, err)
-						h.AssertEq(t, dockerfile.Args[1].Name, "user_id")
-						h.AssertEq(t, dockerfile.Args[1].Value, "1234")
-						h.AssertEq(t, dockerfile.Args[2].Name, "group_id")
-						h.AssertEq(t, dockerfile.Args[2].Value, "5678")
-						h.AssertEq(t, dockerfile.Args[3], expectedDockerfileB.Args[0])
-
-						return someFakeImage, nil
+						h.AssertEq(t, len(fis), 3)
 					})
-				// save selective
-				imageHash := v1.Hash{Algorithm: "sha256", Hex: "some-image-hex"}
-				someFakeImage.DigestReturns(imageHash, nil)
-				someFakeImage.ConfigNameReturns(v1.Hash{Algorithm: "sha256", Hex: "some-config-hex"}, nil)
-				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
-
-				h.AssertNil(t, extender.Extend("run", logger))
-				outputImagePath := filepath.Join(extendedDir, imageHash.String())
-				h.AssertPathExists(t, outputImagePath)
-				fis, err := os.ReadDir(outputImagePath)
-				h.AssertNil(t, err)
-				h.AssertEq(t, len(fis), 3)
-			})
+				})
+			}
 		})
 	})
 }

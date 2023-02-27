@@ -6,12 +6,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
@@ -281,18 +283,23 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return nil, fmt.Errorf("getting %s dockerfiles: %w", kind, err)
 	}
 
+	var rebasable = true // for now, we don't require the initial base image to have io.buildpacks.rebasable=true
 	buildOptions := e.extendOptions()
-
 	for _, dockerfile := range dockerfiles {
-		userID, groupID, err := readUser(baseImage)
+		// get config & set args
+
+		config, err := baseImage.ConfigFile()
 		if err != nil {
-			return nil, fmt.Errorf("getting user: %w", err)
+			return nil, fmt.Errorf("getting image config: %w", err)
 		}
+		userID, groupID := userFrom(*config)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
 			{Name: argGroupID, Value: groupID},
 		}, dockerfile.Args...)
+
+		// apply Dockerfile
 
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
@@ -302,20 +309,58 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		); err != nil {
 			return nil, fmt.Errorf("applying dockerfile to image: %w", err)
 		}
+
+		// get config & update rebasable
+
+		newConfig, err := baseImage.ConfigFile()
+		if err != nil {
+			return nil, fmt.Errorf("getting image config: %w", err)
+		}
+		if !rebasable || !isRebasable(*newConfig) {
+			rebasable = false
+		}
 	}
-	return baseImage, nil
+	if kind == buildpack.DockerfileKindBuild {
+		return baseImage, nil
+	}
+	return setLabel(baseImage, RebasableLabel, fmt.Sprintf("%t", rebasable))
 }
 
-func readUser(image v1.Image) (string, string, error) {
-	config, err := image.ConfigFile()
-	if err != nil {
-		return "", "", err
-	}
+func userFrom(config v1.ConfigFile) (string, string) {
 	user := strings.Split(config.Config.User, ":")
 	if len(user) < 2 {
-		return "", "", nil
+		return "", ""
 	}
-	return user[0], user[1], nil
+	return user[0], user[1]
+}
+
+const RebasableLabel = "io.buildpacks.rebasable"
+
+func isRebasable(config v1.ConfigFile) bool {
+	val, ok := config.Config.Labels[RebasableLabel]
+	if !ok {
+		// label unset
+		return false
+	}
+	b, err := strconv.ParseBool(val)
+	if err != nil {
+		// label not parsable
+		return false
+	}
+	return b
+}
+
+func setLabel(image v1.Image, key string, val string) (v1.Image, error) {
+	configFile, err := image.ConfigFile()
+	if err != nil {
+		return nil, fmt.Errorf("getting image config: %w", err)
+	}
+	config := *configFile.Config.DeepCopy()
+	if config.Labels == nil {
+		config.Labels = map[string]string{}
+	}
+	config.Labels[key] = val
+	return mutate.Config(image, config)
 }
 
 func (e *Extender) dockerfilesFor(kind string, logger log.Logger) ([]extend.Dockerfile, error) {

@@ -51,7 +51,7 @@ func readOCI(path string) (v1.Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting hash from reference '%s': %w", path, err)
 	}
-	v1Image, err := layoutPath.Image(hash) // // FIXME: we may want to implement path.Image(h) in the imgutil 'sparse' package so that trying to access layers on this image errors with a helpful message
+	v1Image, err := layoutPath.Image(hash) // FIXME: we may want to implement path.Image(h) in the imgutil 'sparse' package so that trying to access layers on this image errors with a helpful message
 	if err != nil {
 		return nil, fmt.Errorf("getting image from hash '%s': %w", hash.String(), err)
 	}

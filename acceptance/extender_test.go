@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -245,10 +247,25 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 }
 
 func assertExpectedImage(t *testing.T, imagePath string) {
-	fis, err := os.ReadDir(imagePath)
+	image, err := readOCI(imagePath)
 	h.AssertNil(t, err)
-	h.AssertEq(t, len(fis), 3) // blobs, index.json, oci-layout
-	fis, err = os.ReadDir(filepath.Join(imagePath, "blobs", "sha256"))
+	configFile, err := image.ConfigFile()
 	h.AssertNil(t, err)
-	h.AssertEq(t, len(fis), 4) // manifest, config, curl (1), tree (1)
+	h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false")
+}
+
+func readOCI(fromPath string) (v1.Image, error) {
+	layoutPath, err := layout.FromPath(fromPath)
+	if err != nil {
+		return nil, fmt.Errorf("getting layout from path: %w", err)
+	}
+	hash, err := v1.NewHash(filepath.Base(fromPath))
+	if err != nil {
+		return nil, fmt.Errorf("getting hash from reference '%s': %w", fromPath, err)
+	}
+	v1Image, err := layoutPath.Image(hash)
+	if err != nil {
+		return nil, fmt.Errorf("getting image from hash '%s': %w", hash.String(), err)
+	}
+	return v1Image, nil
 }
