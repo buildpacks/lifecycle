@@ -159,9 +159,10 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, inputs.LaunchCacheDir, "some-launch-cache-dir")
 				h.AssertEq(t, inputs.LauncherPath, platform.DefaultLauncherPath)
 				h.AssertEq(t, inputs.LauncherSBOMDir, platform.DefaultBuildpacksioSBOMDir)
+				h.AssertEq(t, inputs.LayersDir, layersDir) // from constructor
 				h.AssertEq(t, inputs.LogLevel, "debug")
 				h.AssertEq(t, inputs.OutputImageRef, "")
-				h.AssertEq(t, inputs.PlatformAPI, platformAPI)
+				h.AssertEq(t, inputs.PlatformAPI, platformAPI) // from constructor
 				h.AssertEq(t, inputs.PlatformDir, "some-platform-dir")
 				h.AssertEq(t, inputs.PreviousImageRef, "some-previous-image")
 				h.AssertEq(t, inputs.RunImageRef, "some-run-image")
