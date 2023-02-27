@@ -362,7 +362,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 								ExtensionID: "A",
 								Kind:        "run",
 								Path:        runDockerfilePathA,
-								NewBase:     "",
+								Base:        "",
 							},
 						},
 					}, nil)
@@ -401,7 +401,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 								ExtensionID: "A",
 								Kind:        "run",
 								Path:        runDockerfilePathA,
-								NewBase:     "some-new-base-image",
+								Base:        "some-new-base-image",
 							},
 						},
 					}, nil)
@@ -414,7 +414,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 								ExtensionID: "B",
 								Kind:        "run",
 								Path:        runDockerfilePathB,
-								NewBase:     "",
+								Base:        "",
 							},
 						},
 					}, nil)
@@ -444,7 +444,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 									ExtensionID: "A",
 									Kind:        "run",
 									Path:        runDockerfilePathA,
-									NewBase:     "some-new-base-image",
+									Base:        "some-new-base-image",
 								},
 							},
 						}, nil)
@@ -457,7 +457,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 									ExtensionID: "B",
 									Kind:        "run",
 									Path:        runDockerfilePathB,
-									NewBase:     "some-other-base-image",
+									Base:        "some-other-base-image",
 								},
 							},
 						}, nil)
@@ -497,7 +497,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 										ExtensionID: "A",
 										Kind:        "run",
 										Path:        runDockerfilePathA,
-										NewBase:     "some-run-image",
+										Base:        "some-run-image",
 									},
 								},
 							}, nil)
@@ -524,7 +524,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 										ExtensionID: "A",
 										Kind:        "run",
 										Path:        runDockerfilePathA,
-										NewBase:     "some-other-run-image",
+										Base:        "some-other-run-image",
 									},
 								},
 							}, nil)

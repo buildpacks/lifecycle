@@ -30,79 +30,87 @@ func TestGenerate(t *testing.T) {
 }
 
 func testGenerate(t *testing.T, when spec.G, it spec.S) {
-	var (
-		mockCtrl   *gomock.Controller
-		executor   buildpack.GenerateExecutor
-		dirStore   string
-		descriptor buildpack.ExtDescriptor
-
-		// generate inputs
-		inputs         buildpack.GenerateInputs
-		tmpDir         string
-		appDir         string
-		buildConfigDir string
-		outputDir      string
-		platformDir    string
-		mockEnv        *testmock.MockBuildEnv
-		stdout, stderr *bytes.Buffer
-
-		logger     llog.Logger
-		logHandler = memory.New()
-	)
+	var tmpDir string
 
 	it.Before(func() {
-		mockCtrl = gomock.NewController(t)
-		executor = &buildpack.DefaultGenerateExecutor{}
-
-		// setup descriptor
 		var err error
-		dirStore, err = filepath.Abs(filepath.Join("testdata", "extension", "by-id"))
-		h.AssertNil(t, err)
-		descriptor = buildpack.ExtDescriptor{
-			WithAPI: api.Buildpack.Latest().String(),
-			Extension: buildpack.ExtInfo{
-				BaseInfo: buildpack.BaseInfo{
-					ID:       "A",
-					Version:  "v1",
-					Name:     "Extension A",
-					ClearEnv: false,
-					Homepage: "Extension A Homepage",
-				},
-			},
-			WithRootDir: filepath.Join(dirStore, "A", "v1"),
-		}
-
-		// setup dirs
 		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		h.AssertNil(t, err)
-		outputDir = filepath.Join(tmpDir, "launch")
-		appDir = filepath.Join(outputDir, "app")
-		buildConfigDir = filepath.Join(tmpDir, "build-config")
-		platformDir = filepath.Join(tmpDir, "platform")
-		h.Mkdir(t, outputDir, appDir, filepath.Join(platformDir, "env"))
-
-		// make inputs
-		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
-		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
-		inputs = buildpack.GenerateInputs{
-			AppDir:         appDir,
-			BuildConfigDir: buildConfigDir,
-			PlatformDir:    platformDir,
-			Env:            mockEnv,
-			OutputDir:      outputDir,
-			Out:            stdout,
-			Err:            stderr,
-		}
-
-		logger = &log.Logger{Handler: logHandler}
 	})
 
 	it.After(func() {
 		_ = os.RemoveAll(tmpDir)
-		mockCtrl.Finish()
 	})
 
 	when("#Generate", func() {
+		var (
+			mockCtrl   *gomock.Controller
+			executor   buildpack.GenerateExecutor
+			dirStore   string
+			descriptor buildpack.ExtDescriptor
+
+			// generate inputs
+			inputs         buildpack.GenerateInputs
+			appDir         string
+			buildConfigDir string
+			outputDir      string
+			platformDir    string
+			mockEnv        *testmock.MockBuildEnv
+			stdout, stderr *bytes.Buffer
+
+			logger     llog.Logger
+			logHandler = memory.New()
+		)
+
+		it.Before(func() {
+			mockCtrl = gomock.NewController(t)
+			executor = &buildpack.DefaultGenerateExecutor{}
+
+			// setup descriptor
+			var err error
+			dirStore, err = filepath.Abs(filepath.Join("testdata", "extension", "by-id"))
+			h.AssertNil(t, err)
+			descriptor = buildpack.ExtDescriptor{
+				WithAPI: api.Buildpack.Latest().String(),
+				Extension: buildpack.ExtInfo{
+					BaseInfo: buildpack.BaseInfo{
+						ID:       "A",
+						Version:  "v1",
+						Name:     "Extension A",
+						ClearEnv: false,
+						Homepage: "Extension A Homepage",
+					},
+				},
+				WithRootDir: filepath.Join(dirStore, "A", "v1"),
+			}
+
+			// setup dirs
+			outputDir = filepath.Join(tmpDir, "launch")
+			appDir = filepath.Join(outputDir, "app")
+			buildConfigDir = filepath.Join(tmpDir, "build-config")
+			platformDir = filepath.Join(tmpDir, "platform")
+			h.Mkdir(t, outputDir, appDir, filepath.Join(platformDir, "env"))
+
+			// make inputs
+			mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+			stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
+			inputs = buildpack.GenerateInputs{
+				AppDir:         appDir,
+				BuildConfigDir: buildConfigDir,
+				PlatformDir:    platformDir,
+				Env:            mockEnv,
+				OutputDir:      outputDir,
+				Out:            stdout,
+				Err:            stderr,
+			}
+
+			logger = &log.Logger{Handler: logHandler}
+		})
+
+		it.After(func() {
+			mockCtrl.Finish()
+		})
+
 		when("env", func() {
 			when("clear", func() {
 				it.Before(func() {
@@ -277,7 +285,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 								h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 								h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
-								h.AssertEq(t, br.Dockerfiles[0].NewBase, "")
+								h.AssertEq(t, br.Dockerfiles[0].Base, "")
 							})
 
 							it("is validated", func() {
@@ -302,7 +310,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 									h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 									h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 									h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
-									h.AssertEq(t, br.Dockerfiles[0].NewBase, "some-new-base-image")
+									h.AssertEq(t, br.Dockerfiles[0].Base, "some-new-base-image")
 								})
 							})
 						})
@@ -332,6 +340,18 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								_, err := executor.Generate(descriptor, inputs, logger)
 								h.AssertError(t, err, "failed to parse build.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
 							})
+						})
+					})
+
+					when("extend config", func() {
+						it("is validated", func() {
+							h.Mkfile(t,
+								"SOME-INVALID-CONTENT",
+								filepath.Join(appDir, "extend-config-A-v1.toml"),
+							)
+
+							_, err := executor.Generate(descriptor, inputs, logger)
+							h.AssertNotNil(t, err)
 						})
 					})
 
@@ -382,6 +402,55 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(descriptor.WithRootDir, "generate", "run.Dockerfile"))
 						})
 					})
+				})
+			})
+		})
+	})
+
+	when("#ValidateExtendConfig", func() {
+		when("valid", func() {
+			it("succeeds", func() {
+				data := `
+[[build.args]]
+name = "some-build-base-arg-name"
+value = "some-build-base-arg-value"
+
+[[run.args]]
+name = "some-run-base-arg-name"
+value = "some-run-base-arg-value"
+`
+				config := filepath.Join(tmpDir, "extend-config.toml")
+				h.Mkfile(t, data, config)
+				h.AssertNil(t, buildpack.ValidateExtendConfig(config))
+			})
+		})
+
+		when("invalid", func() {
+			when("contains disallowed build arg", func() {
+				it("errors", func() {
+					invalidContent := []string{
+						`
+						[[build.args]]
+						name = "build_id" # invalid
+						value = "some-build-base-arg-value"
+						[[run.args]]
+						name = "some-run-base-arg-name"
+						value = "some-run-base-arg-value"
+						`,
+						`
+						[[build.args]]
+						name = "some-build-base-arg-name"
+						value = "some-build-base-arg-value"
+						[[run.args]]
+						name = "user_id" # invalid
+						value = "some-run-base-arg-value"
+						`,
+					}
+					for _, c := range invalidContent {
+						config := filepath.Join(tmpDir, "extend-config.toml")
+						h.Mkfile(t, c, config)
+						h.AssertNotNil(t, buildpack.ValidateExtendConfig(config))
+					}
 				})
 			})
 		})

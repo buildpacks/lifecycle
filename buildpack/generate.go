@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/BurntSushi/toml"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
@@ -105,30 +107,35 @@ func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs Gener
 }
 
 func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, logger log.Logger) (GenerateOutputs, error) {
-	br := GenerateOutputs{}
+	gr := GenerateOutputs{}
 	var err error
 	var dfInfo DockerfileInfo
 	var found bool
 
 	// set MetRequires
-	br.MetRequires = names(extPlanIn.Entries)
+	gr.MetRequires = names(extPlanIn.Entries)
+
+	// validate extend config
+	if err = ValidateExtendConfig(filepath.Join(extOutputDir, "extend-config.toml")); err != nil {
+		return GenerateOutputs{}, err
+	}
 
 	// set Dockerfiles
 	if dfInfo, found, err = findDockerfileFor(d, extOutputDir, DockerfileKindRun, logger); err != nil {
 		return GenerateOutputs{}, err
 	} else if found {
-		br.Dockerfiles = append(br.Dockerfiles, dfInfo)
+		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
 	}
 
 	if dfInfo, found, err = findDockerfileFor(d, extOutputDir, DockerfileKindBuild, logger); err != nil {
 		return GenerateOutputs{}, err
 	} else if found {
-		br.Dockerfiles = append(br.Dockerfiles, dfInfo)
+		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
 	}
 
-	logger.Debugf("Found '%d' Dockerfiles for processing", len(br.Dockerfiles))
+	logger.Debugf("Found '%d' Dockerfiles for processing", len(gr.Dockerfiles))
 
-	return br, nil
+	return gr, nil
 }
 
 func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger log.Logger) (DockerfileInfo, bool, error) {
@@ -143,20 +150,64 @@ func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger
 		return DockerfileInfo{}, false, nil
 	}
 
-	newBase, err := verifyDockerfileFor(d, dockerfilePath, kind, logger)
+	newBase, err := validateDockerfileFor(d, dockerfilePath, kind, logger)
 	if err != nil {
 		return DockerfileInfo{}, true, fmt.Errorf("failed to parse %s.Dockerfile for extension %s: %w", kind, d.Extension.ID, err)
 	}
-	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath, NewBase: newBase}, true, nil
+	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath, Base: newBase}, true, nil
 }
 
-func verifyDockerfileFor(d ExtDescriptor, path string, kind string, logger log.Logger) (string, error) {
+func validateDockerfileFor(d ExtDescriptor, path string, kind string, logger log.Logger) (string, error) {
 	switch kind {
 	case DockerfileKindBuild:
-		return "", VerifyBuildDockerfile(path, logger)
+		return "", ValidateBuildDockerfile(path, logger)
 	case DockerfileKindRun:
-		return VerifyRunDockerfile(path, api.MustParse(d.WithAPI), logger)
+		return ValidateRunDockerfile(path, api.MustParse(d.WithAPI), logger)
 	default:
 		return "", nil
 	}
+}
+
+type ExtendConfig struct {
+	Build ExtendBuildConfig `toml:"build"`
+	Run   ExtendBuildConfig `toml:"run"`
+}
+
+type ExtendBuildConfig struct {
+	Args []ExtendArg `toml:"args"`
+}
+
+type ExtendArg struct {
+	Name  string `toml:"name"`
+	Value string `toml:"value"`
+}
+
+var invalidArgs = []string{"build_id", "user_id", "group_id"}
+
+func ValidateExtendConfig(configPath string) error {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil
+	}
+	var config ExtendConfig
+	_, err := toml.DecodeFile(configPath, &config)
+	if err != nil {
+		return fmt.Errorf("reading extend config: %w", err)
+	}
+	checkArgs := func(args []ExtendArg) error {
+		for _, arg := range args {
+			for _, invalid := range invalidArgs {
+				if arg.Name == invalid {
+					return fmt.Errorf("invalid content: arg with name %q is not allowed", invalid)
+				}
+			}
+		}
+		return nil
+	}
+	if err = checkArgs(config.Build.Args); err != nil {
+		return fmt.Errorf("validating extend config: %w", err)
+	}
+	if err = checkArgs(config.Run.Args); err != nil {
+		return fmt.Errorf("validating extend config: %w", err)
+	}
+	return nil
 }

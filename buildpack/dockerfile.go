@@ -39,20 +39,7 @@ type DockerfileInfo struct {
 	ExtensionID string
 	Kind        string
 	Path        string
-	NewBase     string
-}
-
-type ExtendConfig struct {
-	Build ExtendBuildConfig `toml:"build"`
-}
-
-type ExtendBuildConfig struct {
-	Args []ExtendArg `toml:"args"`
-}
-
-type ExtendArg struct {
-	Name  string `toml:"name"`
-	Value string `toml:"value"`
+	Base        string
 }
 
 func parseDockerfile(dockerfile string) ([]instructions.Stage, []instructions.ArgCommand, error) {
@@ -73,7 +60,7 @@ func parseDockerfile(dockerfile string) ([]instructions.Stage, []instructions.Ar
 	return stages, metaArgs, nil
 }
 
-func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
+func ValidateBuildDockerfile(dockerfile string, logger log.Logger) error {
 	stages, margs, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return err
@@ -119,7 +106,7 @@ func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 	return nil
 }
 
-func VerifyRunDockerfile(dockerfile string, buildpackAPI *api.Version, logger log.Logger) (string, error) {
+func ValidateRunDockerfile(dockerfile string, buildpackAPI *api.Version, logger log.Logger) (string, error) {
 	if buildpackAPI.LessThan("0.10") {
 		return verifyRunDockerfile09(dockerfile)
 	}
@@ -190,9 +177,4 @@ func verifyRunDockerfile09(dockerfile string) (string, error) {
 	}
 
 	return stages[0].BaseName, nil
-}
-
-func VerifyExtendConfig(config string) error {
-	// TODO
-	return nil
 }

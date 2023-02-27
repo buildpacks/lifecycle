@@ -237,13 +237,13 @@ func (g *Generator) checkNewRunImage(dockerfiles []buildpack.DockerfileInfo) (ne
 		if dockerfiles[i].Kind != buildpack.DockerfileKindRun {
 			continue
 		}
-		if dockerfiles[i].NewBase != "" {
-			newBase = dockerfiles[i].NewBase
+		if dockerfiles[i].Base != "" {
+			newBase = dockerfiles[i].Base
 			newBaseIdx = i
 			g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", newBase, dockerfiles[i].ExtensionID)
 			break
 		}
-		if dockerfiles[i].NewBase == "" {
+		if dockerfiles[i].Base == "" {
 			extend = true
 		}
 	}
