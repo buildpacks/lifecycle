@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
@@ -205,8 +207,8 @@ func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error 
 	if err != nil {
 		return fmt.Errorf("getting image hash: %w", err)
 	}
-	outputPath := filepath.Join(e.ExtendedDir, imageHash.String())
-	layoutPath, err := selective.Write(outputPath, empty.Index) // FIXME: this should use the imgutil layout/sparse package instead, but for some reason sparse.NewImage().Save() fails when the provided base image is already sparse
+	toPath := filepath.Join(e.ExtendedDir, imageHash.String())
+	layoutPath, err := selective.Write(toPath, empty.Index) // FIXME: this should use the imgutil layout/sparse package instead, but for some reason sparse.NewImage().Save() fails when the provided base image is already sparse
 	if err != nil {
 		return fmt.Errorf("initializing selective image: %w", err)
 	}
@@ -225,6 +227,7 @@ func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error 
 	if origTopLayerHash == "" { // if the original base image had no layers, copy all the layers
 		needsCopying = true
 	}
+	group, _ := errgroup.WithContext(context.TODO())
 	for _, currentLayer := range layers {
 		currentHash, err = currentLayer.Digest()
 		if err != nil {
@@ -232,10 +235,10 @@ func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error 
 		}
 		switch {
 		case needsCopying:
-			// TODO: do in a go func
-			if err = copyLayer(currentLayer, outputPath); err != nil {
-				return fmt.Errorf("copying layer: %w", err)
-			}
+			currentLayer := currentLayer // allow use in closure
+			group.Go(func() error {
+				return copyLayer(currentLayer, toPath)
+			})
 		case currentHash.String() == origTopLayerHash:
 			needsCopying = true
 			continue
@@ -243,7 +246,7 @@ func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error 
 			continue
 		}
 	}
-	return nil
+	return group.Wait()
 }
 
 func copyLayer(layer v1.Layer, toSparseImage string) error {
@@ -252,11 +255,11 @@ func copyLayer(layer v1.Layer, toSparseImage string) error {
 		return err
 	}
 	f, err := os.Create(filepath.Join(toSparseImage, "blobs", digest.Algorithm, digest.Hex))
-	// defer f.Close() // TODO: why is this a compile error in GoLand?
 	if err != nil {
 		return err
 	}
-	rc, err := layer.Compressed() // TODO: if exporting to a daemon, this should be uncompressed
+	defer f.Close()
+	rc, err := layer.Compressed() // FIXME: if exporting to a daemon, this should be uncompressed
 	if err != nil {
 		return err
 	}
@@ -264,6 +267,12 @@ func copyLayer(layer v1.Layer, toSparseImage string) error {
 	_, err = io.Copy(f, rc)
 	return err
 }
+
+const (
+	argBuildID = "build_id"
+	argUserID  = "user_id"
+	argGroupID = "group_id"
+)
 
 func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v1.Image, error) {
 	logger.Debugf("Extending base image for %s: %s", kind, e.ImageRef)
@@ -274,13 +283,17 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 
 	buildOptions := e.extendOptions()
 
-	var userID, groupID int // TODO: read these from the baseImage
 	for _, dockerfile := range dockerfiles {
+		userID, groupID, err := readUser(baseImage)
+		if err != nil {
+			return nil, fmt.Errorf("getting user: %w", err)
+		}
 		dockerfile.Args = append([]extend.Arg{
-			{Name: "build_id", Value: uuid.New().String()}, // TODO: make constants
-			{Name: "user_id", Value: fmt.Sprintf("%d", userID)},
-			{Name: "group_id", Value: fmt.Sprintf("%d", groupID)},
+			{Name: argBuildID, Value: uuid.New().String()},
+			{Name: argUserID, Value: userID},
+			{Name: argGroupID, Value: groupID},
 		}, dockerfile.Args...)
+
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
 			baseImage,
@@ -289,9 +302,20 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		); err != nil {
 			return nil, fmt.Errorf("applying dockerfile to image: %w", err)
 		}
-		// TODO: update userID, groupID
 	}
 	return baseImage, nil
+}
+
+func readUser(image v1.Image) (string, string, error) {
+	config, err := image.ConfigFile()
+	if err != nil {
+		return "", "", err
+	}
+	user := strings.Split(config.Config.User, ":")
+	if len(user) < 2 {
+		return "", "", nil
+	}
+	return user[0], user[1], nil
 }
 
 func (e *Extender) dockerfilesFor(kind string, logger log.Logger) ([]extend.Dockerfile, error) {
@@ -316,7 +340,7 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 	}
 
 	configPath := filepath.Join(e.GeneratedDir, kind, launch.EscapeID(extID), "extend-config.toml")
-	var config buildpack.ExtendConfig
+	var config extend.Config
 	_, err := toml.DecodeFile(configPath, &config)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -325,18 +349,16 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 	}
 
 	var args []extend.Arg
-	for _, arg := range config.Build.Args {
-		args = append(args, toExtendArg(arg))
+	if kind == buildpack.DockerfileKindBuild {
+		args = config.Build.Args
+	} else {
+		args = config.Run.Args
 	}
 
 	return &extend.Dockerfile{
 		Path: dockerfilePath,
 		Args: args,
 	}, nil
-}
-
-func toExtendArg(arg buildpack.ExtendArg) extend.Arg {
-	return extend.Arg{Name: arg.Name, Value: arg.Value}
 }
 
 func (e *Extender) extendOptions() extend.Options {

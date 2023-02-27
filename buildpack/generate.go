@@ -7,9 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
-
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
@@ -116,7 +115,7 @@ func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, lo
 	gr.MetRequires = names(extPlanIn.Entries)
 
 	// validate extend config
-	if err = ValidateExtendConfig(filepath.Join(extOutputDir, "extend-config.toml")); err != nil {
+	if err = extend.ValidateConfig(filepath.Join(extOutputDir, "extend-config.toml")); err != nil {
 		return GenerateOutputs{}, err
 	}
 
@@ -166,48 +165,4 @@ func validateDockerfileFor(d ExtDescriptor, path string, kind string, logger log
 	default:
 		return "", nil
 	}
-}
-
-type ExtendConfig struct {
-	Build ExtendBuildConfig `toml:"build"`
-	Run   ExtendBuildConfig `toml:"run"`
-}
-
-type ExtendBuildConfig struct {
-	Args []ExtendArg `toml:"args"`
-}
-
-type ExtendArg struct {
-	Name  string `toml:"name"`
-	Value string `toml:"value"`
-}
-
-var invalidArgs = []string{"build_id", "user_id", "group_id"}
-
-func ValidateExtendConfig(configPath string) error {
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil
-	}
-	var config ExtendConfig
-	_, err := toml.DecodeFile(configPath, &config)
-	if err != nil {
-		return fmt.Errorf("reading extend config: %w", err)
-	}
-	checkArgs := func(args []ExtendArg) error {
-		for _, arg := range args {
-			for _, invalid := range invalidArgs {
-				if arg.Name == invalid {
-					return fmt.Errorf("invalid content: arg with name %q is not allowed", invalid)
-				}
-			}
-		}
-		return nil
-	}
-	if err = checkArgs(config.Build.Args); err != nil {
-		return fmt.Errorf("validating extend config: %w", err)
-	}
-	if err = checkArgs(config.Run.Args); err != nil {
-		return fmt.Errorf("validating extend config: %w", err)
-	}
-	return nil
 }

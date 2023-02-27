@@ -6,6 +6,6 @@ type Dockerfile struct {
 }
 
 type Arg struct {
-	Name  string
-	Value string
+	Name  string `toml:"name"`
+	Value string `toml:"value"`
 }
