@@ -4,10 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-<<<<<<< HEAD
-	"strings"
-=======
->>>>>>> main
 
 	"github.com/google/go-containerregistry/pkg/name"
 

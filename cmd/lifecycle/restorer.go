@@ -7,11 +7,10 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 
 	"github.com/buildpacks/lifecycle"
@@ -21,6 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
+	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -176,12 +176,12 @@ func (r *restoreCmd) pullSparse(imageRef string) (image v1.Image, digest name.Di
 		return nil, name.Digest{}, nil
 	}
 	// save to disk
-	var sparseImage imgutil.Image
-	if sparseImage, err = sparse.NewImage(filepath.Join(baseCacheDir, digest.DigestStr()), remoteImage); err != nil {
-		return nil, name.Digest{}, fmt.Errorf("failed to create sparse image: %w", err)
+	layoutPath, err := selective.Write(filepath.Join(baseCacheDir, digest.DigestStr()), empty.Index)
+	if err != nil {
+		return nil, name.Digest{}, fmt.Errorf("failed to write to layout path: %w", err)
 	}
-	if err = sparseImage.Save(); err != nil {
-		return nil, name.Digest{}, fmt.Errorf("failed to save sparse image: %w", err)
+	if err = layoutPath.AppendImage(remoteImage); err != nil {
+		return nil, name.Digest{}, fmt.Errorf("failed to append image: %w", err)
 	}
 	return remoteImage, digest, nil
 }
