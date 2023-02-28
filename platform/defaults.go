@@ -58,8 +58,8 @@ const EnvUseDaemon = "CNB_USE_DAEMON"
 // registry or daemon. Also, it can export the final application image on disk in the same format.
 // The following environment variables must be set to configure the behavior of the lifecycle when exporting to OCI layout format.
 const (
-	EnvLayoutRepoDir = "CNB_LAYOUT_DIR"
-	EnvUseLayout     = "CNB_USE_LAYOUT"
+	EnvLayoutDir = "CNB_LAYOUT_DIR"
+	EnvUseLayout = "CNB_USE_LAYOUT"
 )
 
 // ## Provided by the Base Image
