@@ -45,6 +45,7 @@ type Analyzer struct {
 	RunImage      imgutil.Image
 	Logger        log.Logger
 	SBOMRestorer  layer.SBOMRestorer
+	PlatformAPI   *api.Version
 
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupElement
@@ -71,6 +72,7 @@ func (f *AnalyzerFactory) NewAnalyzer(
 		LayerMetadataRestorer: &layer.NopMetadataRestorer{},
 		Logger:                logger,
 		SBOMRestorer:          &layer.NopSBOMRestorer{},
+		PlatformAPI:           f.platformAPI,
 	}
 
 	if f.platformAPI.AtLeast("0.7") {
@@ -234,6 +236,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		PreviousImageRef: previousImageIDReference,
 		RunImage:         platform.RunImage{Reference: runImageIDReference},
 		Metadata:         appMeta,
+		API:              a.PlatformAPI.String(),
 	}, nil
 }
 

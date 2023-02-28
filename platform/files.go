@@ -12,6 +12,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
@@ -24,6 +25,14 @@ type AnalyzedMetadata struct {
 	Metadata         LayersMetadata   `toml:"metadata"`
 	RunImage         RunImage         `toml:"run-image,omitempty"`
 	BuildImage       *ImageIdentifier `toml:"build-image,omitempty"`
+	API              string           `toml:"api"` // TODO populate this field...
+}
+
+type amdBeforeAPIv12 struct {
+	PreviousImage *ImageIdentifier `toml:"image"`
+	Metadata      LayersMetadata   `toml:"metadata"`
+	RunImage      *ImageIdentifier `toml:"run-image,omitempty"`
+	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
 }
 
 // FIXME: fix key names to be accurate in the daemon case
@@ -31,7 +40,7 @@ type ImageIdentifier struct {
 	Reference string `toml:"reference"`
 }
 
-func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {
+func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) { // TODO should we be updating the platform api value here when we read it in? (would anyone ever call different phases of the same run with different api versions??)
 	var analyzedMD AnalyzedMetadata
 	if _, err := toml.DecodeFile(analyzedPath, &analyzedMD); err != nil {
 		if os.IsNotExist(err) {
@@ -40,7 +49,51 @@ func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, err
 		}
 		return AnalyzedMetadata{}, err
 	}
+	if analyzedMD.API == "" {
+		return analyzedfromV11(analyzedPath)
+	}
 	return analyzedMD, nil
+}
+
+func analyzedfromV11(path string) (AnalyzedMetadata, error) {
+	oldamd := amdBeforeAPIv12{}
+	amd := AnalyzedMetadata{}
+	if _, err := toml.DecodeFile(path, &oldamd); err != nil {
+		return amd, err
+	}
+
+	if oldamd.PreviousImage != nil {
+		amd.PreviousImageRef = oldamd.PreviousImage.Reference
+	}
+	if oldamd.RunImage != nil {
+		amd.RunImage.Reference = oldamd.RunImage.Reference
+	}
+	amd.Metadata = oldamd.Metadata
+	amd.BuildImage = oldamd.BuildImage
+	return amd, nil
+}
+
+func analyzedToV11(amd *AnalyzedMetadata) amdBeforeAPIv12 {
+	oldamd := amdBeforeAPIv12{
+		Metadata:   amd.Metadata,
+		BuildImage: amd.BuildImage,
+	}
+	if amd.PreviousImageRef != "" {
+		oldamd.PreviousImage = &ImageIdentifier{Reference: amd.PreviousImageRef}
+	}
+	if amd.RunImage.Reference != "" {
+		oldamd.RunImage = &ImageIdentifier{Reference: amd.RunImage.Reference}
+	}
+	return oldamd
+}
+
+// WriteTOML serializes the metadata to disk in the format expected by the API version
+func (amd *AnalyzedMetadata) WriteTOML(path string) error {
+	if amd.API == "" || api.MustParse(amd.API).LessThan("0.12") {
+		oldamd := analyzedToV11(amd)
+		return encoding.WriteTOML(path, oldamd)
+	}
+	return encoding.WriteTOML(path, amd)
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadataCompat`

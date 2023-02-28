@@ -154,4 +154,51 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+	when("analyzed.toml", func() {
+		when("it is old it stays old", func() {
+			it("serializes and deserializes", func() {
+				amd := platform.AnalyzedMetadata{
+					PreviousImageRef: "previous-img",
+					Metadata: platform.LayersMetadata{
+						Stack: platform.StackMetadata{
+							RunImage: platform.RunImageMetadata{Image: "imagine that"},
+						},
+					},
+					RunImage: platform.RunImage{Reference: "some-ref"},
+				}
+				f := h.TempFile(t, "", "")
+				h.AssertNil(t, amd.WriteTOML(f))
+				amd2, err := platform.ReadAnalyzed(f, nil)
+				h.AssertNil(t, err)
+				h.AssertEq(t, amd.PreviousImageRef, amd2.PreviousImageRef)
+				h.AssertEq(t, amd.Metadata, amd2.Metadata)
+				h.AssertEq(t, amd.API, amd2.API)
+				h.AssertEq(t, amd.BuildImage, amd2.BuildImage)
+			})
+		})
+		when("it is new it stays new", func() {
+			it("serializes and deserializes", func() {
+				amd := platform.AnalyzedMetadata{
+					PreviousImageRef: "the image formerly known as prince",
+					RunImage: platform.RunImage{
+						Reference: "librarian",
+						Target: buildpack.TargetMetadata{
+							Os:   "os/2 warp",
+							Arch: "486",
+						},
+					},
+					BuildImage: &platform.ImageIdentifier{Reference: "implementation"},
+					API:        "0.12",
+				}
+				f := h.TempFile(t, "", "")
+				h.AssertNil(t, amd.WriteTOML(f))
+				amd2, err := platform.ReadAnalyzed(f, nil)
+				h.AssertNil(t, err)
+				h.AssertEq(t, amd.PreviousImageRef, amd2.PreviousImageRef)
+				h.AssertEq(t, amd.Metadata, amd2.Metadata)
+				h.AssertEq(t, amd.API, amd2.API)
+				h.AssertEq(t, amd.BuildImage, amd2.BuildImage)
+			})
+		})
+	})
 }

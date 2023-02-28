@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -20,6 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/internal/selective"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -112,9 +112,10 @@ func (r *restoreCmd) Exec() error {
 
 	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		var analyzedMD platform.AnalyzedMetadata
-		if _, err := toml.DecodeFile(r.AnalyzedPath, &analyzedMD); err == nil {
-			appMeta = analyzedMD.Metadata
+		logr := log.NewDefaultLogger(os.Stdout) // TODO - should we get the logger some other way?
+		amd, err := platform.ReadAnalyzed(r.AnalyzedPath, logr)
+		if err == nil {
+			appMeta = amd.Metadata
 		}
 	}
 

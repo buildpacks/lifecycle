@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/BurntSushi/toml"
 
@@ -51,12 +52,8 @@ func NewConfigHandler() *DefaultConfigHandler {
 }
 
 func (h *DefaultConfigHandler) ReadAnalyzed(path string) (platform.AnalyzedMetadata, error) {
-	var analyzedMD platform.AnalyzedMetadata
-	_, err := toml.DecodeFile(path, &analyzedMD)
-	if err != nil {
-		return platform.AnalyzedMetadata{}, fmt.Errorf("failed to read analyzed file: %w", err)
-	}
-	return analyzedMD, nil
+	logr := log.NewDefaultLogger(os.Stdout) // TODO - should we get the logger some other way?
+	return platform.ReadAnalyzed(path, logr)
 }
 
 func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {

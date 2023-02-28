@@ -180,8 +180,9 @@ func (d *detectCmd) writeDetectData(group buildpack.Group, plan platform.BuildPl
 	return nil
 }
 
+// writeGenerateData re-outputs the analyzedMD that we read previously, but now we've added the RunImage, if a custom runImage was configured
 func (d *detectCmd) writeGenerateData(analyzedMD platform.AnalyzedMetadata) error {
-	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
+	if err := analyzedMD.WriteTOML(d.AnalyzedPath); err != nil {
 		return cmd.FailErr(err, "write analyzed metadata")
 	}
 	return nil
