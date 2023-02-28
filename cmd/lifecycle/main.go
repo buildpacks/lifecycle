@@ -19,31 +19,27 @@ import (
 
 func main() {
 	phase := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
+	var layersDir string
 	if phase == "rebaser" {
 		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), "<layers>")}, false)
+	} else {
+		// -layers happens to be a valid flag for every other phase
+		cli.FlagLayersDir(&layersDir)
 	}
-	var layersDir string
 	switch phase {
 	case "detector":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), layersDir)}, false)
 	case "analyzer":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), layersDir)}, false)
 	case "restorer":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), layersDir)}, false)
 	case "builder":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), layersDir)}, false)
 	case "exporter":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), layersDir)}, false)
 	case "creator":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), layersDir)}, false)
 	case "extender":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError(), layersDir)}, false)
 	default:
 		if len(os.Args) < 2 {
@@ -68,28 +64,20 @@ func subcommand(platformAPI, layersDir string) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPI, layersDir)}, true)
 	case "analyze":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPI, layersDir)}, true)
 	case "restore":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPI, layersDir)}, true)
 	case "build":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPI, layersDir)}, true)
 	case "export":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPI, layersDir)}, true)
 	case "rebase":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPI, "<layers>")}, true)
 	case "create":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPI, layersDir)}, true)
 	case "extend":
-		cli.FlagLayersDir(&layersDir)
 		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPI, layersDir)}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
