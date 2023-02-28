@@ -67,6 +67,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	a.LifecycleInputs.OutputImageRef = args[0]
+	a.LifecycleInputs.AccessChecker = &platform.RemoteImageStrategy{}
 	if err := platform.ResolveInputs(platform.Analyze, a.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}

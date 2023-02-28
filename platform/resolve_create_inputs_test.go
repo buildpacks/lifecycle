@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/str"
 	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/testhelpers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -37,6 +38,7 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 			inputs.RunImageRef = "some-run-image"       // satisfy validation
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}
+			inputs.AccessChecker = &testhelpers.SimpleImageStrategy{}
 		})
 
 		when("latest Platform API(s)", func() {

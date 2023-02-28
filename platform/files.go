@@ -10,10 +10,14 @@ import (
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/imgutil/remote"
+
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
@@ -412,38 +416,78 @@ type RunImageForExport struct {
 	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
 }
 
-func (rm *RunImageForExport) BestRunImageMirror(registry string) (string, error) {
+type ImageStrategy interface {
+	CheckReadAccess(repo string, keychain authn.Keychain) (bool, error)
+}
+
+type RemoteImageStrategy struct{}
+
+var _ ImageStrategy = &RemoteImageStrategy{}
+
+func (a *RemoteImageStrategy) CheckReadAccess(repo string, keychain authn.Keychain) (bool, error) {
+	img, err := remote.NewImage(repo, keychain)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to parse image reference")
+	}
+
+	return img.CheckReadAccess(), nil
+}
+
+func (rm *RunImageForExport) BestRunImageMirror(registry string, accessChecker ImageStrategy) (string, error) {
 	if rm.Image == "" {
 		return "", errors.New("missing run-image metadata")
 	}
+
 	runImageMirrors := []string{rm.Image}
 	runImageMirrors = append(runImageMirrors, rm.Mirrors...)
-	runImageRef, err := byRegistry(registry, runImageMirrors)
+
+	keychain, err := auth.DefaultKeychain(runImageMirrors...)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to find run image")
-	}
-	return runImageRef, nil
-}
-
-func (sm *StackMetadata) BestRunImageMirror(registry string) (string, error) {
-	return sm.RunImage.BestRunImageMirror(registry)
-}
-
-func byRegistry(reg string, imgs []string) (string, error) {
-	if len(imgs) < 1 {
-		return "", errors.New("no images provided to search")
+		return "", errors.Wrap(err, "unable to create keychain")
 	}
 
-	for _, img := range imgs {
-		ref, err := name.ParseReference(img, name.WeakValidation)
+	runImageRef := byRegistry(registry, runImageMirrors, accessChecker, keychain)
+	if runImageRef != "" {
+		return runImageRef, nil
+	}
+
+	for _, image := range runImageMirrors {
+		ok, err := accessChecker.CheckReadAccess(image, keychain)
+		if err != nil {
+			return "", err
+		}
+
+		if ok {
+			return image, nil
+		}
+	}
+
+	return "", errors.New("failed to find accessible run image")
+}
+
+func (sm *StackMetadata) BestRunImageMirror(registry string, accessChecker ImageStrategy) (string, error) {
+	return sm.RunImage.BestRunImageMirror(registry, accessChecker)
+}
+
+func byRegistry(reg string, repos []string, accessChecker ImageStrategy, keychain authn.Keychain) string {
+	for _, repo := range repos {
+		ref, err := name.ParseReference(repo, name.WeakValidation)
 		if err != nil {
 			continue
 		}
 		if reg == ref.Context().RegistryStr() {
-			return img, nil
+			ok, err := accessChecker.CheckReadAccess(repo, keychain)
+			if err != nil {
+				return ""
+			}
+
+			if ok {
+				return repo
+			}
 		}
 	}
-	return imgs[0], nil
+
+	return ""
 }
 
 func ReadStack(stackPath string, logger log.Logger) (StackMetadata, error) {

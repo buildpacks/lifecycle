@@ -178,7 +178,7 @@ func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) erro
 	if len(runMD.Images) == 0 {
 		return errors.New(ErrRunImageRequiredWhenNoRunMD)
 	}
-	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry)
+	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry, i.AccessChecker)
 	if err != nil {
 		return errors.New(ErrRunImageRequiredWhenNoRunMD)
 	}
@@ -199,7 +199,7 @@ func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) er
 	if err != nil {
 		return err
 	}
-	i.RunImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
+	i.RunImageRef, err = stackMD.BestRunImageMirror(targetRegistry, i.AccessChecker)
 	if err != nil {
 		return errors.New(ErrRunImageRequiredWhenNoStackMD)
 	}

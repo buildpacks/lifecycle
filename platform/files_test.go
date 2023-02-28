@@ -16,6 +16,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/testhelpers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -119,7 +120,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 
 			when("repoName is dockerhub", func() {
 				it("returns the dockerhub image", func() {
-					name, err := stackMD.BestRunImageMirror("index.docker.io")
+					name, err := stackMD.BestRunImageMirror("index.docker.io", &testhelpers.SimpleImageStrategy{})
 					h.AssertNil(t, err)
 					h.AssertEq(t, name, "myorg/myrepo")
 				})
@@ -127,14 +128,14 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 
 			when("registry is gcr.io", func() {
 				it("returns the gcr.io image", func() {
-					name, err := stackMD.BestRunImageMirror("gcr.io")
+					name, err := stackMD.BestRunImageMirror("gcr.io", &testhelpers.SimpleImageStrategy{})
 					h.AssertNil(t, err)
 					h.AssertEq(t, name, "gcr.io/org/repo")
 				})
 
 				when("registry is zonal.gcr.io", func() {
 					it("returns the gcr image", func() {
-						name, err := stackMD.BestRunImageMirror("zonal.gcr.io")
+						name, err := stackMD.BestRunImageMirror("zonal.gcr.io", &testhelpers.SimpleImageStrategy{})
 						h.AssertNil(t, err)
 						h.AssertEq(t, name, "zonal.gcr.io/org/repo")
 					})
@@ -142,9 +143,15 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 
 				when("registry is missingzone.gcr.io", func() {
 					it("returns the run image", func() {
-						name, err := stackMD.BestRunImageMirror("missingzone.gcr.io")
+						name, err := stackMD.BestRunImageMirror("missingzone.gcr.io", &testhelpers.SimpleImageStrategy{})
 						h.AssertNil(t, err)
 						h.AssertEq(t, name, "first.com/org/repo")
+					})
+
+					it("returns the first readable mirror", func() {
+						name, err := stackMD.BestRunImageMirror("missingzone.gcr.io", &testhelpers.StubImageStrategy{AllowedRepo: "zonal.gcr.io"})
+						h.AssertNil(t, err)
+						h.AssertEq(t, name, "zonal.gcr.io/org/repo")
 					})
 				})
 			})
@@ -155,7 +162,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("skips over it", func() {
-					name, err := stackMD.BestRunImageMirror("gcr.io")
+					name, err := stackMD.BestRunImageMirror("gcr.io", &testhelpers.SimpleImageStrategy{})
 					h.AssertNil(t, err)
 					h.AssertEq(t, name, "gcr.io/myorg/myrepo")
 				})
