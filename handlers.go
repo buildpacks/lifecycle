@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/log"
@@ -25,11 +24,7 @@ type DirStore interface {
 	LookupExt(id, version string) (*buildpack.ExtDescriptor, error)
 }
 
-//go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle ImageHandler
-type ImageHandler interface {
-	InitImage(imageRef string) (imgutil.Image, error)
-	Docker() bool
-}
+//go:generate mockgen -package testmock -destination testmock/image_handler.go github.com/buildpacks/lifecycle/image Handler
 
 //go:generate mockgen -package testmock -destination testmock/registry_handler.go github.com/buildpacks/lifecycle RegistryHandler
 type RegistryHandler interface {

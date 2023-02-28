@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/buildpacks/lifecycle/image"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -26,6 +28,8 @@ type analyzeCmd struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (a *analyzeCmd) DefineFlags() {
 	if a.PlatformAPI.AtLeast("0.12") {
+		cli.FlagLayoutDir(&a.LayoutDir)
+		cli.FlagUseLayout(&a.UseLayout)
 		cli.FlagRunPath(&a.RunPath)
 	}
 	if a.PlatformAPI.AtLeast("0.9") {
@@ -37,7 +41,6 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
-		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagPreviousImage(&a.PreviousImageRef)
 		cli.FlagRunImage(&a.RunImageRef)
 		cli.FlagStackPath(&a.StackPath)
@@ -50,7 +53,6 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
 		cli.FlagGroupPath(&a.GroupPath)
-		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagSkipLayers(&a.SkipLayers)
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
@@ -64,8 +66,13 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	a.LifecycleInputs.OutputImageRef = args[0]
-	if err := platform.ResolveInputs(platform.Analyze, &a.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Analyze, a.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+	}
+	if a.UseLayout {
+		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -99,7 +106,7 @@ func (a *analyzeCmd) Exec() error {
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
-		NewImageHandler(a.docker, a.keychain),
+		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout),
 		NewRegistryHandler(a.keychain),
 	)
 	analyzer, err := factory.NewAnalyzer(

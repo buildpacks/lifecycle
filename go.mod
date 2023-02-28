@@ -5,7 +5,7 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.9.2-0.20220928141902-4d077e2a4084
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22
-	github.com/buildpacks/imgutil v0.0.0-20230213161918-49b53abcd98d
+	github.com/buildpacks/imgutil v0.0.0-20230221152838-4cf98dd677d2
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396
 	github.com/containerd/containerd v1.6.15
 	github.com/docker/docker v20.10.23+incompatible
@@ -129,7 +129,7 @@ go 1.19
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0
 
 // Ensure we only pull in the latest version of containerd
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.15
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.18
 
 // Ensure compatibility with kaniko; match dependencies configured in:
 // https://github.com/GoogleContainerTools/kaniko/blob/f9aaa9fca7bf4077778ed527c1a8a6e09e60c53c/go.mod (v1.9.1)

@@ -17,23 +17,14 @@ const (
 
 // Platform holds lifecycle inputs and outputs for a given Platform API version and lifecycle phase.
 type Platform struct {
-	Phase LifecyclePhase
-	LifecycleInputs
+	*LifecycleInputs
 	Exiter
 }
 
-// NewPlatformFor accepts a lifecycle phase and Platform API version, and returns a Platform.
-func NewPlatformFor(phase LifecyclePhase, platformAPI string) *Platform {
-	var lifecycleInputs LifecycleInputs
-	switch phase {
-	case Analyze, Detect, Restore, Extend, Build, Export, Create, Rebase:
-		lifecycleInputs = NewLifecycleInputs(api.MustParse(platformAPI))
-	default:
-		// nop
-	}
+// NewPlatformFor accepts a Platform API version and a layers directory, and returns a Platform with default lifecycle inputs and an exiter service.
+func NewPlatformFor(platformAPI, layersDir string) *Platform {
 	return &Platform{
-		Phase:           phase,
-		LifecycleInputs: lifecycleInputs,
+		LifecycleInputs: NewLifecycleInputs(api.MustParse(platformAPI), layersDir),
 		Exiter:          NewExiter(platformAPI),
 	}
 }
