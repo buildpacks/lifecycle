@@ -48,7 +48,6 @@ func (r *restoreCmd) DefineFlags() {
 	cli.FlagCacheDir(&r.CacheDir)
 	cli.FlagCacheImage(&r.CacheImageRef)
 	cli.FlagGroupPath(&r.GroupPath)
-	cli.FlagLayersDir(&r.LayersDir)
 	cli.FlagUID(&r.UID)
 	cli.FlagGID(&r.GID)
 }
@@ -90,24 +89,32 @@ func (r *restoreCmd) Exec() error {
 			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digest.String()}
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
-			_, digest, err := r.pullSparse(analyzedMD.RunImage.Reference)
+			runImage, digest, err := r.pullSparse(analyzedMD.RunImage.Reference)
 			if err != nil {
-				return cmd.FailErr(err, "read run image")
+				return cmd.FailErr(err, "reading run image")
+			}
+			targetData, err := platform.ReadTargetData(runImage)
+			if err != nil {
+				return cmd.FailErr(err, "reading target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference: digest.String(),
-				Extend:    true,
-				// TODO: add target data
+				Reference:  digest.String(),
+				Extend:     true,
+				TargetData: &targetData,
 			}
 		} else if needsUpdating(analyzedMD.RunImage) {
-			_, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
+			runImage, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
 			if err != nil {
-				return cmd.FailErr(err, "read run image")
+				return cmd.FailErr(err, "reading run image")
+			}
+			targetData, err := platform.ReadTargetData(runImage)
+			if err != nil {
+				return cmd.FailErr(err, "reading target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference: digest.String(),
-				Extend:    analyzedMD.RunImage.Extend,
-				// TODO: add target data
+				Reference:  digest.String(),
+				Extend:     analyzedMD.RunImage.Extend,
+				TargetData: &targetData,
 			}
 		}
 		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
@@ -143,8 +150,17 @@ func needsPulling(runImage *platform.RunImage) bool {
 }
 
 func needsUpdating(runImage *platform.RunImage) bool {
-	// TODO
-	return false
+	if runImage == nil {
+		return false
+	}
+	if runImage.TargetData == nil {
+		return true
+	}
+	digest, err := name.NewDigest(runImage.Reference)
+	if err != nil {
+		return true
+	}
+	return digest.DigestStr() == ""
 }
 
 func (r *restoreCmd) supportsBuildImageExtension() bool {
@@ -152,7 +168,7 @@ func (r *restoreCmd) supportsBuildImageExtension() bool {
 }
 
 func (r *restoreCmd) supportsRunImageExtension() bool {
-	return r.PlatformAPI.AtLeast("0.12")
+	return r.PlatformAPI.AtLeast("0.12") && !r.UseDaemon && !r.UseLayout
 }
 
 func (r *restoreCmd) pullSparse(imageRef string) (image v1.Image, digest name.Digest, err error) {

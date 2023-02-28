@@ -1,0 +1,5 @@
+[run-image]
+  reference = "REPLACE"
+
+[run-image.target]
+  id = "some-target-id"

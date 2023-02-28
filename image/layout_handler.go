@@ -13,12 +13,6 @@ type LayoutHandler struct {
 	layoutDir string
 }
 
-func NewLayoutImageHandler(layoutDir string) *LayoutHandler {
-	return &LayoutHandler{
-		layoutDir: layoutDir,
-	}
-}
-
 func (h *LayoutHandler) InitImage(imageRef string) (imgutil.Image, error) {
 	if imageRef == "" {
 		return nil, nil

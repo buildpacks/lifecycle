@@ -181,7 +181,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				var err error
 				inputs = platform.NewLifecycleInputs(platformAPI, "")
 				h.AssertNil(t, err)
->>>>>>> main
 
 				h.AssertEq(t, inputs.LayersDir, platform.DefaultLayersDir)
 			})
@@ -275,7 +274,6 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, inputs.OrderPath, platform.DefaultOrderPath)
->>>>>>> main
 			})
 		})
 	})

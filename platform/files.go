@@ -32,8 +32,9 @@ type ImageIdentifier struct {
 }
 
 type RunImage struct {
-	Reference string `toml:"reference"`
-	Extend    bool   `toml:"extend,omitempty"`
+	Reference  string      `toml:"reference"`
+	Extend     bool        `toml:"extend,omitempty"`
+	TargetData *TargetData `toml:"target"`
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {
