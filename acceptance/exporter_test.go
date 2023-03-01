@@ -22,7 +22,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cache"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
@@ -257,7 +256,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 							// Retrieve the cache image from the ephemeral registry
 							h.Run(t, exec.Command("docker", "pull", cacheImageName))
-							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain, cmd.DefaultLogger)
+							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain)
 							h.AssertNil(t, err)
 
 							//Assert the cache image was created with an empty layer
