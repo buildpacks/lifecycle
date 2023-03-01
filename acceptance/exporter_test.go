@@ -390,7 +390,7 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "layout-analyzed.toml.placeholder")
 	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
 	// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
-	analyzedMD.RunImage = &platform.ImageIdentifier{
+	analyzedMD.RunImage = &platform.RunImage{
 		Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33",
 	}
 	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
