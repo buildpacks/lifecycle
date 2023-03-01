@@ -69,8 +69,12 @@ func (d *detectCmd) Exec() error {
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
+	amd, err := platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
+	if err != nil {
+		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
+	}
 	detector, err := detectorFactory.NewDetector(
-		d.AnalyzedPath,
+		amd,
 		d.AppDir,
 		d.BuildConfigDir,
 		d.OrderPath,

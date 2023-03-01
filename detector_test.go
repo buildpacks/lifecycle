@@ -71,9 +71,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 			dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 			apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
-			af := h.TempFile(t, "", "analyzed.toml")
+			amd := platform.AnalyzedMetadata{}
 
-			detector, err := detectorFactory.NewDetector(af, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
+			detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -133,8 +133,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
 				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
-				af := h.TempFile(t, "", "analyzed.toml")
-				detector, err := detectorFactory.NewDetector(af, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
+				amd := platform.AnalyzedMetadata{}
+				detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -158,10 +158,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			configHandler.EXPECT().ReadOrder(gomock.Any()).Return(buildpack.Order{}, buildpack.Order{}, nil)
-			af := h.TempFile(t, "", "analyzed.toml")
+			amd := platform.AnalyzedMetadata{}
 			var err error
 			detector, err = detectorFactory.NewDetector(
-				af,
+				amd,
 				"some-app-dir",
 				"some-build-config-dir",
 				"some-order-path",

@@ -71,9 +71,10 @@ type Detector struct {
 	memHandler *memory.Handler
 }
 
-func (f *DetectorFactory) NewDetector(analyzedPath, appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(analyzedMD platform.AnalyzedMetadata, appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
 	memHandler := memory.New()
 	detector := &Detector{
+		AnalyzeMD:      analyzedMD,
 		AppDir:         appDir,
 		BuildConfigDir: buildConfigDir,
 		DirStore:       f.dirStore,
@@ -87,14 +88,6 @@ func (f *DetectorFactory) NewDetector(analyzedPath, appDir, buildConfigDir, orde
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
 	}
-
-	var amd platform.AnalyzedMetadata
-	amd, err := platform.ReadAnalyzed(analyzedPath, logger)
-	if err != nil {
-		return nil, fmt.Errorf("parse analyzed metadata from file %s : %v", analyzedPath, err)
-	}
-	detector.AnalyzeMD = amd
-
 	return detector, nil
 }
 
