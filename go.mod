@@ -5,7 +5,7 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.9.2-0.20220928141902-4d077e2a4084
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22
-	github.com/buildpacks/imgutil v0.0.0-20230120191822-4d50b9a7e215
+	github.com/buildpacks/imgutil v0.0.0-20230221152838-4cf98dd677d2
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396
 	github.com/containerd/containerd v1.6.15
 	github.com/docker/docker v20.10.23+incompatible
@@ -18,7 +18,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.4.0
+	golang.org/x/sys v0.5.0
 )
 
 require (
@@ -112,9 +112,9 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.5.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.4.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -129,7 +129,7 @@ go 1.19
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0
 
 // Ensure we only pull in the latest version of containerd
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.15
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.18
 
 // Ensure compatibility with kaniko; match dependencies configured in:
 // https://github.com/GoogleContainerTools/kaniko/blob/f9aaa9fca7bf4077778ed527c1a8a6e09e60c53c/go.mod (v1.9.1)

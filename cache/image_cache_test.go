@@ -9,13 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/local"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -33,6 +37,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 		subject           *cache.ImageCache
 		testLayerTarPath  string
 		testLayerSHA      string
+		testLogger        log.Logger
 	)
 
 	it.Before(func() {
@@ -43,8 +48,8 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOriginalImage"})
 		fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeImage"})
-
-		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+		testLogger = cmd.DefaultLogger
+		subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
 
 		testLayerTarPath = filepath.Join(tmpDir, "some-layer.tar")
 		h.AssertNil(t, os.WriteFile(testLayerTarPath, []byte("dummy data"), 0600))
@@ -290,12 +295,32 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("attempting to delete original image gives non nil error", func() {
+			var (
+				fakeErrorImage *fakeErrorImage
+				mockLogger     *MockLogger
+			)
+
+			it.Before(func() {
+				fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
+				fakeErrorImage = newFakeImageErrIdentifier(fakeOriginalImage)
+				fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
+				mockLogger = &MockLogger{Logger: testLogger}
+				subject = cache.NewImageCache(fakeErrorImage, fakeNewImage, mockLogger)
+			})
+			it("should log error as warning", func() {
+				err := subject.Commit()
+				h.AssertNil(t, err)
+				h.AssertEq(t, mockLogger.Calls, 1)
+			})
+		})
+
 		when("with #DeleteOrigImage", func() {
 			when("original and new image are different", func() {
 				it.Before(func() {
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeNewImage"})
-					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
 				})
 				it("should delete original image", func() {
 					err := subject.DeleteOrigImage()
@@ -308,7 +333,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					fakeOriginalImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
 					fakeNewImage = fakes.NewImage("fake-image", "", local.IDIdentifier{ImageID: "fakeOrigImage"})
-					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage)
+					subject = cache.NewImageCache(fakeOriginalImage, fakeNewImage, testLogger)
 				})
 				it("should not delete original image", func() {
 					err := subject.DeleteOrigImage()
@@ -318,4 +343,25 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+type fakeErrorImage struct {
+	imgutil.Image
+}
+
+func newFakeImageErrIdentifier(origImage imgutil.Image) *fakeErrorImage {
+	return &fakeErrorImage{Image: origImage}
+}
+
+func (f *fakeErrorImage) Identifier() (imgutil.Identifier, error) {
+	return nil, errors.New("error deleting original image")
+}
+
+type MockLogger struct {
+	log.Logger
+	Calls int
+}
+
+func (l *MockLogger) Warnf(fmt string, v ...interface{}) {
+	l.Calls++
 }

@@ -52,6 +52,16 @@ const (
 // via a credential helper, or via the `CNB_REGISTRY_AUTH` environment variable. See [auth.DefaultKeychain] for further information.
 const EnvUseDaemon = "CNB_USE_DAEMON"
 
+// ## Provided to handle inputs and outputs in OCI layout format
+
+// The lifecycle can be configured to read the input images like `run-image` or `previous-image` in OCI layout format instead of from a
+// registry or daemon. Also, it can export the final application image on disk in the same format.
+// The following environment variables must be set to configure the behavior of the lifecycle when exporting to OCI layout format.
+const (
+	EnvLayoutDir = "CNB_LAYOUT_DIR"
+	EnvUseLayout = "CNB_USE_LAYOUT"
+)
+
 // ## Provided by the Base Image
 
 // A build-time base image contains the OS-level dependencies needed for the build - i.e., dependencies needed for buildpack execution.
