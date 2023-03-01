@@ -286,7 +286,7 @@ unit: out
 unit: UNIT_PACKAGES=$(shell $(GOCMD) list ./... | grep -v acceptance)
 unit: format lint tidy install-yj
 	@echo "> Running unit tests..."
-	$(GOTEST) $(GOTESTFLAGS) -v -count=1 $(UNIT_PACKAGES) | tee out/unit
+	$(GOTEST) $(GOTESTFLAGS) -v -count=1 $(UNIT_PACKAGES)
 
 out:
 	@mkdir out || (exit 0)
@@ -294,7 +294,7 @@ out:
 
 acceptance: format tidy
 	@echo "> Running acceptance tests..."
-	$(GOTEST) -v -count=1 -tags=acceptance -timeout=$(ACCEPTANCE_TIMEOUT) ./acceptance/... | tee out/acceptance
+	$(GOTEST) -v -count=1 -tags=acceptance -timeout=$(ACCEPTANCE_TIMEOUT) ./acceptance/...
 
 clean:
 	@echo "> Cleaning workspace..."
