@@ -19,7 +19,6 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/internal/selective"
-	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -112,8 +111,7 @@ func (r *restoreCmd) Exec() error {
 
 	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		logr := log.NewDefaultLogger(os.Stdout) // TODO - should we get the logger some other way?
-		amd, err := platform.ReadAnalyzed(r.AnalyzedPath, logr)
+		amd, err := platform.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger)
 		if err == nil {
 			appMeta = amd.Metadata
 		}

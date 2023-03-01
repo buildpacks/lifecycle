@@ -797,6 +797,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			when("A Target is provided from AnalyzeMD", func() {
 				it("errors if the buildpacks don't share that target arch/os", func() {
+					detector.AnalyzeMD.API = "0.12"
 					detector.AnalyzeMD.RunImage.Target.Os = "MacOS"
 					detector.AnalyzeMD.RunImage.Target.Arch = "ARM64"
 					detector.AnalyzeMD.RunImage.Target.Distributions = []buildpack.DistributionMetadata{{Name: "MacOS", Version: "some kind of big cat"}}

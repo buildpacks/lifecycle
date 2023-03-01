@@ -40,7 +40,7 @@ type ImageIdentifier struct {
 	Reference string `toml:"reference"`
 }
 
-func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) { // TODO should we be updating the platform api value here when we read it in? (would anyone ever call different phases of the same run with different api versions??)
+func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {
 	var analyzedMD AnalyzedMetadata
 	if _, err := toml.DecodeFile(analyzedPath, &analyzedMD); err != nil {
 		if os.IsNotExist(err) {

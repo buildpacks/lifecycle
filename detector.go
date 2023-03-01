@@ -214,26 +214,28 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				return nil, nil, err
 			}
 
-			targetMatch := false
-			if d.AnalyzeMD.RunImage.Target.IsWildcard() {
-				targetMatch = true
-			} else {
-				for _, target := range bpDescriptor.Targets {
-					if target.Satisfies(&d.AnalyzeMD.RunImage.Target) {
-						targetMatch = true
-						break
+			if d.AnalyzeMD.API != "" && api.MustParse(d.AnalyzeMD.API).AtLeast("0.12") {
+				targetMatch := false
+				if d.AnalyzeMD.RunImage.Target.IsWildcard() {
+					targetMatch = true
+				} else {
+					for _, target := range bpDescriptor.Targets {
+						if target.Satisfies(&d.AnalyzeMD.RunImage.Target) {
+							targetMatch = true
+							break
+						}
 					}
 				}
-			}
-			if !targetMatch && !groupEl.Optional {
-				markDone(groupEl, bpDescriptor)
-				d.Runs.Store(
-					keyFor(groupEl),
-					buildpack.DetectOutputs{
-						Code: -1,
-						Err:  fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.RunImage.Target),
-					})
-				continue
+				if !targetMatch && !groupEl.Optional {
+					markDone(groupEl, bpDescriptor)
+					d.Runs.Store(
+						keyFor(groupEl),
+						buildpack.DetectOutputs{
+							Code: -1,
+							Err:  fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.RunImage.Target),
+						})
+					continue
+				}
 			}
 
 			// Resolve order if element is a composite buildpack.
