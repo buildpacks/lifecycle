@@ -12,6 +12,14 @@ import (
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
 
+func FlagLayoutDir(layoutDir *string) {
+	flagSet.StringVar(layoutDir, "layout-dir", *layoutDir, "path to output directory for images in OCI layout format")
+}
+
+func FlagUseLayout(useLayout *bool) {
+	flagSet.BoolVar(useLayout, "layout", *useLayout, "export to OCI layout format on disk")
+}
+
 func FlagAnalyzedPath(analyzedPath *string) {
 	flagSet.StringVar(analyzedPath, "analyzed", *analyzedPath, "path to analyzed.toml")
 }

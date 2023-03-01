@@ -30,7 +30,6 @@ func (e *extendCmd) DefineFlags() {
 	cli.FlagGeneratedDir(&e.GeneratedDir)
 	cli.FlagGroupPath(&e.GroupPath)
 	cli.FlagKanikoCacheTTL(&e.KanikoCacheTTL)
-	cli.FlagLayersDir(&e.LayersDir)
 	cli.FlagPlanPath(&e.PlanPath)
 	cli.FlagPlatformDir(&e.PlatformDir)
 	cli.FlagUID(&e.UID)
@@ -41,7 +40,7 @@ func (e *extendCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	if err := platform.ResolveInputs(platform.Extend, &e.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Extend, e.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil

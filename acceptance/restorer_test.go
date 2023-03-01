@@ -232,14 +232,16 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						"--network", restoreRegNetwork,
 					),
 					h.WithArgs(
-						"-analyzed", "/layers/some-analyzed.toml",
+						"-analyzed", "/layers/some-extend-true-analyzed.toml",
 						"-log-level", "debug",
 					),
 				)
-				t.Log("updates run image reference in analyzed.toml to include digest")
-				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-analyzed.toml"))
+				t.Log("updates run image reference in analyzed.toml to include digest and target data")
+				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-true-analyzed.toml"))
 				h.AssertNil(t, err)
 				h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
+				h.AssertEq(t, analyzedMD.RunImage.TargetData.OS, "linux")
+
 				t.Log("writes run image manifest and config to the kaniko cache")
 				ref, err := name.ParseReference(analyzedMD.RunImage.Reference)
 				h.AssertNil(t, err)
@@ -247,6 +249,36 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(fis), 1)
 				h.AssertPathExists(t, filepath.Join(copyDir, "kaniko", "cache", "base", ref.Identifier(), "oci-layout"))
+			})
+
+			when("only target data needs updating", func() {
+				it("updates run image reference in analyzed.toml to include digest and target data", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not restore run image metadata")
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						"/",
+						restoreImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "DOCKER_CONFIG=/docker-config",
+							"--network", restoreRegNetwork,
+						),
+						h.WithArgs(
+							"-analyzed", "/layers/some-extend-false-analyzed.toml",
+							"-log-level", "debug",
+						),
+					)
+					t.Log("updates run image reference in analyzed.toml to include digest and target data")
+					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"))
+					h.AssertNil(t, err)
+					h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
+					h.AssertEq(t, analyzedMD.RunImage.TargetData.OS, "linux")
+					t.Log("does not write run image manifest and config to the kaniko cache")
+					fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko"))
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(fis), 1) // .gitkeep
+				})
 			})
 		})
 	}

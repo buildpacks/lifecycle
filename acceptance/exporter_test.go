@@ -22,6 +22,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cache"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/path"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -255,7 +256,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 							// Retrieve the cache image from the ephemeral registry
 							h.Run(t, exec.Command("docker", "pull", cacheImageName))
-							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain)
+							subject, err := cache.NewImageCacheFromName(cacheImageName, authn.DefaultKeychain, cmd.DefaultLogger)
 							h.AssertNil(t, err)
 
 							//Assert the cache image was created with an empty layer
@@ -264,6 +265,89 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							defer layer.Close()
 						})
 					})
+				})
+			})
+		})
+
+		when("layout case", func() {
+			var (
+				containerName string
+				err           error
+				layoutDir     string
+				tmpDir        string
+			)
+			when("experimental mode is enabled", func() {
+				it.Before(func() {
+					// creates the directory to save all the OCI images on disk
+					tmpDir, err = os.MkdirTemp("", "layout")
+					h.AssertNil(t, err)
+
+					containerName = "test-container-" + h.RandString(10)
+				})
+
+				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					// removes all images created
+					os.RemoveAll(tmpDir)
+				})
+
+				when("custom layout directory", func() {
+					when("first build", func() {
+						when("app", func() {
+							it.Before(func() {
+								exportedImageName = "my-custom-layout-app"
+								layoutDir = filepath.Join(path.RootDir, "my-layout-dir")
+							})
+
+							it("is created", func() {
+								var exportFlags []string
+								h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+								exportFlags = append(exportFlags, []string{"-layout", "-layout-dir", layoutDir, "-analyzed", "/layers/layout-analyzed.toml"}...)
+								exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+								exportArgs = append(exportArgs, exportedImageName)
+
+								output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, exportImage,
+									h.WithFlags(
+										"--env", "CNB_EXPERIMENTAL_MODE=warn",
+										"--env", "CNB_PLATFORM_API="+platformAPI,
+									),
+									h.WithArgs(exportArgs...))
+
+								h.AssertStringContains(t, output, "Saving /my-layout-dir/index.docker.io/library/my-custom-layout-app/latest")
+
+								// assert the image was saved on disk in OCI layout format
+								index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
+								h.AssertEq(t, len(index.Manifests), 1)
+							})
+						})
+					})
+				})
+			})
+
+			when("experimental mode is not enabled", func() {
+				it.Before(func() {
+					layoutDir = filepath.Join(path.RootDir, "layout-dir")
+				})
+
+				it("errors", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+
+					cmd := exec.Command(
+						"docker", "run", "--rm",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						exportImage,
+						ctrPath(exporterPath),
+						"-layout",
+						"-layout-dir", layoutDir,
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
+
+					h.AssertNotNil(t, err)
+					expected := "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error"
+					h.AssertStringContains(t, string(output), expected)
 				})
 			})
 		})
@@ -286,21 +370,36 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 }
 
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
-	placeholderPaths := []string{
+	regPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
+	}
+	layoutPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
 	}
 
-	for _, placeholderPath := range placeholderPaths {
-		if _, err := os.Stat(placeholderPath); os.IsNotExist(err) {
+	for _, pPath := range regPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
 			continue
 		}
-		analyzedMD := assertAnalyzedMetadata(t, placeholderPath)
+		analyzedMD := assertAnalyzedMetadata(t, pPath)
 		if analyzedMD.RunImage != nil {
 			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
 		}
-		encoding.WriteTOML(strings.TrimSuffix(placeholderPath, ".placeholder"), analyzedMD)
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
+	}
+	for _, pPath := range layoutPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
+			continue
+		}
+		analyzedMD := assertAnalyzedMetadata(t, pPath)
+		if analyzedMD.RunImage != nil {
+			// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
+			analyzedMD.RunImage.Reference = "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"
+		}
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
 	}
 }
 

@@ -3,8 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/buildpacks/imgutil/layout"
+	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -41,6 +45,10 @@ type exportData struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
+	if e.PlatformAPI.AtLeast("0.12") {
+		cli.FlagLayoutDir(&e.LayoutDir)
+		cli.FlagUseLayout(&e.UseLayout)
+	}
 	if e.PlatformAPI.AtLeast("0.11") {
 		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
 	}
@@ -52,7 +60,6 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagGroupPath(&e.GroupPath)
 	cli.FlagLaunchCacheDir(&e.LaunchCacheDir)
 	cli.FlagLauncherPath(&e.LauncherPath)
-	cli.FlagLayersDir(&e.LayersDir)
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
@@ -71,7 +78,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 	e.OutputImageRef = args[0]
 	e.AdditionalTags = args[1:]
-	if err := platform.ResolveInputs(platform.Export, &e.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Export, e.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	// read analyzed metadata for use in later stages
@@ -79,6 +86,11 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	e.persistedData.analyzedMD, err = platform.ReadAnalyzed(e.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return err
+	}
+	if e.UseLayout {
+		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -163,9 +175,12 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		appImage   imgutil.Image
 		runImageID string
 	)
-	if e.UseDaemon {
+	switch {
+	case e.UseLayout:
+		appImage, runImageID, err = e.initLayoutAppImage(analyzedMD)
+	case e.UseDaemon:
 		appImage, runImageID, err = e.initDaemonAppImage(analyzedMD)
-	} else {
+	default:
 		appImage, runImageID, err = e.initRemoteAppImage(analyzedMD)
 	}
 	if err != nil {
@@ -267,6 +282,61 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	}
 
 	runImage, err := remote.NewImage(e.RunImageRef, e.keychain, remote.FromBaseImage(e.RunImageRef))
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "access run image")
+	}
+	runImageID, err := runImage.Identifier()
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "get run image reference")
+	}
+	return appImage, runImageID.String(), nil
+}
+
+func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+	runImageIdentifier, err := layout.ParseIdentifier(analyzedMD.RunImage.Reference)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "parsing run image reference")
+	}
+
+	var opts = []layout.ImageOption{
+		layout.FromBaseImagePath(runImageIdentifier.Path),
+	}
+
+	if analyzedMD.PreviousImage != nil {
+		previousImageReference, err := layout.ParseIdentifier(analyzedMD.PreviousImage.Reference)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "parsing previous image reference")
+		}
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", previousImageReference.Path)
+		opts = append(opts, layout.WithPreviousImage(previousImageReference.Path))
+	}
+
+	if !e.customSourceDateEpoch().IsZero() {
+		opts = append(opts, layout.WithCreatedAt(e.customSourceDateEpoch()))
+	}
+
+	outputImageRefPath, err := layout.ParseRefToPath(e.OutputImageRef)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "parsing output image reference")
+	}
+	appPath := filepath.Join(e.LayoutDir, outputImageRefPath)
+	cmd.DefaultLogger.Infof("Using app image: %s\n", appPath)
+
+	appImage, err := layout.NewImage(appPath, opts...)
+	if err != nil {
+		return nil, "", cmd.FailErr(err, "create new app image")
+	}
+
+	// set org.opencontainers.image.ref.name
+	reference, err := name.ParseReference(e.OutputImageRef, name.WeakValidation)
+	if err != nil {
+		return nil, "", err
+	}
+	if err = appImage.AnnotateRefName(reference.Identifier()); err != nil {
+		return nil, "", err
+	}
+
+	runImage, err := layout.NewImage(runImageIdentifier.Path)
 	if err != nil {
 		return nil, "", cmd.FailErr(err, "access run image")
 	}

@@ -99,12 +99,10 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				baseImageDigest := baseImageHash.String()
 				baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
 				h.AssertNil(t, os.MkdirAll(baseCacheDir, 0755))
-				// write image at layout path
-				selectivePath := filepath.Join(baseCacheDir, baseImageDigest)
-				layoutPath, err := selective.Write(selectivePath, empty.Index)
+
+				layoutPath, err := selective.Write(filepath.Join(baseCacheDir, baseImageDigest), empty.Index)
 				h.AssertNil(t, err)
 				h.AssertNil(t, layoutPath.AppendImage(remoteImage))
-				t.Logf("Saved selective image %s", selectivePath)
 
 				// write image reference in analyzed.toml
 				analyzedMD := platform.AnalyzedMetadata{

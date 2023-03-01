@@ -32,7 +32,6 @@ func (d *detectCmd) DefineFlags() {
 	cli.FlagAppDir(&d.AppDir)
 	cli.FlagBuildpacksDir(&d.BuildpacksDir)
 	cli.FlagGroupPath(&d.GroupPath)
-	cli.FlagLayersDir(&d.LayersDir)
 	cli.FlagOrderPath(&d.OrderPath)
 	cli.FlagPlanPath(&d.PlanPath)
 	cli.FlagPlatformDir(&d.PlatformDir)
@@ -43,7 +42,7 @@ func (d *detectCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	if err := platform.ResolveInputs(platform.Detect, &d.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Detect, d.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
