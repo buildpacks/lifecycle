@@ -24,10 +24,14 @@ type StackMetadata struct {
 	ID string `toml:"id"`
 }
 
+type TargetPartial struct {
+	Os          string `json:"os" toml:"os"`
+	Arch        string `json:"arch" toml:"arch"`
+	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
+}
+
 type TargetMetadata struct {
-	Os            string                 `json:"os" toml:"os"`
-	Arch          string                 `json:"arch" toml:"arch"`
-	ArchVariant   string                 `json:"arch-variant" toml:"arch-variant"`
+	TargetPartial
 	Distributions []DistributionMetadata `json:"distributions" toml:"distributions"`
 }
 
@@ -68,7 +72,7 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 	if len(descriptor.Targets) == 0 && apiVersion.AtLeast("0.12") {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{Os: "linux", Arch: "x86_64", Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{Os: "linux", Arch: "x86_64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
 			}
 		}
 	}
@@ -93,39 +97,6 @@ func (d *BpDescriptor) RootDir() string {
 
 func (d *BpDescriptor) String() string {
 	return d.Buildpack.Name + " " + d.Buildpack.Version
-}
-
-// IsWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
-func (t *TargetMetadata) IsWildcard() bool {
-	return t.Arch == "" && t.Os == ""
-}
-
-// Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
-func (t *TargetMetadata) Satisfies(o *TargetMetadata) bool {
-	if t.Arch != o.Arch || t.Os != o.Os {
-		return false
-	}
-	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
-		return false
-	}
-
-	// if either of the lengths of Distributions are zero, treat it as a wildcard.
-	if len(t.Distributions) > 0 && len(o.Distributions) > 0 {
-		// this could be more efficient but the lists are probably short...
-		for _, tdist := range t.Distributions {
-			found := false
-			for _, odist := range o.Distributions {
-				if tdist.Name == odist.Name && tdist.Version == odist.Version {
-					found = true
-					continue
-				}
-			}
-			if !found {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func (bg Group) Append(group ...Group) Group {

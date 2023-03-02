@@ -140,14 +140,45 @@ type PreviousImageRunImageMetadata struct {
 	Reference string `json:"reference" toml:"reference"`
 }
 
-type RunImageMetadata struct {
-	TopLayer  string `json:"topLayer" toml:"top-layer"`
-	Reference string `json:"reference" toml:"reference"`
+type RunImage struct {
+	Reference string         `toml:"reference"`
+	Target    TargetMetadata `json:"target" toml:"target"`
 }
 
-type RunImage struct {
-	Reference string                   `toml:"reference"`
-	Target    buildpack.TargetMetadata `json:"target" toml:"target"`
+type TargetMetadata struct {
+	buildpack.TargetPartial
+	Distribution *buildpack.DistributionMetadata `json:"distribution,omitempty" toml:"distribution,omitempty"`
+}
+
+// IsWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
+func (t *TargetMetadata) IsWildcard() bool {
+	return t.Arch == "" && t.Os == ""
+}
+
+// Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
+func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
+	if t.Arch != o.Arch || t.Os != o.Os {
+		return false
+	}
+	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+		return false
+	}
+
+	// if either of the lengths of Distributions are zero, treat it as a wildcard.
+	if t.Distribution != nil && len(o.Distributions) > 0 {
+		// this could be more efficient but the lists are probably short...
+		found := false
+		for _, odist := range o.Distributions {
+			if t.Distribution.Name == odist.Name && t.Distribution.Version == odist.Version {
+				found = true
+				continue
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // metadata.toml

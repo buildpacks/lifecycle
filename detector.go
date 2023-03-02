@@ -219,8 +219,8 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				if d.AnalyzeMD.RunImage.Target.IsWildcard() {
 					targetMatch = true
 				} else {
-					for _, target := range bpDescriptor.Targets {
-						if target.Satisfies(&d.AnalyzeMD.RunImage.Target) {
+					for i := range bpDescriptor.Targets {
+						if d.AnalyzeMD.RunImage.Target.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
 							targetMatch = true
 							break
 						}

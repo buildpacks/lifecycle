@@ -800,16 +800,17 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					detector.AnalyzeMD.API = "0.12"
 					detector.AnalyzeMD.RunImage.Target.Os = "MacOS"
 					detector.AnalyzeMD.RunImage.Target.Arch = "ARM64"
-					detector.AnalyzeMD.RunImage.Target.Distributions = []buildpack.DistributionMetadata{{Name: "MacOS", Version: "some kind of big cat"}}
+					detector.AnalyzeMD.RunImage.Target.Distribution = &buildpack.DistributionMetadata{Name: "MacOS", Version: "some kind of big cat"}
 
 					bpA1 := &buildpack.BpDescriptor{
 						WithAPI:   "0.12",
 						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 						Targets: []buildpack.TargetMetadata{
-							{Arch: "P6", ArchVariant: "Pentium Pro", Os: "Win95",
+							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", Os: "Win95"},
 								Distributions: []buildpack.DistributionMetadata{
 									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{Arch: "Pentium M", Os: "Win98", Distributions: []buildpack.DistributionMetadata{{Name: "Windows 2000", Version: "Server"}}},
+							{TargetPartial: buildpack.TargetPartial{Arch: "Pentium M", Os: "Win98"},
+								Distributions: []buildpack.DistributionMetadata{{Name: "Windows 2000", Version: "Server"}}},
 						},
 					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
@@ -835,17 +836,16 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				it("totally works if the constraints are met", func() {
 					detector.AnalyzeMD.RunImage.Target.Os = "MacOS"
 					detector.AnalyzeMD.RunImage.Target.Arch = "ARM64"
-					detector.AnalyzeMD.RunImage.Target.Distributions = []buildpack.DistributionMetadata{{Name: "MacOS", Version: "snow cheetah"}}
+					detector.AnalyzeMD.RunImage.Target.Distribution = &buildpack.DistributionMetadata{Name: "MacOS", Version: "snow cheetah"}
 
 					bpA1 := &buildpack.BpDescriptor{
 						WithAPI:   "0.12",
 						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 						Targets: []buildpack.TargetMetadata{
-							{Arch: "P6", ArchVariant: "Pentium Pro", Os: "Win95",
+							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", Os: "Win95"},
 								Distributions: []buildpack.DistributionMetadata{
 									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{Arch: "ARM64", Os: "MacOS", Distributions: []buildpack.DistributionMetadata{{Name: "MacOS", Version: "snow cheetah"}}},
-						},
+							{TargetPartial: buildpack.TargetPartial{Arch: "ARM64", Os: "MacOS"}, Distributions: []buildpack.DistributionMetadata{{Name: "MacOS", Version: "snow cheetah"}}}},
 					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())

@@ -303,8 +303,8 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		layout.FromBaseImagePath(runImageIdentifier.Path),
 	}
 
-	if analyzedMD.PreviousImage != nil {
-		previousImageReference, err := layout.ParseIdentifier(analyzedMD.PreviousImage.Reference)
+	if analyzedMD.PreviousImageRef != "" {
+		previousImageReference, err := layout.ParseIdentifier(analyzedMD.PreviousImageRef)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "parsing previous image reference")
 		}
