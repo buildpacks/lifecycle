@@ -150,11 +150,6 @@ type TargetMetadata struct {
 	Distribution *buildpack.DistributionMetadata `json:"distribution,omitempty" toml:"distribution,omitempty"`
 }
 
-// IsWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
-func (t *TargetMetadata) IsWildcard() bool {
-	return t.Arch == "" && t.Os == ""
-}
-
 // Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
 func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 	if t.Arch != o.Arch || t.Os != o.Os {

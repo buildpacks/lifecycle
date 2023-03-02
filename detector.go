@@ -185,6 +185,11 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 	return nil, nil, ErrFailedDetection
 }
 
+// isWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
+func isWildcard(t platform.TargetMetadata) bool {
+	return t.Arch == "" && t.Os == ""
+}
+
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	// used below to mark each item as "done" by appending it to the done list
 	markDone := func(groupEl buildpack.GroupElement, descriptor buildpack.Descriptor) {
@@ -216,7 +221,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 			if d.AnalyzeMD.API != "" && api.MustParse(d.AnalyzeMD.API).AtLeast("0.12") {
 				targetMatch := false
-				if d.AnalyzeMD.RunImage.Target.IsWildcard() {
+				if isWildcard(d.AnalyzeMD.RunImage.Target) {
 					targetMatch = true
 				} else {
 					for i := range bpDescriptor.Targets {
