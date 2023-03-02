@@ -40,6 +40,7 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagCacheDir(&r.CacheDir)
 		cli.FlagCacheImage(&r.CacheImageRef)
 		cli.FlagGroupPath(&r.GroupPath)
+		cli.FlagLayersDir(&r.LayersDir)
 		cli.FlagUID(&r.UID)
 		cli.FlagGID(&r.GID)
 		cli.FlagAnalyzedPath(&r.AnalyzedPath)
@@ -48,6 +49,7 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagCacheDir(&r.CacheDir)
 		cli.FlagCacheImage(&r.CacheImageRef)
 		cli.FlagGroupPath(&r.GroupPath)
+		cli.FlagLayersDir(&r.LayersDir)
 		cli.FlagUID(&r.UID)
 		cli.FlagGID(&r.GID)
 		cli.FlagAnalyzedPath(&r.AnalyzedPath)
@@ -56,6 +58,7 @@ func (r *restoreCmd) DefineFlags() {
 		cli.FlagCacheDir(&r.CacheDir)
 		cli.FlagCacheImage(&r.CacheImageRef)
 		cli.FlagGroupPath(&r.GroupPath)
+		cli.FlagLayersDir(&r.LayersDir)
 		cli.FlagUID(&r.UID)
 		cli.FlagGID(&r.GID)
 	}

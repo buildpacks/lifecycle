@@ -32,7 +32,7 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 		)
 
 		it.Before(func() {
-			inputs = platform.NewLifecycleInputs(api.MustParse(platformAPI), "some-layers-dir")
+			inputs = platform.NewLifecycleInputs(api.MustParse(platformAPI))
 			inputs.OutputImageRef = "some-output-image" // satisfy validation
 			inputs.RunImageRef = "some-run-image"       // satisfy validation
 			logHandler = memory.New()
