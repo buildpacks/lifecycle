@@ -96,7 +96,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		AppDir:      envOrDefault(EnvAppDir, DefaultAppDir),
 		LayersDir:   envOrDefault(EnvLayersDir, DefaultLayersDir),
 		LayoutDir:   os.Getenv(EnvLayoutDir),
-		OrderPath:   filepath.Join(PlaceholderLayers, DefaultOrderFile),
+		OrderPath:   envOrDefault(EnvOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)),
 		PlatformDir: envOrDefault(EnvPlatformDir, DefaultPlatformDir),
 
 		// The following instruct the lifecycle where to write files and data during the build

@@ -147,6 +147,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, inputs.LauncherSBOMDir, platform.DefaultBuildpacksioSBOMDir)
 				h.AssertEq(t, inputs.LayersDir, "some-layers-dir")
 				h.AssertEq(t, inputs.LogLevel, "debug")
+				h.AssertEq(t, inputs.OrderPath, "some-order-path")
 				h.AssertEq(t, inputs.OutputImageRef, "")
 				h.AssertEq(t, inputs.PlatformAPI, platformAPI) // from constructor
 				h.AssertEq(t, inputs.PlatformDir, "some-platform-dir")
@@ -246,6 +247,14 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("order.toml", func() {
+			when("custom", func() {
+				it("doesn't override it", func() {
+					inputs.OrderPath = "some-order-path"
+					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
+					h.AssertEq(t, inputs.OrderPath, inputs.OrderPath)
+				})
+			})
+
 			when("exists in layers directory", func() {
 				var tmpDir string
 
