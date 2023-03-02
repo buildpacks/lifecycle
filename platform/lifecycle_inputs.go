@@ -135,7 +135,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 
 	if platformAPI.LessThan("0.6") {
 		// The default location for order.toml is /cnb/order.toml
-		inputs.OrderPath = envOrDefault(EnvOrderPath, DefaultOrderPath)
+		inputs.OrderPath = envOrDefault(EnvOrderPath, CNBOrderPath)
 	}
 
 	if platformAPI.LessThan("0.5") {
@@ -242,16 +242,31 @@ func UpdatePlaceholderPaths(i *LifecycleInputs, _ log.Logger) error {
 		if *path == "" {
 			continue
 		}
-		if i.LayersDir == "" {
-			*path = strings.Replace(*path, PlaceholderLayers+string(filepath.Separator), i.LayersDir, 1)
+		if !isPlaceholder(*path) {
 			continue
 		}
-		*path = strings.Replace(*path, PlaceholderLayers, i.LayersDir, 1)
-	}
-	if _, err := os.Stat(i.OrderPath); err != nil {
-		i.OrderPath = DefaultOrderPath
+		oldPath := *path
+		toReplace := PlaceholderLayers
+		if i.LayersDir == "" { // layers is unset when this call comes from the rebaser
+			toReplace = PlaceholderLayers + string(filepath.Separator)
+		}
+		newPath := strings.Replace(*path, toReplace, i.LayersDir, 1)
+		*path = newPath
+		if isPlaceholderOrder(oldPath) {
+			if _, err := os.Stat(newPath); err != nil {
+				i.OrderPath = CNBOrderPath
+			}
+		}
 	}
 	return nil
+}
+
+func isPlaceholder(s string) bool {
+	return strings.Contains(s, PlaceholderLayers)
+}
+
+func isPlaceholderOrder(s string) bool {
+	return s == filepath.Join(PlaceholderLayers, DefaultOrderFile)
 }
 
 func (i *LifecycleInputs) placeholderPaths() []*string {

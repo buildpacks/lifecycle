@@ -188,7 +188,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			it("expects order.toml in the /cnb directory", func() {
 				inputs = platform.NewLifecycleInputs(platformAPI)
 
-				h.AssertEq(t, inputs.OrderPath, platform.DefaultOrderPath)
+				h.AssertEq(t, inputs.OrderPath, platform.CNBOrderPath)
 			})
 		})
 
@@ -207,7 +207,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 
 			it("expects order.toml in the /cnb directory", func() {
 				inputs = platform.NewLifecycleInputs(platformAPI)
-				h.AssertEq(t, inputs.OrderPath, platform.DefaultOrderPath)
+				h.AssertEq(t, inputs.OrderPath, platform.CNBOrderPath)
 			})
 		})
 	})
@@ -270,7 +270,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			when("not exists in layers directory", func() {
 				it("expects order.toml in the /cnb directory", func() {
 					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
-					h.AssertEq(t, inputs.OrderPath, platform.DefaultOrderPath)
+					h.AssertEq(t, inputs.OrderPath, platform.CNBOrderPath)
 				})
 			})
 		})
