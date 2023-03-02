@@ -46,7 +46,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, inputs.LaunchCacheDir, "")
 			h.AssertEq(t, inputs.LauncherPath, platform.DefaultLauncherPath)
 			h.AssertEq(t, inputs.LauncherSBOMDir, platform.DefaultBuildpacksioSBOMDir)
-			h.AssertEq(t, inputs.LayersDir, "/layers")
+			h.AssertEq(t, inputs.LayersDir, platform.DefaultLayersDir)
 			h.AssertEq(t, inputs.LogLevel, "info")
 			h.AssertEq(t, inputs.OutputImageRef, "")
 			h.AssertEq(t, inputs.PlatformAPI, platformAPI) // from constructor
