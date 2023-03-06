@@ -98,8 +98,8 @@ var (
 	DefaultBuildpacksDir  = filepath.Join(path.RootDir, "cnb", "buildpacks")
 	DefaultExtensionsDir  = filepath.Join(path.RootDir, "cnb", "extensions")
 
-	// DefaultOrderPath is the default order path.
-	DefaultOrderPath = filepath.Join(path.RootDir, "cnb", "order.toml")
+	// CNBOrderPath is the default order path if the order file does not exist in the layers directory.
+	CNBOrderPath = filepath.Join(path.RootDir, "cnb", "order.toml")
 
 	// DefaultRunPath is the default run path.
 	DefaultRunPath = filepath.Join(path.RootDir, "cnb", "run.toml")

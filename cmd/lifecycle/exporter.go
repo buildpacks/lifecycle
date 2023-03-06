@@ -60,6 +60,7 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagGroupPath(&e.GroupPath)
 	cli.FlagLaunchCacheDir(&e.LaunchCacheDir)
 	cli.FlagLauncherPath(&e.LauncherPath)
+	cli.FlagLayersDir(&e.LayersDir)
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)

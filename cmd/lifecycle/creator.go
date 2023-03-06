@@ -45,6 +45,7 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagGID(&c.GID)
 	cli.FlagLaunchCacheDir(&c.LaunchCacheDir)
 	cli.FlagLauncherPath(&c.LauncherPath)
+	cli.FlagLayersDir(&c.LayersDir)
 	cli.FlagOrderPath(&c.OrderPath)
 	cli.FlagPlatformDir(&c.PlatformDir)
 	cli.FlagPreviousImage(&c.PreviousImageRef)
