@@ -172,7 +172,6 @@ func (c *createCmd) Exec() error {
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		// QUESTION:  does everyone else think it's correct to pass in an empty/default analyzed.MD here since in this old API version the detect runs before the analyze?
 		detector, err := detectorFactory.NewDetector(platform.AnalyzedMetadata{API: c.PlatformAPI.String()}, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")

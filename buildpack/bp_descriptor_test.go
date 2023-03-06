@@ -49,7 +49,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "V8.4-2L3")
 		})
 
-		it("doesn't translates one special stack value into target values for older apis", func() {
+		it("does translate one special stack value into target values for older apis", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "B", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
 			h.AssertNil(t, err)
@@ -62,7 +62,11 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
 			// specific behaviors for this test
 			h.AssertEq(t, descriptor.Stacks[0].ID, "io.buildpacks.stacks.bionic")
-			h.AssertEq(t, len(descriptor.Targets), 0)
+			h.AssertEq(t, len(descriptor.Targets), 1)
+			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
+			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "ubuntu")
+			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "18.04")
 		})
 
 		it("translates one special stack value into target values", func() {

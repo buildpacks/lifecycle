@@ -1,6 +1,7 @@
 package platform_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -174,6 +175,42 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, amd.Metadata, amd2.Metadata)
 				h.AssertEq(t, amd.API, amd2.API)
 				h.AssertEq(t, amd.BuildImage, amd2.BuildImage)
+			})
+			it("serializes to the old format", func() {
+				amd := platform.AnalyzedMetadata{
+					PreviousImageRef: "previous-img",
+					Metadata: platform.LayersMetadata{
+						Stack: platform.StackMetadata{
+							RunImage: platform.RunImageMetadata{Image: "imagine that"},
+						},
+					},
+					RunImage: platform.RunImage{Reference: "some-ref"},
+				}
+				f := h.TempFile(t, "", "")
+				h.AssertNil(t, amd.WriteTOML(f))
+				contents, err := os.ReadFile(f)
+				h.AssertNil(t, err)
+				expectedContents := `[image]
+  reference = "previous-img"
+
+[metadata]
+  [metadata.config]
+    sha = ""
+  [metadata.launcher]
+    sha = ""
+  [metadata.process-types]
+    sha = ""
+  [metadata.run-image]
+    top-layer = ""
+    reference = ""
+  [metadata.stack]
+    [metadata.stack.run-image]
+      image = "imagine that"
+
+[run-image]
+  reference = "some-ref"
+`
+				h.AssertEq(t, string(contents), expectedContents)
 			})
 		})
 		when("it is new it stays new", func() {
