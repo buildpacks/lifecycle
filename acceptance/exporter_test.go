@@ -17,10 +17,12 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
@@ -276,7 +278,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 					it("is created from the extended run image", func() {
 						exportFlags := []string{
-							"-layers", "/layers/extended",
+							"-analyzed", "/layers/run-image-extended-analyzed.toml",
+							"-extended", "/layers/extended",
 							"-run", "/cnb/run.toml",
 						}
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
@@ -296,7 +299,16 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						h.Run(t, exec.Command("docker", "pull", exportedImageName))
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
-						// TODO: add assertions
+						t.Log("bases the exported image on the extended run image")
+						ref, auth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, exportedImageName)
+						h.AssertNil(t, err)
+						remoteImage, err := remote.Image(ref, remote.WithAuth(auth))
+						h.AssertNil(t, err)
+						configFile, err := remoteImage.ConfigFile()
+						h.AssertNil(t, err)
+						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						// TODO: test io.buildpacks.lifecycle.metadata label
+						// TODO: test that image contains extended layers
 					})
 				})
 			})
@@ -406,8 +418,9 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 	regPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "run-image-extended-analyzed.toml.placeholder"),
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
 	}
 	layoutPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),

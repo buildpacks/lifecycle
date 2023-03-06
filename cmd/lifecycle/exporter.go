@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -46,8 +47,12 @@ type exportData struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
 	if e.PlatformAPI.AtLeast("0.12") {
+		cli.FlagExtendedDir(&e.ExtendedDir)
 		cli.FlagLayoutDir(&e.LayoutDir)
+		cli.FlagRunPath(&e.RunPath)
 		cli.FlagUseLayout(&e.UseLayout)
+	} else {
+		cli.FlagStackPath(&e.StackPath)
 	}
 	if e.PlatformAPI.AtLeast("0.11") {
 		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
@@ -64,7 +69,6 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
 	cli.FlagRunImage(&e.RunImageRef)
-	cli.FlagStackPath(&e.StackPath)
 	cli.FlagUID(&e.UID)
 	cli.FlagUseDaemon(&e.UseDaemon)
 
@@ -262,6 +266,13 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(e.RunImageRef),
 	}
+	if e.supportsRunImageExtension() {
+		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "get extended image config")
+		}
+		opts = append(opts, remote.WithConfig(extendedConfig))
+	}
 
 	if analyzedMD.PreviousImage != nil {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImage.Reference)
@@ -377,4 +388,55 @@ func (e *exportCmd) customSourceDateEpoch() time.Time {
 		return time.Unix(seconds, 0)
 	}
 	return time.Time{}
+}
+
+func (e *exportCmd) supportsRunImageExtension() bool {
+	return e.PlatformAPI.AtLeast("0.12")
+}
+
+func (e *exportCmd) getExtendedConfig(image *platform.RunImage) (*v1.Config, error) {
+	if image == nil {
+		return nil, nil
+	}
+	if !image.Extend {
+		return nil, nil
+	}
+	extendedImage, err := imageFromLayoutPath(filepath.Join(e.ExtendedDir, "run")) // TODO: update in spec
+	if err != nil {
+		return nil, err
+	}
+	extendedConfig, err := extendedImage.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+	return &extendedConfig.Config, nil
+}
+
+func imageFromLayoutPath(parentPath string) (v1.Image, error) {
+	fis, err := os.ReadDir(parentPath)
+	if err != nil {
+		return nil, err
+	}
+	if len(fis) > 1 {
+		return nil, fmt.Errorf("expected directory %q to have only 1 item; found %d", parentPath, len(fis))
+	}
+	imageName := fis[0].Name()
+	layoutPath, err := layout.FromPath(filepath.Join(parentPath, imageName))
+	if err != nil {
+		return nil, err
+	}
+	index, err := layoutPath.ImageIndex()
+	if err != nil {
+		return nil, err
+	}
+	indexManifest, err := index.IndexManifest()
+	if err != nil {
+		return nil, err
+	}
+	manifests := indexManifest.Manifests
+	if len(manifests) != 1 {
+		return nil, fmt.Errorf("expected image %q to have only 1 manifest; found %d", imageName, len(manifests))
+	}
+	manifest := manifests[0]
+	return layoutPath.Image(manifest.Digest)
 }

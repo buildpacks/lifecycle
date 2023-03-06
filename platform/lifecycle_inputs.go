@@ -104,6 +104,7 @@ func NewLifecycleInputs(platformAPI *api.Version, layersDir string) *LifecycleIn
 
 		AnalyzedPath: envOrDefault(EnvAnalyzedPath, filepath.Join(layersDir, DefaultAnalyzedFile)),
 		GeneratedDir: envOrDefault(EnvGeneratedDir, filepath.Join(layersDir, DefaultGeneratedDir)),
+		ExtendedDir:  envOrDefault(EnvExtendedDir, filepath.Join(layersDir, DefaultExtendedDir)), // TODO: add test
 		GroupPath:    envOrDefault(EnvGroupPath, filepath.Join(layersDir, DefaultGroupFile)),
 		PlanPath:     envOrDefault(EnvPlanPath, filepath.Join(layersDir, DefaultPlanFile)),
 		ReportPath:   envOrDefault(EnvReportPath, filepath.Join(layersDir, DefaultReportFile)),

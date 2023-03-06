@@ -246,7 +246,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("creates app layer on Run image", func() {
+			it("creates app layer on run image", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
@@ -890,7 +890,7 @@ version = "4.5.6"
 				})
 			})
 
-			it("creates app layer on Run image", func() {
+			it("creates app layer on run image", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
@@ -1548,7 +1548,7 @@ version = "4.5.6"
 						h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
 					})
 
-					it("creates app layer on Run image", func() {
+					it("creates app layer on run image", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 
