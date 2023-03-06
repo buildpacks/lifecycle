@@ -159,7 +159,7 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 		return fmt.Errorf("failed to append image: %w", err)
 	}
 	// record digest in analyzed.toml
-	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.AnalyzedPath)
+	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return fmt.Errorf("failed to read analyzed metadata: %w", err)
 	}

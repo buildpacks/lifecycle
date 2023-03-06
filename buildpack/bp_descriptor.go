@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-
-	"github.com/buildpacks/lifecycle/api"
 )
 
 type BpDescriptor struct {
@@ -25,7 +23,7 @@ type StackMetadata struct {
 }
 
 type TargetPartial struct {
-	Os          string `json:"os" toml:"os"`
+	OS          string `json:"os" toml:"os"`
 	Arch        string `json:"arch" toml:"arch"`
 	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
 }
@@ -64,15 +62,10 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 		return &BpDescriptor{}, err
 	}
 
-	apiVersion, err := api.NewVersion(descriptor.WithAPI)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(descriptor.Targets) == 0 && apiVersion.AtLeast("0.12") {
+	if len(descriptor.Targets) == 0 {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{Os: "linux", Arch: "x86_64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
 			}
 		}
 	}

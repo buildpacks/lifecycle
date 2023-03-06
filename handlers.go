@@ -2,7 +2,6 @@ package lifecycle
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/BurntSushi/toml"
 
@@ -40,7 +39,7 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
-	ReadAnalyzed(path string) (platform.AnalyzedMetadata, error)
+	ReadAnalyzed(path string, logr log.Logger) (platform.AnalyzedMetadata, error)
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 }
@@ -51,8 +50,7 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
-func (h *DefaultConfigHandler) ReadAnalyzed(path string) (platform.AnalyzedMetadata, error) {
-	logr := log.NewDefaultLogger(os.Stdout) // TODO - should we get the logger some other way?
+func (h *DefaultConfigHandler) ReadAnalyzed(path string, logr log.Logger) (platform.AnalyzedMetadata, error) {
 	return platform.ReadAnalyzed(path, logr)
 }
 

@@ -187,7 +187,7 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 
 // isWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
 func isWildcard(t platform.TargetMetadata) bool {
-	return t.Arch == "" && t.Os == ""
+	return t.Arch == "" && t.OS == ""
 }
 
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {

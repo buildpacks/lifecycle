@@ -44,7 +44,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			// specific behaviors for this test
 			h.AssertEq(t, len(descriptor.Targets), 1)
 			h.AssertEq(t, descriptor.Targets[0].Arch, "IA64")
-			h.AssertEq(t, descriptor.Targets[0].Os, "OpenVMS")
+			h.AssertEq(t, descriptor.Targets[0].OS, "OpenVMS")
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "VSI OpenVMS")
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "V8.4-2L3")
 		})
@@ -79,8 +79,8 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			// specific behaviors for this test
 			h.AssertEq(t, descriptor.Stacks[0].ID, "io.buildpacks.stacks.bionic")
 			h.AssertEq(t, len(descriptor.Targets), 1)
-			h.AssertEq(t, descriptor.Targets[0].Arch, "x86_64")
-			h.AssertEq(t, descriptor.Targets[0].Os, "linux")
+			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "ubuntu")
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "18.04")
 		})

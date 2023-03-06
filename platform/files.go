@@ -152,7 +152,7 @@ type TargetMetadata struct {
 
 // Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
 func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
-	if t.Arch != o.Arch || t.Os != o.Os {
+	if t.Arch != o.Arch || t.OS != o.OS {
 		return false
 	}
 	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
