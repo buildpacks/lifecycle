@@ -172,6 +172,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
 				})
+
 				when("SOURCE_DATE_EPOCH is set", func() {
 					it("Image CreatedAt is set to SOURCE_DATE_EPOCH", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "SOURCE_DATE_EPOCH support added in 0.9")
@@ -202,6 +203,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, expectedTime)
 					})
 				})
+
 				when("cache", func() {
 					when("cache image case", func() {
 						it("is created", func() {
@@ -264,6 +266,37 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.AssertNil(t, err)
 							defer layer.Close()
 						})
+					})
+				})
+
+				when.Focus("using extensions", func() { // TODO: daemon case, layout case?
+					it.Before(func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
+					})
+
+					it("is created from the extended run image", func() {
+						exportFlags := []string{
+							"-layers", "/layers/extended",
+							"-run", "/cnb/run.toml",
+						}
+						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
+						exportArgs = append(exportArgs, exportedImageName)
+
+						output := h.DockerRun(t,
+							exportImage,
+							h.WithFlags(
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+								"--network", exportRegNetwork,
+							),
+							h.WithArgs(exportArgs...),
+						)
+						h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+						h.Run(t, exec.Command("docker", "pull", exportedImageName))
+						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
+						// TODO: add assertions
 					})
 				})
 			})
