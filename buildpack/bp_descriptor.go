@@ -3,6 +3,7 @@
 package buildpack
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -66,6 +67,24 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
 				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+			}
+		}
+	}
+	if len(descriptor.Targets) == 0 {
+		binDir := filepath.Join(descriptor.WithRootDir, "bin")
+		if stat, _ := os.Stat(binDir); stat != nil { // technically i think there's always supposed to be a bin Dir but we weren't enforcing it previously so why start now?
+			binFiles, err := os.ReadDir(binDir)
+			if err != nil {
+				return &BpDescriptor{}, err
+			}
+			for _, bf := range binFiles {
+				fname := bf.Name()
+				if fname == "build.exe" || fname == "build.bat" {
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "amd64"}})
+				}
+				if fname == "build" { // TODO: Question: do you think we should check whether its executable bit is set? the spec just does it by name...
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}})
+				}
 			}
 		}
 	}

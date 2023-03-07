@@ -88,7 +88,6 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "ubuntu")
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "18.04")
 		})
-
 		it("does not translate non-special stack values", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "C", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
@@ -103,6 +102,43 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			// specific behaviors for this test
 			h.AssertEq(t, descriptor.Stacks[0].ID, "some.non-magic.value")
 			h.AssertEq(t, len(descriptor.Targets), 0)
+		})
+		it("does autodetect linux buildpacks from the bin dir contents", func() {
+			path := filepath.Join("testdata", "buildpack", "by-id", "C", "v2", "buildpack.toml")
+			descriptor, err := buildpack.ReadBpDescriptor(path)
+			h.AssertNil(t, err)
+			// common sanity assertions
+			h.AssertEq(t, descriptor.WithAPI, "0.12")
+			h.AssertEq(t, descriptor.Buildpack.ID, "C")
+			h.AssertEq(t, descriptor.Buildpack.Name, "Buildpack C")
+			h.AssertEq(t, descriptor.Buildpack.Version, "v2")
+			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack C Homepage")
+			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
+			// specific behaviors for this test
+			h.AssertEq(t, descriptor.Stacks[0].ID, "some.non-magic.value")
+			h.AssertEq(t, len(descriptor.Targets), 1)
+			h.AssertEq(t, len(descriptor.Targets), 1)
+			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
+			h.AssertEq(t, len(descriptor.Targets[0].Distributions), 0)
+		})
+		it("detects both windows/amd64 if batch files are present and linux", func() {
+			path := filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
+			descriptor, err := buildpack.ReadBpDescriptor(path)
+			h.AssertNil(t, err)
+			// common sanity assertions
+			h.AssertEq(t, descriptor.WithAPI, "0.7")
+			h.AssertEq(t, descriptor.Buildpack.ID, "A")
+			h.AssertEq(t, descriptor.Buildpack.Name, "Buildpack A")
+			h.AssertEq(t, descriptor.Buildpack.Version, "v1")
+			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack A Homepage")
+			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
+			// specific behaviors for this test
+			h.AssertEq(t, len(descriptor.Targets), 2)
+			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
+			h.AssertEq(t, descriptor.Targets[1].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[1].OS, "windows")
 		})
 	})
 }
