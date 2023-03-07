@@ -378,7 +378,7 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 
 	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml.placeholder")
 	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.PreviousImageRef = phaseTest.targetRegistry.fixtures.SomeAppImage
+	analyzedMD.PreviousImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}
 	analyzedMD.RunImage = platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
 

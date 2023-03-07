@@ -120,7 +120,7 @@ func (d *detectCmd) Exec() error {
 		// was a custom run image configured?
 		if result.RunImage != "" {
 			cmd.DefaultLogger.Debug("Updating analyzed metadata with new runImage")
-			detector.AnalyzeMD.RunImage = platform.RunImage{Reference: result.RunImage}
+			detector.AnalyzeMD.RunImage = &platform.RunImage{Reference: result.RunImage}
 			if err = d.writeGenerateData(detector.AnalyzeMD); err != nil {
 				return err
 			}

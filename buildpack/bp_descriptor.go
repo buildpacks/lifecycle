@@ -82,7 +82,7 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 				if fname == "build.exe" || fname == "build.bat" {
 					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "amd64"}})
 				}
-				if fname == "build" { // TODO: Question: do you think we should check whether its executable bit is set? the spec just does it by name...
+				if fname == "build" {
 					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}})
 				}
 			}

@@ -574,17 +574,8 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, md.PreviousImageRef, "s0m3D1g3sT")
+					h.AssertEq(t, md.PreviousImageRef(), "s0m3D1g3sT")
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
-				})
-
-				it("propagates the api version", func() {
-					expectRestoresLayerMetadataIfSupported()
-
-					md, err := analyzer.Analyze()
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, md.API, platformAPI)
 				})
 
 				when("cache exists", func() {
@@ -618,7 +609,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, md.PreviousImageRef, "")
+					h.AssertEq(t, md.PreviousImageRef(), "")
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
