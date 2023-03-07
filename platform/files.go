@@ -313,7 +313,7 @@ type ImageReport struct {
 // run.toml
 
 type RunMetadata struct {
-	Images []RunImageForExport `json:"-" toml:"image"`
+	Images []RunImageForExport `json:"-" toml:"images"`
 }
 
 func ReadRun(runPath string, logger log.Logger) (RunMetadata, error) {
