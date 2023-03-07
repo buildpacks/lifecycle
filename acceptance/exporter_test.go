@@ -307,8 +307,24 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						configFile, err := remoteImage.ConfigFile()
 						h.AssertNil(t, err)
 						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						layers, err := remoteImage.Layers()
+						h.AssertNil(t, err)
+						digestFromExt1 := "sha256:0c5f7a6fe14dbd19670f39e7466051cbd40b3a534c0812659740fb03e2137c1a"
+						digestFromExt2 := "sha256:482346d1e0c7afa2514ec366d2e000e0667d0a6664690aab3c8ad51c81915b91"
+						var foundFromExt1, foundFromExt2 bool
+						for _, layer := range layers {
+							digest, err := layer.Digest()
+							h.AssertNil(t, err)
+							if digest.String() == digestFromExt1 {
+								foundFromExt1 = true
+							}
+							if digest.String() == digestFromExt2 {
+								foundFromExt2 = true
+							}
+						}
+						h.AssertEq(t, foundFromExt1, true)
+						h.AssertEq(t, foundFromExt2, true)
 						// TODO: test io.buildpacks.lifecycle.metadata label
-						// TODO: test that image contains extended layers
 					})
 				})
 			})

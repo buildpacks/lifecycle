@@ -25,6 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -200,6 +201,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		AdditionalNames:    e.AdditionalTags,
 		AppDir:             e.AppDir,
 		DefaultProcessType: e.DefaultProcessType,
+		ExtendedDir:        e.ExtendedDir,
 		LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
 		LayersDir:          e.LayersDir,
 		OrigMetadata:       analyzedMD.Metadata,
@@ -394,14 +396,14 @@ func (e *exportCmd) supportsRunImageExtension() bool {
 	return e.PlatformAPI.AtLeast("0.12")
 }
 
-func (e *exportCmd) getExtendedConfig(image *platform.RunImage) (*v1.Config, error) {
-	if image == nil {
+func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, error) {
+	if runImage == nil {
 		return nil, nil
 	}
-	if !image.Extend {
+	if !runImage.Extend {
 		return nil, nil
 	}
-	extendedImage, err := imageFromLayoutPath(filepath.Join(e.ExtendedDir, "run")) // TODO: update in spec
+	extendedImage, err := image.FromLayoutPath(filepath.Join(e.ExtendedDir, "run")) // TODO: update in spec
 	if err != nil {
 		return nil, err
 	}
@@ -410,33 +412,4 @@ func (e *exportCmd) getExtendedConfig(image *platform.RunImage) (*v1.Config, err
 		return nil, err
 	}
 	return &extendedConfig.Config, nil
-}
-
-func imageFromLayoutPath(parentPath string) (v1.Image, error) {
-	fis, err := os.ReadDir(parentPath)
-	if err != nil {
-		return nil, err
-	}
-	if len(fis) > 1 {
-		return nil, fmt.Errorf("expected directory %q to have only 1 item; found %d", parentPath, len(fis))
-	}
-	imageName := fis[0].Name()
-	layoutPath, err := layout.FromPath(filepath.Join(parentPath, imageName))
-	if err != nil {
-		return nil, err
-	}
-	index, err := layoutPath.ImageIndex()
-	if err != nil {
-		return nil, err
-	}
-	indexManifest, err := index.IndexManifest()
-	if err != nil {
-		return nil, err
-	}
-	manifests := indexManifest.Manifests
-	if len(manifests) != 1 {
-		return nil, fmt.Errorf("expected image %q to have only 1 manifest; found %d", imageName, len(manifests))
-	}
-	manifest := manifests[0]
-	return layoutPath.Image(manifest.Digest)
 }
