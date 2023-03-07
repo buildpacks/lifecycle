@@ -38,6 +38,9 @@ func (amd AnalyzedMetadata) RunImageTarget() TargetMetadata {
 	if amd.RunImage == nil {
 		return TargetMetadata{}
 	}
+	if amd.RunImage.Target == nil {
+		return TargetMetadata{}
+	}
 	return *amd.RunImage.Target
 }
 
