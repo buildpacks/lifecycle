@@ -12,6 +12,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
@@ -20,10 +21,27 @@ import (
 // analyzed.toml
 
 type AnalyzedMetadata struct {
-	PreviousImage *ImageIdentifier `toml:"image"`
+	PreviousImage *ImageIdentifier `toml:"image,omitempty"`
 	Metadata      LayersMetadata   `toml:"metadata"`
-	RunImage      *ImageIdentifier `toml:"run-image,omitempty"`
+	RunImage      *RunImage        `toml:"run-image,omitempty"`
 	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
+}
+
+func (amd AnalyzedMetadata) PreviousImageRef() string {
+	if amd.PreviousImage == nil {
+		return ""
+	}
+	return amd.PreviousImage.Reference
+}
+
+func (amd AnalyzedMetadata) RunImageTarget() TargetMetadata {
+	if amd.RunImage == nil {
+		return TargetMetadata{}
+	}
+	if amd.RunImage.Target == nil {
+		return TargetMetadata{}
+	}
+	return *amd.RunImage.Target
 }
 
 // FIXME: fix key names to be accurate in the daemon case
@@ -41,6 +59,11 @@ func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, err
 		return AnalyzedMetadata{}, err
 	}
 	return analyzedMD, nil
+}
+
+// WriteTOML serializes the metadata to disk
+func (amd *AnalyzedMetadata) WriteTOML(path string) error {
+	return encoding.WriteTOML(path, amd)
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadataCompat`
@@ -85,6 +108,42 @@ type LayerMetadata struct {
 type PreviousImageRunImageMetadata struct {
 	TopLayer  string `json:"topLayer" toml:"top-layer"`
 	Reference string `json:"reference" toml:"reference"`
+}
+
+type RunImage struct {
+	Reference string          `toml:"reference"`
+	Target    *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
+}
+
+type TargetMetadata struct {
+	buildpack.TargetPartial
+	Distribution *buildpack.DistributionMetadata `json:"distribution,omitempty" toml:"distribution,omitempty"`
+}
+
+// Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
+func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
+	if t.Arch != o.Arch || t.OS != o.OS {
+		return false
+	}
+	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+		return false
+	}
+
+	// if either of the lengths of Distributions are zero, treat it as a wildcard.
+	if t.Distribution != nil && len(o.Distributions) > 0 {
+		// this could be more efficient but the lists are probably short...
+		found := false
+		for _, odist := range o.Distributions {
+			if t.Distribution.Name == odist.Name && t.Distribution.Version == odist.Version {
+				found = true
+				continue
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // metadata.toml

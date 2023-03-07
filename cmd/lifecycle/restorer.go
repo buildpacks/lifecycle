@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -112,9 +111,9 @@ func (r *restoreCmd) Exec() error {
 
 	var appMeta platform.LayersMetadata
 	if r.restoresLayerMetadata() {
-		var analyzedMD platform.AnalyzedMetadata
-		if _, err := toml.DecodeFile(r.AnalyzedPath, &analyzedMD); err == nil {
-			appMeta = analyzedMD.Metadata
+		amd, err := platform.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger)
+		if err == nil {
+			appMeta = amd.Metadata
 		}
 	}
 
@@ -160,7 +159,7 @@ func (r *restoreCmd) pullBuilderImageIfNeeded() error {
 		return fmt.Errorf("failed to append image: %w", err)
 	}
 	// record digest in analyzed.toml
-	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.AnalyzedPath)
+	analyzedMD, err := lifecycle.Config.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return fmt.Errorf("failed to read analyzed metadata: %w", err)
 	}

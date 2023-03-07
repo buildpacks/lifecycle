@@ -69,7 +69,12 @@ func (d *detectCmd) Exec() error {
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
+	amd, err := platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
+	if err != nil {
+		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
+	}
 	detector, err := detectorFactory.NewDetector(
+		amd,
 		d.AppDir,
 		d.BuildConfigDir,
 		d.OrderPath,
@@ -115,14 +120,8 @@ func (d *detectCmd) Exec() error {
 		// was a custom run image configured?
 		if result.RunImage != "" {
 			cmd.DefaultLogger.Debug("Updating analyzed metadata with new runImage")
-			var analyzedMD platform.AnalyzedMetadata
-			analyzedMD, err = platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
-			if err != nil {
-				return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse analyzed metadata")
-			}
-			cmd.DefaultLogger.Debugf("Loaded existing analyzed metadata from '%s'", d.AnalyzedPath)
-			analyzedMD.RunImage = &platform.ImageIdentifier{Reference: result.RunImage}
-			if err = d.writeGenerateData(analyzedMD); err != nil {
+			detector.AnalyzeMD.RunImage = &platform.RunImage{Reference: result.RunImage}
+			if err = d.writeGenerateData(detector.AnalyzeMD); err != nil {
 				return err
 			}
 			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage)
@@ -185,8 +184,9 @@ func (d *detectCmd) writeDetectData(group buildpack.Group, plan platform.BuildPl
 	return nil
 }
 
+// writeGenerateData re-outputs the analyzedMD that we read previously, but now we've added the RunImage, if a custom runImage was configured
 func (d *detectCmd) writeGenerateData(analyzedMD platform.AnalyzedMetadata) error {
-	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
+	if err := analyzedMD.WriteTOML(d.AnalyzedPath); err != nil {
 		return cmd.FailErr(err, "write analyzed metadata")
 	}
 	return nil

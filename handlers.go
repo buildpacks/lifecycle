@@ -39,7 +39,7 @@ type BuildpackAPIVerifier interface {
 
 //go:generate mockgen -package testmock -destination testmock/config_handler.go github.com/buildpacks/lifecycle ConfigHandler
 type ConfigHandler interface {
-	ReadAnalyzed(path string) (platform.AnalyzedMetadata, error)
+	ReadAnalyzed(path string, logr log.Logger) (platform.AnalyzedMetadata, error)
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
 }
@@ -50,13 +50,8 @@ func NewConfigHandler() *DefaultConfigHandler {
 	return &DefaultConfigHandler{}
 }
 
-func (h *DefaultConfigHandler) ReadAnalyzed(path string) (platform.AnalyzedMetadata, error) {
-	var analyzedMD platform.AnalyzedMetadata
-	_, err := toml.DecodeFile(path, &analyzedMD)
-	if err != nil {
-		return platform.AnalyzedMetadata{}, fmt.Errorf("failed to read analyzed file: %w", err)
-	}
-	return analyzedMD, nil
+func (h *DefaultConfigHandler) ReadAnalyzed(path string, logr log.Logger) (platform.AnalyzedMetadata, error) {
+	return platform.ReadAnalyzed(path, logr)
 }
 
 func (h *DefaultConfigHandler) ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error) {

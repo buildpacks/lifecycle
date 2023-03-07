@@ -151,7 +151,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 			if err != nil {
 				return err
 			}
-			if analyzedMD.RunImage == nil || analyzedMD.RunImage.Reference == "" {
+			if analyzedMD.RunImage.Reference == "" {
 				return errors.New("run image not found in analyzed metadata")
 			}
 			i.RunImageRef = analyzedMD.RunImage.Reference

@@ -10,6 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
+	log "github.com/buildpacks/lifecycle/log"
 	platform "github.com/buildpacks/lifecycle/platform"
 )
 
@@ -37,18 +38,18 @@ func (m *MockConfigHandler) EXPECT() *MockConfigHandlerMockRecorder {
 }
 
 // ReadAnalyzed mocks base method.
-func (m *MockConfigHandler) ReadAnalyzed(arg0 string) (platform.AnalyzedMetadata, error) {
+func (m *MockConfigHandler) ReadAnalyzed(arg0 string, arg1 log.Logger) (platform.AnalyzedMetadata, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadAnalyzed", arg0)
+	ret := m.ctrl.Call(m, "ReadAnalyzed", arg0, arg1)
 	ret0, _ := ret[0].(platform.AnalyzedMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReadAnalyzed indicates an expected call of ReadAnalyzed.
-func (mr *MockConfigHandlerMockRecorder) ReadAnalyzed(arg0 interface{}) *gomock.Call {
+func (mr *MockConfigHandlerMockRecorder) ReadAnalyzed(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAnalyzed", reflect.TypeOf((*MockConfigHandler)(nil).ReadAnalyzed), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadAnalyzed", reflect.TypeOf((*MockConfigHandler)(nil).ReadAnalyzed), arg0, arg1)
 }
 
 // ReadGroup mocks base method.
