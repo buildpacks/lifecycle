@@ -797,10 +797,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 			when("A Target is provided from AnalyzeMD", func() {
 				it("errors if the buildpacks don't share that target arch/os", func() {
-					detector.AnalyzeMD.API = "0.12"
-					detector.AnalyzeMD.RunImage.Target.OS = "MacOS"
-					detector.AnalyzeMD.RunImage.Target.Arch = "ARM64"
-					detector.AnalyzeMD.RunImage.Target.Distribution = &buildpack.DistributionMetadata{Name: "MacOS", Version: "some kind of big cat"}
+					detector.AnalyzeMD.RunImage = &platform.RunImage{
+						Target: &platform.TargetMetadata{
+							TargetPartial: buildpack.TargetPartial{
+								OS:   "MacOS",
+								Arch: "ARM64",
+							},
+							Distribution: &buildpack.DistributionMetadata{Name: "MacOS", Version: "some kind of big cat"},
+						},
+					}
 
 					bpA1 := &buildpack.BpDescriptor{
 						WithAPI:   "0.12",
@@ -834,9 +839,15 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 				})
 				it("totally works if the constraints are met", func() {
-					detector.AnalyzeMD.RunImage.Target.OS = "MacOS"
-					detector.AnalyzeMD.RunImage.Target.Arch = "ARM64"
-					detector.AnalyzeMD.RunImage.Target.Distribution = &buildpack.DistributionMetadata{Name: "MacOS", Version: "snow cheetah"}
+					detector.AnalyzeMD.RunImage = &platform.RunImage{
+						Target: &platform.TargetMetadata{
+							TargetPartial: buildpack.TargetPartial{
+								OS:   "MacOS",
+								Arch: "ARM64",
+							},
+							Distribution: &buildpack.DistributionMetadata{Name: "MacOS", Version: "snow cheetah"},
+						},
+					}
 
 					bpA1 := &buildpack.BpDescriptor{
 						WithAPI:   "0.12",

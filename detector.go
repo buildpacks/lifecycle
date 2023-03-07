@@ -64,6 +64,7 @@ type Detector struct {
 	Resolver       DetectResolver
 	Runs           *sync.Map
 	AnalyzeMD      platform.AnalyzedMetadata
+	PlatformAPI    *api.Version
 
 	// If detect fails, we want to print debug statements as info level.
 	// memHandler holds all log entries; we'll iterate through them at the end of detect,
@@ -84,6 +85,7 @@ func (f *DetectorFactory) NewDetector(analyzedMD platform.AnalyzedMetadata, appD
 		Resolver:       NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
 		Runs:           &sync.Map{},
 		memHandler:     memHandler,
+		PlatformAPI:    f.platformAPI,
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
@@ -219,9 +221,9 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				return nil, nil, err
 			}
 
-			if d.AnalyzeMD.API != "" && api.MustParse(d.AnalyzeMD.API).AtLeast("0.12") {
+			if d.PlatformAPI.AtLeast("0.12") {
 				targetMatch := false
-				if isWildcard(d.AnalyzeMD.RunImage.Target) {
+				if isWildcard(d.AnalyzeMD.RunImageTarget()) {
 					targetMatch = true
 				} else {
 					for i := range bpDescriptor.Targets {

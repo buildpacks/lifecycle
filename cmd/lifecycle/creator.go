@@ -172,7 +172,7 @@ func (c *createCmd) Exec() error {
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(platform.AnalyzedMetadata{API: c.PlatformAPI.String()}, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(platform.AnalyzedMetadata{}, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}

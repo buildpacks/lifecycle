@@ -21,18 +21,24 @@ import (
 // analyzed.toml
 
 type AnalyzedMetadata struct {
-	PreviousImageRef string           `toml:"image-ref"`
-	Metadata         LayersMetadata   `toml:"metadata"`
-	RunImage         RunImage         `toml:"run-image,omitempty"`
-	BuildImage       *ImageIdentifier `toml:"build-image,omitempty"`
-	API              string           `toml:"api"` // TODO populate this field...
+	PreviousImage *ImageIdentifier `toml:"image,omitempty"`
+	Metadata      LayersMetadata   `toml:"metadata"`
+	RunImage      *RunImage        `toml:"run-image,omitempty"`
+	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
 }
 
-type amdBeforeAPIv12 struct {
-	PreviousImage *ImageIdentifier `toml:"image"`
-	Metadata      LayersMetadata   `toml:"metadata"`
-	RunImage      *ImageIdentifier `toml:"run-image,omitempty"`
-	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
+func (amd AnalyzedMetadata) PreviousImageRef() string {
+	if amd.PreviousImage == nil {
+		return ""
+	}
+	return amd.PreviousImage.Reference
+}
+
+func (amd AnalyzedMetadata) RunImageTarget() TargetMetadata {
+	if amd.RunImage == nil {
+		return TargetMetadata{}
+	}
+	return *amd.RunImage.Target
 }
 
 // FIXME: fix key names to be accurate in the daemon case
@@ -49,50 +55,11 @@ func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, err
 		}
 		return AnalyzedMetadata{}, err
 	}
-	if analyzedMD.API == "" {
-		return analyzedfromV11(analyzedPath)
-	}
 	return analyzedMD, nil
 }
 
-func analyzedfromV11(path string) (AnalyzedMetadata, error) {
-	oldamd := amdBeforeAPIv12{}
-	amd := AnalyzedMetadata{}
-	if _, err := toml.DecodeFile(path, &oldamd); err != nil {
-		return amd, err
-	}
-
-	if oldamd.PreviousImage != nil {
-		amd.PreviousImageRef = oldamd.PreviousImage.Reference
-	}
-	if oldamd.RunImage != nil {
-		amd.RunImage.Reference = oldamd.RunImage.Reference
-	}
-	amd.Metadata = oldamd.Metadata
-	amd.BuildImage = oldamd.BuildImage
-	return amd, nil
-}
-
-func analyzedToV11(amd *AnalyzedMetadata) amdBeforeAPIv12 {
-	oldamd := amdBeforeAPIv12{
-		Metadata:   amd.Metadata,
-		BuildImage: amd.BuildImage,
-	}
-	if amd.PreviousImageRef != "" {
-		oldamd.PreviousImage = &ImageIdentifier{Reference: amd.PreviousImageRef}
-	}
-	if amd.RunImage.Reference != "" {
-		oldamd.RunImage = &ImageIdentifier{Reference: amd.RunImage.Reference}
-	}
-	return oldamd
-}
-
-// WriteTOML serializes the metadata to disk in the format expected by the API version
+// WriteTOML serializes the metadata to disk
 func (amd *AnalyzedMetadata) WriteTOML(path string) error {
-	if amd.API == "" || api.MustParse(amd.API).LessThan("0.12") {
-		oldamd := analyzedToV11(amd)
-		return encoding.WriteTOML(path, oldamd)
-	}
 	return encoding.WriteTOML(path, amd)
 }
 
@@ -141,8 +108,8 @@ type PreviousImageRunImageMetadata struct {
 }
 
 type RunImage struct {
-	Reference string         `toml:"reference"`
-	Target    TargetMetadata `json:"target" toml:"target"`
+	Reference string          `toml:"reference"`
+	Target    *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
 }
 
 type TargetMetadata struct {

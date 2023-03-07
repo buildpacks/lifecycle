@@ -817,7 +817,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.PreviousImageRef, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 
@@ -846,7 +846,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.PreviousImageRef, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 				})
@@ -976,7 +976,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithArgs(execArgs...),
 						)
 						analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-						h.AssertStringContains(t, analyzedMD.PreviousImageRef, analyzeRegFixtures.ReadWriteAppImage)
+						h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 					})
 				})
 
