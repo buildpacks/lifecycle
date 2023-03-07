@@ -85,10 +85,10 @@ func (mr *MockConfigHandlerMockRecorder) ReadOrder(arg0 interface{}) *gomock.Cal
 }
 
 // ReadRun mocks base method.
-func (m *MockConfigHandler) ReadRun(arg0 string, arg1 log.Logger) (platform.RunMetadata, error) {
+func (m *MockConfigHandler) ReadRun(arg0 string, arg1 log.Logger) (platform.RunFileMetadata, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadRun", arg0, arg1)
-	ret0, _ := ret[0].(platform.RunMetadata)
+	ret0, _ := ret[0].(platform.RunFileMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

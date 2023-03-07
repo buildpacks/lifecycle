@@ -42,7 +42,7 @@ type ConfigHandler interface {
 	ReadAnalyzed(path string) (platform.AnalyzedMetadata, error)
 	ReadGroup(path string) (buildpackGroup []buildpack.GroupElement, extensionsGroup []buildpack.GroupElement, err error)
 	ReadOrder(path string) (buildpack.Order, buildpack.Order, error)
-	ReadRun(runPath string, logger log.Logger) (platform.RunMetadata, error)
+	ReadRun(runPath string, logger log.Logger) (platform.RunFileMetadata, error)
 }
 
 type DefaultConfigHandler struct{}
@@ -106,6 +106,6 @@ func ReadOrder(path string) (buildpack.Order, buildpack.Order, error) {
 	return order.Order, order.OrderExtensions, err
 }
 
-func (h *DefaultConfigHandler) ReadRun(runPath string, logger log.Logger) (platform.RunMetadata, error) {
+func (h *DefaultConfigHandler) ReadRun(runPath string, logger log.Logger) (platform.RunFileMetadata, error) {
 	return platform.ReadRun(runPath, logger)
 }

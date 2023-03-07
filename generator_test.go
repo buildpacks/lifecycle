@@ -65,7 +65,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 		it("configures the generator", func() {
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
 			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path").Return(platform.AnalyzedMetadata{RunImage: &platform.RunImage{Reference: "some-run-image-ref"}}, nil)
-			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(platform.RunMetadata{Images: []platform.RunImageMetadata{{Image: "some-run-image"}}}, nil)
+			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(platform.RunFileMetadata{Images: []platform.RunImageMetadata{{Image: "some-run-image"}}}, nil)
 
 			providedPlan := platform.BuildPlan{Entries: []platform.BuildPlanEntry{
 				{
@@ -103,7 +103,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, generator.Logger, logger)
 			h.AssertEq(t, generator.Plan, providedPlan)
 			h.AssertEq(t, generator.PlatformDir, "some-platform-dir")
-			h.AssertEq(t, generator.RunMetadata, platform.RunMetadata{Images: []platform.RunImageMetadata{{Image: "some-run-image"}}})
+			h.AssertEq(t, generator.RunMetadata, platform.RunFileMetadata{Images: []platform.RunImageMetadata{{Image: "some-run-image"}}})
 			h.AssertEq(t, generator.Out, stdout)
 			h.AssertEq(t, generator.Err, stderr)
 		})
@@ -480,7 +480,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 				when("run metadata provided", func() {
 					it.Before(func() {
-						generator.RunMetadata = platform.RunMetadata{
+						generator.RunMetadata = platform.RunFileMetadata{
 							Images: []platform.RunImageMetadata{
 								{Image: "some-run-image"},
 							},

@@ -69,7 +69,7 @@ type ExportOptions struct {
 	DefaultProcessType string
 	// for layer metadata label
 	RunImageRef string
-	Stack       platform.StackMetadata
+	Stack       platform.StackFileMetadata
 	// for project metadata label
 	Project platform.ProjectMetadata
 }
@@ -247,7 +247,7 @@ func (e *Exporter) copyDefaultSBOMsForComponent(component, dstDir string) error 
 }
 
 func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
-	if !e.PlatformAPI.AtLeast("0.12") {
+	if !e.PlatformAPI.AtLeast("0.12") || opts.ExtendedDir == "" {
 		return nil
 	}
 	parentPath := filepath.Join(opts.ExtendedDir, "run")

@@ -39,7 +39,7 @@ func TestRestorer(t *testing.T) {
 
 	testImageDockerContext := filepath.Join("testdata", "restorer")
 	restoreTest = NewPhaseTest(t, "restorer", testImageDockerContext)
-	restoreTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
+	restoreTest.Start(t, updateTOMLFixturesWithTestRegistry)
 	defer restoreTest.Stop(t)
 
 	restoreImage = restoreTest.testImageRef

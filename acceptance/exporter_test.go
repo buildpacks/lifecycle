@@ -5,6 +5,7 @@ package acceptance
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -27,6 +29,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/path"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -48,7 +51,7 @@ func TestExporter(t *testing.T) {
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
 
-	exportTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
+	exportTest.Start(t, updateTOMLFixturesWithTestRegistry)
 	defer exportTest.Stop(t)
 
 	exportImage = exportTest.testImageRef
@@ -325,7 +328,14 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						}
 						h.AssertEq(t, foundFromExt1, true)
 						h.AssertEq(t, foundFromExt2, true)
-						// TODO: test io.buildpacks.lifecycle.metadata label
+						t.Log("sets the layers metadata label according to the new spec")
+						var lmd platform.LayersMetadata
+						lmdJSON := configFile.Config.Labels["io.buildpacks.lifecycle.metadata"]
+						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
+						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
+						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
+						h.AssertEq(t, lmd.RunImage.TopLayer, "FOO")                                            // TODO: fix to be accurate
+						h.AssertEq(t, lmd.RunImage.Reference, "BAR")                                           // TODO: fix to be accurate; it should just be a hex
 					})
 				})
 			})
@@ -431,19 +441,21 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 	h.AssertEq(t, inspect.Created, expectedCreatedAt.Format(time.RFC3339))
 }
 
-func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
-	regPlaceholders := []string{
+func updateTOMLFixturesWithTestRegistry(t *testing.T, phaseTest *PhaseTest) {
+	analyzedTOMLPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "run-image-extended-analyzed.toml.placeholder"),
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
 	}
+	runTOMLPlaceholders := []string{
+		filepath.Join(phaseTest.testImageDockerContext, "container", "cnb", "run.toml.placeholder"),
+	}
 	layoutPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
 	}
-
-	for _, pPath := range regPlaceholders {
+	for _, pPath := range analyzedTOMLPlaceholders {
 		if _, err := os.Stat(pPath); os.IsNotExist(err) {
 			continue
 		}
@@ -452,6 +464,17 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
 		}
 		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
+	}
+	for _, pPath := range runTOMLPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
+			continue
+		}
+		runMD := assertRunMetadata(t, pPath)
+		for idx, image := range runMD.Images {
+			image.Image = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
+			runMD.Images[idx] = image
+		}
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), runMD)
 	}
 	for _, pPath := range layoutPlaceholders {
 		if _, err := os.Stat(pPath); os.IsNotExist(err) {
@@ -464,6 +487,18 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 		}
 		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
 	}
+}
+
+func assertRunMetadata(t *testing.T, path string) *platform.RunFileMetadata {
+	contents, err := os.ReadFile(path)
+	h.AssertNil(t, err)
+	h.AssertEq(t, len(contents) > 0, true)
+
+	var runMD platform.RunFileMetadata
+	_, err = toml.Decode(string(contents), &runMD)
+	h.AssertNil(t, err)
+
+	return &runMD
 }
 
 func calculateEmptyLayerSha(t *testing.T) string {

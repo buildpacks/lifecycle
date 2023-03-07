@@ -51,28 +51,28 @@ func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, err
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadataCompat`
 type LayersMetadata struct {
-	App          []LayerMetadata               `json:"app" toml:"app"`
-	BOM          *LayerMetadata                `json:"sbom,omitempty" toml:"sbom,omitempty"`
-	Buildpacks   []buildpack.LayersMetadata    `json:"buildpacks" toml:"buildpacks"`
-	Config       LayerMetadata                 `json:"config" toml:"config"`
-	Launcher     LayerMetadata                 `json:"launcher" toml:"launcher"`
-	ProcessTypes LayerMetadata                 `json:"process-types" toml:"process-types"`
-	RunImage     PreviousImageRunImageMetadata `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata                 `json:"stack" toml:"stack"`
+	App          []LayerMetadata            `json:"app" toml:"app"`
+	BOM          *LayerMetadata             `json:"sbom,omitempty" toml:"sbom,omitempty"`
+	Buildpacks   []buildpack.LayersMetadata `json:"buildpacks" toml:"buildpacks"`
+	Config       LayerMetadata              `json:"config" toml:"config"`
+	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
+	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
+	RunImage     RunImageMetadataLabel      `json:"runImage" toml:"run-image"`
+	Stack        StackFileMetadata          `json:"stack" toml:"stack"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
 // It exists for situations where the `App` field type cannot be
 // guaranteed, yet the original struct data must be maintained.
 type LayersMetadataCompat struct {
-	App          interface{}                   `json:"app" toml:"app"`
-	BOM          *LayerMetadata                `json:"sbom,omitempty" toml:"sbom,omitempty"`
-	Buildpacks   []buildpack.LayersMetadata    `json:"buildpacks" toml:"buildpacks"`
-	Config       LayerMetadata                 `json:"config" toml:"config"`
-	Launcher     LayerMetadata                 `json:"launcher" toml:"launcher"`
-	ProcessTypes LayerMetadata                 `json:"process-types" toml:"process-types"`
-	RunImage     PreviousImageRunImageMetadata `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata                 `json:"stack" toml:"stack"`
+	App          interface{}                `json:"app" toml:"app"`
+	BOM          *LayerMetadata             `json:"sbom,omitempty" toml:"sbom,omitempty"`
+	Buildpacks   []buildpack.LayersMetadata `json:"buildpacks" toml:"buildpacks"`
+	Config       LayerMetadata              `json:"config" toml:"config"`
+	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
+	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
+	RunImage     RunImageMetadataLabel      `json:"runImage" toml:"run-image"`
+	Stack        StackFileMetadata          `json:"stack" toml:"stack"`
 }
 
 func (m *LayersMetadata) MetadataForBuildpack(id string) buildpack.LayersMetadata {
@@ -88,9 +88,11 @@ type LayerMetadata struct {
 	SHA string `json:"sha" toml:"sha"`
 }
 
-type PreviousImageRunImageMetadata struct {
-	TopLayer  string `json:"topLayer" toml:"top-layer"`
-	Reference string `json:"reference" toml:"reference"`
+type RunImageMetadataLabel struct {
+	Image     string   `json:"image,omitempty" toml:"-"`
+	Mirrors   []string `json:"mirrors,omitempty" toml:"-"`
+	Reference string   `json:"reference" toml:"reference"`
+	TopLayer  string   `json:"topLayer" toml:"top-layer"`
 }
 
 // metadata.toml
@@ -258,25 +260,25 @@ type ImageReport struct {
 
 // run.toml
 
-type RunMetadata struct {
+type RunFileMetadata struct {
 	Images []RunImageMetadata `json:"-" toml:"image"`
 }
 
-func ReadRun(runPath string, logger log.Logger) (RunMetadata, error) {
-	var runMD RunMetadata
+func ReadRun(runPath string, logger log.Logger) (RunFileMetadata, error) {
+	var runMD RunFileMetadata
 	if _, err := toml.DecodeFile(runPath, &runMD); err != nil {
 		if os.IsNotExist(err) {
 			logger.Infof("no run metadata found at path '%s'\n", runPath)
-			return RunMetadata{}, nil
+			return RunFileMetadata{}, nil
 		}
-		return RunMetadata{}, err
+		return RunFileMetadata{}, err
 	}
 	return runMD, nil
 }
 
 // stack.toml
 
-type StackMetadata struct {
+type StackFileMetadata struct {
 	RunImage RunImageMetadata `json:"runImage" toml:"run-image"`
 }
 
@@ -298,7 +300,7 @@ func (rm *RunImageMetadata) BestRunImageMirror(registry string) (string, error) 
 	return runImageRef, nil
 }
 
-func (sm *StackMetadata) BestRunImageMirror(registry string) (string, error) {
+func (sm *StackFileMetadata) BestRunImageMirror(registry string) (string, error) {
 	return sm.RunImage.BestRunImageMirror(registry)
 }
 
@@ -319,14 +321,14 @@ func byRegistry(reg string, imgs []string) (string, error) {
 	return imgs[0], nil
 }
 
-func ReadStack(stackPath string, logger log.Logger) (StackMetadata, error) {
-	var stackMD StackMetadata
+func ReadStack(stackPath string, logger log.Logger) (StackFileMetadata, error) {
+	var stackMD StackFileMetadata
 	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
 		if os.IsNotExist(err) {
 			logger.Infof("no stack metadata found at path '%s'\n", stackPath)
-			return StackMetadata{}, nil
+			return StackFileMetadata{}, nil
 		}
-		return StackMetadata{}, err
+		return StackFileMetadata{}, err
 	}
 	return stackMD, nil
 }

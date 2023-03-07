@@ -96,10 +96,10 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 
 	when("stack.toml", func() {
 		when("BestRunImageMirror", func() {
-			var stackMD *platform.StackMetadata
+			var stackMD *platform.StackFileMetadata
 
 			it.Before(func() {
-				stackMD = &platform.StackMetadata{RunImage: platform.RunImageMetadata{
+				stackMD = &platform.StackFileMetadata{RunImage: platform.RunImageMetadata{
 					Image: "first.com/org/repo",
 					Mirrors: []string{
 						"myorg/myrepo",

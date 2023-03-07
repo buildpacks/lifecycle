@@ -26,7 +26,7 @@ type Generator struct {
 	Logger         log.Logger
 	Out, Err       io.Writer
 	Plan           platform.BuildPlan
-	RunMetadata    platform.RunMetadata
+	RunMetadata    platform.RunFileMetadata
 }
 
 type GeneratorFactory struct {
