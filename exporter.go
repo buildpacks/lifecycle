@@ -266,23 +266,19 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 	if err != nil {
 		return err
 	}
-	var needsAdding bool
 	for _, l := range extendedLayers {
+		hex, err := l.DiffID()
+		if err != nil {
+			continue // failed to get the diffID because the blob doesn't exist
+		}
 		digest, err := l.Digest()
 		if err != nil {
 			return err
 		}
-		if digest.String() == meta.RunImage.TopLayer {
-			needsAdding = true
-			continue
-		}
-		if !needsAdding {
-			continue
-		}
 		layer := layers.Layer{
 			ID:      "from extensions", // TODO: we need a way to map extended layers back to the extension that created it
 			TarPath: filepath.Join(opts.ExtendedDir, "run", fis[0].Name(), "blobs", digest.Algorithm, digest.Hex),
-			Digest:  digest.String(), // TODO: need to handle uncompressed layers in the daemon case
+			Digest:  hex.String(), // TODO: need to handle uncompressed layers in the daemon case
 		}
 		_, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer)
 		if err != nil {
@@ -595,12 +591,13 @@ func (e *Exporter) addOrReuseBuildpackLayer(image imgutil.Image, layer layers.La
 
 func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
 	_, err := image.GetLayer(layer.Digest)
-	if err != nil {
-		e.Logger.Infof("Reusing layer %s\n", layer.ID)
+	if err != nil { // TODO: this is hacky
+		// failed to get the layer because it doesn't exist
+		e.Logger.Infof("Adding layer %s\n", layer.ID)
 		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 		return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
 	}
-	e.Logger.Infof("Adding layer %s\n", layer.ID)
+	e.Logger.Infof("Reusing layer %s\n", layer.ID)
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 	return layer.Digest, image.ReuseLayer(layer.Digest)
 }

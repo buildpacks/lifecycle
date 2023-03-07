@@ -280,6 +280,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportFlags := []string{
 							"-analyzed", "/layers/run-image-extended-analyzed.toml",
 							"-extended", "/layers/extended",
+							"-log-level", "debug",
 							"-run", "/cnb/run.toml",
 						}
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
