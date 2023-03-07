@@ -3,16 +3,40 @@
 package buildpack
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
 
 type BpDescriptor struct {
-	WithAPI     string `toml:"api"`
-	Buildpack   BpInfo `toml:"buildpack"`
-	Order       Order  `toml:"order"`
-	WithRootDir string `toml:"-"`
+	WithAPI     string           `toml:"api"`
+	Buildpack   BpInfo           `toml:"buildpack"`
+	Order       Order            `toml:"order"`
+	WithRootDir string           `toml:"-"`
+	Targets     []TargetMetadata `toml:"targets"`
+	Stacks      []StackMetadata  `tome:"stacks"` // just for backwards compat so we can check if it's the bionic stack, which we translate to a target
+
+}
+
+type StackMetadata struct {
+	ID string `toml:"id"`
+}
+
+type TargetPartial struct {
+	OS          string `json:"os" toml:"os"`
+	Arch        string `json:"arch" toml:"arch"`
+	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
+}
+
+type TargetMetadata struct {
+	TargetPartial
+	Distributions []DistributionMetadata `json:"distributions" toml:"distributions"`
+}
+
+type DistributionMetadata struct {
+	Name    string `json:"name" toml:"name"`
+	Version string `json:"version" toml:"version"`
 }
 
 type BpInfo struct {
@@ -37,6 +61,32 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 	}
 	if descriptor.WithRootDir, err = filepath.Abs(filepath.Dir(path)); err != nil {
 		return &BpDescriptor{}, err
+	}
+
+	if len(descriptor.Targets) == 0 {
+		for _, stack := range descriptor.Stacks {
+			if stack.ID == "io.buildpacks.stacks.bionic" {
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+			}
+		}
+	}
+	if len(descriptor.Targets) == 0 {
+		binDir := filepath.Join(descriptor.WithRootDir, "bin")
+		if stat, _ := os.Stat(binDir); stat != nil { // technically i think there's always supposed to be a bin Dir but we weren't enforcing it previously so why start now?
+			binFiles, err := os.ReadDir(binDir)
+			if err != nil {
+				return &BpDescriptor{}, err
+			}
+			for _, bf := range binFiles {
+				fname := bf.Name()
+				if fname == "build.exe" || fname == "build.bat" {
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "amd64"}})
+				}
+				if fname == "build" {
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}})
+				}
+			}
+		}
 	}
 	return descriptor, nil
 }

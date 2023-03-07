@@ -13,7 +13,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -132,7 +131,7 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
 	}
-	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
+	if err = analyzedMD.WriteTOML(a.AnalyzedPath); err != nil {
 		return cmd.FailErr(err, "write analyzed")
 	}
 	return nil

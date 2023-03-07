@@ -65,7 +65,12 @@ func (d *detectCmd) Exec() error {
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
+	amd, err := platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
+	if err != nil {
+		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
+	}
 	detector, err := detectorFactory.NewDetector(
+		amd,
 		d.AppDir,
 		d.BuildConfigDir,
 		d.OrderPath,
@@ -173,8 +178,9 @@ func (d *detectCmd) writeDetectData(group buildpack.Group, plan platform.BuildPl
 	return nil
 }
 
+// writeGenerateData re-outputs the analyzedMD that we read previously, but now we've added the RunImage, if a custom runImage was configured
 func (d *detectCmd) writeGenerateData(analyzedMD platform.AnalyzedMetadata) error {
-	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
+	if err := analyzedMD.WriteTOML(d.AnalyzedPath); err != nil {
 		return cmd.FailErr(err, "write analyzed metadata")
 	}
 	return nil

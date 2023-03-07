@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -817,7 +817,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 
@@ -846,7 +846,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 				})
@@ -976,7 +976,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithArgs(execArgs...),
 						)
 						analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-						h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
+						h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 					})
 				})
 
@@ -1069,8 +1069,7 @@ func assertAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadat
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var analyzedMD platform.AnalyzedMetadata
-	_, err = toml.Decode(string(contents), &analyzedMD)
+	analyzedMD, err := platform.ReadAnalyzed(path, cmd.DefaultLogger)
 	h.AssertNil(t, err)
 
 	return &analyzedMD

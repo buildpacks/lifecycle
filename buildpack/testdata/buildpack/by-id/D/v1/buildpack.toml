@@ -1,0 +1,15 @@
+api = "0.12"
+
+[buildpack]
+id = "D"
+name = "Buildpack D"
+version = "v1"
+homepage = "Buildpack D Homepage"
+sbom-formats = ["application/vnd.cyclonedx+json"]
+
+[[targets]]
+os = "OpenVMS"
+arch = "IA64"
+[[targets.distributions]]
+name = "VSI OpenVMS"
+version = "V8.4-2L3"

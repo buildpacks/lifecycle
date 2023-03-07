@@ -1,6 +1,7 @@
 package platform_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -99,7 +100,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 			var stackMD *platform.StackMetadata
 
 			it.Before(func() {
-				stackMD = &platform.StackMetadata{RunImage: platform.RunImageMetadata{
+				stackMD = &platform.StackMetadata{RunImage: platform.RunImageForExport{
 					Image: "first.com/org/repo",
 					Mirrors: []string{
 						"myorg/myrepo",
@@ -151,6 +152,115 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					h.AssertEq(t, name, "gcr.io/myorg/myrepo")
 				})
+			})
+		})
+	})
+	when("analyzed.toml", func() {
+		when("it is old it stays old", func() {
+			it("serializes and deserializes", func() {
+				amd := platform.AnalyzedMetadata{
+					PreviousImage: &platform.ImageIdentifier{Reference: "previous-img"},
+					Metadata: platform.LayersMetadata{
+						Stack: platform.StackMetadata{
+							RunImage: platform.RunImageForExport{Image: "imagine that"},
+						},
+					},
+					RunImage: &platform.RunImage{Reference: "some-ref"},
+				}
+				f := h.TempFile(t, "", "")
+				h.AssertNil(t, amd.WriteTOML(f))
+				amd2, err := platform.ReadAnalyzed(f, nil)
+				h.AssertNil(t, err)
+				h.AssertEq(t, amd.PreviousImageRef(), amd2.PreviousImageRef())
+				h.AssertEq(t, amd.Metadata, amd2.Metadata)
+				h.AssertEq(t, amd.BuildImage, amd2.BuildImage)
+			})
+			it("serializes to the old format", func() {
+				amd := platform.AnalyzedMetadata{
+					PreviousImage: &platform.ImageIdentifier{Reference: "previous-img"},
+					Metadata: platform.LayersMetadata{
+						Stack: platform.StackMetadata{
+							RunImage: platform.RunImageForExport{Image: "imagine that"},
+						},
+					},
+					RunImage: &platform.RunImage{Reference: "some-ref"},
+				}
+				f := h.TempFile(t, "", "")
+				h.AssertNil(t, amd.WriteTOML(f))
+				contents, err := os.ReadFile(f)
+				h.AssertNil(t, err)
+				expectedContents := `[image]
+  reference = "previous-img"
+
+[metadata]
+  [metadata.config]
+    sha = ""
+  [metadata.launcher]
+    sha = ""
+  [metadata.process-types]
+    sha = ""
+  [metadata.run-image]
+    top-layer = ""
+    reference = ""
+  [metadata.stack]
+    [metadata.stack.run-image]
+      image = "imagine that"
+
+[run-image]
+  reference = "some-ref"
+`
+				h.AssertEq(t, string(contents), expectedContents)
+			})
+		})
+		when("it is new it stays new", func() {
+			it("serializes and deserializes", func() {
+				amd := platform.AnalyzedMetadata{
+					PreviousImage: &platform.ImageIdentifier{Reference: "the image formerly known as prince"},
+					RunImage: &platform.RunImage{
+						Reference: "librarian",
+						Target:    &platform.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: "os/2 warp", Arch: "486"}},
+					},
+					BuildImage: &platform.ImageIdentifier{Reference: "implementation"},
+				}
+				f := h.TempFile(t, "", "")
+				h.AssertNil(t, amd.WriteTOML(f))
+				amd2, err := platform.ReadAnalyzed(f, nil)
+				h.AssertNil(t, err)
+				h.AssertEq(t, amd.PreviousImageRef(), amd2.PreviousImageRef())
+				h.AssertEq(t, amd.Metadata, amd2.Metadata)
+				h.AssertEq(t, amd.BuildImage, amd2.BuildImage)
+			})
+		})
+		when("TargetMetadata#IsSatisfiedBy", func() {
+			it("requires equality of OS and Arch", func() {
+				d := platform.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: "Win95", Arch: "Pentium"}}
+
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: "Win98", Arch: d.Arch}}) {
+					t.Fatal("TargetMetadata with different OS were equal")
+				}
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: "Pentium MMX"}}) {
+					t.Fatal("TargetMetadata with different Arch were equal")
+				}
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch, ArchVariant: "MMX"}}) {
+					t.Fatal("blank arch variant was not treated as wildcard")
+				}
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{
+					TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch},
+					Distributions: []buildpack.DistributionMetadata{{Name: "a", Version: "2"}},
+				}) {
+					t.Fatal("blank distributions list was not treated as wildcard")
+				}
+
+				d.Distribution = &buildpack.DistributionMetadata{Name: "A", Version: "1"}
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.DistributionMetadata{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}) {
+					t.Fatal("unsatisfactory distribution lists were treated as satisfying")
+				}
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.DistributionMetadata{}}) {
+					t.Fatal("blank distributions list was not treated as wildcard")
+				}
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.DistributionMetadata{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}) {
+					t.Fatal("distributions list including target's distribution not recognized as satisfying")
+				}
 			})
 		})
 	})

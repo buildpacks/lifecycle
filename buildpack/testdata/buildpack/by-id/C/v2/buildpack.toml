@@ -1,0 +1,11 @@
+api = "0.12"
+
+[buildpack]
+id = "C"
+name = "Buildpack C"
+version = "v2"
+homepage = "Buildpack C Homepage"
+sbom-formats = ["application/vnd.cyclonedx+json"]
+
+[[stacks]]
+id = "some.non-magic.value"
