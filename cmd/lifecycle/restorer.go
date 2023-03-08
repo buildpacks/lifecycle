@@ -168,7 +168,7 @@ func (r *restoreCmd) supportsBuildImageExtension() bool {
 }
 
 func (r *restoreCmd) supportsRunImageExtension() bool {
-	return r.PlatformAPI.AtLeast("0.12") && !r.UseDaemon && !r.UseLayout
+	return r.PlatformAPI.AtLeast("0.12")
 }
 
 func (r *restoreCmd) pullSparse(imageRef string) (image v1.Image, digest name.Digest, err error) {
