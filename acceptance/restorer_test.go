@@ -18,6 +18,7 @@ import (
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -205,7 +206,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithArgs("-build-image", restoreRegFixtures.SomeCacheImage), // some-cache-image simulates a builder image in a registry
 				)
 				t.Log("records builder image digest in analyzed.toml")
-				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "analyzed.toml"), nil)
+				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "analyzed.toml"), cmd.DefaultLogger)
 				h.AssertNil(t, err)
 				h.AssertStringContains(t, analyzedMD.BuildImage.Reference, restoreRegFixtures.SomeCacheImage+"@sha256:")
 				t.Log("writes builder manifest and config to the kaniko cache")
@@ -237,10 +238,10 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					),
 				)
 				t.Log("updates run image reference in analyzed.toml to include digest and target data")
-				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-true-analyzed.toml"))
+				analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-true-analyzed.toml"), cmd.DefaultLogger)
 				h.AssertNil(t, err)
 				h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
-				h.AssertEq(t, analyzedMD.RunImage.TargetData.OS, "linux")
+				h.AssertEq(t, analyzedMD.RunImage.TargetMetadata.OS, "linux")
 				t.Log("writes run image manifest and config to the kaniko cache")
 				ref, err := name.ParseReference(analyzedMD.RunImage.Reference)
 				h.AssertNil(t, err)
@@ -269,10 +270,10 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						),
 					)
 					t.Log("updates run image reference in analyzed.toml to include digest and target data")
-					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"))
+					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
 					h.AssertNil(t, err)
 					h.AssertStringContains(t, analyzedMD.RunImage.Reference, restoreRegFixtures.ReadOnlyRunImage+"@sha256:")
-					h.AssertEq(t, analyzedMD.RunImage.TargetData.OS, "linux")
+					h.AssertEq(t, analyzedMD.RunImage.TargetMetadata.OS, "linux")
 					t.Log("does not write run image manifest and config to the kaniko cache")
 					fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko"))
 					h.AssertNil(t, err)
