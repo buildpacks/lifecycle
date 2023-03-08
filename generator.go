@@ -153,7 +153,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	if !containsMatch(g.RunMetadata.Images, base) {
+	if !satisfies(g.RunMetadata.Images, base) {
 		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", base)
 	}
 
@@ -181,7 +181,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}, nil
 }
 
-func containsMatch(images []platform.RunImageForExport, imageName string) bool {
+func satisfies(images []platform.RunImageForExport, imageName string) bool {
 	if len(images) == 0 {
 		// if no run image metadata was provided, consider it a match
 		return true
