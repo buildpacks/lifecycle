@@ -82,6 +82,7 @@ func (r *restoreCmd) Exec() error {
 	var analyzedMD platform.AnalyzedMetadata
 	if _, err := toml.DecodeFile(r.AnalyzedPath, &analyzedMD); err == nil {
 		if r.supportsBuildImageExtension() {
+			cmd.DefaultLogger.Debugf("Pulling builder image metadata...")
 			_, digest, err := r.pullSparse(r.BuildImageRef)
 			if err != nil {
 				return cmd.FailErr(err, "read builder image")
@@ -89,6 +90,7 @@ func (r *restoreCmd) Exec() error {
 			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digest.String()}
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
+			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
 			runImage, digest, err := r.pullSparse(analyzedMD.RunImage.Reference)
 			if err != nil {
 				return cmd.FailErr(err, "reading run image")
@@ -103,6 +105,7 @@ func (r *restoreCmd) Exec() error {
 				TargetMetadata: &targetData,
 			}
 		} else if needsUpdating(analyzedMD.RunImage) {
+			cmd.DefaultLogger.Debugf("Updating analyzed metadata...")
 			runImage, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
 			if err != nil {
 				return cmd.FailErr(err, "reading run image")

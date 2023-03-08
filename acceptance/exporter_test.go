@@ -388,7 +388,7 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 		}
 		analyzedMD := assertAnalyzedMetadata(t, pPath)
 		if analyzedMD.RunImage != nil {
-			analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
+			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage // don't override extend
 		}
 		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
 	}
