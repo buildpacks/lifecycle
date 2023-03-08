@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
@@ -155,7 +154,7 @@ func verifyDockerfileFor(d ExtDescriptor, path string, kind string, logger log.L
 	case DockerfileKindBuild:
 		return "", VerifyBuildDockerfile(path, logger)
 	case DockerfileKindRun:
-		return VerifyRunDockerfile(path, api.MustParse(d.WithAPI), logger)
+		return VerifyRunDockerfile(path, logger)
 	default:
 		return "", nil
 	}

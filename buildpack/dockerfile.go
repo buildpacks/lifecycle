@@ -10,7 +10,6 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -120,14 +119,7 @@ func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 	return nil
 }
 
-func VerifyRunDockerfile(dockerfile string, buildpackAPI *api.Version, logger log.Logger) (string, error) {
-	if buildpackAPI.LessThan("0.10") {
-		return verifyRunDockerfile09(dockerfile)
-	}
-	return verifyRunDockerfile(dockerfile, logger)
-}
-
-func verifyRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
+func VerifyRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
 	stages, _, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return "", err
@@ -162,33 +154,4 @@ func verifyRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
 	}
 
 	return newBase, nil
-}
-
-func verifyRunDockerfile09(dockerfile string) (string, error) {
-	stages, margs, err := parseDockerfile(dockerfile)
-	if err != nil {
-		return "", err
-	}
-
-	// validate only 1 FROM
-	if len(stages) > 1 {
-		return "", fmt.Errorf(errMultiStageNotPermitted, runDockerfileName)
-	}
-
-	// validate FROM does not expect argument
-	if len(margs) > 0 {
-		return "", errors.New(errArgumentsNotPermitted)
-	}
-
-	// sanity check to prevent panic
-	if len(stages) == 0 {
-		return "", fmt.Errorf(errMissingRequiredStage, runDockerfileName)
-	}
-
-	// validate no instructions in stage
-	if len(stages[0].Commands) != 0 {
-		return "", fmt.Errorf(errRunOtherInstructionsNotPermitted)
-	}
-
-	return stages[0].BaseName, nil
 }

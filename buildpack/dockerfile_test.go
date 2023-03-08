@@ -11,7 +11,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	llog "github.com/buildpacks/lifecycle/log"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -23,10 +22,9 @@ func TestDockerfile(t *testing.T) {
 
 func testDockerfile(t *testing.T, when spec.G, it spec.S) {
 	var (
-		tmpDir       string
-		logger       llog.Logger
-		logHandler   *memory.Handler
-		buildpackAPI = api.Buildpack.Latest()
+		tmpDir     string
+		logger     llog.Logger
+		logHandler *memory.Handler
 	)
 
 	it.Before(func() {
@@ -43,7 +41,7 @@ func testDockerfile(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("verifying dockerfiles", func() {
-		validDockerfileContents := []string{
+		validCases := []string{
 			`
 ARG base_image=0
 FROM ${base_image}
@@ -123,7 +121,7 @@ RUN echo "this statement is never cached"
 		when("build", func() {
 			when("valid", func() {
 				it("succeeds", func() {
-					for i, content := range validDockerfileContents {
+					for i, content := range validCases {
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
@@ -198,34 +196,44 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 		when("run", func() {
 			when("valid", func() {
 				it("succeeds", func() {
-					for i, content := range validDockerfileContents {
+					for i, content := range validCases {
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
-						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, api.Buildpack.Latest(), logger)
+						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
 						if err != nil {
 							t.Fatalf("Error verifying Dockerfile %d: %s", i, err)
 						}
 						h.AssertEq(t, len(logHandler.Entries), 0)
 					}
 				})
-			})
 
-			when("valid, but violates SHOULD directives in spec", func() {
-				it("succeeds with warning", func() {
-					preamble := `
+				when("violates SHOULD directives in spec", func() {
+					it("succeeds with warning", func() {
+						preamble := `
 ARG base_image=0
 FROM ${base_image}
 `
-					for i, tc := range warnCases {
-						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
-						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
-						logHandler = memory.New()
-						logger = &log.Logger{Handler: logHandler}
-						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, buildpackAPI, logger)
+						for i, tc := range warnCases {
+							dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
+							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
+							logHandler = memory.New()
+							logger = &log.Logger{Handler: logHandler}
+							_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
+							h.AssertNil(t, err)
+							assertLogEntry(t, logHandler, "run.Dockerfile "+tc.expectedWarning)
+						}
+					})
+				})
+
+				when("switching the runtime base image", func() {
+					it("returns the new base image", func() {
+						dockerfilePath := filepath.Join(tmpDir, "run.Dockerfile")
+						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(`FROM some-base-image`), 0600))
+						newBase, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
 						h.AssertNil(t, err)
-						assertLogEntry(t, logHandler, "run.Dockerfile "+tc.expectedWarning)
-					}
+						h.AssertEq(t, newBase, "some-base-image")
+					})
 				})
 			})
 
@@ -255,48 +263,7 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 					for i, tc := range testCases {
 						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
-						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, buildpackAPI, logger)
-						h.AssertError(t, err, tc.expectedError)
-					}
-				})
-			})
-		})
-
-		when("Buildpack API < 0.10", func() {
-			it.Before(func() {
-				buildpackAPI = api.MustParse("0.9")
-			})
-
-			when("invalid", func() {
-				it("errors", func() {
-					type testCase struct {
-						dockerfileContent string
-						expectedError     string
-					}
-					testCases := []testCase{
-						{
-							dockerfileContent: ``,
-							expectedError:     "file with no instructions",
-						},
-						{
-							dockerfileContent: `
-ARG base_image=0
-FROM ${base_image}
-`,
-							expectedError: "run.Dockerfile should not expect arguments",
-						},
-						{
-							dockerfileContent: `
-FROM some-run-image
-RUN echo "hello" > /world.txt
-`,
-							expectedError: "run.Dockerfile is not permitted to have instructions other than FROM",
-						},
-					}
-					for i, tc := range testCases {
-						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
-						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
-						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, buildpackAPI, logger)
+						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
 						h.AssertError(t, err, tc.expectedError)
 					}
 				})
