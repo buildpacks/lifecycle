@@ -13,7 +13,7 @@ const (
 	OSDistributionVersionLabel = "io.buildpacks.distribution.version"
 )
 
-type TargetData struct {
+type TargetMetadata struct {
 	ID           string          `toml:"id"`
 	OS           string          `toml:"os"`
 	Arch         string          `toml:"arch"`
@@ -26,31 +26,31 @@ type OSDistribution struct {
 	Version string `toml:"version"`
 }
 
-func ReadTargetData(fromImage v1.Image) (TargetData, error) {
+func ReadTargetData(fromImage v1.Image) (TargetMetadata, error) {
 	var (
 		targetID, os, arch, archVariant, distName, distVersion string
 		err                                                    error
 	)
 	configFile, err := fromImage.ConfigFile()
 	if err != nil {
-		return TargetData{}, err
+		return TargetMetadata{}, err
 	}
 	if configFile == nil {
-		return TargetData{}, errors.New("missing image config")
+		return TargetMetadata{}, errors.New("missing image config")
 	}
 	if err = decodeOptionalLabel(configFile, TargetLabel, &targetID); err != nil {
-		return TargetData{}, err
+		return TargetMetadata{}, err
 	}
 	os = configFile.OS
 	arch = configFile.Architecture
 	archVariant = configFile.Variant
 	if err = decodeOptionalLabel(configFile, OSDistributionNameLabel, &distName); err != nil {
-		return TargetData{}, err
+		return TargetMetadata{}, err
 	}
 	if err = decodeOptionalLabel(configFile, OSDistributionVersionLabel, &distVersion); err != nil {
-		return TargetData{}, err
+		return TargetMetadata{}, err
 	}
-	return TargetData{
+	return TargetMetadata{
 		ID:          targetID,
 		OS:          os,
 		Arch:        arch,

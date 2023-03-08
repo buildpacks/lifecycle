@@ -172,6 +172,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, ok, true)
 				h.AssertEq(t, sbomRestorer.LayersDir, "some-layers-dir")
 				h.AssertEq(t, sbomRestorer.Logger, logger)
+				h.AssertEq(t, analyzer.PlatformAPI, api.Platform.Latest())
 
 				t.Log("does not restore layer metadata")
 				_, ok = analyzer.LayerMetadataRestorer.(*layer.NopMetadataRestorer)
@@ -522,6 +523,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 				Cache:                 testCache,
 				LayerMetadataRestorer: metadataRestorer,
 				RestoresLayerMetadata: api.MustParse(platformAPI).LessThan("0.7"),
+				PlatformAPI:           api.MustParse(platformAPI),
 			}
 
 			if testing.Verbose() {
@@ -572,7 +574,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, md.PreviousImage.Reference, "s0m3D1g3sT")
+					h.AssertEq(t, md.PreviousImageRef(), "s0m3D1g3sT")
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
 				})
 
@@ -607,7 +609,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertNil(t, md.PreviousImage)
+					h.AssertEq(t, md.PreviousImageRef(), "")
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})

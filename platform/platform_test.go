@@ -26,7 +26,7 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatformFor(platformAPI.String(), "some-layers-dir")
+					foundPlatform := platform.NewPlatformFor(platformAPI.String())
 
 					t.Log("with a default exiter")
 					_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
@@ -43,7 +43,7 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatformFor(platformAPI.String(), "some-layers-dir")
+					foundPlatform := platform.NewPlatformFor(platformAPI.String())
 
 					t.Log("with a legacy exiter")
 					_, ok := foundPlatform.Exiter.(*platform.LegacyExiter)

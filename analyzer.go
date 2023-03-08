@@ -45,6 +45,7 @@ type Analyzer struct {
 	RunImage      imgutil.Image
 	Logger        log.Logger
 	SBOMRestorer  layer.SBOMRestorer
+	PlatformAPI   *api.Version
 
 	// Platform API < 0.7
 	Buildpacks            []buildpack.GroupElement
@@ -71,6 +72,7 @@ func (f *AnalyzerFactory) NewAnalyzer(
 		LayerMetadataRestorer: &layer.NopMetadataRestorer{},
 		Logger:                logger,
 		SBOMRestorer:          &layer.NopSBOMRestorer{},
+		PlatformAPI:           f.platformAPI,
 	}
 
 	if f.platformAPI.AtLeast("0.7") {
@@ -187,15 +189,15 @@ func (f *AnalyzerFactory) setRun(analyzer *Analyzer, imageRef string) error {
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
-		err             error
-		appMeta         platform.LayersMetadata
-		cacheMeta       platform.CacheMetadata
-		previousImageID *platform.ImageIdentifier
-		runImage        *platform.RunImage
+		err              error
+		appMeta          platform.LayersMetadata
+		cacheMeta        platform.CacheMetadata
+		previousImageRef string
+		runImageRef      string
 	)
 
 	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
-		if previousImageID, err = a.getImageIdentifier(a.PreviousImage); err != nil {
+		if previousImageRef, err = a.getImageIdentifier(a.PreviousImage); err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying previous image")
 		}
 
@@ -212,12 +214,9 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.RunImage != nil {
-		runImageID, err := a.getImageIdentifier(a.RunImage)
+		runImageRef, err = a.getImageIdentifier(a.RunImage)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
-		}
-		if runImageID != nil {
-			runImage = &platform.RunImage{Reference: runImageID.Reference}
 		}
 	}
 
@@ -234,25 +233,23 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	return platform.AnalyzedMetadata{
-		PreviousImage: previousImageID,
-		RunImage:      runImage,
+		PreviousImage: &platform.ImageIdentifier{Reference: previousImageRef},
+		RunImage:      &platform.RunImage{Reference: runImageRef},
 		Metadata:      appMeta,
 	}, nil
 }
 
-func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
+func (a *Analyzer) getImageIdentifier(image imgutil.Image) (string, error) {
 	if !image.Found() {
 		a.Logger.Infof("Image with name %q not found", image.Name())
-		return nil, nil
+		return "", nil
 	}
 	identifier, err := image.Identifier()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	a.Logger.Debugf("Found image with identifier %q", identifier.String())
-	return &platform.ImageIdentifier{
-		Reference: identifier.String(),
-	}, nil
+	return identifier.String(), nil
 }
 
 func bomSHA(appMeta platform.LayersMetadata) string {

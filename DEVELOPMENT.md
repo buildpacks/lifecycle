@@ -77,6 +77,16 @@ Formats, vets, and tests the code.
 $ make test
 ```
 
+#### Mocks
+
+We use mock generators like most golang projects to help with our testing. To make new mocks:
+```bash
+$ make generate
+$ make format lint
+```
+
+This is because the mock generator will make a larger diff that the formatter will fix.
+
 ### Build
 
 Builds binaries to `out/linux/lifecycle/` and `out/windows/lifecycle/`.

@@ -98,9 +98,9 @@ func (r *restoreCmd) Exec() error {
 				return cmd.FailErr(err, "reading target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:  digest.String(),
-				Extend:     true,
-				TargetData: &targetData,
+				Reference:      digest.String(),
+				Extend:         true,
+				TargetMetadata: &targetData,
 			}
 		} else if needsUpdating(analyzedMD.RunImage) {
 			runImage, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
@@ -112,9 +112,9 @@ func (r *restoreCmd) Exec() error {
 				return cmd.FailErr(err, "reading target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:  digest.String(),
-				Extend:     analyzedMD.RunImage.Extend,
-				TargetData: &targetData,
+				Reference:      digest.String(),
+				Extend:         analyzedMD.RunImage.Extend,
+				TargetMetadata: &targetData,
 			}
 		}
 		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
@@ -153,7 +153,7 @@ func needsUpdating(runImage *platform.RunImage) bool {
 	if runImage == nil {
 		return false
 	}
-	if runImage.TargetData == nil {
+	if runImage.TargetMetadata == nil {
 		return true
 	}
 	digest, err := name.NewDigest(runImage.Reference)

@@ -75,7 +75,7 @@ func (f *GeneratorFactory) NewGenerator(
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
 	}
-	if err := f.setAnalyzedMD(generator, analyzedPath); err != nil {
+	if err := f.setAnalyzedMD(generator, analyzedPath, logger); err != nil {
 		return nil, err
 	}
 	if err := f.setRunMD(generator, runPath, logger); err != nil {
@@ -94,9 +94,9 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 	return nil
 }
 
-func (f *GeneratorFactory) setAnalyzedMD(generator *Generator, analyzedPath string) error {
+func (f *GeneratorFactory) setAnalyzedMD(generator *Generator, analyzedPath string, logger log.Logger) error {
 	var err error
-	generator.AnalyzedMD, err = f.configHandler.ReadAnalyzed(analyzedPath)
+	generator.AnalyzedMD, err = f.configHandler.ReadAnalyzed(analyzedPath, logger)
 	return err
 }
 
@@ -153,7 +153,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	if !containsMatch(g.RunMetadata.Images, base) {
+	if !satisfies(g.RunMetadata.Images, base) {
 		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", base)
 	}
 
@@ -181,7 +181,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}, nil
 }
 
-func containsMatch(images []platform.RunImageMetadata, imageName string) bool {
+func satisfies(images []platform.RunImageForExport, imageName string) bool {
 	if len(images) == 0 {
 		// if no run image metadata was provided, consider it a match
 		return true

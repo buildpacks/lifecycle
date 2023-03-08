@@ -25,6 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/path"
+	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -372,12 +373,13 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
 	regPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-analyzed.toml.placeholder"),
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
 	}
 	layoutPlaceholders := []string{
-		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
 	}
 
 	for _, pPath := range regPlaceholders {
@@ -386,7 +388,7 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 		}
 		analyzedMD := assertAnalyzedMetadata(t, pPath)
 		if analyzedMD.RunImage != nil {
-			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
+			analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
 		}
 		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
 	}
@@ -397,7 +399,7 @@ func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTes
 		analyzedMD := assertAnalyzedMetadata(t, pPath)
 		if analyzedMD.RunImage != nil {
 			// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
-			analyzedMD.RunImage.Reference = "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"
+			analyzedMD.RunImage = &platform.RunImage{Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"}
 		}
 		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
 	}

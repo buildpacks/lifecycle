@@ -1,5 +1,5 @@
-[[image]]
+[[images]]
  image = "some-run-image-from-run-toml"
 
-[[image]]
+[[images]]
  image = "some-other-run-image"

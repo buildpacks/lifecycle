@@ -71,8 +71,9 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			bpA1 := &buildpack.BpDescriptor{WithAPI: "0.2"}
 			dirStore.EXPECT().Lookup(buildpack.KindBuildpack, "A", "v1").Return(bpA1, nil)
 			apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindBuildpack, "A@v1", "0.2", logger)
+			amd := platform.AnalyzedMetadata{}
 
-			detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
+			detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -132,7 +133,8 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				dirStore.EXPECT().Lookup(buildpack.KindExtension, "D", "v1").Return(extD1, nil)
 				apiVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "D@v1", "0.10", logger)
 
-				detector, err := detectorFactory.NewDetector("some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
+				amd := platform.AnalyzedMetadata{}
+				detector, err := detectorFactory.NewDetector(amd, "some-app-dir", "some-build-config-dir", "some-order-path", "some-platform-dir", logger)
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, detector.AppDir, "some-app-dir")
@@ -156,8 +158,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			configHandler.EXPECT().ReadOrder(gomock.Any()).Return(buildpack.Order{}, buildpack.Order{}, nil)
+			amd := platform.AnalyzedMetadata{}
 			var err error
 			detector, err = detectorFactory.NewDetector(
+				amd,
 				"some-app-dir",
 				"some-build-config-dir",
 				"some-order-path",
@@ -788,6 +792,84 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					if err, ok := err.(*buildpack.Error); !ok || err.Type != buildpack.ErrTypeFailedDetection {
 						t.Fatalf("Unexpected error:\n%s\n", err)
 					}
+				})
+			})
+
+			when("A Target is provided from AnalyzeMD", func() {
+				it("errors if the buildpacks don't share that target arch/os", func() {
+					detector.AnalyzeMD.RunImage = &platform.RunImage{
+						TargetMetadata: &platform.TargetMetadata{
+							OS:           "MacOS",
+							Arch:         "ARM64",
+							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "some kind of big cat"},
+						},
+					}
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+						Targets: []buildpack.TargetMetadata{
+							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95"},
+								Distributions: []buildpack.OSDistribution{
+									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+							{TargetPartial: buildpack.TargetPartial{Arch: "Pentium M", OS: "Win98"},
+								Distributions: []buildpack.OSDistribution{{Name: "Windows 2000", Version: "Server"}}},
+						},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+
+					resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).DoAndReturn(
+						func(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+							h.AssertEq(t, len(done), 1)
+							val, ok := detectRuns.Load("Buildpack A@v1")
+							h.AssertEq(t, ok, true)
+							outs := val.(buildpack.DetectOutputs)
+							h.AssertEq(t, outs.Code, -1)
+							h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constriaints")
+							return []buildpack.GroupElement{}, []platform.BuildPlanEntry{}, nil
+						})
+
+					group := []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: "0.3"},
+					}
+					detector.Order = buildpack.Order{{Group: group}}
+					_, _, err := detector.Detect() // even though the returns from this are directly from the mock above, if we don't check the returns the linter declares we've done it wrong and fails on the lack of assertions.
+					h.AssertNil(t, err)
+				})
+				it("totally works if the constraints are met", func() {
+					detector.AnalyzeMD.RunImage = &platform.RunImage{
+						TargetMetadata: &platform.TargetMetadata{
+							OS:           "MacOS",
+							Arch:         "ARM64",
+							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
+						},
+					}
+
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+						Targets: []buildpack.TargetMetadata{
+							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95"},
+								Distributions: []buildpack.OSDistribution{
+									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+							{TargetPartial: buildpack.TargetPartial{Arch: "ARM64", OS: "MacOS"}, Distributions: []buildpack.OSDistribution{{Name: "MacOS", Version: "snow cheetah"}}}},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
+
+					group := []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: "0.12"},
+					}
+					// the most meaningful assertion in this test is that `group` is the first argument to Resolve, meaning that the buildpack matched.
+					resolver.EXPECT().Resolve(group, detector.Runs).Return(
+						[]buildpack.GroupElement{},
+						[]platform.BuildPlanEntry{},
+						nil,
+					)
+
+					detector.Order = buildpack.Order{{Group: group}}
+					_, _, err := detector.Detect()
+					h.AssertNil(t, err)
 				})
 			})
 		})
