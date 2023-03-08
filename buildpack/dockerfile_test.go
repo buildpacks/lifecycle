@@ -37,15 +37,12 @@ func testDockerfile(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		os.RemoveAll(tmpDir)
+		_ = os.RemoveAll(tmpDir)
 	})
 
 	when("verifying dockerfiles", func() {
-		when("build", func() {
-			when("valid", func() {
-				it("succeeds", func() {
-					dockerfileContents := []string{
-						`
+		validCases := []string{
+			`
 ARG base_image=0
 FROM ${base_image}
 
@@ -79,8 +76,52 @@ RUN echo ${build_id}
 
 RUN echo "this statement is never cached"
 `,
-					}
-					for i, content := range dockerfileContents {
+		}
+
+		type testCase struct {
+			dockerfileContent string
+			expectedWarning   string
+		}
+
+		warnCases := []testCase{
+			{
+				dockerfileContent: `CMD ["some-cmd"]`,
+				expectedWarning:   "command CMD on line 4 is not recommended",
+			},
+			{
+				dockerfileContent: `MAINTAINER "some-maintainer"`,
+				expectedWarning:   "command MAINTAINER on line 4 is not recommended",
+			},
+			{
+				dockerfileContent: `EXPOSE 80/tcp`,
+				expectedWarning:   "command EXPOSE on line 4 is not recommended",
+			},
+			{
+				dockerfileContent: `ENTRYPOINT ["some-executable"]`,
+				expectedWarning:   "command ENTRYPOINT on line 4 is not recommended",
+			},
+			{
+				dockerfileContent: `VOLUME ["/some-dir"]`,
+				expectedWarning:   "command VOLUME on line 4 is not recommended",
+			},
+			{
+				dockerfileContent: `ONBUILD RUN echo "hello" > /world.txt`,
+				expectedWarning:   "command ONBUILD on line 4 is not recommended",
+			},
+			{
+				dockerfileContent: `STOPSIGNAL SIGKILL`,
+				expectedWarning:   "command STOPSIGNAL on line 4 is not recommended",
+			},
+			{
+				dockerfileContent: `HEALTHCHECK NONE`,
+				expectedWarning:   "command HEALTHCHECK on line 4 is not recommended",
+			},
+		}
+
+		when("build", func() {
+			when("valid", func() {
+				it("succeeds", func() {
+					for i, content := range validCases {
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
@@ -95,56 +136,18 @@ RUN echo "this statement is never cached"
 
 			when("valid, but violates SHOULD directives in spec", func() {
 				it("succeeds with warning", func() {
-					type testCase struct {
-						dockerfileContent string
-						expectedWarning   string
-					}
 					preamble := `
 ARG base_image=0
 FROM ${base_image}
 `
-					testCases := []testCase{
-						{
-							dockerfileContent: preamble + `CMD ["some-cmd"]`,
-							expectedWarning:   "build.Dockerfile command CMD on line 4 is not recommended",
-						},
-						{
-							dockerfileContent: preamble + `MAINTAINER "some-maintainer"`,
-							expectedWarning:   "build.Dockerfile command MAINTAINER on line 4 is not recommended",
-						},
-						{
-							dockerfileContent: preamble + `EXPOSE 80/tcp`,
-							expectedWarning:   "build.Dockerfile command EXPOSE on line 4 is not recommended",
-						},
-						{
-							dockerfileContent: preamble + `ENTRYPOINT ["some-executable"]`,
-							expectedWarning:   "build.Dockerfile command ENTRYPOINT on line 4 is not recommended",
-						},
-						{
-							dockerfileContent: preamble + `VOLUME ["/some-dir"]`,
-							expectedWarning:   "build.Dockerfile command VOLUME on line 4 is not recommended",
-						},
-						{
-							dockerfileContent: preamble + `ONBUILD RUN echo "hello" > /world.txt`,
-							expectedWarning:   "build.Dockerfile command ONBUILD on line 4 is not recommended",
-						},
-						{
-							dockerfileContent: preamble + `STOPSIGNAL SIGKILL`,
-							expectedWarning:   "build.Dockerfile command STOPSIGNAL on line 4 is not recommended",
-						},
-						{
-							dockerfileContent: preamble + `HEALTHCHECK NONE`,
-							expectedWarning:   "build.Dockerfile command HEALTHCHECK on line 4 is not recommended",
-						},
-					}
-					for i, tc := range testCases {
+					for i, tc := range warnCases {
 						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
-						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
+						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
 						logHandler = memory.New()
 						logger = &log.Logger{Handler: logHandler}
 						err := buildpack.VerifyBuildDockerfile(dockerfilePath, logger)
 						h.AssertNil(t, err)
-						assertLogEntry(t, logHandler, tc.expectedWarning)
+						assertLogEntry(t, logHandler, "build.Dockerfile "+tc.expectedWarning)
 					}
 				})
 			})
@@ -193,19 +196,44 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 		when("run", func() {
 			when("valid", func() {
 				it("succeeds", func() {
-					dockerfileContents := []string{
-						`FROM some-run-image`,
-					}
-					for i, content := range dockerfileContents {
+					for i, content := range validCases {
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
-						err := buildpack.VerifyRunDockerfile(dockerfilePath)
+						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
 						if err != nil {
 							t.Fatalf("Error verifying Dockerfile %d: %s", i, err)
 						}
 						h.AssertEq(t, len(logHandler.Entries), 0)
 					}
+				})
+
+				when("violates SHOULD directives in spec", func() {
+					it("succeeds with warning", func() {
+						preamble := `
+ARG base_image=0
+FROM ${base_image}
+`
+						for i, tc := range warnCases {
+							dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
+							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
+							logHandler = memory.New()
+							logger = &log.Logger{Handler: logHandler}
+							_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
+							h.AssertNil(t, err)
+							assertLogEntry(t, logHandler, "run.Dockerfile "+tc.expectedWarning)
+						}
+					})
+				})
+
+				when("switching the runtime base image", func() {
+					it("returns the new base image", func() {
+						dockerfilePath := filepath.Join(tmpDir, "run.Dockerfile")
+						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(`FROM some-base-image`), 0600))
+						newBase, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
+						h.AssertNil(t, err)
+						h.AssertEq(t, newBase, "some-base-image")
+					})
 				})
 			})
 
@@ -224,21 +252,18 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 							dockerfileContent: `
 ARG base_image=0
 FROM ${base_image}
-`,
-							expectedError: "run.Dockerfile should not expect arguments",
-						},
-						{
-							dockerfileContent: `
-FROM some-run-image
 RUN echo "hello" > /world.txt
+
+FROM some-base-image
+COPY --from=0 /some-source.txt ./some-dest.txt
 `,
-							expectedError: "run.Dockerfile is not permitted to have instructions other than FROM",
+							expectedError: "run.Dockerfile is not permitted to use multistage build",
 						},
 					}
 					for i, tc := range testCases {
 						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
-						err := buildpack.VerifyRunDockerfile(dockerfilePath)
+						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
 						h.AssertError(t, err, tc.expectedError)
 					}
 				})

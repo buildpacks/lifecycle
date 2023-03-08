@@ -189,15 +189,15 @@ func (f *AnalyzerFactory) setRun(analyzer *Analyzer, imageRef string) error {
 // Analyze fetches the layers metadata from the previous image and writes analyzed.toml.
 func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	var (
-		err                      error
-		appMeta                  platform.LayersMetadata
-		cacheMeta                platform.CacheMetadata
-		previousImageIDReference string
-		runImageIDReference      string
+		err              error
+		appMeta          platform.LayersMetadata
+		cacheMeta        platform.CacheMetadata
+		previousImageRef string
+		runImageRef      string
 	)
 
 	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
-		if previousImageIDReference, err = a.getImageIdentifier(a.PreviousImage); err != nil {
+		if previousImageRef, err = a.getImageIdentifier(a.PreviousImage); err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying previous image")
 		}
 
@@ -214,7 +214,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	if a.RunImage != nil {
-		runImageIDReference, err = a.getImageIdentifier(a.RunImage)
+		runImageRef, err = a.getImageIdentifier(a.RunImage)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
 		}
@@ -233,11 +233,9 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	}
 
 	return platform.AnalyzedMetadata{
-		PreviousImage: &platform.ImageIdentifier{
-			Reference: previousImageIDReference,
-		},
-		RunImage: &platform.RunImage{Reference: runImageIDReference},
-		Metadata: appMeta,
+		PreviousImage: &platform.ImageIdentifier{Reference: previousImageRef},
+		RunImage:      &platform.RunImage{Reference: runImageRef},
+		Metadata:      appMeta,
 	}, nil
 }
 
