@@ -42,6 +42,10 @@ func (r *rebaseCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.11") {
 		cli.FlagPreviousImage(&r.PreviousImageRef)
 	}
+
+	if r.PlatformAPI.AtLeast("0.12") {
+		cli.FlagForceRebase(&r.ForceRebase)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.

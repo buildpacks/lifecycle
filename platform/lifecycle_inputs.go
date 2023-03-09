@@ -26,6 +26,7 @@ type LifecycleInputs struct {
 	DefaultProcessType    string
 	DeprecatedRunImageRef string
 	ExtensionsDir         string
+	ForceRebase           bool
 	GeneratedDir          string
 	GroupPath             string
 	KanikoDir             string
@@ -131,6 +132,9 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		LauncherPath:        DefaultLauncherPath,
 		LauncherSBOMDir:     DefaultBuildpacksioSBOMDir,
 		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
+
+		// Configuration options for rebasing
+		ForceRebase: boolEnv(EnvForceRebase),
 	}
 
 	if platformAPI.LessThan("0.6") {
