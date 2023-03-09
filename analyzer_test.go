@@ -675,7 +675,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					h.AssertNil(t, image.SetOS("windows"))
 					h.AssertNil(t, image.SetOSVersion("95"))
 					h.AssertNil(t, image.SetArchitecture("Pentium"))
-					// TODO SetVariant, after https://github.com/buildpacks/imgutil/pull/184 is merged
+					h.AssertNil(t, image.SetVariant("MMX"))
 					h.AssertNil(t, image.SetLabel("io.buildpacks.distribution.name", "moobuntu"))
 					h.AssertNil(t, image.SetLabel("io.buildpacks.distribution.version", "Helpful Holstein"))
 
@@ -684,6 +684,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 					h.AssertNotNil(t, md.RunImage.Target)
 					h.AssertEq(t, md.RunImage.Target.Arch, "Pentium")
+					h.AssertEq(t, md.RunImage.Target.ArchVariant, "MMX")
 					h.AssertEq(t, md.RunImage.Target.OS, "windows")
 					h.AssertEq(t, md.RunImage.Target.ID, "id software")
 					h.AssertNotNil(t, md.RunImage.Target.Distribution)

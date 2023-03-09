@@ -272,7 +272,10 @@ func (a *Analyzer) getTargetFromImage(image imgutil.Image) (*platform.TargetMeta
 	if err != nil {
 		return &tm, err
 	}
-	// TODO: arch variant
+	tm.ArchVariant, err = image.Variant()
+	if err != nil {
+		return &tm, err
+	}
 	labels, err := image.Labels()
 	if err != nil {
 		return &tm, err
