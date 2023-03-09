@@ -297,7 +297,6 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
-
 			})
 
 			when("validating mixins", func() {
