@@ -236,7 +236,7 @@ func timeEnvOrDefault(key string, defaultVal time.Duration) time.Duration {
 
 // operations
 
-func UpdatePlaceholderPaths(i *LifecycleInputs, _ log.Logger) error {
+func UpdatePlaceholderPaths(i *LifecycleInputs, _ AccessChecker, _ log.Logger) error {
 	toUpdate := i.placeholderPaths()
 	for _, path := range toUpdate {
 		if *path == "" {
@@ -281,7 +281,7 @@ func (i *LifecycleInputs) placeholderPaths() []*string {
 	}
 }
 
-func ResolveAbsoluteDirPaths(i *LifecycleInputs, _ log.Logger) error {
+func ResolveAbsoluteDirPaths(i *LifecycleInputs, _ AccessChecker, _ log.Logger) error {
 	toUpdate := i.directoryPaths()
 	for _, dir := range toUpdate {
 		if *dir == "" {

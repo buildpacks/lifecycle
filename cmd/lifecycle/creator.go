@@ -66,9 +66,6 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	c.OutputImageRef = args[0]
-	if err := platform.ResolveInputs(platform.Create, c.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
-	}
 	if c.UseLayout {
 		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
@@ -110,6 +107,13 @@ func (c *createCmd) Exec() error {
 	if err != nil {
 		return err
 	}
+	imageHandler, err := image.NewHandler(image.HandlerOptions{UseDaemon: c.UseDaemon, UseLayout: c.UseLayout, DockerClient: c.docker, RegistryKeychain: c.keychain})
+	if err != nil {
+		return err
+	}
+	if err := platform.ResolveInputs(platform.Create, c.LifecycleInputs, imageHandler, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+	}
 
 	// Analyze, Detect
 	var (
@@ -124,7 +128,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
+			imageHandler,
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(
@@ -187,7 +191,7 @@ func (c *createCmd) Exec() error {
 			&cmd.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
-			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
+			imageHandler,
 			NewRegistryHandler(c.keychain),
 		)
 		analyzer, err := analyzerFactory.NewAnalyzer(

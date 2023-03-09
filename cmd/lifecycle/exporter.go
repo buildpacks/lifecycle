@@ -24,6 +24,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -79,19 +80,16 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 	}
 	e.OutputImageRef = args[0]
 	e.AdditionalTags = args[1:]
-	if err := platform.ResolveInputs(platform.Export, e.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+	if e.UseLayout {
+		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+			return err
+		}
 	}
 	// read analyzed metadata for use in later stages
 	var err error
 	e.persistedData.analyzedMD, err = platform.ReadAnalyzed(e.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return err
-	}
-	if e.UseLayout {
-		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -119,6 +117,13 @@ func (e *exportCmd) Privileges() error {
 }
 
 func (e *exportCmd) Exec() error {
+	imageHandler, err := image.NewHandler(image.HandlerOptions{UseDaemon: e.UseDaemon, UseLayout: e.UseLayout, DockerClient: e.docker, RegistryKeychain: e.keychain})
+	if err != nil {
+		return err
+	}
+	if err := platform.ResolveInputs(platform.Export, e.LifecycleInputs, imageHandler, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+	}
 	group, err := lifecycle.ReadGroup(e.GroupPath)
 	if err != nil {
 		return cmd.FailErr(err, "read buildpack group")

@@ -19,7 +19,11 @@ var (
 	MsgIgnoringLaunchCache           = "Ignoring -launch-cache, only intended for use with -daemon"
 )
 
-func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
+type AccessChecker interface {
+	CheckReadAccess(imageRef string) (bool, error)
+}
+
+func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, accessChecker AccessChecker, logger log.Logger) error {
 	// order of operations is important
 	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
 	switch phase {
@@ -71,7 +75,7 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 
 	var err error
 	for _, op := range ops {
-		if err = op(i, logger); err != nil {
+		if err = op(i, accessChecker, logger); err != nil {
 			return err
 		}
 	}
@@ -80,23 +84,23 @@ func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) 
 
 // operations
 
-type LifecycleInputsOperation func(i *LifecycleInputs, logger log.Logger) error
+type LifecycleInputsOperation func(i *LifecycleInputs, accessChecker AccessChecker, logger log.Logger) error
 
-func CheckCache(i *LifecycleInputs, logger log.Logger) error {
+func CheckCache(i *LifecycleInputs, _ AccessChecker, logger log.Logger) error {
 	if i.CacheImageRef == "" && i.CacheDir == "" {
 		logger.Warn("No cached data will be used, no cache specified.")
 	}
 	return nil
 }
 
-func CheckLaunchCache(i *LifecycleInputs, logger log.Logger) error {
+func CheckLaunchCache(i *LifecycleInputs, _ AccessChecker, logger log.Logger) error {
 	if !i.UseDaemon && i.LaunchCacheDir != "" {
 		logger.Warn(MsgIgnoringLaunchCache)
 	}
 	return nil
 }
 
-func FillAnalyzeImages(i *LifecycleInputs, logger log.Logger) error {
+func FillAnalyzeImages(i *LifecycleInputs, accessChecker AccessChecker, logger log.Logger) error {
 	if i.PreviousImageRef == "" {
 		i.PreviousImageRef = i.OutputImageRef
 	}
@@ -104,12 +108,12 @@ func FillAnalyzeImages(i *LifecycleInputs, logger log.Logger) error {
 		return nil
 	}
 	if i.PlatformAPI.LessThan("0.12") {
-		return fillRunImageFromStackTOMLIfNeeded(i, logger)
+		return fillRunImageFromStackTOMLIfNeeded(i, accessChecker, logger)
 	}
-	return fillRunImageFromRunTOMLIfNeeded(i, logger)
+	return fillRunImageFromRunTOMLIfNeeded(i, accessChecker, logger)
 }
 
-func FillCreateImages(i *LifecycleInputs, logger log.Logger) error {
+func FillCreateImages(i *LifecycleInputs, accessChecker AccessChecker, logger log.Logger) error {
 	if i.PreviousImageRef == "" {
 		i.PreviousImageRef = i.OutputImageRef
 	}
@@ -120,13 +124,13 @@ func FillCreateImages(i *LifecycleInputs, logger log.Logger) error {
 		i.RunImageRef = i.DeprecatedRunImageRef
 		return nil
 	case i.PlatformAPI.LessThan("0.12"):
-		return fillRunImageFromStackTOMLIfNeeded(i, logger)
+		return fillRunImageFromStackTOMLIfNeeded(i, accessChecker, logger)
 	default:
-		return fillRunImageFromRunTOMLIfNeeded(i, logger)
+		return fillRunImageFromRunTOMLIfNeeded(i, accessChecker, logger)
 	}
 }
 
-func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
+func FillExportRunImage(i *LifecycleInputs, accessChecker AccessChecker, logger log.Logger) error {
 	supportsRunImageFlag := i.PlatformAPI.LessThan("0.7")
 	if supportsRunImageFlag {
 		switch {
@@ -138,7 +142,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 			i.RunImageRef = i.DeprecatedRunImageRef
 			return nil
 		default:
-			return fillRunImageFromStackTOMLIfNeeded(i, logger)
+			return fillRunImageFromStackTOMLIfNeeded(i, accessChecker, logger)
 		}
 	} else {
 		switch {
@@ -163,7 +167,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 // fillRunImageFromRunTOMLIfNeeded updates the provided lifecycle inputs to include the run image from run.toml if the run image input it is missing.
 // When there are multiple images in run.toml, the first image is selected.
 // When there are registry mirrors for the selected image, the image with registry matching the output image is selected.
-func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) error {
+func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, _ AccessChecker, logger log.Logger) error {
 	if i.RunImageRef != "" {
 		return nil
 	}
@@ -187,7 +191,7 @@ func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) erro
 
 // fillRunImageFromStackTOMLIfNeeded updates the provided lifecycle inputs to include the run image from stack.toml if the run image input it is missing.
 // When there are registry mirrors in stack.toml, the image with registry matching the output image is selected.
-func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) error {
+func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, _ AccessChecker, logger log.Logger) error {
 	if i.RunImageRef != "" {
 		return nil
 	}
@@ -215,7 +219,7 @@ func parseRegistry(providedRef string) (string, error) {
 }
 
 // ValidateImageRefs ensures all provided image references are valid.
-func ValidateImageRefs(i *LifecycleInputs, _ log.Logger) error {
+func ValidateImageRefs(i *LifecycleInputs, _ AccessChecker, _ log.Logger) error {
 	for _, imageRef := range i.Images() {
 		_, err := name.ParseReference(imageRef, name.WeakValidation)
 		if err != nil {
@@ -225,14 +229,14 @@ func ValidateImageRefs(i *LifecycleInputs, _ log.Logger) error {
 	return nil
 }
 
-func ValidateOutputImageProvided(i *LifecycleInputs, _ log.Logger) error {
+func ValidateOutputImageProvided(i *LifecycleInputs, _ AccessChecker, _ log.Logger) error {
 	if i.OutputImageRef == "" {
 		return errors.New(ErrOutputImageRequired)
 	}
 	return nil
 }
 
-func ValidateRebaseRunImage(i *LifecycleInputs, _ log.Logger) error {
+func ValidateRebaseRunImage(i *LifecycleInputs, _ AccessChecker, _ log.Logger) error {
 	switch {
 	case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
 		return errors.New(ErrSupplyOnlyOneRunImage)
@@ -245,7 +249,7 @@ func ValidateRebaseRunImage(i *LifecycleInputs, _ log.Logger) error {
 }
 
 // ValidateTargetsAreSameRegistry ensures all output images are on the same registry.
-func ValidateTargetsAreSameRegistry(i *LifecycleInputs, _ log.Logger) error {
+func ValidateTargetsAreSameRegistry(i *LifecycleInputs, _ AccessChecker, _ log.Logger) error {
 	if i.UseDaemon {
 		return nil
 	}

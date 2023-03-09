@@ -51,7 +51,7 @@ func (r *rebaseCmd) Args(nargs int, args []string) error {
 	}
 	r.OutputImageRef = args[0]
 	r.AdditionalTags = args[1:]
-	if err := platform.ResolveInputs(platform.Rebase, r.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Rebase, r.LifecycleInputs, &image.NopHandler{}, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	if err := r.setAppImage(); err != nil {

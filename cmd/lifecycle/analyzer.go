@@ -67,9 +67,6 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
 	}
 	a.LifecycleInputs.OutputImageRef = args[0]
-	if err := platform.ResolveInputs(platform.Analyze, a.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
-	}
 	if a.UseLayout {
 		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
@@ -102,12 +99,19 @@ func (a *analyzeCmd) Privileges() error {
 
 // Exec executes the command.
 func (a *analyzeCmd) Exec() error {
+	imageHandler, err := image.NewHandler(image.HandlerOptions{UseDaemon: a.UseDaemon, UseLayout: a.UseLayout, DockerClient: a.docker, RegistryKeychain: a.keychain})
+	if err != nil {
+		return cmd.FailErr(err, "get images")
+	}
+	if err := platform.ResolveInputs(platform.Analyze, a.LifecycleInputs, imageHandler, cmd.DefaultLogger); err != nil {
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+	}
 	factory := lifecycle.NewAnalyzerFactory(
 		a.PlatformAPI,
 		&cmd.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
-		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout),
+		imageHandler,
 		NewRegistryHandler(a.keychain),
 	)
 	analyzer, err := factory.NewAnalyzer(

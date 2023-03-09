@@ -1,6 +1,7 @@
 package image
 
 import (
+	"errors"
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
@@ -13,10 +14,16 @@ type LayoutHandler struct {
 	layoutDir string
 }
 
-func NewLayoutImageHandler(layoutDir string) *LayoutHandler {
-	return &LayoutHandler{
-		layoutDir: layoutDir,
+func NewLayoutHandler(opts HandlerOptions) (*LayoutHandler, error) {
+	if opts.LayoutDir == "" {
+		return nil, errors.New("layout directory must be provided when exporting to OCI layout format")
 	}
+	return &LayoutHandler{layoutDir: opts.LayoutDir}, nil
+}
+
+func (h *LayoutHandler) CheckReadAccess(imageRef string) (bool, error) {
+	// TODO: verify that we can find the image on disk
+	return true, nil
 }
 
 func (h *LayoutHandler) InitImage(imageRef string) (imgutil.Image, error) {

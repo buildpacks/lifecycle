@@ -34,6 +34,21 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 	return m.recorder
 }
 
+// CheckReadAccess mocks base method.
+func (m *MockHandler) CheckReadAccess(arg0 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckReadAccess", arg0)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckReadAccess indicates an expected call of CheckReadAccess.
+func (mr *MockHandlerMockRecorder) CheckReadAccess(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckReadAccess", reflect.TypeOf((*MockHandler)(nil).CheckReadAccess), arg0)
+}
+
 // InitImage mocks base method.
 func (m *MockHandler) InitImage(arg0 string) (imgutil.Image, error) {
 	m.ctrl.T.Helper()

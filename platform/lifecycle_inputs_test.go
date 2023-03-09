@@ -224,7 +224,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("updates all placeholder paths", func() {
-			h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
+			h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil, nil))
 			v := reflect.ValueOf(inputs).Elem()
 			for i := 0; i < v.NumField(); i++ {
 				field := v.Field(i)
@@ -241,7 +241,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does nothing", func() {
-				h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
+				h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil, nil))
 				h.AssertEq(t, inputs.AnalyzedPath, "")
 			})
 		})
@@ -250,7 +250,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			when("custom", func() {
 				it("doesn't override it", func() {
 					inputs.OrderPath = "some-order-path"
-					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
+					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil, nil))
 					h.AssertEq(t, inputs.OrderPath, inputs.OrderPath)
 				})
 			})
@@ -271,14 +271,14 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("expects order.toml in the layers directory", func() {
-					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
+					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil, nil))
 					h.AssertEq(t, inputs.OrderPath, filepath.Join(tmpDir, "order.toml"))
 				})
 			})
 
 			when("not exists in layers directory", func() {
 				it("expects order.toml in the /cnb directory", func() {
-					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
+					h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil, nil))
 					h.AssertEq(t, inputs.OrderPath, platform.CNBOrderPath)
 				})
 			})
@@ -290,7 +290,7 @@ func testLifecycleInputs(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("expects and writes files in the working directory", func() {
-				h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil))
+				h.AssertNil(t, platform.UpdatePlaceholderPaths(inputs, nil, nil))
 				h.AssertEq(t, inputs.AnalyzedPath, "analyzed.toml")
 			})
 		})

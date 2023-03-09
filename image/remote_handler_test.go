@@ -24,7 +24,7 @@ func testRemoteImageHandler(t *testing.T, when spec.G, it spec.S) {
 	when("Remote handler", func() {
 		it.Before(func() {
 			auth = authn.DefaultKeychain
-			imageHandler = image.NewHandler(nil, auth, "", false)
+			imageHandler, _ = image.NewHandler(image.HandlerOptions{RegistryKeychain: auth})
 			h.AssertNotNil(t, imageHandler)
 		})
 

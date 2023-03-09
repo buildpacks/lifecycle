@@ -7,30 +7,39 @@ import (
 )
 
 type Handler interface {
+	CheckReadAccess(imageRef string) (bool, error)
 	InitImage(imageRef string) (imgutil.Image, error)
 	Kind() string
 }
 
-// NewHandler creates a new Handler according to the arguments provided, following these rules:
-// - WHEN layoutDir is defined and useLayout is true then it returns a LayoutHandler
-// - WHEN a docker client is provided then it returns a LocalHandler
-// - WHEN an auth.Keychain is provided then it returns a RemoteHandler
-// - Otherwise nil is returned
-func NewHandler(docker client.CommonAPIClient, keychain authn.Keychain, layoutDir string, useLayout bool) Handler {
-	if layoutDir != "" && useLayout {
-		return &LayoutHandler{
-			layoutDir: layoutDir,
-		}
+type HandlerOptions struct {
+	DockerClient     client.CommonAPIClient
+	RegistryKeychain authn.Keychain
+	LayoutDir        string
+	UseLayout        bool
+	UseDaemon        bool
+}
+
+func NewHandler(opts HandlerOptions) (Handler, error) {
+	if opts.UseLayout {
+		return NewLayoutHandler(opts)
 	}
-	if docker != nil {
-		return &LocalHandler{
-			docker: docker,
-		}
+	if opts.UseDaemon {
+		return NewLocalHandler(opts)
 	}
-	if keychain != nil {
-		return &RemoteHandler{
-			keychain: keychain,
-		}
-	}
-	return nil
+	return NewRemoteHandler(opts)
+}
+
+type NopHandler struct{}
+
+func (h *NopHandler) CheckReadAccess(imageRef string) (bool, error) {
+	return true, nil
+}
+
+func (h *NopHandler) InitImage(imageRef string) (imgutil.Image, error) {
+	return nil, nil
+}
+
+func (h *NopHandler) Kind() string {
+	return ""
 }
