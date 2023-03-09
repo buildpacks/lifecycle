@@ -130,6 +130,12 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				)
 
 				h.AssertStringContains(t, output, "Restoring metadata for \"some-buildpack-id:launch-layer\"")
+				if api.MustParse(platformAPI).LessThan("0.12") {
+					t.Log("doesn't add target data for older platforms")
+					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "analyzed.toml"), cmd.DefaultLogger)
+					h.AssertNil(t, err)
+					h.AssertNil(t, analyzedMD.RunImage.TargetMetadata)
+				}
 			})
 		})
 
@@ -190,7 +196,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("restoring builder image metadata", func() {
+		when("restoring builder image metadata for extensions", func() {
 			it("accepts -build-image and saves the metadata to /kaniko/cache", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.10"), "Platform API < 0.10 does not restore builder image metadata")
 				h.DockerRunAndCopy(t,
@@ -219,7 +225,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("restoring run image metadata", func() {
+		when("restoring run image metadata for extensions", func() {
 			it("saves metadata to /kaniko/cache", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not restore run image metadata")
 				h.DockerRunAndCopy(t,

@@ -1,5 +1,8 @@
 [image]
-reference = "some-ref"
+reference = "some-previous-image-ref"
+
+[run-image]
+reference = "REPLACE"
 
 [[metadata.buildpacks]]
 key = "some-buildpack-id"

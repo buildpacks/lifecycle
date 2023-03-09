@@ -93,26 +93,26 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
 			runImage, digest, err := r.pullSparse(analyzedMD.RunImage.Reference)
 			if err != nil {
-				return cmd.FailErr(err, "reading run image")
+				return cmd.FailErr(err, "read run image")
 			}
 			targetData, err := platform.ReadTargetData(runImage)
 			if err != nil {
-				return cmd.FailErr(err, "reading target data from run image")
+				return cmd.FailErr(err, "read target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference:      digest.String(),
 				Extend:         true,
 				TargetMetadata: &targetData,
 			}
-		} else if needsUpdating(analyzedMD.RunImage) {
+		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Updating analyzed metadata...")
 			runImage, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
 			if err != nil {
-				return cmd.FailErr(err, "reading run image")
+				return cmd.FailErr(err, "read run image")
 			}
 			targetData, err := platform.ReadTargetData(runImage)
 			if err != nil {
-				return cmd.FailErr(err, "reading target data from run image")
+				return cmd.FailErr(err, "read target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference:      digest.String(),
@@ -171,6 +171,10 @@ func (r *restoreCmd) supportsBuildImageExtension() bool {
 }
 
 func (r *restoreCmd) supportsRunImageExtension() bool {
+	return r.PlatformAPI.AtLeast("0.12")
+}
+
+func (r *restoreCmd) supportsTargetData() bool {
 	return r.PlatformAPI.AtLeast("0.12")
 }
 
