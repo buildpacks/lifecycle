@@ -100,7 +100,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 			var stackMD *platform.StackMetadata
 
 			it.Before(func() {
-				stackMD = &platform.StackMetadata{RunImage: platform.RunImageMetadata{
+				stackMD = &platform.StackMetadata{RunImage: platform.RunImageForExport{
 					Image: "first.com/org/repo",
 					Mirrors: []string{
 						"myorg/myrepo",
@@ -162,7 +162,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 					PreviousImage: &platform.ImageIdentifier{Reference: "previous-img"},
 					Metadata: platform.LayersMetadata{
 						Stack: platform.StackMetadata{
-							RunImage: platform.RunImageMetadata{Image: "imagine that"},
+							RunImage: platform.RunImageForExport{Image: "imagine that"},
 						},
 					},
 					RunImage: &platform.RunImage{Reference: "some-ref"},
@@ -180,7 +180,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 					PreviousImage: &platform.ImageIdentifier{Reference: "previous-img"},
 					Metadata: platform.LayersMetadata{
 						Stack: platform.StackMetadata{
-							RunImage: platform.RunImageMetadata{Image: "imagine that"},
+							RunImage: platform.RunImageForExport{Image: "imagine that"},
 						},
 					},
 					RunImage: &platform.RunImage{Reference: "some-ref"},

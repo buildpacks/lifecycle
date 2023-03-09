@@ -19,36 +19,43 @@ type Generator struct {
 	BuildConfigDir string
 	GeneratedDir   string // e.g., <layers>/generated
 	PlatformDir    string
+	AnalyzedMD     platform.AnalyzedMetadata
 	DirStore       DirStore
 	Executor       buildpack.GenerateExecutor
 	Extensions     []buildpack.GroupElement
 	Logger         log.Logger
 	Out, Err       io.Writer
 	Plan           platform.BuildPlan
+	RunMetadata    platform.RunMetadata
 }
 
 type GeneratorFactory struct {
-	apiVerifier BuildpackAPIVerifier
-	dirStore    DirStore
+	apiVerifier   BuildpackAPIVerifier
+	configHandler ConfigHandler
+	dirStore      DirStore
 }
 
 func NewGeneratorFactory(
 	apiVerifier BuildpackAPIVerifier,
+	configHandler ConfigHandler,
 	dirStore DirStore,
 ) *GeneratorFactory {
 	return &GeneratorFactory{
-		apiVerifier: apiVerifier,
-		dirStore:    dirStore,
+		apiVerifier:   apiVerifier,
+		configHandler: configHandler,
+		dirStore:      dirStore,
 	}
 }
 
 func (f *GeneratorFactory) NewGenerator(
+	analyzedPath string,
 	appDir string,
 	buildConfigDir string,
 	extensions []buildpack.GroupElement,
 	generatedDir string,
 	plan platform.BuildPlan,
 	platformDir string,
+	runPath string,
 	stdout, stderr io.Writer,
 	logger log.Logger,
 ) (*Generator, error) {
@@ -68,6 +75,12 @@ func (f *GeneratorFactory) NewGenerator(
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
 	}
+	if err := f.setAnalyzedMD(generator, analyzedPath, logger); err != nil {
+		return nil, err
+	}
+	if err := f.setRunMD(generator, runPath, logger); err != nil {
+		return nil, err
+	}
 	return generator, nil
 }
 
@@ -81,10 +94,22 @@ func (f *GeneratorFactory) setExtensions(generator *Generator, extensions []buil
 	return nil
 }
 
+func (f *GeneratorFactory) setAnalyzedMD(generator *Generator, analyzedPath string, logger log.Logger) error {
+	var err error
+	generator.AnalyzedMD, err = f.configHandler.ReadAnalyzed(analyzedPath, logger)
+	return err
+}
+
+func (f *GeneratorFactory) setRunMD(generator *Generator, runPath string, logger log.Logger) error {
+	var err error
+	generator.RunMetadata, err = f.configHandler.ReadRun(runPath, logger)
+	return err
+}
+
 type GenerateResult struct {
-	RunImage string
-	Plan     platform.BuildPlan
-	UsePlan  bool
+	AnalyzedMD platform.AnalyzedMetadata
+	Plan       platform.BuildPlan
+	UsePlan    bool
 }
 
 func (g *Generator) Generate() (GenerateResult, error) {
@@ -123,24 +148,50 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debugf("Finished running generate for extension %s", ext)
 	}
 
-	g.Logger.Debug("Validating Dockerfiles")
-	if err := g.validateDockerfiles(dockerfiles); err != nil {
-		return GenerateResult{}, err
-	}
-
-	g.Logger.Debug("Copying Dockerfiles")
-	if err := g.copyDockerfiles(dockerfiles); err != nil {
-		return GenerateResult{}, err
-	}
-
 	g.Logger.Debug("Checking for new run image")
-	runImage, err := g.checkNewRunImage()
+	base, newBaseIdx, extend := g.checkNewRunImage(dockerfiles)
 	if err != nil {
 		return GenerateResult{}, err
 	}
+	if !satisfies(g.RunMetadata.Images, base) {
+		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", base)
+	}
 
-	g.Logger.Debugf("Finished build, selected runImage '%s'", runImage)
-	return GenerateResult{Plan: filteredPlan, UsePlan: true, RunImage: runImage}, nil
+	g.Logger.Debug("Copying Dockerfiles")
+	if err = g.copyDockerfiles(dockerfiles, newBaseIdx); err != nil {
+		return GenerateResult{}, err
+	}
+
+	newAnalyzedMD := g.AnalyzedMD
+	if newRunImage(base, g.AnalyzedMD) {
+		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", base)
+		newAnalyzedMD.RunImage = &platform.RunImage{ // target data is cleared
+			Reference: base,
+			Extend:    extend,
+		}
+	} else if extend && g.AnalyzedMD.RunImage != nil {
+		g.Logger.Debug("Updating analyzed metadata with run image extend")
+		newAnalyzedMD.RunImage.Extend = true
+	}
+
+	return GenerateResult{
+		AnalyzedMD: newAnalyzedMD,
+		Plan:       filteredPlan,
+		UsePlan:    true,
+	}, nil
+}
+
+func satisfies(images []platform.RunImageForExport, imageName string) bool {
+	if len(images) == 0 {
+		// if no run image metadata was provided, consider it a match
+		return true
+	}
+	for _, image := range images {
+		if image.Image == imageName {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
@@ -154,29 +205,17 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 	}
 }
 
-func (g *Generator) validateDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
-	for _, dockerfile := range dockerfiles {
-		switch {
-		case dockerfile.Kind == buildpack.DockerfileKindRun:
-			if err := buildpack.VerifyRunDockerfile(dockerfile.Path); err != nil {
-				return fmt.Errorf("error parsing run.Dockerfile for extension %s: %w", dockerfile.ExtensionID, err)
-			}
-		case dockerfile.Kind == buildpack.DockerfileKindBuild:
-			if err := buildpack.VerifyBuildDockerfile(dockerfile.Path, g.Logger); err != nil {
-				return fmt.Errorf("error parsing build.Dockerfile for extension %s: %w", dockerfile.ExtensionID, err)
-			}
-		}
-	}
-	return nil
-}
-
-func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
-	for _, dockerfile := range dockerfiles {
+func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo, newBaseIdx int) error {
+	for currentIdx, dockerfile := range dockerfiles {
 		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
-		targetPath := filepath.Join(targetDir, "Dockerfile")
+		var targetPath = filepath.Join(targetDir, "Dockerfile")
+		if dockerfile.Kind == buildpack.DockerfileKindRun && currentIdx < newBaseIdx {
+			targetPath += ".ignore"
+		}
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 			return err
 		}
+		g.Logger.Debugf("Copying %s to %s", dockerfile.Path, targetPath)
 		if err := fsutil.Copy(dockerfile.Path, targetPath); err != nil {
 			return err
 		}
@@ -191,23 +230,32 @@ func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) erro
 	return nil
 }
 
-func (g *Generator) checkNewRunImage() (string, error) {
+func (g *Generator) checkNewRunImage(dockerfiles []buildpack.DockerfileInfo) (newBase string, newBaseIdx int, extend bool) {
 	// There may be extensions that contribute only a build.Dockerfile; work backward through extensions until we find
 	// a run.Dockerfile.
-	for i := len(g.Extensions) - 1; i >= 0; i-- {
-		extID := g.Extensions[i].ID
-		runDockerfile := filepath.Join(g.GeneratedDir, "run", launch.EscapeID(extID), "Dockerfile")
-		if _, err := os.Stat(runDockerfile); os.IsNotExist(err) {
+	for i := len(dockerfiles) - 1; i >= 0; i-- {
+		if dockerfiles[i].Kind != buildpack.DockerfileKindRun {
 			continue
 		}
-
-		imageName, err := buildpack.RetrieveFirstFromImageNameFromDockerfile(runDockerfile)
-		if err != nil {
-			return "", err
+		if dockerfiles[i].NewBase != "" {
+			newBase = dockerfiles[i].NewBase
+			newBaseIdx = i
+			g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", newBase, dockerfiles[i].ExtensionID)
+			break
 		}
-
-		g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", imageName, extID)
-		return imageName, nil
+		if dockerfiles[i].NewBase == "" {
+			extend = true
+		}
 	}
-	return "", nil
+	return newBase, newBaseIdx, extend
+}
+
+func newRunImage(base string, analyzedMD platform.AnalyzedMetadata) bool {
+	if base == "" {
+		return false
+	}
+	if analyzedMD.RunImage == nil {
+		return true
+	}
+	return base != analyzedMD.RunImage.Reference
 }

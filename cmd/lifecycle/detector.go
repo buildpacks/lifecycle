@@ -18,28 +18,24 @@ type detectCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (d *detectCmd) DefineFlags() {
-	switch {
-	case d.PlatformAPI.AtLeast("0.10"):
-		cli.FlagAnalyzedPath(&d.AnalyzedPath)
-		cli.FlagAppDir(&d.AppDir)
-		cli.FlagBuildpacksDir(&d.BuildpacksDir)
-		cli.FlagExtensionsDir(&d.ExtensionsDir)
-		cli.FlagGeneratedDir(&d.GeneratedDir)
-		cli.FlagGroupPath(&d.GroupPath)
-		cli.FlagLayersDir(&d.LayersDir)
-		cli.FlagOrderPath(&d.OrderPath)
-		cli.FlagPlanPath(&d.PlanPath)
-		cli.FlagPlatformDir(&d.PlatformDir)
-	default:
-		cli.FlagAppDir(&d.AppDir)
-		cli.FlagBuildpacksDir(&d.BuildpacksDir)
-		cli.FlagGroupPath(&d.GroupPath)
-		cli.FlagOrderPath(&d.OrderPath)
-		cli.FlagLayersDir(&d.LayersDir)
-		cli.FlagPlanPath(&d.PlanPath)
-		cli.FlagPlatformDir(&d.PlatformDir)
+	if d.PlatformAPI.AtLeast("0.12") {
+		cli.FlagRunPath(&d.RunPath)
+	}
+	if d.PlatformAPI.AtLeast("0.11") {
 		cli.FlagBuildConfigDir(&d.BuildConfigDir)
 	}
+	if d.PlatformAPI.AtLeast("0.10") {
+		cli.FlagAnalyzedPath(&d.AnalyzedPath)
+		cli.FlagExtensionsDir(&d.ExtensionsDir)
+		cli.FlagGeneratedDir(&d.GeneratedDir)
+	}
+	cli.FlagAppDir(&d.AppDir)
+	cli.FlagBuildpacksDir(&d.BuildpacksDir)
+	cli.FlagGroupPath(&d.GroupPath)
+	cli.FlagLayersDir(&d.LayersDir)
+	cli.FlagOrderPath(&d.OrderPath)
+	cli.FlagPlanPath(&d.PlanPath)
+	cli.FlagPlatformDir(&d.PlatformDir)
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -96,16 +92,19 @@ func (d *detectCmd) Exec() error {
 	if group.HasExtensions() {
 		generatorFactory := lifecycle.NewGeneratorFactory(
 			&cmd.BuildpackAPIVerifier{},
+			lifecycle.Config,
 			dirStore,
 		)
 		var generator *lifecycle.Generator
 		generator, err = generatorFactory.NewGenerator(
+			d.AnalyzedPath,
 			d.AppDir,
 			d.BuildConfigDir,
 			group.GroupExtensions,
 			d.GeneratedDir,
 			plan,
 			d.PlatformDir,
+			d.RunPath,
 			cmd.Stdout, cmd.Stderr,
 			cmd.DefaultLogger,
 		)
@@ -117,14 +116,9 @@ func (d *detectCmd) Exec() error {
 		if err != nil {
 			return d.unwrapGenerateFail(err)
 		}
-		// was a custom run image configured?
-		if result.RunImage != "" {
-			cmd.DefaultLogger.Debug("Updating analyzed metadata with new runImage")
-			detector.AnalyzeMD.RunImage = &platform.RunImage{Reference: result.RunImage}
-			if err = d.writeGenerateData(detector.AnalyzeMD); err != nil {
-				return err
-			}
-			cmd.DefaultLogger.Debugf("Updated analyzed metadata with new runImage '%s'", result.RunImage)
+
+		if err = d.writeGenerateData(result.AnalyzedMD); err != nil {
+			return err
 		}
 		// was the build plan updated?
 		if result.UsePlan {
