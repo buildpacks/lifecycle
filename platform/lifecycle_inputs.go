@@ -26,7 +26,6 @@ type LifecycleInputs struct {
 	DefaultProcessType    string
 	DeprecatedRunImageRef string
 	ExtensionsDir         string
-	ForceRebase           bool
 	GeneratedDir          string
 	GroupPath             string
 	KanikoDir             string
@@ -48,6 +47,7 @@ type LifecycleInputs struct {
 	StackPath             string
 	UID                   int
 	GID                   int
+	ForceRebase           bool
 	SkipLayers            bool
 	UseDaemon             bool
 	UseLayout             bool
