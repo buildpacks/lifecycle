@@ -219,7 +219,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
 		}
-		atm, err = a.getTargetFromImage(a.RunImage)
+		atm, err = platform.GetTargetFromImage(a.RunImage)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
 		}
@@ -255,41 +255,6 @@ func (a *Analyzer) getImageIdentifier(image imgutil.Image) (string, error) {
 	}
 	a.Logger.Debugf("Found image with identifier %q", identifier.String())
 	return identifier.String(), nil
-}
-
-func (a *Analyzer) getTargetFromImage(image imgutil.Image) (*platform.TargetMetadata, error) {
-	tm := platform.TargetMetadata{}
-	if !image.Found() {
-		a.Logger.Infof("Image with name %q not found", image.Name())
-		return &tm, nil
-	}
-	var err error
-	tm.OS, err = image.OS()
-	if err != nil {
-		return &tm, err
-	}
-	tm.Arch, err = image.Architecture()
-	if err != nil {
-		return &tm, err
-	}
-	tm.ArchVariant, err = image.Variant()
-	if err != nil {
-		return &tm, err
-	}
-	labels, err := image.Labels()
-	if err != nil {
-		return &tm, err
-	}
-	distName, distNameExists := labels["io.buildpacks.distribution.name"]
-	distVersion, distVersionExists := labels["io.buildpacks.distribution.version"]
-	if distNameExists || distVersionExists {
-		tm.Distribution = &buildpack.DistributionMetadata{Name: distName, Version: distVersion}
-	}
-	if id, exists := labels["io.buildpacks.id"]; exists {
-		tm.ID = id
-	}
-
-	return &tm, nil
 }
 
 func bomSHA(appMeta platform.LayersMetadata) string {
