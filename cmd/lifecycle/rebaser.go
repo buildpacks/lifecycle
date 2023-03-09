@@ -107,6 +107,7 @@ func (r *rebaseCmd) Exec() error {
 	rebaser := &lifecycle.Rebaser{
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: r.PlatformAPI,
+		Force:       r.ForceRebase,
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
 	if err != nil {
