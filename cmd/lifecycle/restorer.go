@@ -85,15 +85,15 @@ func (r *restoreCmd) Exec() error {
 	if analyzedMD, err = platform.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
 		if r.supportsBuildImageExtension() {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata...")
-			_, digest, err := r.pullSparse(r.BuildImageRef)
+			_, buildImageDigest, err := r.pullSparse(r.BuildImageRef)
 			if err != nil {
 				return cmd.FailErr(err, "read builder image")
 			}
-			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digest.String()}
+			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: buildImageDigest.String()}
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
-			runImage, digest, err := r.pullSparse(analyzedMD.RunImage.Reference)
+			runImage, runImageDigest, err := r.pullSparse(analyzedMD.RunImage.Reference)
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
@@ -102,13 +102,13 @@ func (r *restoreCmd) Exec() error {
 				return cmd.FailErr(err, "read target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:      digest.String(),
+				Reference:      runImageDigest.String(),
 				Extend:         true,
 				TargetMetadata: &targetData,
 			}
 		} else if r.supportsTargetData() && needsUpdating(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Updating analyzed metadata...")
-			runImage, digest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
+			runImage, runImageDigest, err := newRemoteImage(analyzedMD.RunImage.Reference, r.keychain)
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
@@ -117,7 +117,7 @@ func (r *restoreCmd) Exec() error {
 				return cmd.FailErr(err, "read target data from run image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:      digest.String(),
+				Reference:      runImageDigest.String(),
 				Extend:         analyzedMD.RunImage.Extend,
 				TargetMetadata: &targetData,
 			}
