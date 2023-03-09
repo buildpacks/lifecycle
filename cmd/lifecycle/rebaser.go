@@ -162,6 +162,13 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	if r.RunImageRef == "" {
+		if r.PlatformAPI.AtLeast("0.12") {
+			if md.RunImage.Reference == "" {
+				return cmd.FailErrCode(errors.New("-run-image is required when there is no run image metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
+			}
+			r.RunImageRef = md.RunImage.Reference
+			return nil
+		}
 		if md.Stack.RunImage.Image == "" {
 			return cmd.FailErrCode(errors.New("-run-image is required when there is no stack metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
 		}
