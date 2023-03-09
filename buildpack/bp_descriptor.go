@@ -24,9 +24,10 @@ type StackMetadata struct {
 }
 
 type TargetPartial struct {
-	OS          string `json:"os" toml:"os"`
 	Arch        string `json:"arch" toml:"arch"`
 	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
+	ID          string `json:"id" toml:"id"`
+	OS          string `json:"os" toml:"os"`
 }
 
 type TargetMetadata struct {
