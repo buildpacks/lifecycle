@@ -125,18 +125,11 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(append(
 						dockerSocketMount,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
-						"--network", restoreRegNetwork,
 					)...),
 					h.WithArgs(),
 				)
 
 				h.AssertStringContains(t, output, "Restoring metadata for \"some-buildpack-id:launch-layer\"")
-				if api.MustParse(platformAPI).LessThan("0.12") {
-					t.Log("doesn't add target data for older platforms")
-					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "analyzed.toml"), cmd.DefaultLogger)
-					h.AssertNil(t, err)
-					h.AssertNil(t, analyzedMD.RunImage.TargetMetadata)
-				}
 			})
 		})
 
@@ -257,25 +250,27 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				h.AssertEq(t, len(fis), 1)
 				h.AssertPathExists(t, filepath.Join(copyDir, "kaniko", "cache", "base", ref.Identifier(), "oci-layout"))
 			})
+		})
 
-			when("only target data needs updating", func() {
-				it("updates run image reference in analyzed.toml to include digest and target data", func() {
-					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not restore run image metadata")
-					h.DockerRunAndCopy(t,
-						containerName,
-						copyDir,
-						"/",
-						restoreImage,
-						h.WithFlags(
-							"--env", "CNB_PLATFORM_API="+platformAPI,
-							"--env", "DOCKER_CONFIG=/docker-config",
-							"--network", restoreRegNetwork,
-						),
-						h.WithArgs(
-							"-analyzed", "/layers/some-extend-false-analyzed.toml",
-							"-log-level", "debug",
-						),
-					)
+		when("target data", func() {
+			it("updates run image reference in analyzed.toml to include digest and target data on newer platforms", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 does not support -analyzed flag")
+				h.DockerRunAndCopy(t,
+					containerName,
+					copyDir,
+					"/",
+					restoreImage,
+					h.WithFlags(
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "DOCKER_CONFIG=/docker-config",
+						"--network", restoreRegNetwork,
+					),
+					h.WithArgs(
+						"-analyzed", "/layers/some-extend-false-analyzed.toml",
+						"-log-level", "debug",
+					),
+				)
+				if api.MustParse(platformAPI).AtLeast("0.12") {
 					t.Log("updates run image reference in analyzed.toml to include digest and target data")
 					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
 					h.AssertNil(t, err)
@@ -285,7 +280,12 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					fis, err := os.ReadDir(filepath.Join(copyDir, "kaniko"))
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(fis), 1) // .gitkeep
-				})
+				} else {
+					t.Log("doesn't update analyzed.toml")
+					analyzedMD, err := lifecycle.Config.ReadAnalyzed(filepath.Join(copyDir, "layers", "some-extend-false-analyzed.toml"), cmd.DefaultLogger)
+					h.AssertNil(t, err)
+					h.AssertNil(t, analyzedMD.RunImage.TargetMetadata)
+				}
 			})
 		})
 	}
