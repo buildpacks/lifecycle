@@ -125,6 +125,7 @@ func testRestorerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.WithFlags(append(
 						dockerSocketMount,
 						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--network", restoreRegNetwork,
 					)...),
 					h.WithArgs(),
 				)
