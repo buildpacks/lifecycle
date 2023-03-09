@@ -235,30 +235,31 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 			it("requires equality of OS and Arch", func() {
 				d := platform.TargetMetadata{OS: "Win95", Arch: "Pentium"}
 
-				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: "Win98", Arch: d.Arch}}) {
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: "Win98", Arch: d.Arch}) {
 					t.Fatal("TargetMetadata with different OS were equal")
 				}
-				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: "Pentium MMX"}}) {
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: "Pentium MMX"}) {
 					t.Fatal("TargetMetadata with different Arch were equal")
 				}
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch, ArchVariant: "MMX"}}) {
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, ArchVariant: "MMX"}) {
 					t.Fatal("blank arch variant was not treated as wildcard")
 				}
 				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{
-					TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch},
+					OS:            d.OS,
+					Arch:          d.Arch,
 					Distributions: []buildpack.OSDistribution{{Name: "a", Version: "2"}},
 				}) {
 					t.Fatal("blank distributions list was not treated as wildcard")
 				}
 
 				d.Distribution = &platform.OSDistribution{Name: "A", Version: "1"}
-				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.OSDistribution{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}) {
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}) {
 					t.Fatal("unsatisfactory distribution lists were treated as satisfying")
 				}
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.OSDistribution{}}) {
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{}}) {
 					t.Fatal("blank distributions list was not treated as wildcard")
 				}
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.OSDistribution{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}) {
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}) {
 					t.Fatal("distributions list including target's distribution not recognized as satisfying")
 				}
 			})

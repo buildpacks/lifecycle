@@ -809,10 +809,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						WithAPI:   "0.12",
 						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 						Targets: []buildpack.TargetMetadata{
-							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95"},
+							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
 								Distributions: []buildpack.OSDistribution{
 									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{TargetPartial: buildpack.TargetPartial{Arch: "Pentium M", OS: "Win98"},
+							{Arch: "Pentium M", OS: "Win98",
 								Distributions: []buildpack.OSDistribution{{Name: "Windows 2000", Version: "Server"}}},
 						},
 					}
@@ -849,10 +849,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						WithAPI:   "0.12",
 						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 						Targets: []buildpack.TargetMetadata{
-							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95"},
+							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
 								Distributions: []buildpack.OSDistribution{
 									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{TargetPartial: buildpack.TargetPartial{Arch: "ARM64", OS: "MacOS"}, Distributions: []buildpack.OSDistribution{{Name: "MacOS", Version: "snow cheetah"}}}},
+							{Arch: "ARM64", OS: "MacOS", Distributions: []buildpack.OSDistribution{{Name: "MacOS", Version: "snow cheetah"}}}},
 					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())

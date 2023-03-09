@@ -23,14 +23,10 @@ type StackMetadata struct {
 	ID string `toml:"id"`
 }
 
-type TargetPartial struct {
-	OS          string `json:"os" toml:"os"`
-	Arch        string `json:"arch" toml:"arch"`
-	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
-}
-
 type TargetMetadata struct {
-	TargetPartial
+	OS            string           `json:"os" toml:"os"`
+	Arch          string           `json:"arch" toml:"arch"`
+	ArchVariant   string           `json:"arch-variant" toml:"arch-variant"`
 	Distributions []OSDistribution `json:"distributions" toml:"distributions"`
 }
 
@@ -66,7 +62,7 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 	if len(descriptor.Targets) == 0 {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}, Distributions: []OSDistribution{{Name: "ubuntu", Version: "18.04"}}})
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distributions: []OSDistribution{{Name: "ubuntu", Version: "18.04"}}})
 			}
 		}
 	}
@@ -80,10 +76,10 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 			for _, bf := range binFiles {
 				fname := bf.Name()
 				if fname == "build.exe" || fname == "build.bat" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "amd64"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "windows", Arch: "amd64"})
 				}
 				if fname == "build" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64"})
 				}
 			}
 		}

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -79,8 +78,11 @@ func (r *restoreCmd) Privileges() error {
 }
 
 func (r *restoreCmd) Exec() error {
-	var analyzedMD platform.AnalyzedMetadata
-	if _, err := toml.DecodeFile(r.AnalyzedPath, &analyzedMD); err == nil {
+	var (
+		analyzedMD platform.AnalyzedMetadata
+		err        error
+	)
+	if analyzedMD, err = platform.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
 		if r.supportsBuildImageExtension() {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata...")
 			_, digest, err := r.pullSparse(r.BuildImageRef)
