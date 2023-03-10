@@ -21,8 +21,6 @@ import (
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
-var cacheFixtureDir string
-
 var (
 	analyzeImage          string
 	analyzeRegAuthConfig  string

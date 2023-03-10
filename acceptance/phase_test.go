@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	ih "github.com/buildpacks/imgutil/testhelpers"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -398,4 +399,20 @@ func SBOMExtensions() []string {
 
 func SBOMComponents() []string {
 	return []string{"lifecycle", "launcher"}
+}
+
+func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) { //nolint  - these functions are in fact used, i promise
+	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+	h.AssertNil(t, err)
+	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
+	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
+	fmt.Println("asserted that image has OS:", phaseTest.targetDaemon.os, "and arch: ", phaseTest.targetDaemon.arch)
+}
+
+func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest *PhaseTest, expectedCreatedAt time.Time) { //nolint
+	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
+	h.AssertNil(t, err)
+	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
+	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
+	h.AssertEq(t, inspect.Created, expectedCreatedAt.Format(time.RFC3339))
 }

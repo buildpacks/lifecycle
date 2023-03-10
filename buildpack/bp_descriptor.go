@@ -67,9 +67,12 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
 				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+			} else if stack.ID == "*" {
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "*", Arch: "*"}, Distributions: []DistributionMetadata{}})
 			}
 		}
 	}
+
 	if len(descriptor.Targets) == 0 {
 		binDir := filepath.Join(descriptor.WithRootDir, "bin")
 		if stat, _ := os.Stat(binDir); stat != nil { // technically i think there's always supposed to be a bin Dir but we weren't enforcing it previously so why start now?
@@ -83,7 +86,7 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "amd64"}})
 				}
 				if fname == "build" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}}) // Question: why is the arch part of this inference -- should we leave the arch empty when we infer the OS?
 				}
 			}
 		}

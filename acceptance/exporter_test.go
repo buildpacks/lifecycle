@@ -4,7 +4,6 @@
 package acceptance
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -353,21 +352,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 	}
-}
-
-func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) {
-	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
-	h.AssertNil(t, err)
-	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
-	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
-}
-
-func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest *PhaseTest, expectedCreatedAt time.Time) {
-	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
-	h.AssertNil(t, err)
-	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
-	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
-	h.AssertEq(t, inspect.Created, expectedCreatedAt.Format(time.RFC3339))
 }
 
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
