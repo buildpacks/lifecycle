@@ -681,15 +681,18 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
-
-					h.AssertNotNil(t, md.RunImage.Target)
-					h.AssertEq(t, md.RunImage.Target.Arch, "Pentium")
-					h.AssertEq(t, md.RunImage.Target.ArchVariant, "MMX")
-					h.AssertEq(t, md.RunImage.Target.OS, "windows")
-					h.AssertEq(t, md.RunImage.Target.ID, "id software")
-					h.AssertNotNil(t, md.RunImage.Target.Distribution)
-					h.AssertEq(t, md.RunImage.Target.Distribution.Name, "moobuntu")
-					h.AssertEq(t, md.RunImage.Target.Distribution.Version, "Helpful Holstein")
+					if api.MustParse(platformAPI).LessThan("0.12") {
+						h.AssertNil(t, md.RunImage.Target)
+					} else {
+						h.AssertNotNil(t, md.RunImage.Target)
+						h.AssertEq(t, md.RunImage.Target.Arch, "Pentium")
+						h.AssertEq(t, md.RunImage.Target.ArchVariant, "MMX")
+						h.AssertEq(t, md.RunImage.Target.OS, "windows")
+						h.AssertEq(t, md.RunImage.Target.ID, "id software")
+						h.AssertNotNil(t, md.RunImage.Target.Distribution)
+						h.AssertEq(t, md.RunImage.Target.Distribution.Name, "moobuntu")
+						h.AssertEq(t, md.RunImage.Target.Distribution.Version, "Helpful Holstein")
+					}
 				})
 			})
 		})

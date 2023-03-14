@@ -219,9 +219,11 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
 		}
-		atm, err = platform.GetTargetFromImage(a.RunImage)
-		if err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
+		if a.PlatformAPI.AtLeast("0.12") {
+			atm, err = platform.GetTargetFromImage(a.RunImage)
+			if err != nil {
+				return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
+			}
 		}
 	}
 
