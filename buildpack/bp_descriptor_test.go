@@ -118,11 +118,11 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Stacks[0].ID, "some.non-magic.value")
 			h.AssertEq(t, len(descriptor.Targets), 1)
 			h.AssertEq(t, len(descriptor.Targets), 1)
-			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[0].Arch, "*")
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
 			h.AssertEq(t, len(descriptor.Targets[0].Distributions), 0)
 		})
-		it("detects both windows/amd64 if batch files are present and linux", func() {
+		it("detects both windows/* if batch files are present and linux", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
 			h.AssertNil(t, err)
@@ -135,9 +135,9 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
 			// specific behaviors for this test
 			h.AssertEq(t, len(descriptor.Targets), 2)
-			h.AssertEq(t, descriptor.Targets[0].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[0].Arch, "*")
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
-			h.AssertEq(t, descriptor.Targets[1].Arch, "amd64")
+			h.AssertEq(t, descriptor.Targets[1].Arch, "*")
 			h.AssertEq(t, descriptor.Targets[1].OS, "windows")
 		})
 	})

@@ -83,10 +83,10 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 			for _, bf := range binFiles {
 				fname := bf.Name()
 				if fname == "build.exe" || fname == "build.bat" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "amd64"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "*"}})
 				}
 				if fname == "build" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}}) // Question: why is the arch part of this inference -- should we leave the arch empty when we infer the OS?
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "*"}})
 				}
 			}
 		}

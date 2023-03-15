@@ -406,7 +406,6 @@ func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) 
 	h.AssertNil(t, err)
 	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
 	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
-	fmt.Println("asserted that image has OS:", phaseTest.targetDaemon.os, "and arch: ", phaseTest.targetDaemon.arch)
 }
 
 func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest *PhaseTest, expectedCreatedAt time.Time) { //nolint
