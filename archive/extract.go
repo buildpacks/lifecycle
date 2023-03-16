@@ -94,7 +94,7 @@ func Extract(tr TarReader) error {
 			}
 		case tar.TypeXGlobalHeader:
 			// ignore PAX Global Extended Headers
-			return nil
+			continue
 		default:
 			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
 		}
