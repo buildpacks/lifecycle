@@ -196,7 +196,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
 		if previousImageID, err = a.getImageIdentifier(a.PreviousImage); err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
+			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying previous image")
 		}
 
 		// continue even if the label cannot be decoded
@@ -214,7 +214,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 	if a.RunImage != nil {
 		runImageID, err = a.getImageIdentifier(a.RunImage)
 		if err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving image identifier")
+			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
 		}
 	}
 
@@ -239,14 +239,14 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*platform.ImageIdentifier, error) {
 	if !image.Found() {
-		a.Logger.Infof("Previous image with name %q not found", image.Name())
+		a.Logger.Infof("Image with name %q not found", image.Name())
 		return nil, nil
 	}
 	identifier, err := image.Identifier()
 	if err != nil {
 		return nil, err
 	}
-	a.Logger.Debugf("Analyzing image %q", identifier.String())
+	a.Logger.Debugf("Found image with identifier %q", identifier.String())
 	return &platform.ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
