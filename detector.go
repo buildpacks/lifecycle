@@ -236,7 +236,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					targetMatch = true
 				} else {
 					for i := range bpDescriptor.Targets {
-						fmt.Println("Checking for match against descriptor:", bpDescriptor.Targets[i])
+						d.Logger.Debugf("Checking for match against descriptor:", bpDescriptor.Targets[i])
 						if d.AnalyzeMD.RunImage.Target.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
 							targetMatch = true
 							break
