@@ -670,6 +670,30 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 
 					h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
 				})
+				it("populates Target metadata from the run image", func() {
+					h.AssertNil(t, image.SetLabel("io.buildpacks.id", "id software"))
+					h.AssertNil(t, image.SetOS("windows"))
+					h.AssertNil(t, image.SetOSVersion("95"))
+					h.AssertNil(t, image.SetArchitecture("Pentium"))
+					h.AssertNil(t, image.SetVariant("MMX"))
+					h.AssertNil(t, image.SetLabel("io.buildpacks.distribution.name", "moobuntu"))
+					h.AssertNil(t, image.SetLabel("io.buildpacks.distribution.version", "Helpful Holstein"))
+
+					md, err := analyzer.Analyze()
+					h.AssertNil(t, err)
+					if api.MustParse(platformAPI).LessThan("0.12") {
+						h.AssertNil(t, md.RunImage.Target)
+					} else {
+						h.AssertNotNil(t, md.RunImage.Target)
+						h.AssertEq(t, md.RunImage.Target.Arch, "Pentium")
+						h.AssertEq(t, md.RunImage.Target.ArchVariant, "MMX")
+						h.AssertEq(t, md.RunImage.Target.OS, "windows")
+						h.AssertEq(t, md.RunImage.Target.ID, "id software")
+						h.AssertNotNil(t, md.RunImage.Target.Distribution)
+						h.AssertEq(t, md.RunImage.Target.Distribution.Name, "moobuntu")
+						h.AssertEq(t, md.RunImage.Target.Distribution.Version, "Helpful Holstein")
+					}
+				})
 			})
 		})
 	}
