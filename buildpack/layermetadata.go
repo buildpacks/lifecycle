@@ -49,7 +49,9 @@ func DecodeLayerMetadataFile(path string, buildpackAPI string, logger log.Logger
 	for _, decoder := range decoders {
 		if decoder.IsSupported(buildpackAPI) {
 			lmf, str, err := decoder.Decode(path)
-			logger.Warnf(str)
+			if str != "" {
+				logger.Warn(str)
+			}
 			return lmf, err
 		}
 	}
