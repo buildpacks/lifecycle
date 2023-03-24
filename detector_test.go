@@ -872,6 +872,38 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 				})
 			})
+			it("was born to be wildcard compliant", func() {
+				detector.AnalyzeMD.RunImage = &platform.RunImage{
+					TargetMetadata: &platform.TargetMetadata{
+						OS:           "MacOS",
+						Arch:         "ARM64",
+						Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
+					},
+				}
+
+				bpA1 := &buildpack.BpDescriptor{
+					WithAPI:   "0.12",
+					Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+					Targets: []buildpack.TargetMetadata{
+						{Arch: "*", OS: "*"}},
+				}
+				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+				executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
+
+				group := []buildpack.GroupElement{
+					{ID: "A", Version: "v1", API: "0.12"},
+				}
+				// the most meaningful assertion in this test is that `group` is the first argument to Resolve, meaning that the buildpack matched.
+				resolver.EXPECT().Resolve(group, detector.Runs).Return(
+					[]buildpack.GroupElement{},
+					[]platform.BuildPlanEntry{},
+					nil,
+				)
+
+				detector.Order = buildpack.Order{{Group: group}}
+				_, _, err := detector.Detect()
+				h.AssertNil(t, err)
+			})
 		})
 
 		when("there are extensions", func() {

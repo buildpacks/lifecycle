@@ -13,19 +13,6 @@ const (
 	OSDistributionVersionLabel = "io.buildpacks.distribution.version"
 )
 
-type TargetMetadata struct {
-	ID           string          `toml:"id"`
-	OS           string          `toml:"os"`
-	Arch         string          `toml:"arch"`
-	ArchVariant  string          `toml:"variant"`
-	Distribution *OSDistribution `toml:"distribution"`
-}
-
-type OSDistribution struct {
-	Name    string `toml:"name"`
-	Version string `toml:"version"`
-}
-
 func ReadTargetData(fromImage v1.Image) (TargetMetadata, error) {
 	var (
 		targetID, os, arch, archVariant, distName, distVersion string
