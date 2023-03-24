@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/buildpacks/imgutil"
-
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -102,40 +100,6 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 		}
 	}
 	return true
-}
-
-func GetTargetFromImage(image imgutil.Image) (*TargetMetadata, error) {
-	tm := TargetMetadata{}
-	if !image.Found() {
-		return &tm, nil
-	}
-	var err error
-	tm.OS, err = image.OS()
-	if err != nil {
-		return &tm, err
-	}
-	tm.Arch, err = image.Architecture()
-	if err != nil {
-		return &tm, err
-	}
-	tm.ArchVariant, err = image.Variant()
-	if err != nil {
-		return &tm, err
-	}
-	labels, err := image.Labels()
-	if err != nil {
-		return &tm, err
-	}
-	distName, distNameExists := labels["io.buildpacks.distribution.name"]
-	distVersion, distVersionExists := labels["io.buildpacks.distribution.version"]
-	if distNameExists || distVersionExists {
-		tm.Distribution = &OSDistribution{Name: distName, Version: distVersion}
-	}
-	if id, exists := labels["io.buildpacks.id"]; exists {
-		tm.ID = id
-	}
-
-	return &tm, nil
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {
