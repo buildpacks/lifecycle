@@ -233,7 +233,7 @@ func digestReference(imageRef string, image imgutil.Image) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	digest, err := name.NewDigest(ir.String())
+	_, err = name.NewDigest(ir.String())
 	if err == nil {
 		// if we already have a digest reference, return it
 		return imageRef, nil
@@ -242,7 +242,7 @@ func digestReference(imageRef string, image imgutil.Image) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	digest, err = name.NewDigest(id.String())
+	digest, err := name.NewDigest(id.String())
 	if err != nil {
 		return "", err
 	}
