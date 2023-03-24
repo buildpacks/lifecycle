@@ -83,17 +83,17 @@ func (r *restoreCmd) Exec() error {
 		err        error
 	)
 	if analyzedMD, err = platform.ReadAnalyzed(r.AnalyzedPath, cmd.DefaultLogger); err == nil {
-		if r.supportsBuildImageExtension() {
+		if r.supportsBuildImageExtension() && r.BuildImageRef != "" {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata...")
 			buildImage, err := r.pullSparse(r.BuildImageRef)
 			if err != nil {
 				return cmd.FailErr(err, "read builder image")
 			}
-			id, err := buildImage.Identifier()
+			ref, err := digestReference(r.BuildImageRef, buildImage)
 			if err != nil {
-				return cmd.FailErr(err, "get builder image identifier")
+				return cmd.FailErr(err, "get digest reference for builder image")
 			}
-			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: id.String()}
+			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: ref}
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
@@ -105,12 +105,12 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
-			id, err := runImage.Identifier()
+			ref, err := digestReference(analyzedMD.RunImage.Reference, runImage)
 			if err != nil {
-				return cmd.FailErr(err, "get run image identifier")
+				return cmd.FailErr(err, "get digest reference for builder image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:      id.String(),
+				Reference:      ref,
 				Extend:         true,
 				TargetMetadata: targetData,
 			}
@@ -124,12 +124,12 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
-			id, err := runImage.Identifier()
+			ref, err := digestReference(analyzedMD.RunImage.Reference, runImage)
 			if err != nil {
-				return cmd.FailErr(err, "get run image identifier")
+				return cmd.FailErr(err, "get digest reference for builder image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:      id.String(),
+				Reference:      ref,
 				Extend:         analyzedMD.RunImage.Extend,
 				TargetMetadata: targetData,
 			}
@@ -193,9 +193,6 @@ func (r *restoreCmd) supportsTargetData() bool {
 }
 
 func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
-	if imageRef == "" {
-		return nil, nil
-	}
 	baseCacheDir := filepath.Join(kanikoDir, "cache", "base")
 	if err := os.MkdirAll(baseCacheDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create cache directory: %w", err)
@@ -229,6 +226,31 @@ func (r *restoreCmd) pullSparse(imageRef string) (imgutil.Image, error) {
 		return nil, fmt.Errorf("failed to save sparse image: %w", err)
 	}
 	return sparseImage, nil
+}
+
+func digestReference(imageRef string, image imgutil.Image) (string, error) {
+	ir, err := name.ParseReference(imageRef)
+	if err != nil {
+		return "", err
+	}
+	digest, err := name.NewDigest(ir.String())
+	if err == nil {
+		// if we already have a digest reference, return it
+		return imageRef, nil
+	}
+	id, err := image.Identifier()
+	if err != nil {
+		return "", err
+	}
+	digest, err = name.NewDigest(id.String())
+	if err != nil {
+		return "", err
+	}
+	digestRef, err := name.NewDigest(fmt.Sprintf("%s@%s", ir.Context().Name(), digest.DigestStr()), name.WeakValidation)
+	if err != nil {
+		return "", err
+	}
+	return digestRef.String(), nil
 }
 
 func (r *restoreCmd) restoresLayerMetadata() bool {
