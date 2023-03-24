@@ -212,8 +212,6 @@ jobs:
           WINDOWS_AMD64_SHA=$(go run ./tools/image/main.go -lifecyclePath ./out/lifecycle-v*+windows.x86-64.tgz -tag buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-windows -os windows | awk '{print $NF}')
           echo "WINDOWS_AMD64_SHA: $WINDOWS_AMD64_SHA"
 
-          sleep 5
-
           docker manifest create buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-x86-64@${LINUX_AMD64_SHA} \
               buildpacksio/lifecycle:${LIFECYCLE_IMAGE_TAG}-linux-arm64@${LINUX_ARM64_SHA} \
