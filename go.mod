@@ -1,9 +1,8 @@
 module github.com/buildpacks/lifecycle
 
-// FIXME: update github.com/GoogleContainerTools/kaniko to v1.9.2 when released
 require (
 	github.com/BurntSushi/toml v1.2.1
-	github.com/GoogleContainerTools/kaniko v1.9.2-0.20230324003425-906cc96b59f3
+	github.com/GoogleContainerTools/kaniko v1.9.2
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22
 	github.com/buildpacks/imgutil v0.0.0-20230324153732-a6c0ed910692
