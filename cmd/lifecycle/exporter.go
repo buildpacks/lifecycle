@@ -64,12 +64,12 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
-	cli.FlagRunImage(&e.RunImageRef) // Note: this flag isn't valid on Platform 0.7 and later, and any provided value is ignored
+	cli.FlagRunImage(&e.RunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 	cli.FlagStackPath(&e.StackPath)
 	cli.FlagUID(&e.UID)
 	cli.FlagUseDaemon(&e.UseDaemon)
 
-	cli.DeprecatedFlagRunImage(&e.DeprecatedRunImageRef) // Note: this flag isn't valid on Platform 0.7 and later, and any provided value is ignored
+	cli.DeprecatedFlagRunImage(&e.DeprecatedRunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 }
 
 // Args validates arguments and flags, and fills in default values.

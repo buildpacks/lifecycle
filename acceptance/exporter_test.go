@@ -354,6 +354,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 	}
 }
 
+// This helper function exists because we expect the run image in analyzed.toml to contain the registry IP and port,
+// which aren't known until we start the test.
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
 	regPlaceholders := []string{
 		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
