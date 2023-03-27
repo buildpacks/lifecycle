@@ -36,7 +36,6 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
-	github.com/Microsoft/hcsshim v0.10.0-rc.7 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.17.3 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.18.9 // indirect
@@ -130,4 +129,4 @@ go 1.19
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0
 
 // Ensure we only pull in the latest version of containerd
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.19
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.7.0
