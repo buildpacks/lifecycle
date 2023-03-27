@@ -340,7 +340,7 @@ RUN echo "hello" > world.txt
 			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).AnyTimes()
 
 			_, err := generator.Generate()
-			h.AssertError(t, err, "error parsing build.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
+			h.AssertError(t, err, "error parsing build.Dockerfile for extension A: dockerfile parse error on line 1: unknown instruction: some-invalid-content")
 		})
 
 		it("validates run.Dockerfiles", func() {
@@ -370,7 +370,7 @@ RUN echo "hello" > world.txt
 			executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).AnyTimes()
 
 			_, err := generator.Generate()
-			h.AssertError(t, err, "error parsing run.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
+			h.AssertError(t, err, "error parsing run.Dockerfile for extension A: dockerfile parse error on line 1: unknown instruction: some-invalid-content")
 		})
 
 		when("extension generate failed", func() {
