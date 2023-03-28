@@ -47,6 +47,7 @@ type LifecycleInputs struct {
 	StackPath             string
 	UID                   int
 	GID                   int
+	ForceRebase           bool
 	SkipLayers            bool
 	UseDaemon             bool
 	UseLayout             bool
@@ -131,6 +132,9 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		LauncherPath:        DefaultLauncherPath,
 		LauncherSBOMDir:     DefaultBuildpacksioSBOMDir,
 		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
+
+		// Configuration options for rebasing
+		ForceRebase: boolEnv(EnvForceRebase),
 	}
 
 	if platformAPI.LessThan("0.6") {

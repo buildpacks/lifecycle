@@ -207,6 +207,12 @@ const (
 	DefaultProjectMetadataFile = "project-metadata.toml"
 )
 
+// The following are configuration options for rebaser.
+const (
+	// EnvForceRebase is used to force the rebaser to rebase the app image even if the operation is unsafe.
+	EnvForceRebase = "CNB_FORCE_REBASE"
+)
+
 var (
 	// DefaultLauncherPath is the default location of the launcher executable during the build.
 	// The launcher is exported in the output application image and is used to start application processes at runtime.
