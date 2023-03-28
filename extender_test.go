@@ -338,14 +338,12 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
 						someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+						someFakeImage.ConfigFileReturnsOnCall(0, &v1.ConfigFile{Config: v1.Config{
+							User: "1234:5678",
+						}}, nil)
 
 						// first dockerfile
 
-						firstConfig := &v1.ConfigFile{Config: v1.Config{
-							User:   "1234:5678",
-							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.firstDockerfileRebasable)},
-						}}
-						someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
 						fakeDockerfileApplier.EXPECT().Apply(
 							gomock.Any(),
 							someFakeImage,
@@ -370,15 +368,14 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 								return someFakeImage, nil
 							})
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.firstDockerfileRebasable)},
+						}}
 						someFakeImage.ConfigFileReturnsOnCall(1, firstConfig, nil)
 
 						// second dockerfile
 
-						secondConfig := &v1.ConfigFile{Config: v1.Config{
-							User:   "1234:5678",
-							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.secondDockerfileRebasable)},
-						}}
-						someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 						fakeDockerfileApplier.EXPECT().Apply(
 							gomock.Any(),
 							someFakeImage,
@@ -403,12 +400,16 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 								return someFakeImage, nil
 							})
-						someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
+						secondConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.secondDockerfileRebasable)},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 
 						// set label
 
+						someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
 						someFakeImage.ConfigFileReturnsOnCall(4, secondConfig, nil)
-						someFakeImage.ConfigFileReturnsOnCall(5, secondConfig, nil)
 
 						// save selective
 
