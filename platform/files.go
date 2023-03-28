@@ -4,6 +4,7 @@ package platform
 
 import (
 	"encoding/json"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -100,6 +101,23 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 		}
 	}
 	return true
+}
+
+// PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
+// returns a boolean indicating whether it populated any data.
+func PopulateTargetOSFromFileSystem(d fsutil.Detector, tm *TargetMetadata) {
+	if d.HasLinuxFile() {
+		contents, err := d.ReadLinuxFile()
+		if err != nil {
+			// (TODO) imo this is non-fatal but would be nice to log here
+			return
+		}
+		info := d.GetInfo(contents)
+		if info.Version != "" || info.Name != "" {
+			tm.OS = "linux"
+			tm.Distribution = &OSDistribution{Name: info.Name, Version: info.Version}
+		}
+	}
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {

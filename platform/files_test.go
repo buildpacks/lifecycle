@@ -1,6 +1,7 @@
 package platform_test
 
 import (
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"os"
 	"testing"
 
@@ -15,6 +16,7 @@ import (
 
 func TestFiles(t *testing.T) {
 	spec.Run(t, "Files", testFiles)
+	spec.Run(t, "PopulateTarget", testPopulateTarget)
 }
 
 func testFiles(t *testing.T, when spec.G, it spec.S) {
@@ -263,6 +265,37 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal("distributions list including target's distribution not recognized as satisfying")
 				}
 			})
+		})
+	})
+}
+
+type mockDetector struct {
+	contents string
+	t        *testing.T
+}
+
+func (d *mockDetector) HasLinuxFile() bool {
+	return true
+}
+func (d *mockDetector) ReadLinuxFile() (string, error) {
+	return d.contents, nil
+}
+func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
+	h.AssertEq(d.t, osReleaseContents, d.contents)
+	return fsutil.OSInfo{
+		Name:    "opensesame",
+		Version: "3.14",
+	}
+}
+
+func testPopulateTarget(t *testing.T, when spec.G, it spec.S) {
+	when("the data is available", func() {
+		it("populates appropriately", func() {
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "this is just test contents really", t: t}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm)
+			h.AssertEq(t, "opensesame", tm.Distribution.Name)
+			h.AssertEq(t, "3.14", tm.Distribution.Version)
 		})
 	})
 }
