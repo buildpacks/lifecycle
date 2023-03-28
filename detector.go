@@ -63,6 +63,8 @@ type Detector struct {
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
+	AnalyzeMD      platform.AnalyzedMetadata
+	PlatformAPI    *api.Version
 
 	// If detect fails, we want to print debug statements as info level.
 	// memHandler holds all log entries; we'll iterate through them at the end of detect,
@@ -70,9 +72,10 @@ type Detector struct {
 	memHandler *memory.Handler
 }
 
-func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(analyzedMD platform.AnalyzedMetadata, appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
 	memHandler := memory.New()
 	detector := &Detector{
+		AnalyzeMD:      analyzedMD,
 		AppDir:         appDir,
 		BuildConfigDir: buildConfigDir,
 		DirStore:       f.dirStore,
@@ -82,6 +85,7 @@ func (f *DetectorFactory) NewDetector(appDir, buildConfigDir, orderPath, platfor
 		Resolver:       NewDefaultDetectResolver(&apexlog.Logger{Handler: memHandler}),
 		Runs:           &sync.Map{},
 		memHandler:     memHandler,
+		PlatformAPI:    f.platformAPI,
 	}
 	if err := f.setOrder(detector, orderPath, logger); err != nil {
 		return nil, err
@@ -183,7 +187,26 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 	return nil, nil, ErrFailedDetection
 }
 
+// isWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
+func isWildcard(t platform.TargetMetadata) bool {
+	return t.Arch == "" && t.OS == ""
+}
+
+func hasWildcard(ts []buildpack.TargetMetadata) bool {
+	for _, tm := range ts {
+		if tm.OS == "*" && tm.Arch == "*" {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+	// used below to mark each item as "done" by appending it to the done list
+	markDone := func(groupEl buildpack.GroupElement, descriptor buildpack.Descriptor) {
+		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
+	}
+
 	for i, groupEl := range group.Group {
 		// Continue if element has already been processed.
 		if hasIDForKind(done, groupEl.Kind(), groupEl.ID) {
@@ -195,23 +218,50 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			return d.detectOrder(groupEl.OrderExtensions, done, group.Group[i+1:], true, wg)
 		}
 
-		// Lookup element in store.
+		// Lookup element in store.  <-- "the store" is the directory where all the buildpacks are.
 		var (
-			descriptor buildpack.Descriptor
-			err        error
+			descriptor   buildpack.Descriptor
+			bpDescriptor *buildpack.BpDescriptor
+			err          error
 		)
 		if groupEl.Kind() == buildpack.KindBuildpack {
-			descriptor, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
+			bpDescriptor, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
 			if err != nil {
 				return nil, nil, err
 			}
 
+			if d.PlatformAPI.AtLeast("0.12") {
+				targetMatch := false
+				if isWildcard(d.AnalyzeMD.RunImageTarget()) || hasWildcard(bpDescriptor.Targets) {
+					targetMatch = true
+				} else {
+					for i := range bpDescriptor.Targets {
+						d.Logger.Debugf("Checking for match against descriptor:", bpDescriptor.Targets[i])
+						if d.AnalyzeMD.RunImage.TargetMetadata.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
+							targetMatch = true
+							break
+						}
+					}
+				}
+				if !targetMatch && !groupEl.Optional {
+					markDone(groupEl, bpDescriptor)
+					d.Runs.Store(
+						keyFor(groupEl),
+						buildpack.DetectOutputs{
+							Code: -1,
+							Err:  fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.RunImage.TargetMetadata),
+						})
+					continue
+				}
+			}
+
 			// Resolve order if element is a composite buildpack.
-			if order := descriptor.(*buildpack.BpDescriptor).Order; len(order) > 0 {
+			if order := bpDescriptor.Order; len(order) > 0 {
 				// FIXME: double-check slice safety here
 				// FIXME: cyclical references lead to infinite recursion
 				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
 			}
+			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
 		} else {
 			descriptor, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
 			if err != nil {
@@ -219,8 +269,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			}
 		}
 
-		// Mark element as done.
-		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
+		markDone(groupEl, descriptor)
 
 		// Run detect if element is a component buildpack or an extension.
 		wg.Add(1)
@@ -233,7 +282,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					PlatformDir:    d.PlatformDir,
 					Env:            env.NewBuildEnv(os.Environ()),
 				}
-				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger))
+				d.Runs.Store(key, d.Executor.Detect(descriptor, inputs, d.Logger)) // this is where we finally invoke bin/detect
 			}
 			wg.Done()
 		}(key, descriptor)

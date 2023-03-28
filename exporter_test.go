@@ -394,8 +394,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("saves run image metadata to the resulting image", func() {
-				opts.Stack = platform.StackFileMetadata{
-					RunImage: platform.RunImageMetadata{
+				opts.Stack = platform.StackMetadata{
+					RunImage: platform.RunImageForExport{
 						Image:   "some/run",
 						Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
 					},

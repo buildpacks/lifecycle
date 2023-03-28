@@ -45,6 +45,7 @@ func (c *createCmd) DefineFlags() {
 	cli.FlagGID(&c.GID)
 	cli.FlagLaunchCacheDir(&c.LaunchCacheDir)
 	cli.FlagLauncherPath(&c.LauncherPath)
+	cli.FlagLayersDir(&c.LayersDir)
 	cli.FlagOrderPath(&c.OrderPath)
 	cli.FlagPlatformDir(&c.PlatformDir)
 	cli.FlagPreviousImage(&c.PreviousImageRef)
@@ -155,7 +156,7 @@ func (c *createCmd) Exec() error {
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(analyzedMD, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}
@@ -171,7 +172,7 @@ func (c *createCmd) Exec() error {
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
-		detector, err := detectorFactory.NewDetector(c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
+		detector, err := detectorFactory.NewDetector(platform.AnalyzedMetadata{}, c.AppDir, c.BuildConfigDir, c.OrderPath, c.PlatformDir, cmd.DefaultLogger)
 		if err != nil {
 			return unwrapErrorFailWithMessage(err, "initialize detector")
 		}

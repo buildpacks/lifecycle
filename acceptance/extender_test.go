@@ -209,10 +209,10 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					t.Log("does not run the build phase")
 					h.AssertStringDoesNotContain(t, firstOutput, "Hello Extensions buildpack\ncurl")
 					t.Log("outputs extended image layers to the extended directory")
-					images, err := os.ReadDir(extendedDir)
+					images, err := os.ReadDir(filepath.Join(extendedDir, "run"))
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(images), 1) // sha256:<extended image digest>
-					assertExpectedImage(t, filepath.Join(extendedDir, images[0].Name()))
+					assertExpectedImage(t, filepath.Join(extendedDir, "run", images[0].Name()))
 					t.Log("cleans the kaniko directory")
 					caches, err := os.ReadDir(kanikoDir)
 					h.AssertNil(t, err)
@@ -231,7 +231,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					t.Log("does not run the build phase")
 					h.AssertStringDoesNotContain(t, secondOutput, "Hello Extensions buildpack\ncurl")
 					t.Log("outputs extended image layers to the extended directory")
-					images, err = os.ReadDir(extendedDir)
+					images, err = os.ReadDir(filepath.Join(extendedDir, "run"))
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(images), 1) // sha256:<first extended image digest>
 					t.Log("cleans the kaniko directory")

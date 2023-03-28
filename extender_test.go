@@ -50,7 +50,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		createExtender := func() {
-			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path").Return(
+			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(
 				analyzedMD, nil,
 			)
 			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(
@@ -198,13 +198,13 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
 
 				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
-
-				// first dockerfile
-
 				firstConfig := &v1.ConfigFile{Config: v1.Config{
 					User: "1234:5678",
 				}}
 				someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
+
+				// first dockerfile
+
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
 					someFakeImage,
@@ -229,15 +229,14 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						return someFakeImage, nil
 					})
-				someFakeImage.ConfigFileReturnsOnCall(1, firstConfig, nil)
-
-				// second dockerfile
-
 				secondConfig := &v1.ConfigFile{Config: v1.Config{
 					User: "2345:6789",
 					Env:  []string{"SOME_VAR=some-val"},
 				}}
-				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(1, secondConfig, nil)
+
+				// second dockerfile
+
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
 					someFakeImage,
@@ -262,9 +261,9 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						return someFakeImage, nil
 					})
-				someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 
-				someFakeImage.ConfigFileReturnsOnCall(4, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
 				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 				h.AssertNil(t, extender.Extend("build", logger))
@@ -339,14 +338,12 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
 						someFakeImage.ManifestReturns(&v1.Manifest{Layers: []v1.Descriptor{}}, nil)
+						someFakeImage.ConfigFileReturnsOnCall(0, &v1.ConfigFile{Config: v1.Config{
+							User: "1234:5678",
+						}}, nil)
 
 						// first dockerfile
 
-						firstConfig := &v1.ConfigFile{Config: v1.Config{
-							User:   "1234:5678",
-							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.firstDockerfileRebasable)},
-						}}
-						someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
 						fakeDockerfileApplier.EXPECT().Apply(
 							gomock.Any(),
 							someFakeImage,
@@ -371,15 +368,14 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 								return someFakeImage, nil
 							})
+						firstConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.firstDockerfileRebasable)},
+						}}
 						someFakeImage.ConfigFileReturnsOnCall(1, firstConfig, nil)
 
 						// second dockerfile
 
-						secondConfig := &v1.ConfigFile{Config: v1.Config{
-							User:   "1234:5678",
-							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.secondDockerfileRebasable)},
-						}}
-						someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 						fakeDockerfileApplier.EXPECT().Apply(
 							gomock.Any(),
 							someFakeImage,
@@ -404,12 +400,16 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 								return someFakeImage, nil
 							})
-						someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
+						secondConfig := &v1.ConfigFile{Config: v1.Config{
+							User:   "1234:5678",
+							Labels: map[string]string{lifecycle.RebasableLabel: fmt.Sprintf("%t", tc.secondDockerfileRebasable)},
+						}}
+						someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 
 						// set label
 
+						someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
 						someFakeImage.ConfigFileReturnsOnCall(4, secondConfig, nil)
-						someFakeImage.ConfigFileReturnsOnCall(5, secondConfig, nil)
 
 						// save selective
 
@@ -420,7 +420,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 						h.AssertNil(t, extender.Extend("run", logger))
-						outputImagePath := filepath.Join(extendedDir, tc.expectedImageSHA)
+						outputImagePath := filepath.Join(extendedDir, "run", tc.expectedImageSHA)
 						h.AssertPathExists(t, outputImagePath)
 						fis, err := os.ReadDir(outputImagePath)
 						h.AssertNil(t, err)

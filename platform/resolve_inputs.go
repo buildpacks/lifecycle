@@ -3,7 +3,6 @@ package platform
 import (
 	"errors"
 	"os"
-	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -22,7 +21,7 @@ var (
 
 func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
 	// order of operations is important
-	ops := []LifecycleInputsOperation{ResolveAbsoluteDirPaths}
+	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
 	switch phase {
 	case Analyze:
 		if i.PlatformAPI.LessThan("0.7") {
@@ -152,7 +151,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 			if err != nil {
 				return err
 			}
-			if analyzedMD.RunImage == nil || analyzedMD.RunImage.Reference == "" {
+			if analyzedMD.RunImage.Reference == "" {
 				return errors.New("run image not found in analyzed metadata")
 			}
 			i.RunImageRef = analyzedMD.RunImage.Reference
@@ -213,36 +212,6 @@ func parseRegistry(providedRef string) (string, error) {
 		return "", err
 	}
 	return ref.Context().RegistryStr(), nil
-}
-
-func ResolveAbsoluteDirPaths(i *LifecycleInputs, _ log.Logger) error {
-	toUpdate := i.directoryPaths()
-	for _, dir := range toUpdate {
-		if *dir == "" {
-			continue
-		}
-		abs, err := filepath.Abs(*dir)
-		if err != nil {
-			return err
-		}
-		*dir = abs
-	}
-	return nil
-}
-
-func (i *LifecycleInputs) directoryPaths() []*string {
-	return []*string{
-		&i.AppDir,
-		&i.BuildConfigDir,
-		&i.BuildpacksDir,
-		&i.CacheDir,
-		&i.ExtensionsDir,
-		&i.GeneratedDir,
-		&i.KanikoDir,
-		&i.LaunchCacheDir,
-		&i.LayersDir,
-		&i.PlatformDir,
-	}
 }
 
 // ValidateImageRefs ensures all provided image references are valid.

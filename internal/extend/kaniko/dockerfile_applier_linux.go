@@ -39,5 +39,8 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 	// apply Dockerfile
 	logger.Debugf("Applying Dockerfile at %s to '%s'...", dockerfile.Path, baseImageRef)
 	extendedImage, err := executor.DoBuild(&opts)
+	if err != nil {
+		return nil, err
+	}
 	return mutate.CreatedAt(extendedImage, v1.Time{})
 }

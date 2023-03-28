@@ -4,10 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/str"
+	"github.com/buildpacks/lifecycle/log"
 )
 
 // LifecycleInputs holds the values of command-line flags and args i.e., platform inputs to the lifecycle.
@@ -47,6 +49,7 @@ type LifecycleInputs struct {
 	StackPath             string
 	UID                   int
 	GID                   int
+	ForceRebase           bool
 	SkipLayers            bool
 	UseDaemon             bool
 	UseLayout             bool
@@ -54,20 +57,25 @@ type LifecycleInputs struct {
 	KanikoCacheTTL        time.Duration
 }
 
-func NewLifecycleInputs(platformAPI *api.Version, layersDir string) *LifecycleInputs {
+const PlaceholderLayers = "<layers>"
+
+// NewLifecycleInputs constructs new lifecycle inputs for the provided Platform API version.
+// Inputs can be specified by the platform (in order of precedence) through:
+//   - command-line flags
+//   - environment variables
+//   - falling back to the default value
+//
+// NewLifecycleInputs provides, for each input, the value from the environment if specified, falling back to the default.
+// As the final value of the layers directory (if provided via the command-line) is not known,
+// inputs that default to a child of the layers directory are provided with PlaceholderLayers as the layers directory.
+// To be valid, inputs obtained from calling NewLifecycleInputs MUST be updated using UpdatePlaceholderPaths
+// once the final value of the layers directory is known.
+func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
+	// FIXME: api compatibility should be validated here
+
 	var skipLayers bool
 	if boolEnv(EnvSkipLayers) || boolEnv(EnvSkipRestore) {
 		skipLayers = true
-	}
-
-	// FIXME: api compatibility should be validated here
-	if layersDir == "" {
-		layersDir = envOrDefault(EnvLayersDir, DefaultLayersDir)
-	}
-
-	orderPath := filepath.Join(layersDir, DefaultOrderFile)
-	if _, err := os.Stat(orderPath); err != nil {
-		orderPath = DefaultOrderPath
 	}
 
 	inputs := &LifecycleInputs{
@@ -95,19 +103,19 @@ func NewLifecycleInputs(platformAPI *api.Version, layersDir string) *LifecycleIn
 		// Provided at build time
 
 		AppDir:      envOrDefault(EnvAppDir, DefaultAppDir),
-		LayersDir:   layersDir,
+		LayersDir:   envOrDefault(EnvLayersDir, DefaultLayersDir),
 		LayoutDir:   os.Getenv(EnvLayoutDir),
-		OrderPath:   orderPath,
+		OrderPath:   envOrDefault(EnvOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)),
 		PlatformDir: envOrDefault(EnvPlatformDir, DefaultPlatformDir),
 
 		// The following instruct the lifecycle where to write files and data during the build
 
-		AnalyzedPath: envOrDefault(EnvAnalyzedPath, filepath.Join(layersDir, DefaultAnalyzedFile)),
-		GeneratedDir: envOrDefault(EnvGeneratedDir, filepath.Join(layersDir, DefaultGeneratedDir)),
-		ExtendedDir:  envOrDefault(EnvExtendedDir, filepath.Join(layersDir, DefaultExtendedDir)), // TODO: add test
-		GroupPath:    envOrDefault(EnvGroupPath, filepath.Join(layersDir, DefaultGroupFile)),
-		PlanPath:     envOrDefault(EnvPlanPath, filepath.Join(layersDir, DefaultPlanFile)),
-		ReportPath:   envOrDefault(EnvReportPath, filepath.Join(layersDir, DefaultReportFile)),
+		AnalyzedPath: envOrDefault(EnvAnalyzedPath, filepath.Join(PlaceholderLayers, DefaultAnalyzedFile)),
+		ExtendedDir:  envOrDefault(EnvExtendedDir, filepath.Join(PlaceholderLayers, DefaultExtendedDir)),
+		GeneratedDir: envOrDefault(EnvGeneratedDir, filepath.Join(PlaceholderLayers, DefaultGeneratedDir)),
+		GroupPath:    envOrDefault(EnvGroupPath, filepath.Join(PlaceholderLayers, DefaultGroupFile)),
+		PlanPath:     envOrDefault(EnvPlanPath, filepath.Join(PlaceholderLayers, DefaultPlanFile)),
+		ReportPath:   envOrDefault(EnvReportPath, filepath.Join(PlaceholderLayers, DefaultReportFile)),
 
 		// Configuration options with respect to caching
 
@@ -132,7 +140,15 @@ func NewLifecycleInputs(platformAPI *api.Version, layersDir string) *LifecycleIn
 		DefaultProcessType:  os.Getenv(EnvProcessType),
 		LauncherPath:        DefaultLauncherPath,
 		LauncherSBOMDir:     DefaultBuildpacksioSBOMDir,
-		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, filepath.Join(layersDir, DefaultProjectMetadataFile)),
+		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
+
+		// Configuration options for rebasing
+		ForceRebase: boolEnv(EnvForceRebase),
+	}
+
+	if platformAPI.LessThan("0.6") {
+		// The default location for order.toml is /cnb/order.toml
+		inputs.OrderPath = envOrDefault(EnvOrderPath, CNBOrderPath)
 	}
 
 	if platformAPI.LessThan("0.5") {
@@ -142,11 +158,6 @@ func NewLifecycleInputs(platformAPI *api.Version, layersDir string) *LifecycleIn
 		inputs.PlanPath = envOrDefault(EnvPlanPath, DefaultPlanFile)
 		inputs.ProjectMetadataPath = envOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataFile)
 		inputs.ReportPath = envOrDefault(EnvReportPath, DefaultReportFile)
-	}
-
-	if platformAPI.LessThan("0.6") {
-		// The default location for order.toml is /cnb/order.toml
-		inputs.OrderPath = envOrDefault(EnvOrderPath, DefaultOrderPath)
 	}
 
 	return inputs
@@ -234,4 +245,82 @@ func timeEnvOrDefault(key string, defaultVal time.Duration) time.Duration {
 		return defaultVal
 	}
 	return ttl
+}
+
+// operations
+
+func UpdatePlaceholderPaths(i *LifecycleInputs, _ log.Logger) error {
+	toUpdate := i.placeholderPaths()
+	for _, path := range toUpdate {
+		if *path == "" {
+			continue
+		}
+		if !isPlaceholder(*path) {
+			continue
+		}
+		oldPath := *path
+		toReplace := PlaceholderLayers
+		if i.LayersDir == "" { // layers is unset when this call comes from the rebaser
+			toReplace = PlaceholderLayers + string(filepath.Separator)
+		}
+		newPath := strings.Replace(*path, toReplace, i.LayersDir, 1)
+		*path = newPath
+		if isPlaceholderOrder(oldPath) {
+			if _, err := os.Stat(newPath); err != nil {
+				i.OrderPath = CNBOrderPath
+			}
+		}
+	}
+	return nil
+}
+
+func isPlaceholder(s string) bool {
+	return strings.Contains(s, PlaceholderLayers)
+}
+
+func isPlaceholderOrder(s string) bool {
+	return s == filepath.Join(PlaceholderLayers, DefaultOrderFile)
+}
+
+func (i *LifecycleInputs) placeholderPaths() []*string {
+	return []*string{
+		&i.AnalyzedPath,
+		&i.ExtendedDir,
+		&i.GeneratedDir,
+		&i.GroupPath,
+		&i.OrderPath,
+		&i.PlanPath,
+		&i.ProjectMetadataPath,
+		&i.ReportPath,
+	}
+}
+
+func ResolveAbsoluteDirPaths(i *LifecycleInputs, _ log.Logger) error {
+	toUpdate := i.directoryPaths()
+	for _, dir := range toUpdate {
+		if *dir == "" {
+			continue
+		}
+		abs, err := filepath.Abs(*dir)
+		if err != nil {
+			return err
+		}
+		*dir = abs
+	}
+	return nil
+}
+
+func (i *LifecycleInputs) directoryPaths() []*string {
+	return []*string{
+		&i.AppDir,
+		&i.BuildConfigDir,
+		&i.BuildpacksDir,
+		&i.CacheDir,
+		&i.ExtensionsDir,
+		&i.GeneratedDir,
+		&i.KanikoDir,
+		&i.LaunchCacheDir,
+		&i.LayersDir,
+		&i.PlatformDir,
+	}
 }

@@ -164,6 +164,10 @@ func FlagVersion(showVersion *bool) {
 	flagSet.BoolVar(showVersion, "version", false, "show version")
 }
 
+func FlagForceRebase(force *bool) {
+	flagSet.BoolVar(force, "force", *force, "execute rebase even if operation is unsafe")
+}
+
 // deprecated
 
 func DeprecatedFlagRunImage(deprecatedRunImage *string) {

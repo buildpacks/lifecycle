@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
@@ -149,19 +148,19 @@ func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger
 		return DockerfileInfo{}, false, nil
 	}
 
-	newBase, err := validateDockerfileFor(d, dockerfilePath, kind, logger)
+	newBase, err := validateDockerfileFor(dockerfilePath, kind, logger)
 	if err != nil {
 		return DockerfileInfo{}, true, fmt.Errorf("failed to parse %s.Dockerfile for extension %s: %w", kind, d.Extension.ID, err)
 	}
-	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath, Base: newBase}, true, nil
+	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath, NewBase: newBase}, true, nil
 }
 
-func validateDockerfileFor(d ExtDescriptor, path string, kind string, logger log.Logger) (string, error) {
+func validateDockerfileFor(path string, kind string, logger log.Logger) (string, error) {
 	switch kind {
 	case DockerfileKindBuild:
 		return "", ValidateBuildDockerfile(path, logger)
 	case DockerfileKindRun:
-		return ValidateRunDockerfile(path, api.MustParse(d.WithAPI), logger)
+		return ValidateRunDockerfile(path, logger)
 	default:
 		return "", nil
 	}

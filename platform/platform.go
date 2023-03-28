@@ -22,9 +22,9 @@ type Platform struct {
 }
 
 // NewPlatformFor accepts a Platform API version and a layers directory, and returns a Platform with default lifecycle inputs and an exiter service.
-func NewPlatformFor(platformAPI, layersDir string) *Platform {
+func NewPlatformFor(platformAPI string) *Platform {
 	return &Platform{
-		LifecycleInputs: NewLifecycleInputs(api.MustParse(platformAPI), layersDir),
+		LifecycleInputs: NewLifecycleInputs(api.MustParse(platformAPI)),
 		Exiter:          NewExiter(platformAPI),
 	}
 }

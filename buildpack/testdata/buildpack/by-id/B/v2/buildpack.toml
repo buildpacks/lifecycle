@@ -1,0 +1,11 @@
+api = "0.12"
+
+[buildpack]
+id = "B"
+name = "Buildpack B"
+version = "v1"
+homepage = "Buildpack B Homepage"
+sbom-formats = ["application/vnd.cyclonedx+json"]
+
+[[stacks]]
+id = "io.buildpacks.stacks.bionic"

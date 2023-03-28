@@ -1,78 +1,45 @@
 package platform
 
 import (
-	"encoding/json"
-	"errors"
-
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/buildpacks/imgutil"
 )
 
 const (
-	TargetLabel                = "io.buildpacks.target"
+	TargetLabel                = "io.buildpacks.id"
 	OSDistributionNameLabel    = "io.buildpacks.distribution.name"
 	OSDistributionVersionLabel = "io.buildpacks.distribution.version"
 )
 
-type TargetData struct {
-	ID           string          `toml:"id"`
-	OS           string          `toml:"os"`
-	Arch         string          `toml:"arch"`
-	ArchVariant  string          `toml:"variant"`
-	Distribution *OSDistribution `toml:"distribution"`
-}
-
-type OSDistribution struct {
-	Name    string `toml:"name"`
-	Version string `toml:"version"`
-}
-
-func ReadTargetData(fromImage v1.Image) (TargetData, error) {
-	var (
-		targetID, os, arch, archVariant, distName, distVersion string
-		err                                                    error
-	)
-	configFile, err := fromImage.ConfigFile()
+func GetTargetFromImage(image imgutil.Image) (*TargetMetadata, error) {
+	tm := TargetMetadata{}
+	if !image.Found() {
+		return &tm, nil
+	}
+	var err error
+	tm.OS, err = image.OS()
 	if err != nil {
-		return TargetData{}, err
+		return &tm, err
 	}
-	if configFile == nil {
-		return TargetData{}, errors.New("missing image config")
+	tm.Arch, err = image.Architecture()
+	if err != nil {
+		return &tm, err
 	}
-	if err = decodeOptionalLabel(configFile, TargetLabel, &targetID); err != nil {
-		return TargetData{}, err
+	tm.ArchVariant, err = image.Variant()
+	if err != nil {
+		return &tm, err
 	}
-	os = configFile.OS
-	arch = configFile.Architecture
-	archVariant = configFile.Variant
-	if err = decodeOptionalLabel(configFile, OSDistributionNameLabel, &distName); err != nil {
-		return TargetData{}, err
+	labels, err := image.Labels()
+	if err != nil {
+		return &tm, err
 	}
-	if err = decodeOptionalLabel(configFile, OSDistributionVersionLabel, &distVersion); err != nil {
-		return TargetData{}, err
+	distName, distNameExists := labels[OSDistributionNameLabel]
+	distVersion, distVersionExists := labels[OSDistributionVersionLabel]
+	if distNameExists || distVersionExists {
+		tm.Distribution = &OSDistribution{Name: distName, Version: distVersion}
 	}
-	return TargetData{
-		ID:          targetID,
-		OS:          os,
-		Arch:        arch,
-		ArchVariant: archVariant,
-		Distribution: &OSDistribution{
-			Name:    distName,
-			Version: distVersion,
-		},
-	}, nil
-}
+	if id, exists := labels[TargetLabel]; exists {
+		tm.ID = id
+	}
 
-func decodeOptionalLabel(fromConfig *v1.ConfigFile, withName string, to interface{}) error {
-	if fromConfig == nil {
-		return errors.New("missing image config")
-	}
-	labels := fromConfig.Config.Labels
-	contents, ok := labels[withName]
-	if !ok {
-		return nil
-	}
-	if contents == "" {
-		return nil
-	}
-	return json.Unmarshal([]byte(contents), to)
+	return &tm, nil
 }

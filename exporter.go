@@ -69,7 +69,7 @@ type ExportOptions struct {
 	DefaultProcessType string
 	// for layer metadata label
 	RunImageRef string
-	Stack       platform.StackFileMetadata
+	Stack       platform.StackMetadata
 	// for project metadata label
 	Project platform.ProjectMetadata
 }

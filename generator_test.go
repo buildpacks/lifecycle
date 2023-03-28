@@ -64,8 +64,8 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the generator", func() {
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
-			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path").Return(platform.AnalyzedMetadata{RunImage: &platform.RunImage{Reference: "some-run-image-ref"}}, nil)
-			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(platform.RunFileMetadata{Images: []platform.RunImageMetadata{{Image: "some-run-image"}}}, nil)
+			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(platform.AnalyzedMetadata{RunImage: &platform.RunImage{Reference: "some-run-image-ref"}}, nil)
+			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(platform.RunMetadata{Images: []platform.RunImageForExport{{Image: "some-run-image"}}}, nil)
 
 			providedPlan := platform.BuildPlan{Entries: []platform.BuildPlanEntry{
 				{
@@ -103,7 +103,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, generator.Logger, logger)
 			h.AssertEq(t, generator.Plan, providedPlan)
 			h.AssertEq(t, generator.PlatformDir, "some-platform-dir")
-			h.AssertEq(t, generator.RunMetadata, platform.RunFileMetadata{Images: []platform.RunImageMetadata{{Image: "some-run-image"}}})
+			h.AssertEq(t, generator.RunMetadata, platform.RunMetadata{Images: []platform.RunImageForExport{{Image: "some-run-image"}}})
 			h.AssertEq(t, generator.Out, stdout)
 			h.AssertEq(t, generator.Err, stderr)
 		})
@@ -362,7 +362,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 								ExtensionID: "A",
 								Kind:        "run",
 								Path:        runDockerfilePathA,
-								Base:        "",
+								NewBase:     "",
 							},
 						},
 					}, nil)
@@ -401,7 +401,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 								ExtensionID: "A",
 								Kind:        "run",
 								Path:        runDockerfilePathA,
-								Base:        "some-new-base-image",
+								NewBase:     "some-new-base-image",
 							},
 						},
 					}, nil)
@@ -414,7 +414,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 								ExtensionID: "B",
 								Kind:        "run",
 								Path:        runDockerfilePathB,
-								Base:        "",
+								NewBase:     "",
 							},
 						},
 					}, nil)
@@ -444,7 +444,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 									ExtensionID: "A",
 									Kind:        "run",
 									Path:        runDockerfilePathA,
-									Base:        "some-new-base-image",
+									NewBase:     "some-new-base-image",
 								},
 							},
 						}, nil)
@@ -457,7 +457,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 									ExtensionID: "B",
 									Kind:        "run",
 									Path:        runDockerfilePathB,
-									Base:        "some-other-base-image",
+									NewBase:     "some-other-base-image",
 								},
 							},
 						}, nil)
@@ -480,8 +480,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 
 				when("run metadata provided", func() {
 					it.Before(func() {
-						generator.RunMetadata = platform.RunFileMetadata{
-							Images: []platform.RunImageMetadata{
+						generator.RunMetadata = platform.RunMetadata{
+							Images: []platform.RunImageForExport{
 								{Image: "some-run-image"},
 							},
 						}
@@ -497,7 +497,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 										ExtensionID: "A",
 										Kind:        "run",
 										Path:        runDockerfilePathA,
-										Base:        "some-run-image",
+										NewBase:     "some-run-image",
 									},
 								},
 							}, nil)
@@ -524,7 +524,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 										ExtensionID: "A",
 										Kind:        "run",
 										Path:        runDockerfilePathA,
-										Base:        "some-other-run-image",
+										NewBase:     "some-other-run-image",
 									},
 								},
 							}, nil)

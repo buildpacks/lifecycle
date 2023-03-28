@@ -12,6 +12,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
@@ -20,10 +21,34 @@ import (
 // analyzed.toml
 
 type AnalyzedMetadata struct {
-	PreviousImage *ImageIdentifier `toml:"image"`
+	PreviousImage *ImageIdentifier `toml:"image,omitempty"`
 	Metadata      LayersMetadata   `toml:"metadata"`
 	RunImage      *RunImage        `toml:"run-image,omitempty"`
 	BuildImage    *ImageIdentifier `toml:"build-image,omitempty"`
+}
+
+func (amd AnalyzedMetadata) PreviousImageRef() string {
+	if amd.PreviousImage == nil {
+		return ""
+	}
+	return amd.PreviousImage.Reference
+}
+
+func (amd AnalyzedMetadata) RunImageRef() string {
+	if amd.RunImage == nil {
+		return ""
+	}
+	return amd.RunImage.Reference
+}
+
+func (amd AnalyzedMetadata) RunImageTarget() TargetMetadata {
+	if amd.RunImage == nil {
+		return TargetMetadata{}
+	}
+	if amd.RunImage.TargetMetadata == nil {
+		return TargetMetadata{}
+	}
+	return *amd.RunImage.TargetMetadata
 }
 
 // FIXME: fix key names to be accurate in the daemon case
@@ -32,9 +57,49 @@ type ImageIdentifier struct {
 }
 
 type RunImage struct {
-	Reference  string      `toml:"reference"`
-	Extend     bool        `toml:"extend,omitempty"`
-	TargetData *TargetData `toml:"target"`
+	Reference      string          `toml:"reference"`
+	Extend         bool            `toml:"extend,omitempty"`
+	TargetMetadata *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
+}
+
+type TargetMetadata struct {
+	ID          string `json:"id" toml:"id"`
+	OS          string `json:"os" toml:"os"`
+	Arch        string `json:"arch" toml:"arch"`
+	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
+
+	Distribution *OSDistribution `json:"distribution,omitempty" toml:"distribution,omitempty"`
+}
+
+type OSDistribution struct {
+	Name    string `json:"name" toml:"name"`
+	Version string `json:"version" toml:"version"`
+}
+
+// IsSatisfiedBy treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
+func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
+	if t.Arch != o.Arch || t.OS != o.OS {
+		return false
+	}
+	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
+		return false
+	}
+
+	// if either of the lengths of Distributions are zero, treat it as a wildcard.
+	if t.Distribution != nil && len(o.Distributions) > 0 {
+		// this could be more efficient but the lists are probably short...
+		found := false
+		for _, odist := range o.Distributions {
+			if t.Distribution.Name == odist.Name && t.Distribution.Version == odist.Version {
+				found = true
+				continue
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {
@@ -49,6 +114,11 @@ func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, err
 	return analyzedMD, nil
 }
 
+// WriteTOML serializes the metadata to disk
+func (amd *AnalyzedMetadata) WriteTOML(path string) error {
+	return encoding.WriteTOML(path, amd)
+}
+
 // NOTE: This struct MUST be kept in sync with `LayersMetadataCompat`
 type LayersMetadata struct {
 	App          []LayerMetadata            `json:"app" toml:"app"`
@@ -57,8 +127,8 @@ type LayersMetadata struct {
 	Config       LayerMetadata              `json:"config" toml:"config"`
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
-	RunImage     RunImageMetadataLabel      `json:"runImage" toml:"run-image"`
-	Stack        StackFileMetadata          `json:"stack" toml:"stack"`
+	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
+	Stack        StackMetadata              `json:"stack" toml:"stack"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -71,8 +141,8 @@ type LayersMetadataCompat struct {
 	Config       LayerMetadata              `json:"config" toml:"config"`
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
-	RunImage     RunImageMetadataLabel      `json:"runImage" toml:"run-image"`
-	Stack        StackFileMetadata          `json:"stack" toml:"stack"`
+	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
+	Stack        StackMetadata              `json:"stack" toml:"stack"`
 }
 
 func (m *LayersMetadata) MetadataForBuildpack(id string) buildpack.LayersMetadata {
@@ -88,11 +158,9 @@ type LayerMetadata struct {
 	SHA string `json:"sha" toml:"sha"`
 }
 
-type RunImageMetadataLabel struct {
-	Image     string   `json:"image,omitempty" toml:"-"`
-	Mirrors   []string `json:"mirrors,omitempty" toml:"-"`
-	Reference string   `json:"reference" toml:"reference"`
-	TopLayer  string   `json:"topLayer" toml:"top-layer"`
+type RunImageForRebase struct {
+	TopLayer  string `json:"topLayer" toml:"top-layer"`
+	Reference string `json:"reference" toml:"reference"`
 }
 
 // metadata.toml
@@ -260,34 +328,34 @@ type ImageReport struct {
 
 // run.toml
 
-type RunFileMetadata struct {
-	Images []RunImageMetadata `json:"-" toml:"image"`
+type RunMetadata struct {
+	Images []RunImageForExport `json:"-" toml:"images"`
 }
 
-func ReadRun(runPath string, logger log.Logger) (RunFileMetadata, error) {
-	var runMD RunFileMetadata
+func ReadRun(runPath string, logger log.Logger) (RunMetadata, error) {
+	var runMD RunMetadata
 	if _, err := toml.DecodeFile(runPath, &runMD); err != nil {
 		if os.IsNotExist(err) {
 			logger.Infof("no run metadata found at path '%s'\n", runPath)
-			return RunFileMetadata{}, nil
+			return RunMetadata{}, nil
 		}
-		return RunFileMetadata{}, err
+		return RunMetadata{}, err
 	}
 	return runMD, nil
 }
 
 // stack.toml
 
-type StackFileMetadata struct {
-	RunImage RunImageMetadata `json:"runImage" toml:"run-image"`
+type StackMetadata struct {
+	RunImage RunImageForExport `json:"runImage" toml:"run-image"`
 }
 
-type RunImageMetadata struct {
+type RunImageForExport struct {
 	Image   string   `toml:"image" json:"image"`
 	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
 }
 
-func (rm *RunImageMetadata) BestRunImageMirror(registry string) (string, error) {
+func (rm *RunImageForExport) BestRunImageMirror(registry string) (string, error) {
 	if rm.Image == "" {
 		return "", errors.New("missing run-image metadata")
 	}
@@ -300,7 +368,7 @@ func (rm *RunImageMetadata) BestRunImageMirror(registry string) (string, error) 
 	return runImageRef, nil
 }
 
-func (sm *StackFileMetadata) BestRunImageMirror(registry string) (string, error) {
+func (sm *StackMetadata) BestRunImageMirror(registry string) (string, error) {
 	return sm.RunImage.BestRunImageMirror(registry)
 }
 
@@ -321,14 +389,14 @@ func byRegistry(reg string, imgs []string) (string, error) {
 	return imgs[0], nil
 }
 
-func ReadStack(stackPath string, logger log.Logger) (StackFileMetadata, error) {
-	var stackMD StackFileMetadata
+func ReadStack(stackPath string, logger log.Logger) (StackMetadata, error) {
+	var stackMD StackMetadata
 	if _, err := toml.DecodeFile(stackPath, &stackMD); err != nil {
 		if os.IsNotExist(err) {
 			logger.Infof("no stack metadata found at path '%s'\n", stackPath)
-			return StackFileMetadata{}, nil
+			return StackMetadata{}, nil
 		}
-		return StackFileMetadata{}, err
+		return StackMetadata{}, err
 	}
 	return stackMD, nil
 }

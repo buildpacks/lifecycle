@@ -285,7 +285,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 								h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 								h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
-								h.AssertEq(t, br.Dockerfiles[0].Base, "")
+								h.AssertEq(t, br.Dockerfiles[0].NewBase, "")
 							})
 
 							it("is validated", func() {
@@ -310,7 +310,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 									h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 									h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 									h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
-									h.AssertEq(t, br.Dockerfiles[0].Base, "some-new-base-image")
+									h.AssertEq(t, br.Dockerfiles[0].NewBase, "some-new-base-image")
 								})
 							})
 						})
@@ -340,18 +340,6 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								_, err := executor.Generate(descriptor, inputs, logger)
 								h.AssertError(t, err, "failed to parse build.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
 							})
-						})
-					})
-
-					when("extend config", func() {
-						it("is validated", func() {
-							h.Mkfile(t,
-								"SOME-INVALID-CONTENT",
-								filepath.Join(appDir, "extend-config-A-v1.toml"),
-							)
-
-							_, err := executor.Generate(descriptor, inputs, logger)
-							h.AssertNotNil(t, err)
 						})
 					})
 

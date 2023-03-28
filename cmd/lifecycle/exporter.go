@@ -66,14 +66,15 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagGroupPath(&e.GroupPath)
 	cli.FlagLaunchCacheDir(&e.LaunchCacheDir)
 	cli.FlagLauncherPath(&e.LauncherPath)
+	cli.FlagLayersDir(&e.LayersDir)
 	cli.FlagProcessType(&e.DefaultProcessType)
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
-	cli.FlagRunImage(&e.RunImageRef)
+	cli.FlagRunImage(&e.RunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 	cli.FlagUID(&e.UID)
 	cli.FlagUseDaemon(&e.UseDaemon)
 
-	cli.DeprecatedFlagRunImage(&e.DeprecatedRunImageRef)
+	cli.DeprecatedFlagRunImage(&e.DeprecatedRunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -140,8 +141,8 @@ func (e *exportCmd) Exec() error {
 func (e *exportCmd) registryImages() []string {
 	registryImages := e.RegistryImages()
 	if !e.UseDaemon {
-		if e.persistedData.analyzedMD.PreviousImage != nil {
-			registryImages = append(registryImages, e.persistedData.analyzedMD.PreviousImage.Reference)
+		if e.persistedData.analyzedMD.PreviousImageRef() != "" {
+			registryImages = append(registryImages, e.persistedData.analyzedMD.PreviousImageRef())
 		}
 	}
 	return registryImages
@@ -230,9 +231,9 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		local.FromBaseImage(e.RunImageRef),
 	}
 
-	if analyzedMD.PreviousImage != nil {
-		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.PreviousImage.Reference)
-		opts = append(opts, local.WithPreviousImage(analyzedMD.PreviousImage.Reference))
+	if analyzedMD.PreviousImageRef() != "" {
+		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.PreviousImageRef())
+		opts = append(opts, local.WithPreviousImage(analyzedMD.PreviousImageRef()))
 	}
 
 	if !e.customSourceDateEpoch().IsZero() {
@@ -276,9 +277,9 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		opts = append(opts, remote.WithConfig(extendedConfig))
 	}
 
-	if analyzedMD.PreviousImage != nil {
-		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImage.Reference)
-		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImage.Reference))
+	if analyzedMD.PreviousImageRef() != "" {
+		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())
+		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImageRef()))
 	}
 
 	if !e.customSourceDateEpoch().IsZero() {
@@ -315,8 +316,8 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		layout.FromBaseImagePath(runImageIdentifier.Path),
 	}
 
-	if analyzedMD.PreviousImage != nil {
-		previousImageReference, err := layout.ParseIdentifier(analyzedMD.PreviousImage.Reference)
+	if analyzedMD.PreviousImageRef() != "" {
+		previousImageReference, err := layout.ParseIdentifier(analyzedMD.PreviousImageRef())
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "parsing previous image reference")
 		}
