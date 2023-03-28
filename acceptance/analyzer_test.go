@@ -11,16 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
-
-var cacheFixtureDir string
 
 var (
 	analyzeImage          string
@@ -178,8 +177,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("group path is provided", func() {
-			it("uses the provided group path", func() {
+		when("called with group (on older platforms)", func() {
+			it("uses the provided group.toml path", func() {
 				h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not accept a -group flag")
 
 				h.DockerSeedRunAndCopy(t,
@@ -228,8 +227,8 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 
-		when("analyzed path is provided", func() {
-			it("uses the provided analyzed path", func() {
+		when("called with analyzed", func() {
+			it("uses the provided analyzed.toml path", func() {
 				analyzeFlags := []string{"-analyzed", ctrPath("/some-dir/some-analyzed.toml")}
 				if api.MustParse(platformAPI).AtLeast("0.7") {
 					analyzeFlags = append(analyzeFlags, "-run-image", analyzeRegFixtures.ReadOnlyRunImage)
@@ -253,6 +252,27 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				)
 
 				assertAnalyzedMetadata(t, filepath.Join(copyDir, "some-analyzed.toml"))
+			})
+		})
+
+		when("called with run", func() {
+			it("uses the provided run.toml path", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept -run")
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+platformAPI,
+					"--env", "CNB_REGISTRY_AUTH="+analyzeRegAuthConfig,
+					"--network", analyzeRegNetwork,
+					analyzeImage,
+					ctrPath(analyzerPath),
+					"-run", "/cnb/run.toml",
+					analyzeRegFixtures.SomeAppImage,
+				) // #nosec G204
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "ensure registry read access to some-run-image-from-run-toml"
+				h.AssertStringContains(t, string(output), expected)
 			})
 		})
 
@@ -357,7 +377,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 
 			when("app image exists", func() {
-				it("does not restore app metadata", func() {
+				it("does not restore app metadata to the layers directory", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "Platform API < 0.7 restores app metadata")
 
 					analyzeFlags := []string{"-daemon", "-run-image", "some-run-image"}
@@ -381,7 +401,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					assertNoRestoreOfAppMetadata(t, copyDir, output)
 				})
 
-				it("restores app metadata", func() {
+				it("restores app metadata to the layers directory (on older platforms)", func() {
 					h.SkipIf(t, api.MustParse(platformAPI).AtLeast("0.7"), "Platform API >= 0.7 does not restore app metadata")
 					output := h.DockerRunAndCopy(t,
 						containerName,
@@ -428,7 +448,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 
-			when("cache is provided", func() {
+			when("cache is provided (on older platforms)", func() {
 				when("cache image case", func() {
 					when("cache image is in a daemon", func() {
 						it("ignores the cache", func() {
@@ -795,7 +815,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								h.WithArgs(execArgs...),
 							)
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 
@@ -824,13 +844,13 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							)
 
 							analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-							h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
+							h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 						})
 					})
 				})
 			})
 
-			when("cache is provided", func() {
+			when("cache is provided (on older platforms)", func() {
 				when("cache image case", func() {
 					when("auth registry", func() {
 						when("registry creds are provided in CNB_REGISTRY_AUTH", func() {
@@ -954,7 +974,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithArgs(execArgs...),
 						)
 						analyzedMD := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
-						h.AssertStringContains(t, analyzedMD.PreviousImage.Reference, analyzeRegFixtures.ReadWriteAppImage)
+						h.AssertStringContains(t, analyzedMD.PreviousImageRef(), analyzeRegFixtures.ReadWriteAppImage)
 					})
 				})
 
@@ -981,6 +1001,64 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 		})
+
+		when("layout case", func() {
+			layoutDir := filepath.Join(path.RootDir, "layout-repo")
+			when("experimental mode is enabled", func() {
+				it("writes analyzed.toml", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+
+					var analyzeFlags []string
+					analyzeFlags = append(analyzeFlags, []string{
+						"-layout",
+						"-layout-dir", layoutDir,
+						"-run-image", "busybox",
+					}...)
+					var execArgs []string
+					execArgs = append([]string{ctrPath(analyzerPath)}, analyzeFlags...)
+					execArgs = append(execArgs, "my-app")
+
+					h.DockerRunAndCopy(t,
+						containerName,
+						copyDir,
+						ctrPath("/layers/analyzed.toml"),
+						analyzeImage,
+						h.WithFlags(
+							"--env", "CNB_EXPERIMENTAL_MODE=warn",
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+						),
+						h.WithArgs(execArgs...),
+					)
+
+					analyzer := assertAnalyzedMetadata(t, filepath.Join(copyDir, "analyzed.toml"))
+					h.AssertNotNil(t, analyzer.RunImage)
+					analyzedImagePath := filepath.Join(path.RootDir, "layout-repo", "index.docker.io", "library", "busybox", "latest")
+					reference := fmt.Sprintf("%s@%s", analyzedImagePath, "sha256:1afaac0c6907aaf5fce478e2e82c00a5ce58deca23bf34739509f29affb2c631")
+					h.AssertEq(t, analyzer.RunImage.Reference, reference)
+				})
+			})
+
+			when("experimental mode is not enabled", func() {
+				it("errors", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+					cmd := exec.Command(
+						"docker", "run", "--rm",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						"--env", "CNB_LAYOUT_DIR="+layoutDir,
+						analyzeImage,
+						ctrPath(analyzerPath),
+						"-layout",
+						"-run-image", "busybox",
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
+
+					h.AssertNotNil(t, err)
+					expected := "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error"
+					h.AssertStringContains(t, string(output), expected)
+				})
+			})
+		})
 	}
 }
 
@@ -989,8 +1067,7 @@ func assertAnalyzedMetadata(t *testing.T, path string) *platform.AnalyzedMetadat
 	h.AssertNil(t, err)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var analyzedMD platform.AnalyzedMetadata
-	_, err = toml.Decode(string(contents), &analyzedMD)
+	analyzedMD, err := platform.ReadAnalyzed(path, cmd.DefaultLogger)
 	h.AssertNil(t, err)
 
 	return &analyzedMD

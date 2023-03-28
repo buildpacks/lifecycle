@@ -45,7 +45,7 @@ func (b *buildCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
 		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
 	}
-	if err := platform.ResolveInputs(platform.Build, &b.LifecycleInputs, cmd.DefaultLogger); err != nil {
+	if err := platform.ResolveInputs(platform.Build, b.LifecycleInputs, cmd.DefaultLogger); err != nil {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil

@@ -12,6 +12,14 @@ import (
 
 var flagSet = flag.NewFlagSet("lifecycle", flag.ExitOnError)
 
+func FlagLayoutDir(layoutDir *string) {
+	flagSet.StringVar(layoutDir, "layout-dir", *layoutDir, "path to output directory for images in OCI layout format")
+}
+
+func FlagUseLayout(useLayout *bool) {
+	flagSet.BoolVar(useLayout, "layout", *useLayout, "export to OCI layout format on disk")
+}
+
 func FlagAnalyzedPath(analyzedPath *string) {
 	flagSet.StringVar(analyzedPath, "analyzed", *analyzedPath, "path to analyzed.toml")
 }
@@ -116,6 +124,10 @@ func FlagRunImage(runImage *string) {
 	flagSet.StringVar(runImage, "run-image", *runImage, "reference to run image")
 }
 
+func FlagRunPath(runPath *string) {
+	flagSet.StringVar(runPath, "run", *runPath, "path to run.toml")
+}
+
 func FlagSkipLayers(skipLayers *bool) {
 	flagSet.BoolVar(skipLayers, "skip-layers", *skipLayers, "do not provide layer metadata to buildpacks")
 }
@@ -142,6 +154,10 @@ func FlagUseDaemon(useDaemon *bool) {
 
 func FlagVersion(showVersion *bool) {
 	flagSet.BoolVar(showVersion, "version", false, "show version")
+}
+
+func FlagForceRebase(force *bool) {
+	flagSet.BoolVar(force, "force", *force, "execute rebase even if operation is unsafe")
 }
 
 // deprecated

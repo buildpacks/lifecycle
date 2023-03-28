@@ -5,10 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
@@ -21,23 +18,24 @@ import (
 )
 
 func main() {
-	switch strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])) {
+	phase := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
+	switch phase {
 	case "detector":
-		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPIWithExitOnError())}, false)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
 	case "analyzer":
-		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPIWithExitOnError())}, false)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
 	case "restorer":
-		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPIWithExitOnError())}, false)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
 	case "builder":
-		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPIWithExitOnError())}, false)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
 	case "exporter":
-		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPIWithExitOnError())}, false)
-	case "rebaser":
-		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPIWithExitOnError())}, false)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
 	case "creator":
-		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPIWithExitOnError())}, false)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
 	case "extender":
-		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPIWithExitOnError())}, false)
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+	case "rebaser":
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
 	default:
 		if len(os.Args) < 2 {
 			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
@@ -61,21 +59,21 @@ func subcommand(platformAPI string) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platform.Detect, platformAPI)}, true)
+		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	case "analyze":
-		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platform.Analyze, platformAPI)}, true)
+		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	case "restore":
-		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platform.Restore, platformAPI)}, true)
+		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	case "build":
-		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platform.Build, platformAPI)}, true)
+		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	case "export":
-		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platform.Export, platformAPI)}, true)
+		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	case "rebase":
-		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platform.Rebase, platformAPI)}, true)
+		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	case "create":
-		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platform.Create, platformAPI)}, true)
+		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	case "extend":
-		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platform.Extend, platformAPI)}, true)
+		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
 	default:
 		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
 	}
@@ -110,42 +108,6 @@ func (ch *DefaultCacheHandler) InitCache(cacheImageRef string, cacheDir string) 
 		}
 	}
 	return cacheStore, nil
-}
-
-type DefaultImageHandler struct {
-	docker   client.CommonAPIClient
-	keychain authn.Keychain
-}
-
-func NewImageHandler(docker client.CommonAPIClient, keychain authn.Keychain) *DefaultImageHandler {
-	return &DefaultImageHandler{
-		docker:   docker,
-		keychain: keychain,
-	}
-}
-
-func (h *DefaultImageHandler) InitImage(imageRef string) (imgutil.Image, error) {
-	if imageRef == "" {
-		return nil, nil
-	}
-
-	if h.docker != nil {
-		return local.NewImage(
-			imageRef,
-			h.docker,
-			local.FromBaseImage(imageRef),
-		)
-	}
-
-	return remote.NewImage(
-		imageRef,
-		h.keychain,
-		remote.FromBaseImage(imageRef),
-	)
-}
-
-func (h *DefaultImageHandler) Docker() bool {
-	return h.docker != nil
 }
 
 type DefaultRegistryHandler struct {

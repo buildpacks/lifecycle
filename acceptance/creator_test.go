@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/internal/path"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -55,6 +57,27 @@ func TestCreator(t *testing.T) {
 func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
 		var createdImageName string
+
+		when("called with run", func() {
+			it("uses the provided run.toml path", func() {
+				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept -run")
+				cmd := exec.Command(
+					"docker", "run", "--rm",
+					"--env", "CNB_PLATFORM_API="+platformAPI,
+					"--env", "CNB_REGISTRY_AUTH="+createRegAuthConfig,
+					"--network", createRegNetwork,
+					createImage,
+					ctrPath(creatorPath),
+					"-run", "/cnb/run.toml",
+					createRegFixtures.SomeAppImage,
+				) // #nosec G204
+				output, err := cmd.CombinedOutput()
+
+				h.AssertNotNil(t, err)
+				expected := "ensure registry read access to some-run-image-from-run-toml"
+				h.AssertStringContains(t, string(output), expected)
+			})
+		})
 
 		when("daemon case", func() {
 			it.After(func() {
@@ -327,6 +350,79 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 							h.AssertStringDoesNotContain(t, output, "store.toml restored with content")
 						}
 					})
+				})
+			})
+		})
+
+		when("layout case", func() {
+			var (
+				containerName string
+				err           error
+				layoutDir     string
+				tmpDir        string
+			)
+			when("experimental mode is enabled", func() {
+				it.Before(func() {
+					// creates the directory to save all the OCI images on disk
+					tmpDir, err = os.MkdirTemp("", "layout")
+					h.AssertNil(t, err)
+
+					containerName = "test-container-" + h.RandString(10)
+					layoutDir = filepath.Join(path.RootDir, "layout-repo")
+				})
+
+				it.After(func() {
+					if h.DockerContainerExists(t, containerName) {
+						h.Run(t, exec.Command("docker", "rm", containerName))
+					}
+					h.DockerImageRemove(t, createdImageName)
+
+					// removes all images created
+					os.RemoveAll(tmpDir)
+
+				})
+
+				it("creates app", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+					var createFlags []string
+					createFlags = append(createFlags, []string{"-layout", "-layout-dir", layoutDir, "-run-image", "busybox"}...)
+
+					createArgs := append([]string{ctrPath(creatorPath)}, createFlags...)
+					createdImageName = "some-created-image-" + h.RandString(10)
+					createArgs = append(createArgs, createdImageName)
+
+					output := h.DockerRunAndCopy(t, containerName, tmpDir, layoutDir, createImage,
+						h.WithFlags(
+							"--env", "CNB_PLATFORM_API="+platformAPI,
+							"--env", "CNB_EXPERIMENTAL_MODE=warn",
+						),
+						h.WithArgs(createArgs...))
+
+					h.AssertStringContains(t, output, "Saving /layout-repo/index.docker.io/library/"+createdImageName+"/latest")
+					index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", createdImageName+"/latest"))
+					h.AssertEq(t, len(index.Manifests), 1)
+				})
+			})
+
+			when("experimental mode is not enabled", func() {
+				it("errors", func() {
+					h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "Platform API < 0.12 does not accept a -layout flag")
+
+					cmd := exec.Command(
+						"docker", "run", "--rm",
+						"--env", "CNB_PLATFORM_API="+platformAPI,
+						createImage,
+						ctrPath(creatorPath),
+						"-layout",
+						"-layout-dir", layoutDir,
+						"-run-image", "busybox",
+						"some-image",
+					) // #nosec G204
+					output, err := cmd.CombinedOutput()
+
+					h.AssertNotNil(t, err)
+					expected := "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error"
+					h.AssertStringContains(t, string(output), expected)
 				})
 			})
 		})

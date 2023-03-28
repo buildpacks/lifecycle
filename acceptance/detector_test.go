@@ -362,11 +362,13 @@ fail: fail_detect_buildpack@some_version
 					"-extensions=/cnb/extensions",
 					"-generated=/layers/generated",
 					"-log-level=debug",
+					"-run=/layers/run.toml", // /cnb/run.toml is the default location of run.toml
 				),
 			)
 
 			t.Log("runs /bin/detect for buildpacks and extensions")
 			h.AssertStringContains(t, output, "Platform requested experimental feature 'Dockerfiles'")
+			h.AssertStringContains(t, output, "FOO=val-from-build-config")
 			h.AssertStringContains(t, output, "simple_extension: output from /bin/detect")
 			t.Log("writes group.toml")
 			foundGroupTOML := filepath.Join(copyDir, "layers", "group.toml")
