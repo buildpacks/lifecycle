@@ -420,7 +420,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 						h.AssertNil(t, extender.Extend("run", logger))
-						outputImagePath := filepath.Join(extendedDir, tc.expectedImageSHA)
+						outputImagePath := filepath.Join(extendedDir, "run", tc.expectedImageSHA)
 						h.AssertPathExists(t, outputImagePath)
 						fis, err := os.ReadDir(outputImagePath)
 						h.AssertNil(t, err)

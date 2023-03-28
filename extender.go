@@ -209,7 +209,7 @@ func (e *Extender) saveSelective(image v1.Image, origTopLayerHash string) error 
 	if err != nil {
 		return fmt.Errorf("getting image hash: %w", err)
 	}
-	toPath := filepath.Join(e.ExtendedDir, imageHash.String())
+	toPath := filepath.Join(e.ExtendedDir, "run", imageHash.String())
 	layoutPath, err := selective.Write(toPath, empty.Index) // FIXME: this should use the imgutil layout/sparse package instead, but for some reason sparse.NewImage().Save() fails when the provided base image is already sparse
 	if err != nil {
 		return fmt.Errorf("initializing selective image: %w", err)
