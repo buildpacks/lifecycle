@@ -142,14 +142,14 @@ func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger
 		return DockerfileInfo{}, false, nil
 	}
 
-	newBase, err := verifyDockerfileFor(d, dockerfilePath, kind, logger)
+	newBase, err := verifyDockerfileFor(dockerfilePath, kind, logger)
 	if err != nil {
 		return DockerfileInfo{}, true, fmt.Errorf("failed to parse %s.Dockerfile for extension %s: %w", kind, d.Extension.ID, err)
 	}
 	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath, NewBase: newBase}, true, nil
 }
 
-func verifyDockerfileFor(d ExtDescriptor, path string, kind string, logger log.Logger) (string, error) {
+func verifyDockerfileFor(path string, kind string, logger log.Logger) (string, error) {
 	switch kind {
 	case DockerfileKindBuild:
 		return "", VerifyBuildDockerfile(path, logger)

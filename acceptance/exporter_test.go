@@ -354,30 +354,41 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 	}
 }
 
+// This helper function exists because we expect the run image in analyzed.toml to contain the registry IP and port,
+// which aren't known until we start the test.
 func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
-	placeHolderPath := filepath.Join("testdata", "exporter", "container", "layers", "analyzed.toml.placeholder")
-	analyzedMD := assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
-
-	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "some-analyzed.toml.placeholder")
-	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.PreviousImage = &platform.ImageIdentifier{Reference: phaseTest.targetRegistry.fixtures.SomeAppImage}
-	analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
-
-	placeHolderPath = filepath.Join("testdata", "exporter", "container", "other_layers", "analyzed.toml.placeholder")
-	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	analyzedMD.RunImage = &platform.RunImage{Reference: phaseTest.targetRegistry.fixtures.ReadOnlyRunImage}
-	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
-
-	placeHolderPath = filepath.Join("testdata", "exporter", "container", "layers", "layout-analyzed.toml.placeholder")
-	analyzedMD = assertAnalyzedMetadata(t, placeHolderPath)
-	// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
-	analyzedMD.RunImage = &platform.RunImage{
-		Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33",
+	regPlaceholders := []string{
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
 	}
-	encoding.WriteTOML(strings.TrimSuffix(placeHolderPath, ".placeholder"), analyzedMD)
+	layoutPlaceholders := []string{
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
+	}
+
+	for _, pPath := range regPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
+			continue
+		}
+		analyzedMD := assertAnalyzedMetadata(t, pPath)
+		if analyzedMD.RunImage != nil {
+			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage // don't override extend
+		}
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
+	}
+	for _, pPath := range layoutPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
+			continue
+		}
+		analyzedMD := assertAnalyzedMetadata(t, pPath)
+		if analyzedMD.RunImage != nil {
+			// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
+			analyzedMD.RunImage = &platform.RunImage{Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"}
+		}
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
+	}
 }
 
 func calculateEmptyLayerSha(t *testing.T) string {

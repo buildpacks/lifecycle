@@ -241,7 +241,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 	return platform.AnalyzedMetadata{
 		PreviousImage: &platform.ImageIdentifier{Reference: previousImageRef},
-		RunImage:      &platform.RunImage{Reference: runImageRef, Target: atm},
+		RunImage:      &platform.RunImage{Reference: runImageRef, TargetMetadata: atm},
 		Metadata:      appMeta,
 	}, nil
 }

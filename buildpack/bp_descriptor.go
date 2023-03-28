@@ -23,18 +23,14 @@ type StackMetadata struct {
 	ID string `toml:"id"`
 }
 
-type TargetPartial struct {
-	Arch        string `json:"arch" toml:"arch"`
-	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
-	OS          string `json:"os" toml:"os"`
-}
-
 type TargetMetadata struct {
-	TargetPartial
-	Distributions []DistributionMetadata `json:"distributions" toml:"distributions"`
+	OS            string           `json:"os" toml:"os"`
+	Arch          string           `json:"arch" toml:"arch"`
+	ArchVariant   string           `json:"arch-variant" toml:"arch-variant"`
+	Distributions []OSDistribution `json:"distributions" toml:"distributions"`
 }
 
-type DistributionMetadata struct {
+type OSDistribution struct {
 	Name    string `json:"name" toml:"name"`
 	Version string `json:"version" toml:"version"`
 }
@@ -66,9 +62,9 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 	if len(descriptor.Targets) == 0 {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "amd64", Distributions: []OSDistribution{{Name: "ubuntu", Version: "18.04"}}})
 			} else if stack.ID == "*" {
-				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "*", Arch: "*"}, Distributions: []DistributionMetadata{}})
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "*", Arch: "*", Distributions: []OSDistribution{}})
 			}
 		}
 	}
@@ -84,11 +80,11 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 				bf := binFiles[len(binFiles)-i-1] // we're iterating backwards b/c os.ReadDir sorts "build.exe" after "build" but we want to preferentially detect windows first.
 				fname := bf.Name()
 				if fname == "build.exe" || fname == "build.bat" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "*"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "windows", Arch: "*"})
 					break
 				}
 				if fname == "build" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "*"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "*"})
 				}
 			}
 		}

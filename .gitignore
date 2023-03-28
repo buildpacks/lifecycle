@@ -8,5 +8,6 @@
 .vscode
 acceptance/testdata/*/**/container/cnb/lifecycle/*
 acceptance/testdata/*/**/container/docker-config/*
+acceptance/testdata/restorer/container/layers/*analyzed.toml
 acceptance/testdata/exporter/container/layers/*analyzed.toml
 acceptance/testdata/exporter/container/other_layers/*analyzed.toml

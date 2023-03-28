@@ -41,8 +41,7 @@ func testDockerfile(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("verifying dockerfiles", func() {
-		validCases := []string{
-			`
+		validCases := []string{`
 ARG base_image=0
 FROM ${base_image}
 
@@ -132,23 +131,23 @@ RUN echo "this statement is never cached"
 						h.AssertEq(t, len(logHandler.Entries), 0)
 					}
 				})
-			})
 
-			when("valid, but violates SHOULD directives in spec", func() {
-				it("succeeds with warning", func() {
-					preamble := `
+				when("violates SHOULD directives in spec", func() {
+					it("succeeds with warning", func() {
+						preamble := `
 ARG base_image=0
 FROM ${base_image}
 `
-					for i, tc := range warnCases {
-						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
-						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
-						logHandler = memory.New()
-						logger = &log.Logger{Handler: logHandler}
-						err := buildpack.VerifyBuildDockerfile(dockerfilePath, logger)
-						h.AssertNil(t, err)
-						assertLogEntry(t, logHandler, "build.Dockerfile "+tc.expectedWarning)
-					}
+						for i, tc := range warnCases {
+							dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
+							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
+							logHandler = memory.New()
+							logger = &log.Logger{Handler: logHandler}
+							err := buildpack.VerifyBuildDockerfile(dockerfilePath, logger)
+							h.AssertNil(t, err)
+							assertLogEntry(t, logHandler, "build.Dockerfile "+tc.expectedWarning)
+						}
+					})
 				})
 			})
 
