@@ -50,7 +50,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		createExtender := func() {
-			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path").Return(
+			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(
 				analyzedMD, nil,
 			)
 			fakeConfigHandler.EXPECT().ReadGroup("some-group-path").Return(

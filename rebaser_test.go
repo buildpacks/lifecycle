@@ -250,6 +250,55 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("platform API is >= 0.12", func() {
+				it.Before(func() {
+					rebaser.PlatformAPI = api.MustParse("0.12")
+				})
+
+				when("validating rebasable", func() {
+					when("rebaseable label is false", func() {
+						it.Before(func() {
+							h.AssertNil(t, fakeAppImage.SetLabel(platform.RebaseableLabel, "false"))
+						})
+
+						it("returns an error", func() {
+							_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+							h.AssertError(t, err, "app image is not marked as rebaseable")
+						})
+
+						when("force is true", func() {
+							it("allows rebase", func() {
+								rebaser.Force = true
+								_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+								h.AssertNil(t, err)
+							})
+						})
+					})
+
+					when("rebaseable label is not false", func() {
+						it.Before(func() {
+							h.AssertNil(t, fakeAppImage.SetLabel(platform.RebaseableLabel, "true"))
+						})
+
+						it("allows rebase", func() {
+							_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+							h.AssertNil(t, err)
+						})
+					})
+
+					when("rebaseable label is empty", func() {
+						it.Before(func() {
+							h.AssertNil(t, fakeAppImage.SetLabel(platform.RebaseableLabel, ""))
+						})
+
+						it("allows rebase", func() {
+							_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+							h.AssertNil(t, err)
+						})
+					})
+				})
+			})
+
 			when("validating mixins", func() {
 				when("there are no mixin labels", func() {
 					it("allows rebase", func() {

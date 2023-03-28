@@ -172,6 +172,7 @@ func testAnalyzerFactory(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, ok, true)
 				h.AssertEq(t, sbomRestorer.LayersDir, "some-layers-dir")
 				h.AssertEq(t, sbomRestorer.Logger, logger)
+				h.AssertEq(t, analyzer.PlatformAPI, api.Platform.Latest())
 
 				t.Log("does not restore layer metadata")
 				_, ok = analyzer.LayerMetadataRestorer.(*layer.NopMetadataRestorer)
@@ -522,6 +523,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 				Cache:                 testCache,
 				LayerMetadataRestorer: metadataRestorer,
 				RestoresLayerMetadata: api.MustParse(platformAPI).LessThan("0.7"),
+				PlatformAPI:           api.MustParse(platformAPI),
 			}
 
 			if testing.Verbose() {
@@ -572,7 +574,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, md.PreviousImage.Reference, "s0m3D1g3sT")
+					h.AssertEq(t, md.PreviousImageRef(), "s0m3D1g3sT")
 					h.AssertEq(t, md.Metadata, expectedAppMetadata)
 				})
 
@@ -607,7 +609,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					md, err := analyzer.Analyze()
 					h.AssertNil(t, err)
 
-					h.AssertNil(t, md.PreviousImage)
+					h.AssertEq(t, md.PreviousImageRef(), "")
 					h.AssertEq(t, md.Metadata, platform.LayersMetadata{})
 				})
 			})
@@ -667,6 +669,30 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, md.RunImage.Reference, "s0m3D1g3sT")
+				})
+				it("populates Target metadata from the run image", func() {
+					h.AssertNil(t, image.SetLabel("io.buildpacks.id", "id software"))
+					h.AssertNil(t, image.SetOS("windows"))
+					h.AssertNil(t, image.SetOSVersion("95"))
+					h.AssertNil(t, image.SetArchitecture("Pentium"))
+					h.AssertNil(t, image.SetVariant("MMX"))
+					h.AssertNil(t, image.SetLabel("io.buildpacks.distribution.name", "moobuntu"))
+					h.AssertNil(t, image.SetLabel("io.buildpacks.distribution.version", "Helpful Holstein"))
+
+					md, err := analyzer.Analyze()
+					h.AssertNil(t, err)
+					if api.MustParse(platformAPI).LessThan("0.12") {
+						h.AssertNil(t, md.RunImage.TargetMetadata)
+					} else {
+						h.AssertNotNil(t, md.RunImage.TargetMetadata)
+						h.AssertEq(t, md.RunImage.TargetMetadata.Arch, "Pentium")
+						h.AssertEq(t, md.RunImage.TargetMetadata.ArchVariant, "MMX")
+						h.AssertEq(t, md.RunImage.TargetMetadata.OS, "windows")
+						h.AssertEq(t, md.RunImage.TargetMetadata.ID, "id software")
+						h.AssertNotNil(t, md.RunImage.TargetMetadata.Distribution)
+						h.AssertEq(t, md.RunImage.TargetMetadata.Distribution.Name, "moobuntu")
+						h.AssertEq(t, md.RunImage.TargetMetadata.Distribution.Version, "Helpful Holstein")
+					}
 				})
 			})
 		})

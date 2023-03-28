@@ -77,7 +77,7 @@ func (f *ExtenderFactory) NewExtender(
 		CacheTTL:          cacheTTL,
 		DockerfileApplier: dockerfileApplier,
 	}
-	if err := f.setImageRef(extender, analyzedPath); err != nil {
+	if err := f.setImageRef(extender, analyzedPath, logger); err != nil {
 		return nil, err
 	}
 	if err := f.setExtensions(extender, groupPath, logger); err != nil {
@@ -86,8 +86,8 @@ func (f *ExtenderFactory) NewExtender(
 	return extender, nil
 }
 
-func (f *ExtenderFactory) setImageRef(extender *Extender, path string) error {
-	analyzedMD, err := f.configHandler.ReadAnalyzed(path)
+func (f *ExtenderFactory) setImageRef(extender *Extender, path string, logr log.Logger) error {
+	analyzedMD, err := f.configHandler.ReadAnalyzed(path, logr)
 	if err != nil {
 		return err
 	}

@@ -27,12 +27,14 @@ func (b *buildCmd) DefineFlags() {
 		cli.FlagBuildConfigDir(&b.BuildConfigDir)
 		cli.FlagBuildpacksDir(&b.BuildpacksDir)
 		cli.FlagGroupPath(&b.GroupPath)
+		cli.FlagLayersDir(&b.LayersDir)
 		cli.FlagPlanPath(&b.PlanPath)
 		cli.FlagPlatformDir(&b.PlatformDir)
 	default:
 		cli.FlagAppDir(&b.AppDir)
 		cli.FlagBuildpacksDir(&b.BuildpacksDir)
 		cli.FlagGroupPath(&b.GroupPath)
+		cli.FlagLayersDir(&b.LayersDir)
 		cli.FlagPlanPath(&b.PlanPath)
 		cli.FlagPlatformDir(&b.PlatformDir)
 	}

@@ -19,6 +19,7 @@ import (
 type Rebaser struct {
 	Logger      log.Logger
 	PlatformAPI *api.Version
+	Force       bool
 }
 
 type RebaseReport struct {
@@ -51,6 +52,10 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 
 	if appStackID != newBaseStackID {
 		return RebaseReport{}, fmt.Errorf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, appStackID)
+	}
+
+	if err := r.validateRebaseable(workingImage); err != nil {
+		return RebaseReport{}, err
 	}
 
 	if err := validateMixins(workingImage, newBaseImage); err != nil {
@@ -120,6 +125,19 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 		return fmt.Errorf("missing required mixin(s): %s", strings.Join(missing, ", "))
 	}
 
+	return nil
+}
+
+func (r *Rebaser) validateRebaseable(appImg imgutil.Image) error {
+	if r.PlatformAPI.AtLeast("0.12") {
+		rebaseable, err := appImg.Label(platform.RebaseableLabel)
+		if err != nil {
+			return errors.Wrap(err, "get app image rebaseable label")
+		}
+		if !r.Force && rebaseable == "false" {
+			return fmt.Errorf("app image is not marked as rebaseable")
+		}
+	}
 	return nil
 }
 

@@ -135,6 +135,11 @@ func newFakeTarReader(t *testing.T) (*archive.NormalizingTarReader, string) {
 
 func pushHeaders(ftr *fakeTarReader) {
 	ftr.pushHeader(&tar.Header{
+		Name:     "pax_global_header",
+		Typeflag: tar.TypeXGlobalHeader,
+		Mode:     int64(0),
+	})
+	ftr.pushHeader(&tar.Header{
 		Name:     "root/symlinkdir",
 		Typeflag: tar.TypeSymlink,
 		Linkname: filepath.Join("..", "not-in-archive-dir"),

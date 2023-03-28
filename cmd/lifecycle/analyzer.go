@@ -13,7 +13,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -41,6 +40,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagAnalyzedPath(&a.AnalyzedPath)
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
+		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagPreviousImage(&a.PreviousImageRef)
 		cli.FlagRunImage(&a.RunImageRef)
 		cli.FlagStackPath(&a.StackPath)
@@ -53,6 +53,7 @@ func (a *analyzeCmd) DefineFlags() {
 		cli.FlagCacheImage(&a.CacheImageRef)
 		cli.FlagGID(&a.GID)
 		cli.FlagGroupPath(&a.GroupPath)
+		cli.FlagLayersDir(&a.LayersDir)
 		cli.FlagSkipLayers(&a.SkipLayers)
 		cli.FlagUID(&a.UID)
 		cli.FlagUseDaemon(&a.UseDaemon)
@@ -130,7 +131,7 @@ func (a *analyzeCmd) Exec() error {
 	if err != nil {
 		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
 	}
-	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
+	if err = analyzedMD.WriteTOML(a.AnalyzedPath); err != nil {
 		return cmd.FailErr(err, "write analyzed")
 	}
 	return nil

@@ -102,8 +102,8 @@ var (
 	DefaultBuildpacksDir  = filepath.Join(path.RootDir, "cnb", "buildpacks")
 	DefaultExtensionsDir  = filepath.Join(path.RootDir, "cnb", "extensions")
 
-	// DefaultOrderPath is the default order path.
-	DefaultOrderPath = filepath.Join(path.RootDir, "cnb", "order.toml")
+	// CNBOrderPath is the default order path if the order file does not exist in the layers directory.
+	CNBOrderPath = filepath.Join(path.RootDir, "cnb", "order.toml")
 
 	// DefaultRunPath is the default run path.
 	DefaultRunPath = filepath.Join(path.RootDir, "cnb", "run.toml")
@@ -214,6 +214,12 @@ const (
 	// that is added as metadata to the application image.
 	EnvProjectMetadataPath     = "CNB_PROJECT_METADATA_PATH"
 	DefaultProjectMetadataFile = "project-metadata.toml"
+)
+
+// The following are configuration options for rebaser.
+const (
+	// EnvForceRebase is used to force the rebaser to rebase the app image even if the operation is unsafe.
+	EnvForceRebase = "CNB_FORCE_REBASE"
 )
 
 var (
