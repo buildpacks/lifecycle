@@ -198,13 +198,13 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				h.Mkfile(t, buf.String(), filepath.Join(generatedDir, "build", "B", "extend-config.toml"))
 
 				fakeDockerfileApplier.EXPECT().ImageFor(extender.ImageRef).Return(someFakeImage, nil)
-
-				// first dockerfile
-
 				firstConfig := &v1.ConfigFile{Config: v1.Config{
 					User: "1234:5678",
 				}}
 				someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
+
+				// first dockerfile
+
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
 					someFakeImage,
@@ -229,15 +229,14 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						return someFakeImage, nil
 					})
-				someFakeImage.ConfigFileReturnsOnCall(1, firstConfig, nil)
-
-				// second dockerfile
-
 				secondConfig := &v1.ConfigFile{Config: v1.Config{
 					User: "2345:6789",
 					Env:  []string{"SOME_VAR=some-val"},
 				}}
-				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(1, secondConfig, nil)
+
+				// second dockerfile
+
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
 					someFakeImage,
@@ -262,9 +261,9 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						return someFakeImage, nil
 					})
-				someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 
-				someFakeImage.ConfigFileReturnsOnCall(4, secondConfig, nil)
+				someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
 				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 				h.AssertNil(t, extender.Extend("build", logger))

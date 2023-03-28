@@ -151,11 +151,11 @@ func (e *Extender) extendBuild(logger log.Logger) error {
 }
 
 func setImageEnvVarsInCurrentContext(image v1.Image) error {
-	extendedConfig, err := image.ConfigFile()
-	if err != nil {
+	configFile, err := image.ConfigFile()
+	if err != nil || configFile == nil {
 		return fmt.Errorf("getting config for extended image: %w", err)
 	}
-	for _, env := range extendedConfig.Config.Env {
+	for _, env := range configFile.Config.Env {
 		parts := strings.Split(env, "=")
 		if len(parts) != 2 {
 			return fmt.Errorf("parsing env '%s': expected format 'key=value'", env)
@@ -283,16 +283,17 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return nil, fmt.Errorf("getting %s dockerfiles: %w", kind, err)
 	}
 
-	var rebasable = true // for now, we don't require the initial base image to have io.buildpacks.rebasable=true
+	var (
+		configFile *v1.ConfigFile
+		rebasable  = true // for now, we don't require the initial base image to have io.buildpacks.rebasable=true
+	)
+	configFile, err = baseImage.ConfigFile()
+	if err != nil || configFile == nil {
+		return nil, fmt.Errorf("getting image config: %w", err)
+	}
 	buildOptions := e.extendOptions()
 	for _, dockerfile := range dockerfiles {
-		// get config & set args
-
-		config, err := baseImage.ConfigFile()
-		if err != nil {
-			return nil, fmt.Errorf("getting image config: %w", err)
-		}
-		userID, groupID := userFrom(*config)
+		userID, groupID := userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
@@ -312,11 +313,11 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 
 		// get config & update rebasable
 
-		newConfig, err := baseImage.ConfigFile()
-		if err != nil {
+		configFile, err = baseImage.ConfigFile()
+		if err != nil || configFile == nil {
 			return nil, fmt.Errorf("getting image config: %w", err)
 		}
-		if !rebasable || !isRebasable(*newConfig) {
+		if !rebasable || !isRebasable(*configFile) {
 			rebasable = false
 		}
 	}
@@ -352,7 +353,7 @@ func isRebasable(config v1.ConfigFile) bool {
 
 func setLabel(image v1.Image, key string, val string) (v1.Image, error) {
 	configFile, err := image.ConfigFile()
-	if err != nil {
+	if err != nil || configFile == nil {
 		return nil, fmt.Errorf("getting image config: %w", err)
 	}
 	config := *configFile.Config.DeepCopy()
