@@ -24,9 +24,9 @@ type StackMetadata struct {
 }
 
 type TargetPartial struct {
-	OS          string `json:"os" toml:"os"`
 	Arch        string `json:"arch" toml:"arch"`
 	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
+	OS          string `json:"os" toml:"os"`
 }
 
 type TargetMetadata struct {
@@ -67,9 +67,12 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 		for _, stack := range descriptor.Stacks {
 			if stack.ID == "io.buildpacks.stacks.bionic" {
 				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}, Distributions: []DistributionMetadata{{Name: "ubuntu", Version: "18.04"}}})
+			} else if stack.ID == "*" {
+				descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "*", Arch: "*"}, Distributions: []DistributionMetadata{}})
 			}
 		}
 	}
+
 	if len(descriptor.Targets) == 0 {
 		binDir := filepath.Join(descriptor.WithRootDir, "bin")
 		if stat, _ := os.Stat(binDir); stat != nil { // technically i think there's always supposed to be a bin Dir but we weren't enforcing it previously so why start now?
@@ -77,13 +80,15 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 			if err != nil {
 				return &BpDescriptor{}, err
 			}
-			for _, bf := range binFiles {
+			for i := 0; i < len(binFiles); i++ {
+				bf := binFiles[len(binFiles)-i-1] // we're iterating backwards b/c os.ReadDir sorts "build.exe" after "build" but we want to preferentially detect windows first.
 				fname := bf.Name()
 				if fname == "build.exe" || fname == "build.bat" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "amd64"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "windows", Arch: "*"}})
+					break
 				}
 				if fname == "build" {
-					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "amd64"}})
+					descriptor.Targets = append(descriptor.Targets, TargetMetadata{TargetPartial: TargetPartial{OS: "linux", Arch: "*"}})
 				}
 			}
 		}

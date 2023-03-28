@@ -192,6 +192,15 @@ func isWildcard(t platform.TargetMetadata) bool {
 	return t.Arch == "" && t.OS == ""
 }
 
+func hasWildcard(ts []buildpack.TargetMetadata) bool {
+	for _, tm := range ts {
+		if tm.OS == "*" && tm.Arch == "*" {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
 	// used below to mark each item as "done" by appending it to the done list
 	markDone := func(groupEl buildpack.GroupElement, descriptor buildpack.Descriptor) {
@@ -223,10 +232,11 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 			if d.PlatformAPI.AtLeast("0.12") {
 				targetMatch := false
-				if isWildcard(d.AnalyzeMD.RunImageTarget()) {
+				if isWildcard(d.AnalyzeMD.RunImageTarget()) || hasWildcard(bpDescriptor.Targets) {
 					targetMatch = true
 				} else {
 					for i := range bpDescriptor.Targets {
+						d.Logger.Debugf("Checking for match against descriptor:", bpDescriptor.Targets[i])
 						if d.AnalyzeMD.RunImage.Target.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
 							targetMatch = true
 							break
