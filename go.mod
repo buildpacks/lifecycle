@@ -14,7 +14,7 @@ require (
 	github.com/google/go-containerregistry v0.14.0
 	github.com/google/uuid v1.3.0
 	github.com/heroku/color v0.0.6
-	github.com/moby/buildkit v0.11.4
+	github.com/moby/buildkit v0.11.5
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
 	golang.org/x/sync v0.1.0
