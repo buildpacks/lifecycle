@@ -825,7 +825,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, ok, true)
 							outs := val.(buildpack.DetectOutputs)
 							h.AssertEq(t, outs.Code, -1)
-							h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constriaints")
+							h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constraints")
 							return []buildpack.GroupElement{}, []platform.BuildPlanEntry{}, nil
 						})
 

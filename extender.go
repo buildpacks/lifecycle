@@ -285,7 +285,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 
 	var (
 		configFile *v1.ConfigFile
-		rebasable  = true // for now, we don't require the initial base image to have io.buildpacks.rebasable=true
+		rebasable  = true // we don't require the initial base image to have io.buildpacks.rebasable=true
 	)
 	configFile, err = baseImage.ConfigFile()
 	if err != nil || configFile == nil {
