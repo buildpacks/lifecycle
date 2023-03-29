@@ -206,6 +206,7 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					h.AssertStringDoesNotContain(t, firstOutput, "Did not find cache key, pulling remote image...")
 					h.AssertStringDoesNotContain(t, firstOutput, "Error while retrieving image from cache: oci")
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
+					h.AssertStringContains(t, firstOutput, "No cached layer found for cmd RUN apt-get update && apt-get install -y tree")
 					t.Log("does not run the build phase")
 					h.AssertStringDoesNotContain(t, firstOutput, "Hello Extensions buildpack\ncurl")
 					t.Log("outputs extended image layers to the extended directory")
