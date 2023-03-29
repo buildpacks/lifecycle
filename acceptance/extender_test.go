@@ -39,6 +39,11 @@ var (
 	extendTest           *PhaseTest
 )
 
+const (
+	msgPullingRemoteImage          = "Did not find cache key, pulling remote image"
+	msgErrRetrievingImageFromCache = "Error while retrieving image from cache: oci"
+)
+
 func TestExtender(t *testing.T) {
 	h.SkipIf(t, runtime.GOOS == "windows", "Extender is not supported on Windows")
 
@@ -146,8 +151,8 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, firstOutput, "Did not find cache key, pulling remote image...")
-					h.AssertStringDoesNotContain(t, firstOutput, "Error while retrieving image from cache: oci")
+					h.AssertStringDoesNotContain(t, firstOutput, msgPullingRemoteImage)
+					h.AssertStringDoesNotContain(t, firstOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
 					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl was installed on the build image
 					t.Log("sets environment variables from the extended build image in the build context")
@@ -165,8 +170,8 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, secondOutput, "Did not find cache key, pulling remote image...")
-					h.AssertStringDoesNotContain(t, secondOutput, "Error while retrieving image from cache: oci")
+					h.AssertStringDoesNotContain(t, secondOutput, msgPullingRemoteImage)
+					h.AssertStringDoesNotContain(t, secondOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")                                                             // shows that first cache layer was used
 					h.AssertStringDoesNotContain(t, secondOutput, "No cached layer found for cmd RUN apt-get update && apt-get install -y tree") // shows that second cache layer was used
 					h.AssertStringContains(t, secondOutput, "Hello Extensions buildpack\ncurl")                                                  // output by buildpack, shows that curl is still installed in the unpacked cached layer
@@ -203,8 +208,8 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, firstOutput, "Did not find cache key, pulling remote image...")
-					h.AssertStringDoesNotContain(t, firstOutput, "Error while retrieving image from cache: oci")
+					h.AssertStringDoesNotContain(t, firstOutput, msgPullingRemoteImage)
+					h.AssertStringDoesNotContain(t, firstOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
 					h.AssertStringContains(t, firstOutput, "No cached layer found for cmd RUN apt-get update && apt-get install -y tree")
 					t.Log("does not run the build phase")
@@ -225,8 +230,8 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, secondOutput, "Did not find cache key, pulling remote image...")
-					h.AssertStringDoesNotContain(t, secondOutput, "Error while retrieving image from cache: oci")
+					h.AssertStringDoesNotContain(t, secondOutput, msgPullingRemoteImage)
+					h.AssertStringDoesNotContain(t, secondOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")                                                             // shows that first cache layer was used
 					h.AssertStringDoesNotContain(t, secondOutput, "No cached layer found for cmd RUN apt-get update && apt-get install -y tree") // shows that second cache layer was used
 					t.Log("does not run the build phase")
