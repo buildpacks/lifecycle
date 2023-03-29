@@ -286,7 +286,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 									filepath.Join(appDir, "run.Dockerfile-A-v1"),
 								)
 								_, err := executor.Generate(descriptor, inputs, logger)
-								h.AssertError(t, err, "failed to parse run.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
+								h.AssertError(t, err, "failed to parse run.Dockerfile for extension A: dockerfile parse error on line 1: unknown instruction: SOME-INVALID-CONTENT")
 							})
 
 							when("switching the runtime base image", func() {
@@ -330,7 +330,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								)
 
 								_, err := executor.Generate(descriptor, inputs, logger)
-								h.AssertError(t, err, "failed to parse build.Dockerfile for extension A: dockerfile parse error line 1: unknown instruction: SOME-INVALID-CONTENT")
+								h.AssertError(t, err, "failed to parse build.Dockerfile for extension A: dockerfile parse error on line 1: unknown instruction: SOME-INVALID-CONTENT")
 							})
 						})
 					})

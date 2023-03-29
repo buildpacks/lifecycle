@@ -100,10 +100,15 @@ func main() {
 		}
 	} else {
 		var err error
-		img, err = remote.NewImage(tags[0], authn.DefaultKeychain, remote.FromBaseImage(baseImage), remote.WithDefaultPlatform(imgutil.Platform{
-			Architecture: targetArch,
-			OS:           targetOS,
-		}))
+		img, err = remote.NewImage(
+			tags[0], authn.DefaultKeychain,
+			remote.FromBaseImage(baseImage),
+			remote.WithDefaultPlatform(imgutil.Platform{
+				Architecture: targetArch,
+				OS:           targetOS,
+			}),
+			remote.WithMediaTypes(imgutil.DockerTypes),
+		)
 		if err != nil {
 			log.Fatal("Failed to create remote image:", err)
 		}
