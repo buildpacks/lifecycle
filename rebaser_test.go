@@ -168,6 +168,44 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("image has io.buildpacks.base.* labels", func() {
+				var tests = []struct {
+					label         string
+					appImageValue string
+					runImageValue string
+					want          string
+				}{
+					{"io.buildpacks.base.homepage", "v1", "v2", "v2"},
+					{"io.buildpacks.stack.added", "", "new", "new"},
+					{"io.buildpacks.base.removed", "old", "", ""},
+				}
+
+				it.Before(func() {
+					for _, l := range tests {
+						if l.runImageValue != "" {
+							h.AssertNil(t, fakeNewBaseImage.SetLabel(l.label, l.runImageValue))
+						}
+						if l.appImageValue != "" {
+							h.AssertNil(t, fakeAppImage.SetLabel(l.label, l.appImageValue))
+						}
+					}
+				})
+
+				it("syncs matching labels", func() {
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertNil(t, err)
+
+					for _, test := range tests {
+						test := test
+						t.Run(test.label, func(t *testing.T) {
+							actual, err := fakeAppImage.Label(test.label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, test.want, actual)
+						})
+					}
+				})
+			})
+
 			when("image has a digest identifier", func() {
 				var fakeRemoteDigest = "sha256:c27a27006b74a056bed5d9edcebc394783880abe8691a8c87c78b7cffa6fa5ad"
 

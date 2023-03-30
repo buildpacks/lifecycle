@@ -86,7 +86,12 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, errors.Wrap(err, "set app image metadata label")
 	}
 
-	hasPrefix := func(l string) bool { return strings.HasPrefix(l, "io.buildpacks.stack.") }
+	hasPrefix := func(l string) bool {
+		if r.PlatformAPI.AtLeast("0.12") {
+			return strings.HasPrefix(l, "io.buildpacks.stack.") || strings.HasPrefix(l, "io.buildpacks.base.")
+		}
+		return strings.HasPrefix(l, "io.buildpacks.stack.")
+	}
 	if err := image.SyncLabels(newBaseImage, workingImage, hasPrefix); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
