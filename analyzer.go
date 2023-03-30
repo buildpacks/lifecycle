@@ -226,7 +226,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 				return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
 			}
 			if atm.OS == "" {
-				platform.PopulateTargetOSFromFileSystem(&fsutil.Detect{}, atm)
+				platform.PopulateTargetOSFromFileSystem(&fsutil.Detect{}, atm, a.Logger)
 			}
 		}
 	}

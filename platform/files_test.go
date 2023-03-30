@@ -1,17 +1,19 @@
 package platform_test
 
 import (
+	"fmt"
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"os"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
-	"github.com/sclevine/spec"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
+	"github.com/google/go-cmp/cmp"
+	"github.com/sclevine/spec"
 )
 
 func TestFiles(t *testing.T) {
@@ -270,15 +272,17 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 }
 
 type mockDetector struct {
-	contents string
-	t        *testing.T
+	contents    string
+	t           *testing.T
+	HasFile     bool
+	ReadFileErr error
 }
 
 func (d *mockDetector) HasLinuxFile() bool {
-	return true
+	return d.HasFile
 }
 func (d *mockDetector) ReadLinuxFile() (string, error) {
-	return d.contents, nil
+	return d.contents, d.ReadFileErr
 }
 func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
 	h.AssertEq(d.t, osReleaseContents, d.contents)
@@ -291,11 +295,26 @@ func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
 func testPopulateTarget(t *testing.T, when spec.G, it spec.S) {
 	when("the data is available", func() {
 		it("populates appropriately", func() {
+			logr := &log.Logger{Handler: memory.New()}
 			tm := platform.TargetMetadata{}
-			d := mockDetector{contents: "this is just test contents really", t: t}
-			platform.PopulateTargetOSFromFileSystem(&d, &tm)
+			d := mockDetector{contents: "this is just test contents really",
+				t:       t,
+				HasFile: true}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
 			h.AssertEq(t, "opensesame", tm.Distribution.Name)
 			h.AssertEq(t, "3.14", tm.Distribution.Version)
+
+			// now pretend we're on windows
+			d.HasFile = false
+			tm = platform.TargetMetadata{}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distribution)
+
+			// now pretend we get an error trying to read the file
+			d.HasFile = true
+			d.ReadFileErr = fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says")
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distribution)
 		})
 	})
 }
