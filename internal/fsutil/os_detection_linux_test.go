@@ -24,7 +24,7 @@ func testDetectorUnix(t *testing.T, when spec.G, it spec.S) {
 		it("returns the file contents", func() {
 			s, err := (&fsutil.Detect{}).ReadLinuxFile()
 			h.AssertNil(t, err)
-			h.AssertContains(t, s, "NAME")
+			h.AssertStringContains(t, s, "NAME")
 		})
 
 	})
