@@ -139,5 +139,5 @@ replace (
 	github.com/tonistiigi/fsutil => github.com/tonistiigi/fsutil v0.0.0-20201103201449-0834f99b7b85
 )
 
-// FIXME: update
-replace github.com/buildpacks/imgutil => ../imgutil
+// FIXME: update to point to commit on main branch
+replace github.com/buildpacks/imgutil => github.com/buildpacks/imgutil v0.0.0-20230330162918-f4924c637241
