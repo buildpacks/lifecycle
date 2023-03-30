@@ -28,7 +28,7 @@ func (d *Detect) HasLinuxFile() bool {
 }
 
 func (d *Detect) ReadLinuxFile() (string, error) {
-	nobodyLikesBytes, err := os.ReadFile("/etc/os-release")
+	return io.ReadAll("/etc/os-release")
 	return string(nobodyLikesBytes), err
 }
 
