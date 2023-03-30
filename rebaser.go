@@ -146,65 +146,18 @@ func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Im
 		// check the OS, architecture, and variant values
 		// if they are not the same, the image cannot be rebased unless the force flag is set
 		if !r.Force {
-			appOS, err := appImg.OS()
+			appTarget, err := platform.GetTargetFromImage(appImg)
 			if err != nil {
-				return errors.Wrap(err, "get app image os")
-			}
-			newBaseOS, err := newBaseImg.OS()
-			if err != nil {
-				return errors.Wrap(err, "get new base image os")
-			}
-			if appOS != newBaseOS {
-				return fmt.Errorf("incompatible os: '%s' is not compatible with '%s'", newBaseOS, appOS)
+				return errors.Wrap(err, "get app image target")
 			}
 
-			appArch, err := appImg.Architecture()
+			newBaseTarget, err := platform.GetTargetFromImage(newBaseImg)
 			if err != nil {
-				return errors.Wrap(err, "get app image architecture")
-			}
-			newBaseArch, err := newBaseImg.Architecture()
-			if err != nil {
-				return errors.Wrap(err, "get new base image architecture")
-			}
-			if appArch != newBaseArch {
-				return fmt.Errorf("incompatible architecture: '%s' is not compatible with '%s'", newBaseArch, appArch)
+				return errors.Wrap(err, "get new base image target")
 			}
 
-			appVariant, err := appImg.Variant()
-			if err != nil {
-				return errors.Wrap(err, "get app image variant")
-			}
-			newBaseVariant, err := newBaseImg.Variant()
-			if err != nil {
-				return errors.Wrap(err, "get new base image variant")
-			}
-			if appVariant != newBaseVariant {
-				return fmt.Errorf("incompatible variant: '%s' is not compatible with '%s'", newBaseVariant, appVariant)
-			}
-
-			// check optional labels OSDistributionName and OSDistributionVersion
-			distroName, err := appImg.Label(platform.OSDistributionNameLabel)
-			if err != nil {
-				return errors.Wrap(err, "get app image os distribution name")
-			}
-			newBaseDistroName, err := newBaseImg.Label(platform.OSDistributionNameLabel)
-			if err != nil {
-				return errors.Wrap(err, "get new base image os distribution name")
-			}
-			if distroName != newBaseDistroName {
-				return fmt.Errorf("incompatible io.buildpacks.distribution.name: '%s' is not compatible with '%s'", newBaseDistroName, distroName)
-			}
-
-			distroVersion, err := appImg.Label(platform.OSDistributionVersionLabel)
-			if err != nil {
-				return errors.Wrap(err, "get app image os distribution version")
-			}
-			newBaseDistroVersion, err := newBaseImg.Label(platform.OSDistributionVersionLabel)
-			if err != nil {
-				return errors.Wrap(err, "get new base image os distribution version")
-			}
-			if distroVersion != newBaseDistroVersion {
-				return fmt.Errorf("incompatible io.buildpacks.distribution.version: '%s' is not compatible with '%s'", newBaseDistroVersion, distroVersion)
+			if !newBaseTarget.IsValidRebaseTargetFor(appTarget) {
+				return fmt.Errorf("invalid base image target: '%s' is not equal to '%s'", newBaseTarget, appTarget)
 			}
 		}
 	}

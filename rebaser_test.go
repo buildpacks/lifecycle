@@ -436,7 +436,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeNewBaseImage.SetOS("notlinux"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "incompatible os: 'notlinux' is not compatible with 'linux'")
+					h.AssertError(t, err, "invalid base image target: 'OS: notlinux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )'")
 				})
 
 				it("returns an error and prevents the rebase from taking place when the architecture are different", func() {
@@ -444,15 +444,15 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeNewBaseImage.SetArchitecture("arm64"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "incompatible architecture: 'arm64' is not compatible with 'amd64'")
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: arm64, ArchVariant: , Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )'")
 				})
 
-				it("returns an error and prevents the rebase from taking place when the architecture are different", func() {
+				it("returns an error and prevents the rebase from taking place when the architecture variant are different", func() {
 					h.AssertNil(t, fakeAppImage.SetVariant("variant1"))
 					h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "incompatible variant: 'variant2' is not compatible with 'variant1'")
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: variant2, Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: variant1, Distribution: (Name: , Version: )'")
 				})
 
 				it("returns an error and prevents the rebase from taking place when the io.buildpacks.distribution.name are different", func() {
@@ -460,7 +460,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distribution.name", "distro2"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "incompatible io.buildpacks.distribution.name: 'distro2' is not compatible with 'distro1'")
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: distro2, Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: distro1, Version: )'")
 				})
 
 				it("returns an error and prevents the rebase from taking place when the io.buildpacks.distribution.version are different", func() {
@@ -468,7 +468,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distribution.version", "version2"))
 
 					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
-					h.AssertError(t, err, "incompatible io.buildpacks.distribution.version: 'version2' is not compatible with 'version1'")
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: version2)' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: version1)'")
 				})
 			})
 
