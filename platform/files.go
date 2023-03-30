@@ -4,8 +4,9 @@ package platform
 
 import (
 	"encoding/json"
-	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"os"
+
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"

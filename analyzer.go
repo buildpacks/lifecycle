@@ -2,8 +2,9 @@ package lifecycle
 
 import (
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"

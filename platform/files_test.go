@@ -2,18 +2,21 @@ package platform_test
 
 import (
 	"fmt"
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/memory"
-	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"os"
 	"testing"
+
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
+
+	"github.com/buildpacks/lifecycle/internal/fsutil"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/sclevine/spec"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	"github.com/google/go-cmp/cmp"
-	"github.com/sclevine/spec"
 )
 
 func TestFiles(t *testing.T) {

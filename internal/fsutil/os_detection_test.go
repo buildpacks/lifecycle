@@ -1,9 +1,10 @@
 package fsutil_test
 
 import (
+	"testing"
+
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	h "github.com/buildpacks/lifecycle/testhelpers"
-	"testing"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
