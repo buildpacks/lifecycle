@@ -76,6 +76,5 @@ UBUNTU_CODENAME=bionic
 			h.AssertEq(t, data.Name, "ubuntu")
 			h.AssertEq(t, data.Version, "18.04")
 		})
-
 	})
 }
