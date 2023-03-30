@@ -68,8 +68,9 @@ type ExportOptions struct {
 	LauncherConfig     LauncherConfig
 	DefaultProcessType string
 	// for layer metadata label
-	RunImageRef string
-	Stack       platform.StackMetadata
+	RunImageRef       string
+	Stack             platform.StackMetadata
+	RunImageForExport platform.RunImageForExport
 	// for project metadata label
 	Project platform.ProjectMetadata
 }
@@ -101,6 +102,11 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 
 	meta.RunImage.Reference = opts.RunImageRef
 	meta.Stack = opts.Stack
+
+	if e.PlatformAPI.AtLeast("0.12") {
+		meta.RunImage.Image = opts.RunImageForExport.Image
+		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
+	}
 
 	buildMD := &platform.BuildMetadata{}
 	if err := platform.DecodeBuildMetadataTOML(launch.GetMetadataFilePath(opts.LayersDir), e.PlatformAPI, buildMD); err != nil {
@@ -276,7 +282,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 			return err
 		}
 		layer := layers.Layer{
-			ID:      "from extensions", // TODO: we need a way to map extended layers back to the extension that created it
+			ID:      "from extensions",
 			TarPath: filepath.Join(opts.ExtendedDir, "run", fis[0].Name(), "blobs", digest.Algorithm, digest.Hex),
 			Digest:  hex.String(), // TODO: need to handle uncompressed layers in the daemon case
 		}

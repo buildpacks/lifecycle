@@ -128,7 +128,7 @@ type LayersMetadata struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack" toml:"stack"`
+	Stack        StackMetadata              `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -161,6 +161,10 @@ type LayerMetadata struct {
 type RunImageForRebase struct {
 	TopLayer  string `json:"topLayer" toml:"top-layer"`
 	Reference string `json:"reference" toml:"reference"`
+
+	// added in Platform 0.12
+	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
+	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
 }
 
 // metadata.toml

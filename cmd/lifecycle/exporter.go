@@ -193,7 +193,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		return err
 	}
 
-	stackMD, err := platform.ReadStack(e.StackPath, cmd.DefaultLogger)
+	runImageForExport, err := e.getRunImageForExport()
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,8 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		OrigMetadata:       analyzedMD.Metadata,
 		Project:            projectMD,
 		RunImageRef:        runImageID,
-		Stack:              stackMD,
+		RunImageForExport:  runImageForExport,
+		Stack:              platform.StackMetadata{RunImage: runImageForExport}, // for backwards compat
 		WorkingImage:       appImage,
 	})
 	if err != nil {
@@ -404,7 +405,7 @@ func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, 
 	if !runImage.Extend {
 		return nil, nil
 	}
-	extendedImage, err := image.FromLayoutPath(filepath.Join(e.ExtendedDir, "run")) // TODO: update in spec
+	extendedImage, err := image.FromLayoutPath(filepath.Join(e.ExtendedDir, "run"))
 	if err != nil {
 		return nil, err
 	}
@@ -413,4 +414,29 @@ func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, 
 		return nil, err
 	}
 	return &extendedConfig.Config, nil
+}
+
+func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
+	if e.PlatformAPI.LessThan("0.12") {
+		stackMD, err := platform.ReadStack(e.StackPath, cmd.DefaultLogger)
+		if err != nil {
+			return platform.RunImageForExport{}, err
+		}
+		return stackMD.RunImage, nil
+	}
+	runMD, err := platform.ReadRun(e.RunPath, cmd.DefaultLogger)
+	if err != nil {
+		return platform.RunImageForExport{}, err
+	}
+	runRef, err := name.ParseReference(e.RunImageRef)
+	if err != nil {
+		return platform.RunImageForExport{}, err
+	}
+	for _, runImage := range runMD.Images {
+		if runImage.Image == runRef.Context().Name() {
+			return runImage, nil
+		}
+	}
+	return platform.RunImageForExport{},
+		fmt.Errorf("failed to find %s in run metadata", runRef.Context().Name()) // TODO: verify that this should be an error and not default to the "first" run image
 }

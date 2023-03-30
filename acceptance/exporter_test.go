@@ -4,7 +4,6 @@
 package acceptance
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -334,8 +333,10 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
 						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
 						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
-						h.AssertEq(t, lmd.RunImage.TopLayer, "FOO")                                            // TODO: fix to be accurate
-						h.AssertEq(t, lmd.RunImage.Reference, "BAR")                                           // TODO: fix to be accurate; it should just be a hex
+						runImageFixtureTopLayerSHA := "sha256:52c5ca3e9f3bf4c13613fb3269982734b189e1e09563b65b670fc8be0e223e03"
+						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA)
+						runImageFixtureSHA := "sha256:9433dfb89cb975ba8b5dfe5e8c96fd7185f1a71deeee63ad2fa830abbcc29192"
+						h.AssertEq(t, lmd.RunImage.Reference, fmt.Sprintf("%s@%s", exportTest.targetRegistry.fixtures.ReadOnlyRunImage, runImageFixtureSHA)) // TODO: fix to be accurate; it should just be a hex
 					})
 				})
 			})
@@ -424,21 +425,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 	}
-}
-
-func assertImageOSAndArch(t *testing.T, imageName string, phaseTest *PhaseTest) {
-	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
-	h.AssertNil(t, err)
-	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
-	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
-}
-
-func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest *PhaseTest, expectedCreatedAt time.Time) {
-	inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), imageName)
-	h.AssertNil(t, err)
-	h.AssertEq(t, inspect.Os, phaseTest.targetDaemon.os)
-	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
-	h.AssertEq(t, inspect.Created, expectedCreatedAt.Format(time.RFC3339))
 }
 
 func updateTOMLFixturesWithTestRegistry(t *testing.T, phaseTest *PhaseTest) {
