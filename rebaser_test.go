@@ -388,6 +388,52 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("app image and run image are based on different stacks", func() {
+			when("platform API >= 0.12", func() {
+				it.Before(func() {
+					rebaser.PlatformAPI = api.MustParse("0.12")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the os are different", func() {
+					h.AssertNil(t, fakeAppImage.SetOS("linux"))
+					h.AssertNil(t, fakeNewBaseImage.SetOS("notlinux"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "incompatible os: 'notlinux' is not compatible with 'linux'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the architecture are different", func() {
+					h.AssertNil(t, fakeAppImage.SetArchitecture("amd64"))
+					h.AssertNil(t, fakeNewBaseImage.SetArchitecture("arm64"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "incompatible architecture: 'arm64' is not compatible with 'amd64'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the architecture are different", func() {
+					h.AssertNil(t, fakeAppImage.SetVariant("variant1"))
+					h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "incompatible variant: 'variant2' is not compatible with 'variant1'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the io.buildpacks.distribution.name are different", func() {
+					h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.distribution.name", "distro1"))
+					h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distribution.name", "distro2"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "incompatible io.buildpacks.distribution.name: 'distro2' is not compatible with 'distro1'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the io.buildpacks.distribution.version are different", func() {
+					h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.distribution.version", "version1"))
+					h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distribution.version", "version2"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "incompatible io.buildpacks.distribution.version: 'version2' is not compatible with 'version1'")
+				})
+			})
+
 			it("returns an error and prevents the rebase from taking place when the stacks are different", func() {
 				h.AssertNil(t, fakeAppImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 				h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.cflinuxfs3"))
