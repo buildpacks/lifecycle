@@ -306,16 +306,24 @@ func testPopulateTarget(t *testing.T, when spec.G, it spec.S) {
 			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
 			h.AssertEq(t, "opensesame", tm.Distribution.Name)
 			h.AssertEq(t, "3.14", tm.Distribution.Version)
-
-			// now pretend we're on windows
-			d.HasFile = false
-			tm = platform.TargetMetadata{}
+		})
+		it("doesn't populate if there's no file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "in unit tests 2.0 the users will generate the content but we'll serve them ads",
+				t:       t,
+				HasFile: false}
 			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
 			h.AssertNil(t, tm.Distribution)
-
-			// now pretend we get an error trying to read the file
-			d.HasFile = true
-			d.ReadFileErr = fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says")
+		})
+		it("doesn't populate if there's an error reading the file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "contentment is the greatest wealth",
+				t:           t,
+				HasFile:     true,
+				ReadFileErr: fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says"),
+			}
 			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
 			h.AssertNil(t, tm.Distribution)
 		})

@@ -28,8 +28,8 @@ func (d *Detect) HasLinuxFile() bool {
 }
 
 func (d *Detect) ReadLinuxFile() (string, error) {
-	return io.ReadAll("/etc/os-release")
-	return string(nobodyLikesBytes), err
+	bs, err := os.ReadFile("/etc/os-release")
+	return string(bs), err
 }
 
 func (d *Detect) GetInfo(osReleaseContents string) OSInfo {
