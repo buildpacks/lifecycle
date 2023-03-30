@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -273,7 +271,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 				})
 
-				when.Focus("using extensions", func() { // TODO: daemon case, layout case?
+				when("using extensions", func() { // TODO: daemon case, layout case?
 					it.Before(func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
 					})
@@ -336,7 +334,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						runImageFixtureTopLayerSHA := "sha256:52c5ca3e9f3bf4c13613fb3269982734b189e1e09563b65b670fc8be0e223e03"
 						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA)
 						runImageFixtureSHA := "sha256:9433dfb89cb975ba8b5dfe5e8c96fd7185f1a71deeee63ad2fa830abbcc29192"
-						h.AssertEq(t, lmd.RunImage.Reference, fmt.Sprintf("%s@%s", exportTest.targetRegistry.fixtures.ReadOnlyRunImage, runImageFixtureSHA)) // TODO: fix to be accurate; it should just be a hex
+						h.AssertEq(t, lmd.RunImage.Reference, fmt.Sprintf("%s@%s", exportTest.targetRegistry.fixtures.ReadOnlyRunImage, runImageFixtureSHA))
 					})
 				})
 			})
@@ -424,54 +422,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 		})
-	}
-}
-
-func updateTOMLFixturesWithTestRegistry(t *testing.T, phaseTest *PhaseTest) {
-	analyzedTOMLPlaceholders := []string{
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "run-image-extended-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
-	}
-	runTOMLPlaceholders := []string{
-		filepath.Join(phaseTest.testImageDockerContext, "container", "cnb", "run.toml.placeholder"),
-	}
-	layoutPlaceholders := []string{
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
-	}
-	for _, pPath := range analyzedTOMLPlaceholders {
-		if _, err := os.Stat(pPath); os.IsNotExist(err) {
-			continue
-		}
-		analyzedMD := assertAnalyzedMetadata(t, pPath)
-		if analyzedMD.RunImage != nil {
-			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage // don't override extend
-		}
-		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
-	}
-	for _, pPath := range runTOMLPlaceholders {
-		if _, err := os.Stat(pPath); os.IsNotExist(err) {
-			continue
-		}
-		runMD := assertRunMetadata(t, pPath)
-		for idx, image := range runMD.Images {
-			image.Image = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
-			runMD.Images[idx] = image
-		}
-		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), runMD)
-	}
-	for _, pPath := range layoutPlaceholders {
-		if _, err := os.Stat(pPath); os.IsNotExist(err) {
-			continue
-		}
-		analyzedMD := assertAnalyzedMetadata(t, pPath)
-		if analyzedMD.RunImage != nil {
-			// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
-			analyzedMD.RunImage = &platform.RunImage{Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"}
-		}
-		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
 	}
 }
 

@@ -415,3 +415,52 @@ func assertImageOSAndArchAndCreatedAt(t *testing.T, imageName string, phaseTest 
 	h.AssertEq(t, inspect.Architecture, phaseTest.targetDaemon.arch)
 	h.AssertEq(t, inspect.Created, expectedCreatedAt.Format(time.RFC3339))
 }
+
+func updateTOMLFixturesWithTestRegistry(t *testing.T, phaseTest *PhaseTest) { //nolint
+	analyzedTOMLPlaceholders := []string{
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "run-image-extended-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
+		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
+	}
+	runTOMLPlaceholders := []string{
+		filepath.Join(phaseTest.testImageDockerContext, "container", "cnb", "run.toml.placeholder"),
+	}
+	layoutPlaceholders := []string{
+		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
+	}
+	for _, pPath := range analyzedTOMLPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
+			continue
+		}
+		analyzedMD := assertAnalyzedMetadata(t, pPath)
+		if analyzedMD.RunImage != nil {
+			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage // don't override extend
+		}
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
+	}
+	for _, pPath := range runTOMLPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
+			continue
+		}
+		runMD := assertRunMetadata(t, pPath)
+		for idx, image := range runMD.Images {
+			image.Image = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
+			runMD.Images[idx] = image
+		}
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), runMD)
+	}
+	for _, pPath := range layoutPlaceholders {
+		if _, err := os.Stat(pPath); os.IsNotExist(err) {
+			continue
+		}
+		analyzedMD := assertAnalyzedMetadata(t, pPath)
+		if analyzedMD.RunImage != nil {
+			// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
+			analyzedMD.RunImage = &platform.RunImage{Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"}
+		}
+		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
+	}
+}

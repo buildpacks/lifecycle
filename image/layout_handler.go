@@ -42,31 +42,41 @@ func (h *LayoutHandler) parseRef(imageRef string) (string, error) {
 
 // helpers
 
-func FromLayoutPath(parentPath string) (v1.Image, error) {
+func FromLayoutPath(parentPath string) (v1.Image, string, error) {
 	fis, err := os.ReadDir(parentPath)
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			return nil, "", nil
+		}
+		return nil, "", err
 	}
-	if len(fis) > 1 { // TODO: this is weird
-		return nil, fmt.Errorf("expected directory %q to have only 1 item; found %d", parentPath, len(fis))
+	if len(fis) == 0 {
+		return nil, "", nil
 	}
-	imageName := fis[0].Name()
-	layoutPath, err := layout.FromPath(filepath.Join(parentPath, imageName))
+	if len(fis) > 1 {
+		return nil, "", fmt.Errorf("expected directory %q to have only 1 item; found %d", parentPath, len(fis))
+	}
+	imagePath := filepath.Join(parentPath, fis[0].Name())
+	layoutPath, err := layout.FromPath(imagePath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	index, err := layoutPath.ImageIndex()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	indexManifest, err := index.IndexManifest()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	manifests := indexManifest.Manifests
 	if len(manifests) != 1 {
-		return nil, fmt.Errorf("expected image %q to have only 1 manifest; found %d", imageName, len(manifests))
+		return nil, "", fmt.Errorf("expected image index at %q to have only 1 manifest; found %d", imagePath, len(manifests))
 	}
 	manifest := manifests[0]
-	return layoutPath.Image(manifest.Digest)
+	image, err := layoutPath.Image(manifest.Digest)
+	if err != nil {
+		return nil, "", err
+	}
+	return image, imagePath, nil
 }

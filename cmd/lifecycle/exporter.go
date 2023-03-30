@@ -275,7 +275,9 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "get extended image config")
 		}
-		opts = append(opts, remote.WithConfig(extendedConfig))
+		if extendedConfig != nil {
+			opts = append(opts, remote.WithConfig(extendedConfig))
+		}
 	}
 
 	if analyzedMD.PreviousImageRef() != "" {
@@ -400,18 +402,24 @@ func (e *exportCmd) supportsRunImageExtension() bool {
 
 func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, error) {
 	if runImage == nil {
-		return nil, nil
+		return nil, errors.New("missing analyzed run image")
 	}
 	if !runImage.Extend {
 		return nil, nil
 	}
-	extendedImage, err := image.FromLayoutPath(filepath.Join(e.ExtendedDir, "run"))
+	extendedImage, _, err := image.FromLayoutPath(filepath.Join(e.ExtendedDir, "run"))
 	if err != nil {
 		return nil, err
+	}
+	if extendedImage == nil {
+		return nil, errors.New("missing extended run image")
 	}
 	extendedConfig, err := extendedImage.ConfigFile()
 	if err != nil {
 		return nil, err
+	}
+	if extendedConfig == nil {
+		return nil, errors.New("missing extended run image config")
 	}
 	return &extendedConfig.Config, nil
 }
@@ -428,6 +436,9 @@ func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
 	if err != nil {
 		return platform.RunImageForExport{}, err
 	}
+	if len(runMD.Images) == 0 {
+		return platform.RunImageForExport{}, nil
+	}
 	runRef, err := name.ParseReference(e.RunImageRef)
 	if err != nil {
 		return platform.RunImageForExport{}, err
@@ -437,6 +448,5 @@ func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
 			return runImage, nil
 		}
 	}
-	return platform.RunImageForExport{},
-		fmt.Errorf("failed to find %s in run metadata", runRef.Context().Name()) // TODO: verify that this should be an error and not default to the "first" run image
+	return runMD.Images[0], nil
 }

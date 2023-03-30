@@ -257,16 +257,12 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		return nil
 	}
 	parentPath := filepath.Join(opts.ExtendedDir, "run")
-	extendedRunImage, err := image.FromLayoutPath(parentPath) // TODO: handle the case where there is no image (no run image extensions)
+	extendedRunImage, extendedRunImagePath, err := image.FromLayoutPath(parentPath)
 	if err != nil {
 		return err
 	}
-	fis, err := os.ReadDir(parentPath) // TODO: this is repeated in FromLayoutPath
-	if err != nil {
-		return err
-	}
-	if len(fis) != 1 {
-		return fmt.Errorf("expected directory %q to have only 1 item; found %d", parentPath, len(fis))
+	if extendedRunImage == nil {
+		return nil
 	}
 	extendedLayers, err := extendedRunImage.Layers()
 	if err != nil {
@@ -283,7 +279,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		}
 		layer := layers.Layer{
 			ID:      "from extensions",
-			TarPath: filepath.Join(opts.ExtendedDir, "run", fis[0].Name(), "blobs", digest.Algorithm, digest.Hex),
+			TarPath: filepath.Join(extendedRunImagePath, "blobs", digest.Algorithm, digest.Hex),
 			Digest:  hex.String(), // TODO: need to handle uncompressed layers in the daemon case
 		}
 		_, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer)
@@ -596,13 +592,14 @@ func (e *Exporter) addOrReuseBuildpackLayer(image imgutil.Image, layer layers.La
 }
 
 func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
-	_, err := image.GetLayer(layer.Digest)
-	if err != nil { // TODO: this is hacky
-		// failed to get the layer because it doesn't exist
+	rc, err := image.GetLayer(layer.Digest)
+	if err != nil {
+		// assume we failed to get the layer because it doesn't exist
 		e.Logger.Infof("Adding layer %s\n", layer.ID)
 		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 		return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
 	}
+	_ = rc.Close() // close the layer reader
 	e.Logger.Infof("Reusing layer %s\n", layer.ID)
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 	return layer.Digest, image.ReuseLayer(layer.Digest)
