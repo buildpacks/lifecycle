@@ -7,16 +7,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/buildpacks/imgutil/layout"
-	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -231,6 +232,15 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	var opts = []local.ImageOption{
 		local.FromBaseImage(e.RunImageRef),
 	}
+	if e.supportsRunImageExtension() {
+		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "get extended image config")
+		}
+		if extendedConfig != nil {
+			opts = append(opts, local.WithConfig(toContainerConfig(extendedConfig)))
+		}
+	}
 
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.PreviousImageRef())
@@ -264,6 +274,57 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		appImage = cache.NewCachingImage(appImage, volumeCache)
 	}
 	return appImage, runImageID.String(), nil
+}
+
+func toContainerConfig(v1C *v1.Config) *container.Config {
+	return &container.Config{
+		ArgsEscaped:     v1C.ArgsEscaped,
+		AttachStderr:    v1C.AttachStderr,
+		AttachStdin:     v1C.AttachStdin,
+		AttachStdout:    v1C.AttachStdout,
+		Cmd:             v1C.Cmd,
+		Domainname:      v1C.Domainname,
+		Entrypoint:      v1C.Entrypoint,
+		Env:             v1C.Env,
+		ExposedPorts:    toNATPortSet(v1C.ExposedPorts),
+		Healthcheck:     toHealthConfig(v1C.Healthcheck),
+		Hostname:        v1C.Hostname,
+		Image:           v1C.Image,
+		Labels:          v1C.Labels,
+		MacAddress:      v1C.MacAddress,
+		NetworkDisabled: v1C.NetworkDisabled,
+		OnBuild:         v1C.OnBuild,
+		OpenStdin:       v1C.OpenStdin,
+		Shell:           v1C.Shell,
+		StdinOnce:       v1C.StdinOnce,
+		StopSignal:      v1C.StopSignal,
+		StopTimeout:     nil,
+		Tty:             v1C.Tty,
+		User:            v1C.User,
+		Volumes:         v1C.Volumes,
+		WorkingDir:      v1C.WorkingDir,
+	}
+}
+
+func toHealthConfig(v1H *v1.HealthConfig) *container.HealthConfig {
+	if v1H == nil {
+		return &container.HealthConfig{}
+	}
+	return &container.HealthConfig{
+		Interval:    v1H.Interval,
+		Retries:     v1H.Retries,
+		StartPeriod: v1H.StartPeriod,
+		Test:        v1H.Test,
+		Timeout:     v1H.Timeout,
+	}
+}
+
+func toNATPortSet(v1Ps map[string]struct{}) nat.PortSet {
+	var portSet map[nat.Port]struct{}
+	for k, v := range v1Ps {
+		portSet[nat.Port(k)] = v
+	}
+	return portSet
 }
 
 func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {

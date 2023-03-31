@@ -1,6 +1,9 @@
 package lifecycle
 
 import (
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +13,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -268,6 +272,16 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 	if err != nil {
 		return err
 	}
+	var (
+		localImage     bool
+		toArtifactsDir string
+	)
+	if isLocalImage(opts.WorkingImage) {
+		localImage = true
+		if toArtifactsDir, err = os.MkdirTemp("", "lifecycle.exporter.layer"); err != nil {
+			return err
+		}
+	}
 	for _, l := range extendedLayers {
 		hex, err := l.DiffID()
 		if err != nil {
@@ -277,10 +291,21 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		if err != nil {
 			return err
 		}
+		layerPath := filepath.Join(extendedRunImagePath, "blobs", digest.Algorithm, digest.Hex)
+		if localImage {
+			var calculatedDiffID string
+			if calculatedDiffID, err = uncompressLayerAt(layerPath, toArtifactsDir); err != nil {
+				return err
+			}
+			if calculatedDiffID != hex.String() {
+				return fmt.Errorf("digest of uncompressed layer from %s does not match expected value; found %q, expected %q", layerPath, calculatedDiffID, hex.String())
+			}
+			layerPath = filepath.Join(toArtifactsDir, calculatedDiffID)
+		}
 		layer := layers.Layer{
 			ID:      "from extensions",
-			TarPath: filepath.Join(extendedRunImagePath, "blobs", digest.Algorithm, digest.Hex),
-			Digest:  hex.String(), // TODO: need to handle uncompressed layers in the daemon case
+			TarPath: layerPath,
+			Digest:  hex.String(),
 		}
 		_, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer)
 		if err != nil {
@@ -288,6 +313,41 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		}
 	}
 	return nil
+}
+
+func isLocalImage(workingImage imgutil.Image) bool {
+	if _, ok := workingImage.(*local.Image); ok {
+		return true
+	}
+	return false
+}
+
+func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) {
+	sourceLayer, err := os.Open(layerPath)
+	if err != nil {
+		return "", err
+	}
+	zr, err := gzip.NewReader(sourceLayer)
+	if err != nil {
+		return "", err
+	}
+	tmpLayerPath := filepath.Join(toArtifactsDir, filepath.Base(layerPath)) // for now, used the compressed digest to uniquely identify the layer
+	targetLayer, err := os.Create(tmpLayerPath)
+	if err != nil {
+		return "", err
+	}
+	hasher := sha256.New()
+	mw := io.MultiWriter(targetLayer, hasher) // calculate the sha256 while writing to file
+	_, err = io.Copy(mw, zr)
+	if err != nil {
+		return "", err
+	}
+	diffID := hex.EncodeToString(hasher.Sum(nil))
+
+	if err = os.Rename(tmpLayerPath, filepath.Join(toArtifactsDir, fmt.Sprintf("sha256:%s", diffID))); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("sha256:%s", diffID), nil
 }
 
 func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {

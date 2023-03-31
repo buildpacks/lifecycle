@@ -261,7 +261,7 @@ func copyLayer(layer v1.Layer, toSparseImage string) error {
 		return err
 	}
 	defer f.Close()
-	rc, err := layer.Compressed() // TODO: if exporting to a daemon, this should be uncompressed
+	rc, err := layer.Compressed()
 	if err != nil {
 		return err
 	}
