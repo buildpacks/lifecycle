@@ -25,6 +25,8 @@ type LifecycleInputs struct {
 	CacheImageRef         string
 	DefaultProcessType    string
 	DeprecatedRunImageRef string
+	ExtendKind            string
+	ExtendedDir           string
 	ExtensionsDir         string
 	GeneratedDir          string
 	GroupPath             string
@@ -71,11 +73,17 @@ const PlaceholderLayers = "<layers>"
 func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 	// FIXME: api compatibility should be validated here
 
+	var skipLayers bool
+	if boolEnv(EnvSkipLayers) || boolEnv(EnvSkipRestore) {
+		skipLayers = true
+	}
+
 	inputs := &LifecycleInputs{
 		// Operator config
 
 		LogLevel:    envOrDefault(EnvLogLevel, DefaultLogLevel),
 		PlatformAPI: platformAPI,
+		ExtendKind:  envOrDefault(EnvExtendKind, DefaultExtendKind),
 		UseDaemon:   boolEnv(EnvUseDaemon),
 		UseLayout:   boolEnv(EnvUseLayout),
 
@@ -115,7 +123,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		KanikoCacheTTL: timeEnvOrDefault(EnvKanikoCacheTTL, DefaultKanikoCacheTTL),
 		KanikoDir:      "/kaniko",
 		LaunchCacheDir: os.Getenv(EnvLaunchCacheDir),
-		SkipLayers:     boolEnv(EnvSkipLayers),
+		SkipLayers:     skipLayers,
 
 		// Images used by the lifecycle during the build
 

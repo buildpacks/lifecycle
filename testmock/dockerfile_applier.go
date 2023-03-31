@@ -8,8 +8,10 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 
 	extend "github.com/buildpacks/lifecycle/internal/extend"
+	log "github.com/buildpacks/lifecycle/log"
 )
 
 // MockDockerfileApplier is a mock of DockerfileApplier interface.
@@ -36,15 +38,45 @@ func (m *MockDockerfileApplier) EXPECT() *MockDockerfileApplierMockRecorder {
 }
 
 // Apply mocks base method.
-func (m *MockDockerfileApplier) Apply(arg0, arg1 string, arg2 []extend.Dockerfile, arg3 extend.Options) error {
+func (m *MockDockerfileApplier) Apply(arg0 extend.Dockerfile, arg1 v1.Image, arg2 extend.Options, arg3 log.Logger) (v1.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Apply", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(v1.Image)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Apply indicates an expected call of Apply.
 func (mr *MockDockerfileApplierMockRecorder) Apply(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockDockerfileApplier)(nil).Apply), arg0, arg1, arg2, arg3)
+}
+
+// Cleanup mocks base method.
+func (m *MockDockerfileApplier) Cleanup() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Cleanup")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Cleanup indicates an expected call of Cleanup.
+func (mr *MockDockerfileApplierMockRecorder) Cleanup() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockDockerfileApplier)(nil).Cleanup))
+}
+
+// ImageFor mocks base method.
+func (m *MockDockerfileApplier) ImageFor(arg0 string) (v1.Image, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImageFor", arg0)
+	ret0, _ := ret[0].(v1.Image)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ImageFor indicates an expected call of ImageFor.
+func (mr *MockDockerfileApplierMockRecorder) ImageFor(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageFor", reflect.TypeOf((*MockDockerfileApplier)(nil).ImageFor), arg0)
 }

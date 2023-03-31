@@ -32,9 +32,14 @@ if [[ -f run.Dockerfile-${bp_id}-${bp_version} ]]; then
   cat "run.Dockerfile-${bp_id}-${bp_version}" > "$output_dir/run.Dockerfile"
 fi
 
+if [[ -f extend-config-${bp_id}-${bp_version}.toml ]]; then
+  cat "extend-config-${bp_id}-${bp_version}.toml" > "$output_dir/extend-config.toml"
+fi
+
 if [[ -f build-status-${bp_id}-${bp_version} ]]; then
   exit "$(cat "build-status-${bp_id}-${bp_version}")"
 fi
+
 if [[ -f build-status ]]; then
   exit "$(cat build-status)"
 fi

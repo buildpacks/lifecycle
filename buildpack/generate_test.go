@@ -30,79 +30,87 @@ func TestGenerate(t *testing.T) {
 }
 
 func testGenerate(t *testing.T, when spec.G, it spec.S) {
-	var (
-		mockCtrl   *gomock.Controller
-		executor   buildpack.GenerateExecutor
-		dirStore   string
-		descriptor buildpack.ExtDescriptor
-
-		// generate inputs
-		inputs         buildpack.GenerateInputs
-		tmpDir         string
-		appDir         string
-		buildConfigDir string
-		outputDir      string
-		platformDir    string
-		mockEnv        *testmock.MockBuildEnv
-		stdout, stderr *bytes.Buffer
-
-		logger     llog.Logger
-		logHandler = memory.New()
-	)
+	var tmpDir string
 
 	it.Before(func() {
-		mockCtrl = gomock.NewController(t)
-		executor = &buildpack.DefaultGenerateExecutor{}
-
-		// setup descriptor
 		var err error
-		dirStore, err = filepath.Abs(filepath.Join("testdata", "extension", "by-id"))
-		h.AssertNil(t, err)
-		descriptor = buildpack.ExtDescriptor{
-			WithAPI: api.Buildpack.Latest().String(),
-			Extension: buildpack.ExtInfo{
-				BaseInfo: buildpack.BaseInfo{
-					ID:       "A",
-					Version:  "v1",
-					Name:     "Extension A",
-					ClearEnv: false,
-					Homepage: "Extension A Homepage",
-				},
-			},
-			WithRootDir: filepath.Join(dirStore, "A", "v1"),
-		}
-
-		// setup dirs
 		tmpDir, err = os.MkdirTemp("", "lifecycle")
 		h.AssertNil(t, err)
-		outputDir = filepath.Join(tmpDir, "launch")
-		appDir = filepath.Join(outputDir, "app")
-		buildConfigDir = filepath.Join(tmpDir, "build-config")
-		platformDir = filepath.Join(tmpDir, "platform")
-		h.Mkdir(t, outputDir, appDir, filepath.Join(platformDir, "env"))
-
-		// make inputs
-		mockEnv = testmock.NewMockBuildEnv(mockCtrl)
-		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
-		inputs = buildpack.GenerateInputs{
-			AppDir:         appDir,
-			BuildConfigDir: buildConfigDir,
-			PlatformDir:    platformDir,
-			Env:            mockEnv,
-			OutputDir:      outputDir,
-			Out:            stdout,
-			Err:            stderr,
-		}
-
-		logger = &log.Logger{Handler: logHandler}
 	})
 
 	it.After(func() {
 		_ = os.RemoveAll(tmpDir)
-		mockCtrl.Finish()
 	})
 
 	when("#Generate", func() {
+		var (
+			mockCtrl   *gomock.Controller
+			executor   buildpack.GenerateExecutor
+			dirStore   string
+			descriptor buildpack.ExtDescriptor
+
+			// generate inputs
+			inputs         buildpack.GenerateInputs
+			appDir         string
+			buildConfigDir string
+			outputDir      string
+			platformDir    string
+			mockEnv        *testmock.MockBuildEnv
+			stdout, stderr *bytes.Buffer
+
+			logger     llog.Logger
+			logHandler = memory.New()
+		)
+
+		it.Before(func() {
+			mockCtrl = gomock.NewController(t)
+			executor = &buildpack.DefaultGenerateExecutor{}
+
+			// setup descriptor
+			var err error
+			dirStore, err = filepath.Abs(filepath.Join("testdata", "extension", "by-id"))
+			h.AssertNil(t, err)
+			descriptor = buildpack.ExtDescriptor{
+				WithAPI: api.Buildpack.Latest().String(),
+				Extension: buildpack.ExtInfo{
+					BaseInfo: buildpack.BaseInfo{
+						ID:       "A",
+						Version:  "v1",
+						Name:     "Extension A",
+						ClearEnv: false,
+						Homepage: "Extension A Homepage",
+					},
+				},
+				WithRootDir: filepath.Join(dirStore, "A", "v1"),
+			}
+
+			// setup dirs
+			outputDir = filepath.Join(tmpDir, "launch")
+			appDir = filepath.Join(outputDir, "app")
+			buildConfigDir = filepath.Join(tmpDir, "build-config")
+			platformDir = filepath.Join(tmpDir, "platform")
+			h.Mkdir(t, outputDir, appDir, filepath.Join(platformDir, "env"))
+
+			// make inputs
+			mockEnv = testmock.NewMockBuildEnv(mockCtrl)
+			stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
+			inputs = buildpack.GenerateInputs{
+				AppDir:         appDir,
+				BuildConfigDir: buildConfigDir,
+				PlatformDir:    platformDir,
+				Env:            mockEnv,
+				OutputDir:      outputDir,
+				Out:            stdout,
+				Err:            stderr,
+			}
+
+			logger = &log.Logger{Handler: logHandler}
+		})
+
+		it.After(func() {
+			mockCtrl.Finish()
+		})
+
 		when("env", func() {
 			when("clear", func() {
 				it.Before(func() {

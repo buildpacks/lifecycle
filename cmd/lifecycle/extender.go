@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/extend/kaniko"
@@ -18,6 +19,10 @@ type extendCmd struct {
 
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *extendCmd) DefineFlags() {
+	if e.PlatformAPI.AtLeast("0.12") {
+		cli.FlagExtendKind(&e.ExtendKind)
+		cli.FlagExtendedDir(&e.ExtendedDir)
+	}
 	cli.FlagAnalyzedPath(&e.AnalyzedPath)
 	cli.FlagAppDir(&e.AppDir)
 	cli.FlagBuildpacksDir(&e.BuildpacksDir)
@@ -51,32 +56,43 @@ func (e *extendCmd) Exec() error {
 	extender, err := extenderFactory.NewExtender(
 		e.AnalyzedPath,
 		e.AppDir,
+		e.ExtendedDir,
 		e.GeneratedDir,
 		e.GroupPath,
 		e.LayersDir,
 		e.PlatformDir,
 		e.KanikoCacheTTL,
-		kaniko.NewDockerfileApplier(cmd.DefaultLogger),
+		&kaniko.DockerfileApplier{},
 		cmd.DefaultLogger,
 	)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "initialize extender")
 	}
-	if err = extender.ExtendBuild(); err != nil {
-		return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend build image")
+	switch e.ExtendKind {
+	case buildpack.DockerfileKindBuild:
+		if err = extender.Extend(e.ExtendKind, cmd.DefaultLogger); err != nil {
+			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend build image")
+		}
+		if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
+			return cmd.FailErr(err, "chown volumes")
+		}
+		if err = priv.RunAs(e.UID, e.GID); err != nil {
+			return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
+		}
+		if err = priv.SetEnvironmentForUser(e.UID); err != nil {
+			return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", e.UID))
+		}
+		buildCmd := buildCmd{Platform: e.Platform}
+		if err = buildCmd.Privileges(); err != nil {
+			return err
+		}
+		return buildCmd.Exec()
+	case buildpack.DockerfileKindRun:
+		if err = extender.Extend(e.ExtendKind, cmd.DefaultLogger); err != nil {
+			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend run image")
+		}
+	default:
+		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs)
 	}
-	if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
-		return cmd.FailErr(err, "chown volumes")
-	}
-	if err = priv.RunAs(e.UID, e.GID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
-	}
-	if err = priv.SetEnvironmentForUser(e.UID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", e.UID))
-	}
-	buildCmd := buildCmd{Platform: e.Platform}
-	if err = buildCmd.Privileges(); err != nil {
-		return err
-	}
-	return buildCmd.Exec()
+	return nil
 }

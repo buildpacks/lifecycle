@@ -76,7 +76,7 @@ type OSDistribution struct {
 	Version string `json:"version" toml:"version"`
 }
 
-// Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
+// IsSatisfiedBy treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
 func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 	if t.Arch != o.Arch || t.OS != o.OS {
 		return false

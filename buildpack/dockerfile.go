@@ -27,7 +27,6 @@ const (
 	errBuildMissingRequiredARGCommand   = "build.Dockerfile did not start with required ARG command"
 	errBuildMissingRequiredFROMCommand  = "build.Dockerfile did not contain required FROM ${base_image} command"
 	errMissingRequiredStage             = "%s should have at least one stage"
-	errMissingRequiredInstruction       = "%s should have at least one instruction"
 	errMultiStageNotPermitted           = "%s is not permitted to use multistage build"
 	errRunOtherInstructionsNotPermitted = "run.Dockerfile is not permitted to have instructions other than FROM"
 	warnCommandNotRecommended           = "%s command %s on line %d is not recommended"
@@ -73,7 +72,7 @@ func parseDockerfile(dockerfile string) ([]instructions.Stage, []instructions.Ar
 	return stages, metaArgs, nil
 }
 
-func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
+func ValidateBuildDockerfile(dockerfile string, logger log.Logger) error {
 	stages, margs, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return err
@@ -119,7 +118,7 @@ func VerifyBuildDockerfile(dockerfile string, logger log.Logger) error {
 	return nil
 }
 
-func VerifyRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
+func ValidateRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
 	stages, _, err := parseDockerfile(dockerfile)
 	if err != nil {
 		return "", err

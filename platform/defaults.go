@@ -43,6 +43,10 @@ const (
 	ModeQuiet = "quiet"
 	ModeWarn  = "warn"
 	ModeError = "error"
+
+	// EnvExtendKind is the kind of base image to extend (build or run) when running the extender.
+	EnvExtendKind     = "CNB_EXTEND_KIND"
+	DefaultExtendKind = "build"
 )
 
 // EnvUseDaemon configures the lifecycle to export the application image to a daemon satisfying the Docker socket interface (e.g., docker, podman).
@@ -146,6 +150,11 @@ const (
 	// output by image extensions during the `generate` phase.
 	EnvGeneratedDir     = "CNB_GENERATED_DIR"
 	DefaultGeneratedDir = "generated"
+
+	// EnvExtendedDir is the location of the directory where the lifecycle should copy any image layers
+	// created from applying generated Dockerfiles to a build- or run-time base image.
+	EnvExtendedDir     = "CNB_EXTENDED_DIR"
+	DefaultExtendedDir = "extended"
 
 	// EnvReportPath is the location of the report file, an output of the `export` phase.
 	// It contains information about the output application image.
