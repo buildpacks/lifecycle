@@ -111,7 +111,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 				})
 
-				when.Focus("using extensions", func() {
+				when("using extensions", func() {
 					it.Before(func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
 					})

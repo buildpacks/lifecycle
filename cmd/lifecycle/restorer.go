@@ -170,14 +170,11 @@ func needsUpdating(runImage *platform.RunImage) bool {
 	if runImage == nil {
 		return false
 	}
-	if runImage.TargetMetadata == nil {
-		return true
+	// TODO: check this logic
+	if runImage.TargetMetadata != nil {
+		return false
 	}
-	digest, err := name.NewDigest(runImage.Reference)
-	if err != nil {
-		return true
-	}
-	return digest.DigestStr() == ""
+	return true
 }
 
 func (r *restoreCmd) supportsBuildImageExtension() bool {

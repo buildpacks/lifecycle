@@ -229,6 +229,14 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 }
 
 func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+	if isDigestRef(e.RunImageRef) {
+		// If the run image reference is a digest reference, this means extensions were used to extend the runtime base image.
+		// We need a digest reference instead of a daemon image ID because the platform needs to pull the manifest from a remote registry.
+		// However, the exporter can't use a digest reference, so we convert it back into a name reference.
+		ref, _ := name.ParseReference(e.RunImageRef)
+		e.RunImageRef = ref.Context().Name()
+	}
+
 	var opts = []local.ImageOption{
 		local.FromBaseImage(e.RunImageRef),
 	}
@@ -274,6 +282,14 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		appImage = cache.NewCachingImage(appImage, volumeCache)
 	}
 	return appImage, runImageID.String(), nil
+}
+
+func isDigestRef(ref string) bool {
+	digest, err := name.NewDigest(ref)
+	if err != nil {
+		return false
+	}
+	return digest.DigestStr() != ""
 }
 
 func toContainerConfig(v1C *v1.Config) *container.Config {
