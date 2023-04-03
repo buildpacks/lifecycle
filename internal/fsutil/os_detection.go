@@ -19,7 +19,7 @@ type Detector interface {
 type Detect struct {
 }
 
-func (d *Detect) HasLinuxFile() bool {
+func (d *Detect) HasSystemdFile() bool {
 	finfo, err := os.Stat("/etc/os-release")
 	if err != nil {
 		return false
