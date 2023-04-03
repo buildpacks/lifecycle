@@ -11,8 +11,8 @@ type OSInfo struct {
 }
 
 type Detector interface {
-	HasLinuxFile() bool
-	ReadLinuxFile() (string, error)
+	HasSystemdFile() bool
+	ReadSystemdFile() (string, error)
 	GetInfo(osReleaseContents string) OSInfo
 }
 
@@ -27,7 +27,7 @@ func (d *Detect) HasSystemdFile() bool {
 	return !finfo.IsDir() && finfo.Size() > 0
 }
 
-func (d *Detect) ReadLinuxFile() (string, error) {
+func (d *Detect) ReadSystemdFile() (string, error) {
 	bs, err := os.ReadFile("/etc/os-release")
 	return string(bs), err
 }

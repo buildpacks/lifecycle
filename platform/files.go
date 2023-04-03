@@ -107,8 +107,8 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 // PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
 // returns a boolean indicating whether it populated any data.
 func PopulateTargetOSFromFileSystem(d fsutil.Detector, tm *TargetMetadata, logger log.Logger) {
-	if d.HasLinuxFile() {
-		contents, err := d.ReadLinuxFile()
+	if d.HasSystemdFile() {
+		contents, err := d.ReadSystemdFile()
 		if err != nil {
 			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())
 			return

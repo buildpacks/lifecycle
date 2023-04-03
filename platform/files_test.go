@@ -281,10 +281,10 @@ type mockDetector struct {
 	ReadFileErr error
 }
 
-func (d *mockDetector) HasLinuxFile() bool {
+func (d *mockDetector) HasSystemdFile() bool {
 	return d.HasFile
 }
-func (d *mockDetector) ReadLinuxFile() (string, error) {
+func (d *mockDetector) ReadSystemdFile() (string, error) {
 	return d.contents, d.ReadFileErr
 }
 func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
