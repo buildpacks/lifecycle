@@ -63,6 +63,7 @@ func (e *extendCmd) Exec() error {
 		e.PlatformDir,
 		e.KanikoCacheTTL,
 		&kaniko.DockerfileApplier{},
+		e.ExtendKind,
 		cmd.DefaultLogger,
 	)
 	if err != nil {

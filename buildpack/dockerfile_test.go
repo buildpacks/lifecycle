@@ -199,7 +199,7 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
-						_, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
+						err := buildpack.ValidateRunDockerfile(&buildpack.DockerfileInfo{Path: dockerfilePath}, logger)
 						if err != nil {
 							t.Fatalf("Error validating Dockerfile %d: %s", i, err)
 						}
@@ -218,7 +218,7 @@ FROM ${base_image}
 							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
 							logHandler = memory.New()
 							logger = &log.Logger{Handler: logHandler}
-							_, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
+							err := buildpack.ValidateRunDockerfile(&buildpack.DockerfileInfo{Path: dockerfilePath}, logger)
 							h.AssertNil(t, err)
 							assertLogEntry(t, logHandler, "run.Dockerfile "+tc.expectedWarning)
 						}
@@ -229,9 +229,10 @@ FROM ${base_image}
 					it("returns the new base image", func() {
 						dockerfilePath := filepath.Join(tmpDir, "run.Dockerfile")
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(`FROM some-base-image`), 0600))
-						newBase, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
+						dInfo := &buildpack.DockerfileInfo{Path: dockerfilePath}
+						err := buildpack.ValidateRunDockerfile(dInfo, logger)
 						h.AssertNil(t, err)
-						h.AssertEq(t, newBase, "some-base-image")
+						h.AssertEq(t, dInfo.NewBase, "some-base-image")
 					})
 				})
 			})
@@ -262,7 +263,7 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 					for i, tc := range testCases {
 						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
-						_, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
+						err := buildpack.ValidateRunDockerfile(&buildpack.DockerfileInfo{Path: dockerfilePath}, logger)
 						h.AssertError(t, err, tc.expectedError)
 					}
 				})

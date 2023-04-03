@@ -25,7 +25,9 @@ var (
 	kanikoCacheImageRef = filepath.Join(ociPrefix, kanikoDir, "cache", "layers", "cached")
 )
 
-type DockerfileApplier struct{}
+type DockerfileApplier struct {
+	workDir string
+}
 
 func (a *DockerfileApplier) ImageFor(reference string) (v1.Image, error) {
 	digest, err := name.NewDigest(reference)
@@ -59,23 +61,10 @@ func readOCI(path string) (v1.Image, error) {
 }
 
 func (a *DockerfileApplier) Cleanup() error {
-	fis, err := os.ReadDir(kanikoDir)
-	if err != nil {
-		return fmt.Errorf("reading kaniko dir '%s': %w", kanikoDir, err)
-	}
-	for _, fi := range fis {
-		if fi.Name() == "cache" {
-			continue
-		}
-		toRemove := filepath.Join(kanikoDir, fi.Name())
-		if err = os.RemoveAll(toRemove); err != nil {
-			return fmt.Errorf("removing directory item '%s': %w", toRemove, err)
-		}
-	}
-	return nil
+	return os.RemoveAll(a.workDir)
 }
 
-func createOptions(baseImageRef string, dockerfile extend.Dockerfile, options extend.Options) config.KanikoOptions {
+func createOptions(baseImageRef string, workDir string, dockerfile extend.Dockerfile, options extend.Options) config.KanikoOptions {
 	return config.KanikoOptions{
 		BuildArgs:         append(toArgList(dockerfile.Args), fmt.Sprintf(`base_image=%s`, baseImageRef)),
 		Cache:             true,
@@ -88,6 +77,7 @@ func createOptions(baseImageRef string, dockerfile extend.Dockerfile, options ex
 		IgnorePaths:       options.IgnorePaths,
 		IgnoreVarRun:      true,
 		InitialFSUnpacked: true, // The executor is running in the context of the image being extended, so there is no need to unpack the filesystem
+		KanikoDir:         workDir,
 		NoPush:            true,
 		Reproducible:      false, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them
 		SnapshotMode:      "full",

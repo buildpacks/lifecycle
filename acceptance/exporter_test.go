@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -493,18 +492,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 			})
 		})
 	}
-}
-
-func assertRunMetadata(t *testing.T, path string) *platform.RunMetadata {
-	contents, err := os.ReadFile(path)
-	h.AssertNil(t, err)
-	h.AssertEq(t, len(contents) > 0, true)
-
-	var runMD platform.RunMetadata
-	_, err = toml.Decode(string(contents), &runMD)
-	h.AssertNil(t, err)
-
-	return &runMD
 }
 
 func calculateEmptyLayerSha(t *testing.T) string {

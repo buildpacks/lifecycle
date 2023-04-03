@@ -9,6 +9,7 @@ require (
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221129204813-6a4d6ed5d396
 	github.com/containerd/containerd v1.6.15
 	github.com/docker/docker v20.10.23+incompatible
+	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.13.0
@@ -65,7 +66,6 @@ require (
 	github.com/docker/cli v20.10.23+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -140,4 +140,6 @@ replace (
 )
 
 // FIXME: update to point to commit on main branch
-replace github.com/buildpacks/imgutil => github.com/buildpacks/imgutil v0.0.0-20230330162918-f4924c637241
+replace github.com/buildpacks/imgutil => github.com/buildpacks/imgutil v0.0.0-20230403211732-78001fa55975
+
+//replace github.com/buildpacks/imgutil => ../imgutil

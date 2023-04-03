@@ -66,6 +66,7 @@ func (f *ExtenderFactory) NewExtender(
 	platformDir string,
 	cacheTTL time.Duration,
 	dockerfileApplier DockerfileApplier,
+	kind string,
 	logger log.Logger,
 ) (*Extender, error) {
 	extender := &Extender{
@@ -77,7 +78,7 @@ func (f *ExtenderFactory) NewExtender(
 		CacheTTL:          cacheTTL,
 		DockerfileApplier: dockerfileApplier,
 	}
-	if err := f.setImageRef(extender, analyzedPath, logger); err != nil {
+	if err := f.setImageRef(extender, kind, analyzedPath, logger); err != nil {
 		return nil, err
 	}
 	if err := f.setExtensions(extender, groupPath, logger); err != nil {
@@ -86,14 +87,21 @@ func (f *ExtenderFactory) NewExtender(
 	return extender, nil
 }
 
-func (f *ExtenderFactory) setImageRef(extender *Extender, path string, logr log.Logger) error {
+func (f *ExtenderFactory) setImageRef(extender *Extender, kind, path string, logr log.Logger) error {
 	analyzedMD, err := f.configHandler.ReadAnalyzed(path, logr)
 	if err != nil {
 		return err
 	}
-	if analyzedMD.BuildImage != nil {
-		extender.ImageRef = analyzedMD.BuildImage.Reference
+	if kind == "build" {
+		if analyzedMD.BuildImage != nil {
+			extender.ImageRef = analyzedMD.BuildImage.Reference
+		}
+	} else if kind == "run" {
+		if analyzedMD.RunImage != nil {
+			extender.ImageRef = analyzedMD.RunImage.Reference
+		}
 	}
+
 	return nil
 }
 

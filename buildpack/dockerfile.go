@@ -39,6 +39,7 @@ type DockerfileInfo struct {
 	Kind        string
 	Path        string
 	NewBase     string
+	Extend      bool
 }
 
 type ExtendConfig struct {
@@ -118,27 +119,33 @@ func ValidateBuildDockerfile(dockerfile string, logger log.Logger) error {
 	return nil
 }
 
-func ValidateRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
-	stages, _, err := parseDockerfile(dockerfile)
+func ValidateRunDockerfile(dInfo *DockerfileInfo, logger log.Logger) error {
+	stages, _, err := parseDockerfile(dInfo.Path)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// validate only 1 FROM
 	if len(stages) > 1 {
-		return "", fmt.Errorf(errMultiStageNotPermitted, runDockerfileName)
+		return fmt.Errorf(errMultiStageNotPermitted, runDockerfileName)
 	}
 	if len(stages) == 0 {
-		return "", fmt.Errorf(errMissingRequiredStage, runDockerfileName)
+		return fmt.Errorf(errMissingRequiredStage, runDockerfileName)
 	}
 
-	var newBase string
+	var (
+		newBase string
+		extend  bool
+	)
 	// validate only permitted Commands
 	for _, stage := range stages {
 		if stage.BaseName != baseImageArgRef {
 			newBase = stage.BaseName
 		}
-		for _, command := range stage.Commands {
+		for idx, command := range stage.Commands {
+			if idx > 0 {
+				extend = true
+			}
 			found := false
 			for _, permittedCommand := range permittedCommands {
 				if permittedCommand == strings.ToUpper(command.Name()) {
@@ -152,5 +159,7 @@ func ValidateRunDockerfile(dockerfile string, logger log.Logger) (string, error)
 		}
 	}
 
-	return newBase, nil
+	dInfo.NewBase = newBase
+	dInfo.Extend = extend
+	return nil
 }

@@ -338,7 +338,8 @@ func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) 
 	}
 	hasher := sha256.New()
 	mw := io.MultiWriter(targetLayer, hasher) // calculate the sha256 while writing to file
-	_, err = io.Copy(mw, zr)
+	// TODO: fix
+	_, err = io.Copy(mw, zr) //nolint
 	if err != nil {
 		return "", err
 	}

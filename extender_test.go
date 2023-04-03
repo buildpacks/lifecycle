@@ -79,6 +79,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 				"some-platform-dir",
 				7*(24*time.Hour),
 				fakeDockerfileApplier,
+				"build",
 				logger,
 			)
 			h.AssertNil(t, err)

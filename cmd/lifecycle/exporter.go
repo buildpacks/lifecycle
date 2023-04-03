@@ -320,7 +320,7 @@ func toHealthConfig(v1H *v1.HealthConfig) *container.HealthConfig {
 }
 
 func toNATPortSet(v1Ps map[string]struct{}) nat.PortSet {
-	var portSet map[nat.Port]struct{}
+	portSet := make(map[nat.Port]struct{})
 	for k, v := range v1Ps {
 		portSet[nat.Port(k)] = v
 	}

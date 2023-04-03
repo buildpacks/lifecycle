@@ -402,6 +402,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 								Kind:        "run",
 								Path:        runDockerfilePathA,
 								NewBase:     "some-new-base-image",
+								Extend:      true,
 							},
 						},
 					}, nil)

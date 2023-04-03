@@ -28,7 +28,11 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 		return nil, fmt.Errorf("failed to get digest: %w", err)
 	}
 	baseImageRef := fmt.Sprintf("base@%s", digestToExtend)
-	opts := createOptions(baseImageRef, dockerfile, withBuildOptions)
+	workDir, err := os.MkdirTemp(kanikoDir, "work.dir")
+	if err != nil {
+		return nil, err
+	}
+	opts := createOptions(baseImageRef, workDir, dockerfile, withBuildOptions)
 
 	// change to root directory; kaniko does this here:
 	// https://github.com/GoogleContainerTools/kaniko/blob/09e70e44d9e9a3fecfcf70cb809a654445837631/cmd/executor/cmd/root.go#L140-L142
