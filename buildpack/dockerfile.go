@@ -32,7 +32,7 @@ const (
 	warnCommandNotRecommended           = "%s command %s on line %d is not recommended"
 )
 
-var permittedCommands = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
+var recommendedCommands = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
 
 type DockerfileInfo struct {
 	ExtensionID string
@@ -88,8 +88,8 @@ func ValidateBuildDockerfile(dockerfile string, logger log.Logger) error {
 	for _, stage := range stages {
 		for _, command := range stage.Commands {
 			found := false
-			for _, permittedCommand := range permittedCommands {
-				if permittedCommand == strings.ToUpper(command.Name()) {
+			for _, rc := range recommendedCommands {
+				if rc == strings.ToUpper(command.Name()) {
 					found = true
 					break
 				}
@@ -147,8 +147,8 @@ func ValidateRunDockerfile(dInfo *DockerfileInfo, logger log.Logger) error {
 				extend = true
 			}
 			found := false
-			for _, permittedCommand := range permittedCommands {
-				if permittedCommand == strings.ToUpper(command.Name()) {
+			for _, rc := range recommendedCommands {
+				if rc == strings.ToUpper(command.Name()) {
 					found = true
 					break
 				}
