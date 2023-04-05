@@ -76,7 +76,7 @@ jobs:
             buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
           cosign verify -key cosign.pub -a tag=${{ env.LIFECYCLE_VERSION }} -attachment sbom buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}@${MANIFEST_SHA}
       - name: Retag lifecycle images & create manifest list - latest
-        if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
+        if: "!contains(env.LIFECYCLE_VERSION, 'rc') && !contains(env.LIFECYCLE_VERSION, 'pre')"
         run: |
           DOCKER_CLI_EXPERIMENTAL=enabled
 
