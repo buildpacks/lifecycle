@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/buildpacks/lifecycle/internal/fsutil"
+
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -100,6 +102,23 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 		}
 	}
 	return true
+}
+
+// PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
+// returns a boolean indicating whether it populated any data.
+func PopulateTargetOSFromFileSystem(d fsutil.Detector, tm *TargetMetadata, logger log.Logger) {
+	if d.HasSystemdFile() {
+		contents, err := d.ReadSystemdFile()
+		if err != nil {
+			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())
+			return
+		}
+		info := d.GetInfo(contents)
+		if info.Version != "" || info.Name != "" {
+			tm.OS = "linux"
+			tm.Distribution = &OSDistribution{Name: info.Name, Version: info.Version}
+		}
+	}
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {

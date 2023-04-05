@@ -1,8 +1,14 @@
 package platform_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
+
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
+
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -15,6 +21,7 @@ import (
 
 func TestFiles(t *testing.T) {
 	spec.Run(t, "Files", testFiles)
+	spec.Run(t, "PopulateTarget", testPopulateTarget)
 }
 
 func testFiles(t *testing.T, when spec.G, it spec.S) {
@@ -263,6 +270,62 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal("distributions list including target's distribution not recognized as satisfying")
 				}
 			})
+		})
+	})
+}
+
+type mockDetector struct {
+	contents    string
+	t           *testing.T
+	HasFile     bool
+	ReadFileErr error
+}
+
+func (d *mockDetector) HasSystemdFile() bool {
+	return d.HasFile
+}
+func (d *mockDetector) ReadSystemdFile() (string, error) {
+	return d.contents, d.ReadFileErr
+}
+func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
+	h.AssertEq(d.t, osReleaseContents, d.contents)
+	return fsutil.OSInfo{
+		Name:    "opensesame",
+		Version: "3.14",
+	}
+}
+
+func testPopulateTarget(t *testing.T, when spec.G, it spec.S) {
+	when("the data is available", func() {
+		it("populates appropriately", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "this is just test contents really",
+				t:       t,
+				HasFile: true}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertEq(t, "opensesame", tm.Distribution.Name)
+			h.AssertEq(t, "3.14", tm.Distribution.Version)
+		})
+		it("doesn't populate if there's no file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "in unit tests 2.0 the users will generate the content but we'll serve them ads",
+				t:       t,
+				HasFile: false}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distribution)
+		})
+		it("doesn't populate if there's an error reading the file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "contentment is the greatest wealth",
+				t:           t,
+				HasFile:     true,
+				ReadFileErr: fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says"),
+			}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distribution)
 		})
 	})
 }
