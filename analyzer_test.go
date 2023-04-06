@@ -565,7 +565,6 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 					metadata := h.MustReadFile(t, filepath.Join("testdata", "analyzer", "app_metadata.json"))
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", string(metadata)))
 					h.AssertNil(t, json.Unmarshal(metadata, &expectedAppMetadata))
-					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 				})
 
 				it("returns the analyzed metadata", func() {
@@ -601,7 +600,6 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			when("previous image not found", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.Delete())
-					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 					expectRestoresLayerMetadataIfSupported()
 				})
 
@@ -617,7 +615,6 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			when("previous image does not have metadata label", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", ""))
-					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 					expectRestoresLayerMetadataIfSupported()
 				})
 
@@ -631,7 +628,6 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			when("previous image has incompatible metadata", func() {
 				it.Before(func() {
 					h.AssertNil(t, image.SetLabel("io.buildpacks.lifecycle.metadata", `{["bad", "metadata"]}`))
-					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 					expectRestoresLayerMetadataIfSupported()
 				})
 
@@ -660,7 +656,6 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 			when("run image is provided", func() {
 				it.Before(func() {
 					analyzer.RunImage = image
-					sbomRestorer.EXPECT().RestoreFromPrevious(image, "")
 					expectRestoresLayerMetadataIfSupported()
 				})
 
