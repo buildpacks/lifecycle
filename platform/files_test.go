@@ -1,8 +1,14 @@
 package platform_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
+
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
+
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -15,6 +21,7 @@ import (
 
 func TestFiles(t *testing.T) {
 	spec.Run(t, "Files", testFiles)
+	spec.Run(t, "PopulateTarget", testPopulateTarget)
 }
 
 func testFiles(t *testing.T, when spec.G, it spec.S) {
@@ -217,8 +224,8 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				amd := platform.AnalyzedMetadata{
 					PreviousImage: &platform.ImageIdentifier{Reference: "the image formerly known as prince"},
 					RunImage: &platform.RunImage{
-						Reference: "librarian",
-						Target:    &platform.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: "os/2 warp", Arch: "486"}},
+						Reference:      "librarian",
+						TargetMetadata: &platform.TargetMetadata{OS: "os/2 warp", Arch: "486"},
 					},
 					BuildImage: &platform.ImageIdentifier{Reference: "implementation"},
 				}
@@ -233,35 +240,104 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("TargetMetadata#IsSatisfiedBy", func() {
 			it("requires equality of OS and Arch", func() {
-				d := platform.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: "Win95", Arch: "Pentium"}}
+				d := platform.TargetMetadata{OS: "Win95", Arch: "Pentium"}
 
-				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: "Win98", Arch: d.Arch}}) {
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: "Win98", Arch: d.Arch}) {
 					t.Fatal("TargetMetadata with different OS were equal")
 				}
-				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: "Pentium MMX"}}) {
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: "Pentium MMX"}) {
 					t.Fatal("TargetMetadata with different Arch were equal")
 				}
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch, ArchVariant: "MMX"}}) {
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, ArchVariant: "MMX"}) {
 					t.Fatal("blank arch variant was not treated as wildcard")
 				}
 				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{
-					TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch},
-					Distributions: []buildpack.DistributionMetadata{{Name: "a", Version: "2"}},
+					OS:            d.OS,
+					Arch:          d.Arch,
+					Distributions: []buildpack.OSDistribution{{Name: "a", Version: "2"}},
 				}) {
 					t.Fatal("blank distributions list was not treated as wildcard")
 				}
 
-				d.Distribution = &buildpack.DistributionMetadata{Name: "A", Version: "1"}
-				if d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.DistributionMetadata{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}) {
+				d.Distribution = &platform.OSDistribution{Name: "A", Version: "1"}
+				if d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{{Name: "g", Version: "2"}, {Name: "B", Version: "2"}}}) {
 					t.Fatal("unsatisfactory distribution lists were treated as satisfying")
 				}
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.DistributionMetadata{}}) {
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{}}) {
 					t.Fatal("blank distributions list was not treated as wildcard")
 				}
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{TargetPartial: buildpack.TargetPartial{OS: d.OS, Arch: d.Arch}, Distributions: []buildpack.DistributionMetadata{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}) {
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: d.Arch, Distributions: []buildpack.OSDistribution{{Name: "B", Version: "2"}, {Name: "A", Version: "1"}}}) {
 					t.Fatal("distributions list including target's distribution not recognized as satisfying")
 				}
 			})
+			it("is cool with starry arches", func() {
+				d := platform.TargetMetadata{OS: "windows", Arch: "*"}
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: "intel whatevsky"}) {
+					t.Fatal("Arch wildcard should have been satisfied with whatever we gave it")
+				}
+			})
+			it("is down with OS stars", func() {
+				d := platform.TargetMetadata{OS: "*", Arch: "amd64"} // i mean this would be kinda weird, right? but there'll be a use-case...
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: "plan 9", Arch: d.Arch}) {
+					t.Fatal("OS wildcard should have been satisfied by plan 9")
+				}
+			})
+		})
+	})
+}
+
+type mockDetector struct {
+	contents    string
+	t           *testing.T
+	HasFile     bool
+	ReadFileErr error
+}
+
+func (d *mockDetector) HasSystemdFile() bool {
+	return d.HasFile
+}
+func (d *mockDetector) ReadSystemdFile() (string, error) {
+	return d.contents, d.ReadFileErr
+}
+func (d *mockDetector) GetInfo(osReleaseContents string) fsutil.OSInfo {
+	h.AssertEq(d.t, osReleaseContents, d.contents)
+	return fsutil.OSInfo{
+		Name:    "opensesame",
+		Version: "3.14",
+	}
+}
+
+func testPopulateTarget(t *testing.T, when spec.G, it spec.S) {
+	when("the data is available", func() {
+		it("populates appropriately", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "this is just test contents really",
+				t:       t,
+				HasFile: true}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertEq(t, "opensesame", tm.Distribution.Name)
+			h.AssertEq(t, "3.14", tm.Distribution.Version)
+		})
+		it("doesn't populate if there's no file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "in unit tests 2.0 the users will generate the content but we'll serve them ads",
+				t:       t,
+				HasFile: false}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distribution)
+		})
+		it("doesn't populate if there's an error reading the file", func() {
+			logr := &log.Logger{Handler: memory.New()}
+			tm := platform.TargetMetadata{}
+			d := mockDetector{contents: "contentment is the greatest wealth",
+				t:           t,
+				HasFile:     true,
+				ReadFileErr: fmt.Errorf("I'm sorry Dave, I don't even remember exactly what HAL says"),
+			}
+			platform.PopulateTargetOSFromFileSystem(&d, &tm, logr)
+			h.AssertNil(t, tm.Distribution)
 		})
 	})
 }

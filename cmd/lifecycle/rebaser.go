@@ -42,6 +42,10 @@ func (r *rebaseCmd) DefineFlags() {
 	if r.PlatformAPI.AtLeast("0.11") {
 		cli.FlagPreviousImage(&r.PreviousImageRef)
 	}
+
+	if r.PlatformAPI.AtLeast("0.12") {
+		cli.FlagForceRebase(&r.ForceRebase)
+	}
 }
 
 // Args validates arguments and flags, and fills in default values.
@@ -103,6 +107,7 @@ func (r *rebaseCmd) Exec() error {
 	rebaser := &lifecycle.Rebaser{
 		Logger:      cmd.DefaultLogger,
 		PlatformAPI: r.PlatformAPI,
+		Force:       r.ForceRebase,
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
 	if err != nil {
@@ -157,9 +162,20 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	if r.RunImageRef == "" {
-		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-run-image is required when there is no stack metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
+		if r.PlatformAPI.AtLeast("0.12") {
+			r.RunImageRef = md.RunImage.Reference
+			if r.RunImageRef != "" {
+				return nil
+			}
 		}
+
+		// for backwards compatibility, we need to fallback to the stack metadata
+		// fail if there is no run image metadata available from either location
+		if md.Stack.RunImage.Image == "" {
+			return cmd.FailErrCode(errors.New("-run-image is required when there is no run image metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
+		}
+
+		// for older platforms, we find the best mirror for the run image as this point
 		r.RunImageRef, err = md.Stack.BestRunImageMirror(registry)
 		if err != nil {
 			return err

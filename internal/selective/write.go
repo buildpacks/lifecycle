@@ -59,7 +59,7 @@ func (l Path) writeImage(img v1.Image) error {
 	if err != nil {
 		return err
 	}
-	if err := l.WriteBlob(cfgName, io.NopCloser(bytes.NewReader(cfgBlob))); err != nil {
+	if err = l.WriteBlob(cfgName, io.NopCloser(bytes.NewReader(cfgBlob))); err != nil {
 		return err
 	}
 

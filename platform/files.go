@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -36,14 +36,21 @@ func (amd AnalyzedMetadata) PreviousImageRef() string {
 	return amd.PreviousImage.Reference
 }
 
+func (amd AnalyzedMetadata) RunImageRef() string {
+	if amd.RunImage == nil {
+		return ""
+	}
+	return amd.RunImage.Reference
+}
+
 func (amd AnalyzedMetadata) RunImageTarget() TargetMetadata {
 	if amd.RunImage == nil {
 		return TargetMetadata{}
 	}
-	if amd.RunImage.Target == nil {
+	if amd.RunImage.TargetMetadata == nil {
 		return TargetMetadata{}
 	}
-	return *amd.RunImage.Target
+	return *amd.RunImage.TargetMetadata
 }
 
 // FIXME: fix key names to be accurate in the daemon case
@@ -52,20 +59,28 @@ type ImageIdentifier struct {
 }
 
 type RunImage struct {
-	Reference string          `toml:"reference"`
-	Extend    bool            `toml:"extend,omitempty"`
-	Target    *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
+	Reference      string          `toml:"reference"`
+	Extend         bool            `toml:"extend,omitempty"`
+	TargetMetadata *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
 }
 
 type TargetMetadata struct {
-	buildpack.TargetPartial
-	ID           string                          `json:"id" toml:"id"`
-	Distribution *buildpack.DistributionMetadata `json:"distribution,omitempty" toml:"distribution,omitempty"`
+	ID          string `json:"id" toml:"id"`
+	OS          string `json:"os" toml:"os"`
+	Arch        string `json:"arch" toml:"arch"`
+	ArchVariant string `json:"arch-variant" toml:"arch-variant"`
+
+	Distribution *OSDistribution `json:"distribution,omitempty" toml:"distribution,omitempty"`
 }
 
-// Satisfies treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
+type OSDistribution struct {
+	Name    string `json:"name" toml:"name"`
+	Version string `json:"version" toml:"version"`
+}
+
+// IsSatisfiedBy treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
 func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
-	if t.Arch != o.Arch || t.OS != o.OS {
+	if (t.Arch != "*" && t.Arch != o.Arch) || (t.OS != "*" && t.OS != o.OS) {
 		return false
 	}
 	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
@@ -89,38 +104,21 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 	return true
 }
 
-func GetTargetFromImage(image imgutil.Image) (*TargetMetadata, error) {
-	tm := TargetMetadata{}
-	if !image.Found() {
-		return &tm, nil
+// PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
+// returns a boolean indicating whether it populated any data.
+func PopulateTargetOSFromFileSystem(d fsutil.Detector, tm *TargetMetadata, logger log.Logger) {
+	if d.HasSystemdFile() {
+		contents, err := d.ReadSystemdFile()
+		if err != nil {
+			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())
+			return
+		}
+		info := d.GetInfo(contents)
+		if info.Version != "" || info.Name != "" {
+			tm.OS = "linux"
+			tm.Distribution = &OSDistribution{Name: info.Name, Version: info.Version}
+		}
 	}
-	var err error
-	tm.OS, err = image.OS()
-	if err != nil {
-		return &tm, err
-	}
-	tm.Arch, err = image.Architecture()
-	if err != nil {
-		return &tm, err
-	}
-	tm.ArchVariant, err = image.Variant()
-	if err != nil {
-		return &tm, err
-	}
-	labels, err := image.Labels()
-	if err != nil {
-		return &tm, err
-	}
-	distName, distNameExists := labels["io.buildpacks.distribution.name"]
-	distVersion, distVersionExists := labels["io.buildpacks.distribution.version"]
-	if distNameExists || distVersionExists {
-		tm.Distribution = &buildpack.DistributionMetadata{Name: distName, Version: distVersion}
-	}
-	if id, exists := labels["io.buildpacks.id"]; exists {
-		tm.ID = id
-	}
-
-	return &tm, nil
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {

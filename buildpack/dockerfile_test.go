@@ -40,9 +40,8 @@ func testDockerfile(t *testing.T, when spec.G, it spec.S) {
 		_ = os.RemoveAll(tmpDir)
 	})
 
-	when("verifying dockerfiles", func() {
-		validCases := []string{
-			`
+	when("validating dockerfiles", func() {
+		validCases := []string{`
 ARG base_image=0
 FROM ${base_image}
 
@@ -125,30 +124,30 @@ RUN echo "this statement is never cached"
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
-						err := buildpack.VerifyBuildDockerfile(dockerfilePath, logger)
+						err := buildpack.ValidateBuildDockerfile(dockerfilePath, logger)
 						if err != nil {
-							t.Fatalf("Error verifying Dockerfile %d: %s", i, err)
+							t.Fatalf("Error validating Dockerfile %d: %s", i, err)
 						}
 						h.AssertEq(t, len(logHandler.Entries), 0)
 					}
 				})
-			})
 
-			when("valid, but violates SHOULD directives in spec", func() {
-				it("succeeds with warning", func() {
-					preamble := `
+				when("violates SHOULD directives in spec", func() {
+					it("succeeds with warning", func() {
+						preamble := `
 ARG base_image=0
 FROM ${base_image}
 `
-					for i, tc := range warnCases {
-						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
-						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
-						logHandler = memory.New()
-						logger = &log.Logger{Handler: logHandler}
-						err := buildpack.VerifyBuildDockerfile(dockerfilePath, logger)
-						h.AssertNil(t, err)
-						assertLogEntry(t, logHandler, "build.Dockerfile "+tc.expectedWarning)
-					}
+						for i, tc := range warnCases {
+							dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
+							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
+							logHandler = memory.New()
+							logger = &log.Logger{Handler: logHandler}
+							err := buildpack.ValidateBuildDockerfile(dockerfilePath, logger)
+							h.AssertNil(t, err)
+							assertLogEntry(t, logHandler, "build.Dockerfile "+tc.expectedWarning)
+						}
+					})
 				})
 			})
 
@@ -186,7 +185,7 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 					for i, tc := range testCases {
 						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
-						err := buildpack.VerifyBuildDockerfile(dockerfilePath, logger)
+						err := buildpack.ValidateBuildDockerfile(dockerfilePath, logger)
 						h.AssertError(t, err, tc.expectedError)
 					}
 				})
@@ -200,9 +199,9 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 						dockerfileName := fmt.Sprintf("Dockerfile%d", i)
 						dockerfilePath := filepath.Join(tmpDir, dockerfileName)
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(content), 0600))
-						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
+						_, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
 						if err != nil {
-							t.Fatalf("Error verifying Dockerfile %d: %s", i, err)
+							t.Fatalf("Error validating Dockerfile %d: %s", i, err)
 						}
 						h.AssertEq(t, len(logHandler.Entries), 0)
 					}
@@ -219,7 +218,7 @@ FROM ${base_image}
 							h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(preamble+tc.dockerfileContent), 0600))
 							logHandler = memory.New()
 							logger = &log.Logger{Handler: logHandler}
-							_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
+							_, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
 							h.AssertNil(t, err)
 							assertLogEntry(t, logHandler, "run.Dockerfile "+tc.expectedWarning)
 						}
@@ -230,7 +229,7 @@ FROM ${base_image}
 					it("returns the new base image", func() {
 						dockerfilePath := filepath.Join(tmpDir, "run.Dockerfile")
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(`FROM some-base-image`), 0600))
-						newBase, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
+						newBase, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
 						h.AssertNil(t, err)
 						h.AssertEq(t, newBase, "some-base-image")
 					})
@@ -263,7 +262,7 @@ COPY --from=0 /some-source.txt ./some-dest.txt
 					for i, tc := range testCases {
 						dockerfilePath := filepath.Join(tmpDir, fmt.Sprintf("Dockerfile%d", i))
 						h.AssertNil(t, os.WriteFile(dockerfilePath, []byte(tc.dockerfileContent), 0600))
-						_, err := buildpack.VerifyRunDockerfile(dockerfilePath, logger)
+						_, err := buildpack.ValidateRunDockerfile(dockerfilePath, logger)
 						h.AssertError(t, err, tc.expectedError)
 					}
 				})

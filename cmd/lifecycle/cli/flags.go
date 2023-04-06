@@ -48,6 +48,14 @@ func FlagCacheImage(cacheImage *string) {
 	flagSet.StringVar(cacheImage, "cache-image", *cacheImage, "cache image tag name")
 }
 
+func FlagExtendKind(extendKind *string) {
+	flagSet.StringVar(extendKind, "kind", *extendKind, "kind of image to extend")
+}
+
+func FlagExtendedDir(extendedDir *string) {
+	flagSet.StringVar(extendedDir, "extended", *extendedDir, "path to output directory for image layers created from applying generated Dockerfiles")
+}
+
 func FlagExtensionsDir(extensionsDir *string) {
 	flagSet.StringVar(extensionsDir, "extensions", *extensionsDir, "path to extensions directory")
 }
@@ -154,6 +162,10 @@ func FlagUseDaemon(useDaemon *bool) {
 
 func FlagVersion(showVersion *bool) {
 	flagSet.BoolVar(showVersion, "version", false, "show version")
+}
+
+func FlagForceRebase(force *bool) {
+	flagSet.BoolVar(force, "force", *force, "execute rebase even if operation is unsafe")
 }
 
 // deprecated

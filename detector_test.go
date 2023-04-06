@@ -798,12 +798,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			when("A Target is provided from AnalyzeMD", func() {
 				it("errors if the buildpacks don't share that target arch/os", func() {
 					detector.AnalyzeMD.RunImage = &platform.RunImage{
-						Target: &platform.TargetMetadata{
-							TargetPartial: buildpack.TargetPartial{
-								OS:   "MacOS",
-								Arch: "ARM64",
-							},
-							Distribution: &buildpack.DistributionMetadata{Name: "MacOS", Version: "some kind of big cat"},
+						TargetMetadata: &platform.TargetMetadata{
+							OS:           "MacOS",
+							Arch:         "ARM64",
+							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "some kind of big cat"},
 						},
 					}
 
@@ -811,11 +809,11 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						WithAPI:   "0.12",
 						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 						Targets: []buildpack.TargetMetadata{
-							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95"},
-								Distributions: []buildpack.DistributionMetadata{
+							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
+								Distributions: []buildpack.OSDistribution{
 									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{TargetPartial: buildpack.TargetPartial{Arch: "Pentium M", OS: "Win98"},
-								Distributions: []buildpack.DistributionMetadata{{Name: "Windows 2000", Version: "Server"}}},
+							{Arch: "Pentium M", OS: "Win98",
+								Distributions: []buildpack.OSDistribution{{Name: "Windows 2000", Version: "Server"}}},
 						},
 					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
@@ -827,7 +825,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, ok, true)
 							outs := val.(buildpack.DetectOutputs)
 							h.AssertEq(t, outs.Code, -1)
-							h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constriaints")
+							h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constraints")
 							return []buildpack.GroupElement{}, []platform.BuildPlanEntry{}, nil
 						})
 
@@ -840,12 +838,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 				})
 				it("totally works if the constraints are met", func() {
 					detector.AnalyzeMD.RunImage = &platform.RunImage{
-						Target: &platform.TargetMetadata{
-							TargetPartial: buildpack.TargetPartial{
-								OS:   "MacOS",
-								Arch: "ARM64",
-							},
-							Distribution: &buildpack.DistributionMetadata{Name: "MacOS", Version: "snow cheetah"},
+						TargetMetadata: &platform.TargetMetadata{
+							OS:           "MacOS",
+							Arch:         "ARM64",
+							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
 						},
 					}
 
@@ -853,10 +849,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 						WithAPI:   "0.12",
 						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 						Targets: []buildpack.TargetMetadata{
-							{TargetPartial: buildpack.TargetPartial{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95"},
-								Distributions: []buildpack.DistributionMetadata{
+							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
+								Distributions: []buildpack.OSDistribution{
 									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{TargetPartial: buildpack.TargetPartial{Arch: "ARM64", OS: "MacOS"}, Distributions: []buildpack.DistributionMetadata{{Name: "MacOS", Version: "snow cheetah"}}}},
+							{Arch: "ARM64", OS: "MacOS", Distributions: []buildpack.OSDistribution{{Name: "MacOS", Version: "snow cheetah"}}}},
 					}
 					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
@@ -878,12 +874,10 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			})
 			it("was born to be wildcard compliant", func() {
 				detector.AnalyzeMD.RunImage = &platform.RunImage{
-					Target: &platform.TargetMetadata{
-						TargetPartial: buildpack.TargetPartial{
-							OS:   "MacOS",
-							Arch: "ARM64",
-						},
-						Distribution: &buildpack.DistributionMetadata{Name: "MacOS", Version: "snow cheetah"},
+					TargetMetadata: &platform.TargetMetadata{
+						OS:           "MacOS",
+						Arch:         "ARM64",
+						Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
 					},
 				}
 
@@ -891,7 +885,7 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					WithAPI:   "0.12",
 					Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
 					Targets: []buildpack.TargetMetadata{
-						{TargetPartial: buildpack.TargetPartial{Arch: "*", OS: "*"}}},
+						{Arch: "*", OS: "*"}},
 				}
 				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
 				executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())

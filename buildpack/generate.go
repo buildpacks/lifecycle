@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
 )
@@ -104,30 +105,35 @@ func runGenerateCmd(d ExtDescriptor, extOutputDir, planPath string, inputs Gener
 }
 
 func readOutputFilesExt(d ExtDescriptor, extOutputDir string, extPlanIn Plan, logger log.Logger) (GenerateOutputs, error) {
-	br := GenerateOutputs{}
+	gr := GenerateOutputs{}
 	var err error
 	var dfInfo DockerfileInfo
 	var found bool
 
 	// set MetRequires
-	br.MetRequires = names(extPlanIn.Entries)
+	gr.MetRequires = names(extPlanIn.Entries)
+
+	// validate extend config
+	if err = extend.ValidateConfig(filepath.Join(extOutputDir, "extend-config.toml")); err != nil {
+		return GenerateOutputs{}, err
+	}
 
 	// set Dockerfiles
 	if dfInfo, found, err = findDockerfileFor(d, extOutputDir, DockerfileKindRun, logger); err != nil {
 		return GenerateOutputs{}, err
 	} else if found {
-		br.Dockerfiles = append(br.Dockerfiles, dfInfo)
+		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
 	}
 
 	if dfInfo, found, err = findDockerfileFor(d, extOutputDir, DockerfileKindBuild, logger); err != nil {
 		return GenerateOutputs{}, err
 	} else if found {
-		br.Dockerfiles = append(br.Dockerfiles, dfInfo)
+		gr.Dockerfiles = append(gr.Dockerfiles, dfInfo)
 	}
 
-	logger.Debugf("Found '%d' Dockerfiles for processing", len(br.Dockerfiles))
+	logger.Debugf("Found '%d' Dockerfiles for processing", len(gr.Dockerfiles))
 
-	return br, nil
+	return gr, nil
 }
 
 func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger log.Logger) (DockerfileInfo, bool, error) {
@@ -142,19 +148,19 @@ func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger
 		return DockerfileInfo{}, false, nil
 	}
 
-	newBase, err := verifyDockerfileFor(d, dockerfilePath, kind, logger)
+	newBase, err := validateDockerfileFor(dockerfilePath, kind, logger)
 	if err != nil {
 		return DockerfileInfo{}, true, fmt.Errorf("failed to parse %s.Dockerfile for extension %s: %w", kind, d.Extension.ID, err)
 	}
 	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath, NewBase: newBase}, true, nil
 }
 
-func verifyDockerfileFor(d ExtDescriptor, path string, kind string, logger log.Logger) (string, error) {
+func validateDockerfileFor(path string, kind string, logger log.Logger) (string, error) {
 	switch kind {
 	case DockerfileKindBuild:
-		return "", VerifyBuildDockerfile(path, logger)
+		return "", ValidateBuildDockerfile(path, logger)
 	case DockerfileKindRun:
-		return VerifyRunDockerfile(path, logger)
+		return ValidateRunDockerfile(path, logger)
 	default:
 		return "", nil
 	}

@@ -4,6 +4,8 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/internal/fsutil"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
@@ -224,6 +226,9 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 			if err != nil {
 				return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
 			}
+			if atm.OS == "" {
+				platform.PopulateTargetOSFromFileSystem(&fsutil.Detect{}, atm, a.Logger)
+			}
 		}
 	}
 
@@ -241,7 +246,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 	return platform.AnalyzedMetadata{
 		PreviousImage: &platform.ImageIdentifier{Reference: previousImageRef},
-		RunImage:      &platform.RunImage{Reference: runImageRef, Target: atm},
+		RunImage:      &platform.RunImage{Reference: runImageRef, TargetMetadata: atm},
 		Metadata:      appMeta,
 	}, nil
 }

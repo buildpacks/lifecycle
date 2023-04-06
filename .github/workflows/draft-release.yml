@@ -104,11 +104,11 @@ jobs:
           cat *.sha256 | sort > lifecycle-v${{ env.LIFECYCLE_VERSION }}-checksums.txt
           rm *.sha256
       - name: Set pre-release kind
-        if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
+        if: "contains(env.LIFECYCLE_VERSION, 'rc') || contains(env.LIFECYCLE_VERSION, 'pre')" # e.g., 0.99.0-rc.1
         run: |
           echo "RELEASE_KIND=pre-release" >> $GITHUB_ENV
       - name: Set release kind
-        if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
+        if: "!contains(env.LIFECYCLE_VERSION, 'rc') && !contains(env.LIFECYCLE_VERSION, 'pre')"
         run: |
           echo "RELEASE_KIND=release" >> $GITHUB_ENV
       - name: Set release body text
@@ -131,7 +131,7 @@ jobs:
           An OCI image containing the lifecycle binaries is available at buildpacksio/lifecycle:${{ env.LIFECYCLE_VERSION }}.
           EOF
       - name: Create Pre Release
-        if: contains(env.LIFECYCLE_VERSION, 'rc') # e.g., 0.99.0-rc.1
+        if: "contains(env.LIFECYCLE_VERSION, 'rc') || contains(env.LIFECYCLE_VERSION, 'pre')" # e.g., 0.99.0-rc.1
         run: |
           cd ${{ env.ARTIFACTS_PATH }}
           gh release create v${{ env.LIFECYCLE_VERSION }} \
@@ -144,7 +144,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Release
-        if: "!contains(env.LIFECYCLE_VERSION, 'rc')"
+        if: "!contains(env.LIFECYCLE_VERSION, 'rc') && !contains(env.LIFECYCLE_VERSION, 'pre')"
         run: |
           cd ${{ env.ARTIFACTS_PATH }}
           gh release create v${{ env.LIFECYCLE_VERSION }} \

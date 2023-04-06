@@ -25,6 +25,7 @@ fi
 if [[ -f detect-status-${bp_id}-${bp_version} ]]; then
   exit "$(cat "detect-status-${bp_id}-${bp_version}")"
 fi
+
 if [[ -f detect-status ]]; then
   exit "$(cat detect-status)"
 fi

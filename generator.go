@@ -71,7 +71,6 @@ func (f *GeneratorFactory) NewGenerator(
 		Out:            stdout,
 		Err:            stderr,
 	}
-
 	if err := f.setExtensions(generator, extensions, logger); err != nil {
 		return nil, err
 	}

@@ -237,7 +237,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				} else {
 					for i := range bpDescriptor.Targets {
 						d.Logger.Debugf("Checking for match against descriptor:", bpDescriptor.Targets[i])
-						if d.AnalyzeMD.RunImage.Target.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
+						if d.AnalyzeMD.RunImage.TargetMetadata.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
 							targetMatch = true
 							break
 						}
@@ -249,7 +249,7 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 						keyFor(groupEl),
 						buildpack.DetectOutputs{
 							Code: -1,
-							Err:  fmt.Errorf("unable to satisfy Target OS/Arch constriaints: %v", d.AnalyzeMD.RunImage.Target),
+							Err:  fmt.Errorf("unable to satisfy Target OS/Arch constraints: %v", d.AnalyzeMD.RunImage.TargetMetadata),
 						})
 					continue
 				}

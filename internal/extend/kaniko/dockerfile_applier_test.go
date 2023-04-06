@@ -20,7 +20,6 @@ func testDockerApplier(t *testing.T, when spec.G, it spec.S) {
 		when(":ignorepaths", func() {
 			it("adds them to the kaniko options", func() {
 				opts := createOptions(
-					"/workspace",
 					"someimage",
 					extend.Dockerfile{
 						Path: "/something",
@@ -43,7 +42,6 @@ func testDockerApplier(t *testing.T, when spec.G, it spec.S) {
 		when(":cacheTTL", func() {
 			it("passes it to the kaniko options", func() {
 				opts := createOptions(
-					"/workspace",
 					"someimage",
 					extend.Dockerfile{
 						Path: "/something",
