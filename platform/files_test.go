@@ -271,14 +271,14 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 			it("is cool with starry arches", func() {
-				d := platform.TargetMetadata{OS: "windows", Arch: "*"}
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: "intel whatevsky"}) {
+				d := platform.TargetMetadata{OS: "windows", Arch: "amd64"}
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: d.OS, Arch: "*"}) {
 					t.Fatal("Arch wildcard should have been satisfied with whatever we gave it")
 				}
 			})
 			it("is down with OS stars", func() {
-				d := platform.TargetMetadata{OS: "*", Arch: "amd64"} // i mean this would be kinda weird, right? but there'll be a use-case...
-				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: "plan 9", Arch: d.Arch}) {
+				d := platform.TargetMetadata{OS: "plan 9", Arch: "amd64"}
+				if !d.IsSatisfiedBy(&buildpack.TargetMetadata{OS: "*", Arch: d.Arch}) {
 					t.Fatal("OS wildcard should have been satisfied by plan 9")
 				}
 			})
