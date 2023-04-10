@@ -64,6 +64,8 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		)
 		h.AssertNil(t, fakePreviousImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 
+		h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, api.Platform.Latest().String()))
+
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
 		rebaser = &lifecycle.Rebaser{
@@ -429,6 +431,50 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 			when("platform API >= 0.12", func() {
 				it.Before(func() {
 					rebaser.PlatformAPI = api.MustParse("0.12")
+				})
+
+				when("previous image was built on unknown platform API", func() {
+					it.Before(func() {
+						h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, ""))
+					})
+
+					it("allows rebase with missing labels", func() {
+						h.AssertNil(t, fakeAppImage.SetOS(""))
+						h.AssertNil(t, fakeNewBaseImage.SetOS("linux"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
+
+					it("allows rebase with mismatched variants", func() {
+						h.AssertNil(t, fakeAppImage.SetVariant("variant1"))
+						h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("previous image was built on older platform API", func() {
+					it.Before(func() {
+						h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, "0.11"))
+					})
+
+					it("allows rebase with missing labels", func() {
+						h.AssertNil(t, fakeAppImage.SetOS(""))
+						h.AssertNil(t, fakeNewBaseImage.SetOS("linux"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
+
+					it("allows rebase with mismatched variants", func() {
+						h.AssertNil(t, fakeAppImage.SetVariant("variant1"))
+						h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
 				})
 
 				it("returns an error and prevents the rebase from taking place when the os are different", func() {

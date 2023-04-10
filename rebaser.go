@@ -134,31 +134,44 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 }
 
 func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Image) error {
-	if r.PlatformAPI.AtLeast("0.12") {
-		rebaseable, err := appImg.Label(platform.RebaseableLabel)
+	if r.PlatformAPI.LessThan("0.12") {
+		return nil
+	}
+
+	// skip validation if the previous image was built before 0.12
+	appPlatformAPI, err := appImg.Env(platform.EnvPlatformAPI)
+	if err != nil {
+		return errors.Wrap(err, "get app image platform API")
+	}
+
+	// if the image doesn't have the platform API set, treat it as if it was built before 0.12 and skip additional validation
+	if appPlatformAPI == "" || api.MustParse(appPlatformAPI).LessThan("0.12") {
+		return nil
+	}
+
+	rebaseable, err := appImg.Label(platform.RebaseableLabel)
+	if err != nil {
+		return errors.Wrap(err, "get app image rebaseable label")
+	}
+	if !r.Force && rebaseable == "false" {
+		return fmt.Errorf("app image is not marked as rebaseable")
+	}
+
+	// check the OS, architecture, and variant values
+	// if they are not the same, the image cannot be rebased unless the force flag is set
+	if !r.Force {
+		appTarget, err := platform.GetTargetFromImage(appImg)
 		if err != nil {
-			return errors.Wrap(err, "get app image rebaseable label")
-		}
-		if !r.Force && rebaseable == "false" {
-			return fmt.Errorf("app image is not marked as rebaseable")
+			return errors.Wrap(err, "get app image target")
 		}
 
-		// check the OS, architecture, and variant values
-		// if they are not the same, the image cannot be rebased unless the force flag is set
-		if !r.Force {
-			appTarget, err := platform.GetTargetFromImage(appImg)
-			if err != nil {
-				return errors.Wrap(err, "get app image target")
-			}
+		newBaseTarget, err := platform.GetTargetFromImage(newBaseImg)
+		if err != nil {
+			return errors.Wrap(err, "get new base image target")
+		}
 
-			newBaseTarget, err := platform.GetTargetFromImage(newBaseImg)
-			if err != nil {
-				return errors.Wrap(err, "get new base image target")
-			}
-
-			if !newBaseTarget.IsValidRebaseTargetFor(appTarget) {
-				return fmt.Errorf("invalid base image target: '%s' is not equal to '%s'", newBaseTarget, appTarget)
-			}
+		if !newBaseTarget.IsValidRebaseTargetFor(appTarget) {
+			return fmt.Errorf("invalid base image target: '%s' is not equal to '%s'", newBaseTarget, appTarget)
 		}
 	}
 	return nil
