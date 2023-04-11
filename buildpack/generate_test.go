@@ -285,7 +285,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 								h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 								h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 								h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
-								h.AssertEq(t, br.Dockerfiles[0].NewBase, "")
+								h.AssertEq(t, br.Dockerfiles[0].WithBase, "")
 							})
 
 							it("is validated", func() {
@@ -310,7 +310,7 @@ func testGenerate(t *testing.T, when spec.G, it spec.S) {
 									h.AssertEq(t, br.Dockerfiles[0].ExtensionID, "A")
 									h.AssertEq(t, br.Dockerfiles[0].Kind, buildpack.DockerfileKindRun)
 									h.AssertEq(t, br.Dockerfiles[0].Path, filepath.Join(outputDir, "A", "run.Dockerfile"))
-									h.AssertEq(t, br.Dockerfiles[0].NewBase, "some-new-base-image")
+									h.AssertEq(t, br.Dockerfiles[0].WithBase, "some-new-base-image")
 								})
 							})
 						})

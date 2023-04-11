@@ -124,14 +124,18 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		stdout, stderr *bytes.Buffer
 	)
 
+	// We need to create the temp directory before `it.Before` blocks because we want the variable to be populated
+	// when we set up the table tests.
+	var tmpErr error
+	tmpDir, tmpErr = os.MkdirTemp("", "lifecycle")
+
 	it.Before(func() {
+		h.AssertNil(t, tmpErr)
+
 		mockCtrl = gomock.NewController(t)
 		dirStore = testmock.NewMockDirStore(mockCtrl)
 		executor = testmock.NewMockGenerateExecutor(mockCtrl)
 
-		var err error
-		tmpDir, err = os.MkdirTemp("", "lifecycle")
-		h.AssertNil(t, err)
 		generatedDir = filepath.Join(tmpDir, "output")
 		appDir = filepath.Join(generatedDir, "app")
 		platformDir = filepath.Join(tmpDir, "platform")
@@ -321,7 +325,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			contents = h.MustReadFile(t, filepath.Join(generatedDir, "run", "C", "Dockerfile"))
 			h.AssertEq(t, string(contents), "some-run.Dockerfile-content-C")
 
-			t.Log("copies extend-config.toml files if exist")
+			t.Log("copies extend-config.toml files if they exist")
 			contents = h.MustReadFile(t, filepath.Join(generatedDir, "build", "A", "extend-config.toml"))
 			h.AssertEq(t, string(contents), "some-extend-config.toml-content-A")
 			contents = h.MustReadFile(t, filepath.Join(generatedDir, "build", "C", "extend-config.toml"))
@@ -336,211 +340,209 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			h.AssertPathDoesNotExist(t, filepath.Join(generatedDir, "C", "build.Dockerfile"))
 		})
 
-		when("determining the correct run image", func() {
-			var runDockerfilePathA, runDockerfilePathB string
+		when("returning run image metadata", func() {
+			var (
+				runDockerfilePathA = filepath.Join(tmpDir, "run.Dockerfile.A")
+				runDockerfilePathB = filepath.Join(tmpDir, "run.Dockerfile.B")
+			)
 
 			it.Before(func() {
-				runDockerfilePathA = filepath.Join(tmpDir, "run.Dockerfile.A")
 				h.Mkfile(t, "some-dockerfile-content-A", runDockerfilePathA)
-				runDockerfilePathB = filepath.Join(tmpDir, "run.Dockerfile.B")
 				h.Mkfile(t, "some-dockerfile-content-B", runDockerfilePathB)
+
+				generator.AnalyzedMD = platform.AnalyzedMetadata{
+					RunImage: &platform.RunImage{
+						Reference: "some-existing-run-image",
+					},
+				}
 			})
 
-			when("all run.Dockerfiles declare `FROM ${base_image}`", func() {
-				it("returns the original run image in the result", func() {
-					generator.AnalyzedMD = platform.AnalyzedMetadata{
-						RunImage: &platform.RunImage{
-							Reference: "some-existing-run-image",
+			type testCase struct {
+				before                    func()
+				descCondition             string
+				descResult                string
+				aDockerfiles              []buildpack.DockerfileInfo
+				bDockerfiles              []buildpack.DockerfileInfo
+				expectedRunImageReference string
+				expectedRunImageExtend    bool
+				expectedErr               string
+				assertAfter               func()
+			}
+			for _, tc := range []testCase{
+				{
+					descCondition: "all run.Dockerfiles declare `FROM ${base_image}`",
+					descResult:    "returns the original run image in the result",
+					aDockerfiles: []buildpack.DockerfileInfo{{
+						ExtensionID: "A",
+						Kind:        "run",
+						Path:        runDockerfilePathA,
+						WithBase:    "",
+						Extend:      true,
+					}},
+					bDockerfiles: []buildpack.DockerfileInfo{{
+						ExtensionID: "B",
+						Kind:        "run",
+						Path:        runDockerfilePathB,
+						WithBase:    "",
+						Extend:      true,
+					}},
+					expectedRunImageReference: "some-existing-run-image",
+					expectedRunImageExtend:    true,
+				},
+				{
+					descCondition: "a run.Dockerfile declares a new base image and run.Dockerfiles follow",
+					descResult:    "returns the last image referenced in the `FROM` statement of the last run.Dockerfile not to declare `FROM ${base_image}`, and sets extend to true",
+					aDockerfiles: []buildpack.DockerfileInfo{
+						{
+							ExtensionID: "A",
+							Kind:        "run",
+							Path:        runDockerfilePathA,
+							WithBase:    "some-new-base-image",
+							Extend:      false,
 						},
-					}
-
-					// mock generate for extension A
-					dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-					executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-						Dockerfiles: []buildpack.DockerfileInfo{
-							{
-								ExtensionID: "A",
-								Kind:        "run",
-								Path:        runDockerfilePathA,
-								NewBase:     "",
-							},
+					},
+					bDockerfiles: []buildpack.DockerfileInfo{
+						{
+							ExtensionID: "B",
+							Kind:        "run",
+							Path:        runDockerfilePathB,
+							WithBase:    "",
+							Extend:      true,
 						},
-					}, nil)
-
-					// mock generate for extension B
-					dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-					executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{}, nil)
-
-					// do generate
-					result, err := generator.Generate()
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-existing-run-image")
-					t.Log("sets extend to true in the result")
-					h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, true)
-
-					t.Log("copies Dockerfiles to the correct locations")
-					aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile"))
-					h.AssertEq(t, string(aContents), `some-dockerfile-content-A`)
-				})
-			})
-
-			when("run.Dockerfiles use FROM to switch the run image", func() {
-				it("returns the last image referenced in the `FROM` statement of the last run.Dockerfile not to declare `FROM ${base_image}`", func() {
-					generator.AnalyzedMD = platform.AnalyzedMetadata{
-						RunImage: &platform.RunImage{
-							Reference: "some-existing-run-image",
+					},
+					expectedRunImageReference: "some-new-base-image",
+					expectedRunImageExtend:    true,
+				},
+				{
+					descCondition: "a run.Dockerfile declares a new base image (only) and no run.Dockerfiles follow",
+					descResult:    "returns the referenced base image, and sets extend to false",
+					aDockerfiles: []buildpack.DockerfileInfo{
+						{
+							ExtensionID: "A",
+							Kind:        "run",
+							Path:        runDockerfilePathA,
+							WithBase:    "some-new-base-image",
+							Extend:      true,
 						},
-					}
-
-					// mock generate for extension A
-					dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-					executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-						Dockerfiles: []buildpack.DockerfileInfo{
-							{
-								ExtensionID: "A",
-								Kind:        "run",
-								Path:        runDockerfilePathA,
-								NewBase:     "some-new-base-image",
-								Extend:      true,
-							},
+					},
+					bDockerfiles: []buildpack.DockerfileInfo{
+						{
+							ExtensionID: "B",
+							Kind:        "run",
+							Path:        runDockerfilePathB,
+							WithBase:    "some-other-base-image",
+							Extend:      false,
 						},
-					}, nil)
-
-					// mock generate for extension B
-					dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-					executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-						Dockerfiles: []buildpack.DockerfileInfo{
-							{
-								ExtensionID: "B",
-								Kind:        "run",
-								Path:        runDockerfilePathB,
-								NewBase:     "",
-							},
-						},
-					}, nil)
-
-					// do generate
-					result, err := generator.Generate()
-					h.AssertNil(t, err)
-
-					h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-new-base-image")
-					t.Log("sets extend to true in the result")
-					h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, true)
-
-					t.Log("copies Dockerfiles to the correct locations")
-					aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile"))
-					h.AssertEq(t, string(aContents), `some-dockerfile-content-A`)
-					BContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "B", "Dockerfile"))
-					h.AssertEq(t, string(BContents), `some-dockerfile-content-B`)
-				})
-
-				when("no more run.Dockerfiles follow", func() {
-					it("sets extend to false in the result", func() {
-						// mock generate for extension A
-						dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-						executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-							Dockerfiles: []buildpack.DockerfileInfo{
-								{
-									ExtensionID: "A",
-									Kind:        "run",
-									Path:        runDockerfilePathA,
-									NewBase:     "some-new-base-image",
-								},
-							},
-						}, nil)
-
-						// mock generate for extension B
-						dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-						executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-							Dockerfiles: []buildpack.DockerfileInfo{
-								{
-									ExtensionID: "B",
-									Kind:        "run",
-									Path:        runDockerfilePathB,
-									NewBase:     "some-other-base-image",
-								},
-							},
-						}, nil)
-
-						// do generate
-						result, err := generator.Generate()
-						h.AssertNil(t, err)
-
-						h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-other-base-image")
-						h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, false)
-
+					},
+					expectedRunImageReference: "some-other-base-image",
+					expectedRunImageExtend:    false,
+					assertAfter: func() {
 						t.Log("copies Dockerfiles to the correct locations")
 						t.Log("renames earlier run.Dockerfiles to Dockerfile.ignore in the output directory")
 						aContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "A", "Dockerfile.ignore"))
 						h.AssertEq(t, string(aContents), `some-dockerfile-content-A`)
 						BContents := h.MustReadFile(t, filepath.Join(generatedDir, "run", "B", "Dockerfile"))
 						h.AssertEq(t, string(BContents), `some-dockerfile-content-B`)
-					})
-				})
-
-				when("run metadata provided", func() {
-					it.Before(func() {
+					},
+				},
+				{
+					descCondition: "a run.Dockerfile declares a new base image and also extends",
+					descResult:    "returns the referenced base image, and sets extend to true",
+					aDockerfiles: []buildpack.DockerfileInfo{
+						{
+							ExtensionID: "A",
+							Kind:        "run",
+							Path:        runDockerfilePathA,
+							WithBase:    "some-new-base-image",
+							Extend:      true,
+						},
+					},
+					bDockerfiles:              []buildpack.DockerfileInfo{},
+					expectedRunImageReference: "some-new-base-image",
+					expectedRunImageExtend:    true,
+				},
+				{
+					before: func() {
 						generator.RunMetadata = platform.RunMetadata{
 							Images: []platform.RunImageForExport{
 								{Image: "some-run-image"},
 							},
 						}
-					})
+					},
+					descCondition: "run metadata is provided and contains new run image",
+					descResult:    "succeeds",
+					aDockerfiles: []buildpack.DockerfileInfo{
+						{
+							ExtensionID: "A",
+							Kind:        "run",
+							Path:        runDockerfilePathA,
+							WithBase:    "some-new-run-image",
+							Extend:      false,
+						},
+					},
+					bDockerfiles:              []buildpack.DockerfileInfo{},
+					expectedRunImageReference: "some-new-run-image",
+					expectedRunImageExtend:    false,
+				},
+				{
+					before: func() {
+						generator.RunMetadata = platform.RunMetadata{
+							Images: []platform.RunImageForExport{
+								{Image: "some-run-image"},
+							},
+						}
+					},
+					descCondition: "run metadata is provided and does not contain new run image",
+					descResult:    "succeeds",
+					aDockerfiles: []buildpack.DockerfileInfo{
+						{
+							ExtensionID: "A",
+							Kind:        "run",
+							Path:        runDockerfilePathA,
+							WithBase:    "some-other-run-image",
+							Extend:      false,
+						},
+					},
+					bDockerfiles: []buildpack.DockerfileInfo{},
+					expectedErr:  "new runtime base image 'some-other-run-image' not found in run metadata",
+				},
+			} {
+				tc := tc
+				when := when
+				when(tc.descCondition, func() {
+					if tc.before != nil {
+						it.Before(tc.before)
+					}
 
-					when("containing new run image", func() {
-						it("succeeds", func() {
-							// mock generate for extension A
-							dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-							executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-								Dockerfiles: []buildpack.DockerfileInfo{
-									{
-										ExtensionID: "A",
-										Kind:        "run",
-										Path:        runDockerfilePathA,
-										NewBase:     "some-run-image",
-									},
-								},
-							}, nil)
+					it(tc.descResult, func() {
+						// mock generate for extension A
+						dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
+						executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
+							Dockerfiles: tc.aDockerfiles,
+						}, nil)
 
-							// mock generate for extension B
-							dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-							executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{}, nil)
+						// mock generate for extension B
+						dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
+						executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
+							Dockerfiles: tc.bDockerfiles,
+						}, nil)
 
-							// do generate
-							result, err := generator.Generate()
-							h.AssertNil(t, err)
+						// do generate
+						result, err := generator.Generate()
+						if err == nil {
+							h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, tc.expectedRunImageReference)
+							h.AssertEq(t, result.AnalyzedMD.RunImage.Extend, tc.expectedRunImageExtend)
+						} else {
+							t.Log(err)
+							h.AssertError(t, err, tc.expectedErr)
+						}
 
-							h.AssertEq(t, result.AnalyzedMD.RunImage.Reference, "some-run-image")
-						})
-					})
-
-					when("not containing new run image", func() {
-						it("errors", func() {
-							// mock generate for extension A
-							dirStore.EXPECT().LookupExt("A", "v1").Return(&extA, nil)
-							executor.EXPECT().Generate(extA, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{
-								Dockerfiles: []buildpack.DockerfileInfo{
-									{
-										ExtensionID: "A",
-										Kind:        "run",
-										Path:        runDockerfilePathA,
-										NewBase:     "some-other-run-image",
-									},
-								},
-							}, nil)
-
-							// mock generate for extension B
-							dirStore.EXPECT().LookupExt("ext/B", "v2").Return(&extB, nil)
-							executor.EXPECT().Generate(extB, gomock.Any(), gomock.Any()).Return(buildpack.GenerateOutputs{}, nil)
-
-							// do generate
-							_, err := generator.Generate()
-							h.AssertError(t, err, "new runtime base image 'some-other-run-image' not found in run metadata")
-						})
+						if tc.assertAfter != nil {
+							tc.assertAfter()
+						}
 					})
 				})
-			})
+			}
 		})
 
 		when("extension generate failed", func() {

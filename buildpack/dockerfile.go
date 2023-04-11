@@ -38,8 +38,16 @@ type DockerfileInfo struct {
 	ExtensionID string
 	Kind        string
 	Path        string
-	NewBase     string
-	Extend      bool
+	// WithBase if populated indicates that the Dockerfile switches the image base to the provided value.
+	// If WithBase is empty, Extend should be true, otherwise there is nothing for the Dockerfile to do.
+	// However if WithBase is populated, Extend may be true or false.
+	WithBase string
+	// Extend if true indicates that the Dockerfile contains image modifications
+	// and if false indicates that the Dockerfile only switches the image base.
+	// If Extend is false, WithBase should be empty, otherwise there is nothing for the Dockerfile to do.
+	// However if Extend is true, WithBase may be empty or non-empty.
+	Extend bool
+	Ignore bool
 }
 
 type ExtendConfig struct {
@@ -159,7 +167,7 @@ func ValidateRunDockerfile(dInfo *DockerfileInfo, logger log.Logger) error {
 		}
 	}
 
-	dInfo.NewBase = newBase
+	dInfo.WithBase = newBase
 	dInfo.Extend = extend
 	return nil
 }

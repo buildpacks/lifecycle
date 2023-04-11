@@ -390,7 +390,7 @@ fail: fail_detect_buildpack@some_version
 
 			t.Log("runs /bin/generate for extensions")
 			h.AssertStringContains(t, output, "simple_extension: output from /bin/generate")
-			t.Log("copies the generated dockerfiles to the output directory")
+			t.Log("copies the generated Dockerfiles to the output directory")
 			dockerfilePath := filepath.Join(copyDir, "layers", "generated", "run", "simple_extension", "Dockerfile")
 			h.AssertPathExists(t, dockerfilePath)
 			contents, err := os.ReadFile(dockerfilePath)

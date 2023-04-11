@@ -140,7 +140,7 @@ func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger
 	var err error
 	dockerfilePath := filepath.Join(extOutputDir, fmt.Sprintf("%s.Dockerfile", kind))
 	if _, err = os.Stat(dockerfilePath); err != nil {
-		// ignore file not found, no dockerfile to add.
+		// ignore file not found, no Dockerfile to add.
 		if !os.IsNotExist(err) {
 			// any other errors are critical.
 			return DockerfileInfo{}, true, err

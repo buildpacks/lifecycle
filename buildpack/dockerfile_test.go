@@ -232,7 +232,7 @@ FROM ${base_image}
 						dInfo := &buildpack.DockerfileInfo{Path: dockerfilePath}
 						err := buildpack.ValidateRunDockerfile(dInfo, logger)
 						h.AssertNil(t, err)
-						h.AssertEq(t, dInfo.NewBase, "some-base-image")
+						h.AssertEq(t, dInfo.WithBase, "some-base-image")
 					})
 				})
 			})

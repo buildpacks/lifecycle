@@ -285,7 +285,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	logger.Debugf("Extending base image for %s: %s", kind, e.ImageRef)
 	dockerfiles, err := e.dockerfilesFor(kind, logger)
 	if err != nil {
-		return nil, fmt.Errorf("getting %s dockerfiles: %w", kind, err)
+		return nil, fmt.Errorf("getting %s.Dockerfiles: %w", kind, err)
 	}
 
 	var (
@@ -313,7 +313,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			buildOptions,
 			logger,
 		); err != nil {
-			return nil, fmt.Errorf("applying dockerfile to image: %w", err)
+			return nil, fmt.Errorf("applying Dockerfile to image: %w", err)
 		}
 
 		// get config & update rebasable
