@@ -132,8 +132,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							exportImage,
 							h.WithFlags(append(
 								dockerSocketMount,
-								"--env", "CNB_PLATFORM_API="+platformAPI,
 								"--env", "CNB_EXPERIMENTAL_MODE=warn",
+								"--env", "CNB_PLATFORM_API="+platformAPI,
 							)...),
 							h.WithArgs(exportArgs...),
 						)
@@ -337,7 +337,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					it("is created from the extended run image", func() {
 						exportFlags := []string{
 							"-analyzed", "/layers/run-image-extended-analyzed.toml",
-							"-extended", "/layers/extended",
+							"-extended", "/layers/some-extended-dir",
 							"-log-level", "debug",
 							"-run", "/cnb/run.toml",
 						}
@@ -348,6 +348,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(
+								"--env", "CNB_EXPERIMENTAL_MODE=warn",
 								"--env", "CNB_PLATFORM_API="+platformAPI,
 								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
 								"--network", exportRegNetwork,
