@@ -265,7 +265,6 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				someFakeImage.ConfigFileReturnsOnCall(2, secondConfig, nil)
 
 				someFakeImage.ConfigFileReturnsOnCall(3, secondConfig, nil)
-				fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 				h.AssertNil(t, extender.Extend("build", logger))
 				h.AssertEq(t, os.Getenv("SOME_VAR"), "some-val")
@@ -417,8 +416,6 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 						imageHash := v1.Hash{Algorithm: "sha256", Hex: "some-image-hex"}
 						someFakeImage.DigestReturns(imageHash, nil)
 						someFakeImage.ConfigNameReturns(v1.Hash{Algorithm: "sha256", Hex: "some-config-hex"}, nil)
-
-						fakeDockerfileApplier.EXPECT().Cleanup().Return(nil)
 
 						h.AssertNil(t, extender.Extend("run", logger))
 						outputImagePath := filepath.Join(extendedDir, "run", tc.expectedImageSHA)

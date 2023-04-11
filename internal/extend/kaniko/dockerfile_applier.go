@@ -2,7 +2,6 @@ package kaniko
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -21,13 +20,10 @@ const (
 )
 
 var (
-	kanikoBaseCacheDir  = filepath.Join(kanikoDir, "cache", "base")
 	kanikoCacheImageRef = filepath.Join(ociPrefix, kanikoDir, "cache", "layers", "cached")
 )
 
-type DockerfileApplier struct {
-	workDir string
-}
+type DockerfileApplier struct{}
 
 func (a *DockerfileApplier) ImageFor(reference string) (v1.Image, error) {
 	digest, err := name.NewDigest(reference)
@@ -60,15 +56,11 @@ func readOCI(path string) (v1.Image, error) {
 	return v1Image, nil
 }
 
-func (a *DockerfileApplier) Cleanup() error {
-	return os.RemoveAll(a.workDir)
-}
-
-func createOptions(baseImageRef string, workDir string, dockerfile extend.Dockerfile, options extend.Options) config.KanikoOptions {
+func createOptions(baseImageRef string, dockerfile extend.Dockerfile, options extend.Options) config.KanikoOptions {
 	return config.KanikoOptions{
 		BuildArgs:         append(toArgList(dockerfile.Args), fmt.Sprintf(`base_image=%s`, baseImageRef)),
 		Cache:             true,
-		CacheOptions:      config.CacheOptions{CacheDir: kanikoBaseCacheDir, CacheTTL: options.CacheTTL},
+		CacheOptions:      config.CacheOptions{CacheTTL: options.CacheTTL},
 		CacheRunLayers:    true,
 		CacheRepo:         kanikoCacheImageRef,
 		Cleanup:           false,
@@ -77,9 +69,8 @@ func createOptions(baseImageRef string, workDir string, dockerfile extend.Docker
 		IgnorePaths:       options.IgnorePaths,
 		IgnoreVarRun:      true,
 		InitialFSUnpacked: true, // The executor is running in the context of the image being extended, so there is no need to unpack the filesystem
-		KanikoDir:         workDir,
 		NoPush:            true,
-		Reproducible:      false, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them
+		Reproducible:      false, // If Reproducible=true kaniko will try to read the base image layers, requiring the lifecycle to pull them; we'll override the image create time later
 		SnapshotMode:      "full",
 		SrcContext:        options.BuildContext,
 	}

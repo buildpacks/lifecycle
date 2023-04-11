@@ -89,11 +89,11 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read builder image")
 			}
-			ref, err := digestReference(r.BuildImageRef, buildImage)
+			digestRef, err := digestReference(r.BuildImageRef, buildImage)
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
-			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: ref}
+			analyzedMD.BuildImage = &platform.ImageIdentifier{Reference: digestRef}
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
@@ -105,12 +105,12 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
-			ref, err := digestReference(analyzedMD.RunImage.Reference, runImage)
+			digestRef, err := digestReference(analyzedMD.RunImage.Image, runImage)
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:      ref,
+				Reference:      digestRef,
 				Extend:         true,
 				TargetMetadata: targetData,
 			}
@@ -124,12 +124,12 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
-			ref, err := digestReference(analyzedMD.RunImage.Reference, runImage)
+			digestRef, err := digestReference(analyzedMD.RunImage.Reference, runImage)
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
 			analyzedMD.RunImage = &platform.RunImage{
-				Reference:      ref,
+				Reference:      digestRef,
 				Extend:         analyzedMD.RunImage.Extend,
 				TargetMetadata: targetData,
 			}

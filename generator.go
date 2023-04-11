@@ -181,6 +181,9 @@ func (g *Generator) Generate() (GenerateResult, error) {
 }
 
 func satisfies(images []platform.RunImageForExport, imageName string) bool {
+	if imageName == "" {
+		return true
+	}
 	if len(images) == 0 {
 		// if no run image metadata was provided, consider it a match
 		return true

@@ -231,7 +231,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
 	if isDigestRef(e.RunImageRef) {
 		// If the run image reference is a digest reference, this means extensions were used to extend the runtime base image.
-		// We need a digest reference instead of a daemon image ID because the platform needs to pull the manifest from a remote registry.
+		// The restorer uses a name reference to pull the image from the registry (because the extender needs a manifest), and writes the digest reference to analyzed.toml.
 		// However, the exporter can't use a digest reference, so we convert it back into a name reference.
 		ref, _ := name.ParseReference(e.RunImageRef)
 		e.RunImageRef = ref.Context().Name()
@@ -514,7 +514,7 @@ func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
 		return platform.RunImageForExport{}, err
 	}
 	if len(runMD.Images) == 0 {
-		return platform.RunImageForExport{}, nil
+		return platform.RunImageForExport{Image: e.RunImageRef}, nil
 	}
 	runRef, err := name.ParseReference(e.RunImageRef)
 	if err != nil {
@@ -525,5 +525,5 @@ func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
 			return runImage, nil
 		}
 	}
-	return runMD.Images[0], nil
+	return platform.RunImageForExport{Image: e.RunImageRef}, nil
 }

@@ -40,8 +40,12 @@ var (
 )
 
 const (
-	msgPullingRemoteImage          = "Did not find cache key, pulling remote image"
-	msgErrRetrievingImageFromCache = "Error while retrieving image from cache: oci"
+	// Log message emitted by kaniko;
+	// if we provide cache directory as an option, kaniko looks there for the base image as a tarball;
+	// however the base image is in OCI layout format, so we fail to initialize the base image;
+	// we manage to provide the base image because we override image.RetrieveRemoteImage,
+	// but the log message could be confusing to end users, hence we check that it is not printed.
+	msgErrRetrievingImageFromCache = "Error while retrieving image from cache"
 )
 
 func TestExtender(t *testing.T) {
@@ -151,7 +155,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, firstOutput, msgPullingRemoteImage)
 					h.AssertStringDoesNotContain(t, firstOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
 					h.AssertStringContains(t, firstOutput, "Hello Extensions buildpack\ncurl") // output by buildpack, shows that curl was installed on the build image
@@ -170,7 +173,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, secondOutput, msgPullingRemoteImage)
 					h.AssertStringDoesNotContain(t, secondOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")                                                             // shows that first cache layer was used
 					h.AssertStringDoesNotContain(t, secondOutput, "No cached layer found for cmd RUN apt-get update && apt-get install -y tree") // shows that second cache layer was used
@@ -208,7 +210,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, firstOutput, msgPullingRemoteImage)
 					h.AssertStringDoesNotContain(t, firstOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringContains(t, firstOutput, "ca-certificates")
 					h.AssertStringContains(t, firstOutput, "No cached layer found for cmd RUN apt-get update && apt-get install -y tree")
@@ -230,7 +231,6 @@ func testExtenderFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.WithFlags(extendFlags...),
 						h.WithArgs(extendArgs...),
 					)
-					h.AssertStringDoesNotContain(t, secondOutput, msgPullingRemoteImage)
 					h.AssertStringDoesNotContain(t, secondOutput, msgErrRetrievingImageFromCache)
 					h.AssertStringDoesNotContain(t, secondOutput, "ca-certificates")                                                             // shows that first cache layer was used
 					h.AssertStringDoesNotContain(t, secondOutput, "No cached layer found for cmd RUN apt-get update && apt-get install -y tree") // shows that second cache layer was used
