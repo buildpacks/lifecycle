@@ -273,12 +273,12 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		return err
 	}
 	var (
-		localImage     bool
-		toArtifactsDir string
+		localImage   bool
+		artifactsDir string
 	)
 	if isLocalImage(opts.WorkingImage) {
 		localImage = true
-		if toArtifactsDir, err = os.MkdirTemp("", "lifecycle.exporter.layer"); err != nil {
+		if artifactsDir, err = os.MkdirTemp("", "lifecycle.exporter.layer"); err != nil {
 			return err
 		}
 	}
@@ -294,13 +294,17 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		layerPath := filepath.Join(extendedRunImagePath, "blobs", digest.Algorithm, digest.Hex)
 		if localImage {
 			var calculatedDiffID string
-			if calculatedDiffID, err = uncompressLayerAt(layerPath, toArtifactsDir); err != nil {
+			layerSize, err := l.Size()
+			if err != nil {
+				return err
+			}
+			if calculatedDiffID, err = uncompressLayerAt(layerPath, layerSize, artifactsDir); err != nil {
 				return err
 			}
 			if calculatedDiffID != hex.String() {
 				return fmt.Errorf("digest of uncompressed layer from %s does not match expected value; found %q, expected %q", layerPath, calculatedDiffID, hex.String())
 			}
-			layerPath = filepath.Join(toArtifactsDir, calculatedDiffID)
+			layerPath = filepath.Join(artifactsDir, calculatedDiffID)
 		}
 		layer := layers.Layer{
 			ID:      "from extensions",
@@ -322,7 +326,7 @@ func isLocalImage(workingImage imgutil.Image) bool {
 	return false
 }
 
-func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) {
+func uncompressLayerAt(layerPath string, withSize int64, toArtifactsDir string) (string, error) {
 	sourceLayer, err := os.Open(layerPath)
 	if err != nil {
 		return "", err
@@ -338,8 +342,7 @@ func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) 
 	}
 	hasher := sha256.New()
 	mw := io.MultiWriter(targetLayer, hasher) // calculate the sha256 while writing to file
-	// TODO: fix
-	_, err = io.Copy(mw, zr) //nolint
+	_, err = io.CopyN(mw, zr, withSize)
 	if err != nil {
 		return "", err
 	}

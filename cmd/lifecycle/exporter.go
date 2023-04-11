@@ -233,8 +233,11 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		// If the run image reference is a digest reference, this means extensions were used to extend the runtime base image.
 		// The restorer uses a name reference to pull the image from the registry (because the extender needs a manifest), and writes the digest reference to analyzed.toml.
 		// However, the exporter can't use a digest reference, so we convert it back into a name reference.
-		ref, _ := name.ParseReference(e.RunImageRef)
-		e.RunImageRef = ref.Context().Name()
+		ref, err := name.ParseReference(e.RunImageRef)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "get run image reference")
+		}
+		e.RunImageRef = ref.Context().RepositoryStr()
 	}
 
 	var opts = []local.ImageOption{
@@ -474,7 +477,7 @@ func (e *exportCmd) customSourceDateEpoch() time.Time {
 }
 
 func (e *exportCmd) supportsRunImageExtension() bool {
-	return e.PlatformAPI.AtLeast("0.12")
+	return e.PlatformAPI.AtLeast("0.12") && !e.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
 }
 
 func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, error) {

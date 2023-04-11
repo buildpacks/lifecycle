@@ -163,9 +163,9 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
 						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
 						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
-						runImageFixtureTopLayerSHA := "sha256:52c5ca3e9f3bf4c13613fb3269982734b189e1e09563b65b670fc8be0e223e03"
+						runImageFixtureTopLayerSHA := "sha256:b7e0fa7bfe7f9796f1268cca2e65a8bfb1e010277652cee9a9c9d077a83db3c4"
 						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA)
-						runImageFixtureSHA := "af17dab62aa67d39915cdce4d92c06cfe1e79a499636612b40a2b09485aea439"
+						runImageFixtureSHA := "9710792f1935fb89e076c13e4df06e471024a4b231b78cb99ae1ec4d75094ab9"
 						h.AssertEq(t, lmd.RunImage.Reference, runImageFixtureSHA)
 					})
 				})
@@ -328,7 +328,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					})
 				})
 
-				when("using extensions", func() { // TODO: daemon case, layout case?
+				when("using extensions", func() {
 					it.Before(func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
 					})
@@ -389,9 +389,9 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
 						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
 						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
-						runImageFixtureTopLayerSHA := "sha256:52c5ca3e9f3bf4c13613fb3269982734b189e1e09563b65b670fc8be0e223e03"
+						runImageFixtureTopLayerSHA := "sha256:b7e0fa7bfe7f9796f1268cca2e65a8bfb1e010277652cee9a9c9d077a83db3c4"
 						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA)
-						runImageFixtureSHA := "sha256:9433dfb89cb975ba8b5dfe5e8c96fd7185f1a71deeee63ad2fa830abbcc29192"
+						runImageFixtureSHA := "sha256:3a948c6cc1ee6238f7c625b761a11bbb9c1169a2c3fc11ec5e8f78c4b353bab2"
 						h.AssertEq(t, lmd.RunImage.Reference, fmt.Sprintf("%s@%s", exportTest.targetRegistry.fixtures.ReadOnlyRunImage, runImageFixtureSHA))
 					})
 				})
@@ -450,16 +450,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 								// assert the image was saved on disk in OCI layout format
 								index := h.ReadIndexManifest(t, filepath.Join(tmpDir, layoutDir, "index.docker.io", "library", exportedImageName, "latest"))
 								h.AssertEq(t, len(index.Manifests), 1)
-							})
-						})
-
-						when("using extensions", func() {
-							it.Before(func() {
-								h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
-							})
-
-							it("is created from the extended run image", func() {
-								// TODO
 							})
 						})
 					})

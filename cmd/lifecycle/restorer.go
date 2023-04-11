@@ -97,7 +97,7 @@ func (r *restoreCmd) Exec() error {
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
-			runImage, err := r.pullSparse(analyzedMD.RunImage.Reference)
+			runImage, err := r.pullSparse(analyzedMD.RunImage.Image)
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
@@ -170,7 +170,6 @@ func needsUpdating(runImage *platform.RunImage) bool {
 	if runImage == nil {
 		return false
 	}
-	// TODO: check this logic
 	if runImage.TargetMetadata != nil {
 		return false
 	}

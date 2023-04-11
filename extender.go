@@ -153,6 +153,7 @@ func (e *Extender) extendBuild(logger log.Logger) error {
 	if err = setImageEnvVarsInCurrentContext(extendedImage); err != nil {
 		return fmt.Errorf("setting environment variables from extended image in current context: %w", err)
 	}
+	return nil
 }
 
 func setImageEnvVarsInCurrentContext(image v1.Image) error {
@@ -191,6 +192,7 @@ func (e *Extender) extendRun(logger log.Logger) error {
 	if err = e.saveSelective(extendedImage, origTopLayer); err != nil {
 		return fmt.Errorf("copying selective image to output directory: %w", err)
 	}
+	return nil
 }
 
 func topLayer(image v1.Image) (string, error) {
