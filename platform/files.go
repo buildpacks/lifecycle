@@ -57,7 +57,11 @@ type ImageIdentifier struct {
 }
 
 type RunImage struct {
-	Reference      string          `toml:"reference"`
+	Reference string `toml:"reference"`
+	// Image specifies the repository name for the image.
+	// When exporting to a daemon, the restorer uses this field to pull the run image if needed for the extender;
+	// it can't use reference because this may be a daemon image ID if analyzed.toml was last written by the analyzer.
+	Image          string          `toml:"image,omitempty"`
 	Extend         bool            `toml:"extend,omitempty"`
 	TargetMetadata *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
 }

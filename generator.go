@@ -167,6 +167,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		newAnalyzedMD.RunImage = &platform.RunImage{ // target data is cleared
 			Reference: base,
 			Extend:    extend,
+			Image:     base,
 		}
 	} else if extend && g.AnalyzedMD.RunImage != nil {
 		g.Logger.Debug("Updating analyzed metadata with run image extend")
