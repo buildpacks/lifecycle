@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/buildpacks/lifecycle/internal/fsutil"
+
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -82,7 +84,7 @@ type OSDistribution struct {
 
 // IsSatisfiedBy treats optional fields (ArchVariant and Distributions) as wildcards if empty, returns true if
 func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
-	if t.Arch != o.Arch || t.OS != o.OS {
+	if (o.Arch != "*" && t.Arch != o.Arch) || (o.OS != "*" && t.OS != o.OS) {
 		return false
 	}
 	if t.ArchVariant != "" && o.ArchVariant != "" && t.ArchVariant != o.ArchVariant {
@@ -104,6 +106,23 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 		}
 	}
 	return true
+}
+
+// PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
+// returns a boolean indicating whether it populated any data.
+func PopulateTargetOSFromFileSystem(d fsutil.Detector, tm *TargetMetadata, logger log.Logger) {
+	if d.HasSystemdFile() {
+		contents, err := d.ReadSystemdFile()
+		if err != nil {
+			logger.Warnf("Encountered error trying to read /etc/os-release file: %s", err.Error())
+			return
+		}
+		info := d.GetInfo(contents)
+		if info.Version != "" || info.Name != "" {
+			tm.OS = "linux"
+			tm.Distribution = &OSDistribution{Name: info.Name, Version: info.Version}
+		}
+	}
 }
 
 func ReadAnalyzed(analyzedPath string, logger log.Logger) (AnalyzedMetadata, error) {

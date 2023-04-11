@@ -4,6 +4,8 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/internal/fsutil"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cache"
@@ -223,11 +225,14 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
 		}
 		if a.PlatformAPI.AtLeast("0.12") {
+			runImageName = a.RunImage.Name()
 			atm, err = platform.GetTargetFromImage(a.RunImage)
 			if err != nil {
 				return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
 			}
-			runImageName = a.RunImage.Name()
+			if atm.OS == "" {
+				platform.PopulateTargetOSFromFileSystem(&fsutil.Detect{}, atm, a.Logger)
+			}
 		}
 	}
 
