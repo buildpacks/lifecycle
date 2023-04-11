@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/buildpacks/lifecycle/archive"
 	"github.com/buildpacks/lifecycle/log"
@@ -24,6 +25,10 @@ type Layer struct {
 }
 
 func (f *Factory) writeLayer(id string, addEntries func(tw *archive.NormalizingTarWriter) error) (layer Layer, err error) {
+	return f.writeLayerWithModTime(id, addEntries, archive.NormalizedModTime)
+}
+
+func (f *Factory) writeLayerWithModTime(id string, addEntries func(tw *archive.NormalizingTarWriter) error, modTime time.Time) (layer Layer, err error) {
 	tarPath := filepath.Join(f.ArtifactsDir, escape(id)+".tar")
 	if f.tarHashes == nil {
 		f.tarHashes = make(map[string]string)
@@ -45,7 +50,7 @@ func (f *Factory) writeLayer(id string, addEntries func(tw *archive.NormalizingT
 			err = closeErr
 		}
 	}()
-	tw := tarWriter(lw)
+	tw := tarWriter(lw, modTime)
 	if err := addEntries(tw); err != nil {
 		return Layer{}, err
 	}

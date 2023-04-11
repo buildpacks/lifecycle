@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/buildpacks/imgutil/layer"
 
@@ -34,13 +35,13 @@ func (lw *layerWriter) Digest() string {
 	return fmt.Sprintf("sha256:%x", lw.hasher.Sum(nil))
 }
 
-func tarWriter(lw *layerWriter) *archive.NormalizingTarWriter {
+func tarWriter(lw *layerWriter, modTime time.Time) *archive.NormalizingTarWriter {
 	var tw *archive.NormalizingTarWriter
 	if runtime.GOOS == "windows" {
 		tw = archive.NewNormalizingTarWriter(layer.NewWindowsWriter(lw))
 	} else {
 		tw = archive.NewNormalizingTarWriter(tar.NewWriter(lw))
 	}
-	tw.WithModTime(archive.NormalizedModTime)
+	tw.WithModTime(modTime)
 	return tw
 }

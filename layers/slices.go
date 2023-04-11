@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -95,7 +96,7 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 	sort.SliceStable(files, func(i, j int) bool {
 		return files[i].Path < files[j].Path
 	})
-	return f.writeLayer(layerID, func(tw *archive.NormalizingTarWriter) error {
+	return f.writeLayerWithModTime(layerID, func(tw *archive.NormalizingTarWriter) error {
 		if len(files) != 0 {
 			if err := archive.AddFilesToArchive(tw, sdir.parentDirs); err != nil {
 				return err
@@ -105,7 +106,7 @@ func (f *Factory) createLayerFromFiles(layerID string, sdir *sliceableDir, files
 			return archive.AddFilesToArchive(tw, files)
 		}
 		return nil
-	})
+	}, time.Now())
 }
 
 type sliceableDir struct {
