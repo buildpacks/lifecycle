@@ -136,6 +136,11 @@ func (e *exportCmd) Exec() error {
 	if err != nil {
 		return err
 	}
+	if e.hasExtendedLayers() {
+		if err := platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+			return err
+		}
+	}
 	return e.export(group, cacheStore, e.persistedData.analyzedMD)
 }
 
@@ -529,4 +534,18 @@ func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
 		}
 	}
 	return platform.RunImageForExport{Image: e.RunImageRef}, nil
+}
+
+func (e *exportCmd) hasExtendedLayers() bool {
+	if e.ExtendedDir == "" {
+		return false
+	}
+	fis, err := os.ReadDir(filepath.Join(e.ExtendedDir, "run"))
+	if err != nil {
+		return false
+	}
+	if len(fis) == 0 {
+		return false
+	}
+	return true
 }

@@ -294,11 +294,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		layerPath := filepath.Join(extendedRunImagePath, "blobs", digest.Algorithm, digest.Hex)
 		if localImage {
 			var calculatedDiffID string
-			layerSize, err := l.Size()
-			if err != nil {
-				return err
-			}
-			if calculatedDiffID, err = uncompressLayerAt(layerPath, layerSize, artifactsDir); err != nil {
+			if calculatedDiffID, err = uncompressLayerAt(layerPath, artifactsDir); err != nil {
 				return err
 			}
 			if calculatedDiffID != hex.String() {
@@ -326,7 +322,7 @@ func isLocalImage(workingImage imgutil.Image) bool {
 	return false
 }
 
-func uncompressLayerAt(layerPath string, withSize int64, toArtifactsDir string) (string, error) {
+func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) {
 	sourceLayer, err := os.Open(layerPath)
 	if err != nil {
 		return "", err
@@ -342,7 +338,7 @@ func uncompressLayerAt(layerPath string, withSize int64, toArtifactsDir string) 
 	}
 	hasher := sha256.New()
 	mw := io.MultiWriter(targetLayer, hasher) // calculate the sha256 while writing to file
-	_, err = io.CopyN(mw, zr, withSize)
+	_, err = io.Copy(mw, zr)                  //nolint
 	if err != nil {
 		return "", err
 	}

@@ -120,7 +120,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportFlags := []string{
 							"-analyzed", "/layers/run-image-extended-analyzed.toml", // though the run image is a registry image, it also exists in the daemon with the same tag
 							"-daemon",
-							"-extended", "/layers/extended",
+							"-extended", "/layers/some-extended-dir",
 							"-log-level", "debug",
 							"-run", "/cnb/run.toml", // though the run image is a registry image, it also exists in the daemon with the same tag
 						}
@@ -133,6 +133,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithFlags(append(
 								dockerSocketMount,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_EXPERIMENTAL_MODE=warn",
 							)...),
 							h.WithArgs(exportArgs...),
 						)
