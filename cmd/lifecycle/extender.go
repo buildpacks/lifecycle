@@ -53,6 +53,10 @@ func (e *extendCmd) Privileges() error {
 
 func (e *extendCmd) Exec() error {
 	extenderFactory := lifecycle.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
+	applier, err := kaniko.NewDockerfileApplier()
+	if err != nil {
+		return err
+	}
 	extender, err := extenderFactory.NewExtender(
 		e.AnalyzedPath,
 		e.AppDir,
@@ -62,7 +66,7 @@ func (e *extendCmd) Exec() error {
 		e.LayersDir,
 		e.PlatformDir,
 		e.KanikoCacheTTL,
-		&kaniko.DockerfileApplier{},
+		applier,
 		e.ExtendKind,
 		cmd.DefaultLogger,
 	)

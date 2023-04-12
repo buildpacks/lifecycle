@@ -41,6 +41,7 @@ type Extender struct {
 type DockerfileApplier interface {
 	ImageFor(reference string) (v1.Image, error)
 	Apply(dockerfile extend.Dockerfile, toBaseImage v1.Image, withBuildOptions extend.Options, logger log.Logger) (v1.Image, error)
+	Cleanup() error
 }
 
 type ExtenderFactory struct {
@@ -153,7 +154,7 @@ func (e *Extender) extendBuild(logger log.Logger) error {
 	if err = setImageEnvVarsInCurrentContext(extendedImage); err != nil {
 		return fmt.Errorf("setting environment variables from extended image in current context: %w", err)
 	}
-	return nil
+	return e.DockerfileApplier.Cleanup()
 }
 
 func setImageEnvVarsInCurrentContext(image v1.Image) error {
@@ -192,7 +193,7 @@ func (e *Extender) extendRun(logger log.Logger) error {
 	if err = e.saveSelective(extendedImage, origTopLayer); err != nil {
 		return fmt.Errorf("copying selective image to output directory: %w", err)
 	}
-	return nil
+	return e.DockerfileApplier.Cleanup()
 }
 
 func topLayer(image v1.Image) (string, error) {

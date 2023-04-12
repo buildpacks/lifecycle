@@ -2,6 +2,7 @@ package kaniko
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -23,7 +24,19 @@ var (
 	kanikoCacheImageRef = filepath.Join(ociPrefix, kanikoDir, "cache", "layers", "cached")
 )
 
-type DockerfileApplier struct{}
+type DockerfileApplier struct {
+	workDir string
+}
+
+func NewDockerfileApplier() (*DockerfileApplier, error) {
+	workDir, err := os.MkdirTemp(kanikoDir, "work.dir")
+	if err != nil {
+		return nil, err
+	}
+	return &DockerfileApplier{
+		workDir: workDir,
+	}, nil
+}
 
 func (a *DockerfileApplier) ImageFor(reference string) (v1.Image, error) {
 	digest, err := name.NewDigest(reference)
@@ -82,4 +95,8 @@ func toArgList(args []extend.Arg) []string {
 		result = append(result, fmt.Sprintf("%s=%s", arg.Name, arg.Value))
 	}
 	return result
+}
+
+func (a *DockerfileApplier) Cleanup() error {
+	return os.RemoveAll(a.workDir)
 }

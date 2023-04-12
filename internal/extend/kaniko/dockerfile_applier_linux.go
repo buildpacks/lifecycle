@@ -28,11 +28,7 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 	image.RetrieveRemoteImage = func(image string, opts config.RegistryOptions, customPlatform string) (v1.Image, error) {
 		return toBaseImage, nil // force kaniko to return the provided base image, instead of trying to pull it from a registry
 	}
-	workDir, err := os.MkdirTemp(kanikoDir, "work.dir")
-	if err != nil {
-		return nil, err
-	}
-	config.KanikoDir = workDir
+	config.KanikoDir = a.workDir
 
 	// get digest ref for options
 	digestToExtend, err := toBaseImage.Digest()
@@ -75,10 +71,6 @@ func (a *DockerfileApplier) Apply(dockerfile extend.Dockerfile, toBaseImage v1.I
 		return nil, err
 	}
 
-	// cleanup
-	if err = os.RemoveAll(workDir); err != nil {
-		return nil, err
-	}
 	return mutate.CreatedAt(extendedImage, v1.Time{})
 }
 
