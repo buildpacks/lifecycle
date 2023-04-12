@@ -97,7 +97,11 @@ func (r *restoreCmd) Exec() error {
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
-			runImage, err := r.pullSparse(analyzedMD.RunImage.Image)
+			runImageRef := analyzedMD.RunImage.Image
+			if runImageRef == "" {
+				runImageRef = analyzedMD.RunImage.Reference // older platforms don't populate Image
+			}
+			runImage, err := r.pullSparse(runImageRef)
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
@@ -105,7 +109,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
-			digestRef, err := digestReference(analyzedMD.RunImage.Image, runImage)
+			digestRef, err := digestReference(runImageRef, runImage)
 			if err != nil {
 				return cmd.FailErr(err, "get digest reference for builder image")
 			}
