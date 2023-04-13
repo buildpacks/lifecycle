@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -128,6 +129,13 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportedImageName = "some-exported-image-" + h.RandString(10)
 						exportArgs = append(exportArgs, exportedImageName)
 
+						// get run image top layer
+						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
+						h.AssertNil(t, err)
+						layers := inspect.RootFS.Layers
+						runImageFixtureTopLayerSHA := layers[len(layers)-1]
+						runImageFixtureSHA := inspect.ID
+
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(append(
@@ -141,7 +149,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 						t.Log("bases the exported image on the extended run image")
-						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
+						inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
 						h.AssertNil(t, err)
 						h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
 						t.Log("Adds extension layers")
@@ -164,10 +172,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
 						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
 						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
-						runImageFixtureTopLayerSHA := "sha256:b7e0fa7bfe7f9796f1268cca2e65a8bfb1e010277652cee9a9c9d077a83db3c4"
 						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA)
-						runImageFixtureSHA := "9710792f1935fb89e076c13e4df06e471024a4b231b78cb99ae1ec4d75094ab9"
-						h.AssertEq(t, lmd.RunImage.Reference, runImageFixtureSHA)
+						h.AssertEq(t, lmd.RunImage.Reference, strings.TrimPrefix(runImageFixtureSHA, "sha256:"))
 					})
 				})
 			})
@@ -345,6 +351,18 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 						exportArgs = append(exportArgs, exportedImageName)
 
+						// get run image top layer
+						ref, imageAuth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
+						h.AssertNil(t, err)
+						remoteImage, err := remote.Image(ref, remote.WithAuth(imageAuth))
+						h.AssertNil(t, err)
+						layers, err := remoteImage.Layers()
+						h.AssertNil(t, err)
+						runImageFixtureTopLayerSHA, err := layers[len(layers)-1].DiffID()
+						h.AssertNil(t, err)
+						runImageFixtureSHA, err := remoteImage.Digest()
+						h.AssertNil(t, err)
+
 						output := h.DockerRun(t,
 							exportImage,
 							h.WithFlags(
@@ -360,15 +378,15 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.Run(t, exec.Command("docker", "pull", exportedImageName))
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 						t.Log("bases the exported image on the extended run image")
-						ref, auth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, exportedImageName)
+						ref, imageAuth, err = auth.ReferenceForRepoName(authn.DefaultKeychain, exportedImageName)
 						h.AssertNil(t, err)
-						remoteImage, err := remote.Image(ref, remote.WithAuth(auth))
+						remoteImage, err = remote.Image(ref, remote.WithAuth(imageAuth))
 						h.AssertNil(t, err)
 						configFile, err := remoteImage.ConfigFile()
 						h.AssertNil(t, err)
 						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
 						t.Log("Adds extension layers")
-						layers, err := remoteImage.Layers()
+						layers, err = remoteImage.Layers()
 						h.AssertNil(t, err)
 						digestFromExt1 := "sha256:0c5f7a6fe14dbd19670f39e7466051cbd40b3a534c0812659740fb03e2137c1a"
 						digestFromExt2 := "sha256:482346d1e0c7afa2514ec366d2e000e0667d0a6664690aab3c8ad51c81915b91"
@@ -391,10 +409,8 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
 						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
 						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
-						runImageFixtureTopLayerSHA := "sha256:b7e0fa7bfe7f9796f1268cca2e65a8bfb1e010277652cee9a9c9d077a83db3c4"
-						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA)
-						runImageFixtureSHA := "sha256:3a948c6cc1ee6238f7c625b761a11bbb9c1169a2c3fc11ec5e8f78c4b353bab2"
-						h.AssertEq(t, lmd.RunImage.Reference, fmt.Sprintf("%s@%s", exportTest.targetRegistry.fixtures.ReadOnlyRunImage, runImageFixtureSHA))
+						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA.String())
+						h.AssertEq(t, lmd.RunImage.Reference, fmt.Sprintf("%s@%s", exportTest.targetRegistry.fixtures.ReadOnlyRunImage, runImageFixtureSHA.String()))
 					})
 				})
 			})
