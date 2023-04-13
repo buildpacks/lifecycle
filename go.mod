@@ -5,7 +5,7 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22
-	github.com/buildpacks/imgutil v0.0.0-20230412214005-780be2dca50d
+	github.com/buildpacks/imgutil v0.0.0-20230412223147-81015c668834
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.0
 	github.com/docker/docker v23.0.3+incompatible
@@ -129,6 +129,3 @@ replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0
 
 // Ensure we only pull in the latest version of containerd
 replace github.com/containerd/containerd => github.com/containerd/containerd v1.7.0
-
-// FIXME: update to point to commit on main branch
-replace github.com/buildpacks/imgutil => github.com/buildpacks/imgutil v0.0.0-20230412214005-780be2dca50d
