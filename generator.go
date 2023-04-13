@@ -148,12 +148,12 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}
 
 	g.Logger.Debug("Checking for new run image")
-	base, extend := g.checkNewRunImage(dockerfiles)
+	runRef, extend := g.runImageFrom(dockerfiles)
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	if !satisfies(g.RunMetadata.Images, base) {
-		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", base)
+	if runRef != "" && !satisfies(g.RunMetadata.Images, runRef) {
+		g.Logger.Warnf("new runtime base image '%s' not found in run metadata", runRef)
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
@@ -162,12 +162,12 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}
 
 	newAnalyzedMD := g.AnalyzedMD
-	if newRunImage(base, g.AnalyzedMD) {
-		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", base)
+	if shouldReplacePrevious(runRef, g.AnalyzedMD) {
+		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", runRef)
 		newAnalyzedMD.RunImage = &platform.RunImage{ // target data is cleared
-			Reference: base,
+			Reference: runRef,
 			Extend:    extend,
-			Image:     base,
+			Image:     runRef,
 		}
 	} else if extend && g.AnalyzedMD.RunImage != nil {
 		g.Logger.Debug("Updating analyzed metadata with run image extend")
@@ -182,9 +182,6 @@ func (g *Generator) Generate() (GenerateResult, error) {
 }
 
 func satisfies(images []platform.RunImageForExport, imageName string) bool {
-	if imageName == "" {
-		return true
-	}
 	if len(images) == 0 {
 		// if no run image metadata was provided, consider it a match
 		return true
@@ -233,7 +230,7 @@ func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) erro
 	return nil
 }
 
-func (g *Generator) checkNewRunImage(dockerfiles []buildpack.DockerfileInfo) (newBase string, extend bool) {
+func (g *Generator) runImageFrom(dockerfiles []buildpack.DockerfileInfo) (newBase string, extend bool) {
 	var ignoreNext bool
 	for i := len(dockerfiles) - 1; i >= 0; i-- {
 		// There may be extensions that contribute only a build.Dockerfile;
@@ -259,7 +256,7 @@ func (g *Generator) checkNewRunImage(dockerfiles []buildpack.DockerfileInfo) (ne
 	return newBase, extend
 }
 
-func newRunImage(base string, analyzedMD platform.AnalyzedMetadata) bool {
+func shouldReplacePrevious(base string, analyzedMD platform.AnalyzedMetadata) bool {
 	if base == "" {
 		return false
 	}

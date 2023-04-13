@@ -397,7 +397,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							ExtensionID: "A",
 							Kind:        "run",
 							Path:        runDockerfilePathA,
-							WithBase:    "some-new-base-image",
+							WithBase:    "some-new-run-image",
 							Extend:      false,
 						},
 					},
@@ -410,7 +410,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							Extend:      true,
 						},
 					},
-					expectedRunImageReference: "some-new-base-image",
+					expectedRunImageReference: "some-new-run-image",
 					expectedRunImageExtend:    true,
 				},
 				{
@@ -421,7 +421,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							ExtensionID: "A",
 							Kind:        "run",
 							Path:        runDockerfilePathA,
-							WithBase:    "some-new-base-image",
+							WithBase:    "some-new-run-image",
 							Extend:      true,
 						},
 					},
@@ -453,12 +453,12 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							ExtensionID: "A",
 							Kind:        "run",
 							Path:        runDockerfilePathA,
-							WithBase:    "some-new-base-image",
+							WithBase:    "some-new-run-image",
 							Extend:      true,
 						},
 					},
 					bDockerfiles:              []buildpack.DockerfileInfo{},
-					expectedRunImageReference: "some-new-base-image",
+					expectedRunImageReference: "some-new-run-image",
 					expectedRunImageExtend:    true,
 				},
 				{
@@ -493,7 +493,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 						}
 					},
 					descCondition: "run metadata is provided and does not contain new run image",
-					descResult:    "succeeds",
+					descResult:    "succeeds with warning",
 					aDockerfiles: []buildpack.DockerfileInfo{
 						{
 							ExtensionID: "A",
@@ -503,8 +503,11 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 							Extend:      false,
 						},
 					},
-					bDockerfiles: []buildpack.DockerfileInfo{},
-					expectedErr:  "new runtime base image 'some-other-run-image' not found in run metadata",
+					bDockerfiles:              []buildpack.DockerfileInfo{},
+					expectedRunImageReference: "some-other-run-image",
+					assertAfter: func() {
+						h.AssertLogEntry(t, logHandler, "new runtime base image 'some-other-run-image' not found in run metadata")
+					},
 				},
 			} {
 				tc := tc

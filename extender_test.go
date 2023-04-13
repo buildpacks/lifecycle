@@ -45,8 +45,12 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
 			logger            *log.Logger
-			analyzedMD        platform.AnalyzedMetadata
-			extender          *lifecycle.Extender
+			analyzedMD        = platform.AnalyzedMetadata{
+				BuildImage: &platform.ImageIdentifier{Reference: "some-build-image-ref"},
+				RunImage:   &platform.RunImage{Reference: "some-run-image-ref"},
+			}
+			extender *lifecycle.Extender
+			kind     = "build"
 		)
 
 		createExtender := func() {
@@ -79,7 +83,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 				"some-platform-dir",
 				7*(24*time.Hour),
 				fakeDockerfileApplier,
-				"build",
+				kind,
 				logger,
 			)
 			h.AssertNil(t, err)
@@ -100,13 +104,12 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the extender", func() {
-			analyzedMD = platform.AnalyzedMetadata{BuildImage: &platform.ImageIdentifier{Reference: "some-image-ref"}}
 			createExtender()
 
 			h.AssertEq(t, extender.AppDir, "some-app-dir")
 			h.AssertEq(t, extender.ExtendedDir, "some-extended-dir")
 			h.AssertEq(t, extender.GeneratedDir, "some-generated-dir")
-			h.AssertEq(t, extender.ImageRef, "some-image-ref")
+			h.AssertEq(t, extender.ImageRef, "some-build-image-ref")
 			h.AssertEq(t, extender.LayersDir, "some-layers-dir")
 			h.AssertEq(t, extender.PlatformDir, "some-platform-dir")
 			h.AssertEq(t, extender.CacheTTL, 7*(24*time.Hour))
@@ -119,6 +122,26 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			it("does not panic", func() {
 				analyzedMD = platform.AnalyzedMetadata{}
 				createExtender()
+			})
+		})
+
+		when("kind", func() {
+			when("build", func() {
+				kind = "build"
+
+				it("configures the extender with the build image", func() {
+					createExtender()
+					h.AssertEq(t, extender.ImageRef, "some-build-image-ref")
+				})
+			})
+
+			when("run", func() {
+				kind = "run"
+
+				it("configures the extender with the run image", func() {
+					createExtender()
+					h.AssertEq(t, extender.ImageRef, "some-run-image-ref")
+				})
 			})
 		})
 	})

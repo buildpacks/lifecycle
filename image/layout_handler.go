@@ -42,6 +42,10 @@ func (h *LayoutHandler) parseRef(imageRef string) (string, error) {
 
 // helpers
 
+// FromLayoutPath takes a path to a directory (such as <layers>/extended/run) containing a single image in "sparse" OCI layout format,
+// and returns a v1.Image along with the path of the image (such as <layers>/extended/run/sha256:<sha256>)
+// or an error if the image cannot be loaded.
+// The path is helpful for locating the image when we only know the digest of the config, such as for local images.
 func FromLayoutPath(parentPath string) (v1.Image, string, error) {
 	fis, err := os.ReadDir(parentPath)
 	if err != nil {

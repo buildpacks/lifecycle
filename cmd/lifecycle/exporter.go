@@ -237,7 +237,7 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	if isDigestRef(e.RunImageRef) {
 		// If the run image reference is a digest reference, this means extensions were used to extend the runtime base image.
 		// The restorer uses a name reference to pull the image from the registry (because the extender needs a manifest), and writes the digest reference to analyzed.toml.
-		// However, the exporter can't use a digest reference, so we convert it back into a name reference.
+		// However, the exporter can't use a digest reference for local images, so we convert it back into a name reference.
 		ref, err := name.ParseReference(e.RunImageRef)
 		if err != nil {
 			return nil, "", cmd.FailErr(err, "get run image reference")

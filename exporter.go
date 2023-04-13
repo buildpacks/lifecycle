@@ -59,23 +59,29 @@ type LauncherConfig struct {
 }
 
 type ExportOptions struct {
-	// outputs
-	WorkingImage    imgutil.Image // the image to save
-	AdditionalNames []string      // additional tags to save to, besides WorkingImage.Name()
-	// for extension-provided layers
+	// WorkingImage is the image to save.
+	WorkingImage imgutil.Image
+	// AdditionalNames are additional tags to save to, besides WorkingImage.Name().
+	AdditionalNames []string
+	// ExtendedDir is the location of extension-provided layers.
 	ExtendedDir string
-	// for buildpack-provided layers
-	AppDir       string
-	LayersDir    string
-	OrigMetadata platform.LayersMetadata // for determining if a previously-built layer can be re-used
-	// for launcher
-	LauncherConfig     LauncherConfig
+	// AppDir is the source directory.
+	AppDir string
+	// LayersDir is the location of buildpack-provided layers.
+	LayersDir string
+	// OrigMetadata was read from the previous image during the `analyze` phase, and is used to determine if a previously-uploaded layer can be re-used.
+	OrigMetadata platform.LayersMetadata
+	// LauncherConfig is the launcher config.
+	LauncherConfig LauncherConfig
+	// DefaultProcessType is the user-provided default process type.
 	DefaultProcessType string
-	// for layer metadata label
-	RunImageRef       string
-	Stack             platform.StackMetadata
+	// RunImageRef is the run image reference for the layer metadata label.
+	RunImageRef string
+	// Stack is run image metadata for the layer metadata label for Platform API < 0.12.
+	Stack platform.StackMetadata
+	// RunImageForExport is run image metadata for the layer metadata label for Platform API >= 0.12.
 	RunImageForExport platform.RunImageForExport
-	// for project metadata label
+	// Project is project metadata for the project metadata label.
 	Project platform.ProjectMetadata
 }
 
@@ -105,11 +111,12 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	}
 
 	meta.RunImage.Reference = opts.RunImageRef
-	meta.Stack = opts.Stack
 
 	if e.PlatformAPI.AtLeast("0.12") {
 		meta.RunImage.Image = opts.RunImageForExport.Image
 		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
+	} else {
+		meta.Stack = opts.Stack
 	}
 
 	buildMD := &platform.BuildMetadata{}
@@ -331,7 +338,7 @@ func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	tmpLayerPath := filepath.Join(toArtifactsDir, filepath.Base(layerPath)) // for now, used the compressed digest to uniquely identify the layer
+	tmpLayerPath := filepath.Join(toArtifactsDir, filepath.Base(layerPath)) // for now, used the compressed digest to uniquely identify the layer as we may be writing concurrently to this directory
 	targetLayer, err := os.Create(tmpLayerPath)
 	if err != nil {
 		return "", err

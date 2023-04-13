@@ -233,6 +233,7 @@ FROM ${base_image}
 						err := buildpack.ValidateRunDockerfile(dInfo, logger)
 						h.AssertNil(t, err)
 						h.AssertEq(t, dInfo.WithBase, "some-base-image")
+						h.AssertEq(t, dInfo.Extend, false)
 					})
 				})
 			})

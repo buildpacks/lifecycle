@@ -44,7 +44,7 @@ type DockerfileInfo struct {
 	WithBase string
 	// Extend if true indicates that the Dockerfile contains image modifications
 	// and if false indicates that the Dockerfile only switches the image base.
-	// If Extend is false, WithBase should be empty, otherwise there is nothing for the Dockerfile to do.
+	// If Extend is false, WithBase should be non-empty, otherwise there is nothing for the Dockerfile to do.
 	// However if Extend is true, WithBase may be empty or non-empty.
 	Extend bool
 	Ignore bool

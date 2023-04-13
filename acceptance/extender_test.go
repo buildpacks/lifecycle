@@ -256,6 +256,9 @@ func assertExpectedImage(t *testing.T, imagePath string) {
 	configFile, err := image.ConfigFile()
 	h.AssertNil(t, err)
 	h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false")
+	layers, err := image.Layers()
+	h.AssertNil(t, err)
+	h.AssertEq(t, len(layers), 5) // base (3), curl (1), tree (1)
 }
 
 func readOCI(fromPath string) (v1.Image, error) {
