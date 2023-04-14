@@ -662,7 +662,7 @@ func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.La
 	rc, err := image.GetLayer(layer.Digest)
 	if err != nil {
 		// assume we failed to get the layer because it doesn't exist
-		e.Logger.Infof("Adding layer %s\n", layer.ID)
+		e.Logger.Infof("Adding extension layer %s\n", layer.ID)
 		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 		return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
 	}
