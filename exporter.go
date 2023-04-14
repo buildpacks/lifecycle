@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -290,9 +291,12 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		}
 	}
 	for _, l := range extendedLayers {
-		hex, err := l.DiffID()
+		layerHex, err := l.DiffID()
 		if err != nil {
-			continue // failed to get the diffID because the blob doesn't exist
+			if _, ok := err.(*fs.PathError); ok {
+				continue // failed to get the diffID because the blob doesn't exist
+			}
+			return err
 		}
 		digest, err := l.Digest()
 		if err != nil {
@@ -304,15 +308,15 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 			if calculatedDiffID, err = uncompressLayerAt(layerPath, artifactsDir); err != nil {
 				return err
 			}
-			if calculatedDiffID != hex.String() {
-				return fmt.Errorf("digest of uncompressed layer from %s does not match expected value; found %q, expected %q", layerPath, calculatedDiffID, hex.String())
+			if calculatedDiffID != layerHex.String() {
+				return fmt.Errorf("digest of uncompressed layer from %s does not match expected value; found %q, expected %q", layerPath, calculatedDiffID, layerHex.String())
 			}
 			layerPath = filepath.Join(artifactsDir, calculatedDiffID)
 		}
 		layer := layers.Layer{
 			ID:      "from extensions",
 			TarPath: layerPath,
-			Digest:  hex.String(),
+			Digest:  layerHex.String(),
 		}
 		_, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer)
 		if err != nil {
@@ -661,7 +665,11 @@ func (e *Exporter) addOrReuseBuildpackLayer(image imgutil.Image, layer layers.La
 func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
 	rc, err := image.GetLayer(layer.Digest)
 	if err != nil {
-		// assume we failed to get the layer because it doesn't exist
+		// FIXME: imgutil should declare an error type for missing layer
+		if !strings.Contains(err.Error(), "image did not have layer with diff id") && // remote
+			!strings.Contains(err.Error(), "does not contain layer with diff ID") {
+			return "", err
+		}
 		e.Logger.Infof("Adding extension layer %s\n", layer.ID)
 		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 		return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
