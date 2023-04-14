@@ -54,7 +54,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, fmt.Errorf("incompatible stack: '%s' is not compatible with '%s'", newBaseStackID, appStackID)
 	}
 
-	if err := r.validateRebaseable(workingImage); err != nil {
+	if err := r.validateRebaseable(workingImage, newBaseImage); err != nil {
 		return RebaseReport{}, err
 	}
 
@@ -86,7 +86,12 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, errors.Wrap(err, "set app image metadata label")
 	}
 
-	hasPrefix := func(l string) bool { return strings.HasPrefix(l, "io.buildpacks.stack.") }
+	hasPrefix := func(l string) bool {
+		if r.PlatformAPI.AtLeast("0.12") {
+			return strings.HasPrefix(l, "io.buildpacks.stack.") || strings.HasPrefix(l, "io.buildpacks.base.")
+		}
+		return strings.HasPrefix(l, "io.buildpacks.stack.")
+	}
 	if err := image.SyncLabels(newBaseImage, workingImage, hasPrefix); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set stack labels")
 	}
@@ -128,14 +133,45 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 	return nil
 }
 
-func (r *Rebaser) validateRebaseable(appImg imgutil.Image) error {
-	if r.PlatformAPI.AtLeast("0.12") {
-		rebaseable, err := appImg.Label(platform.RebaseableLabel)
+func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Image) error {
+	if r.PlatformAPI.LessThan("0.12") {
+		return nil
+	}
+
+	// skip validation if the previous image was built before 0.12
+	appPlatformAPI, err := appImg.Env(platform.EnvPlatformAPI)
+	if err != nil {
+		return errors.Wrap(err, "get app image platform API")
+	}
+
+	// if the image doesn't have the platform API set, treat it as if it was built before 0.12 and skip additional validation
+	if appPlatformAPI == "" || api.MustParse(appPlatformAPI).LessThan("0.12") {
+		return nil
+	}
+
+	rebaseable, err := appImg.Label(platform.RebaseableLabel)
+	if err != nil {
+		return errors.Wrap(err, "get app image rebaseable label")
+	}
+	if !r.Force && rebaseable == "false" {
+		return fmt.Errorf("app image is not marked as rebaseable")
+	}
+
+	// check the OS, architecture, and variant values
+	// if they are not the same, the image cannot be rebased unless the force flag is set
+	if !r.Force {
+		appTarget, err := platform.GetTargetFromImage(appImg)
 		if err != nil {
-			return errors.Wrap(err, "get app image rebaseable label")
+			return errors.Wrap(err, "get app image target")
 		}
-		if !r.Force && rebaseable == "false" {
-			return fmt.Errorf("app image is not marked as rebaseable")
+
+		newBaseTarget, err := platform.GetTargetFromImage(newBaseImg)
+		if err != nil {
+			return errors.Wrap(err, "get new base image target")
+		}
+
+		if !newBaseTarget.IsValidRebaseTargetFor(appTarget) {
+			return fmt.Errorf("invalid base image target: '%s' is not equal to '%s'", newBaseTarget, appTarget)
 		}
 	}
 	return nil

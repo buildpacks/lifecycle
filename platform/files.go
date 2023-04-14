@@ -4,6 +4,7 @@ package platform
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
@@ -106,6 +107,35 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 		}
 	}
 	return true
+}
+
+// IsValidRebaseTargetFor treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
+func (t *TargetMetadata) IsValidRebaseTargetFor(appTargetMetadata *TargetMetadata) bool {
+	if t.Arch != appTargetMetadata.Arch || t.OS != appTargetMetadata.OS {
+		return false
+	}
+	if t.ArchVariant != "" && appTargetMetadata.ArchVariant != "" && t.ArchVariant != appTargetMetadata.ArchVariant {
+		return false
+	}
+
+	if t.Distribution != nil && appTargetMetadata.Distribution != nil {
+		if t.Distribution.Name != appTargetMetadata.Distribution.Name {
+			return false
+		}
+		if t.Distribution.Version != appTargetMetadata.Distribution.Version {
+			return false
+		}
+	}
+	return true
+}
+
+func (t *TargetMetadata) String() string {
+	var distName, distVersion string
+	if t.Distribution != nil {
+		distName = t.Distribution.Name
+		distVersion = t.Distribution.Version
+	}
+	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, distName, distVersion)
 }
 
 // PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available

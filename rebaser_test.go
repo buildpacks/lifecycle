@@ -64,6 +64,8 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		)
 		h.AssertNil(t, fakePreviousImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 
+		h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, api.Platform.Latest().String()))
+
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
 		rebaser = &lifecycle.Rebaser{
@@ -140,6 +142,44 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 					{"io.buildpacks.stack.removed", "old", "", ""},
 					{"io.custom.old", "abc", "", "abc"},
 					{"io.custom.stack", "", "def", ""},
+				}
+
+				it.Before(func() {
+					for _, l := range tests {
+						if l.runImageValue != "" {
+							h.AssertNil(t, fakeNewBaseImage.SetLabel(l.label, l.runImageValue))
+						}
+						if l.appImageValue != "" {
+							h.AssertNil(t, fakeAppImage.SetLabel(l.label, l.appImageValue))
+						}
+					}
+				})
+
+				it("syncs matching labels", func() {
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertNil(t, err)
+
+					for _, test := range tests {
+						test := test
+						t.Run(test.label, func(t *testing.T) {
+							actual, err := fakeAppImage.Label(test.label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, test.want, actual)
+						})
+					}
+				})
+			})
+
+			when("image has io.buildpacks.base.* labels", func() {
+				var tests = []struct {
+					label         string
+					appImageValue string
+					runImageValue string
+					want          string
+				}{
+					{"io.buildpacks.base.homepage", "v1", "v2", "v2"},
+					{"io.buildpacks.stack.added", "", "new", "new"},
+					{"io.buildpacks.base.removed", "old", "", ""},
 				}
 
 				it.Before(func() {
@@ -388,6 +428,96 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("app image and run image are based on different stacks", func() {
+			when("platform API >= 0.12", func() {
+				it.Before(func() {
+					rebaser.PlatformAPI = api.MustParse("0.12")
+				})
+
+				when("previous image was built on unknown platform API", func() {
+					it.Before(func() {
+						h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, ""))
+					})
+
+					it("allows rebase with missing labels", func() {
+						h.AssertNil(t, fakeAppImage.SetOS(""))
+						h.AssertNil(t, fakeNewBaseImage.SetOS("linux"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
+
+					it("allows rebase with mismatched variants", func() {
+						h.AssertNil(t, fakeAppImage.SetVariant("variant1"))
+						h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				when("previous image was built on older platform API", func() {
+					it.Before(func() {
+						h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, "0.11"))
+					})
+
+					it("allows rebase with missing labels", func() {
+						h.AssertNil(t, fakeAppImage.SetOS(""))
+						h.AssertNil(t, fakeNewBaseImage.SetOS("linux"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
+
+					it("allows rebase with mismatched variants", func() {
+						h.AssertNil(t, fakeAppImage.SetVariant("variant1"))
+						h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
+						_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeAppImage.Base(), "some-repo/new-base-image")
+					})
+				})
+
+				it("returns an error and prevents the rebase from taking place when the os are different", func() {
+					h.AssertNil(t, fakeAppImage.SetOS("linux"))
+					h.AssertNil(t, fakeNewBaseImage.SetOS("notlinux"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "invalid base image target: 'OS: notlinux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the architecture are different", func() {
+					h.AssertNil(t, fakeAppImage.SetArchitecture("amd64"))
+					h.AssertNil(t, fakeNewBaseImage.SetArchitecture("arm64"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: arm64, ArchVariant: , Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: )'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the architecture variant are different", func() {
+					h.AssertNil(t, fakeAppImage.SetVariant("variant1"))
+					h.AssertNil(t, fakeNewBaseImage.SetVariant("variant2"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: variant2, Distribution: (Name: , Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: variant1, Distribution: (Name: , Version: )'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the io.buildpacks.distribution.name are different", func() {
+					h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.distribution.name", "distro1"))
+					h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distribution.name", "distro2"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: distro2, Version: )' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: distro1, Version: )'")
+				})
+
+				it("returns an error and prevents the rebase from taking place when the io.buildpacks.distribution.version are different", func() {
+					h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.distribution.version", "version1"))
+					h.AssertNil(t, fakeNewBaseImage.SetLabel("io.buildpacks.distribution.version", "version2"))
+
+					_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
+					h.AssertError(t, err, "invalid base image target: 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: version2)' is not equal to 'OS: linux, Arch: amd64, ArchVariant: , Distribution: (Name: , Version: version1)'")
+				})
+			})
+
 			it("returns an error and prevents the rebase from taking place when the stacks are different", func() {
 				h.AssertNil(t, fakeAppImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 				h.AssertNil(t, fakeNewBaseImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.cflinuxfs3"))
