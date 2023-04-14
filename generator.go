@@ -241,6 +241,8 @@ func (g *Generator) runImageFrom(dockerfiles []buildpack.DockerfileInfo) (newBas
 		if ignoreNext {
 			// If a run.Dockerfile following this one (in the build, not in the loop) switches the run image,
 			// we can ignore this run.Dockerfile as it has no effect.
+			// We set Ignore to true so that when the Dockerfiles are copied to the "generated" directory,
+			// we'll add the suffix `.ignore` so that the extender won't try to apply them.			
 			dockerfiles[i].Ignore = true
 			continue
 		}
