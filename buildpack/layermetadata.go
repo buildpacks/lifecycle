@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/buildpacks/lifecycle/log"
 
 	"github.com/buildpacks/lifecycle/api"

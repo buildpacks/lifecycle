@@ -9,9 +9,10 @@ import (
 
 	"github.com/apex/log/handlers/memory"
 
-	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	llog "github.com/buildpacks/lifecycle/log"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	h "github.com/buildpacks/lifecycle/testhelpers"
