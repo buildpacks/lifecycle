@@ -168,9 +168,6 @@ func (d BpDescriptor) processLayers(layersDir string, logger log.Logger) (map[st
 			if err != nil {
 				return LayerMetadataFile{}, err
 			}
-			// if msg != "" {
-			// 	logger.Warn(msg)
-			// }
 			return layerMetadataFile, nil
 		})
 	}
@@ -179,9 +176,6 @@ func (d BpDescriptor) processLayers(layersDir string, logger log.Logger) (map[st
 		if err != nil {
 			return LayerMetadataFile{}, err
 		}
-		// if msg != "" {
-		// 	return LayerMetadataFile{}, errors.New(msg)
-		// }
 		if err := renameLayerDirIfNeeded(layerMetadataFile, path); err != nil {
 			return LayerMetadataFile{}, err
 		}
