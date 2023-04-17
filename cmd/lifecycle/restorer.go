@@ -97,7 +97,7 @@ func (r *restoreCmd) Exec() error {
 		}
 		if r.supportsRunImageExtension() && needsPulling(analyzedMD.RunImage) {
 			cmd.DefaultLogger.Debugf("Pulling run image metadata...")
-			runImageRef := analyzedMD.RunImage.Image
+			runImageRef := analyzedMD.RunImageImage()
 			if runImageRef == "" {
 				runImageRef = analyzedMD.RunImage.Reference // older platforms don't populate Image
 			}
@@ -115,6 +115,7 @@ func (r *restoreCmd) Exec() error {
 			}
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference:      digestRef,
+				Image:          analyzedMD.RunImageImage(),
 				Extend:         true,
 				TargetMetadata: targetData,
 			}
@@ -134,6 +135,7 @@ func (r *restoreCmd) Exec() error {
 			}
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference:      digestRef,
+				Image:          analyzedMD.RunImageImage(),
 				Extend:         analyzedMD.RunImage.Extend,
 				TargetMetadata: targetData,
 			}
