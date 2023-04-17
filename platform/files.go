@@ -37,6 +37,13 @@ func (amd AnalyzedMetadata) PreviousImageRef() string {
 	return amd.PreviousImage.Reference
 }
 
+func (amd AnalyzedMetadata) RunImageImage() string {
+	if amd.RunImage == nil {
+		return ""
+	}
+	return amd.RunImage.Image
+}
+
 func (amd AnalyzedMetadata) RunImageRef() string {
 	if amd.RunImage == nil {
 		return ""

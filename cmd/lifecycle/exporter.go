@@ -240,12 +240,8 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		// and writes a digest reference to analyzed.toml.
 		// For remote images, this works perfectly well.
 		// However for local images, the daemon can't find the image when the reference contains a digest,
-		// so we convert the run image reference back into a name reference by removing the digest.
-		ref, err := name.ParseReference(e.RunImageRef)
-		if err != nil {
-			return nil, "", cmd.FailErr(err, "get run image reference")
-		}
-		e.RunImageRef = ref.Context().RepositoryStr()
+		// so we use image name from analyzed.toml which is the reference written by the extension.
+		e.RunImageRef = analyzedMD.RunImageImage()
 	}
 
 	var opts = []local.ImageOption{
