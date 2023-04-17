@@ -450,6 +450,9 @@ func updateTOMLFixturesWithTestRegistry(t *testing.T, phaseTest *PhaseTest) { //
 		analyzedMD := assertAnalyzedMetadata(t, pPath)
 		if analyzedMD.RunImage != nil {
 			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage // don't override extend
+			if analyzedMD.RunImage.Image == "REPLACE" {
+				analyzedMD.RunImage.Image = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage
+			}
 		}
 		h.AssertNil(t, encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD))
 	}
