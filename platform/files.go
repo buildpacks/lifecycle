@@ -433,6 +433,14 @@ func (a *RemoteImageStrategy) CheckReadAccess(repo string, keychain authn.Keycha
 	return img.CheckReadAccess(), nil
 }
 
+type LocalImageStrategy struct{}
+
+var _ ImageStrategy = &LocalImageStrategy{}
+
+func (a *LocalImageStrategy) CheckReadAccess(_ string, _ authn.Keychain) (bool, error) {
+	return true, nil
+}
+
 func (rm *RunImageForExport) BestRunImageMirror(registry string, accessChecker ImageStrategy) (string, error) {
 	if rm.Image == "" {
 		return "", errors.New("missing run-image metadata")

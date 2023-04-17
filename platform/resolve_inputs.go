@@ -20,6 +20,12 @@ var (
 )
 
 func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
+	if i.UseDaemon || i.UseLayout {
+		i.AccessChecker = &LocalImageStrategy{}
+	} else {
+		i.AccessChecker = &RemoteImageStrategy{}
+	}
+
 	// order of operations is important
 	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
 	switch phase {

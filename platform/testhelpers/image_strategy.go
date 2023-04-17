@@ -39,6 +39,6 @@ type StubImageStrategy struct {
 
 var _ platform.ImageStrategy = &StubImageStrategy{}
 
-func (s *StubImageStrategy) CheckReadAccess(repo string, keychain authn.Keychain) (bool, error) {
+func (s *StubImageStrategy) CheckReadAccess(repo string, _ authn.Keychain) (bool, error) {
 	return strings.Contains(repo, s.AllowedRepo), nil
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/buildpacks/lifecycle/internal/str"
 	llog "github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/testhelpers"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -37,7 +36,7 @@ func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G
 			inputs.OutputImageRef = "some-output-image" // satisfy validation
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}
-			inputs.AccessChecker = &testhelpers.SimpleImageStrategy{}
+			inputs.UseDaemon = true // to prevent access checking of run images
 		})
 
 		when("latest Platform API(s)", func() {
@@ -126,6 +125,7 @@ func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G
 			it.Before(func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "")
 				inputs.RunImageRef = "some-run-image" // satisfy validation
+				inputs.UseDaemon = false
 			})
 
 			when("provided destination tags are on different registries", func() {
