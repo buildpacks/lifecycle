@@ -262,7 +262,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout $(git describe --abbrev=0 --tags --exclude *rc* --exclude *pre*) # check out the latest tag
+          git checkout v0.28.0 # FIXME: let the pack version float again when pack 0.30.0-pre2 is out
           LIFECYCLE_PATH="../lifecycle-v${{ env.LIFECYCLE_VERSION }}+linux.x86-64.tgz" \
           LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}" \
           make acceptance
@@ -333,7 +333,7 @@ jobs:
       - name: Run pack acceptance
         run: |
           cd pack
-          git checkout $(git describe --abbrev=0 --tags --exclude *rc* --exclude *pre*) # check out the latest tag
+          git checkout v0.28.0 # FIXME: let the pack version float again when pack 0.30.0-pre2 is out
           $env:LIFECYCLE_PATH="..\lifecycle-v${{ env.LIFECYCLE_VERSION }}+windows.x86-64.tgz"
           $env:LIFECYCLE_IMAGE="buildpacksio/lifecycle:${{ env.LIFECYCLE_IMAGE_TAG }}"
           make acceptance
