@@ -115,6 +115,7 @@ func (r *restoreCmd) Exec() error {
 			}
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference:      digestRef,
+				Image:          analyzedMD.RunImage.Image,
 				Extend:         true,
 				TargetMetadata: targetData,
 			}
@@ -134,6 +135,7 @@ func (r *restoreCmd) Exec() error {
 			}
 			analyzedMD.RunImage = &platform.RunImage{
 				Reference:      digestRef,
+				Image:          analyzedMD.RunImage.Image,
 				Extend:         analyzedMD.RunImage.Extend,
 				TargetMetadata: targetData,
 			}
