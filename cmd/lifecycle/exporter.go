@@ -7,15 +7,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/buildpacks/imgutil/layout"
-	"github.com/google/go-containerregistry/pkg/name"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle"
@@ -24,6 +26,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
@@ -46,8 +49,12 @@ type exportData struct {
 // DefineFlags defines the flags that are considered valid and reads their values (if provided).
 func (e *exportCmd) DefineFlags() {
 	if e.PlatformAPI.AtLeast("0.12") {
+		cli.FlagExtendedDir(&e.ExtendedDir)
 		cli.FlagLayoutDir(&e.LayoutDir)
+		cli.FlagRunPath(&e.RunPath)
 		cli.FlagUseLayout(&e.UseLayout)
+	} else {
+		cli.FlagStackPath(&e.StackPath)
 	}
 	if e.PlatformAPI.AtLeast("0.11") {
 		cli.FlagLauncherSBOMDir(&e.LauncherSBOMDir)
@@ -65,7 +72,6 @@ func (e *exportCmd) DefineFlags() {
 	cli.FlagProjectMetadataPath(&e.ProjectMetadataPath)
 	cli.FlagReportPath(&e.ReportPath)
 	cli.FlagRunImage(&e.RunImageRef) // FIXME: this flag isn't valid on Platform 0.7 and later
-	cli.FlagStackPath(&e.StackPath)
 	cli.FlagUID(&e.UID)
 	cli.FlagUseDaemon(&e.UseDaemon)
 
@@ -130,6 +136,11 @@ func (e *exportCmd) Exec() error {
 	if err != nil {
 		return err
 	}
+	if e.hasExtendedLayers() {
+		if err := platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+			return err
+		}
+	}
 	return e.export(group, cacheStore, e.persistedData.analyzedMD)
 }
 
@@ -188,7 +199,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		return err
 	}
 
-	stackMD, err := platform.ReadStack(e.StackPath, cmd.DefaultLogger)
+	runImageForExport, err := e.getRunImageForExport()
 	if err != nil {
 		return err
 	}
@@ -197,12 +208,14 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		AdditionalNames:    e.AdditionalTags,
 		AppDir:             e.AppDir,
 		DefaultProcessType: e.DefaultProcessType,
+		ExtendedDir:        e.ExtendedDir,
 		LauncherConfig:     launcherConfig(e.LauncherPath, e.LauncherSBOMDir),
 		LayersDir:          e.LayersDir,
 		OrigMetadata:       analyzedMD.Metadata,
 		Project:            projectMD,
 		RunImageRef:        runImageID,
-		Stack:              stackMD,
+		RunImageForExport:  runImageForExport,
+		Stack:              platform.StackMetadata{RunImage: runImageForExport}, // for backwards compat
 		WorkingImage:       appImage,
 	})
 	if err != nil {
@@ -221,8 +234,31 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 }
 
 func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
+	if isDigestRef(e.RunImageRef) {
+		// If extensions were used to extend the runtime base image, the run image reference will contain a digest.
+		// The restorer uses a name reference to pull the image from the registry (because the extender needs a manifest),
+		// and writes a digest reference to analyzed.toml.
+		// For remote images, this works perfectly well.
+		// However for local images, the daemon can't find the image when the reference contains a digest,
+		// so we convert the run image reference back into a name reference by removing the digest.
+		ref, err := name.ParseReference(e.RunImageRef)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "get run image reference")
+		}
+		e.RunImageRef = ref.Context().RepositoryStr()
+	}
+
 	var opts = []local.ImageOption{
 		local.FromBaseImage(e.RunImageRef),
+	}
+	if e.supportsRunImageExtension() {
+		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "get extended image config")
+		}
+		if extendedConfig != nil {
+			opts = append(opts, local.WithConfig(toContainerConfig(extendedConfig)))
+		}
 	}
 
 	if analyzedMD.PreviousImageRef() != "" {
@@ -259,9 +295,77 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 	return appImage, runImageID.String(), nil
 }
 
+func isDigestRef(ref string) bool {
+	digest, err := name.NewDigest(ref)
+	if err != nil {
+		return false
+	}
+	return digest.DigestStr() != ""
+}
+
+func toContainerConfig(v1C *v1.Config) *container.Config {
+	return &container.Config{
+		ArgsEscaped:     v1C.ArgsEscaped,
+		AttachStderr:    v1C.AttachStderr,
+		AttachStdin:     v1C.AttachStdin,
+		AttachStdout:    v1C.AttachStdout,
+		Cmd:             v1C.Cmd,
+		Domainname:      v1C.Domainname,
+		Entrypoint:      v1C.Entrypoint,
+		Env:             v1C.Env,
+		ExposedPorts:    toNATPortSet(v1C.ExposedPorts),
+		Healthcheck:     toHealthConfig(v1C.Healthcheck),
+		Hostname:        v1C.Hostname,
+		Image:           v1C.Image,
+		Labels:          v1C.Labels,
+		MacAddress:      v1C.MacAddress,
+		NetworkDisabled: v1C.NetworkDisabled,
+		OnBuild:         v1C.OnBuild,
+		OpenStdin:       v1C.OpenStdin,
+		Shell:           v1C.Shell,
+		StdinOnce:       v1C.StdinOnce,
+		StopSignal:      v1C.StopSignal,
+		StopTimeout:     nil,
+		Tty:             v1C.Tty,
+		User:            v1C.User,
+		Volumes:         v1C.Volumes,
+		WorkingDir:      v1C.WorkingDir,
+	}
+}
+
+func toHealthConfig(v1H *v1.HealthConfig) *container.HealthConfig {
+	if v1H == nil {
+		return &container.HealthConfig{}
+	}
+	return &container.HealthConfig{
+		Interval:    v1H.Interval,
+		Retries:     v1H.Retries,
+		StartPeriod: v1H.StartPeriod,
+		Test:        v1H.Test,
+		Timeout:     v1H.Timeout,
+	}
+}
+
+func toNATPortSet(v1Ps map[string]struct{}) nat.PortSet {
+	portSet := make(map[nat.Port]struct{})
+	for k, v := range v1Ps {
+		portSet[nat.Port(k)] = v
+	}
+	return portSet
+}
+
 func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (imgutil.Image, string, error) {
 	var opts = []remote.ImageOption{
 		remote.FromBaseImage(e.RunImageRef),
+	}
+	if e.supportsRunImageExtension() {
+		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
+		if err != nil {
+			return nil, "", cmd.FailErr(err, "get extended image config")
+		}
+		if extendedConfig != nil {
+			opts = append(opts, remote.WithConfig(extendedConfig))
+		}
 	}
 
 	if analyzedMD.PreviousImageRef() != "" {
@@ -378,4 +482,73 @@ func (e *exportCmd) customSourceDateEpoch() time.Time {
 		return time.Unix(seconds, 0)
 	}
 	return time.Time{}
+}
+
+func (e *exportCmd) supportsRunImageExtension() bool {
+	return e.PlatformAPI.AtLeast("0.12") && !e.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
+}
+
+func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, error) {
+	if runImage == nil {
+		return nil, errors.New("missing analyzed run image")
+	}
+	if !runImage.Extend {
+		return nil, nil
+	}
+	extendedImage, _, err := image.FromLayoutPath(filepath.Join(e.ExtendedDir, "run"))
+	if err != nil {
+		return nil, err
+	}
+	if extendedImage == nil {
+		return nil, errors.New("missing extended run image")
+	}
+	extendedConfig, err := extendedImage.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+	if extendedConfig == nil {
+		return nil, errors.New("missing extended run image config")
+	}
+	return &extendedConfig.Config, nil
+}
+
+func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
+	if e.PlatformAPI.LessThan("0.12") {
+		stackMD, err := platform.ReadStack(e.StackPath, cmd.DefaultLogger)
+		if err != nil {
+			return platform.RunImageForExport{}, err
+		}
+		return stackMD.RunImage, nil
+	}
+	runMD, err := platform.ReadRun(e.RunPath, cmd.DefaultLogger)
+	if err != nil {
+		return platform.RunImageForExport{}, err
+	}
+	if len(runMD.Images) == 0 {
+		return platform.RunImageForExport{Image: e.RunImageRef}, nil
+	}
+	runRef, err := name.ParseReference(e.RunImageRef)
+	if err != nil {
+		return platform.RunImageForExport{}, err
+	}
+	for _, runImage := range runMD.Images {
+		if runImage.Image == runRef.Context().Name() {
+			return runImage, nil
+		}
+	}
+	return platform.RunImageForExport{Image: e.RunImageRef}, nil
+}
+
+func (e *exportCmd) hasExtendedLayers() bool {
+	if e.ExtendedDir == "" {
+		return false
+	}
+	fis, err := os.ReadDir(filepath.Join(e.ExtendedDir, "run"))
+	if err != nil {
+		return false
+	}
+	if len(fis) == 0 {
+		return false
+	}
+	return true
 }

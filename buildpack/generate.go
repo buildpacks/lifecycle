@@ -140,7 +140,7 @@ func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger
 	var err error
 	dockerfilePath := filepath.Join(extOutputDir, fmt.Sprintf("%s.Dockerfile", kind))
 	if _, err = os.Stat(dockerfilePath); err != nil {
-		// ignore file not found, no dockerfile to add.
+		// ignore file not found, no Dockerfile to add.
 		if !os.IsNotExist(err) {
 			// any other errors are critical.
 			return DockerfileInfo{}, true, err
@@ -148,20 +148,20 @@ func findDockerfileFor(d ExtDescriptor, extOutputDir string, kind string, logger
 		return DockerfileInfo{}, false, nil
 	}
 
-	newBase, err := validateDockerfileFor(dockerfilePath, kind, logger)
-	if err != nil {
+	dInfo := DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath}
+	if err = validateDockerfileFor(&dInfo, kind, logger); err != nil {
 		return DockerfileInfo{}, true, fmt.Errorf("failed to parse %s.Dockerfile for extension %s: %w", kind, d.Extension.ID, err)
 	}
-	return DockerfileInfo{ExtensionID: d.Extension.ID, Kind: kind, Path: dockerfilePath, NewBase: newBase}, true, nil
+	return dInfo, true, nil
 }
 
-func validateDockerfileFor(path string, kind string, logger log.Logger) (string, error) {
+func validateDockerfileFor(dInfo *DockerfileInfo, kind string, logger log.Logger) error {
 	switch kind {
 	case DockerfileKindBuild:
-		return "", ValidateBuildDockerfile(path, logger)
+		return ValidateBuildDockerfile(dInfo.Path, logger)
 	case DockerfileKindRun:
-		return ValidateRunDockerfile(path, logger)
+		return ValidateRunDockerfile(dInfo, logger)
 	default:
-		return "", nil
+		return nil
 	}
 }

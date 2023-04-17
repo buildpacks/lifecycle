@@ -1,19 +1,25 @@
 package lifecycle
 
 import (
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
@@ -54,16 +60,30 @@ type LauncherConfig struct {
 }
 
 type ExportOptions struct {
-	LayersDir          string
-	AppDir             string
-	WorkingImage       imgutil.Image
-	RunImageRef        string
-	OrigMetadata       platform.LayersMetadata
-	AdditionalNames    []string
-	LauncherConfig     LauncherConfig
-	Stack              platform.StackMetadata
-	Project            platform.ProjectMetadata
+	// WorkingImage is the image to save.
+	WorkingImage imgutil.Image
+	// AdditionalNames are additional tags to save to, besides WorkingImage.Name().
+	AdditionalNames []string
+	// ExtendedDir is the location of extension-provided layers.
+	ExtendedDir string
+	// AppDir is the source directory.
+	AppDir string
+	// LayersDir is the location of buildpack-provided layers.
+	LayersDir string
+	// OrigMetadata was read from the previous image during the `analyze` phase, and is used to determine if a previously-uploaded layer can be re-used.
+	OrigMetadata platform.LayersMetadata
+	// LauncherConfig is the launcher config.
+	LauncherConfig LauncherConfig
+	// DefaultProcessType is the user-provided default process type.
 	DefaultProcessType string
+	// RunImageRef is the run image reference for the layer metadata label.
+	RunImageRef string
+	// Stack is run image metadata for the layer metadata label for Platform API < 0.12.
+	Stack platform.StackMetadata
+	// RunImageForExport is run image metadata for the layer metadata label for Platform API >= 0.12.
+	RunImageForExport platform.RunImageForExport
+	// Project is project metadata for the project metadata label.
+	Project platform.ProjectMetadata
 }
 
 func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
@@ -92,11 +112,22 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	}
 
 	meta.RunImage.Reference = opts.RunImageRef
-	meta.Stack = opts.Stack
+
+	if e.PlatformAPI.AtLeast("0.12") {
+		meta.RunImage.Image = opts.RunImageForExport.Image
+		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
+	} else {
+		meta.Stack = opts.Stack
+	}
 
 	buildMD := &platform.BuildMetadata{}
 	if err := platform.DecodeBuildMetadataTOML(launch.GetMetadataFilePath(opts.LayersDir), e.PlatformAPI, buildMD); err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "read build metadata")
+	}
+
+	// extension-provided layers
+	if err := e.addExtensionLayers(opts, &meta); err != nil {
+		return platform.ExportReport{}, err
 	}
 
 	// buildpack-provided layers
@@ -233,6 +264,103 @@ func (e *Exporter) copyDefaultSBOMsForComponent(component, dstDir string) error 
 	return nil
 }
 
+func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
+	if !e.PlatformAPI.AtLeast("0.12") || opts.ExtendedDir == "" {
+		return nil
+	}
+	parentPath := filepath.Join(opts.ExtendedDir, "run")
+	extendedRunImage, extendedRunImagePath, err := image.FromLayoutPath(parentPath)
+	if err != nil {
+		return err
+	}
+	if extendedRunImage == nil {
+		return nil
+	}
+	extendedLayers, err := extendedRunImage.Layers()
+	if err != nil {
+		return err
+	}
+	var (
+		localImage   bool
+		artifactsDir string
+	)
+	if isLocalImage(opts.WorkingImage) {
+		localImage = true
+		if artifactsDir, err = os.MkdirTemp("", "lifecycle.exporter.layer"); err != nil {
+			return err
+		}
+	}
+	for _, l := range extendedLayers {
+		layerHex, err := l.DiffID()
+		if err != nil {
+			if _, ok := err.(*fs.PathError); ok {
+				continue // failed to get the diffID because the blob doesn't exist
+			}
+			return err
+		}
+		digest, err := l.Digest()
+		if err != nil {
+			return err
+		}
+		layerPath := filepath.Join(extendedRunImagePath, "blobs", digest.Algorithm, digest.Hex)
+		if localImage {
+			var calculatedDiffID string
+			if calculatedDiffID, err = uncompressLayerAt(layerPath, artifactsDir); err != nil {
+				return err
+			}
+			if calculatedDiffID != layerHex.String() {
+				return fmt.Errorf("digest of uncompressed layer from %s does not match expected value; found %q, expected %q", layerPath, calculatedDiffID, layerHex.String())
+			}
+			layerPath = filepath.Join(artifactsDir, calculatedDiffID)
+		}
+		layer := layers.Layer{
+			ID:      "from extensions",
+			TarPath: layerPath,
+			Digest:  layerHex.String(),
+		}
+		_, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func isLocalImage(workingImage imgutil.Image) bool {
+	if _, ok := workingImage.(*local.Image); ok {
+		return true
+	}
+	return false
+}
+
+func uncompressLayerAt(layerPath string, toArtifactsDir string) (string, error) {
+	sourceLayer, err := os.Open(layerPath)
+	if err != nil {
+		return "", err
+	}
+	zr, err := gzip.NewReader(sourceLayer)
+	if err != nil {
+		return "", err
+	}
+	tmpLayerPath := filepath.Join(toArtifactsDir, filepath.Base(layerPath)) // for now, used the compressed digest to uniquely identify the layer as we may be writing concurrently to this directory
+	targetLayer, err := os.Create(tmpLayerPath)
+	if err != nil {
+		return "", err
+	}
+	hasher := sha256.New()
+	mw := io.MultiWriter(targetLayer, hasher) // calculate the sha256 while writing to file
+	_, err = io.Copy(mw, zr)                  //nolint
+	if err != nil {
+		return "", err
+	}
+	diffID := hex.EncodeToString(hasher.Sum(nil))
+
+	if err = os.Rename(tmpLayerPath, filepath.Join(toArtifactsDir, fmt.Sprintf("sha256:%s", diffID))); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("sha256:%s", diffID), nil
+}
+
 func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersMetadata) error {
 	for _, bp := range e.Buildpacks {
 		bpDir, err := buildpack.ReadLayersDir(opts.LayersDir, bp, e.Logger)
@@ -260,7 +388,7 @@ func (e *Exporter) addBuildpackLayers(opts ExportOptions, meta *platform.LayersM
 					return errors.Wrapf(err, "creating layer")
 				}
 				origLayerMetadata := opts.OrigMetadata.MetadataForBuildpack(bp.ID).Layers[fsLayer.Name()]
-				lmd.SHA, err = e.addOrReuseLayer(opts.WorkingImage, layer, origLayerMetadata.SHA)
+				lmd.SHA, err = e.addOrReuseBuildpackLayer(opts.WorkingImage, layer, origLayerMetadata.SHA)
 				if err != nil {
 					return err
 				}
@@ -300,7 +428,7 @@ func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.Build
 	if err != nil {
 		return errors.Wrap(err, "creating launcher layers")
 	}
-	meta.Launcher.SHA, err = e.addOrReuseLayer(opts.WorkingImage, launcherLayer, opts.OrigMetadata.Launcher.SHA)
+	meta.Launcher.SHA, err = e.addOrReuseBuildpackLayer(opts.WorkingImage, launcherLayer, opts.OrigMetadata.Launcher.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting launcher configLayer")
 	}
@@ -308,7 +436,7 @@ func (e *Exporter) addLauncherLayers(opts ExportOptions, buildMD *platform.Build
 	if err != nil {
 		return errors.Wrapf(err, "creating layer '%s'", configLayer.ID)
 	}
-	meta.Config.SHA, err = e.addOrReuseLayer(opts.WorkingImage, configLayer, opts.OrigMetadata.Config.SHA)
+	meta.Config.SHA, err = e.addOrReuseBuildpackLayer(opts.WorkingImage, configLayer, opts.OrigMetadata.Config.SHA)
 	if err != nil {
 		return errors.Wrap(err, "exporting config layer")
 	}
@@ -490,7 +618,7 @@ func (e *Exporter) launcherConfig(opts ExportOptions, buildMD *platform.BuildMet
 			if err != nil {
 				return errors.Wrapf(err, "creating layer '%s'", processTypesLayer.ID)
 			}
-			meta.ProcessTypes.SHA, err = e.addOrReuseLayer(opts.WorkingImage, processTypesLayer, opts.OrigMetadata.ProcessTypes.SHA)
+			meta.ProcessTypes.SHA, err = e.addOrReuseBuildpackLayer(opts.WorkingImage, processTypesLayer, opts.OrigMetadata.ProcessTypes.SHA)
 			if err != nil {
 				return errors.Wrapf(err, "exporting layer '%s'", processTypesLayer.ID)
 			}
@@ -519,7 +647,7 @@ func processTypeWarning(launchMD launch.Metadata, defaultProcessType string) str
 	return fmt.Sprintf("default process type '%s' not present in list %+v", defaultProcessType, typeList)
 }
 
-func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, previousSHA string) (string, error) {
+func (e *Exporter) addOrReuseBuildpackLayer(image imgutil.Image, layer layers.Layer, previousSHA string) (string, error) {
 	layer, err := e.LayerFactory.DirLayer(layer.ID, layer.TarPath)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating layer '%s'", layer.ID)
@@ -532,6 +660,24 @@ func (e *Exporter) addOrReuseLayer(image imgutil.Image, layer layers.Layer, prev
 	e.Logger.Infof("Adding layer '%s'\n", layer.ID)
 	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
 	return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
+}
+
+func (e *Exporter) addOrReuseExtensionLayer(image imgutil.Image, layer layers.Layer) (string, error) {
+	rc, err := image.GetLayer(layer.Digest)
+	if err != nil {
+		// FIXME: imgutil should declare an error type for missing layer
+		if !strings.Contains(err.Error(), "image did not have layer with diff id") && // remote
+			!strings.Contains(err.Error(), "does not contain layer with diff ID") {
+			return "", err
+		}
+		e.Logger.Infof("Adding extension layer %s\n", layer.ID)
+		e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
+		return layer.Digest, image.AddLayerWithDiffID(layer.TarPath, layer.Digest)
+	}
+	_ = rc.Close() // close the layer reader
+	e.Logger.Infof("Reusing layer %s\n", layer.ID)
+	e.Logger.Debugf("Layer '%s' SHA: %s\n", layer.ID, layer.Digest)
+	return layer.Digest, image.ReuseLayer(layer.Digest)
 }
 
 func (e *Exporter) makeBuildReport(layersDir string) (platform.BuildReport, error) {
@@ -570,7 +716,7 @@ func (e *Exporter) addSBOMLaunchLayer(opts ExportOptions, meta *platform.LayersM
 			originalSHA = opts.OrigMetadata.BOM.SHA
 		}
 
-		sha, err := e.addOrReuseLayer(opts.WorkingImage, layer, originalSHA)
+		sha, err := e.addOrReuseBuildpackLayer(opts.WorkingImage, layer, originalSHA)
 		if err != nil {
 			return errors.Wrapf(err, "exporting layer '%s'", layer.ID)
 		}

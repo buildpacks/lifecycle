@@ -5,10 +5,11 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22
-	github.com/buildpacks/imgutil v0.0.0-20230324153732-a6c0ed910692
+	github.com/buildpacks/imgutil v0.0.0-20230412223147-81015c668834
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.0
 	github.com/docker/docker v23.0.3+incompatible
+	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.14.0
@@ -63,7 +64,6 @@ require (
 	github.com/docker/cli v23.0.1+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect

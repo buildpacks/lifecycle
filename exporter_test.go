@@ -246,7 +246,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("creates app layer on Run image", func() {
+			it("creates app layer on run image", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
@@ -393,26 +393,52 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("saves run image metadata to the resulting image", func() {
-				opts.Stack = platform.StackMetadata{
-					RunImage: platform.RunImageForExport{
+			when("run image metadata", func() {
+				it("saves run image metadata to the runImage key", func() {
+					opts.RunImageForExport = platform.RunImageForExport{
 						Image:   "some/run",
 						Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
-					},
-				}
-				_, err := exporter.Export(opts)
-				h.AssertNil(t, err)
+					}
+					_, err := exporter.Export(opts)
+					h.AssertNil(t, err)
 
-				metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-				h.AssertNil(t, err)
+					metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+					h.AssertNil(t, err)
 
-				var meta platform.LayersMetadata
-				if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
-					t.Fatalf("badly formatted metadata: %s", err)
-				}
-				h.AssertNil(t, err)
-				h.AssertEq(t, meta.Stack.RunImage.Image, "some/run")
-				h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+					var meta platform.LayersMetadata
+					if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
+						t.Fatalf("badly formatted metadata: %s", err)
+					}
+					h.AssertNil(t, err)
+					h.AssertEq(t, meta.RunImage.Image, "some/run")
+					h.AssertEq(t, meta.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+				})
+
+				when("platform api < 0.12", func() {
+					platformAPI = api.MustParse("0.11")
+
+					it("saves run image metadata to the stack key", func() {
+						opts.Stack = platform.StackMetadata{
+							RunImage: platform.RunImageForExport{
+								Image:   "some/run",
+								Mirrors: []string{"registry.example.com/some/run", "other.example.com/some/run"},
+							},
+						}
+						_, err := exporter.Export(opts)
+						h.AssertNil(t, err)
+
+						metadataJSON, err := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+						h.AssertNil(t, err)
+
+						var meta platform.LayersMetadata
+						if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
+							t.Fatalf("badly formatted metadata: %s", err)
+						}
+						h.AssertNil(t, err)
+						h.AssertEq(t, meta.Stack.RunImage.Image, "some/run")
+						h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+					})
+				})
 			})
 
 			when("build metadata label", func() {
@@ -890,7 +916,7 @@ version = "4.5.6"
 				})
 			})
 
-			it("creates app layer on Run image", func() {
+			it("creates app layer on run image", func() {
 				_, err := exporter.Export(opts)
 				h.AssertNil(t, err)
 
@@ -1548,7 +1574,7 @@ version = "4.5.6"
 						h.AssertEq(t, len(fakeAppImage.ReusedLayers()), 0)
 					})
 
-					it("creates app layer on Run image", func() {
+					it("creates app layer on run image", func() {
 						_, err := exporter.Export(opts)
 						h.AssertNil(t, err)
 

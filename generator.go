@@ -148,25 +148,26 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}
 
 	g.Logger.Debug("Checking for new run image")
-	base, newBaseIdx, extend := g.checkNewRunImage(dockerfiles)
+	runRef, extend := g.runImageFrom(dockerfiles)
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	if !satisfies(g.RunMetadata.Images, base) {
-		return GenerateResult{}, fmt.Errorf("new runtime base image '%s' not found in run metadata", base)
+	if runRef != "" && !satisfies(g.RunMetadata.Images, runRef) {
+		g.Logger.Warnf("new runtime base image '%s' not found in run metadata", runRef)
 	}
 
 	g.Logger.Debug("Copying Dockerfiles")
-	if err = g.copyDockerfiles(dockerfiles, newBaseIdx); err != nil {
+	if err = g.copyDockerfiles(dockerfiles); err != nil {
 		return GenerateResult{}, err
 	}
 
 	newAnalyzedMD := g.AnalyzedMD
-	if newRunImage(base, g.AnalyzedMD) {
-		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", base)
+	if shouldReplacePrevious(runRef, g.AnalyzedMD) {
+		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", runRef)
 		newAnalyzedMD.RunImage = &platform.RunImage{ // target data is cleared
-			Reference: base,
+			Reference: runRef,
 			Extend:    extend,
+			Image:     runRef,
 		}
 	} else if extend && g.AnalyzedMD.RunImage != nil {
 		g.Logger.Debug("Updating analyzed metadata with run image extend")
@@ -204,11 +205,11 @@ func (g *Generator) getGenerateInputs() buildpack.GenerateInputs {
 	}
 }
 
-func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo, newBaseIdx int) error {
-	for currentIdx, dockerfile := range dockerfiles {
+func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo) error {
+	for _, dockerfile := range dockerfiles {
 		targetDir := filepath.Join(g.GeneratedDir, dockerfile.Kind, launch.EscapeID(dockerfile.ExtensionID))
 		var targetPath = filepath.Join(targetDir, "Dockerfile")
-		if dockerfile.Kind == buildpack.DockerfileKindRun && currentIdx < newBaseIdx {
+		if dockerfile.Kind == buildpack.DockerfileKindRun && dockerfile.Ignore {
 			targetPath += ".ignore"
 		}
 		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
@@ -216,40 +217,48 @@ func (g *Generator) copyDockerfiles(dockerfiles []buildpack.DockerfileInfo, newB
 		}
 		g.Logger.Debugf("Copying %s to %s", dockerfile.Path, targetPath)
 		if err := fsutil.Copy(dockerfile.Path, targetPath); err != nil {
-			return err
+			return fmt.Errorf("failed to copy Dockerfile at %s: %w", dockerfile.Path, err)
 		}
 		// check for extend-config.toml and if found, copy
 		extendConfigPath := filepath.Join(filepath.Dir(dockerfile.Path), "extend-config.toml")
 		if err := fsutil.Copy(extendConfigPath, filepath.Join(targetDir, "extend-config.toml")); err != nil {
 			if !os.IsNotExist(err) {
-				return err
+				return fmt.Errorf("failed to copy extend config at %s: %w", extendConfigPath, err)
 			}
 		}
 	}
 	return nil
 }
 
-func (g *Generator) checkNewRunImage(dockerfiles []buildpack.DockerfileInfo) (newBase string, newBaseIdx int, extend bool) {
-	// There may be extensions that contribute only a build.Dockerfile; work backward through extensions until we find
-	// a run.Dockerfile.
+func (g *Generator) runImageFrom(dockerfiles []buildpack.DockerfileInfo) (newBase string, extend bool) {
+	var ignoreNext bool
 	for i := len(dockerfiles) - 1; i >= 0; i-- {
+		// There may be extensions that contribute only a build.Dockerfile;
+		// work backward through extensions until we find a run.Dockerfile.
 		if dockerfiles[i].Kind != buildpack.DockerfileKindRun {
 			continue
 		}
-		if dockerfiles[i].NewBase != "" {
-			newBase = dockerfiles[i].NewBase
-			newBaseIdx = i
-			g.Logger.Debugf("Found a run.Dockerfile configuring image '%s' from extension with id '%s'", newBase, dockerfiles[i].ExtensionID)
-			break
+		if ignoreNext {
+			// If a run.Dockerfile following this one (in the build, not in the loop) switches the run image,
+			// we can ignore this run.Dockerfile as it has no effect.
+			// We set Ignore to true so that when the Dockerfiles are copied to the "generated" directory,
+			// we'll add the suffix `.ignore` so that the extender won't try to apply them.
+			dockerfiles[i].Ignore = true
+			continue
 		}
-		if dockerfiles[i].NewBase == "" {
+		if dockerfiles[i].Extend {
 			extend = true
 		}
+		if dockerfiles[i].WithBase != "" {
+			newBase = dockerfiles[i].WithBase
+			g.Logger.Debugf("Found a run.Dockerfile from extension '%s' setting run image to '%s' ", dockerfiles[i].ExtensionID, newBase)
+			ignoreNext = true
+		}
 	}
-	return newBase, newBaseIdx, extend
+	return newBase, extend
 }
 
-func newRunImage(base string, analyzedMD platform.AnalyzedMetadata) bool {
+func shouldReplacePrevious(base string, analyzedMD platform.AnalyzedMetadata) bool {
 	if base == "" {
 		return false
 	}

@@ -111,6 +111,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		// The following instruct the lifecycle where to write files and data during the build
 
 		AnalyzedPath: envOrDefault(EnvAnalyzedPath, filepath.Join(PlaceholderLayers, DefaultAnalyzedFile)),
+		ExtendedDir:  envOrDefault(EnvExtendedDir, filepath.Join(PlaceholderLayers, DefaultExtendedDir)),
 		GeneratedDir: envOrDefault(EnvGeneratedDir, filepath.Join(PlaceholderLayers, DefaultGeneratedDir)),
 		GroupPath:    envOrDefault(EnvGroupPath, filepath.Join(PlaceholderLayers, DefaultGroupFile)),
 		PlanPath:     envOrDefault(EnvPlanPath, filepath.Join(PlaceholderLayers, DefaultPlanFile)),
@@ -284,6 +285,7 @@ func isPlaceholderOrder(s string) bool {
 func (i *LifecycleInputs) placeholderPaths() []*string {
 	return []*string{
 		&i.AnalyzedPath,
+		&i.ExtendedDir,
 		&i.GeneratedDir,
 		&i.GroupPath,
 		&i.OrderPath,

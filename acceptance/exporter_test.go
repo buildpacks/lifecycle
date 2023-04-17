@@ -4,6 +4,8 @@
 package acceptance
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -16,13 +18,14 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
@@ -46,7 +49,7 @@ func TestExporter(t *testing.T) {
 	testImageDockerContext := filepath.Join("testdata", "exporter")
 	exportTest = NewPhaseTest(t, "exporter", testImageDockerContext)
 
-	exportTest.Start(t, updateAnalyzedTOMLFixturesWithRegRepoName)
+	exportTest.Start(t, updateTOMLFixturesWithTestRegistry)
 	defer exportTest.Stop(t)
 
 	exportImage = exportTest.testImageRef
@@ -78,7 +81,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 					it("is created", func() {
 						exportFlags := []string{"-daemon", "-log-level", "debug"}
 						if api.MustParse(platformAPI).LessThan("0.7") {
-							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...)
+							exportFlags = append(exportFlags, []string{"-run-image", exportRegFixtures.ReadOnlyRunImage}...) // though the run image is registry image, it also exists in the daemon with the same tag
 						}
 
 						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
@@ -90,8 +93,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.WithFlags(append(
 								dockerSocketMount,
 								"--env", "CNB_PLATFORM_API="+platformAPI,
-								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
-								"--network", exportRegNetwork,
 							)...),
 							h.WithArgs(exportArgs...),
 						)
@@ -108,6 +109,71 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						}
 
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
+					})
+				})
+
+				when("using extensions", func() {
+					it.Before(func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
+					})
+
+					it("is created from the extended run image", func() {
+						exportFlags := []string{
+							"-analyzed", "/layers/run-image-extended-analyzed.toml", // though the run image is a registry image, it also exists in the daemon with the same tag
+							"-daemon",
+							"-extended", "/layers/some-extended-dir",
+							"-log-level", "debug",
+							"-run", "/cnb/run.toml", // though the run image is a registry image, it also exists in the daemon with the same tag
+						}
+						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+						exportedImageName = "some-exported-image-" + h.RandString(10)
+						exportArgs = append(exportArgs, exportedImageName)
+
+						// get run image top layer
+						inspect, _, err := h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
+						h.AssertNil(t, err)
+						layers := inspect.RootFS.Layers
+						runImageFixtureTopLayerSHA := layers[len(layers)-1]
+						runImageFixtureSHA := inspect.ID
+
+						output := h.DockerRun(t,
+							exportImage,
+							h.WithFlags(append(
+								dockerSocketMount,
+								"--env", "CNB_EXPERIMENTAL_MODE=warn",
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+							)...),
+							h.WithArgs(exportArgs...),
+						)
+						h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
+						t.Log("bases the exported image on the extended run image")
+						inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
+						h.AssertNil(t, err)
+						h.AssertEq(t, inspect.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						t.Log("Adds extension layers")
+						diffIDFromExt1 := "sha256:60600f423214c27fd184ebc96ae765bf2b4703c9981fb4205d28dd35e7eec4ae"
+						diffIDFromExt2 := "sha256:1d811b70500e2e9a5e5b8ca7429ef02e091cdf4657b02e456ec54dd1baea0a66"
+						var foundFromExt1, foundFromExt2 bool
+						for _, layer := range inspect.RootFS.Layers {
+							if layer == diffIDFromExt1 {
+								foundFromExt1 = true
+							}
+							if layer == diffIDFromExt2 {
+								foundFromExt2 = true
+							}
+						}
+						h.AssertEq(t, foundFromExt1, true)
+						h.AssertEq(t, foundFromExt2, true)
+						t.Log("sets the layers metadata label according to the new spec")
+						var lmd platform.LayersMetadata
+						lmdJSON := inspect.Config.Labels["io.buildpacks.lifecycle.metadata"]
+						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
+						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
+						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
+						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA)
+						h.AssertEq(t, lmd.RunImage.Reference, strings.TrimPrefix(runImageFixtureSHA, "sha256:"))
 					})
 				})
 			})
@@ -172,6 +238,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
 				})
+
 				when("SOURCE_DATE_EPOCH is set", func() {
 					it("Image CreatedAt is set to SOURCE_DATE_EPOCH", func() {
 						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.9"), "SOURCE_DATE_EPOCH support added in 0.9")
@@ -202,6 +269,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, expectedTime)
 					})
 				})
+
 				when("cache", func() {
 					when("cache image case", func() {
 						it("is created", func() {
@@ -266,6 +334,85 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						})
 					})
 				})
+
+				when("using extensions", func() {
+					it.Before(func() {
+						h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.12"), "")
+					})
+
+					it("is created from the extended run image", func() {
+						exportFlags := []string{
+							"-analyzed", "/layers/run-image-extended-analyzed.toml",
+							"-extended", "/layers/some-extended-dir",
+							"-log-level", "debug",
+							"-run", "/cnb/run.toml",
+						}
+						exportArgs := append([]string{ctrPath(exporterPath)}, exportFlags...)
+						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
+						exportArgs = append(exportArgs, exportedImageName)
+
+						// get run image top layer
+						ref, imageAuth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
+						h.AssertNil(t, err)
+						remoteImage, err := remote.Image(ref, remote.WithAuth(imageAuth))
+						h.AssertNil(t, err)
+						layers, err := remoteImage.Layers()
+						h.AssertNil(t, err)
+						runImageFixtureTopLayerSHA, err := layers[len(layers)-1].DiffID()
+						h.AssertNil(t, err)
+						runImageFixtureSHA, err := remoteImage.Digest()
+						h.AssertNil(t, err)
+
+						output := h.DockerRun(t,
+							exportImage,
+							h.WithFlags(
+								"--env", "CNB_EXPERIMENTAL_MODE=warn",
+								"--env", "CNB_PLATFORM_API="+platformAPI,
+								"--env", "CNB_REGISTRY_AUTH="+exportRegAuthConfig,
+								"--network", exportRegNetwork,
+							),
+							h.WithArgs(exportArgs...),
+						)
+						h.AssertStringContains(t, output, "Saving "+exportedImageName)
+
+						h.Run(t, exec.Command("docker", "pull", exportedImageName))
+						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
+						t.Log("bases the exported image on the extended run image")
+						ref, imageAuth, err = auth.ReferenceForRepoName(authn.DefaultKeychain, exportedImageName)
+						h.AssertNil(t, err)
+						remoteImage, err = remote.Image(ref, remote.WithAuth(imageAuth))
+						h.AssertNil(t, err)
+						configFile, err := remoteImage.ConfigFile()
+						h.AssertNil(t, err)
+						h.AssertEq(t, configFile.Config.Labels["io.buildpacks.rebasable"], "false") // from testdata/exporter/container/layers/extended/sha256:<sha>/blobs/sha256/<config>
+						t.Log("Adds extension layers")
+						layers, err = remoteImage.Layers()
+						h.AssertNil(t, err)
+						digestFromExt1 := "sha256:0c5f7a6fe14dbd19670f39e7466051cbd40b3a534c0812659740fb03e2137c1a"
+						digestFromExt2 := "sha256:482346d1e0c7afa2514ec366d2e000e0667d0a6664690aab3c8ad51c81915b91"
+						var foundFromExt1, foundFromExt2 bool
+						for _, layer := range layers {
+							digest, err := layer.Digest()
+							h.AssertNil(t, err)
+							if digest.String() == digestFromExt1 {
+								foundFromExt1 = true
+							}
+							if digest.String() == digestFromExt2 {
+								foundFromExt2 = true
+							}
+						}
+						h.AssertEq(t, foundFromExt1, true)
+						h.AssertEq(t, foundFromExt2, true)
+						t.Log("sets the layers metadata label according to the new spec")
+						var lmd platform.LayersMetadata
+						lmdJSON := configFile.Config.Labels["io.buildpacks.lifecycle.metadata"]
+						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
+						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
+						h.AssertEq(t, lmd.RunImage.Mirrors, []string{"mirror1", "mirror2"})                    // from run.toml
+						h.AssertEq(t, lmd.RunImage.TopLayer, runImageFixtureTopLayerSHA.String())
+						h.AssertEq(t, lmd.RunImage.Reference, fmt.Sprintf("%s@%s", exportTest.targetRegistry.fixtures.ReadOnlyRunImage, runImageFixtureSHA.String()))
+					})
+				})
 			})
 		})
 
@@ -276,6 +423,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				layoutDir     string
 				tmpDir        string
 			)
+
 			when("experimental mode is enabled", func() {
 				it.Before(func() {
 					// creates the directory to save all the OCI images on disk
@@ -351,43 +499,6 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 		})
-	}
-}
-
-// This helper function exists because we expect the run image in analyzed.toml to contain the registry IP and port,
-// which aren't known until we start the test.
-func updateAnalyzedTOMLFixturesWithRegRepoName(t *testing.T, phaseTest *PhaseTest) {
-	regPlaceholders := []string{
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-false-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "some-extend-true-analyzed.toml.placeholder"),
-		filepath.Join(phaseTest.testImageDockerContext, "container", "other_layers", "analyzed.toml.placeholder"),
-	}
-	layoutPlaceholders := []string{
-		filepath.Join(phaseTest.testImageDockerContext, "container", "layers", "layout-analyzed.toml.placeholder"),
-	}
-
-	for _, pPath := range regPlaceholders {
-		if _, err := os.Stat(pPath); os.IsNotExist(err) {
-			continue
-		}
-		analyzedMD := assertAnalyzedMetadata(t, pPath)
-		if analyzedMD.RunImage != nil {
-			analyzedMD.RunImage.Reference = phaseTest.targetRegistry.fixtures.ReadOnlyRunImage // don't override extend
-		}
-		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
-	}
-	for _, pPath := range layoutPlaceholders {
-		if _, err := os.Stat(pPath); os.IsNotExist(err) {
-			continue
-		}
-		analyzedMD := assertAnalyzedMetadata(t, pPath)
-		if analyzedMD.RunImage != nil {
-			// Values from image acceptance/testdata/exporter/container/layout-repo in OCI layout format
-			analyzedMD.RunImage = &platform.RunImage{Reference: "/layout-repo/index.docker.io/library/busybox/latest@sha256:445c45cc89fdeb64b915b77f042e74ab580559b8d0d5ef6950be1c0265834c33"}
-		}
-		encoding.WriteTOML(strings.TrimSuffix(pPath, ".placeholder"), analyzedMD)
 	}
 }
 

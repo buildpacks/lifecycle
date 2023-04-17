@@ -215,13 +215,17 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		appMeta = platform.LayersMetadata{}
 	}
 
-	var atm *platform.TargetMetadata
+	var (
+		atm          *platform.TargetMetadata
+		runImageName string
+	)
 	if a.RunImage != nil {
 		runImageRef, err = a.getImageIdentifier(a.RunImage)
 		if err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying run image")
 		}
 		if a.PlatformAPI.AtLeast("0.12") {
+			runImageName = a.RunImage.Name()
 			atm, err = platform.GetTargetFromImage(a.RunImage)
 			if err != nil {
 				return platform.AnalyzedMetadata{}, errors.Wrap(err, "unpacking metadata from image")
@@ -246,7 +250,7 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 
 	return platform.AnalyzedMetadata{
 		PreviousImage: &platform.ImageIdentifier{Reference: previousImageRef},
-		RunImage:      &platform.RunImage{Reference: runImageRef, TargetMetadata: atm},
+		RunImage:      &platform.RunImage{Reference: runImageRef, TargetMetadata: atm, Image: runImageName},
 		Metadata:      appMeta,
 	}, nil
 }

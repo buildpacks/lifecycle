@@ -60,7 +60,11 @@ type ImageIdentifier struct {
 }
 
 type RunImage struct {
-	Reference      string          `toml:"reference"`
+	Reference string `toml:"reference"`
+	// Image specifies the repository name for the image.
+	// When exporting to a daemon, the restorer uses this field to pull the run image if needed for the extender;
+	// it can't use reference because this may be a daemon image ID if analyzed.toml was last written by the analyzer.
+	Image          string          `toml:"image,omitempty"`
 	Extend         bool            `toml:"extend,omitempty"`
 	TargetMetadata *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
 }
@@ -177,7 +181,7 @@ type LayersMetadata struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack" toml:"stack"`
+	Stack        StackMetadata              `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -210,6 +214,10 @@ type LayerMetadata struct {
 type RunImageForRebase struct {
 	TopLayer  string `json:"topLayer" toml:"top-layer"`
 	Reference string `json:"reference" toml:"reference"`
+
+	// added in Platform 0.12
+	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
+	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
 }
 
 // metadata.toml
