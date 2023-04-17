@@ -134,9 +134,11 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Buildpack.Homepage, "Buildpack A Homepage")
 			h.AssertEq(t, descriptor.Buildpack.SBOM, []string{"application/vnd.cyclonedx+json"})
 			// specific behaviors for this test
-			h.AssertEq(t, len(descriptor.Targets), 1)
+			h.AssertEq(t, len(descriptor.Targets), 2)
 			h.AssertEq(t, descriptor.Targets[0].Arch, "*")
 			h.AssertEq(t, descriptor.Targets[0].OS, "windows")
+			h.AssertEq(t, descriptor.Targets[1].Arch, "*")
+			h.AssertEq(t, descriptor.Targets[1].OS, "linux")
 		})
 	})
 }

@@ -81,7 +81,6 @@ func ReadBpDescriptor(path string) (*BpDescriptor, error) {
 				fname := bf.Name()
 				if fname == "build.exe" || fname == "build.bat" {
 					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "windows", Arch: "*"})
-					break
 				}
 				if fname == "build" {
 					descriptor.Targets = append(descriptor.Targets, TargetMetadata{OS: "linux", Arch: "*"})
