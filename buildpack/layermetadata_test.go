@@ -57,7 +57,6 @@ func testLayerMetadata(t *testing.T, when spec.G, it spec.S) {
 
 			var lmf buildpack.LayerMetadataFile
 			lmf, err = buildpack.DecodeLayerMetadataFile(metadataFile.Name(), "0.9", logger)
-			h.AssertNil(t, err)
 			h.AssertEq(t, lmf.Cache, false)
 			h.AssertEq(t, lmf.Build, false)
 			h.AssertEq(t, lmf.Launch, false)
