@@ -122,7 +122,7 @@ require (
 	google.golang.org/protobuf v1.29.0 // indirect
 )
 
-go 1.19
+go 1.20
 
 // Pin BurntSushi/toml due to https://github.com/BurntSushi/toml/issues/360
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.1.0
