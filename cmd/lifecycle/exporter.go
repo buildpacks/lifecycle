@@ -28,6 +28,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -531,8 +532,21 @@ func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
 		if runImage.Image == runRef.Context().Name() {
 			return runImage, nil
 		}
+		for _, mirror := range runImage.Mirrors {
+			if mirror == runRef.Context().Name() {
+				return runImage, nil
+			}
+		}
 	}
-	return platform.RunImageForExport{Image: e.RunImageRef}, nil
+	buildMD := &platform.BuildMetadata{}
+	if err = platform.DecodeBuildMetadataTOML(launch.GetMetadataFilePath(e.LayersDir), e.PlatformAPI, buildMD); err != nil {
+		return platform.RunImageForExport{}, err
+	}
+	if len(buildMD.Extensions) > 0 {
+		// Extensions could have switched the run image, so we can't assume the first run image in run.toml was intended
+		return platform.RunImageForExport{Image: e.RunImageRef}, nil
+	}
+	return runMD.Images[0], nil
 }
 
 func (e *exportCmd) hasExtendedLayers() bool {

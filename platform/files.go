@@ -137,12 +137,10 @@ func (t *TargetMetadata) IsValidRebaseTargetFor(appTargetMetadata *TargetMetadat
 }
 
 func (t *TargetMetadata) String() string {
-	var distName, distVersion string
 	if t.Distribution != nil {
-		distName = t.Distribution.Name
-		distVersion = t.Distribution.Version
+		return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, t.Distribution.Name, t.Distribution.Version)
 	}
-	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, distName, distVersion)
+	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s", t.OS, t.Arch, t.ArchVariant)
 }
 
 // PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
@@ -188,7 +186,7 @@ type LayersMetadata struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack,omitempty" toml:"stack,omitempty"`
+	Stack        StackMetadata              `json:"stack,omitempty" toml:"stack,omitempty"` // TODO: change to pointer
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -411,11 +409,11 @@ func ReadRun(runPath string, logger log.Logger) (RunMetadata, error) {
 // stack.toml
 
 type StackMetadata struct {
-	RunImage RunImageForExport `json:"runImage" toml:"run-image"`
+	RunImage RunImageForExport `json:"runImage,omitempty" toml:"run-image"`
 }
 
 type RunImageForExport struct {
-	Image   string   `toml:"image" json:"image"`
+	Image   string   `toml:"image" json:"image,omitempty"`
 	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
 }
 

@@ -230,6 +230,14 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				return nil, nil, err
 			}
 
+			// Resolve order if element is a composite buildpack.
+			if order := bpDescriptor.Order; len(order) > 0 {
+				// FIXME: double-check slice safety here
+				// FIXME: cyclical references lead to infinite recursion
+				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
+			}
+			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
+
 			if d.PlatformAPI.AtLeast("0.12") {
 				targetMatch := false
 				if isWildcard(d.AnalyzeMD.RunImageTarget()) || hasWildcard(bpDescriptor.Targets) {
@@ -249,19 +257,11 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 						keyFor(groupEl),
 						buildpack.DetectOutputs{
 							Code: -1,
-							Err:  fmt.Errorf("unable to satisfy Target OS/Arch constraints: %v", d.AnalyzeMD.RunImage.TargetMetadata),
+							Err:  fmt.Errorf("unable to satisfy Target OS/Arch constraints; run image: %v, buildpack: %v", d.AnalyzeMD.RunImage.TargetMetadata, bpDescriptor.Targets),
 						})
 					continue
 				}
 			}
-
-			// Resolve order if element is a composite buildpack.
-			if order := bpDescriptor.Order; len(order) > 0 {
-				// FIXME: double-check slice safety here
-				// FIXME: cyclical references lead to infinite recursion
-				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
-			}
-			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
 		} else {
 			descriptor, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
 			if err != nil {
