@@ -1,0 +1,3 @@
+[[images]]
+  image = "REPLACE"
+  mirrors = ["mirror1", "mirror2"]

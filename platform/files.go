@@ -4,6 +4,7 @@ package platform
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
@@ -36,6 +37,13 @@ func (amd AnalyzedMetadata) PreviousImageRef() string {
 	return amd.PreviousImage.Reference
 }
 
+func (amd AnalyzedMetadata) RunImageImage() string {
+	if amd.RunImage == nil {
+		return ""
+	}
+	return amd.RunImage.Image
+}
+
 func (amd AnalyzedMetadata) RunImageRef() string {
 	if amd.RunImage == nil {
 		return ""
@@ -59,7 +67,11 @@ type ImageIdentifier struct {
 }
 
 type RunImage struct {
-	Reference      string          `toml:"reference"`
+	Reference string `toml:"reference"`
+	// Image specifies the repository name for the image.
+	// When exporting to a daemon, the restorer uses this field to pull the run image if needed for the extender;
+	// it can't use reference because this may be a daemon image ID if analyzed.toml was last written by the analyzer.
+	Image          string          `toml:"image,omitempty"`
 	Extend         bool            `toml:"extend,omitempty"`
 	TargetMetadata *TargetMetadata `json:"target,omitempty" toml:"target,omitempty"`
 }
@@ -102,6 +114,35 @@ func (t *TargetMetadata) IsSatisfiedBy(o *buildpack.TargetMetadata) bool {
 		}
 	}
 	return true
+}
+
+// IsValidRebaseTargetFor treats optional fields (ArchVariant and Distribution fields) as wildcards if empty, returns true if all populated fields match
+func (t *TargetMetadata) IsValidRebaseTargetFor(appTargetMetadata *TargetMetadata) bool {
+	if t.Arch != appTargetMetadata.Arch || t.OS != appTargetMetadata.OS {
+		return false
+	}
+	if t.ArchVariant != "" && appTargetMetadata.ArchVariant != "" && t.ArchVariant != appTargetMetadata.ArchVariant {
+		return false
+	}
+
+	if t.Distribution != nil && appTargetMetadata.Distribution != nil {
+		if t.Distribution.Name != appTargetMetadata.Distribution.Name {
+			return false
+		}
+		if t.Distribution.Version != appTargetMetadata.Distribution.Version {
+			return false
+		}
+	}
+	return true
+}
+
+func (t *TargetMetadata) String() string {
+	var distName, distVersion string
+	if t.Distribution != nil {
+		distName = t.Distribution.Name
+		distVersion = t.Distribution.Version
+	}
+	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, distName, distVersion)
 }
 
 // PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
@@ -147,7 +188,7 @@ type LayersMetadata struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack" toml:"stack"`
+	Stack        StackMetadata              `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -180,6 +221,10 @@ type LayerMetadata struct {
 type RunImageForRebase struct {
 	TopLayer  string `json:"topLayer" toml:"top-layer"`
 	Reference string `json:"reference" toml:"reference"`
+
+	// added in Platform 0.12
+	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
+	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
 }
 
 // metadata.toml

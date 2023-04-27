@@ -66,6 +66,7 @@ func (f *ExtenderFactory) NewExtender(
 	platformDir string,
 	cacheTTL time.Duration,
 	dockerfileApplier DockerfileApplier,
+	kind string,
 	logger log.Logger,
 ) (*Extender, error) {
 	extender := &Extender{
@@ -77,7 +78,7 @@ func (f *ExtenderFactory) NewExtender(
 		CacheTTL:          cacheTTL,
 		DockerfileApplier: dockerfileApplier,
 	}
-	if err := f.setImageRef(extender, analyzedPath, logger); err != nil {
+	if err := f.setImageRef(extender, kind, analyzedPath, logger); err != nil {
 		return nil, err
 	}
 	if err := f.setExtensions(extender, groupPath, logger); err != nil {
@@ -86,14 +87,21 @@ func (f *ExtenderFactory) NewExtender(
 	return extender, nil
 }
 
-func (f *ExtenderFactory) setImageRef(extender *Extender, path string, logr log.Logger) error {
+func (f *ExtenderFactory) setImageRef(extender *Extender, kind, path string, logr log.Logger) error {
 	analyzedMD, err := f.configHandler.ReadAnalyzed(path, logr)
 	if err != nil {
 		return err
 	}
-	if analyzedMD.BuildImage != nil {
-		extender.ImageRef = analyzedMD.BuildImage.Reference
+	if kind == "build" {
+		if analyzedMD.BuildImage != nil {
+			extender.ImageRef = analyzedMD.BuildImage.Reference
+		}
+	} else if kind == "run" {
+		if analyzedMD.RunImage != nil {
+			extender.ImageRef = analyzedMD.RunImage.Reference
+		}
 	}
+
 	return nil
 }
 
@@ -146,7 +154,6 @@ func (e *Extender) extendBuild(logger log.Logger) error {
 	if err = setImageEnvVarsInCurrentContext(extendedImage); err != nil {
 		return fmt.Errorf("setting environment variables from extended image in current context: %w", err)
 	}
-
 	return e.DockerfileApplier.Cleanup()
 }
 
@@ -186,7 +193,6 @@ func (e *Extender) extendRun(logger log.Logger) error {
 	if err = e.saveSelective(extendedImage, origTopLayer); err != nil {
 		return fmt.Errorf("copying selective image to output directory: %w", err)
 	}
-
 	return e.DockerfileApplier.Cleanup()
 }
 
@@ -261,7 +267,7 @@ func copyLayer(layer v1.Layer, toSparseImage string) error {
 		return err
 	}
 	defer f.Close()
-	rc, err := layer.Compressed() // FIXME: if exporting to a daemon, this should be uncompressed
+	rc, err := layer.Compressed()
 	if err != nil {
 		return err
 	}
@@ -280,7 +286,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	logger.Debugf("Extending base image for %s: %s", kind, e.ImageRef)
 	dockerfiles, err := e.dockerfilesFor(kind, logger)
 	if err != nil {
-		return nil, fmt.Errorf("getting %s dockerfiles: %w", kind, err)
+		return nil, fmt.Errorf("getting %s.Dockerfiles: %w", kind, err)
 	}
 
 	var (
@@ -308,7 +314,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			buildOptions,
 			logger,
 		); err != nil {
-			return nil, fmt.Errorf("applying dockerfile to image: %w", err)
+			return nil, fmt.Errorf("applying Dockerfile to image: %w", err)
 		}
 
 		// get config & update rebasable

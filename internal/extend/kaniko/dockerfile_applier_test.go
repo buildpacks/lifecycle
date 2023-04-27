@@ -17,10 +17,10 @@ func TestDockerApplier(t *testing.T) {
 
 func testDockerApplier(t *testing.T, when spec.G, it spec.S) {
 	when("#createOptions", func() {
-		when(":ignorepaths", func() {
-			it("adds them to the kaniko options", func() {
+		when("ignore paths", func() {
+			it("adds them to kaniko options", func() {
 				opts := createOptions(
-					"someimage",
+					"some-image-ref",
 					extend.Dockerfile{
 						Path: "/something",
 						Args: []extend.Arg{{
@@ -39,10 +39,10 @@ func testDockerApplier(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when(":cacheTTL", func() {
-			it("passes it to the kaniko options", func() {
+		when("cache TTL", func() {
+			it("adds it to kaniko options", func() {
 				opts := createOptions(
-					"someimage",
+					"some-image-ref",
 					extend.Dockerfile{
 						Path: "/something",
 						Args: []extend.Arg{{
@@ -56,6 +56,27 @@ func testDockerApplier(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				h.AssertEq(t, opts.CacheOptions.CacheTTL, 7*(24*time.Hour))
+			})
+		})
+
+		when("cache dir", func() {
+			// If we provide cache directory as an option, kaniko looks there for the base image as a tarball;
+			// however the base image is in OCI layout format, so we fail to initialize the base image,
+			// causing a confusing log message to be emitted by kaniko.
+			it("does not add it to kaniko options", func() {
+				opts := createOptions(
+					"some-image-ref",
+					extend.Dockerfile{
+						Path: "/something",
+						Args: []extend.Arg{{
+							Name:  "arg1",
+							Value: "val1",
+						}},
+					},
+					extend.Options{},
+				)
+
+				h.AssertEq(t, opts.CacheOptions.CacheDir, "")
 			})
 		})
 	})

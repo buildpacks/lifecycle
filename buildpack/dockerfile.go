@@ -32,13 +32,22 @@ const (
 	warnCommandNotRecommended           = "%s command %s on line %d is not recommended"
 )
 
-var permittedCommands = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
+var recommendedCommands = []string{"FROM", "ADD", "ARG", "COPY", "ENV", "LABEL", "RUN", "SHELL", "USER", "WORKDIR"}
 
 type DockerfileInfo struct {
 	ExtensionID string
 	Kind        string
 	Path        string
-	NewBase     string
+	// WithBase if populated indicates that the Dockerfile switches the image base to the provided value.
+	// If WithBase is empty, Extend should be true, otherwise there is nothing for the Dockerfile to do.
+	// However if WithBase is populated, Extend may be true or false.
+	WithBase string
+	// Extend if true indicates that the Dockerfile contains image modifications
+	// and if false indicates that the Dockerfile only switches the image base.
+	// If Extend is false, WithBase should be non-empty, otherwise there is nothing for the Dockerfile to do.
+	// However if Extend is true, WithBase may be empty or non-empty.
+	Extend bool
+	Ignore bool
 }
 
 type ExtendConfig struct {
@@ -87,8 +96,8 @@ func ValidateBuildDockerfile(dockerfile string, logger log.Logger) error {
 	for _, stage := range stages {
 		for _, command := range stage.Commands {
 			found := false
-			for _, permittedCommand := range permittedCommands {
-				if permittedCommand == strings.ToUpper(command.Name()) {
+			for _, rc := range recommendedCommands {
+				if rc == strings.ToUpper(command.Name()) {
 					found = true
 					break
 				}
@@ -118,30 +127,36 @@ func ValidateBuildDockerfile(dockerfile string, logger log.Logger) error {
 	return nil
 }
 
-func ValidateRunDockerfile(dockerfile string, logger log.Logger) (string, error) {
-	stages, _, err := parseDockerfile(dockerfile)
+func ValidateRunDockerfile(dInfo *DockerfileInfo, logger log.Logger) error {
+	stages, _, err := parseDockerfile(dInfo.Path)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// validate only 1 FROM
 	if len(stages) > 1 {
-		return "", fmt.Errorf(errMultiStageNotPermitted, runDockerfileName)
+		return fmt.Errorf(errMultiStageNotPermitted, runDockerfileName)
 	}
 	if len(stages) == 0 {
-		return "", fmt.Errorf(errMissingRequiredStage, runDockerfileName)
+		return fmt.Errorf(errMissingRequiredStage, runDockerfileName)
 	}
 
-	var newBase string
+	var (
+		newBase string
+		extend  bool
+	)
 	// validate only permitted Commands
 	for _, stage := range stages {
 		if stage.BaseName != baseImageArgRef {
 			newBase = stage.BaseName
 		}
-		for _, command := range stage.Commands {
+		for idx, command := range stage.Commands {
+			if idx > 0 {
+				extend = true
+			}
 			found := false
-			for _, permittedCommand := range permittedCommands {
-				if permittedCommand == strings.ToUpper(command.Name()) {
+			for _, rc := range recommendedCommands {
+				if rc == strings.ToUpper(command.Name()) {
 					found = true
 					break
 				}
@@ -152,5 +167,7 @@ func ValidateRunDockerfile(dockerfile string, logger log.Logger) (string, error)
 		}
 	}
 
-	return newBase, nil
+	dInfo.WithBase = newBase
+	dInfo.Extend = extend
+	return nil
 }
