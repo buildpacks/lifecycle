@@ -11,7 +11,7 @@ import (
 
 	buildpack "github.com/buildpacks/lifecycle/buildpack"
 	log "github.com/buildpacks/lifecycle/log"
-	platform "github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 // MockConfigHandler is a mock of ConfigHandler interface.
@@ -38,10 +38,10 @@ func (m *MockConfigHandler) EXPECT() *MockConfigHandlerMockRecorder {
 }
 
 // ReadAnalyzed mocks base method.
-func (m *MockConfigHandler) ReadAnalyzed(arg0 string, arg1 log.Logger) (platform.AnalyzedMetadata, error) {
+func (m *MockConfigHandler) ReadAnalyzed(arg0 string, arg1 log.Logger) (files.Analyzed, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadAnalyzed", arg0, arg1)
-	ret0, _ := ret[0].(platform.AnalyzedMetadata)
+	ret0, _ := ret[0].(files.Analyzed)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -85,10 +85,10 @@ func (mr *MockConfigHandlerMockRecorder) ReadOrder(arg0 interface{}) *gomock.Cal
 }
 
 // ReadRun mocks base method.
-func (m *MockConfigHandler) ReadRun(arg0 string, arg1 log.Logger) (platform.RunMetadata, error) {
+func (m *MockConfigHandler) ReadRun(arg0 string, arg1 log.Logger) (files.Run, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadRun", arg0, arg1)
-	ret0, _ := ret[0].(platform.RunMetadata)
+	ret0, _ := ret[0].(files.Run)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

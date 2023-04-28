@@ -27,7 +27,7 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/path"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -167,7 +167,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertEq(t, foundFromExt1, true)
 						h.AssertEq(t, foundFromExt2, true)
 						t.Log("sets the layers metadata label according to the new spec")
-						var lmd platform.LayersMetadata
+						var lmd files.LayersMetadata
 						lmdJSON := inspect.Config.Labels["io.buildpacks.lifecycle.metadata"]
 						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
 						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml
@@ -404,7 +404,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertEq(t, foundFromExt1, true)
 						h.AssertEq(t, foundFromExt2, true)
 						t.Log("sets the layers metadata label according to the new spec")
-						var lmd platform.LayersMetadata
+						var lmd files.LayersMetadata
 						lmdJSON := configFile.Config.Labels["io.buildpacks.lifecycle.metadata"]
 						h.AssertNil(t, json.Unmarshal([]byte(lmdJSON), &lmd))
 						h.AssertEq(t, lmd.RunImage.Image, exportTest.targetRegistry.fixtures.ReadOnlyRunImage) // from analyzed.toml

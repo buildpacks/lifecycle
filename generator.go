@@ -11,7 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 type Generator struct {
@@ -19,14 +19,14 @@ type Generator struct {
 	BuildConfigDir string
 	GeneratedDir   string // e.g., <layers>/generated
 	PlatformDir    string
-	AnalyzedMD     platform.AnalyzedMetadata
+	AnalyzedMD     files.Analyzed
 	DirStore       DirStore
 	Executor       buildpack.GenerateExecutor
 	Extensions     []buildpack.GroupElement
 	Logger         log.Logger
 	Out, Err       io.Writer
-	Plan           platform.BuildPlan
-	RunMetadata    platform.RunMetadata
+	Plan           files.Plan
+	RunMetadata    files.Run
 }
 
 type GeneratorFactory struct {
@@ -53,7 +53,7 @@ func (f *GeneratorFactory) NewGenerator(
 	buildConfigDir string,
 	extensions []buildpack.GroupElement,
 	generatedDir string,
-	plan platform.BuildPlan,
+	plan files.Plan,
 	platformDir string,
 	runPath string,
 	stdout, stderr io.Writer,
@@ -106,8 +106,8 @@ func (f *GeneratorFactory) setRunMD(generator *Generator, runPath string, logger
 }
 
 type GenerateResult struct {
-	AnalyzedMD platform.AnalyzedMetadata
-	Plan       platform.BuildPlan
+	AnalyzedMD files.Analyzed
+	Plan       files.Plan
 	UsePlan    bool
 }
 
@@ -164,7 +164,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	newAnalyzedMD := g.AnalyzedMD
 	if shouldReplacePrevious(runRef, g.AnalyzedMD) {
 		g.Logger.Debugf("Updating analyzed metadata with new run image '%s'", runRef)
-		newAnalyzedMD.RunImage = &platform.RunImage{ // target data is cleared
+		newAnalyzedMD.RunImage = &files.RunImage{ // target data is cleared
 			Reference: runRef,
 			Extend:    extend,
 			Image:     runRef,
@@ -181,7 +181,7 @@ func (g *Generator) Generate() (GenerateResult, error) {
 	}, nil
 }
 
-func satisfies(images []platform.RunImageForExport, imageName string) bool {
+func satisfies(images []files.RunImageForExport, imageName string) bool {
 	if len(images) == 0 {
 		// if no run image metadata was provided, consider it a match
 		return true
@@ -258,7 +258,7 @@ func (g *Generator) runImageFrom(dockerfiles []buildpack.DockerfileInfo) (newBas
 	return newBase, extend
 }
 
-func shouldReplacePrevious(base string, analyzedMD platform.AnalyzedMetadata) bool {
+func shouldReplacePrevious(base string, analyzedMD files.Analyzed) bool {
 	if base == "" {
 		return false
 	}

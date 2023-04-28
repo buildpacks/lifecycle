@@ -20,7 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
 	llog "github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -64,10 +64,10 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the generator", func() {
 			fakeAPIVerifier.EXPECT().VerifyBuildpackAPI(buildpack.KindExtension, "A@v1", "0.9", logger)
-			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(platform.AnalyzedMetadata{RunImage: &platform.RunImage{Reference: "some-run-image-ref"}}, nil)
-			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(platform.RunMetadata{Images: []platform.RunImageForExport{{Image: "some-run-image"}}}, nil)
+			fakeConfigHandler.EXPECT().ReadAnalyzed("some-analyzed-path", logger).Return(files.Analyzed{RunImage: &files.RunImage{Reference: "some-run-image-ref"}}, nil)
+			fakeConfigHandler.EXPECT().ReadRun("some-run-path", logger).Return(files.Run{Images: []files.RunImageForExport{{Image: "some-run-image"}}}, nil)
 
-			providedPlan := platform.BuildPlan{Entries: []platform.BuildPlanEntry{
+			providedPlan := files.Plan{Entries: []files.BuildPlanEntry{
 				{
 					Providers: []buildpack.GroupElement{
 						{ID: "A", Version: "v1", API: "0.9", Extension: true},
@@ -93,7 +93,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			)
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, generator.AnalyzedMD, platform.AnalyzedMetadata{RunImage: &platform.RunImage{Reference: "some-run-image-ref"}})
+			h.AssertEq(t, generator.AnalyzedMD, files.Analyzed{RunImage: &files.RunImage{Reference: "some-run-image-ref"}})
 			h.AssertEq(t, generator.AppDir, "some-app-dir")
 			h.AssertNotNil(t, generator.DirStore)
 			h.AssertEq(t, generator.Extensions, []buildpack.GroupElement{
@@ -103,7 +103,7 @@ func testGeneratorFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, generator.Logger, logger)
 			h.AssertEq(t, generator.Plan, providedPlan)
 			h.AssertEq(t, generator.PlatformDir, "some-platform-dir")
-			h.AssertEq(t, generator.RunMetadata, platform.RunMetadata{Images: []platform.RunImageForExport{{Image: "some-run-image"}}})
+			h.AssertEq(t, generator.RunMetadata, files.Run{Images: []files.RunImageForExport{{Image: "some-run-image"}}})
 			h.AssertEq(t, generator.Out, stdout)
 			h.AssertEq(t, generator.Err, stderr)
 		})
@@ -143,7 +143,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		stdout, stderr = &bytes.Buffer{}, &bytes.Buffer{}
 
 		generator = &lifecycle.Generator{
-			AnalyzedMD: platform.AnalyzedMetadata{},
+			AnalyzedMD: files.Analyzed{},
 			AppDir:     appDir,
 			DirStore:   dirStore,
 			Executor:   executor,
@@ -153,7 +153,7 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 			},
 			Logger:       &log.Logger{Handler: logHandler},
 			GeneratedDir: generatedDir,
-			Plan:         platform.BuildPlan{},
+			Plan:         files.Plan{},
 			PlatformDir:  platformDir,
 			Err:          stderr,
 			Out:          stdout,
@@ -171,8 +171,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 		extC := buildpack.ExtDescriptor{Extension: buildpack.ExtInfo{BaseInfo: buildpack.BaseInfo{ID: "C", Version: "v1"}}}
 
 		it("provides a subset of the build plan to each extension", func() {
-			generator.Plan = platform.BuildPlan{
-				Entries: []platform.BuildPlanEntry{
+			generator.Plan = files.Plan{
+				Entries: []files.BuildPlanEntry{
 					{
 						Providers: []buildpack.GroupElement{
 							{ID: "A", Version: "v1"}, // not provided to any extension because Extension is false
@@ -350,8 +350,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				h.Mkfile(t, "some-dockerfile-content-A", runDockerfilePathA)
 				h.Mkfile(t, "some-dockerfile-content-B", runDockerfilePathB)
 
-				generator.AnalyzedMD = platform.AnalyzedMetadata{
-					RunImage: &platform.RunImage{
+				generator.AnalyzedMD = files.Analyzed{
+					RunImage: &files.RunImage{
 						Reference: "some-existing-run-image",
 					},
 				}
@@ -463,8 +463,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				},
 				{
 					before: func() {
-						generator.RunMetadata = platform.RunMetadata{
-							Images: []platform.RunImageForExport{
+						generator.RunMetadata = files.Run{
+							Images: []files.RunImageForExport{
 								{Image: "some-run-image"},
 							},
 						}
@@ -486,8 +486,8 @@ func testGenerator(t *testing.T, when spec.G, it spec.S) {
 				},
 				{
 					before: func() {
-						generator.RunMetadata = platform.RunMetadata{
-							Images: []platform.RunImageForExport{
+						generator.RunMetadata = files.Run{
+							Images: []files.RunImageForExport{
 								{Image: "some-run-image"},
 							},
 						}

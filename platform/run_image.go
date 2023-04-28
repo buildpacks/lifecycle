@@ -2,6 +2,8 @@ package platform
 
 import (
 	"github.com/buildpacks/imgutil"
+
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 const (
@@ -10,8 +12,8 @@ const (
 	OSDistributionVersionLabel = "io.buildpacks.distribution.version"
 )
 
-func GetTargetFromImage(image imgutil.Image) (*TargetMetadata, error) {
-	tm := TargetMetadata{}
+func GetTargetFromImage(image imgutil.Image) (*files.TargetMetadata, error) {
+	tm := files.TargetMetadata{}
 	if !image.Found() {
 		return &tm, nil
 	}
@@ -35,7 +37,7 @@ func GetTargetFromImage(image imgutil.Image) (*TargetMetadata, error) {
 	distName, distNameExists := labels[OSDistributionNameLabel]
 	distVersion, distVersionExists := labels[OSDistributionVersionLabel]
 	if distNameExists || distVersionExists {
-		tm.Distribution = &OSDistribution{Name: distName, Version: distVersion}
+		tm.Distribution = &files.OSDistribution{Name: distName, Version: distVersion}
 	}
 	if id, exists := labels[TargetLabel]; exists {
 		tm.ID = id

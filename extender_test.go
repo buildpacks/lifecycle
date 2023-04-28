@@ -24,7 +24,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/extend"
 	llog "github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -45,9 +45,9 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			fakeConfigHandler *testmock.MockConfigHandler
 			fakeDirStore      *testmock.MockDirStore
 			logger            *log.Logger
-			analyzedMD        = platform.AnalyzedMetadata{
-				BuildImage: &platform.ImageIdentifier{Reference: "some-build-image-ref"},
-				RunImage:   &platform.RunImage{Reference: "some-run-image-ref"},
+			analyzedMD        = files.Analyzed{
+				BuildImage: &files.ImageIdentifier{Reference: "some-build-image-ref"},
+				RunImage:   &files.RunImage{Reference: "some-run-image-ref"},
 			}
 			extender *lifecycle.Extender
 			kind     = "build"
@@ -120,7 +120,7 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("build image is nil", func() {
 			it("does not panic", func() {
-				analyzedMD = platform.AnalyzedMetadata{}
+				analyzedMD = files.Analyzed{}
 				createExtender()
 			})
 		})

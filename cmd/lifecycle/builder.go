@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -70,7 +71,7 @@ func (b *buildCmd) Exec() error {
 	return b.build(group, plan)
 }
 
-func (b *buildCmd) build(group buildpack.Group, plan platform.BuildPlan) error {
+func (b *buildCmd) build(group buildpack.Group, plan files.Plan) error {
 	builder := &lifecycle.Builder{
 		AppDir:         b.AppDir,
 		BuildConfigDir: b.BuildConfigDir,
@@ -104,15 +105,15 @@ func (b *buildCmd) unwrapBuildFail(err error) error {
 	return cmd.FailErrCode(err, b.CodeFor(platform.BuildError), "build")
 }
 
-func (b *buildCmd) readData() (buildpack.Group, platform.BuildPlan, error) {
+func (b *buildCmd) readData() (buildpack.Group, files.Plan, error) {
 	group, err := lifecycle.ReadGroup(b.GroupPath)
 	if err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "read buildpack group")
+		return buildpack.Group{}, files.Plan{}, cmd.FailErr(err, "read buildpack group")
 	}
 
-	var plan platform.BuildPlan
+	var plan files.Plan
 	if _, err := toml.DecodeFile(b.PlanPath, &plan); err != nil {
-		return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErr(err, "parse detect plan")
+		return buildpack.Group{}, files.Plan{}, cmd.FailErr(err, "parse detect plan")
 	}
 	return group, plan, nil
 }

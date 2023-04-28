@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 const (
@@ -28,7 +28,7 @@ var (
 
 //go:generate mockgen -package testmock -destination testmock/detect_resolver.go github.com/buildpacks/lifecycle DetectResolver
 type DetectResolver interface {
-	Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error)
+	Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []files.BuildPlanEntry, error)
 }
 
 type DetectorFactory struct {
@@ -63,7 +63,7 @@ type Detector struct {
 	PlatformDir    string
 	Resolver       DetectResolver
 	Runs           *sync.Map
-	AnalyzeMD      platform.AnalyzedMetadata
+	AnalyzeMD      files.Analyzed
 	PlatformAPI    *api.Version
 
 	// If detect fails, we want to print debug statements as info level.
@@ -72,7 +72,7 @@ type Detector struct {
 	memHandler *memory.Handler
 }
 
-func (f *DetectorFactory) NewDetector(analyzedMD platform.AnalyzedMetadata, appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
+func (f *DetectorFactory) NewDetector(analyzedMD files.Analyzed, appDir, buildConfigDir, orderPath, platformDir string, logger log.LoggerHandlerWithLevel) (*Detector, error) {
 	memHandler := memory.New()
 	detector := &Detector{
 		AnalyzeMD:      analyzedMD,
@@ -123,19 +123,19 @@ func (f *DetectorFactory) verifyAPIs(orderBp buildpack.Order, orderExt buildpack
 	return nil
 }
 
-func (d *Detector) Detect() (buildpack.Group, platform.BuildPlan, error) {
+func (d *Detector) Detect() (buildpack.Group, files.Plan, error) {
 	group, plan, detectErr := d.DetectOrder(d.Order)
 	for _, e := range d.memHandler.Entries {
 		if detectErr != nil || e.Level >= d.Logger.LogLevel() {
 			if err := d.Logger.HandleLog(e); err != nil {
-				return buildpack.Group{}, platform.BuildPlan{}, fmt.Errorf("failed to handle log entry: %w", err)
+				return buildpack.Group{}, files.Plan{}, fmt.Errorf("failed to handle log entry: %w", err)
 			}
 		}
 	}
 	return group, plan, detectErr
 }
 
-func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform.BuildPlan, error) {
+func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, files.Plan, error) {
 	detected, planEntries, err := d.detectOrder(order, nil, nil, false, &sync.WaitGroup{})
 	if err == ErrBuildpack {
 		err = buildpack.NewError(err, buildpack.ErrTypeBuildpack)
@@ -148,7 +148,7 @@ func (d *Detector) DetectOrder(order buildpack.Order) (buildpack.Group, platform
 		}
 	}
 	return buildpack.Group{Group: filter(detected, buildpack.KindBuildpack), GroupExtensions: filter(detected, buildpack.KindExtension)},
-		platform.BuildPlan{Entries: planEntries},
+		files.Plan{Entries: planEntries},
 		err
 }
 
@@ -162,7 +162,7 @@ func filter(group []buildpack.GroupElement, kind string) []buildpack.GroupElemen
 	return out
 }
 
-func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupElement, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.GroupElement, optional bool, wg *sync.WaitGroup) ([]buildpack.GroupElement, []files.BuildPlanEntry, error) {
 	ngroup := buildpack.Group{Group: next}
 	buildpackErr := false
 	for _, group := range order {
@@ -188,7 +188,7 @@ func (d *Detector) detectOrder(order buildpack.Order, done, next []buildpack.Gro
 }
 
 // isWildcard returns true IFF the Arch and OS are unspecified, meaning that the target arch/os are "any"
-func isWildcard(t platform.TargetMetadata) bool {
+func isWildcard(t files.TargetMetadata) bool {
 	return t.Arch == "" && t.OS == ""
 }
 
@@ -201,7 +201,7 @@ func hasWildcard(ts []buildpack.TargetMetadata) bool {
 	return false
 }
 
-func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElement, wg *sync.WaitGroup) ([]buildpack.GroupElement, []files.BuildPlanEntry, error) {
 	// used below to mark each item as "done" by appending it to the done list
 	markDone := func(groupEl buildpack.GroupElement, descriptor buildpack.Descriptor) {
 		done = append(done, groupEl.WithAPI(descriptor.API()).WithHomepage(descriptor.Homepage()))
@@ -316,7 +316,7 @@ func NewDefaultDetectResolver(logger log.Logger) *DefaultDetectResolver {
 
 // Resolve aggregates the detect output for a group of buildpacks and tries to resolve a build plan for the group.
 // If any required buildpack in the group failed detection or a build plan cannot be resolved, it returns an error.
-func (r *DefaultDetectResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+func (r *DefaultDetectResolver) Resolve(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []files.BuildPlanEntry, error) {
 	var groupRuns []buildpack.DetectOutputs
 	for _, el := range done {
 		key := keyFor(el) // FIXME: ensure the Detector and Resolver always use the same key
@@ -419,7 +419,7 @@ func (r *DefaultDetectResolver) Resolve(done []buildpack.GroupElement, detectRun
 	for _, r := range trial {
 		found = append(found, r.GroupElement.NoOpt())
 	}
-	var plan []platform.BuildPlanEntry
+	var plan []files.BuildPlanEntry
 	for _, dep := range deps {
 		plan = append(plan, dep.BuildPlanEntry.NoOpt())
 	}
@@ -526,7 +526,7 @@ func (ts detectTrial) remove(el buildpack.GroupElement) detectTrial {
 }
 
 type depEntry struct {
-	platform.BuildPlanEntry
+	files.BuildPlanEntry
 	earlyRequires []buildpack.GroupElement
 	extraProvides []buildpack.GroupElement
 }

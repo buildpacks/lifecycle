@@ -17,7 +17,7 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 )
 
 type Platform interface {
@@ -42,11 +42,11 @@ type Builder struct {
 	Group          buildpack.Group
 	Logger         log.Logger
 	Out, Err       io.Writer
-	Plan           platform.BuildPlan
+	Plan           files.Plan
 	PlatformAPI    *api.Version
 }
 
-func (b *Builder) Build() (*platform.BuildMetadata, error) {
+func (b *Builder) Build() (*files.BuildMetadata, error) {
 	b.Logger.Debug("Starting build")
 
 	// ensure layers SBOM directory is removed
@@ -136,7 +136,7 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	}
 
 	b.Logger.Debug("Finished build")
-	return &platform.BuildMetadata{
+	return &files.BuildMetadata{
 		BOM:                         launchBOM,
 		Buildpacks:                  b.Group.Group,
 		Extensions:                  b.Group.GroupExtensions,

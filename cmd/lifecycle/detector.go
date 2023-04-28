@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -65,7 +66,7 @@ func (d *detectCmd) Exec() error {
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
-	amd, err := platform.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
+	amd, err := files.ReadAnalyzed(d.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
 	}
@@ -145,7 +146,7 @@ func (d *detectCmd) unwrapGenerateFail(err error) error {
 	return cmd.FailErrCode(err, d.CodeFor(platform.GenerateError), "build")
 }
 
-func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Group, platform.BuildPlan, error) {
+func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Group, files.Plan, error) {
 	group, plan, err := detector.Detect()
 	if err != nil {
 		switch err := err.(type) {
@@ -154,21 +155,21 @@ func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Gro
 			case buildpack.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetect), "detect")
+				return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetect), "detect")
 			case buildpack.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetectWithErrors), "detect")
+				return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetectWithErrors), "detect")
 			default:
-				return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
+				return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
 			}
 		default:
-			return buildpack.Group{}, platform.BuildPlan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
+			return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
 		}
 	}
 	return group, plan, nil
 }
 
-func (d *detectCmd) writeDetectData(group buildpack.Group, plan platform.BuildPlan) error {
+func (d *detectCmd) writeDetectData(group buildpack.Group, plan files.Plan) error {
 	if err := encoding.WriteTOML(d.GroupPath, group); err != nil {
 		return cmd.FailErr(err, "write buildpack group")
 	}
@@ -179,8 +180,8 @@ func (d *detectCmd) writeDetectData(group buildpack.Group, plan platform.BuildPl
 }
 
 // writeGenerateData re-outputs the analyzedMD that we read previously, but now we've added the RunImage, if a custom runImage was configured
-func (d *detectCmd) writeGenerateData(analyzedMD platform.AnalyzedMetadata) error {
-	if err := analyzedMD.WriteTOML(d.AnalyzedPath); err != nil {
+func (d *detectCmd) writeGenerateData(analyzedMD files.Analyzed) error {
+	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
 		return cmd.FailErr(err, "write analyzed metadata")
 	}
 	return nil

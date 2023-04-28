@@ -16,7 +16,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -509,12 +509,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func getBuilderMetadata(t *testing.T, path string) (string, *platform.BuildMetadata) {
+func getBuilderMetadata(t *testing.T, path string) (string, *files.BuildMetadata) {
 	t.Helper()
 	contents, _ := os.ReadFile(path)
 	h.AssertEq(t, len(contents) > 0, true)
 
-	var buildMD platform.BuildMetadata
+	var buildMD files.BuildMetadata
 	_, err := toml.Decode(string(contents), &buildMD)
 	h.AssertNil(t, err)
 
