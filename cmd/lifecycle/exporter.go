@@ -28,7 +28,6 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/priv"
@@ -200,7 +199,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		return err
 	}
 
-	runImageForExport, err := e.getRunImageForExport()
+	runImageForExport, err := platform.GetRunImageForExport(*e.LifecycleInputs)
 	if err != nil {
 		return err
 	}
@@ -507,46 +506,6 @@ func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, 
 		return nil, errors.New("missing extended run image config")
 	}
 	return &extendedConfig.Config, nil
-}
-
-func (e *exportCmd) getRunImageForExport() (platform.RunImageForExport, error) {
-	if e.PlatformAPI.LessThan("0.12") {
-		stackMD, err := platform.ReadStack(e.StackPath, cmd.DefaultLogger)
-		if err != nil {
-			return platform.RunImageForExport{}, err
-		}
-		return stackMD.RunImage, nil
-	}
-	runMD, err := platform.ReadRun(e.RunPath, cmd.DefaultLogger)
-	if err != nil {
-		return platform.RunImageForExport{}, err
-	}
-	if len(runMD.Images) == 0 {
-		return platform.RunImageForExport{Image: e.RunImageRef}, nil
-	}
-	runRef, err := name.ParseReference(e.RunImageRef)
-	if err != nil {
-		return platform.RunImageForExport{}, err
-	}
-	for _, runImage := range runMD.Images {
-		if runImage.Image == runRef.Context().Name() {
-			return runImage, nil
-		}
-		for _, mirror := range runImage.Mirrors {
-			if mirror == runRef.Context().Name() {
-				return runImage, nil
-			}
-		}
-	}
-	buildMD := &platform.BuildMetadata{}
-	if err = platform.DecodeBuildMetadataTOML(launch.GetMetadataFilePath(e.LayersDir), e.PlatformAPI, buildMD); err != nil {
-		return platform.RunImageForExport{}, err
-	}
-	if len(buildMD.Extensions) > 0 {
-		// Extensions could have switched the run image, so we can't assume the first run image in run.toml was intended
-		return platform.RunImageForExport{Image: e.RunImageRef}, nil
-	}
-	return runMD.Images[0], nil
 }
 
 func (e *exportCmd) hasExtendedLayers() bool {

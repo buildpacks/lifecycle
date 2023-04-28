@@ -168,7 +168,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				amd := platform.AnalyzedMetadata{
 					PreviousImage: &platform.ImageIdentifier{Reference: "previous-img"},
 					Metadata: platform.LayersMetadata{
-						Stack: platform.StackMetadata{
+						Stack: &platform.StackMetadata{
 							RunImage: platform.RunImageForExport{Image: "imagine that"},
 						},
 					},
@@ -186,7 +186,7 @@ func testFiles(t *testing.T, when spec.G, it spec.S) {
 				amd := platform.AnalyzedMetadata{
 					PreviousImage: &platform.ImageIdentifier{Reference: "previous-img"},
 					Metadata: platform.LayersMetadata{
-						Stack: platform.StackMetadata{
+						Stack: &platform.StackMetadata{
 							RunImage: platform.RunImageForExport{Image: "imagine that"},
 						},
 					},

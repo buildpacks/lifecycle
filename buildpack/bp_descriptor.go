@@ -32,9 +32,9 @@ type TargetMetadata struct {
 }
 
 func (t *TargetMetadata) String() string {
-	s := fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s:", t.OS, t.Arch, t.ArchVariant)
+	s := fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s", t.OS, t.Arch, t.ArchVariant)
 	if len(t.Distributions) > 0 {
-		s += fmt.Sprintf(", Distributions: %v", t.Distributions)
+		s += fmt.Sprintf(", Distributions: %s", t.Distributions)
 	}
 	return s
 }
@@ -44,7 +44,7 @@ type OSDistribution struct {
 	Version string `json:"version" toml:"version"`
 }
 
-func (d *OSDistribution) String() string {
+func (d OSDistribution) String() string {
 	return fmt.Sprintf("Distribution: (Name: %s, Version: %s)", d.Name, d.Version)
 }
 

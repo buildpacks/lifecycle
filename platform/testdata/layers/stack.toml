@@ -1,3 +1,3 @@
 [run-image]
- image = "some-run-image"
- mirrors = ["some-run-image-mirror", "some-other-run-image-mirror"]
+ image = "some-run-image-from-stack-toml"
+ mirrors = ["some-run-image-mirror-from-stack-toml", "some-other-run-image-mirror-from-stack-toml"]

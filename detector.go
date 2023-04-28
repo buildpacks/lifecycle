@@ -236,7 +236,6 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				// FIXME: cyclical references lead to infinite recursion
 				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
 			}
-			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
 
 			if d.PlatformAPI.AtLeast("0.12") {
 				targetMatch := false
@@ -262,6 +261,8 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 					continue
 				}
 			}
+
+			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
 		} else {
 			descriptor, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
 			if err != nil {

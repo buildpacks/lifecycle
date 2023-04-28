@@ -186,7 +186,7 @@ type LayersMetadata struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack,omitempty" toml:"stack,omitempty"` // TODO: change to pointer
+	Stack        *StackMetadata             `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -200,7 +200,7 @@ type LayersMetadataCompat struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack" toml:"stack"`
+	Stack        *StackMetadata             `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 func (m *LayersMetadata) MetadataForBuildpack(id string) buildpack.LayersMetadata {
@@ -223,6 +223,15 @@ type RunImageForRebase struct {
 	// added in Platform 0.12
 	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
 	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
+}
+
+func (r *RunImageForRebase) ToStackMetadata() StackMetadata {
+	return StackMetadata{
+		RunImage: RunImageForExport{
+			Image:   r.Image,
+			Mirrors: r.Mirrors,
+		},
+	}
 }
 
 // metadata.toml
