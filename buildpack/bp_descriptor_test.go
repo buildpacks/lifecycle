@@ -16,6 +16,38 @@ func TestBpDescriptor(t *testing.T) {
 }
 
 func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
+	when("TargetMetadata", func() {
+		when("#String()", func() {
+			when("there is a distribution", func() {
+				it("prints the target", func() {
+					tm := &buildpack.TargetMetadata{
+						OS:          "some-os",
+						Arch:        "some-arch",
+						ArchVariant: "some-arch-variant",
+						Distributions: []buildpack.OSDistribution{
+							{
+								Name:    "some-os-dist",
+								Version: "some-os-dist-version",
+							},
+						},
+					}
+					h.AssertEq(t, tm.String(), "OS: some-os, Arch: some-arch, ArchVariant: some-arch-variant, Distributions: [Distribution: (Name: some-os-dist, Version: some-os-dist-version)]")
+				})
+			})
+
+			when("there is no distribution", func() {
+				it("prints the target", func() {
+					tm := &buildpack.TargetMetadata{
+						OS:          "some-os",
+						Arch:        "some-arch",
+						ArchVariant: "some-arch-variant",
+					}
+					h.AssertEq(t, tm.String(), "OS: some-os, Arch: some-arch, ArchVariant: some-arch-variant")
+				})
+			})
+		})
+	})
+
 	when("#ReadBpDescriptor", func() {
 		it("returns a buildpack descriptor", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
@@ -88,6 +120,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Name, "ubuntu")
 			h.AssertEq(t, descriptor.Targets[0].Distributions[0].Version, "18.04")
 		})
+
 		it("does not translate non-special stack values", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "C", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
@@ -103,6 +136,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Stacks[0].ID, "some.non-magic.value")
 			h.AssertEq(t, len(descriptor.Targets), 0)
 		})
+
 		it("does autodetect linux buildpacks from the bin dir contents", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "C", "v2", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)
@@ -122,6 +156,7 @@ func testBpDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, descriptor.Targets[0].OS, "linux")
 			h.AssertEq(t, len(descriptor.Targets[0].Distributions), 0)
 		})
+
 		it("detects windows/* if batch files are present and ignores linux", func() {
 			path := filepath.Join("testdata", "buildpack", "by-id", "A", "v1", "buildpack.toml")
 			descriptor, err := buildpack.ReadBpDescriptor(path)

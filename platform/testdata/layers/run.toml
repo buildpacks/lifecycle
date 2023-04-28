@@ -1,0 +1,7 @@
+[[images]]
+ image = "some-run-image-from-run-toml"
+ mirrors = ["some-run-image-mirror-from-run-toml", "some-other-run-image-mirror-from-run-toml"]
+
+[[images]]
+ image = "some-run-image-from-run-toml-1"
+ mirrors = ["some-run-image-mirror-from-run-toml-1", "some-other-run-image-mirror-from-run-toml-1"]

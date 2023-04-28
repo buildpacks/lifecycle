@@ -117,7 +117,7 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 		meta.RunImage.Image = opts.RunImageForExport.Image
 		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
 	} else {
-		meta.Stack = opts.Stack
+		meta.Stack = &opts.Stack
 	}
 
 	buildMD := &platform.BuildMetadata{}

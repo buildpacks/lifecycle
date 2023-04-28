@@ -94,7 +94,7 @@ func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G
 						inputs.StackPath = filepath.Join("testdata", "layers", "stack.toml")
 						err := platform.ResolveInputs(platform.Analyze, inputs, logger)
 						h.AssertNil(t, err)
-						h.AssertEq(t, inputs.RunImageRef, "some-run-image")
+						h.AssertEq(t, inputs.RunImageRef, "some-run-image-from-stack-toml")
 					})
 
 					when("stack.toml", func() {
