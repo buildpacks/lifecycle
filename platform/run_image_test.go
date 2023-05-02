@@ -4,12 +4,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/platform"
+	h "github.com/buildpacks/lifecycle/testhelpers"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
-	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
 func TestRunImage(t *testing.T) {
@@ -128,6 +129,32 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+		})
+	})
+
+	when("we want to get EnvVarsFor a platform.TargetMetadata", func() {
+		it("returns the right thing", func() {
+			tm := platform.TargetMetadata{Arch: "pentium", ArchVariant: "mmx", ID: "my-id", OS: "linux", Distribution: &platform.OSDistribution{Name: "nix", Version: "22.11"}}
+			observed := platform.EnvVarsFor(&tm)
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
+			h.AssertContains(t, observed, "CNB_TARGET_VARIANT="+tm.ArchVariant)
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME="+tm.Distribution.Name)
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION="+tm.Distribution.Version)
+			h.AssertContains(t, observed, "CNB_TARGET_ID="+tm.ID)
+			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
+			h.AssertEq(t, len(observed), 6)
+		})
+		it("does not return the wrong thing", func() {
+			tm := platform.TargetMetadata{Arch: "pentium", OS: "linux"}
+			observed := platform.EnvVarsFor(&tm)
+			h.AssertContains(t, observed, "CNB_TARGET_ARCH="+tm.Arch)
+			h.AssertContains(t, observed, "CNB_TARGET_OS="+tm.OS)
+			// note: per the spec only the ID field is optional, so I guess the others should always be set: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md#runtime-metadata
+			// the empty ones:
+			h.AssertContains(t, observed, "CNB_TARGET_VARIANT=")
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_NAME=")
+			h.AssertContains(t, observed, "CNB_TARGET_DISTRO_VERSION=")
+			h.AssertEq(t, len(observed), 5)
 		})
 	})
 }

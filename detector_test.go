@@ -199,6 +199,32 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 			_, _, _ = detector.Detect()
 		})
 
+		it("passes through the CNB_TARGET_* env vars", func() {
+			bpA1 := &buildpack.BpDescriptor{
+				WithAPI:   "0.8",
+				Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+			}
+			detector.AnalyzeMD = platform.AnalyzedMetadata{RunImage: &platform.RunImage{TargetMetadata: &platform.TargetMetadata{OS: "linux", Arch: "amd64"}}}
+			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+			executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any()).Do(
+				func(_ buildpack.Descriptor, inputs buildpack.DetectInputs, _ log.Logger) buildpack.DetectOutputs {
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
+					return buildpack.DetectOutputs{}
+				})
+
+			group := []buildpack.GroupElement{
+				{ID: bpA1.Buildpack.ID, Version: bpA1.Buildpack.Version, API: bpA1.WithAPI, Optional: true},
+			}
+			resolver.EXPECT().Resolve(group, detector.Runs)
+
+			detector.Order = buildpack.Order{{Group: group}}
+			_, _, _ = detector.Detect()
+		})
+
 		it("expands order-containing buildpack IDs", func() {
 			// This test doesn't use gomock.InOrder() because each call to Detect() happens in a go func.
 			// The order that other calls are written in is the order that they happen in.

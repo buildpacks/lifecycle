@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	// "github.com/buildpacks/lifecycle/platform"
+
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
@@ -27,6 +29,7 @@ type GenerateInputs struct {
 	Env            BuildEnv
 	Out, Err       io.Writer
 	Plan           Plan
+	// Target         platform.TargetMetadata
 }
 
 type GenerateOutputs struct {

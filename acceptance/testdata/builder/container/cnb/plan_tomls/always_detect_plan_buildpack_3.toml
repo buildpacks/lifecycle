@@ -1,0 +1,10 @@
+[[entries]]
+
+  [[entries.providers]]
+    id = "hello_world_3"
+    version = "0.0.3"
+    
+  [[entries.requires]]
+      name = "03_plan.toml_requires_subset_content_idk"
+      [entries.requires.metadata]
+        # arbitrary data describing the required dependency

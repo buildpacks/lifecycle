@@ -1,0 +1,6 @@
+[run-image]
+  [target]
+  id = "software"
+  os = "linux"
+  arch = "amd64"
+

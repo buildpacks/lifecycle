@@ -1,0 +1,9 @@
+[run-image.target]
+  id = "my id"
+  os = "linux"
+  arch = "amd64"
+  arch-variant = "some-variant"
+  [run-image.target.distribution]
+    name = "ubuntu"
+    version = "some-cute-version"
+
