@@ -1,4 +1,4 @@
-package platform
+package images
 
 const (
 	BuildMetadataLabel   = "io.buildpacks.build.metadata"

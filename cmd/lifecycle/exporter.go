@@ -31,6 +31,7 @@ import (
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/guard"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -96,7 +97,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return err
 	}
 	if e.UseLayout {
-		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+		if err := guard.GuardExperimental(guard.LayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -138,7 +139,7 @@ func (e *exportCmd) Exec() error {
 		return err
 	}
 	if e.hasExtendedLayers() {
-		if err := platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+		if err := guard.GuardExperimental(guard.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}

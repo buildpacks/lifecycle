@@ -1,16 +1,17 @@
-package platform
+package cache
 
 import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
-type CacheMetadata struct {
+type Metadata struct {
 	BOM        files.LayerMetadata        `json:"sbom"`
 	Buildpacks []buildpack.LayersMetadata `json:"buildpacks"`
 }
 
-func (cm *CacheMetadata) MetadataForBuildpack(id string) buildpack.LayersMetadata {
+// FIXME: TODO
+func (cm *Metadata) MetadataForBuildpack(id string) buildpack.LayersMetadata {
 	for _, bpMD := range cm.Buildpacks {
 		if bpMD.ID == id {
 			return bpMD

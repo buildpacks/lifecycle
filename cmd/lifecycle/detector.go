@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/guard"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -59,10 +60,10 @@ func (d *detectCmd) Privileges() error {
 }
 
 func (d *detectCmd) Exec() error {
-	dirStore := platform.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
+	dirStore := files.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
 	detectorFactory := lifecycle.NewDetectorFactory(
 		d.PlatformAPI,
-		&cmd.BuildpackAPIVerifier{},
+		&guard.BuildpackAPIVerifier{},
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
@@ -82,7 +83,7 @@ func (d *detectCmd) Exec() error {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
 	if detector.HasExtensions {
-		if err = platform.GuardExperimental(platform.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+		if err = guard.GuardExperimental(guard.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -92,7 +93,7 @@ func (d *detectCmd) Exec() error {
 	}
 	if group.HasExtensions() {
 		generatorFactory := lifecycle.NewGeneratorFactory(
-			&cmd.BuildpackAPIVerifier{},
+			&guard.BuildpackAPIVerifier{},
 			lifecycle.Config,
 			dirStore,
 		)

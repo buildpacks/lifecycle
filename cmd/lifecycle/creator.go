@@ -7,6 +7,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/guard"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -71,7 +72,7 @@ func (c *createCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	if c.UseLayout {
-		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+		if err := guard.GuardExperimental(guard.LayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -107,7 +108,7 @@ func (c *createCmd) Exec() error {
 	if err != nil {
 		return err
 	}
-	dirStore := platform.NewDirStore(c.BuildpacksDir, "")
+	dirStore := files.NewDirStore(c.BuildpacksDir, "")
 	if err != nil {
 		return err
 	}
@@ -122,7 +123,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
+			&guard.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
 			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
@@ -153,7 +154,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
 			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
+			&guard.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
@@ -169,7 +170,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
 			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
+			&guard.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
@@ -185,7 +186,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.PlatformAPI,
-			&cmd.BuildpackAPIVerifier{},
+			&guard.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
 			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),

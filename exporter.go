@@ -19,6 +19,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/launch"
@@ -27,13 +28,14 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/env"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/images"
 )
 
 type Cache interface {
 	Exists() bool
 	Name() string
-	SetMetadata(metadata platform.CacheMetadata) error
-	RetrieveMetadata() (platform.CacheMetadata, error)
+	SetMetadata(metadata cache.Metadata) error
+	RetrieveMetadata() (cache.Metadata, error)
 	AddLayerFile(tarPath string, sha string) error
 	ReuseLayer(sha string) error
 	RetrieveLayer(sha string) (io.ReadCloser, error)
@@ -496,8 +498,8 @@ func (e *Exporter) setLabels(opts ExportOptions, meta files.LayersMetadata, buil
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.LayerMetadataLabel)
-	if err = opts.WorkingImage.SetLabel(platform.LayerMetadataLabel, string(data)); err != nil {
+	e.Logger.Infof("Adding label '%s'", images.LayerMetadataLabel)
+	if err = opts.WorkingImage.SetLabel(images.LayerMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
@@ -507,8 +509,8 @@ func (e *Exporter) setLabels(opts ExportOptions, meta files.LayersMetadata, buil
 		return errors.Wrap(err, "parse build metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.BuildMetadataLabel)
-	if err := opts.WorkingImage.SetLabel(platform.BuildMetadataLabel, string(buildJSON)); err != nil {
+	e.Logger.Infof("Adding label '%s'", images.BuildMetadataLabel)
+	if err := opts.WorkingImage.SetLabel(images.BuildMetadataLabel, string(buildJSON)); err != nil {
 		return errors.Wrap(err, "set build image metadata label")
 	}
 
@@ -517,8 +519,8 @@ func (e *Exporter) setLabels(opts ExportOptions, meta files.LayersMetadata, buil
 		return errors.Wrap(err, "parse project metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.ProjectMetadataLabel)
-	if err := opts.WorkingImage.SetLabel(platform.ProjectMetadataLabel, string(projectJSON)); err != nil {
+	e.Logger.Infof("Adding label '%s'", images.ProjectMetadataLabel)
+	if err := opts.WorkingImage.SetLabel(images.ProjectMetadataLabel, string(projectJSON)); err != nil {
 		return errors.Wrap(err, "set project metadata label")
 	}
 

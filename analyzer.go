@@ -6,6 +6,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/images"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
@@ -13,7 +14,6 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 type AnalyzerFactory struct {
@@ -194,7 +194,7 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 	var (
 		err              error
 		appMeta          files.LayersMetadata
-		cacheMeta        platform.CacheMetadata
+		cacheMeta        cache.Metadata
 		previousImageRef string
 		runImageRef      string
 	)
@@ -205,7 +205,7 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 		}
 
 		// continue even if the label cannot be decoded
-		if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
+		if err = image.DecodeLabel(a.PreviousImage, images.LayerMetadataLabel, &appMeta); err != nil {
 			appMeta = files.LayersMetadata{}
 		}
 
@@ -227,7 +227,7 @@ func (a *Analyzer) Analyze() (files.Analyzed, error) {
 		}
 		if a.PlatformAPI.AtLeast("0.12") {
 			runImageName = a.RunImage.Name()
-			atm, err = platform.GetTargetFromImage(a.RunImage)
+			atm, err = images.GetTargetMetadataFrom(a.RunImage)
 			if err != nil {
 				return files.Analyzed{}, errors.Wrap(err, "unpacking metadata from image")
 			}
@@ -276,9 +276,9 @@ func bomSHA(appMeta files.LayersMetadata) string {
 	return appMeta.BOM.SHA
 }
 
-func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMetadata, error) {
+func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (cache.Metadata, error) {
 	// Create empty cache metadata in case a usable cache is not provided.
-	var cacheMeta platform.CacheMetadata
+	var cacheMeta cache.Metadata
 	if fromCache != nil {
 		var err error
 		if !fromCache.Exists() {

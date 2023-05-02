@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/internal/fsutil"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 type VolumeCache struct {
@@ -60,7 +59,7 @@ func (c *VolumeCache) Name() string {
 	return c.dir
 }
 
-func (c *VolumeCache) SetMetadata(metadata platform.CacheMetadata) error {
+func (c *VolumeCache) SetMetadata(metadata Metadata) error {
 	if c.committed {
 		return errCacheCommitted
 	}
@@ -78,20 +77,20 @@ func (c *VolumeCache) SetMetadata(metadata platform.CacheMetadata) error {
 	return nil
 }
 
-func (c *VolumeCache) RetrieveMetadata() (platform.CacheMetadata, error) {
+func (c *VolumeCache) RetrieveMetadata() (Metadata, error) {
 	metadataPath := filepath.Join(c.committedDir, MetadataLabel)
 	file, err := os.Open(metadataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return platform.CacheMetadata{}, nil
+			return Metadata{}, nil
 		}
-		return platform.CacheMetadata{}, errors.Wrapf(err, "opening metadata file '%s'", metadataPath)
+		return Metadata{}, errors.Wrapf(err, "opening metadata file '%s'", metadataPath)
 	}
 	defer file.Close()
 
-	metadata := platform.CacheMetadata{}
+	metadata := Metadata{}
 	if json.NewDecoder(file).Decode(&metadata) != nil {
-		return platform.CacheMetadata{}, nil
+		return Metadata{}, nil
 	}
 	return metadata, nil
 }

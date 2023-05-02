@@ -22,6 +22,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/images"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -106,7 +107,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
-			targetData, err := platform.GetTargetFromImage(runImage)
+			targetData, err := images.GetTargetMetadataFrom(runImage)
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}
@@ -126,7 +127,7 @@ func (r *restoreCmd) Exec() error {
 			if err != nil {
 				return cmd.FailErr(err, "read run image")
 			}
-			targetData, err := platform.GetTargetFromImage(runImage)
+			targetData, err := images.GetTargetMetadataFrom(runImage)
 			if err != nil {
 				return cmd.FailErr(err, "read target data from run image")
 			}

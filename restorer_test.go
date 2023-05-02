@@ -20,7 +20,6 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/layers"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
@@ -649,7 +648,7 @@ func testRestorer(buildpackAPI, platformAPI string) func(t *testing.T, when spec
 					h.AssertNil(t, err)
 					h.Mkfile(t, "some-data", filepath.Join(tmpDir, "some.tar"))
 					h.AssertNil(t, testCache.AddLayerFile(filepath.Join(tmpDir, "some.tar"), "some-digest"))
-					h.AssertNil(t, testCache.SetMetadata(platform.CacheMetadata{BOM: files.LayerMetadata{SHA: "some-digest"}}))
+					h.AssertNil(t, testCache.SetMetadata(cache.Metadata{BOM: files.LayerMetadata{SHA: "some-digest"}}))
 					h.AssertNil(t, testCache.Commit())
 				})
 

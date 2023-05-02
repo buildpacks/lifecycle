@@ -1,4 +1,4 @@
-package platform_test
+package files_test
 
 import (
 	"path/filepath"
@@ -8,7 +8,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -17,11 +17,11 @@ func TestDirStore(t *testing.T) {
 }
 
 func testDirStore(t *testing.T, when spec.G, it spec.S) {
-	var dirStore *platform.DirStore
+	var dirStore *files.DirStore
 
 	it.Before(func() {
 		var err error
-		dirStore = platform.NewDirStore(
+		dirStore = files.NewDirStore(
 			filepath.Join("testdata", "cnb", "buildpacks"),
 			filepath.Join("testdata", "cnb", "extensions"),
 		)

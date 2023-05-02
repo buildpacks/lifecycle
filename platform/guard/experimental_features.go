@@ -1,9 +1,10 @@
-package platform
+package guard
 
 import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/env"
 )
 
@@ -12,16 +13,16 @@ const (
 	LayoutFormat       = "export to OCI layout format"
 )
 
-var ExperimentalMode = envOrDefault(env.VarExperimentalMode, DefaultExperimentalMode)
+var ExperimentalMode = EnvOrDefault(env.VarExperimentalMode, platform.DefaultExperimentalMode)
 
 func GuardExperimental(requested string, logger log.Logger) error {
 	switch ExperimentalMode {
-	case ModeQuiet:
+	case platform.ModeQuiet:
 		break
-	case ModeError:
+	case platform.ModeError:
 		logger.Errorf("Platform requested experimental feature '%s'", requested)
-		return fmt.Errorf("experimental features are disabled by %s=%s", env.VarExperimentalMode, ModeError)
-	case ModeWarn:
+		return fmt.Errorf("experimental features are disabled by %s=%s", env.VarExperimentalMode, platform.ModeError)
+	case platform.ModeWarn:
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
 	default:
 		// This shouldn't be reached, as ExperimentalMode is always set.

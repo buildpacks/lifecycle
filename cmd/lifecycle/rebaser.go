@@ -19,6 +19,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/images"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -158,7 +159,7 @@ func (r *rebaseCmd) setAppImage() error {
 	}
 
 	var md files.LayersMetadata
-	if err := image.DecodeLabel(r.appImage, platform.LayerMetadataLabel, &md); err != nil {
+	if err := image.DecodeLabel(r.appImage, images.LayerMetadataLabel, &md); err != nil {
 		return err
 	}
 

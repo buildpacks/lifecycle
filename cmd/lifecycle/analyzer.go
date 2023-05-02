@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
+	"github.com/buildpacks/lifecycle/platform/guard"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -72,7 +73,7 @@ func (a *analyzeCmd) Args(nargs int, args []string) error {
 		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
 	}
 	if a.UseLayout {
-		if err := platform.GuardExperimental(platform.LayoutFormat, cmd.DefaultLogger); err != nil {
+		if err := guard.GuardExperimental(guard.LayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -105,7 +106,7 @@ func (a *analyzeCmd) Privileges() error {
 func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
 		a.PlatformAPI,
-		&cmd.BuildpackAPIVerifier{},
+		&guard.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout),

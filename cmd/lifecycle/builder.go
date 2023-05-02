@@ -78,7 +78,7 @@ func (b *buildCmd) build(group buildpack.Group, plan files.Plan) error {
 		LayersDir:      b.LayersDir,
 		PlatformDir:    b.PlatformDir,
 		BuildExecutor:  &buildpack.DefaultBuildExecutor{},
-		DirStore:       platform.NewDirStore(b.BuildpacksDir, ""),
+		DirStore:       files.NewDirStore(b.BuildpacksDir, ""),
 		Group:          group,
 		Logger:         cmd.DefaultLogger,
 		Out:            cmd.Stdout,

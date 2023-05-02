@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/extend/kaniko"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/guard"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -52,7 +53,7 @@ func (e *extendCmd) Privileges() error {
 }
 
 func (e *extendCmd) Exec() error {
-	extenderFactory := lifecycle.NewExtenderFactory(&cmd.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
+	extenderFactory := lifecycle.NewExtenderFactory(&guard.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
 	applier, err := kaniko.NewDockerfileApplier()
 	if err != nil {
 		return err

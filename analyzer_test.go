@@ -24,7 +24,6 @@ import (
 	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/internal/layer"
-	"github.com/buildpacks/lifecycle/platform"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 	"github.com/buildpacks/lifecycle/testmock"
 )
@@ -544,7 +543,7 @@ func testAnalyzer(platformAPI string) func(t *testing.T, when spec.G, it spec.S)
 		when("#Analyze", func() {
 			var (
 				expectedAppMetadata   files.LayersMetadata
-				expectedCacheMetadata platform.CacheMetadata
+				expectedCacheMetadata cache.Metadata
 				ref                   *testmock.MockReference
 			)
 

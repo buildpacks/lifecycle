@@ -16,6 +16,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/env"
+	"github.com/buildpacks/lifecycle/platform/guard"
 )
 
 func main() {
@@ -49,8 +50,8 @@ func main() {
 }
 
 func platformAPIWithExitOnError() string {
-	platformAPI := cmd.EnvOrDefault(env.VarPlatformAPI, platform.DefaultPlatformAPI)
-	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
+	platformAPI := guard.EnvOrDefault(env.VarPlatformAPI, platform.DefaultPlatformAPI)
+	if err := guard.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
 		cmd.Exit(err)
 	}
 	return platformAPI
@@ -189,7 +190,7 @@ func verifyBuildpackApis(group buildpack.Group) error {
 			// but if for some reason it isn't default to 0.2
 			bp.API = "0.2"
 		}
-		if err := cmd.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // FIXME: when exporter is extensions-aware, this function call should be modified to provide the right module kind
+		if err := guard.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // FIXME: when exporter is extensions-aware, this function call should be modified to provide the right module kind
 			return err
 		}
 	}

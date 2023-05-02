@@ -1,4 +1,4 @@
-package platform
+package images
 
 import (
 	"github.com/buildpacks/imgutil"
@@ -12,7 +12,7 @@ const (
 	OSDistributionVersionLabel = "io.buildpacks.distribution.version"
 )
 
-func GetTargetFromImage(image imgutil.Image) (*files.TargetMetadata, error) {
+func GetTargetMetadataFrom(image imgutil.Image) (*files.TargetMetadata, error) {
 	tm := files.TargetMetadata{}
 	if !image.Found() {
 		return &tm, nil

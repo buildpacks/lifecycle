@@ -13,9 +13,9 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/env"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/buildpacks/lifecycle/platform/images"
 )
 
 type Rebaser struct {
@@ -30,16 +30,16 @@ type RebaseReport struct {
 
 func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (RebaseReport, error) {
 	var origMetadata files.LayersMetadataCompat
-	if err := image.DecodeLabel(workingImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
+	if err := image.DecodeLabel(workingImage, images.LayerMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}
 
-	appStackID, err := workingImage.Label(platform.StackIDLabel)
+	appStackID, err := workingImage.Label(images.StackIDLabel)
 	if err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get app image stack")
 	}
 
-	newBaseStackID, err := newBaseImage.Label(platform.StackIDLabel)
+	newBaseStackID, err := newBaseImage.Label(images.StackIDLabel)
 	if err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get new base image stack")
 	}
@@ -84,7 +84,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, errors.Wrap(err, "marshall metadata")
 	}
 
-	if err := workingImage.SetLabel(platform.LayerMetadataLabel, string(data)); err != nil {
+	if err := workingImage.SetLabel(images.LayerMetadataLabel, string(data)); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set app image metadata label")
 	}
 
@@ -114,11 +114,11 @@ func validateMixins(appImg, newBaseImg imgutil.Image) error {
 	var appImageMixins []string
 	var newBaseImageMixins []string
 
-	if err := image.DecodeLabel(appImg, platform.MixinsLabel, &appImageMixins); err != nil {
+	if err := image.DecodeLabel(appImg, images.MixinsLabel, &appImageMixins); err != nil {
 		return errors.Wrap(err, "get app image mixins")
 	}
 
-	if err := image.DecodeLabel(newBaseImg, platform.MixinsLabel, &newBaseImageMixins); err != nil {
+	if err := image.DecodeLabel(newBaseImg, images.MixinsLabel, &newBaseImageMixins); err != nil {
 		return errors.Wrap(err, "get run image mixins")
 	}
 
@@ -151,7 +151,7 @@ func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Im
 		return nil
 	}
 
-	rebaseable, err := appImg.Label(platform.RebaseableLabel)
+	rebaseable, err := appImg.Label(images.RebaseableLabel)
 	if err != nil {
 		return errors.Wrap(err, "get app image rebaseable label")
 	}
@@ -162,12 +162,12 @@ func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Im
 	// check the OS, architecture, and variant values
 	// if they are not the same, the image cannot be rebased unless the force flag is set
 	if !r.Force {
-		appTarget, err := platform.GetTargetFromImage(appImg)
+		appTarget, err := images.GetTargetMetadataFrom(appImg)
 		if err != nil {
 			return errors.Wrap(err, "get app image target")
 		}
 
-		newBaseTarget, err := platform.GetTargetFromImage(newBaseImg)
+		newBaseTarget, err := images.GetTargetMetadataFrom(newBaseImg)
 		if err != nil {
 			return errors.Wrap(err, "get new base image target")
 		}

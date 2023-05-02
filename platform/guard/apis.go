@@ -1,4 +1,4 @@
-package cmd
+package guard
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform/env"
 )
@@ -29,9 +30,9 @@ func (v *BuildpackAPIVerifier) VerifyBuildpackAPI(kind, name, requested string, 
 func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
-		return FailErrCode(
+		return cmd.FailErrCode(
 			nil,
-			CodeForIncompatibleBuildpackAPI,
+			cmd.CodeForIncompatibleBuildpackAPI,
 			fmt.Sprintf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(kind), name),
 		)
 	}
@@ -56,9 +57,9 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 }
 
 func buildpackAPIError(moduleKind string, name string, requested string) error {
-	return FailErrCode(
+	return cmd.FailErrCode(
 		fmt.Errorf("buildpack API version '%s' is incompatible with the lifecycle", requested),
-		CodeForIncompatibleBuildpackAPI,
+		cmd.CodeForIncompatibleBuildpackAPI,
 		fmt.Sprintf("set API for %s '%s'", moduleKind, name),
 	)
 }
@@ -66,9 +67,9 @@ func buildpackAPIError(moduleKind string, name string, requested string) error {
 func VerifyPlatformAPI(requested string, logger log.Logger) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
-		return FailErrCode(
+		return cmd.FailErrCode(
 			nil,
-			CodeForIncompatiblePlatformAPI,
+			cmd.CodeForIncompatiblePlatformAPI,
 			fmt.Sprintf("parse platform API '%s'", requested),
 		)
 	}
@@ -93,9 +94,9 @@ func VerifyPlatformAPI(requested string, logger log.Logger) error {
 }
 
 func platformAPIError(requested string) error {
-	return FailErrCode(
+	return cmd.FailErrCode(
 		fmt.Errorf("platform API version '%s' is incompatible with the lifecycle", requested),
-		CodeForIncompatiblePlatformAPI,
+		cmd.CodeForIncompatiblePlatformAPI,
 		"set platform API",
 	)
 }

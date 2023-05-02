@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/cache"
 	"github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 type LayerDir interface {
@@ -26,7 +26,7 @@ func (e *Exporter) Cache(layersDir string, cacheStore Cache) error {
 	if err != nil {
 		return errors.Wrap(err, "metadata for previous cache")
 	}
-	meta := platform.CacheMetadata{}
+	meta := cache.Metadata{}
 
 	for _, bp := range e.Buildpacks {
 		bpDir, err := buildpack.ReadLayersDir(layersDir, bp, e.Logger)
@@ -104,7 +104,7 @@ func (e *Exporter) addOrReuseCacheLayer(cache Cache, layerDir LayerDir, previous
 	return layer.Digest, cache.AddLayerFile(layer.TarPath, layer.Digest)
 }
 
-func (e *Exporter) addSBOMCacheLayer(layersDir string, cacheStore Cache, origMetadata platform.CacheMetadata, meta *platform.CacheMetadata) error {
+func (e *Exporter) addSBOMCacheLayer(layersDir string, cacheStore Cache, origMetadata cache.Metadata, meta *cache.Metadata) error {
 	sbomCacheDir, err := readLayersSBOM(layersDir, "cache", e.Logger)
 	if err != nil {
 		return errors.Wrap(err, "failed to read layers SBOM")
