@@ -3,14 +3,17 @@ package env
 import (
 	"os"
 	"strings"
+
+	"github.com/buildpacks/lifecycle/platform/launch/env"
 )
 
 var LaunchEnvExcludelist = []string{
-	"CNB_LAYERS_DIR",
-	"CNB_APP_DIR",
-	"CNB_PROCESS_TYPE",
-	"CNB_PLATFORM_API",
-	"CNB_DEPRECATION_MODE",
+	env.VarAppDir,
+	env.VarDeprecationMode,
+	env.VarLayersDir,
+	env.VarPlatformAPI,
+	env.VarProcessType,
+	// TODO: env.VarNoColor is missing from this list - is it intentional?
 }
 
 // NewLaunchEnv returns an Env for process launch from the given environ.

@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform/env"
 )
 
 // LifecycleInputs holds the values of command-line flags and args i.e., platform inputs to the lifecycle.
@@ -74,90 +75,90 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 	// FIXME: api compatibility should be validated here
 
 	var skipLayers bool
-	if boolEnv(EnvSkipLayers) || boolEnv(EnvSkipRestore) {
+	if boolEnv(env.VarSkipLayers) || boolEnv(env.VarSkipRestore) {
 		skipLayers = true
 	}
 
 	inputs := &LifecycleInputs{
-		// Operator config
+		// Base Image
 
-		LogLevel:    envOrDefault(EnvLogLevel, DefaultLogLevel),
+		UID: intEnv(env.VarUID),
+		GID: intEnv(env.VarGID),
+
+		// Builder Image
+
+		BuildConfigDir: envOrDefault(env.VarBuildConfigDir, DefaultBuildConfigDir),
+		BuildpacksDir:  envOrDefault(env.VarBuildpacksDir, DefaultBuildpacksDir),
+		ExtensionsDir:  envOrDefault(env.VarExtensionsDir, DefaultExtensionsDir),
+		OrderPath:      envOrDefault(env.VarOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)), // we first look for order.toml in the layers directory, and fall back to /cnb/order.toml if it is not there
+		RunPath:        envOrDefault(env.VarRunPath, DefaultRunPath),
+		StackPath:      envOrDefault(env.VarStackPath, DefaultStackPath),
+
+		// Platform
+
+		// operator experience
 		PlatformAPI: platformAPI,
-		ExtendKind:  envOrDefault(EnvExtendKind, DefaultExtendKind),
-		UseDaemon:   boolEnv(EnvUseDaemon),
-		UseLayout:   boolEnv(EnvUseLayout),
+		LogLevel:    envOrDefault(env.VarLogLevel, DefaultLogLevel),
 
-		// Provided by the base image
+		// dirs for detect/build
+		AppDir:      envOrDefault(env.VarAppDir, DefaultAppDir),
+		LayersDir:   envOrDefault(env.VarLayersDir, DefaultLayersDir),
+		PlatformDir: envOrDefault(env.VarPlatformDir, DefaultPlatformDir),
 
-		UID: intEnv(EnvUID),
-		GID: intEnv(EnvGID),
+		// data
+		AnalyzedPath: envOrDefault(env.VarAnalyzedPath, filepath.Join(PlaceholderLayers, DefaultAnalyzedFile)),
+		ExtendedDir:  envOrDefault(env.VarExtendedDir, filepath.Join(PlaceholderLayers, DefaultExtendedDir)),
+		GeneratedDir: envOrDefault(env.VarGeneratedDir, filepath.Join(PlaceholderLayers, DefaultGeneratedDir)),
+		GroupPath:    envOrDefault(env.VarGroupPath, filepath.Join(PlaceholderLayers, DefaultGroupFile)),
+		PlanPath:     envOrDefault(env.VarPlanPath, filepath.Join(PlaceholderLayers, DefaultPlanFile)),
+		ReportPath:   envOrDefault(env.VarReportPath, filepath.Join(PlaceholderLayers, DefaultReportFile)),
 
-		// Provided by the builder image
+		// images
+		BuildImageRef:         os.Getenv(env.VarBuildImage),
+		PreviousImageRef:      os.Getenv(env.VarPreviousImage),
+		RunImageRef:           os.Getenv(env.VarRunImage),
+		DeprecatedRunImageRef: "", // no default
 
-		BuildConfigDir: envOrDefault(EnvBuildConfigDir, DefaultBuildConfigDir),
-		BuildpacksDir:  envOrDefault(EnvBuildpacksDir, DefaultBuildpacksDir),
-		ExtensionsDir:  envOrDefault(EnvExtensionsDir, DefaultExtensionsDir),
-		RunPath:        envOrDefault(EnvRunPath, DefaultRunPath),
-		StackPath:      envOrDefault(EnvStackPath, DefaultStackPath),
-
-		// Provided at build time
-
-		AppDir:      envOrDefault(EnvAppDir, DefaultAppDir),
-		LayersDir:   envOrDefault(EnvLayersDir, DefaultLayersDir),
-		LayoutDir:   os.Getenv(EnvLayoutDir),
-		OrderPath:   envOrDefault(EnvOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)),
-		PlatformDir: envOrDefault(EnvPlatformDir, DefaultPlatformDir),
-
-		// The following instruct the lifecycle where to write files and data during the build
-
-		AnalyzedPath: envOrDefault(EnvAnalyzedPath, filepath.Join(PlaceholderLayers, DefaultAnalyzedFile)),
-		ExtendedDir:  envOrDefault(EnvExtendedDir, filepath.Join(PlaceholderLayers, DefaultExtendedDir)),
-		GeneratedDir: envOrDefault(EnvGeneratedDir, filepath.Join(PlaceholderLayers, DefaultGeneratedDir)),
-		GroupPath:    envOrDefault(EnvGroupPath, filepath.Join(PlaceholderLayers, DefaultGroupFile)),
-		PlanPath:     envOrDefault(EnvPlanPath, filepath.Join(PlaceholderLayers, DefaultPlanFile)),
-		ReportPath:   envOrDefault(EnvReportPath, filepath.Join(PlaceholderLayers, DefaultReportFile)),
-
-		// Configuration options with respect to caching
-
-		CacheDir:       os.Getenv(EnvCacheDir),
-		CacheImageRef:  os.Getenv(EnvCacheImage),
-		KanikoCacheTTL: timeEnvOrDefault(EnvKanikoCacheTTL, DefaultKanikoCacheTTL),
+		// caching
+		CacheDir:       os.Getenv(env.VarCacheDir),
+		CacheImageRef:  os.Getenv(env.VarCacheImage),
+		KanikoCacheTTL: timeEnvOrDefault(env.VarKanikoCacheTTL, DefaultKanikoCacheTTL),
 		KanikoDir:      "/kaniko",
-		LaunchCacheDir: os.Getenv(EnvLaunchCacheDir),
+		LaunchCacheDir: os.Getenv(env.VarLaunchCacheDir),
 		SkipLayers:     skipLayers,
 
-		// Images used by the lifecycle during the build
+		// export target
+		AdditionalTags: nil, // no default
+		OutputImageRef: "",  // no default
+		UseDaemon:      boolEnv(env.VarUseDaemon),
+		UseLayout:      boolEnv(env.VarUseLayout),
+		LayoutDir:      os.Getenv(env.VarLayoutDir),
 
-		AdditionalTags:        nil, // no default
-		BuildImageRef:         os.Getenv(EnvBuildImage),
-		DeprecatedRunImageRef: "", // no default
-		OutputImageRef:        "", // no default
-		PreviousImageRef:      os.Getenv(EnvPreviousImage),
-		RunImageRef:           os.Getenv(EnvRunImage),
-
-		// Configuration options for the output application image
-
-		DefaultProcessType:  os.Getenv(EnvProcessType),
+		// app image
+		DefaultProcessType:  os.Getenv(env.VarProcessType),
 		LauncherPath:        DefaultLauncherPath,
 		LauncherSBOMDir:     DefaultBuildpacksioSBOMDir,
-		ProjectMetadataPath: envOrDefault(EnvProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
+		ProjectMetadataPath: envOrDefault(env.VarProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
 
-		// Configuration options for rebasing
-		ForceRebase: boolEnv(EnvForceRebase),
+		// image extension
+		ExtendKind: envOrDefault(env.VarExtendKind, DefaultExtendKind),
+
+		// rebase
+		ForceRebase: boolEnv(env.VarForceRebase),
 	}
 
 	if platformAPI.LessThan("0.6") {
 		// The default location for order.toml is /cnb/order.toml
-		inputs.OrderPath = envOrDefault(EnvOrderPath, CNBOrderPath)
+		inputs.OrderPath = envOrDefault(env.VarOrderPath, CNBOrderPath)
 	}
 
 	if platformAPI.LessThan("0.5") {
-		inputs.AnalyzedPath = envOrDefault(EnvAnalyzedPath, DefaultAnalyzedFile)
-		inputs.GeneratedDir = envOrDefault(EnvGeneratedDir, DefaultGeneratedDir)
-		inputs.GroupPath = envOrDefault(EnvGroupPath, DefaultGroupFile)
-		inputs.PlanPath = envOrDefault(EnvPlanPath, DefaultPlanFile)
-		inputs.ProjectMetadataPath = envOrDefault(EnvProjectMetadataPath, DefaultProjectMetadataFile)
-		inputs.ReportPath = envOrDefault(EnvReportPath, DefaultReportFile)
+		inputs.AnalyzedPath = envOrDefault(env.VarAnalyzedPath, DefaultAnalyzedFile)
+		inputs.GeneratedDir = envOrDefault(env.VarGeneratedDir, DefaultGeneratedDir)
+		inputs.GroupPath = envOrDefault(env.VarGroupPath, DefaultGroupFile)
+		inputs.PlanPath = envOrDefault(env.VarPlanPath, DefaultPlanFile)
+		inputs.ProjectMetadataPath = envOrDefault(env.VarProjectMetadataPath, DefaultProjectMetadataFile)
+		inputs.ReportPath = envOrDefault(env.VarReportPath, DefaultReportFile)
 	}
 
 	return inputs

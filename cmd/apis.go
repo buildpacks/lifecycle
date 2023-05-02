@@ -7,10 +7,10 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform/env"
 )
 
 const (
-	EnvDeprecationMode     = "CNB_DEPRECATION_MODE"
 	DefaultDeprecationMode = ModeWarn
 
 	ModeQuiet = "quiet"
@@ -18,7 +18,7 @@ const (
 	ModeError = "error"
 )
 
-var DeprecationMode = EnvOrDefault(EnvDeprecationMode, DefaultDeprecationMode)
+var DeprecationMode = EnvOrDefault(env.VarDeprecationMode, DefaultDeprecationMode)
 
 type BuildpackAPIVerifier struct{}
 
@@ -42,7 +42,7 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 				break
 			case ModeError:
 				logger.Errorf("%s '%s' requests deprecated API '%s'", kind, name, requested)
-				logger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, ModeError)
+				logger.Errorf("Deprecated APIs are disabled by %s=%s", env.VarDeprecationMode, ModeError)
 				return buildpackAPIError(kind, name, requested)
 			case ModeWarn:
 				logger.Warnf("%s '%s' requests deprecated API '%s'", kind, name, requested)
@@ -79,7 +79,7 @@ func VerifyPlatformAPI(requested string, logger log.Logger) error {
 				break
 			case ModeError:
 				logger.Errorf("Platform requested deprecated API '%s'", requested)
-				logger.Errorf("Deprecated APIs are disabled by %s=%s", EnvDeprecationMode, ModeError)
+				logger.Errorf("Deprecated APIs are disabled by %s=%s", env.VarDeprecationMode, ModeError)
 				return platformAPIError(requested)
 			case ModeWarn:
 				logger.Warnf("Platform requested deprecated API '%s'", requested)

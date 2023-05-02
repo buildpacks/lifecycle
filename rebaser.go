@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/str"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/env"
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
@@ -140,7 +141,7 @@ func (r *Rebaser) validateRebaseable(appImg imgutil.Image, newBaseImg imgutil.Im
 	}
 
 	// skip validation if the previous image was built before 0.12
-	appPlatformAPI, err := appImg.Env(platform.EnvPlatformAPI)
+	appPlatformAPI, err := appImg.Env(env.VarPlatformAPI)
 	if err != nil {
 		return errors.Wrap(err, "get app image platform API")
 	}

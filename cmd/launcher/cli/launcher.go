@@ -11,24 +11,26 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/lifecycle/env"
+	launchenv "github.com/buildpacks/lifecycle/env"
+	"github.com/buildpacks/lifecycle/internal/path"
 	"github.com/buildpacks/lifecycle/launch"
 	platform "github.com/buildpacks/lifecycle/platform/launch"
+	"github.com/buildpacks/lifecycle/platform/launch/env"
 )
 
 const KindBuildpack = "buildpack"
 
 func RunLaunch() error {
-	color.Disable(boolEnv(platform.EnvNoColor))
+	color.Disable(boolEnv(env.VarNoColor))
 
-	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+	platformAPI := cmd.EnvOrDefault(env.VarPlatformAPI, platform.DefaultPlatformAPI)
 	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
 		cmd.Exit(err)
 	}
 	p := platform.NewPlatform(platformAPI)
 
 	var md launch.Metadata
-	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir)), &md); err != nil {
+	if _, err := toml.DecodeFile(launch.GetMetadataFilePath(cmd.EnvOrDefault(env.VarLayersDir, platform.DefaultLayersDir)), &md); err != nil {
 		return cmd.FailErr(err, "read metadata")
 	}
 	if err := verifyBuildpackAPIs(md.Buildpacks); err != nil {
@@ -39,12 +41,12 @@ func RunLaunch() error {
 
 	launcher := &launch.Launcher{
 		DefaultProcessType: defaultProcessType,
-		LayersDir:          cmd.EnvOrDefault(platform.EnvLayersDir, platform.DefaultLayersDir),
-		AppDir:             cmd.EnvOrDefault(platform.EnvAppDir, platform.DefaultAppDir),
+		LayersDir:          cmd.EnvOrDefault(env.VarLayersDir, platform.DefaultLayersDir),
+		AppDir:             cmd.EnvOrDefault(env.VarAppDir, platform.DefaultAppDir),
 		PlatformAPI:        p.API(),
 		Processes:          md.Processes,
 		Buildpacks:         md.Buildpacks,
-		Env:                env.NewLaunchEnv(os.Environ(), launch.ProcessDir, launch.LifecycleDir),
+		Env:                launchenv.NewLaunchEnv(os.Environ(), launch.ProcessDir, launch.LifecycleDir),
 		Exec:               launch.OSExecFunc,
 		ExecD:              launch.NewExecDRunner(),
 		Shell:              launch.DefaultShell,
@@ -68,15 +70,15 @@ func boolEnv(k string) bool {
 
 func defaultProcessType(platformAPI *api.Version, launchMD launch.Metadata) string {
 	if platformAPI.LessThan("0.4") {
-		return cmd.EnvOrDefault(platform.EnvProcessType, platform.DefaultProcessType)
+		return cmd.EnvOrDefault(env.VarProcessType, platform.DefaultProcessType)
 	}
-	if pType := os.Getenv(platform.EnvProcessType); pType != "" {
-		cmd.DefaultLogger.Warnf("CNB_PROCESS_TYPE is not supported in Platform API %s", platformAPI)
+	if pType := os.Getenv(env.VarProcessType); pType != "" {
+		cmd.DefaultLogger.Warnf("%s is not supported in Platform API %s", env.VarProcessType, platformAPI)
 		cmd.DefaultLogger.Warnf("Run with ENTRYPOINT '%s' to invoke the '%s' process type", pType, pType)
 	}
 
 	_, process := filepath.Split(os.Args[0])
-	processType := strings.TrimSuffix(process, platform.DefaultExecExt)
+	processType := strings.TrimSuffix(process, path.ExecExt)
 	if _, ok := launchMD.FindProcessType(processType); ok {
 		return processType
 	}

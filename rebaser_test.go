@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/env"
 	"github.com/buildpacks/lifecycle/platform/files"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
@@ -65,7 +66,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 		)
 		h.AssertNil(t, fakePreviousImage.SetLabel(platform.StackIDLabel, "io.buildpacks.stacks.bionic"))
 
-		h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, api.Platform.Latest().String()))
+		h.AssertNil(t, fakeAppImage.SetEnv(env.VarPlatformAPI, api.Platform.Latest().String()))
 
 		additionalNames = []string{"some-repo/app-image:foo", "some-repo/app-image:bar"}
 
@@ -436,7 +437,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 				when("previous image was built on unknown platform API", func() {
 					it.Before(func() {
-						h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, ""))
+						h.AssertNil(t, fakeAppImage.SetEnv(env.VarPlatformAPI, ""))
 					})
 
 					it("allows rebase with missing labels", func() {
@@ -458,7 +459,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 
 				when("previous image was built on older platform API", func() {
 					it.Before(func() {
-						h.AssertNil(t, fakeAppImage.SetEnv(platform.EnvPlatformAPI, "0.11"))
+						h.AssertNil(t, fakeAppImage.SetEnv(env.VarPlatformAPI, "0.11"))
 					})
 
 					it("allows rebase with missing labels", func() {

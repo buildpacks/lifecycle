@@ -13,9 +13,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-)
 
-const EnvRegistryAuth = "CNB_REGISTRY_AUTH"
+	"github.com/buildpacks/lifecycle/platform/env"
+)
 
 var (
 	amazonKeychain = authn.NewKeychainFromHelper(ecr.NewECRHelper(ecr.WithLogger(io.Discard)))
@@ -28,7 +28,7 @@ var (
 // the docker config.json file
 // credential helpers for Amazon and Azure
 func DefaultKeychain(images ...string) (authn.Keychain, error) {
-	envKeychain, err := NewEnvKeychain(EnvRegistryAuth)
+	envKeychain, err := NewEnvKeychain(env.VarRegistryAuth)
 	if err != nil {
 		return nil, err
 	}

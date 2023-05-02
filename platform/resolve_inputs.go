@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform/env"
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
@@ -115,7 +116,7 @@ func FillCreateImages(i *LifecycleInputs, logger log.Logger) error {
 		i.PreviousImageRef = i.OutputImageRef
 	}
 	switch {
-	case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
+	case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(env.VarRunImage):
 		return errors.New(ErrSupplyOnlyOneRunImage)
 	case i.DeprecatedRunImageRef != "":
 		i.RunImageRef = i.DeprecatedRunImageRef
@@ -131,7 +132,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 	supportsRunImageFlag := i.PlatformAPI.LessThan("0.7")
 	if supportsRunImageFlag {
 		switch {
-		case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
+		case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(env.VarRunImage):
 			return errors.New(ErrSupplyOnlyOneRunImage)
 		case i.RunImageRef != "":
 			return nil
@@ -143,7 +144,7 @@ func FillExportRunImage(i *LifecycleInputs, logger log.Logger) error {
 		}
 	} else {
 		switch {
-		case i.RunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
+		case i.RunImageRef != "" && i.RunImageRef != os.Getenv(env.VarRunImage):
 			return errors.New(ErrRunImageUnsupported)
 		case i.DeprecatedRunImageRef != "":
 			return errors.New(ErrImageUnsupported)
@@ -235,7 +236,7 @@ func ValidateOutputImageProvided(i *LifecycleInputs, _ log.Logger) error {
 
 func ValidateRebaseRunImage(i *LifecycleInputs, _ log.Logger) error {
 	switch {
-	case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(EnvRunImage):
+	case i.DeprecatedRunImageRef != "" && i.RunImageRef != os.Getenv(env.VarRunImage):
 		return errors.New(ErrSupplyOnlyOneRunImage)
 	case i.DeprecatedRunImageRef != "":
 		i.RunImageRef = i.DeprecatedRunImageRef

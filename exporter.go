@@ -25,6 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/env"
 	"github.com/buildpacks/lifecycle/platform/files"
 )
 
@@ -531,24 +532,24 @@ func (e *Exporter) setLabels(opts ExportOptions, meta files.LayersMetadata, buil
 }
 
 func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
-	e.Logger.Debugf("Setting %s=%s", platform.EnvLayersDir, opts.LayersDir)
-	if err := opts.WorkingImage.SetEnv(platform.EnvLayersDir, opts.LayersDir); err != nil {
-		return errors.Wrapf(err, "set app image env %s", platform.EnvLayersDir)
+	e.Logger.Debugf("Setting %s=%s", env.VarLayersDir, opts.LayersDir)
+	if err := opts.WorkingImage.SetEnv(env.VarLayersDir, opts.LayersDir); err != nil {
+		return errors.Wrapf(err, "set app image env %s", env.VarLayersDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", platform.EnvAppDir, opts.AppDir)
-	if err := opts.WorkingImage.SetEnv(platform.EnvAppDir, opts.AppDir); err != nil {
-		return errors.Wrapf(err, "set app image env %s", platform.EnvAppDir)
+	e.Logger.Debugf("Setting %s=%s", env.VarAppDir, opts.AppDir)
+	if err := opts.WorkingImage.SetEnv(env.VarAppDir, opts.AppDir); err != nil {
+		return errors.Wrapf(err, "set app image env %s", env.VarAppDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", platform.EnvPlatformAPI, e.PlatformAPI.String())
-	if err := opts.WorkingImage.SetEnv(platform.EnvPlatformAPI, e.PlatformAPI.String()); err != nil {
-		return errors.Wrapf(err, "set app image env %s", platform.EnvAppDir)
+	e.Logger.Debugf("Setting %s=%s", env.VarPlatformAPI, e.PlatformAPI.String())
+	if err := opts.WorkingImage.SetEnv(env.VarPlatformAPI, e.PlatformAPI.String()); err != nil {
+		return errors.Wrapf(err, "set app image env %s", env.VarAppDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", platform.EnvDeprecationMode, platform.ModeQuiet)
-	if err := opts.WorkingImage.SetEnv(platform.EnvDeprecationMode, platform.ModeQuiet); err != nil {
-		return errors.Wrapf(err, "set app image env %s", platform.EnvAppDir)
+	e.Logger.Debugf("Setting %s=%s", env.VarDeprecationMode, platform.ModeQuiet)
+	if err := opts.WorkingImage.SetEnv(env.VarDeprecationMode, platform.ModeQuiet); err != nil {
+		return errors.Wrapf(err, "set app image env %s", env.VarAppDir)
 	}
 
 	if e.supportsMulticallLauncher() {
@@ -565,9 +566,9 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		if _, ok := launchMD.FindProcessType(opts.DefaultProcessType); !ok {
 			return processTypeError(launchMD, opts.DefaultProcessType)
 		}
-		e.Logger.Debugf("Setting %s=%s", platform.EnvProcessType, opts.DefaultProcessType)
-		if err := opts.WorkingImage.SetEnv(platform.EnvProcessType, opts.DefaultProcessType); err != nil {
-			return errors.Wrapf(err, "set app image env %s", platform.EnvProcessType)
+		e.Logger.Debugf("Setting %s=%s", env.VarProcessType, opts.DefaultProcessType)
+		if err := opts.WorkingImage.SetEnv(env.VarProcessType, opts.DefaultProcessType); err != nil {
+			return errors.Wrapf(err, "set app image env %s", env.VarProcessType)
 		}
 	}
 	return nil

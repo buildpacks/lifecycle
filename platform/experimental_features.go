@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform/env"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 	LayoutFormat       = "export to OCI layout format"
 )
 
-var ExperimentalMode = envOrDefault(EnvExperimentalMode, DefaultExperimentalMode)
+var ExperimentalMode = envOrDefault(env.VarExperimentalMode, DefaultExperimentalMode)
 
 func GuardExperimental(requested string, logger log.Logger) error {
 	switch ExperimentalMode {
@@ -19,7 +20,7 @@ func GuardExperimental(requested string, logger log.Logger) error {
 		break
 	case ModeError:
 		logger.Errorf("Platform requested experimental feature '%s'", requested)
-		return fmt.Errorf("experimental features are disabled by %s=%s", EnvExperimentalMode, ModeError)
+		return fmt.Errorf("experimental features are disabled by %s=%s", env.VarExperimentalMode, ModeError)
 	case ModeWarn:
 		logger.Warnf("Platform requested experimental feature '%s'", requested)
 	default:

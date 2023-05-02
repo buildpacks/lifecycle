@@ -3,11 +3,13 @@ package env
 import (
 	"runtime"
 	"strings"
+
+	"github.com/buildpacks/lifecycle/platform/env"
 )
 
 // BuildEnvIncludelist are env vars that, if set in the lifecycle's execution environment - either in a builder or by the platform, are passed-through to buildpack executables
 var BuildEnvIncludelist = []string{
-	"CNB_STACK_ID", // deprecated as of api 0.12.0
+	env.DeprecatedVarStackID,
 	"HOSTNAME",
 	"HOME",
 	"HTTPS_PROXY",

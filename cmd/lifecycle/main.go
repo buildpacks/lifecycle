@@ -15,6 +15,7 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/env"
 )
 
 func main() {
@@ -48,7 +49,7 @@ func main() {
 }
 
 func platformAPIWithExitOnError() string {
-	platformAPI := cmd.EnvOrDefault(platform.EnvPlatformAPI, platform.DefaultPlatformAPI)
+	platformAPI := cmd.EnvOrDefault(env.VarPlatformAPI, platform.DefaultPlatformAPI)
 	if err := cmd.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
 		cmd.Exit(err)
 	}
