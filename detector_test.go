@@ -794,84 +794,45 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 			})
+		})
 
-			when("A Target is provided from AnalyzeMD", func() {
-				it("errors if the buildpacks don't share that target arch/os", func() {
-					detector.AnalyzeMD.RunImage = &platform.RunImage{
-						TargetMetadata: &platform.TargetMetadata{
-							OS:           "MacOS",
-							Arch:         "ARM64",
-							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "some kind of big cat"},
-						},
-					}
+		when("target resolution", func() {
+			it("totally works if the constraints are met", func() {
+				detector.AnalyzeMD.RunImage = &platform.RunImage{
+					TargetMetadata: &platform.TargetMetadata{
+						OS:           "MacOS",
+						Arch:         "ARM64",
+						Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
+					},
+				}
 
-					bpA1 := &buildpack.BpDescriptor{
-						WithAPI:   "0.12",
-						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
-						Targets: []buildpack.TargetMetadata{
-							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
-								Distributions: []buildpack.OSDistribution{
-									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{Arch: "Pentium M", OS: "Win98",
-								Distributions: []buildpack.OSDistribution{{Name: "Windows 2000", Version: "Server"}}},
-						},
-					}
-					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+				bpA1 := &buildpack.BpDescriptor{
+					WithAPI:   "0.12",
+					Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+					Targets: []buildpack.TargetMetadata{
+						{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
+							Distributions: []buildpack.OSDistribution{
+								{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+						{Arch: "ARM64", OS: "MacOS", Distributions: []buildpack.OSDistribution{{Name: "MacOS", Version: "snow cheetah"}}}},
+				}
+				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+				executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
 
-					resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).DoAndReturn(
-						func(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
-							h.AssertEq(t, len(done), 1)
-							val, ok := detectRuns.Load("Buildpack A@v1")
-							h.AssertEq(t, ok, true)
-							outs := val.(buildpack.DetectOutputs)
-							h.AssertEq(t, outs.Code, -1)
-							h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constraints")
-							return []buildpack.GroupElement{}, []platform.BuildPlanEntry{}, nil
-						})
+				group := []buildpack.GroupElement{
+					{ID: "A", Version: "v1", API: "0.12"},
+				}
+				// the most meaningful assertion in this test is that `group` is the first argument to Resolve, meaning that the buildpack matched.
+				resolver.EXPECT().Resolve(group, detector.Runs).Return(
+					[]buildpack.GroupElement{},
+					[]platform.BuildPlanEntry{},
+					nil,
+				)
 
-					group := []buildpack.GroupElement{
-						{ID: "A", Version: "v1", API: "0.3"},
-					}
-					detector.Order = buildpack.Order{{Group: group}}
-					_, _, err := detector.Detect() // even though the returns from this are directly from the mock above, if we don't check the returns the linter declares we've done it wrong and fails on the lack of assertions.
-					h.AssertNil(t, err)
-				})
-				it("totally works if the constraints are met", func() {
-					detector.AnalyzeMD.RunImage = &platform.RunImage{
-						TargetMetadata: &platform.TargetMetadata{
-							OS:           "MacOS",
-							Arch:         "ARM64",
-							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
-						},
-					}
-
-					bpA1 := &buildpack.BpDescriptor{
-						WithAPI:   "0.12",
-						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
-						Targets: []buildpack.TargetMetadata{
-							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
-								Distributions: []buildpack.OSDistribution{
-									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
-							{Arch: "ARM64", OS: "MacOS", Distributions: []buildpack.OSDistribution{{Name: "MacOS", Version: "snow cheetah"}}}},
-					}
-					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
-					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
-
-					group := []buildpack.GroupElement{
-						{ID: "A", Version: "v1", API: "0.12"},
-					}
-					// the most meaningful assertion in this test is that `group` is the first argument to Resolve, meaning that the buildpack matched.
-					resolver.EXPECT().Resolve(group, detector.Runs).Return(
-						[]buildpack.GroupElement{},
-						[]platform.BuildPlanEntry{},
-						nil,
-					)
-
-					detector.Order = buildpack.Order{{Group: group}}
-					_, _, err := detector.Detect()
-					h.AssertNil(t, err)
-				})
+				detector.Order = buildpack.Order{{Group: group}}
+				_, _, err := detector.Detect()
+				h.AssertNil(t, err)
 			})
+
 			it("was born to be wildcard compliant", func() {
 				detector.AnalyzeMD.RunImage = &platform.RunImage{
 					TargetMetadata: &platform.TargetMetadata{
@@ -902,6 +863,98 @@ func testDetector(t *testing.T, when spec.G, it spec.S) {
 
 				detector.Order = buildpack.Order{{Group: group}}
 				_, _, err := detector.Detect()
+				h.AssertNil(t, err)
+			})
+
+			when("there is a composite buildpack", func() {
+				it("totally works if the constraints are met", func() {
+					detector.AnalyzeMD.RunImage = &platform.RunImage{
+						TargetMetadata: &platform.TargetMetadata{
+							OS:           "MacOS",
+							Arch:         "ARM64",
+							Distribution: &platform.OSDistribution{Name: "MacOS", Version: "snow cheetah"},
+						},
+					}
+
+					bpF1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.2",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "F", Version: "v1"}},
+						Order: []buildpack.Group{
+							{Group: []buildpack.GroupElement{
+								{ID: "A", Version: "v1"},
+							}},
+						},
+					}
+					dirStore.EXPECT().LookupBp("F", "v1").Return(bpF1, nil).AnyTimes()
+					bpA1 := &buildpack.BpDescriptor{
+						WithAPI:   "0.12",
+						Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+						Targets: []buildpack.TargetMetadata{
+							{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
+								Distributions: []buildpack.OSDistribution{
+									{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+							{Arch: "ARM64", OS: "MacOS", Distributions: []buildpack.OSDistribution{{Name: "MacOS", Version: "snow cheetah"}}}},
+					}
+					dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+
+					executor.EXPECT().Detect(bpA1, gomock.Any(), gomock.Any())
+
+					expectedGroup := []buildpack.GroupElement{
+						{ID: "A", Version: "v1", API: "0.12"},
+					}
+					// the most meaningful assertion in this test is that `expectedGroup` is the first argument to Resolve, meaning that the buildpack matched.
+					resolver.EXPECT().Resolve(expectedGroup, detector.Runs).Return(
+						[]buildpack.GroupElement{},
+						[]platform.BuildPlanEntry{},
+						nil,
+					)
+
+					detector.Order = buildpack.Order{{Group: []buildpack.GroupElement{
+						{ID: "F", Version: "v1", API: "0.12"},
+					}}}
+					_, _, err := detector.Detect()
+					h.AssertNil(t, err)
+				})
+			})
+
+			it("errors if the buildpacks don't share that target arch/os", func() {
+				detector.AnalyzeMD.RunImage = &platform.RunImage{
+					TargetMetadata: &platform.TargetMetadata{
+						OS:           "MacOS",
+						Arch:         "ARM64",
+						Distribution: &platform.OSDistribution{Name: "MacOS", Version: "some kind of big cat"},
+					},
+				}
+
+				bpA1 := &buildpack.BpDescriptor{
+					WithAPI:   "0.12",
+					Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}},
+					Targets: []buildpack.TargetMetadata{
+						{Arch: "P6", ArchVariant: "Pentium Pro", OS: "Win95",
+							Distributions: []buildpack.OSDistribution{
+								{Name: "Windows 95", Version: "OSR1"}, {Name: "Windows 95", Version: "OSR2.5"}}},
+						{Arch: "Pentium M", OS: "Win98",
+							Distributions: []buildpack.OSDistribution{{Name: "Windows 2000", Version: "Server"}}},
+					},
+				}
+				dirStore.EXPECT().LookupBp("A", "v1").Return(bpA1, nil).AnyTimes()
+
+				resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).DoAndReturn(
+					func(done []buildpack.GroupElement, detectRuns *sync.Map) ([]buildpack.GroupElement, []platform.BuildPlanEntry, error) {
+						h.AssertEq(t, len(done), 1)
+						val, ok := detectRuns.Load("Buildpack A@v1")
+						h.AssertEq(t, ok, true)
+						outs := val.(buildpack.DetectOutputs)
+						h.AssertEq(t, outs.Code, -1)
+						h.AssertStringContains(t, outs.Err.Error(), "unable to satisfy Target OS/Arch constraints")
+						return []buildpack.GroupElement{}, []platform.BuildPlanEntry{}, nil
+					})
+
+				group := []buildpack.GroupElement{
+					{ID: "A", Version: "v1", API: "0.3"},
+				}
+				detector.Order = buildpack.Order{{Group: group}}
+				_, _, err := detector.Detect() // even though the returns from this are directly from the mock above, if we don't check the returns the linter declares we've done it wrong and fails on the lack of assertions.
 				h.AssertNil(t, err)
 			})
 		})
