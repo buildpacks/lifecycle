@@ -12,6 +12,8 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/exit/fail"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
@@ -44,10 +46,10 @@ func (b *buildCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (b *buildCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(errors.New("received unexpected arguments"), exit.CodeForInvalidArgs, "parse arguments")
 	}
 	if err := platform.ResolveInputs(platform.Build, b.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
@@ -55,7 +57,7 @@ func (b *buildCmd) Args(nargs int, _ []string) error {
 func (b *buildCmd) Privileges() error {
 	// builder should never be run with privileges
 	if priv.IsPrivileged() {
-		return cmd.FailErr(errors.New("refusing to run as root"), "build")
+		return exit.ErrorFromErr(errors.New("refusing to run as root"), "build")
 	}
 	return nil
 }
@@ -91,7 +93,7 @@ func (b *buildCmd) build(group buildpack.Group, plan files.Plan) error {
 		return b.unwrapBuildFail(err)
 	}
 	if err = encoding.WriteTOML(launch.GetMetadataFilePath(b.LayersDir), md); err != nil {
-		return cmd.FailErr(err, "write build metadata")
+		return exit.ErrorFromErr(err, "write build metadata")
 	}
 	return nil
 }
@@ -99,21 +101,21 @@ func (b *buildCmd) build(group buildpack.Group, plan files.Plan) error {
 func (b *buildCmd) unwrapBuildFail(err error) error {
 	if err, ok := err.(*buildpack.Error); ok {
 		if err.Type == buildpack.ErrTypeBuildpack {
-			return cmd.FailErrCode(err.Cause(), b.CodeFor(platform.FailedBuildWithErrors), "build")
+			return exit.ErrorFromErrAndCode(err.Cause(), b.CodeFor(fail.FailedBuildWithErrors), "build")
 		}
 	}
-	return cmd.FailErrCode(err, b.CodeFor(platform.BuildError), "build")
+	return exit.ErrorFromErrAndCode(err, b.CodeFor(fail.BuildError), "build")
 }
 
 func (b *buildCmd) readData() (buildpack.Group, files.Plan, error) {
 	group, err := lifecycle.ReadGroup(b.GroupPath)
 	if err != nil {
-		return buildpack.Group{}, files.Plan{}, cmd.FailErr(err, "read buildpack group")
+		return buildpack.Group{}, files.Plan{}, exit.ErrorFromErr(err, "read buildpack group")
 	}
 
 	var plan files.Plan
 	if _, err := toml.DecodeFile(b.PlanPath, &plan); err != nil {
-		return buildpack.Group{}, files.Plan{}, cmd.FailErr(err, "parse detect plan")
+		return buildpack.Group{}, files.Plan{}, exit.ErrorFromErr(err, "parse detect plan")
 	}
 	return group, plan, nil
 }

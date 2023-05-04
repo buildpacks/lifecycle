@@ -7,7 +7,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/exit"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -19,17 +21,17 @@ func TestPlatform(t *testing.T) {
 
 func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it spec.S) {
 	return func(t *testing.T, when spec.G, it spec.S) {
-		when("#NewPlatformFor", func() {
+		when("#New", func() {
 			when("Platform API >= 0.6", func() {
 				it.Before(func() {
 					h.SkipIf(t, platformAPI.LessThan("0.6"), "")
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatformFor(platformAPI.String())
+					foundPlatform, _ := platform.New(cmd.DefaultLogger)
 
 					t.Log("with a default exiter")
-					_, ok := foundPlatform.Exiter.(*platform.DefaultExiter)
+					_, ok := foundPlatform.Exiter.(*exit.DefaultExiter)
 					h.AssertEq(t, ok, true)
 
 					t.Log("with an api")
@@ -43,10 +45,10 @@ func testPlatform(platformAPI *api.Version) func(t *testing.T, when spec.G, it s
 				})
 
 				it("configures the platform", func() {
-					foundPlatform := platform.NewPlatformFor(platformAPI.String())
+					foundPlatform, _ := platform.New(cmd.DefaultLogger)
 
 					t.Log("with a legacy exiter")
-					_, ok := foundPlatform.Exiter.(*platform.LegacyExiter)
+					_, ok := foundPlatform.Exiter.(*exit.LegacyExiter)
 					h.AssertEq(t, ok, true)
 
 					t.Log("with an api")

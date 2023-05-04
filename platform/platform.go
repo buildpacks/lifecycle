@@ -1,6 +1,12 @@
 package platform
 
-import "github.com/buildpacks/lifecycle/api"
+import (
+	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/log"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/env"
+	"github.com/buildpacks/lifecycle/platform/exit"
+)
 
 type LifecyclePhase int
 
@@ -18,15 +24,21 @@ const (
 // Platform holds lifecycle inputs and outputs for a given Platform API version and lifecycle phase.
 type Platform struct {
 	*LifecycleInputs
-	Exiter
+	exit.Exiter
 }
 
-// NewPlatformFor accepts a Platform API version and a layers directory, and returns a Platform with default lifecycle inputs and an exiter service.
-func NewPlatformFor(platformAPI string) *Platform {
+// New returns a Platform from the Platform API version requested by `env.VarPlatformAPI`
+// with default lifecycle inputs and an exiter service,
+// or an error if the requested Platform API version is unsupported.
+func New(logger log.Logger) (*Platform, error) {
+	platformAPI := envOrDefault(env.PlatformAPI, DefaultPlatformAPI)
+	if err := config.VerifyPlatformAPI(platformAPI, logger); err != nil {
+		return nil, err
+	}
 	return &Platform{
 		LifecycleInputs: NewLifecycleInputs(api.MustParse(platformAPI)),
-		Exiter:          NewExiter(platformAPI),
-	}
+		Exiter:          exit.NewExiter(platformAPI),
+	}, nil
 }
 
 func (p *Platform) API() *api.Version {

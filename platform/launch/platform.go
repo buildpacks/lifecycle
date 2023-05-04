@@ -2,16 +2,17 @@ package launch
 
 import (
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform/exit"
 )
 
 type Platform struct {
-	Exiter
+	exit.Exiter
 	api *api.Version
 }
 
 func NewPlatform(apiStr string) *Platform {
 	return &Platform{
-		Exiter: NewExiter(apiStr),
+		Exiter: exit.NewExiter(apiStr),
 		api:    api.MustParse(apiStr),
 	}
 }

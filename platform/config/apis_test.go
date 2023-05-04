@@ -1,4 +1,4 @@
-package guard_test
+package config_test
 
 import (
 	"testing"
@@ -10,9 +10,9 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/buildpack"
-	"github.com/buildpacks/lifecycle/cmd"
 	llog "github.com/buildpacks/lifecycle/log"
-	"github.com/buildpacks/lifecycle/platform/guard"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/exit"
 	h "github.com/buildpacks/lifecycle/testhelpers"
 )
 
@@ -40,10 +40,10 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 		when("is invalid", func() {
 			it("error with exit code 11", func() {
-				err := guard.VerifyPlatformAPI("bad-api", logger)
-				failErr, ok := err.(*cmd.ErrorFail)
+				err := config.VerifyPlatformAPI("bad-api", logger)
+				failErr, ok := err.(*exit.Error)
 				if !ok {
-					t.Fatalf("expected an error of type cmd.ErrorFail")
+					t.Fatalf("expected an error of type exit.Error")
 				}
 				h.AssertEq(t, failErr.Code, 11)
 			})
@@ -51,10 +51,10 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 		when("is unsupported", func() {
 			it("error with exit code 11", func() {
-				err := guard.VerifyPlatformAPI("2.2", logger)
-				failErr, ok := err.(*cmd.ErrorFail)
+				err := config.VerifyPlatformAPI("2.2", logger)
+				failErr, ok := err.(*exit.Error)
 				if !ok {
-					t.Fatalf("expected an error of type cmd.ErrorFail")
+					t.Fatalf("expected an error of type exit.Error")
 				}
 				h.AssertEq(t, failErr.Code, 11)
 			})
@@ -63,8 +63,8 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 		when("is deprecated", func() {
 			when("CNB_DEPRECATION_MODE=warn", func() {
 				it("should warn", func() {
-					guard.DeprecationMode = guard.ModeWarn
-					err := guard.VerifyPlatformAPI("1.1", logger)
+					config.DeprecationMode = config.ModeWarn
+					err := config.VerifyPlatformAPI("1.1", logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
 					h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
@@ -74,8 +74,8 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=quiet", func() {
 				it("should succeed silently", func() {
-					guard.DeprecationMode = guard.ModeQuiet
-					err := guard.VerifyPlatformAPI("1.1", logger)
+					config.DeprecationMode = config.ModeQuiet
+					err := config.VerifyPlatformAPI("1.1", logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
 				})
@@ -83,11 +83,11 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=error", func() {
 				it("error with exit code 11", func() {
-					guard.DeprecationMode = guard.ModeError
-					err := guard.VerifyPlatformAPI("1.1", logger)
-					failErr, ok := err.(*cmd.ErrorFail)
+					config.DeprecationMode = config.ModeError
+					err := config.VerifyPlatformAPI("1.1", logger)
+					failErr, ok := err.(*exit.Error)
 					if !ok {
-						t.Fatalf("expected an error of type cmd.ErrorFail")
+						t.Fatalf("expected an error of type exit.Error")
 					}
 					h.AssertEq(t, failErr.Code, 11)
 				})
@@ -104,10 +104,10 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 		when("is invalid", func() {
 			it("error with exit code 12", func() {
-				err := guard.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "bad-api", logger)
-				failErr, ok := err.(*cmd.ErrorFail)
+				err := config.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "bad-api", logger)
+				failErr, ok := err.(*exit.Error)
 				if !ok {
-					t.Fatalf("expected an error of type cmd.ErrorFail")
+					t.Fatalf("expected an error of type exit.Error")
 				}
 				h.AssertEq(t, failErr.Code, 12)
 			})
@@ -115,10 +115,10 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 		when("is unsupported", func() {
 			it("error with exit code 11", func() {
-				err := guard.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "2.2", logger)
-				failErr, ok := err.(*cmd.ErrorFail)
+				err := config.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "2.2", logger)
+				failErr, ok := err.(*exit.Error)
 				if !ok {
-					t.Fatalf("expected an error of type cmd.ErrorFail")
+					t.Fatalf("expected an error of type exit.Error")
 				}
 				h.AssertEq(t, failErr.Code, 12)
 			})
@@ -127,8 +127,8 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 		when("is deprecated", func() {
 			when("CNB_DEPRECATION_MODE=warn", func() {
 				it("should warn", func() {
-					guard.DeprecationMode = guard.ModeWarn
-					err := guard.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", logger)
+					config.DeprecationMode = config.ModeWarn
+					err := config.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 1)
 					h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
@@ -138,8 +138,8 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=quiet", func() {
 				it("should succeed silently", func() {
-					guard.DeprecationMode = guard.ModeQuiet
-					err := guard.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", logger)
+					config.DeprecationMode = config.ModeQuiet
+					err := config.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", logger)
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(logHandler.Entries), 0)
 				})
@@ -147,11 +147,11 @@ func testVerifyAPIs(t *testing.T, when spec.G, it spec.S) {
 
 			when("CNB_DEPRECATION_MODE=error", func() {
 				it("error with exit code 11", func() {
-					guard.DeprecationMode = guard.ModeError
-					err := guard.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", logger)
-					failErr, ok := err.(*cmd.ErrorFail)
+					config.DeprecationMode = config.ModeError
+					err := config.VerifyBuildpackAPI(buildpack.KindBuildpack, "some-buildpack", "1.1", logger)
+					failErr, ok := err.(*exit.Error)
 					if !ok {
-						t.Fatalf("expected an error of type cmd.ErrorFail")
+						t.Fatalf("expected an error of type exit.Error")
 					}
 					h.AssertEq(t, failErr.Code, 12)
 				})

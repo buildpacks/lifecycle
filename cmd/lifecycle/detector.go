@@ -9,8 +9,10 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/exit/fail"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/buildpacks/lifecycle/platform/guard"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -43,10 +45,10 @@ func (d *detectCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (d *detectCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(errors.New("received unexpected arguments"), exit.CodeForInvalidArgs, "parse arguments")
 	}
 	if err := platform.ResolveInputs(platform.Detect, d.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
@@ -54,7 +56,7 @@ func (d *detectCmd) Args(nargs int, _ []string) error {
 func (d *detectCmd) Privileges() error {
 	// detector should never be run with privileges
 	if priv.IsPrivileged() {
-		return cmd.FailErr(errors.New("refusing to run as root"), "detect")
+		return exit.ErrorFromErr(errors.New("refusing to run as root"), "detect")
 	}
 	return nil
 }
@@ -63,7 +65,7 @@ func (d *detectCmd) Exec() error {
 	dirStore := files.NewDirStore(d.BuildpacksDir, d.ExtensionsDir)
 	detectorFactory := lifecycle.NewDetectorFactory(
 		d.PlatformAPI,
-		&guard.BuildpackAPIVerifier{},
+		&config.BuildpackAPIVerifier{},
 		lifecycle.NewConfigHandler(),
 		dirStore,
 	)
@@ -83,7 +85,7 @@ func (d *detectCmd) Exec() error {
 		return unwrapErrorFailWithMessage(err, "initialize detector")
 	}
 	if detector.HasExtensions {
-		if err = guard.GuardExperimental(guard.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+		if err = config.VerifyExperimental(config.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -93,7 +95,7 @@ func (d *detectCmd) Exec() error {
 	}
 	if group.HasExtensions() {
 		generatorFactory := lifecycle.NewGeneratorFactory(
-			&guard.BuildpackAPIVerifier{},
+			&config.BuildpackAPIVerifier{},
 			lifecycle.Config,
 			dirStore,
 		)
@@ -131,20 +133,20 @@ func (d *detectCmd) Exec() error {
 }
 
 func unwrapErrorFailWithMessage(err error, msg string) error {
-	errorFail, ok := err.(*cmd.ErrorFail)
+	errorFail, ok := err.(*exit.Error)
 	if ok {
 		return errorFail
 	}
-	return cmd.FailErr(err, msg)
+	return exit.ErrorFromErr(err, msg)
 }
 
 func (d *detectCmd) unwrapGenerateFail(err error) error {
 	if err, ok := err.(*buildpack.Error); ok {
 		if err.Type == buildpack.ErrTypeBuildpack {
-			return cmd.FailErrCode(err.Cause(), d.CodeFor(platform.FailedGenerateWithErrors), "build")
+			return exit.ErrorFromErrAndCode(err.Cause(), d.CodeFor(fail.FailedGenerateWithErrors), "build")
 		}
 	}
-	return cmd.FailErrCode(err, d.CodeFor(platform.GenerateError), "build")
+	return exit.ErrorFromErrAndCode(err, d.CodeFor(fail.GenerateError), "build")
 }
 
 func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Group, files.Plan, error) {
@@ -156,15 +158,15 @@ func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Gro
 			case buildpack.ErrTypeFailedDetection:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
 				cmd.DefaultLogger.Error("Please check that you are running against the correct path.")
-				return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetect), "detect")
+				return buildpack.Group{}, files.Plan{}, exit.ErrorFromErrAndCode(err, p.CodeFor(fail.FailedDetect), "detect")
 			case buildpack.ErrTypeBuildpack:
 				cmd.DefaultLogger.Error("No buildpack groups passed detection.")
-				return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.FailedDetectWithErrors), "detect")
+				return buildpack.Group{}, files.Plan{}, exit.ErrorFromErrAndCode(err, p.CodeFor(fail.FailedDetectWithErrors), "detect")
 			default:
-				return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
+				return buildpack.Group{}, files.Plan{}, exit.ErrorFromErrAndCode(err, p.CodeFor(fail.DetectError), "detect")
 			}
 		default:
-			return buildpack.Group{}, files.Plan{}, cmd.FailErrCode(err, p.CodeFor(platform.DetectError), "detect")
+			return buildpack.Group{}, files.Plan{}, exit.ErrorFromErrAndCode(err, p.CodeFor(fail.DetectError), "detect")
 		}
 	}
 	return group, plan, nil
@@ -172,10 +174,10 @@ func doDetect(detector *lifecycle.Detector, p *platform.Platform) (buildpack.Gro
 
 func (d *detectCmd) writeDetectData(group buildpack.Group, plan files.Plan) error {
 	if err := encoding.WriteTOML(d.GroupPath, group); err != nil {
-		return cmd.FailErr(err, "write buildpack group")
+		return exit.ErrorFromErr(err, "write buildpack group")
 	}
 	if err := encoding.WriteTOML(d.PlanPath, plan); err != nil {
-		return cmd.FailErr(err, "write detect plan")
+		return exit.ErrorFromErr(err, "write detect plan")
 	}
 	return nil
 }
@@ -183,7 +185,7 @@ func (d *detectCmd) writeDetectData(group buildpack.Group, plan files.Plan) erro
 // writeGenerateData re-outputs the analyzedMD that we read previously, but now we've added the RunImage, if a custom runImage was configured
 func (d *detectCmd) writeGenerateData(analyzedMD files.Analyzed) error {
 	if err := encoding.WriteTOML(d.AnalyzedPath, analyzedMD); err != nil {
-		return cmd.FailErr(err, "write analyzed metadata")
+		return exit.ErrorFromErr(err, "write analyzed metadata")
 	}
 	return nil
 }

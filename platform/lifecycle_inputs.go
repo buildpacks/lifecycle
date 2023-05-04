@@ -3,7 +3,6 @@ package platform
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -72,46 +71,44 @@ const PlaceholderLayers = "<layers>"
 // To be valid, inputs obtained from calling NewLifecycleInputs MUST be updated using UpdatePlaceholderPaths
 // once the final value of the layers directory is known.
 func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
-	// FIXME: api compatibility should be validated here
-
 	var skipLayers bool
-	if boolEnv(env.VarSkipLayers) || boolEnv(env.VarSkipRestore) {
+	if env.SkipLayers || env.SkipRestore {
 		skipLayers = true
 	}
 
 	inputs := &LifecycleInputs{
 		// Base Image
 
-		UID: intEnv(env.VarUID),
-		GID: intEnv(env.VarGID),
+		UID: env.UID,
+		GID: env.GID,
 
 		// Builder Image
 
-		BuildConfigDir: envOrDefault(env.VarBuildConfigDir, DefaultBuildConfigDir),
-		BuildpacksDir:  envOrDefault(env.VarBuildpacksDir, DefaultBuildpacksDir),
-		ExtensionsDir:  envOrDefault(env.VarExtensionsDir, DefaultExtensionsDir),
-		OrderPath:      envOrDefault(env.VarOrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)), // we first look for order.toml in the layers directory, and fall back to /cnb/order.toml if it is not there
-		RunPath:        envOrDefault(env.VarRunPath, DefaultRunPath),
-		StackPath:      envOrDefault(env.VarStackPath, DefaultStackPath),
+		BuildConfigDir: envOrDefault(env.BuildConfigDir, DefaultBuildConfigDir),
+		BuildpacksDir:  envOrDefault(env.BuildpacksDir, DefaultBuildpacksDir),
+		ExtensionsDir:  envOrDefault(env.ExtensionsDir, DefaultExtensionsDir),
+		OrderPath:      envOrDefault(env.OrderPath, filepath.Join(PlaceholderLayers, DefaultOrderFile)), // we first look for order.toml in the layers directory, and fall back to /cnb/order.toml if it is not there
+		RunPath:        envOrDefault(env.RunPath, DefaultRunPath),
+		StackPath:      envOrDefault(env.StackPath, DefaultStackPath),
 
 		// Platform
 
 		// operator experience
 		PlatformAPI: platformAPI,
-		LogLevel:    envOrDefault(env.VarLogLevel, DefaultLogLevel),
+		LogLevel:    envOrDefault(env.LogLevel, DefaultLogLevel),
 
 		// dirs for detect/build
-		AppDir:      envOrDefault(env.VarAppDir, DefaultAppDir),
-		LayersDir:   envOrDefault(env.VarLayersDir, DefaultLayersDir),
-		PlatformDir: envOrDefault(env.VarPlatformDir, DefaultPlatformDir),
+		AppDir:      envOrDefault(env.AppDir, DefaultAppDir),
+		LayersDir:   envOrDefault(env.LayersDir, DefaultLayersDir),
+		PlatformDir: envOrDefault(env.PlatformDir, DefaultPlatformDir),
 
 		// data
-		AnalyzedPath: envOrDefault(env.VarAnalyzedPath, filepath.Join(PlaceholderLayers, DefaultAnalyzedFile)),
-		ExtendedDir:  envOrDefault(env.VarExtendedDir, filepath.Join(PlaceholderLayers, DefaultExtendedDir)),
-		GeneratedDir: envOrDefault(env.VarGeneratedDir, filepath.Join(PlaceholderLayers, DefaultGeneratedDir)),
-		GroupPath:    envOrDefault(env.VarGroupPath, filepath.Join(PlaceholderLayers, DefaultGroupFile)),
-		PlanPath:     envOrDefault(env.VarPlanPath, filepath.Join(PlaceholderLayers, DefaultPlanFile)),
-		ReportPath:   envOrDefault(env.VarReportPath, filepath.Join(PlaceholderLayers, DefaultReportFile)),
+		AnalyzedPath: envOrDefault(env.AnalyzedPath, filepath.Join(PlaceholderLayers, DefaultAnalyzedFile)),
+		ExtendedDir:  envOrDefault(env.ExtendedDir, filepath.Join(PlaceholderLayers, DefaultExtendedDir)),
+		GeneratedDir: envOrDefault(env.GeneratedDir, filepath.Join(PlaceholderLayers, DefaultGeneratedDir)),
+		GroupPath:    envOrDefault(env.GroupPath, filepath.Join(PlaceholderLayers, DefaultGroupFile)),
+		PlanPath:     envOrDefault(env.PlanPath, filepath.Join(PlaceholderLayers, DefaultPlanFile)),
+		ReportPath:   envOrDefault(env.ReportPath, filepath.Join(PlaceholderLayers, DefaultReportFile)),
 
 		// images
 		BuildImageRef:         os.Getenv(env.VarBuildImage),
@@ -122,7 +119,7 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		// caching
 		CacheDir:       os.Getenv(env.VarCacheDir),
 		CacheImageRef:  os.Getenv(env.VarCacheImage),
-		KanikoCacheTTL: timeEnvOrDefault(env.VarKanikoCacheTTL, DefaultKanikoCacheTTL),
+		KanikoCacheTTL: timeEnvOrDefault(env.KanikoCacheTTL, DefaultKanikoCacheTTL),
 		KanikoDir:      "/kaniko",
 		LaunchCacheDir: os.Getenv(env.VarLaunchCacheDir),
 		SkipLayers:     skipLayers,
@@ -130,35 +127,35 @@ func NewLifecycleInputs(platformAPI *api.Version) *LifecycleInputs {
 		// export target
 		AdditionalTags: nil, // no default
 		OutputImageRef: "",  // no default
-		UseDaemon:      boolEnv(env.VarUseDaemon),
-		UseLayout:      boolEnv(env.VarUseLayout),
+		UseDaemon:      env.UseDaemon,
+		UseLayout:      env.UseLayout,
 		LayoutDir:      os.Getenv(env.VarLayoutDir),
 
 		// app image
 		DefaultProcessType:  os.Getenv(env.VarProcessType),
 		LauncherPath:        DefaultLauncherPath,
 		LauncherSBOMDir:     DefaultBuildpacksioSBOMDir,
-		ProjectMetadataPath: envOrDefault(env.VarProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
+		ProjectMetadataPath: envOrDefault(env.ProjectMetadataPath, filepath.Join(PlaceholderLayers, DefaultProjectMetadataFile)),
 
 		// image extension
-		ExtendKind: envOrDefault(env.VarExtendKind, DefaultExtendKind),
+		ExtendKind: envOrDefault(env.ExtendKind, DefaultExtendKind),
 
 		// rebase
-		ForceRebase: boolEnv(env.VarForceRebase),
+		ForceRebase: env.ForceRebase,
 	}
 
 	if platformAPI.LessThan("0.6") {
 		// The default location for order.toml is /cnb/order.toml
-		inputs.OrderPath = envOrDefault(env.VarOrderPath, CNBOrderPath)
+		inputs.OrderPath = envOrDefault(env.OrderPath, CNBOrderPath)
 	}
 
 	if platformAPI.LessThan("0.5") {
-		inputs.AnalyzedPath = envOrDefault(env.VarAnalyzedPath, DefaultAnalyzedFile)
-		inputs.GeneratedDir = envOrDefault(env.VarGeneratedDir, DefaultGeneratedDir)
-		inputs.GroupPath = envOrDefault(env.VarGroupPath, DefaultGroupFile)
-		inputs.PlanPath = envOrDefault(env.VarPlanPath, DefaultPlanFile)
-		inputs.ProjectMetadataPath = envOrDefault(env.VarProjectMetadataPath, DefaultProjectMetadataFile)
-		inputs.ReportPath = envOrDefault(env.VarReportPath, DefaultReportFile)
+		inputs.AnalyzedPath = envOrDefault(env.AnalyzedPath, DefaultAnalyzedFile)
+		inputs.GeneratedDir = envOrDefault(env.GeneratedDir, DefaultGeneratedDir)
+		inputs.GroupPath = envOrDefault(env.GroupPath, DefaultGroupFile)
+		inputs.PlanPath = envOrDefault(env.PlanPath, DefaultPlanFile)
+		inputs.ProjectMetadataPath = envOrDefault(env.ProjectMetadataPath, DefaultProjectMetadataFile)
+		inputs.ReportPath = envOrDefault(env.ReportPath, DefaultReportFile)
 	}
 
 	return inputs
@@ -211,41 +208,18 @@ func notIn(list []string, str string) bool {
 
 // shared helpers
 
-func boolEnv(k string) bool {
-	v := os.Getenv(k)
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return false
-	}
-	return b
-}
-
-func envOrDefault(key string, defaultVal string) string {
-	if envVal := os.Getenv(key); envVal != "" {
+func envOrDefault(envVal string, defaultVal string) string {
+	if envVal != "" {
 		return envVal
 	}
 	return defaultVal
 }
 
-func intEnv(k string) int {
-	v := os.Getenv(k)
-	d, err := strconv.Atoi(v)
-	if err != nil {
-		return 0
+func timeEnvOrDefault(envTTL time.Duration, defaultVal time.Duration) time.Duration {
+	if envTTL != 0 {
+		return envTTL
 	}
-	return d
-}
-
-func timeEnvOrDefault(key string, defaultVal time.Duration) time.Duration {
-	envTTL := os.Getenv(key)
-	if envTTL == "" {
-		return defaultVal
-	}
-	ttl, err := time.ParseDuration(envTTL)
-	if err != nil {
-		return defaultVal
-	}
-	return ttl
+	return defaultVal
 }
 
 // operations

@@ -1,10 +1,9 @@
-package guard_test
+package config_test
 
 import (
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/guard"
+	"github.com/buildpacks/lifecycle/platform/config"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/memory"
@@ -30,11 +29,11 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 		logger = &log.Logger{Handler: logHandler}
 	})
 
-	when("GuardExperimental", func() {
+	when("VerifyExperimental", func() {
 		when("CNB_EXPERIMENTAL_MODE=warn", func() {
 			it("warns", func() {
-				guard.ExperimentalMode = platform.ModeWarn
-				err := guard.GuardExperimental("some-feature", logger)
+				config.ExperimentalMode = config.ModeWarn
+				err := config.VerifyExperimental("some-feature", logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(logHandler.Entries), 1)
 				h.AssertEq(t, logHandler.Entries[0].Level, log.WarnLevel)
@@ -44,8 +43,8 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 
 		when("CNB_EXPERIMENTAL_MODE=quiet", func() {
 			it("succeeds silently", func() {
-				guard.ExperimentalMode = platform.ModeQuiet
-				err := guard.GuardExperimental("some-feature", logger)
+				config.ExperimentalMode = config.ModeQuiet
+				err := config.VerifyExperimental("some-feature", logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(logHandler.Entries), 0)
 			})
@@ -53,8 +52,8 @@ func testExperimentalFeatures(t *testing.T, when spec.G, it spec.S) {
 
 		when("CNB_EXPERIMENTAL_MODE=error", func() {
 			it("error with exit code 11", func() {
-				guard.ExperimentalMode = platform.ModeError
-				err := guard.GuardExperimental("some-feature", logger)
+				config.ExperimentalMode = config.ModeError
+				err := config.VerifyExperimental("some-feature", logger)
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), "experimental features are disabled by CNB_EXPERIMENTAL_MODE=error")
 				h.AssertEq(t, len(logHandler.Entries), 1)

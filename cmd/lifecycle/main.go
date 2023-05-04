@@ -15,69 +15,65 @@ import (
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/env"
-	"github.com/buildpacks/lifecycle/platform/guard"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/exit"
 )
 
 func main() {
+	p, err := platform.New(cmd.DefaultLogger)
+	if err != nil {
+		cmd.Exit(err)
+	}
 	phase := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
 	switch phase {
 	case "detector":
-		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&detectCmd{Platform: p}, false)
 	case "analyzer":
-		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&analyzeCmd{Platform: p}, false)
 	case "restorer":
-		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&restoreCmd{Platform: p}, false)
 	case "builder":
-		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&buildCmd{Platform: p}, false)
 	case "exporter":
-		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&exportCmd{Platform: p}, false)
 	case "creator":
-		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&createCmd{Platform: p}, false)
 	case "extender":
-		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&extendCmd{Platform: p}, false)
 	case "rebaser":
-		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPIWithExitOnError())}, false)
+		cli.Run(&rebaseCmd{Platform: p}, false)
 	default:
 		if len(os.Args) < 2 {
-			cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "parse arguments"))
+			cmd.Exit(exit.ErrorFromCode(exit.CodeForInvalidArgs, "parse arguments"))
 		}
 		if os.Args[1] == "-version" {
 			cmd.ExitWithVersion()
 		}
-		subcommand(platformAPIWithExitOnError())
+		subcommand(p)
 	}
 }
 
-func platformAPIWithExitOnError() string {
-	platformAPI := guard.EnvOrDefault(env.VarPlatformAPI, platform.DefaultPlatformAPI)
-	if err := guard.VerifyPlatformAPI(platformAPI, cmd.DefaultLogger); err != nil {
-		cmd.Exit(err)
-	}
-	return platformAPI
-}
-
-func subcommand(platformAPI string) {
+func subcommand(p *platform.Platform) {
 	phase := filepath.Base(os.Args[1])
 	switch phase {
 	case "detect":
-		cli.Run(&detectCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&detectCmd{Platform: p}, true)
 	case "analyze":
-		cli.Run(&analyzeCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&analyzeCmd{Platform: p}, true)
 	case "restore":
-		cli.Run(&restoreCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&restoreCmd{Platform: p}, true)
 	case "build":
-		cli.Run(&buildCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&buildCmd{Platform: p}, true)
 	case "export":
-		cli.Run(&exportCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&exportCmd{Platform: p}, true)
 	case "rebase":
-		cli.Run(&rebaseCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&rebaseCmd{Platform: p}, true)
 	case "create":
-		cli.Run(&createCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&createCmd{Platform: p}, true)
 	case "extend":
-		cli.Run(&extendCmd{Platform: platform.NewPlatformFor(platformAPI)}, true)
+		cli.Run(&extendCmd{Platform: p}, true)
 	default:
-		cmd.Exit(cmd.FailCode(cmd.CodeForInvalidArgs, "unknown phase:", phase))
+		cmd.Exit(exit.ErrorFromCode(exit.CodeForInvalidArgs, "unknown phase:", phase))
 	}
 }
 
@@ -172,12 +168,12 @@ func initCache(cacheImageTag, cacheDir string, keychain authn.Keychain) (lifecyc
 	if cacheImageTag != "" {
 		cacheStore, err = cache.NewImageCacheFromName(cacheImageTag, keychain, cmd.DefaultLogger)
 		if err != nil {
-			return nil, cmd.FailErr(err, "create image cache")
+			return nil, exit.ErrorFromErr(err, "create image cache")
 		}
 	} else if cacheDir != "" {
 		cacheStore, err = cache.NewVolumeCache(cacheDir)
 		if err != nil {
-			return nil, cmd.FailErr(err, "create volume cache")
+			return nil, exit.ErrorFromErr(err, "create volume cache")
 		}
 	}
 	return cacheStore, nil
@@ -190,7 +186,7 @@ func verifyBuildpackApis(group buildpack.Group) error {
 			// but if for some reason it isn't default to 0.2
 			bp.API = "0.2"
 		}
-		if err := guard.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // FIXME: when exporter is extensions-aware, this function call should be modified to provide the right module kind
+		if err := config.VerifyBuildpackAPI(buildpack.KindBuildpack, bp.String(), bp.API, cmd.DefaultLogger); err != nil { // FIXME: when exporter is extensions-aware, this function call should be modified to provide the right module kind
 			return err
 		}
 	}

@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/buildpacks/lifecycle/platform/guard"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -18,7 +14,11 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -65,14 +65,14 @@ func (c *createCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (c *createCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
-		return cmd.FailErrCode(fmt.Errorf("received %d arguments, but expected 1", nargs), cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(fmt.Errorf("received %d arguments, but expected 1", nargs), exit.CodeForInvalidArgs, "parse arguments")
 	}
 	c.OutputImageRef = args[0]
 	if err := platform.ResolveInputs(platform.Create, c.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	if c.UseLayout {
-		if err := guard.GuardExperimental(guard.LayoutFormat, cmd.DefaultLogger); err != nil {
+		if err := config.VerifyExperimental(config.FeatureLayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -83,22 +83,22 @@ func (c *createCmd) Privileges() error {
 	var err error
 	c.keychain, err = auth.DefaultKeychain(c.RegistryImages()...)
 	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+		return exit.ErrorFromErr(err, "resolve keychain")
 	}
 	if c.UseDaemon {
 		c.docker, err = priv.DockerClient()
 		if err != nil {
-			return cmd.FailErr(err, "initialize docker client")
+			return exit.ErrorFromErr(err, "initialize docker client")
 		}
 	}
 	if err = priv.EnsureOwner(c.UID, c.GID, c.CacheDir, c.LaunchCacheDir, c.LayersDir); err != nil {
-		return cmd.FailErr(err, "chown volumes")
+		return exit.ErrorFromErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(c.UID, c.GID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", c.UID, c.GID))
+		return exit.ErrorFromErr(err, fmt.Sprintf("exec as user %d:%d", c.UID, c.GID))
 	}
 	if err = priv.SetEnvironmentForUser(c.UID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", c.UID))
+		return exit.ErrorFromErr(err, fmt.Sprintf("set environment for user %d", c.UID))
 	}
 	return nil
 }
@@ -123,7 +123,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.PlatformAPI,
-			&guard.BuildpackAPIVerifier{},
+			&config.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
 			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),
@@ -154,7 +154,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
 			c.PlatformAPI,
-			&guard.BuildpackAPIVerifier{},
+			&config.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
@@ -170,7 +170,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("DETECTING")
 		detectorFactory := lifecycle.NewDetectorFactory(
 			c.PlatformAPI,
-			&guard.BuildpackAPIVerifier{},
+			&config.BuildpackAPIVerifier{},
 			lifecycle.NewConfigHandler(),
 			dirStore,
 		)
@@ -186,7 +186,7 @@ func (c *createCmd) Exec() error {
 		cmd.DefaultLogger.Phase("ANALYZING")
 		analyzerFactory := lifecycle.NewAnalyzerFactory(
 			c.PlatformAPI,
-			&guard.BuildpackAPIVerifier{},
+			&config.BuildpackAPIVerifier{},
 			NewCacheHandler(c.keychain),
 			lifecycle.NewConfigHandler(),
 			image.NewHandler(c.docker, c.keychain, c.LayoutDir, c.UseLayout),

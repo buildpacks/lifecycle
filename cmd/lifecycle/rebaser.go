@@ -18,6 +18,8 @@ import (
 	"github.com/buildpacks/lifecycle/image"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/exit/fail"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/platform/images"
 	"github.com/buildpacks/lifecycle/priv"
@@ -53,15 +55,15 @@ func (r *rebaseCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (r *rebaseCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(errors.New("at least one image argument is required"), exit.CodeForInvalidArgs, "parse arguments")
 	}
 	r.OutputImageRef = args[0]
 	r.AdditionalTags = args[1:]
 	if err := platform.ResolveInputs(platform.Rebase, r.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	if err := r.setAppImage(); err != nil {
-		return cmd.FailErrCode(errors.New(err.Error()), r.CodeFor(platform.RebaseError), "set app image")
+		return exit.ErrorFromErrAndCode(errors.New(err.Error()), r.CodeFor(fail.RebaseError), "set app image")
 	}
 	return nil
 }
@@ -70,18 +72,18 @@ func (r *rebaseCmd) Privileges() error {
 	var err error
 	r.keychain, err = auth.DefaultKeychain(r.RegistryImages()...)
 	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+		return exit.ErrorFromErr(err, "resolve keychain")
 	}
 
 	if r.UseDaemon {
 		var err error
 		r.docker, err = priv.DockerClient()
 		if err != nil {
-			return cmd.FailErr(err, "initialize docker client")
+			return exit.ErrorFromErr(err, "initialize docker client")
 		}
 	}
 	if err := priv.RunAs(r.UID, r.GID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.UID, r.GID))
+		return exit.ErrorFromErr(err, fmt.Sprintf("exec as user %d:%d", r.UID, r.GID))
 	}
 	return nil
 }
@@ -103,7 +105,7 @@ func (r *rebaseCmd) Exec() error {
 		)
 	}
 	if err != nil || !newBaseImage.Found() {
-		return cmd.FailErr(err, "access run image")
+		return exit.ErrorFromErr(err, "access run image")
 	}
 
 	rebaser := &lifecycle.Rebaser{
@@ -113,11 +115,11 @@ func (r *rebaseCmd) Exec() error {
 	}
 	report, err := rebaser.Rebase(r.appImage, newBaseImage, r.OutputImageRef, r.AdditionalTags)
 	if err != nil {
-		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "rebase")
+		return exit.ErrorFromErrAndCode(err, r.CodeFor(fail.RebaseError), "rebase")
 	}
 
 	if err := encoding.WriteTOML(r.ReportPath, &report); err != nil {
-		return cmd.FailErrCode(err, r.CodeFor(platform.RebaseError), "write rebase report")
+		return exit.ErrorFromErrAndCode(err, r.CodeFor(fail.RebaseError), "write rebase report")
 	}
 	return nil
 }
@@ -155,7 +157,7 @@ func (r *rebaseCmd) setAppImage() error {
 		)
 	}
 	if err != nil || !r.appImage.Found() {
-		return cmd.FailErr(err, "access image to rebase")
+		return exit.ErrorFromErr(err, "access image to rebase")
 	}
 
 	var md files.LayersMetadata
@@ -174,7 +176,7 @@ func (r *rebaseCmd) setAppImage() error {
 		// for backwards compatibility, we need to fallback to the stack metadata
 		// fail if there is no run image metadata available from either location
 		if md.Stack.RunImage.Image == "" {
-			return cmd.FailErrCode(errors.New("-run-image is required when there is no run image metadata available"), cmd.CodeForInvalidArgs, "parse arguments")
+			return exit.ErrorFromErrAndCode(errors.New("-run-image is required when there is no run image metadata available"), exit.CodeForInvalidArgs, "parse arguments")
 		}
 
 		// for older platforms, we find the best mirror for the run image as this point

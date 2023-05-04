@@ -2,8 +2,6 @@ package cli
 
 import (
 	"flag"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/buildpacks/lifecycle/internal/str"
@@ -98,7 +96,7 @@ func FlagLogLevel(logLevel *string) {
 }
 
 func FlagNoColor(noColor *bool) {
-	flagSet.BoolVar(noColor, "no-color", boolEnv(env.VarNoColor), "disable color output")
+	flagSet.BoolVar(noColor, "no-color", env.NoColor, "disable color output")
 }
 
 func FlagOrderPath(orderPath *string) {
@@ -173,15 +171,4 @@ func FlagForceRebase(force *bool) {
 
 func DeprecatedFlagRunImage(deprecatedRunImage *string) {
 	flagSet.StringVar(deprecatedRunImage, "image", "", "reference to run image")
-}
-
-// helpers
-
-func boolEnv(k string) bool {
-	v := os.Getenv(k)
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return false
-	}
-	return b
 }

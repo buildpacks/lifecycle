@@ -10,7 +10,9 @@ import (
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
 	"github.com/buildpacks/lifecycle/internal/extend/kaniko"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/buildpacks/lifecycle/platform/guard"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/exit/fail"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -40,10 +42,10 @@ func (e *extendCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (e *extendCmd) Args(nargs int, _ []string) error {
 	if nargs != 0 {
-		return cmd.FailErrCode(errors.New("received unexpected arguments"), cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(errors.New("received unexpected arguments"), exit.CodeForInvalidArgs, "parse arguments")
 	}
 	if err := platform.ResolveInputs(platform.Extend, e.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
@@ -53,7 +55,7 @@ func (e *extendCmd) Privileges() error {
 }
 
 func (e *extendCmd) Exec() error {
-	extenderFactory := lifecycle.NewExtenderFactory(&guard.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
+	extenderFactory := lifecycle.NewExtenderFactory(&config.BuildpackAPIVerifier{}, lifecycle.NewConfigHandler())
 	applier, err := kaniko.NewDockerfileApplier()
 	if err != nil {
 		return err
@@ -77,16 +79,16 @@ func (e *extendCmd) Exec() error {
 	switch e.ExtendKind {
 	case buildpack.DockerfileKindBuild:
 		if err = extender.Extend(e.ExtendKind, cmd.DefaultLogger); err != nil {
-			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend build image")
+			return exit.ErrorFromErrAndCode(err, e.CodeFor(fail.ExtendError), "extend build image")
 		}
 		if err = priv.EnsureOwner(e.UID, e.GID, e.LayersDir); err != nil {
-			return cmd.FailErr(err, "chown volumes")
+			return exit.ErrorFromErr(err, "chown volumes")
 		}
 		if err = priv.RunAs(e.UID, e.GID); err != nil {
-			return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
+			return exit.ErrorFromErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
 		}
 		if err = priv.SetEnvironmentForUser(e.UID); err != nil {
-			return cmd.FailErr(err, fmt.Sprintf("set environment for user %d", e.UID))
+			return exit.ErrorFromErr(err, fmt.Sprintf("set environment for user %d", e.UID))
 		}
 		buildCmd := buildCmd{Platform: e.Platform}
 		if err = buildCmd.Privileges(); err != nil {
@@ -95,10 +97,10 @@ func (e *extendCmd) Exec() error {
 		return buildCmd.Exec()
 	case buildpack.DockerfileKindRun:
 		if err = extender.Extend(e.ExtendKind, cmd.DefaultLogger); err != nil {
-			return cmd.FailErrCode(err, e.CodeFor(platform.ExtendError), "extend run image")
+			return exit.ErrorFromErrAndCode(err, e.CodeFor(fail.ExtendError), "extend run image")
 		}
 	default:
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs)
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs)
 	}
 	return nil
 }

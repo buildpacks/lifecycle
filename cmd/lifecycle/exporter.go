@@ -30,8 +30,10 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/exit/fail"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/buildpacks/lifecycle/platform/guard"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -83,12 +85,12 @@ func (e *exportCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (e *exportCmd) Args(nargs int, args []string) error {
 	if nargs == 0 {
-		return cmd.FailErrCode(errors.New("at least one image argument is required"), cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(errors.New("at least one image argument is required"), exit.CodeForInvalidArgs, "parse arguments")
 	}
 	e.OutputImageRef = args[0]
 	e.AdditionalTags = args[1:]
 	if err := platform.ResolveInputs(platform.Export, e.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	// read analyzed metadata for use in later stages
 	var err error
@@ -97,7 +99,7 @@ func (e *exportCmd) Args(nargs int, args []string) error {
 		return err
 	}
 	if e.UseLayout {
-		if err := guard.GuardExperimental(guard.LayoutFormat, cmd.DefaultLogger); err != nil {
+		if err := config.VerifyExperimental(config.FeatureLayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -108,20 +110,20 @@ func (e *exportCmd) Privileges() error {
 	var err error
 	e.keychain, err = auth.DefaultKeychain(e.registryImages()...)
 	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+		return exit.ErrorFromErr(err, "resolve keychain")
 	}
 	if e.UseDaemon {
 		var err error
 		e.docker, err = priv.DockerClient()
 		if err != nil {
-			return cmd.FailErr(err, "initialize docker client")
+			return exit.ErrorFromErr(err, "initialize docker client")
 		}
 	}
 	if err = priv.EnsureOwner(e.UID, e.GID, e.CacheDir, e.LaunchCacheDir); err != nil {
-		return cmd.FailErr(err, "chown volumes")
+		return exit.ErrorFromErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(e.UID, e.GID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
+		return exit.ErrorFromErr(err, fmt.Sprintf("exec as user %d:%d", e.UID, e.GID))
 	}
 	return nil
 }
@@ -129,7 +131,7 @@ func (e *exportCmd) Privileges() error {
 func (e *exportCmd) Exec() error {
 	group, err := lifecycle.ReadGroup(e.GroupPath)
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
+		return exit.ErrorFromErr(err, "read buildpack group")
 	}
 	if err = verifyBuildpackApis(group); err != nil {
 		return err
@@ -139,7 +141,7 @@ func (e *exportCmd) Exec() error {
 		return err
 	}
 	if e.hasExtendedLayers() {
-		if err := guard.GuardExperimental(guard.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
+		if err := config.VerifyExperimental(config.FeatureDockerfiles, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -160,7 +162,7 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 	artifactsDir, err := os.MkdirTemp("", "lifecycle.exporter.layer")
 
 	if err != nil {
-		return cmd.FailErr(err, "create temp directory")
+		return exit.ErrorFromErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(artifactsDir)
 
@@ -221,10 +223,10 @@ func (e *exportCmd) export(group buildpack.Group, cacheStore lifecycle.Cache, an
 		WorkingImage:       appImage,
 	})
 	if err != nil {
-		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "export")
+		return exit.ErrorFromErrAndCode(err, e.CodeFor(fail.ExportError), "export")
 	}
 	if err = encoding.WriteTOML(e.ReportPath, &report); err != nil {
-		return cmd.FailErrCode(err, e.CodeFor(platform.ExportError), "write export report")
+		return exit.ErrorFromErrAndCode(err, e.CodeFor(fail.ExportError), "write export report")
 	}
 
 	if cacheStore != nil {
@@ -252,7 +254,7 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	if e.supportsRunImageExtension() {
 		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
 		if err != nil {
-			return nil, "", cmd.FailErr(err, "get extended image config")
+			return nil, "", exit.ErrorFromErr(err, "get extended image config")
 		}
 		if extendedConfig != nil {
 			opts = append(opts, local.WithConfig(toContainerConfig(extendedConfig)))
@@ -275,18 +277,18 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		opts...,
 	)
 	if err != nil {
-		return nil, "", cmd.FailErr(err, " image")
+		return nil, "", exit.ErrorFromErr(err, " image")
 	}
 
 	runImageID, err := appImage.Identifier()
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "get run image ID")
+		return nil, "", exit.ErrorFromErr(err, "get run image ID")
 	}
 
 	if e.LaunchCacheDir != "" {
 		volumeCache, err := cache.NewVolumeCache(e.LaunchCacheDir)
 		if err != nil {
-			return nil, "", cmd.FailErr(err, "create launch cache")
+			return nil, "", exit.ErrorFromErr(err, "create launch cache")
 		}
 		appImage = cache.NewCachingImage(appImage, volumeCache)
 	}
@@ -359,7 +361,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	if e.supportsRunImageExtension() {
 		extendedConfig, err := e.getExtendedConfig(analyzedMD.RunImage)
 		if err != nil {
-			return nil, "", cmd.FailErr(err, "get extended image config")
+			return nil, "", exit.ErrorFromErr(err, "get extended image config")
 		}
 		if extendedConfig != nil {
 			opts = append(opts, remote.WithConfig(extendedConfig))
@@ -381,16 +383,16 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 		opts...,
 	)
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "create new app image")
+		return nil, "", exit.ErrorFromErr(err, "create new app image")
 	}
 
 	runImage, err := remote.NewImage(e.RunImageRef, e.keychain, remote.FromBaseImage(e.RunImageRef))
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "access run image")
+		return nil, "", exit.ErrorFromErr(err, "access run image")
 	}
 	runImageID, err := runImage.Identifier()
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "get run image reference")
+		return nil, "", exit.ErrorFromErr(err, "get run image reference")
 	}
 	return appImage, runImageID.String(), nil
 }
@@ -398,7 +400,7 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD files.Analyzed) (imgutil.Image
 func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image, string, error) {
 	runImageIdentifier, err := layout.ParseIdentifier(analyzedMD.RunImage.Reference)
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "parsing run image reference")
+		return nil, "", exit.ErrorFromErr(err, "parsing run image reference")
 	}
 
 	var opts = []layout.ImageOption{
@@ -408,7 +410,7 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image
 	if analyzedMD.PreviousImageRef() != "" {
 		previousImageReference, err := layout.ParseIdentifier(analyzedMD.PreviousImageRef())
 		if err != nil {
-			return nil, "", cmd.FailErr(err, "parsing previous image reference")
+			return nil, "", exit.ErrorFromErr(err, "parsing previous image reference")
 		}
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", previousImageReference.Path)
 		opts = append(opts, layout.WithPreviousImage(previousImageReference.Path))
@@ -420,14 +422,14 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image
 
 	outputImageRefPath, err := layout.ParseRefToPath(e.OutputImageRef)
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "parsing output image reference")
+		return nil, "", exit.ErrorFromErr(err, "parsing output image reference")
 	}
 	appPath := filepath.Join(e.LayoutDir, outputImageRefPath)
 	cmd.DefaultLogger.Infof("Using app image: %s\n", appPath)
 
 	appImage, err := layout.NewImage(appPath, opts...)
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "create new app image")
+		return nil, "", exit.ErrorFromErr(err, "create new app image")
 	}
 
 	// set org.opencontainers.image.ref.name
@@ -441,11 +443,11 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD files.Analyzed) (imgutil.Image
 
 	runImage, err := layout.NewImage(runImageIdentifier.Path)
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "access run image")
+		return nil, "", exit.ErrorFromErr(err, "access run image")
 	}
 	runImageID, err := runImage.Identifier()
 	if err != nil {
-		return nil, "", cmd.FailErr(err, "get run image reference")
+		return nil, "", exit.ErrorFromErr(err, "get run image reference")
 	}
 	return appImage, runImageID.String(), nil
 }

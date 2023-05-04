@@ -9,7 +9,6 @@ import (
 
 const (
 	DefaultAnalyzedFile        = "analyzed.toml"
-	DefaultExperimentalMode    = ModeError
 	DefaultExtendKind          = "build"
 	DefaultExtendedDir         = "extended"
 	DefaultGeneratedDir        = "generated"
@@ -20,9 +19,6 @@ const (
 	DefaultPlatformAPI         = "0.3"
 	DefaultProjectMetadataFile = "project-metadata.toml"
 	DefaultReportFile          = "report.toml"
-	ModeError                  = "error"
-	ModeQuiet                  = "quiet"
-	ModeWarn                   = "warn"
 )
 
 var (

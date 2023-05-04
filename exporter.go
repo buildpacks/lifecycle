@@ -26,6 +26,7 @@ import (
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/config"
 	"github.com/buildpacks/lifecycle/platform/env"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/platform/images"
@@ -549,8 +550,8 @@ func (e *Exporter) setEnv(opts ExportOptions, launchMD launch.Metadata) error {
 		return errors.Wrapf(err, "set app image env %s", env.VarAppDir)
 	}
 
-	e.Logger.Debugf("Setting %s=%s", env.VarDeprecationMode, platform.ModeQuiet)
-	if err := opts.WorkingImage.SetEnv(env.VarDeprecationMode, platform.ModeQuiet); err != nil {
+	e.Logger.Debugf("Setting %s=%s", env.VarDeprecationMode, config.ModeQuiet)
+	if err := opts.WorkingImage.SetEnv(env.VarDeprecationMode, config.ModeQuiet); err != nil {
 		return errors.Wrapf(err, "set app image env %s", env.VarAppDir)
 	}
 

@@ -3,10 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/buildpacks/lifecycle/image"
-	"github.com/buildpacks/lifecycle/internal/encoding"
-	"github.com/buildpacks/lifecycle/platform/guard"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 
@@ -15,7 +11,12 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/cmd/lifecycle/cli"
+	"github.com/buildpacks/lifecycle/image"
+	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/config"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/exit/fail"
 	"github.com/buildpacks/lifecycle/priv"
 )
 
@@ -66,14 +67,14 @@ func (a *analyzeCmd) DefineFlags() {
 func (a *analyzeCmd) Args(nargs int, args []string) error {
 	if nargs != 1 {
 		err := fmt.Errorf("received %d arguments, but expected 1", nargs)
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "parse arguments")
 	}
 	a.LifecycleInputs.OutputImageRef = args[0]
 	if err := platform.ResolveInputs(platform.Analyze, a.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	if a.UseLayout {
-		if err := guard.GuardExperimental(guard.LayoutFormat, cmd.DefaultLogger); err != nil {
+		if err := config.VerifyExperimental(config.FeatureLayoutFormat, cmd.DefaultLogger); err != nil {
 			return err
 		}
 	}
@@ -85,19 +86,19 @@ func (a *analyzeCmd) Privileges() error {
 	var err error
 	a.keychain, err = auth.DefaultKeychain(a.RegistryImages()...)
 	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+		return exit.ErrorFromErr(err, "resolve keychain")
 	}
 	if a.UseDaemon {
 		a.docker, err = priv.DockerClient()
 		if err != nil {
-			return cmd.FailErr(err, "initialize docker client")
+			return exit.ErrorFromErr(err, "initialize docker client")
 		}
 	}
 	if err = priv.EnsureOwner(a.UID, a.GID, a.LayersDir, a.CacheDir, a.LaunchCacheDir); err != nil {
-		return cmd.FailErr(err, "chown volumes")
+		return exit.ErrorFromErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(a.UID, a.GID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", a.UID, a.GID))
+		return exit.ErrorFromErr(err, fmt.Sprintf("exec as user %d:%d", a.UID, a.GID))
 	}
 	return nil
 }
@@ -106,7 +107,7 @@ func (a *analyzeCmd) Privileges() error {
 func (a *analyzeCmd) Exec() error {
 	factory := lifecycle.NewAnalyzerFactory(
 		a.PlatformAPI,
-		&guard.BuildpackAPIVerifier{},
+		&config.BuildpackAPIVerifier{},
 		NewCacheHandler(a.keychain),
 		lifecycle.NewConfigHandler(),
 		image.NewHandler(a.docker, a.keychain, a.LayoutDir, a.UseLayout),
@@ -131,10 +132,10 @@ func (a *analyzeCmd) Exec() error {
 	}
 	analyzedMD, err := analyzer.Analyze()
 	if err != nil {
-		return cmd.FailErrCode(err, a.CodeFor(platform.AnalyzeError), "analyze")
+		return exit.ErrorFromErrAndCode(err, a.CodeFor(fail.AnalyzeError), "analyze")
 	}
 	if err = encoding.WriteTOML(a.AnalyzedPath, analyzedMD); err != nil {
-		return cmd.FailErr(err, "write analyzed")
+		return exit.ErrorFromErr(err, "write analyzed")
 	}
 	return nil
 }

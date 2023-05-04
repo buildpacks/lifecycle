@@ -21,6 +21,8 @@ import (
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/internal/layer"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/exit"
+	"github.com/buildpacks/lifecycle/platform/exit/fail"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/lifecycle/platform/images"
 	"github.com/buildpacks/lifecycle/priv"
@@ -56,10 +58,10 @@ func (r *restoreCmd) DefineFlags() {
 // Args validates arguments and flags, and fills in default values.
 func (r *restoreCmd) Args(nargs int, _ []string) error {
 	if nargs > 0 {
-		return cmd.FailErrCode(errors.New("received unexpected Args"), cmd.CodeForInvalidArgs, "parse arguments")
+		return exit.ErrorFromErrAndCode(errors.New("received unexpected Args"), exit.CodeForInvalidArgs, "parse arguments")
 	}
 	if err := platform.ResolveInputs(platform.Restore, r.LifecycleInputs, cmd.DefaultLogger); err != nil {
-		return cmd.FailErrCode(err, cmd.CodeForInvalidArgs, "resolve inputs")
+		return exit.ErrorFromErrAndCode(err, exit.CodeForInvalidArgs, "resolve inputs")
 	}
 	return nil
 }
@@ -68,13 +70,13 @@ func (r *restoreCmd) Privileges() error {
 	var err error
 	r.keychain, err = auth.DefaultKeychain(r.RegistryImages()...)
 	if err != nil {
-		return cmd.FailErr(err, "resolve keychain")
+		return exit.ErrorFromErr(err, "resolve keychain")
 	}
 	if err = priv.EnsureOwner(r.UID, r.GID, r.LayersDir, r.CacheDir); err != nil {
-		return cmd.FailErr(err, "chown volumes")
+		return exit.ErrorFromErr(err, "chown volumes")
 	}
 	if err = priv.RunAs(r.UID, r.GID); err != nil {
-		return cmd.FailErr(err, fmt.Sprintf("exec as user %d:%d", r.UID, r.GID))
+		return exit.ErrorFromErr(err, fmt.Sprintf("exec as user %d:%d", r.UID, r.GID))
 	}
 	return nil
 }
@@ -89,11 +91,11 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Pulling builder image metadata...")
 			buildImage, err := r.pullSparse(r.BuildImageRef)
 			if err != nil {
-				return cmd.FailErr(err, "read builder image")
+				return exit.ErrorFromErr(err, "read builder image")
 			}
 			digestRef, err := digestReference(r.BuildImageRef, buildImage)
 			if err != nil {
-				return cmd.FailErr(err, "get digest reference for builder image")
+				return exit.ErrorFromErr(err, "get digest reference for builder image")
 			}
 			analyzedMD.BuildImage = &files.ImageIdentifier{Reference: digestRef}
 		}
@@ -105,15 +107,15 @@ func (r *restoreCmd) Exec() error {
 			}
 			runImage, err := r.pullSparse(runImageRef)
 			if err != nil {
-				return cmd.FailErr(err, "read run image")
+				return exit.ErrorFromErr(err, "read run image")
 			}
 			targetData, err := images.GetTargetMetadataFrom(runImage)
 			if err != nil {
-				return cmd.FailErr(err, "read target data from run image")
+				return exit.ErrorFromErr(err, "read target data from run image")
 			}
 			digestRef, err := digestReference(runImageRef, runImage)
 			if err != nil {
-				return cmd.FailErr(err, "get digest reference for builder image")
+				return exit.ErrorFromErr(err, "get digest reference for builder image")
 			}
 			analyzedMD.RunImage = &files.RunImage{
 				Reference:      digestRef,
@@ -125,15 +127,15 @@ func (r *restoreCmd) Exec() error {
 			cmd.DefaultLogger.Debugf("Updating analyzed metadata...")
 			runImage, err := remote.NewImage(analyzedMD.RunImage.Reference, r.keychain)
 			if err != nil {
-				return cmd.FailErr(err, "read run image")
+				return exit.ErrorFromErr(err, "read run image")
 			}
 			targetData, err := images.GetTargetMetadataFrom(runImage)
 			if err != nil {
-				return cmd.FailErr(err, "read target data from run image")
+				return exit.ErrorFromErr(err, "read target data from run image")
 			}
 			digestRef, err := digestReference(analyzedMD.RunImage.Reference, runImage)
 			if err != nil {
-				return cmd.FailErr(err, "get digest reference for builder image")
+				return exit.ErrorFromErr(err, "get digest reference for builder image")
 			}
 			analyzedMD.RunImage = &files.RunImage{
 				Reference:      digestRef,
@@ -143,7 +145,7 @@ func (r *restoreCmd) Exec() error {
 			}
 		}
 		if err = encoding.WriteTOML(r.AnalyzedPath, analyzedMD); err != nil {
-			return cmd.FailErr(err, "write analyzed metadata")
+			return exit.ErrorFromErr(err, "write analyzed metadata")
 		}
 	} else {
 		cmd.DefaultLogger.Warnf("Not using analyzed data, usable file not found: %s", err)
@@ -151,7 +153,7 @@ func (r *restoreCmd) Exec() error {
 
 	group, err := lifecycle.ReadGroup(r.GroupPath)
 	if err != nil {
-		return cmd.FailErr(err, "read buildpack group")
+		return exit.ErrorFromErr(err, "read buildpack group")
 	}
 	if err := verifyBuildpackApis(group); err != nil {
 		return err
@@ -276,7 +278,7 @@ func (r *restoreCmd) restore(layerMetadata files.LayersMetadata, group buildpack
 		}, r.PlatformAPI),
 	}
 	if err := restorer.Restore(cacheStore); err != nil {
-		return cmd.FailErrCode(err, r.CodeFor(platform.RestoreError), "restore")
+		return exit.ErrorFromErrAndCode(err, r.CodeFor(fail.RestoreError), "restore")
 	}
 	return nil
 }

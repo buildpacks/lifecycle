@@ -1,4 +1,4 @@
-package guard
+package config
 
 import (
 	"fmt"
@@ -6,20 +6,12 @@ import (
 	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/cmd"
 	"github.com/buildpacks/lifecycle/log"
 	"github.com/buildpacks/lifecycle/platform/env"
+	"github.com/buildpacks/lifecycle/platform/exit"
 )
 
-const (
-	DefaultDeprecationMode = ModeWarn
-
-	ModeQuiet = "quiet"
-	ModeWarn  = "warn"
-	ModeError = "error"
-)
-
-var DeprecationMode = EnvOrDefault(env.VarDeprecationMode, DefaultDeprecationMode)
+var DeprecationMode = envOrDefault(env.VarDeprecationMode, ModeWarn)
 
 type BuildpackAPIVerifier struct{}
 
@@ -30,9 +22,9 @@ func (v *BuildpackAPIVerifier) VerifyBuildpackAPI(kind, name, requested string, 
 func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
-		return cmd.FailErrCode(
+		return exit.ErrorFromErrAndCode(
 			nil,
-			cmd.CodeForIncompatibleBuildpackAPI,
+			exit.CodeForIncompatibleBuildpackAPI,
 			fmt.Sprintf("parse buildpack API '%s' for %s '%s'", requestedAPI, strings.ToLower(kind), name),
 		)
 	}
@@ -57,9 +49,9 @@ func VerifyBuildpackAPI(kind, name, requested string, logger log.Logger) error {
 }
 
 func buildpackAPIError(moduleKind string, name string, requested string) error {
-	return cmd.FailErrCode(
+	return exit.ErrorFromErrAndCode(
 		fmt.Errorf("buildpack API version '%s' is incompatible with the lifecycle", requested),
-		cmd.CodeForIncompatibleBuildpackAPI,
+		exit.CodeForIncompatibleBuildpackAPI,
 		fmt.Sprintf("set API for %s '%s'", moduleKind, name),
 	)
 }
@@ -67,9 +59,9 @@ func buildpackAPIError(moduleKind string, name string, requested string) error {
 func VerifyPlatformAPI(requested string, logger log.Logger) error {
 	requestedAPI, err := api.NewVersion(requested)
 	if err != nil {
-		return cmd.FailErrCode(
+		return exit.ErrorFromErrAndCode(
 			nil,
-			cmd.CodeForIncompatiblePlatformAPI,
+			exit.CodeForIncompatiblePlatformAPI,
 			fmt.Sprintf("parse platform API '%s'", requested),
 		)
 	}
@@ -94,14 +86,14 @@ func VerifyPlatformAPI(requested string, logger log.Logger) error {
 }
 
 func platformAPIError(requested string) error {
-	return cmd.FailErrCode(
+	return exit.ErrorFromErrAndCode(
 		fmt.Errorf("platform API version '%s' is incompatible with the lifecycle", requested),
-		cmd.CodeForIncompatiblePlatformAPI,
+		exit.CodeForIncompatiblePlatformAPI,
 		"set platform API",
 	)
 }
 
-func EnvOrDefault(key string, defaultVal string) string {
+func envOrDefault(key string, defaultVal string) string {
 	if envVal := os.Getenv(key); envVal != "" {
 		return envVal
 	}
