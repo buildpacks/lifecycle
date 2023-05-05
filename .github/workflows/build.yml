@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
       - name: Install jq
@@ -41,9 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version: '>=1.19.9'
+          go-version-file: 'go.mod'
       - name: Test
         run: |
           make format || true
@@ -58,7 +58,7 @@ jobs:
           git config --global core.symlinks true
       - uses: actions/checkout@v2
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
       - name: Add runner IP to daemon insecure-registries and firewall
@@ -106,9 +106,9 @@ jobs:
         with:
           fetch-depth: 0 # fetch all history for all branches and tags
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version-file: 'go.mod'
+          go-version: '>=1.19.9'
       - name: Install Cosign
         uses: sigstore/cosign-installer@v1.0.0
         with:
@@ -242,7 +242,7 @@ jobs:
           ref: 'main'
           fetch-depth: 0 # fetch all history for all branches and tags
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version-file: 'pack/go.mod'
       - uses: actions/download-artifact@v2
@@ -283,7 +283,7 @@ jobs:
           ref: 'main'
           fetch-depth: 0 # fetch all history for all branches and tags
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version-file: 'pack/go.mod'
       - name: Add runner IP to daemon insecure-registries and firewall
