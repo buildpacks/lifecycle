@@ -185,10 +185,7 @@ func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) erro
 		return errors.New(ErrRunImageRequiredWhenNoRunMD)
 	}
 	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry, i.AccessChecker)
-	if err != nil {
-		return errors.New(ErrRunImageRequiredWhenNoRunMD)
-	}
-	return nil
+	return err
 }
 
 // fillRunImageFromStackTOMLIfNeeded updates the provided lifecycle inputs to include the run image from stack.toml if the run image input it is missing.

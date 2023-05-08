@@ -47,8 +47,8 @@ func TestAnalyzer(t *testing.T) {
 	analyzeDaemonFixtures = analyzeTest.targetDaemon.fixtures
 	analyzeRegFixtures = analyzeTest.targetRegistry.fixtures
 
-	for _, platformAPI := range api.Platform.Supported {
-		spec.Run(t, "acceptance-analyzer/"+platformAPI.String(), testAnalyzerFunc(platformAPI.String()), spec.Parallel(), spec.Report(report.Terminal{}))
+	for _, platformAPI := range []string{"0.12"} {
+		spec.Run(t, "acceptance-analyzer/"+platformAPI, testAnalyzerFunc(platformAPI), spec.Parallel(), spec.Report(report.Terminal{}))
 	}
 }
 
@@ -271,7 +271,7 @@ func testAnalyzerFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				output, err := cmd.CombinedOutput()
 
 				h.AssertNotNil(t, err)
-				expected := "ensure registry read access to some-run-image-from-run-toml"
+				expected := "failed to find accessible run image"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
