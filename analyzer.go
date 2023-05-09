@@ -197,22 +197,15 @@ func (a *Analyzer) Analyze() (platform.AnalyzedMetadata, error) {
 		previousImageRef string
 		runImageRef      string
 	)
+	appMeta, previousImageRef, err = a.retrieveAppMetadata()
+	if err != nil {
+		return platform.AnalyzedMetadata{}, err
+	}
 
-	if a.PreviousImage != nil { // Previous image is optional in Platform API >= 0.7
-		if previousImageRef, err = a.getImageIdentifier(a.PreviousImage); err != nil {
-			return platform.AnalyzedMetadata{}, errors.Wrap(err, "identifying previous image")
-		}
-
-		// continue even if the label cannot be decoded
-		if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
-			appMeta = platform.LayersMetadata{}
-		}
-
-		if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, bomSHA(appMeta)); err != nil {
+	if sha := bomSHA(appMeta); sha != "" {
+		if err = a.SBOMRestorer.RestoreFromPrevious(a.PreviousImage, sha); err != nil {
 			return platform.AnalyzedMetadata{}, errors.Wrap(err, "retrieving launch SBOM layer")
 		}
-	} else {
-		appMeta = platform.LayersMetadata{}
 	}
 
 	var (
@@ -292,4 +285,25 @@ func retrieveCacheMetadata(fromCache Cache, logger log.Logger) (platform.CacheMe
 	}
 
 	return cacheMeta, nil
+}
+
+func (a *Analyzer) retrieveAppMetadata() (platform.LayersMetadata, string, error) {
+	if a.PreviousImage == nil { // Previous image is optional in Platform API >= 0.7
+		return platform.LayersMetadata{}, "", nil
+	}
+	previousImageRef, err := a.getImageIdentifier(a.PreviousImage)
+	if err != nil {
+		return platform.LayersMetadata{}, "", errors.Wrap(err, "identifying previous image")
+	}
+	if !a.PreviousImage.Valid() {
+		a.Logger.Infof("Ignoring image %q because it was corrupt", a.PreviousImage.Name())
+		return platform.LayersMetadata{}, "", nil
+	}
+
+	var appMeta platform.LayersMetadata
+	// continue even if the label cannot be decoded
+	if err = image.DecodeLabel(a.PreviousImage, platform.LayerMetadataLabel, &appMeta); err != nil {
+		return platform.LayersMetadata{}, "", nil
+	}
+	return appMeta, previousImageRef, nil
 }
