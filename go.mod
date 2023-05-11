@@ -8,18 +8,18 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20230428141433-24db5a78c900
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.0
-	github.com/docker/docker v23.0.5+incompatible
+	github.com/docker/docker v23.0.6+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.15.1
 	github.com/google/uuid v1.3.0
 	github.com/heroku/color v0.0.6
-	github.com/moby/buildkit v0.11.4
+	github.com/moby/buildkit v0.11.6
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
-	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.7.0
+	golang.org/x/sync v0.2.0
+	golang.org/x/sys v0.8.0
 )
 
 require (
