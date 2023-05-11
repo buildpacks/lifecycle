@@ -37,6 +37,7 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 			inputs.RunImageRef = "some-run-image"       // satisfy validation
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}
+			inputs.UseDaemon = true // to prevent read access check for run image
 		})
 
 		when("latest Platform API(s)", func() {
@@ -122,6 +123,7 @@ func testResolveCreateInputs(platformAPI string) func(t *testing.T, when spec.G,
 		when("Platform API >= 0.7", func() {
 			it.Before(func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "")
+				inputs.UseDaemon = false
 			})
 
 			when("provided destination tags are on different registries", func() {

@@ -74,7 +74,7 @@ func testCreatorFunc(platformAPI string) func(t *testing.T, when spec.G, it spec
 				output, err := cmd.CombinedOutput()
 
 				h.AssertNotNil(t, err)
-				expected := "ensure registry read access to some-run-image-from-run-toml"
+				expected := "failed to resolve inputs: failed to find accessible run image"
 				h.AssertStringContains(t, string(output), expected)
 			})
 		})
