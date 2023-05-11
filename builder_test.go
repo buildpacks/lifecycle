@@ -177,9 +177,81 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			_, err := builder.Build()
 			h.AssertNil(t, err)
 		})
+		it("gets the correct env vars", func() {
+			builder.AnalyzeMD.RunImage = &platform.RunImage{Reference: "foo", TargetMetadata: &platform.TargetMetadata{
+				OS:   "linux",
+				Arch: "amd64",
+			}}
+
+			bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+
+			executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, logger llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
+					return buildpack.BuildOutputs{}, nil
+				},
+			)
+			bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+
+			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+			dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
+			executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any()).Do(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
+					h.AssertContains(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
+					return buildpack.BuildOutputs{}, nil
+				})
+
+			_, err := builder.Build()
+			h.AssertNil(t, err)
+		})
+		it("doesnt gets the new env vars if its old", func() {
+			builder.PlatformAPI = api.MustParse("0.8")
+			builder.AnalyzeMD.RunImage = &platform.RunImage{Reference: "foo", TargetMetadata: &platform.TargetMetadata{
+				OS:   "linux",
+				Arch: "amd64",
+			}}
+
+			bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+
+			executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, logger llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
+					return buildpack.BuildOutputs{}, nil
+				},
+			)
+			bpB := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "B", Version: "v1"}}}
+
+			dirStore.EXPECT().LookupBp("A", "v1").Return(bpA, nil)
+			dirStore.EXPECT().LookupBp("B", "v2").Return(bpB, nil)
+			executor.EXPECT().Build(*bpB, gomock.Any(), gomock.Any()).Do(
+				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, _ llog.Logger) (buildpack.BuildOutputs, error) {
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_ARCH=amd64")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_OS=linux")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_VARIANT=")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_DISTRO_NAME=")
+					h.AssertDoesNotContain(t, inputs.Env.List(), "CNB_TARGET_DISTRO_VERSION=")
+					return buildpack.BuildOutputs{}, nil
+				})
+
+			_, err := builder.Build()
+			h.AssertNil(t, err)
+		})
 
 		it("provides the updated environment to the next buildpack", func() {
 			bpA := &buildpack.BpDescriptor{Buildpack: buildpack.BpInfo{BaseInfo: buildpack.BaseInfo{ID: "A", Version: "v1"}}}
+
 			executor.EXPECT().Build(*bpA, gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ buildpack.BpDescriptor, inputs buildpack.BuildInputs, logger llog.Logger) (buildpack.BuildOutputs, error) {
 					envPtr := inputs.Env.(*env.Env)

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+echo "---> Hello World 3 buildpack"
+
+# INPUT ARGUMENTS
+platform_dir=$2
+env_dir=${platform_dir}/env
+layers_dir=$1
+plan_path=$3
+
+# CNB_APP_DIR
+echo "CNB_APP_DIR: ${PWD}"
+
+# PLATFORM DIR
+echo "PLATFORM_DIR: ${platform_dir}"
+
+# LAYERS
+echo "LAYERS_DIR: ${layers_dir}"
+
+# PLAN
+echo "PLAN_PATH: ${plan_path}"
+echo "plan contents:"
+cat ${plan_path}
+echo
+
+echo "CNB_TARGET_ARCH:" `printenv CNB_TARGET_ARCH`
+echo "CNB_TARGET_OS:" `printenv CNB_TARGET_OS`
+echo "CNB_TARGET_ID:" `printenv CNB_TARGET_ID`
+echo "CNB_TARGET_VARIANT:" `printenv CNB_TARGET_VARIANT`
+echo "CNB_TARGET_DISTRO_NAME:" `printenv CNB_TARGET_DISTRO_NAME`
+echo "CNB_TARGET_DISTRO_VERSION:" `printenv CNB_TARGET_DISTRO_VERSION`
+
+echo "---> Done"

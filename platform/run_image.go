@@ -82,3 +82,21 @@ func GetTargetFromImage(image imgutil.Image) (*TargetMetadata, error) {
 
 	return &tm, nil
 }
+
+// Fulfills the prophecy set forth in https://github.com/buildpacks/rfcs/blob/b8abe33f2bdc58792acf0bd094dc4ce3c8a54dbb/text/0096-remove-stacks-mixins.md?plain=1#L97
+// by returning an array of "VARIABLE=value" strings suitable for inclusion in your environment or complete breakfast.
+func EnvVarsFor(tm *TargetMetadata) []string {
+	ret := []string{"CNB_TARGET_OS=" + tm.OS, "CNB_TARGET_ARCH=" + tm.Arch}
+	ret = append(ret, "CNB_TARGET_VARIANT="+tm.ArchVariant)
+	var distName, distVersion string
+	if tm.Distribution != nil {
+		distName = tm.Distribution.Name
+		distVersion = tm.Distribution.Version
+	}
+	ret = append(ret, "CNB_TARGET_DISTRO_NAME="+distName)
+	ret = append(ret, "CNB_TARGET_DISTRO_VERSION="+distVersion)
+	if tm.ID != "" {
+		ret = append(ret, "CNB_TARGET_ID="+tm.ID)
+	}
+	return ret
+}
