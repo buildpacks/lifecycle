@@ -27,7 +27,6 @@ type GenerateInputs struct {
 	Env            BuildEnv
 	Out, Err       io.Writer
 	Plan           Plan
-	// Target         platform.TargetMetadata
 }
 
 type GenerateOutputs struct {
