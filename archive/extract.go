@@ -74,7 +74,7 @@ func Extract(tr TarReader) error {
 			}
 			dirsFound[hdr.Name] = true
 
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			dirPath := filepath.Dir(hdr.Name)
 			if !dirsFound[dirPath] {
 				if _, err := os.Stat(dirPath); os.IsNotExist(err) {

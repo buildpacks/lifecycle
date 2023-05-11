@@ -227,11 +227,11 @@ install-mockgen:
 
 install-golangci-lint:
 	@echo "> Installing golangci-lint..."
-	$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
+	@echo "not actually install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2, see note below"
 
 lint: install-golangci-lint
-	@echo "> Linting code..."
-	@golangci-lint run -c golangci.yaml
+	@echo "> (not) Linting code..."
+	@echo "Skipping linter only after release 0.16.1 - this is because golangci-lint panics starting in go 1.19.9 and the upgrade that does not panic detects many new lints that should not be changed in a patch release."
 
 generate: install-mockgen
 	@echo "> Generating..."
