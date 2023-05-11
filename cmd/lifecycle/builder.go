@@ -65,7 +65,7 @@ func (b *buildCmd) Exec() error {
 	if err = verifyBuildpackApis(group); err != nil {
 		return err
 	}
-	amd, err := platform.ReadAnalyzed(b.AnalyzedPath, cmd.DefaultLogger) // TODO: how to verify that AnalyzedPath is set correctly...?
+	amd, err := platform.ReadAnalyzed(b.AnalyzedPath, cmd.DefaultLogger)
 	if err != nil {
 		return unwrapErrorFailWithMessage(err, "reading analyzed.toml")
 	}
