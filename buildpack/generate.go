@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	// "github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/log"
