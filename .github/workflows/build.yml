@@ -54,17 +54,16 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Set up go
-        uses: actions/setup-go@v3
-        with:
-          go-version-file: 'go.mod'
+      - name: Read Go version
+        run: sed -En 's/^go (.*)$/GO_VERSION=\1/p' go.mod >> $GITHUB_OUTPUT
+        id: version
       - name: Test
         uses: vmactions/freebsd-vm@v0
         with:
           usesh: true
           prepare: |
-            wget https://go.dev/dl/go1.20.4.freebsd-amd64.tar.gz
-            tar -C /usr/local -xzf go1.20.4.freebsd-amd64.tar.gz
+            wget https://go.dev/dl/go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz
+            tar -C /usr/local -xzf go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz
             export GOROOT=/usr/local/go
             export GOPATH=/usr/local/gopath
             export PATH=$PATH:$GOPATH/bin
