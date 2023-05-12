@@ -62,6 +62,7 @@ jobs:
         with:
           usesh: true
           prepare: |
+            pkg install -y wget
             wget https://go.dev/dl/go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz
             tar -C /usr/local -xzf go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz
             export GOROOT=/usr/local/go
