@@ -26,6 +26,7 @@ import (
 
 type Extender struct {
 	AppDir       string // explicitly ignored by the Dockerfile applier, also the Dockefile build context
+	CnbUID       string
 	ExtendedDir  string // output directory for extended image layers
 	GeneratedDir string // input Dockerfiles are found here
 	ImageRef     string // the image to extend
@@ -59,6 +60,7 @@ func NewExtenderFactory(apiVerifier BuildpackAPIVerifier, configHandler ConfigHa
 func (f *ExtenderFactory) NewExtender(
 	analyzedPath string,
 	appDir string,
+	cnbUID string,
 	extendedDir string,
 	generatedDir string,
 	groupPath string,
@@ -71,6 +73,7 @@ func (f *ExtenderFactory) NewExtender(
 ) (*Extender, error) {
 	extender := &Extender{
 		AppDir:            appDir,
+		CnbUID:            cnbUID,
 		ExtendedDir:       extendedDir,
 		GeneratedDir:      generatedDir,
 		LayersDir:         layersDir,
@@ -298,8 +301,9 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return nil, fmt.Errorf("getting image config: %w", err)
 	}
 	buildOptions := e.extendOptions()
+	var userID, groupID string
 	for _, dockerfile := range dockerfiles {
-		userID, groupID := userFrom(*configFile)
+		userID, groupID = userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
@@ -307,7 +311,9 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		}, dockerfile.Args...)
 
 		// apply Dockerfile
-
+		if userID == "0" {
+			logger.Warnf("extension from %s is using root user. This must not be the final user ID (you must have other non-root extensions after this).", dockerfile.Path)
+		}
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
 			baseImage,
@@ -326,6 +332,12 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		if !rebasable || !isRebasable(*configFile) {
 			rebasable = false
 		}
+	}
+	if userID == "0" {
+		return baseImage, fmt.Errorf("extension process ended with root user; please add another extension at the end that resets the user")
+	}
+	if userID != e.CnbUID {
+		logger.Warnf("CNB_USER_ID is %s but the final extension left user id set to %s.", e.CnbUID, userID)
 	}
 	if kind == buildpack.DockerfileKindBuild {
 		return baseImage, nil
