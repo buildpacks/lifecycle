@@ -307,15 +307,14 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	}
 	workingHistory = configFile.History
 	buildOptions := e.extendOptions()
+	userID, groupID := userFrom(*configFile)
+	origUserID := userID
 	for _, dockerfile := range dockerfiles {
-		// create args
-		userID, groupID := userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
 			{Name: argGroupID, Value: groupID},
 		}, dockerfile.Args...)
-
 		// apply Dockerfile
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
@@ -325,8 +324,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		); err != nil {
 			return nil, fmt.Errorf("applying Dockerfile to image: %w", err)
 		}
-
-		// update rebasable, history in config
+		// update rebasable, history in config, and user/group IDs
 		configFile, err = baseImage.ConfigFile()
 		if err != nil || configFile == nil {
 			return nil, fmt.Errorf("getting image config: %w", err)
@@ -350,6 +348,17 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			)
 		}
 		configFile.History = workingHistory
+		prevUserID := userID
+		userID, groupID = userFrom(*configFile)
+		if userID == "0" {
+			logger.Warnf("Extension from %s changed the user ID from %d to %d; this must not be the final user ID (a following extension must reset the user).", prevUserID, userID, dockerfile.Path)
+		}
+	}
+	if userID == "0" {
+		return baseImage, fmt.Errorf("the final user ID is 0 (root); please add another extension that resets the user to non-root")
+	}
+	if userID != origUserID {
+		logger.Warnf("The original user ID was %s but the final extension left the user ID set to %s.", origUserID, userID)
 	}
 	if kind == buildpack.DockerfileKindBuild {
 		return baseImage, nil
