@@ -63,13 +63,13 @@ jobs:
           usesh: true
           prepare: |
             pkg install -y wget
-            wget https://go.dev/dl/go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz
+            wget https://go.dev/dl/go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz -q
             tar -C /usr/local -xzf go${{ steps.version.outputs.GO_VERSION }}.freebsd-amd64.tar.gz
+
+          run: |
             export GOROOT=/usr/local/go
             export GOPATH=/usr/local/gopath
             export PATH=$PATH:$GOPATH/bin
-
-          run: |
             make format || true
             make test
 
