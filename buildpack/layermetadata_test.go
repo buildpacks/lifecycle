@@ -52,7 +52,7 @@ func testLayerMetadata(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, lmf.Launch, false)
 		})
 		it("logs a warning when the metadata file has wrong format (on older apis)", func() {
-			err := os.WriteFile(metadataFile.Name(), []byte("cache = true"), 0400)
+			err := os.WriteFile(metadataFile.Name(), []byte("[types]\ncache = true"), 0400)
 			h.AssertNil(t, err)
 			var lmf buildpack.LayerMetadataFile
 			lmf, err = buildpack.DecodeLayerMetadataFile(metadataFile.Name(), "0.5", logger)
@@ -60,7 +60,7 @@ func testLayerMetadata(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, lmf.Cache, false)
 			h.AssertEq(t, lmf.Build, false)
 			h.AssertEq(t, lmf.Launch, false)
-			expected := fmt.Sprintf("the launch, cache and build flags should be in the types table of %s", metadataFile.Name())
+			expected := fmt.Sprintf("Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table.")
 			h.AssertLogEntry(t, logHandler, expected)
 		})
 		it("returns an error when the metadata file has wrong format", func() {
