@@ -36,6 +36,7 @@ func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G
 			inputs.OutputImageRef = "some-output-image" // satisfy validation
 			logHandler = memory.New()
 			logger = &log.Logger{Handler: logHandler}
+			inputs.UseDaemon = true // to prevent access checking of run images
 		})
 
 		when("latest Platform API(s)", func() {
@@ -94,7 +95,7 @@ func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G
 						inputs.StackPath = filepath.Join("testdata", "layers", "stack.toml")
 						err := platform.ResolveInputs(platform.Analyze, inputs, logger)
 						h.AssertNil(t, err)
-						h.AssertEq(t, inputs.RunImageRef, "some-run-image")
+						h.AssertEq(t, inputs.RunImageRef, "some-run-image-from-stack-toml")
 					})
 
 					when("stack.toml", func() {
@@ -124,6 +125,7 @@ func testResolveAnalyzeInputs(platformAPI string) func(t *testing.T, when spec.G
 			it.Before(func() {
 				h.SkipIf(t, api.MustParse(platformAPI).LessThan("0.7"), "")
 				inputs.RunImageRef = "some-run-image" // satisfy validation
+				inputs.UseDaemon = false
 			})
 
 			when("provided destination tags are on different registries", func() {

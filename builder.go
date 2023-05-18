@@ -44,6 +44,7 @@ type Builder struct {
 	Out, Err       io.Writer
 	Plan           platform.BuildPlan
 	PlatformAPI    *api.Version
+	AnalyzeMD      platform.AnalyzedMetadata
 }
 
 func (b *Builder) Build() (*platform.BuildMetadata, error) {
@@ -63,7 +64,12 @@ func (b *Builder) Build() (*platform.BuildMetadata, error) {
 	)
 	processMap := newProcessMap()
 	inputs := b.getBuildInputs()
-	inputs.Env = env.NewBuildEnv(os.Environ())
+	if b.AnalyzeMD.RunImage != nil && b.AnalyzeMD.RunImage.TargetMetadata != nil && b.PlatformAPI.AtLeast("0.12") {
+		inputs.Env = env.NewBuildEnv(append(os.Environ(), platform.EnvVarsFor(b.AnalyzeMD.RunImage.TargetMetadata)...))
+	} else {
+		inputs.Env = env.NewBuildEnv(os.Environ())
+	}
+
 	filteredPlan := b.Plan
 
 	for _, bp := range b.Group.Group {

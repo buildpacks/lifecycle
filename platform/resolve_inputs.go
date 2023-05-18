@@ -20,6 +20,12 @@ var (
 )
 
 func ResolveInputs(phase LifecyclePhase, i *LifecycleInputs, logger log.Logger) error {
+	if i.UseDaemon || i.UseLayout {
+		i.AccessChecker = &LocalImageStrategy{}
+	} else {
+		i.AccessChecker = &RemoteImageStrategy{}
+	}
+
 	// order of operations is important
 	ops := []LifecycleInputsOperation{UpdatePlaceholderPaths, ResolveAbsoluteDirPaths}
 	switch phase {
@@ -178,11 +184,8 @@ func fillRunImageFromRunTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) erro
 	if len(runMD.Images) == 0 {
 		return errors.New(ErrRunImageRequiredWhenNoRunMD)
 	}
-	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry)
-	if err != nil {
-		return errors.New(ErrRunImageRequiredWhenNoRunMD)
-	}
-	return nil
+	i.RunImageRef, err = runMD.Images[0].BestRunImageMirror(targetRegistry, i.AccessChecker)
+	return err
 }
 
 // fillRunImageFromStackTOMLIfNeeded updates the provided lifecycle inputs to include the run image from stack.toml if the run image input it is missing.
@@ -199,7 +202,7 @@ func fillRunImageFromStackTOMLIfNeeded(i *LifecycleInputs, logger log.Logger) er
 	if err != nil {
 		return err
 	}
-	i.RunImageRef, err = stackMD.BestRunImageMirror(targetRegistry)
+	i.RunImageRef, err = stackMD.BestRunImageMirror(targetRegistry, i.AccessChecker)
 	if err != nil {
 		return errors.New(ErrRunImageRequiredWhenNoStackMD)
 	}

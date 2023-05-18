@@ -412,6 +412,7 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					h.AssertEq(t, meta.RunImage.Image, "some/run")
 					h.AssertEq(t, meta.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+					h.AssertEq(t, meta.Stack, (*platform.StackMetadata)(nil))
 				})
 
 				when("platform api < 0.12", func() {
@@ -437,6 +438,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						h.AssertEq(t, meta.Stack.RunImage.Image, "some/run")
 						h.AssertEq(t, meta.Stack.RunImage.Mirrors, []string{"registry.example.com/some/run", "other.example.com/some/run"})
+						h.AssertEq(t, meta.RunImage.Image, "")
+						h.AssertEq(t, meta.RunImage.Mirrors, []string(nil))
 					})
 				})
 			})

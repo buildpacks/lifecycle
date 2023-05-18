@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/api"
+
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/env"
 	"github.com/buildpacks/lifecycle/internal/fsutil"
@@ -18,6 +20,7 @@ type Generator struct {
 	AppDir         string
 	BuildConfigDir string
 	GeneratedDir   string // e.g., <layers>/generated
+	PlatformAPI    *api.Version
 	PlatformDir    string
 	AnalyzedMD     platform.AnalyzedMetadata
 	DirStore       DirStore
@@ -54,6 +57,7 @@ func (f *GeneratorFactory) NewGenerator(
 	extensions []buildpack.GroupElement,
 	generatedDir string,
 	plan platform.BuildPlan,
+	platformAPI *api.Version,
 	platformDir string,
 	runPath string,
 	stdout, stderr io.Writer,
@@ -63,6 +67,7 @@ func (f *GeneratorFactory) NewGenerator(
 		AppDir:         appDir,
 		BuildConfigDir: buildConfigDir,
 		GeneratedDir:   generatedDir,
+		PlatformAPI:    platformAPI,
 		PlatformDir:    platformDir,
 		DirStore:       f.dirStore,
 		Executor:       &buildpack.DefaultGenerateExecutor{},
@@ -134,6 +139,9 @@ func (g *Generator) Generate() (GenerateResult, error) {
 		g.Logger.Debug("Finding plan")
 		inputs.Plan = filteredPlan.Find(buildpack.KindExtension, ext.ID)
 
+		if g.AnalyzedMD.RunImage != nil && g.AnalyzedMD.RunImage.TargetMetadata != nil && g.PlatformAPI.AtLeast("0.12") {
+			inputs.Env = env.NewBuildEnv(append(inputs.Env.List(), platform.EnvVarsFor(g.AnalyzedMD.RunImage.TargetMetadata)...))
+		}
 		g.Logger.Debug("Invoking command")
 		result, err := g.Executor.Generate(*descriptor, inputs, g.Logger)
 		if err != nil {

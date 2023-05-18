@@ -10,10 +10,14 @@ import (
 	"github.com/buildpacks/lifecycle/internal/fsutil"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/imgutil/remote"
+
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/internal/encoding"
 	"github.com/buildpacks/lifecycle/launch"
@@ -137,12 +141,10 @@ func (t *TargetMetadata) IsValidRebaseTargetFor(appTargetMetadata *TargetMetadat
 }
 
 func (t *TargetMetadata) String() string {
-	var distName, distVersion string
 	if t.Distribution != nil {
-		distName = t.Distribution.Name
-		distVersion = t.Distribution.Version
+		return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, t.Distribution.Name, t.Distribution.Version)
 	}
-	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s, Distribution: (Name: %s, Version: %s)", t.OS, t.Arch, t.ArchVariant, distName, distVersion)
+	return fmt.Sprintf("OS: %s, Arch: %s, ArchVariant: %s", t.OS, t.Arch, t.ArchVariant)
 }
 
 // PopulateTargetOSFromFileSystem populates the target metadata you pass in if the information is available
@@ -188,7 +190,7 @@ type LayersMetadata struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack,omitempty" toml:"stack,omitempty"`
+	Stack        *StackMetadata             `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 // NOTE: This struct MUST be kept in sync with `LayersMetadata`.
@@ -202,7 +204,7 @@ type LayersMetadataCompat struct {
 	Launcher     LayerMetadata              `json:"launcher" toml:"launcher"`
 	ProcessTypes LayerMetadata              `json:"process-types" toml:"process-types"`
 	RunImage     RunImageForRebase          `json:"runImage" toml:"run-image"`
-	Stack        StackMetadata              `json:"stack" toml:"stack"`
+	Stack        *StackMetadata             `json:"stack,omitempty" toml:"stack,omitempty"`
 }
 
 func (m *LayersMetadata) MetadataForBuildpack(id string) buildpack.LayersMetadata {
@@ -225,6 +227,15 @@ type RunImageForRebase struct {
 	// added in Platform 0.12
 	Image   string   `toml:"image,omitempty" json:"image,omitempty"`
 	Mirrors []string `toml:"mirrors,omitempty" json:"mirrors,omitempty"`
+}
+
+func (r *RunImageForRebase) ToStackMetadata() StackMetadata {
+	return StackMetadata{
+		RunImage: RunImageForExport{
+			Image:   r.Image,
+			Mirrors: r.Mirrors,
+		},
+	}
 }
 
 // metadata.toml
@@ -411,46 +422,94 @@ func ReadRun(runPath string, logger log.Logger) (RunMetadata, error) {
 // stack.toml
 
 type StackMetadata struct {
-	RunImage RunImageForExport `json:"runImage" toml:"run-image"`
+	RunImage RunImageForExport `json:"runImage,omitempty" toml:"run-image"`
 }
 
 type RunImageForExport struct {
-	Image   string   `toml:"image" json:"image"`
+	Image   string   `toml:"image" json:"image,omitempty"`
 	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
 }
 
-func (rm *RunImageForExport) BestRunImageMirror(registry string) (string, error) {
+type ImageStrategy interface {
+	CheckReadAccess(repo string, keychain authn.Keychain) (bool, error)
+}
+
+type RemoteImageStrategy struct{}
+
+var _ ImageStrategy = &RemoteImageStrategy{}
+
+func (a *RemoteImageStrategy) CheckReadAccess(repo string, keychain authn.Keychain) (bool, error) {
+	img, err := remote.NewImage(repo, keychain)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to parse image reference")
+	}
+
+	return img.CheckReadAccess(), nil
+}
+
+type LocalImageStrategy struct{}
+
+var _ ImageStrategy = &LocalImageStrategy{}
+
+func (a *LocalImageStrategy) CheckReadAccess(_ string, _ authn.Keychain) (bool, error) {
+	return true, nil
+}
+
+func (rm *RunImageForExport) BestRunImageMirror(registry string, accessChecker ImageStrategy) (string, error) {
 	if rm.Image == "" {
 		return "", errors.New("missing run-image metadata")
 	}
+
 	runImageMirrors := []string{rm.Image}
 	runImageMirrors = append(runImageMirrors, rm.Mirrors...)
-	runImageRef, err := byRegistry(registry, runImageMirrors)
+
+	keychain, err := auth.DefaultKeychain(runImageMirrors...)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to find run image")
-	}
-	return runImageRef, nil
-}
-
-func (sm *StackMetadata) BestRunImageMirror(registry string) (string, error) {
-	return sm.RunImage.BestRunImageMirror(registry)
-}
-
-func byRegistry(reg string, imgs []string) (string, error) {
-	if len(imgs) < 1 {
-		return "", errors.New("no images provided to search")
+		return "", errors.Wrap(err, "unable to create keychain")
 	}
 
-	for _, img := range imgs {
-		ref, err := name.ParseReference(img, name.WeakValidation)
+	runImageRef := byRegistry(registry, runImageMirrors, accessChecker, keychain)
+	if runImageRef != "" {
+		return runImageRef, nil
+	}
+
+	for _, image := range runImageMirrors {
+		ok, err := accessChecker.CheckReadAccess(image, keychain)
+		if err != nil {
+			return "", err
+		}
+
+		if ok {
+			return image, nil
+		}
+	}
+
+	return "", errors.New("failed to find accessible run image")
+}
+
+func (sm *StackMetadata) BestRunImageMirror(registry string, accessChecker ImageStrategy) (string, error) {
+	return sm.RunImage.BestRunImageMirror(registry, accessChecker)
+}
+
+func byRegistry(reg string, repos []string, accessChecker ImageStrategy, keychain authn.Keychain) string {
+	for _, repo := range repos {
+		ref, err := name.ParseReference(repo, name.WeakValidation)
 		if err != nil {
 			continue
 		}
 		if reg == ref.Context().RegistryStr() {
-			return img, nil
+			ok, err := accessChecker.CheckReadAccess(repo, keychain)
+			if err != nil {
+				return ""
+			}
+
+			if ok {
+				return repo
+			}
 		}
 	}
-	return imgs[0], nil
+
+	return ""
 }
 
 func ReadStack(stackPath string, logger log.Logger) (StackMetadata, error) {
