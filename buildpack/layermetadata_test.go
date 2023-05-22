@@ -1,7 +1,6 @@
 package buildpack_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -60,7 +59,7 @@ func testLayerMetadata(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, lmf.Cache, false)
 			h.AssertEq(t, lmf.Build, false)
 			h.AssertEq(t, lmf.Launch, false)
-			expected := fmt.Sprintf("Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table.")
+			expected := "Types table isn't supported in this buildpack api version. The launch, build and cache flags should be in the top level. Ignoring the values in the types table."
 			h.AssertLogEntry(t, logHandler, expected)
 		})
 		it("returns an error when the metadata file has wrong format", func() {
