@@ -344,7 +344,12 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		}
 		for i := len(oldHistory); i < len(newHistory); i++ {
 			createdBy := newHistory[i].CreatedBy
-			newHistory[i] = v1.History{CreatedBy: fmt.Sprintf(layers.ExtensionLayerName, createdBy, dockerfile.ExtensionID)}
+			if strings.Contains(createdBy, "Created by extension") {
+				// we shouldn't get here, but just in case - avoid extra wrapping
+				newHistory[i] = v1.History{CreatedBy: createdBy}
+			} else {
+				newHistory[i] = v1.History{CreatedBy: fmt.Sprintf(layers.ExtensionLayerName, createdBy, dockerfile.ExtensionID)}
+			}
 		}
 		configFile.History = newHistory
 		oldHistory = newHistory
