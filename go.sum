@@ -123,8 +123,8 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/buildpacks/imgutil v0.0.0-20230428141433-24db5a78c900 h1:f6SrGzyotuJxn+BuIQC3ZBXQiNKgeXhWZLnAJEavaxI=
-github.com/buildpacks/imgutil v0.0.0-20230428141433-24db5a78c900/go.mod h1:/xuDxsWO9JE/s95g+OfXB8C+G5TeHznq7vURY2s1yPM=
+github.com/buildpacks/imgutil v0.0.0-20230523155828-e99e711d8210 h1:l1/PHxNsO8iKeofXA/G1aSt9EV3YMzbcH23TkoqJHTQ=
+github.com/buildpacks/imgutil v0.0.0-20230523155828-e99e711d8210/go.mod h1:/xuDxsWO9JE/s95g+OfXB8C+G5TeHznq7vURY2s1yPM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/certifi/gocertifi v0.0.0-20191021191039-0944d244cd40/go.mod h1:sGbDF6GwGcLpkNXPUTkMRoywsNa/ol15pxFe6ERfguA=
 github.com/certifi/gocertifi v0.0.0-20200922220541-2c3bb06c6054/go.mod h1:sGbDF6GwGcLpkNXPUTkMRoywsNa/ol15pxFe6ERfguA=
