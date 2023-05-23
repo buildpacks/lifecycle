@@ -291,19 +291,16 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	}
 
 	var (
-		configFile *v1.ConfigFile
-		rebasable  = true // we don't require the initial base image to have io.buildpacks.rebasable=true
-		oldHistory []v1.History
+		configFile     *v1.ConfigFile
+		rebasable      = true // we don't require the initial base image to have io.buildpacks.rebasable=true
+		workingHistory []v1.History
 	)
 	// get config
-	configFile, err = baseImage.ConfigFile()
-	if err != nil || configFile == nil {
-		return nil, fmt.Errorf("getting image config: %w", err)
+	baseImage, configFile, err = normalizeHistory(baseImage)
+	if err != nil {
+		return nil, err
 	}
-	oldHistory = configFile.History
-	if oldHistory == nil {
-		oldHistory = make([]v1.History, len(configFile.RootFS.DiffIDs))
-	}
+	workingHistory = configFile.History
 	buildOptions := e.extendOptions()
 	for _, dockerfile := range dockerfiles {
 		// create args
@@ -330,7 +327,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			return nil, fmt.Errorf("getting image config: %w", err)
 		}
 		// rebasable
-		if !rebasable || !isRebasable(*configFile) {
+		if !rebasable || !isRebasable(configFile) {
 			rebasable = false
 		}
 		if configFile.Config.Labels == nil {
@@ -338,26 +335,55 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		}
 		configFile.Config.Labels[RebasableLabel] = fmt.Sprintf("%t", rebasable)
 		// history
-		newHistory := configFile.History
-		if newHistory == nil {
-			newHistory = make([]v1.History, len(configFile.RootFS.DiffIDs))
+		newHistory := normalizedHistory(configFile)
+		for i := len(workingHistory); i < len(newHistory); i++ {
+			workingHistory = append(
+				workingHistory,
+				v1.History{
+					CreatedBy: fmt.Sprintf(layers.ExtensionLayerName, newHistory[i].CreatedBy, dockerfile.ExtensionID),
+				},
+			)
 		}
-		for i := len(oldHistory); i < len(newHistory); i++ {
-			createdBy := newHistory[i].CreatedBy
-			if strings.Contains(createdBy, "Created by extension") {
-				// we shouldn't get here, but just in case - avoid extra wrapping
-				newHistory[i] = v1.History{CreatedBy: createdBy}
-			} else {
-				newHistory[i] = v1.History{CreatedBy: fmt.Sprintf(layers.ExtensionLayerName, createdBy, dockerfile.ExtensionID)}
-			}
-		}
-		configFile.History = newHistory
-		oldHistory = newHistory
+		configFile.History = workingHistory
 	}
 	if kind == buildpack.DockerfileKindBuild {
 		return baseImage, nil
 	}
 	return mutate.ConfigFile(baseImage, configFile)
+}
+
+func normalizeHistory(image v1.Image) (v1.Image, *v1.ConfigFile, error) {
+	configFile, err := image.ConfigFile()
+	if err != nil || configFile == nil {
+		return nil, nil, fmt.Errorf("getting image config: %w", err)
+	}
+	configFile.History = normalizedHistory(configFile)
+	retImage, err := mutate.ConfigFile(image, configFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	return retImage, configFile, nil
+}
+
+func normalizedHistory(configFile *v1.ConfigFile) []v1.History {
+	history := configFile.History
+	if history == nil {
+		history = make([]v1.History, len(configFile.RootFS.DiffIDs))
+	} else if len(history) != len(configFile.RootFS.DiffIDs) {
+		// try to remove history for empty layers
+		var newHistory []v1.History
+		for _, h := range history {
+			if !h.EmptyLayer {
+				newHistory = append(newHistory, h)
+			}
+		}
+		if len(newHistory) == len(configFile.RootFS.DiffIDs) {
+			history = newHistory
+		} else {
+			history = make([]v1.History, len(configFile.RootFS.DiffIDs))
+		}
+	}
+	return history
 }
 
 func userFrom(config v1.ConfigFile) (string, string) {
@@ -370,7 +396,7 @@ func userFrom(config v1.ConfigFile) (string, string) {
 
 const RebasableLabel = "io.buildpacks.rebasable"
 
-func isRebasable(config v1.ConfigFile) bool {
+func isRebasable(config *v1.ConfigFile) bool {
 	val, ok := config.Config.Labels[RebasableLabel]
 	if !ok {
 		// label unset

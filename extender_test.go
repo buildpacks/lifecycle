@@ -232,7 +232,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				someFakeImage.ConfigFileReturnsOnCall(0, firstConfig, nil)
 				fakeDockerfileApplier.EXPECT().Apply(
 					gomock.Any(),
-					someFakeImage,
+					gomock.Any(), // we mutate the provided image so we can't expect the fake image
 					extend.Options{
 						BuildContext: "some-app-dir",
 						IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
@@ -371,7 +371,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 
 						fakeDockerfileApplier.EXPECT().Apply(
 							gomock.Any(),
-							someFakeImage,
+							gomock.Any(), // we mutate the provided image so we can't expect the fake image
 							extend.Options{
 								BuildContext: "some-app-dir",
 								IgnorePaths:  []string{"some-app-dir", "some-layers-dir", "some-platform-dir"},
