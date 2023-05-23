@@ -51,7 +51,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			dirLayer, err = factory.DirLayer("some-layer-id", dir)
+			dirLayer, err = factory.DirLayer("some-layer-id", dir, "")
 			h.AssertNil(t, err)
 		})
 
@@ -127,7 +127,7 @@ func testDirs(t *testing.T, when spec.G, it spec.S) {
 			layerTar, err := os.Stat(dirLayer.TarPath)
 			h.AssertNil(t, err)
 			modTime := layerTar.ModTime()
-			reusedDirLayer, err := factory.DirLayer("some-layer-id", dir)
+			reusedDirLayer, err := factory.DirLayer("some-layer-id", dir, "")
 			h.AssertNil(t, err)
 			h.AssertEq(t, reusedDirLayer, dirLayer)
 			layerTar, err = os.Stat(reusedDirLayer.TarPath)

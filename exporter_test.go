@@ -96,8 +96,8 @@ func testExporter(t *testing.T, when spec.G, it spec.S) {
 		// mock LayerFactory returns layer with deterministic characteristic for a give layer it
 		h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "artifacts"), 0777))
 		layerFactory.EXPECT().
-			DirLayer(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(id string, dir string) (layers.Layer, error) {
+			DirLayer(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(id string, dir string, createdBy string) (layers.Layer, error) {
 				return createTestLayer(id, tmpDir)
 			}).AnyTimes()
 

@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/lifecycle/internal/extend"
 	"github.com/buildpacks/lifecycle/internal/selective"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/log"
 )
 
@@ -292,13 +293,20 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	var (
 		configFile *v1.ConfigFile
 		rebasable  = true // we don't require the initial base image to have io.buildpacks.rebasable=true
+		oldHistory []v1.History
 	)
+	// get config
 	configFile, err = baseImage.ConfigFile()
 	if err != nil || configFile == nil {
 		return nil, fmt.Errorf("getting image config: %w", err)
 	}
+	oldHistory = configFile.History
+	if oldHistory == nil {
+		oldHistory = make([]v1.History, len(configFile.RootFS.DiffIDs))
+	}
 	buildOptions := e.extendOptions()
 	for _, dockerfile := range dockerfiles {
+		// create args
 		userID, groupID := userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
@@ -307,7 +315,6 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		}, dockerfile.Args...)
 
 		// apply Dockerfile
-
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
 			baseImage,
@@ -317,20 +324,35 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			return nil, fmt.Errorf("applying Dockerfile to image: %w", err)
 		}
 
-		// get config & update rebasable
-
+		// update rebasable, history in config
 		configFile, err = baseImage.ConfigFile()
 		if err != nil || configFile == nil {
 			return nil, fmt.Errorf("getting image config: %w", err)
 		}
+		// rebasable
 		if !rebasable || !isRebasable(*configFile) {
 			rebasable = false
 		}
+		if configFile.Config.Labels == nil {
+			configFile.Config.Labels = map[string]string{}
+		}
+		configFile.Config.Labels[RebasableLabel] = fmt.Sprintf("%t", rebasable)
+		// history
+		newHistory := configFile.History
+		if newHistory == nil {
+			newHistory = make([]v1.History, len(configFile.RootFS.DiffIDs))
+		}
+		for i := len(oldHistory); i < len(newHistory); i++ {
+			createdBy := newHistory[i].CreatedBy
+			newHistory[i] = v1.History{CreatedBy: fmt.Sprintf(layers.ExtensionLayerName, createdBy, dockerfile.ExtensionID)}
+		}
+		configFile.History = newHistory
+		oldHistory = newHistory
 	}
 	if kind == buildpack.DockerfileKindBuild {
 		return baseImage, nil
 	}
-	return setLabel(baseImage, RebasableLabel, fmt.Sprintf("%t", rebasable))
+	return mutate.ConfigFile(baseImage, configFile)
 }
 
 func userFrom(config v1.ConfigFile) (string, string) {
@@ -355,19 +377,6 @@ func isRebasable(config v1.ConfigFile) bool {
 		return false
 	}
 	return b
-}
-
-func setLabel(image v1.Image, key string, val string) (v1.Image, error) {
-	configFile, err := image.ConfigFile()
-	if err != nil || configFile == nil {
-		return nil, fmt.Errorf("getting image config: %w", err)
-	}
-	config := *configFile.Config.DeepCopy()
-	if config.Labels == nil {
-		config.Labels = map[string]string{}
-	}
-	config.Labels[key] = val
-	return mutate.Config(image, config)
 }
 
 func (e *Extender) dockerfilesFor(kind string, logger log.Logger) ([]extend.Dockerfile, error) {
@@ -408,8 +417,9 @@ func (e *Extender) dockerfileFor(kind, extID string) (*extend.Dockerfile, error)
 	}
 
 	return &extend.Dockerfile{
-		Path: dockerfilePath,
-		Args: args,
+		ExtensionID: extID,
+		Path:        dockerfilePath,
+		Args:        args,
 	}, nil
 }
 
