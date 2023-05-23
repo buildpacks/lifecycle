@@ -5,7 +5,7 @@ require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22
-	github.com/buildpacks/imgutil v0.0.0-20230523155828-e99e711d8210 // FIXME: point back to `main` branch when https://github.com/buildpacks/imgutil/pull/202 is merged
+	github.com/buildpacks/imgutil v0.0.0-20230523170037-130a1695ff63 // FIXME: point back to `main` branch when https://github.com/buildpacks/imgutil/pull/202 is merged
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589
 	github.com/containerd/containerd v1.7.0
 	github.com/docker/docker v23.0.6+incompatible
