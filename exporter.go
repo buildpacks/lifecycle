@@ -320,7 +320,7 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 			layerPath = filepath.Join(artifactsDir, calculatedDiffID)
 		}
 		layer := layers.Layer{
-			ID:      "from extensions",
+			ID:      parseExtensionIDFromHistory(history[idx]),
 			TarPath: layerPath,
 			Digest:  layerHex.String(),
 			History: history[idx],
@@ -330,6 +330,18 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 		}
 	}
 	return nil
+}
+
+func parseExtensionIDFromHistory(history v1.History) string {
+	r := strings.NewReader(history.CreatedBy)
+	var (
+		layerName, extensionID string
+	)
+	n, err := fmt.Fscanf(r, layers.ExtensionLayerName, &layerName, &extensionID)
+	if err != nil || n != 2 {
+		return "from extensions"
+	}
+	return strings.ReplaceAll(extensionID, "@", ":") // matches buildpacks
 }
 
 func isLocalImage(workingImage imgutil.Image) bool {
