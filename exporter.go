@@ -111,7 +111,6 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	if err != nil {
 		return platform.ExportReport{}, errors.Wrap(err, "get run image top layer SHA")
 	}
-
 	meta.RunImage.Reference = opts.RunImageRef
 
 	if e.PlatformAPI.AtLeast("0.12") {

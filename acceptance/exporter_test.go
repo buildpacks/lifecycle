@@ -351,7 +351,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 						exportArgs = append(exportArgs, exportedImageName)
 
-						// get run image top layer
+						// get run image SHA & top layer
 						ref, imageAuth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
 						h.AssertNil(t, err)
 						remoteImage, err := remote.Image(ref, remote.WithAuth(imageAuth))

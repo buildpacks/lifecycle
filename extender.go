@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -296,7 +297,11 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		workingHistory []v1.History
 	)
 	// get config
-	baseImage, configFile, err = normalizeHistory(baseImage)
+	baseImage, err = imgutil.OverrideHistoryIfNeeded(baseImage)
+	if err != nil {
+		return nil, err
+	}
+	configFile, err = baseImage.ConfigFile()
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +340,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		}
 		configFile.Config.Labels[RebasableLabel] = fmt.Sprintf("%t", rebasable)
 		// history
-		newHistory := normalizedHistory(configFile)
+		newHistory := imgutil.NormalizedHistory(configFile.History, len(configFile.RootFS.DiffIDs))
 		for i := len(workingHistory); i < len(newHistory); i++ {
 			workingHistory = append(
 				workingHistory,
@@ -350,40 +355,6 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return baseImage, nil
 	}
 	return mutate.ConfigFile(baseImage, configFile)
-}
-
-func normalizeHistory(image v1.Image) (v1.Image, *v1.ConfigFile, error) {
-	configFile, err := image.ConfigFile()
-	if err != nil || configFile == nil {
-		return nil, nil, fmt.Errorf("getting image config: %w", err)
-	}
-	configFile.History = normalizedHistory(configFile)
-	retImage, err := mutate.ConfigFile(image, configFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	return retImage, configFile, nil
-}
-
-func normalizedHistory(configFile *v1.ConfigFile) []v1.History {
-	history := configFile.History
-	if history == nil {
-		history = make([]v1.History, len(configFile.RootFS.DiffIDs))
-	} else if len(history) != len(configFile.RootFS.DiffIDs) {
-		// try to remove history for empty layers
-		var newHistory []v1.History
-		for _, h := range history {
-			if !h.EmptyLayer {
-				newHistory = append(newHistory, h)
-			}
-		}
-		if len(newHistory) == len(configFile.RootFS.DiffIDs) {
-			history = newHistory
-		} else {
-			history = make([]v1.History, len(configFile.RootFS.DiffIDs))
-		}
-	}
-	return history
 }
 
 func userFrom(config v1.ConfigFile) (string, string) {
