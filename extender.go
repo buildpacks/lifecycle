@@ -312,7 +312,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 
 		// apply Dockerfile
 		if userID == "0" {
-			logger.Warnf("extension from %s is using root user. This must not be the final user ID (you must have other non-root extensions after this).", dockerfile.Path)
+			logger.Warnf("Extension from %s changed the user ID from %d to %d; this must not be the final user ID (a following extension must reset the user).", origUserID, userID, dockerfile.Path)
 		}
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
