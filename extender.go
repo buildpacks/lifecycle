@@ -334,7 +334,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		}
 	}
 	if userID == "0" {
-		return baseImage, fmt.Errorf("extension process ended with root user; please add another extension at the end that resets the user")
+		return baseImage, fmt.Errorf("The final user ID is 0 (root); please add another extension that resets the user to non-root.")
 	}
 	if userID != e.CnbUID {
 		logger.Warnf("CNB_USER_ID is %s but the final extension left user id set to %s.", e.CnbUID, userID)
