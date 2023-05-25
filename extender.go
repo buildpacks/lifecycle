@@ -337,7 +337,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return baseImage, fmt.Errorf("The final user ID is 0 (root); please add another extension that resets the user to non-root.")
 	}
 	if userID != e.CnbUID {
-		logger.Warnf("CNB_USER_ID is %s but the final extension left user id set to %s.", e.CnbUID, userID)
+		logger.Warnf("The original user ID was %s but the final extension left the user ID set to %s.", origUserID, userID)
 	}
 	if kind == buildpack.DockerfileKindBuild {
 		return baseImage, nil
