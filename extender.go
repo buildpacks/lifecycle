@@ -301,7 +301,8 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		return nil, fmt.Errorf("getting image config: %w", err)
 	}
 	buildOptions := e.extendOptions()
-	var userID, groupID string
+	var userID, origUserID, prevUserID, groupID string
+	prevUserID = e.CnbUID // placeholder initial value
 	for _, dockerfile := range dockerfiles {
 		userID, groupID = userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
@@ -309,10 +310,12 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			{Name: argUserID, Value: userID},
 			{Name: argGroupID, Value: groupID},
 		}, dockerfile.Args...)
-
+		if origUserID == "" {
+			origUserID = userID
+		}
 		// apply Dockerfile
 		if userID == "0" {
-			logger.Warnf("Extension from %s changed the user ID from %d to %d; this must not be the final user ID (a following extension must reset the user).", origUserID, userID, dockerfile.Path)
+			logger.Warnf("Extension from %s changed the user ID from %d to %d; this must not be the final user ID (a following extension must reset the user).", prevUserID, userID, dockerfile.Path)
 		}
 		if baseImage, err = e.DockerfileApplier.Apply(
 			dockerfile,
@@ -332,9 +335,10 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 		if !rebasable || !isRebasable(*configFile) {
 			rebasable = false
 		}
+		prevUserID = userID
 	}
 	if userID == "0" {
-		return baseImage, fmt.Errorf("The final user ID is 0 (root); please add another extension that resets the user to non-root.")
+		return baseImage, fmt.Errorf("the final user ID is 0 (root); please add another extension that resets the user to non-root")
 	}
 	if userID != e.CnbUID {
 		logger.Warnf("The original user ID was %s but the final extension left the user ID set to %s.", origUserID, userID)

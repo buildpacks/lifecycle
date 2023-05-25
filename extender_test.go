@@ -341,7 +341,7 @@ func testExtender(t *testing.T, when spec.G, it spec.S) {
 				someFakeImage.ConfigFileReturnsOnCall(1, firstConfig, nil)
 
 				err := extender.Extend("build", logger)
-				h.AssertError(t, err, "extension process ended with root user; please add another extension at the end that resets the user")
+				h.AssertError(t, err, "extending build image: the final user ID is 0 (root); please add another extension that resets the user to non-root")
 			})
 		})
 
