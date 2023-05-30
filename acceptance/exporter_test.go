@@ -112,8 +112,9 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							expectedHistory := []string{
 								"Buildpacks Launcher Config",
 								"Buildpacks Application Launcher",
-								"Application Slice: 1",
+								"Application Layer",
 								"Software Bill-of-Materials",
+								"Layer: 'launch-layer', Created by buildpack: cacher_buildpack@cacher_v1",
 								"", // run image layer
 							}
 							assertDaemonImageHasHistory(t, exportedImageName, expectedHistory)
