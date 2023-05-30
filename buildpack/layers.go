@@ -148,16 +148,9 @@ func (l *Layer) Path() string {
 
 func (l *Layer) Read() (LayerMetadata, error) {
 	tomlPath := l.Path() + ".toml"
-	layerMetadataFile, msg, err := DecodeLayerMetadataFile(tomlPath, l.api)
+	layerMetadataFile, err := DecodeLayerMetadataFile(tomlPath, l.api, l.logger)
 	if err != nil {
 		return LayerMetadata{}, err
-	}
-	if msg != "" {
-		if api.MustParse(l.api).LessThan("0.6") {
-			l.logger.Warn(msg)
-		} else {
-			return LayerMetadata{}, errors.New(msg)
-		}
 	}
 	var sha string
 	shaBytes, err := os.ReadFile(l.Path() + ".sha")
