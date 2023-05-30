@@ -257,6 +257,10 @@ func (e *exportCmd) initDaemonAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		}
 	}
 
+	if e.supportsHistory() {
+		opts = append(opts, local.WithHistory())
+	}
+
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Debugf("Reusing layers from image with id '%s'", analyzedMD.PreviousImageRef())
 		opts = append(opts, local.WithPreviousImage(analyzedMD.PreviousImageRef()))
@@ -364,6 +368,10 @@ func (e *exportCmd) initRemoteAppImage(analyzedMD platform.AnalyzedMetadata) (im
 		}
 	}
 
+	if e.supportsHistory() {
+		opts = append(opts, remote.WithHistory())
+	}
+
 	if analyzedMD.PreviousImageRef() != "" {
 		cmd.DefaultLogger.Infof("Reusing layers from image '%s'", analyzedMD.PreviousImageRef())
 		opts = append(opts, remote.WithPreviousImage(analyzedMD.PreviousImageRef()))
@@ -401,6 +409,10 @@ func (e *exportCmd) initLayoutAppImage(analyzedMD platform.AnalyzedMetadata) (im
 
 	var opts = []layout.ImageOption{
 		layout.FromBaseImagePath(runImageIdentifier.Path),
+	}
+
+	if e.supportsHistory() {
+		opts = append(opts, layout.WithHistory())
 	}
 
 	if analyzedMD.PreviousImageRef() != "" {
@@ -482,6 +494,10 @@ func (e *exportCmd) customSourceDateEpoch() time.Time {
 
 func (e *exportCmd) supportsRunImageExtension() bool {
 	return e.PlatformAPI.AtLeast("0.12") && !e.UseLayout // FIXME: add layout support as part of https://github.com/buildpacks/lifecycle/issues/1057
+}
+
+func (e *exportCmd) supportsHistory() bool {
+	return e.PlatformAPI.AtLeast("0.12")
 }
 
 func (e *exportCmd) getExtendedConfig(runImage *platform.RunImage) (*v1.Config, error) {

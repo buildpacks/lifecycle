@@ -1,8 +1,9 @@
 package extend
 
 type Dockerfile struct {
-	Path string `toml:"path"`
-	Args []Arg
+	ExtensionID string
+	Path        string `toml:"path"`
+	Args        []Arg
 }
 
 type Arg struct {

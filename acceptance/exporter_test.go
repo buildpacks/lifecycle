@@ -108,6 +108,20 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 							h.AssertStringDoesNotContain(t, output, "Copying SBOM")
 						}
 
+						if api.MustParse(platformAPI).AtLeast("0.12") {
+							expectedHistory := []string{
+								"Buildpacks Launcher Config",
+								"Buildpacks Application Launcher",
+								"Application Layer",
+								"Software Bill-of-Materials",
+								"Layer: 'launch-layer', Created by buildpack: cacher_buildpack@cacher_v1",
+								"", // run image layer
+							}
+							assertDaemonImageHasHistory(t, exportedImageName, expectedHistory)
+						} else {
+							assertDaemonImageDoesNotHaveHistory(t, exportedImageName)
+						}
+
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
 					})
 				})
@@ -148,6 +162,17 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						h.AssertStringContains(t, output, "Saving "+exportedImageName)
 
 						assertImageOSAndArchAndCreatedAt(t, exportedImageName, exportTest, imgutil.NormalizedDateTime)
+						expectedHistory := []string{
+							"Buildpacks Launcher Config",
+							"Buildpacks Application Launcher",
+							"Application Layer",
+							"Software Bill-of-Materials",
+							"Layer: 'launch-layer', Created by buildpack: cacher_buildpack@cacher_v1",
+							"Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree",
+							"Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl",
+							"", // run image layer
+						}
+						assertDaemonImageHasHistory(t, exportedImageName, expectedHistory)
 						t.Log("bases the exported image on the extended run image")
 						inspect, _, err = h.DockerCli(t).ImageInspectWithRaw(context.TODO(), exportedImageName)
 						h.AssertNil(t, err)
@@ -351,7 +376,7 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 						exportedImageName = exportTest.RegRepoName("some-exported-image-" + h.RandString(10))
 						exportArgs = append(exportArgs, exportedImageName)
 
-						// get run image top layer
+						// get run image SHA & top layer
 						ref, imageAuth, err := auth.ReferenceForRepoName(authn.DefaultKeychain, exportTest.targetRegistry.fixtures.ReadOnlyRunImage)
 						h.AssertNil(t, err)
 						remoteImage, err := remote.Image(ref, remote.WithAuth(imageAuth))
@@ -499,6 +524,25 @@ func testExporterFunc(platformAPI string) func(t *testing.T, when spec.G, it spe
 				})
 			})
 		})
+	}
+}
+
+func assertDaemonImageDoesNotHaveHistory(t *testing.T, repoName string) {
+	history, err := h.DockerCli(t).ImageHistory(context.TODO(), repoName)
+	h.AssertNil(t, err)
+	for _, hs := range history {
+		h.AssertEq(t, hs.Created, imgutil.NormalizedDateTime.Unix())
+		h.AssertEq(t, hs.CreatedBy, "")
+	}
+}
+
+func assertDaemonImageHasHistory(t *testing.T, repoName string, expectedHistory []string) {
+	history, err := h.DockerCli(t).ImageHistory(context.TODO(), repoName)
+	h.AssertNil(t, err)
+	h.AssertEq(t, len(history), len(expectedHistory))
+	for idx, hs := range history {
+		h.AssertEq(t, hs.Created, imgutil.NormalizedDateTime.Unix())
+		h.AssertEq(t, hs.CreatedBy, expectedHistory[idx])
 	}
 }
 
