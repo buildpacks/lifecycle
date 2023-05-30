@@ -2,7 +2,7 @@ module github.com/buildpacks/lifecycle
 
 require (
 	github.com/BurntSushi/toml v1.2.1
-	github.com/GoogleContainerTools/kaniko v1.9.2
+	github.com/GoogleContainerTools/kaniko v1.10.0
 	github.com/apex/log v1.9.0
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22
 	github.com/buildpacks/imgutil v0.0.0-20230530171003-12d94003ceee
@@ -98,14 +98,14 @@ require (
 	github.com/opencontainers/runc v1.1.5 // indirect
 	github.com/opencontainers/runtime-spec v1.1.0-rc.1 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
-	github.com/otiai10/copy v1.9.0 // indirect
+	github.com/otiai10/copy v1.11.0 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.39.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rootless-containers/rootlesskit v1.1.0 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/spf13/afero v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.2 // indirect
+	github.com/spf13/afero v1.9.5 // indirect
 	github.com/tonistiigi/fsutil v0.0.0-20230105215944-fb433841cbfa // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.6 // indirect
@@ -117,7 +117,7 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230323212658-478b75c54725 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.54.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 )
