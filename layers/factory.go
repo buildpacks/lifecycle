@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	AppLayerName            = "Application Layer"
 	BuildpackLayerName      = "Layer: '%s', Created by buildpack: %s"
 	ExtensionLayerName      = "Layer: '%s', Created by extension: %s"
 	LauncherConfigLayerName = "Buildpacks Launcher Config"

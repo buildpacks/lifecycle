@@ -1,1 +1,107 @@
-{"architecture":"amd64","created":"0001-01-01T00:00:00Z","history":[{"created":"2023-03-01T03:18:00.301777816Z","created_by":"/bin/sh -c #(nop)  ARG RELEASE","empty_layer":true},{"created":"2023-03-01T03:18:00.360617499Z","created_by":"/bin/sh -c #(nop)  ARG LAUNCHPAD_BUILD_ARCH","empty_layer":true},{"created":"2023-03-01T03:18:00.41927153Z","created_by":"/bin/sh -c #(nop)  LABEL org.opencontainers.image.ref.name=ubuntu","empty_layer":true},{"created":"2023-03-01T03:18:00.485275751Z","created_by":"/bin/sh -c #(nop)  LABEL org.opencontainers.image.version=18.04","empty_layer":true},{"created":"2023-03-01T03:18:02.163454314Z","created_by":"/bin/sh -c #(nop) ADD file:66eb2ef5574cdf80bc0cb3af1637407620c1869f58cc7514395e3f5aea45cc3b in / "},{"created":"2023-03-01T03:18:02.508220832Z","created_by":"/bin/sh -c #(nop)  CMD [\"/bin/bash\"]","empty_layer":true},{"created":"2023-03-06T17:34:37.7930108Z","created_by":"ARG cnb_uid=1234","comment":"buildkit.dockerfile.v0","empty_layer":true},{"created":"2023-03-06T17:34:37.7930108Z","created_by":"ARG cnb_gid=1000","comment":"buildkit.dockerfile.v0","empty_layer":true},{"created":"2023-03-06T17:34:37.7930108Z","created_by":"ENV CNB_USER_ID=1234","comment":"buildkit.dockerfile.v0","empty_layer":true},{"created":"2023-03-06T17:34:37.7930108Z","created_by":"ENV CNB_GROUP_ID=1000","comment":"buildkit.dockerfile.v0","empty_layer":true},{"created":"2023-03-06T17:34:37.7930108Z","created_by":"COPY ./container/ / # buildkit","comment":"buildkit.dockerfile.v0"},{"created":"2023-03-06T17:34:39.0316521Z","created_by":"RUN |2 cnb_uid=1234 cnb_gid=1000 /bin/sh -c groupadd cnb --gid ${cnb_gid} \u0026\u0026   useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb # buildkit","comment":"buildkit.dockerfile.v0"},{"author":"kaniko","created":"0001-01-01T00:00:00Z","created_by":"RUN apt-get update \u0026\u0026 apt-get install -y curl"},{"author":"kaniko","created":"0001-01-01T00:00:00Z","created_by":"RUN apt-get update \u0026\u0026 apt-get install -y tree"}],"os":"linux","rootfs":{"type":"layers","diff_ids":["sha256:52c5ca3e9f3bf4c13613fb3269982734b189e1e09563b65b670fc8be0e223e03","sha256:a44ae1c29c4868890bf64d0f9627291e9b80d6a80d8938c942c6a43b2f0cfde1","sha256:049685392ebd2ca7b262f19e854d6fd3ff60bcb7a96394422b528ea30d04ca67","sha256:60600f423214c27fd184ebc96ae765bf2b4703c9981fb4205d28dd35e7eec4ae","sha256:1d811b70500e2e9a5e5b8ca7429ef02e091cdf4657b02e456ec54dd1baea0a66"]},"config":{"Cmd":["/bin/bash"],"Env":["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","CNB_USER_ID=1234","CNB_GROUP_ID=1000","CNB_STACK_ID=stack-id-from-ext-tree"],"Labels":{"io.buildpacks.rebasable":"false","org.opencontainers.image.ref.name":"ubuntu","org.opencontainers.image.version":"18.04"},"User":"root"}}
+{
+  "architecture": "amd64",
+  "created": "0001-01-01T00:00:00Z",
+  "history": [
+    {
+      "created": "2023-03-01T03:18:00.301777816Z",
+      "created_by": "/bin/sh -c #(nop)  ARG RELEASE",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-01T03:18:00.360617499Z",
+      "created_by": "/bin/sh -c #(nop)  ARG LAUNCHPAD_BUILD_ARCH",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-01T03:18:00.41927153Z",
+      "created_by": "/bin/sh -c #(nop)  LABEL org.opencontainers.image.ref.name=ubuntu",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-01T03:18:00.485275751Z",
+      "created_by": "/bin/sh -c #(nop)  LABEL org.opencontainers.image.version=18.04",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-01T03:18:02.163454314Z",
+      "created_by": "/bin/sh -c #(nop) ADD file:66eb2ef5574cdf80bc0cb3af1637407620c1869f58cc7514395e3f5aea45cc3b in / "
+    },
+    {
+      "created": "2023-03-01T03:18:02.508220832Z",
+      "created_by": "/bin/sh -c #(nop)  CMD [\"/bin/bash\"]",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-06T17:34:37.7930108Z",
+      "created_by": "ARG cnb_uid=1234",
+      "comment": "buildkit.dockerfile.v0",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-06T17:34:37.7930108Z",
+      "created_by": "ARG cnb_gid=1000",
+      "comment": "buildkit.dockerfile.v0",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-06T17:34:37.7930108Z",
+      "created_by": "ENV CNB_USER_ID=1234",
+      "comment": "buildkit.dockerfile.v0",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-06T17:34:37.7930108Z",
+      "created_by": "ENV CNB_GROUP_ID=1000",
+      "comment": "buildkit.dockerfile.v0",
+      "empty_layer": true
+    },
+    {
+      "created": "2023-03-06T17:34:37.7930108Z",
+      "created_by": "COPY ./container/ / # buildkit",
+      "comment": "buildkit.dockerfile.v0"
+    },
+    {
+      "created": "2023-03-06T17:34:39.0316521Z",
+      "created_by": "RUN |2 cnb_uid=1234 cnb_gid=1000 /bin/sh -c groupadd cnb --gid ${cnb_gid} &&   useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb # buildkit",
+      "comment": "buildkit.dockerfile.v0"
+    },
+    {
+      "author": "kaniko",
+      "created": "0001-01-01T00:00:00Z",
+      "created_by": "Layer: 'RUN apt-get update && apt-get install -y curl', Created by extension: curl"
+    },
+    {
+      "author": "kaniko",
+      "created": "0001-01-01T00:00:00Z",
+      "created_by": "Layer: 'RUN apt-get update && apt-get install -y tree', Created by extension: tree"
+    }
+  ],
+  "os": "linux",
+  "rootfs": {
+    "type": "layers",
+    "diff_ids": [
+      "sha256:52c5ca3e9f3bf4c13613fb3269982734b189e1e09563b65b670fc8be0e223e03",
+      "sha256:a44ae1c29c4868890bf64d0f9627291e9b80d6a80d8938c942c6a43b2f0cfde1",
+      "sha256:049685392ebd2ca7b262f19e854d6fd3ff60bcb7a96394422b528ea30d04ca67",
+      "sha256:60600f423214c27fd184ebc96ae765bf2b4703c9981fb4205d28dd35e7eec4ae",
+      "sha256:1d811b70500e2e9a5e5b8ca7429ef02e091cdf4657b02e456ec54dd1baea0a66"
+    ]
+  },
+  "config": {
+    "Cmd": [
+      "/bin/bash"
+    ],
+    "Env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "CNB_USER_ID=1234",
+      "CNB_GROUP_ID=1000",
+      "CNB_STACK_ID=stack-id-from-ext-tree"
+    ],
+    "Labels": {
+      "io.buildpacks.rebasable": "false",
+      "org.opencontainers.image.ref.name": "ubuntu",
+      "org.opencontainers.image.version": "18.04"
+    },
+    "User": "root"
+  }
+}

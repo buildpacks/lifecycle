@@ -113,7 +113,7 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 					},
 				}...))
 				// it returns history
-				h.AssertEq(t, sliceLayers[0].History.CreatedBy, "Application Slice: 1")
+				h.AssertEq(t, sliceLayers[0].History.CreatedBy, "Application Layer")
 			})
 
 			it("resolves relative paths", func() {
@@ -216,6 +216,8 @@ func testSlices(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, sliceLayers[2].ID, "slice-3")
 				h.AssertEq(t, sliceLayers[3].ID, "slice-4")
 				h.AssertEq(t, sliceLayers[4].ID, "slice-5")
+				// it returns history
+				h.AssertEq(t, sliceLayers[0].History.CreatedBy, "Application Slice: 1")
 			})
 
 			it("creates slice from pattern", func() {

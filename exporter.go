@@ -318,11 +318,13 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 			}
 			layerPath = filepath.Join(artifactsDir, calculatedDiffID)
 		}
+		h := getHistoryForNonEmptyLayerAtIndex(history, idx)
+		_, extID := parseHistory(h)
 		layer := layers.Layer{
-			ID:      parseExtensionIDFromHistory(history[idx]),
+			ID:      extID,
 			TarPath: layerPath,
 			Digest:  layerHex.String(),
-			History: history[idx],
+			History: h,
 		}
 		if _, err = e.addOrReuseExtensionLayer(opts.WorkingImage, layer); err != nil {
 			return err
@@ -331,16 +333,30 @@ func (e *Exporter) addExtensionLayers(opts ExportOptions, meta *platform.LayersM
 	return nil
 }
 
-func parseExtensionIDFromHistory(history v1.History) string {
+func getHistoryForNonEmptyLayerAtIndex(history []v1.History, idx int) v1.History {
+	var processed int
+	for _, h := range history {
+		if h.EmptyLayer {
+			continue
+		}
+		if processed == idx {
+			return h
+		}
+		processed++
+	}
+	return v1.History{}
+}
+
+func parseHistory(history v1.History) (string, string) {
 	r := strings.NewReader(history.CreatedBy)
 	var (
-		layerName, extensionID string
+		createdBy, extID string
 	)
-	n, err := fmt.Fscanf(r, layers.ExtensionLayerName, &layerName, &extensionID)
+	n, err := fmt.Fscanf(r, layers.ExtensionLayerName, &createdBy, &extID)
 	if err != nil || n != 2 {
-		return "from extensions"
+		return history.CreatedBy, "from extensions"
 	}
-	return strings.ReplaceAll(extensionID, "@", ":") // matches buildpacks
+	return createdBy, extID
 }
 
 func isLocalImage(workingImage imgutil.Image) bool {

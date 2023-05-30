@@ -42,7 +42,14 @@ func (f *Factory) SliceLayers(dir string, slices []Slice) ([]Layer, error) {
 	}
 
 	// add remaining files in a single layer
-	finalLayer, err := f.createLayerFromFiles(len(slices)+1, sdir, sdir.remainingFiles())
+	id := len(slices) + 1
+	var createdBy string
+	if id == 1 {
+		createdBy = AppLayerName
+	} else {
+		createdBy = fmt.Sprintf(SliceLayerName, id)
+	}
+	finalLayer, err := f.createLayerFromFiles(id, createdBy, sdir, sdir.remainingFiles())
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +65,8 @@ func (f *Factory) createLayerFromSlice(slice Slice, sdir *sliceableDir, id int) 
 		}
 		matches = append(matches, globMatches...)
 	}
-	return f.createLayerFromFiles(id, sdir, sdir.sliceFiles(matches))
+	createdBy := fmt.Sprintf(SliceLayerName, id)
+	return f.createLayerFromFiles(id, createdBy, sdir, sdir.sliceFiles(matches))
 }
 
 func glob(sdir *sliceableDir, pattern string) ([]string, error) {
@@ -89,12 +97,11 @@ func glob(sdir *sliceableDir, pattern string) ([]string, error) {
 	return matches, nil
 }
 
-func (f *Factory) createLayerFromFiles(id int, sdir *sliceableDir, files []archive.PathInfo) (layer Layer, err error) {
+func (f *Factory) createLayerFromFiles(id int, createdBy string, sdir *sliceableDir, files []archive.PathInfo) (layer Layer, err error) {
 	sort.SliceStable(files, func(i, j int) bool {
 		return files[i].Path < files[j].Path
 	})
 	layerID := fmt.Sprintf("slice-%d", id)
-	createdBy := fmt.Sprintf(SliceLayerName, id)
 	return f.writeLayer(layerID, createdBy, func(tw *archive.NormalizingTarWriter) error {
 		if len(files) != 0 {
 			if err := archive.AddFilesToArchive(tw, sdir.parentDirs); err != nil {
