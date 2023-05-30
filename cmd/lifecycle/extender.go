@@ -60,7 +60,6 @@ func (e *extendCmd) Exec() error {
 	extender, err := extenderFactory.NewExtender(
 		e.AnalyzedPath,
 		e.AppDir,
-		fmt.Sprint(e.UID),
 		e.ExtendedDir,
 		e.GeneratedDir,
 		e.GroupPath,

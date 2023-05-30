@@ -76,7 +76,6 @@ func testExtenderFactory(t *testing.T, when spec.G, it spec.S) {
 			extender, err = extenderFactory.NewExtender(
 				"some-analyzed-path",
 				"some-app-dir",
-				"42", // some numeric user id
 				"some-extended-dir",
 				"some-generated-dir",
 				"some-group-path",

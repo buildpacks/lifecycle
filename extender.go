@@ -26,7 +26,6 @@ import (
 
 type Extender struct {
 	AppDir       string // explicitly ignored by the Dockerfile applier, also the Dockefile build context
-	CnbUID       string
 	ExtendedDir  string // output directory for extended image layers
 	GeneratedDir string // input Dockerfiles are found here
 	ImageRef     string // the image to extend
@@ -60,7 +59,6 @@ func NewExtenderFactory(apiVerifier BuildpackAPIVerifier, configHandler ConfigHa
 func (f *ExtenderFactory) NewExtender(
 	analyzedPath string,
 	appDir string,
-	cnbUID string,
 	extendedDir string,
 	generatedDir string,
 	groupPath string,
@@ -73,7 +71,6 @@ func (f *ExtenderFactory) NewExtender(
 ) (*Extender, error) {
 	extender := &Extender{
 		AppDir:            appDir,
-		CnbUID:            cnbUID,
 		ExtendedDir:       extendedDir,
 		GeneratedDir:      generatedDir,
 		LayersDir:         layersDir,
@@ -302,7 +299,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	}
 	buildOptions := e.extendOptions()
 	var userID, origUserID, prevUserID, groupID string
-	prevUserID = e.CnbUID // placeholder initial value
+	prevUserID = "original user ID" // placeholder initial value
 	for _, dockerfile := range dockerfiles {
 		userID, groupID = userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
@@ -340,7 +337,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	if userID == "0" {
 		return baseImage, fmt.Errorf("the final user ID is 0 (root); please add another extension that resets the user to non-root")
 	}
-	if userID != e.CnbUID {
+	if userID != origUserID {
 		logger.Warnf("The original user ID was %s but the final extension left the user ID set to %s.", origUserID, userID)
 	}
 	if kind == buildpack.DockerfileKindBuild {
