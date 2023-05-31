@@ -299,9 +299,9 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 	}
 	buildOptions := e.extendOptions()
 	var userID, origUserID, prevUserID, groupID string
-	prevUserID = "original user ID" // placeholder initial value
+	userID, groupID = userFrom(*configFile)
+	prevUserID = userID
 	for _, dockerfile := range dockerfiles {
-		userID, groupID = userFrom(*configFile)
 		dockerfile.Args = append([]extend.Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
 			{Name: argUserID, Value: userID},
@@ -323,8 +323,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			return nil, fmt.Errorf("applying Dockerfile to image: %w", err)
 		}
 
-		// get config & update rebasable
-
+		// get config & update rebasable and user/group IDs
 		configFile, err = baseImage.ConfigFile()
 		if err != nil || configFile == nil {
 			return nil, fmt.Errorf("getting image config: %w", err)
@@ -333,6 +332,7 @@ func (e *Extender) extend(kind string, baseImage v1.Image, logger log.Logger) (v
 			rebasable = false
 		}
 		prevUserID = userID
+		userID, groupID = userFrom(*configFile)
 	}
 	if userID == "0" {
 		return baseImage, fmt.Errorf("the final user ID is 0 (root); please add another extension that resets the user to non-root")
