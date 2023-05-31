@@ -24,7 +24,7 @@ type Command interface {
 	Exec() error
 }
 
-func Run(c Command, withName string, asSubcommand bool) {
+func Run(c Command, withPhaseName string, asSubcommand bool) {
 	var (
 		printVersion bool
 		logLevel     string
@@ -55,7 +55,7 @@ func Run(c Command, withName string, asSubcommand bool) {
 	if err := cmd.DefaultLogger.SetLevel(logLevel); err != nil {
 		cmd.Exit(err)
 	}
-	cmd.DefaultLogger.Debugf("Starting %s...", withName)
+	cmd.DefaultLogger.Debugf("Starting %s...", withPhaseName)
 
 	// Warn when CNB_PLATFORM_API is unset
 	if os.Getenv(platform.EnvPlatformAPI) == "" {
