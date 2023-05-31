@@ -77,6 +77,16 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 	}
 	origMetadata.RunImage.Reference = identifier.String()
 
+	if r.PlatformAPI.AtLeast("0.12") {
+		// update stack and runImage if needed
+		if !origMetadata.RunImage.Contains(newBaseImage.Name()) {
+			origMetadata.RunImage.Image = newBaseImage.Name()
+			origMetadata.RunImage.Mirrors = []string{}
+			newStackMD := origMetadata.RunImage.ToStackMetadata()
+			origMetadata.Stack = &newStackMD
+		}
+	}
+
 	data, err := json.Marshal(origMetadata)
 	if err != nil {
 		return RebaseReport{}, errors.Wrap(err, "marshall metadata")
