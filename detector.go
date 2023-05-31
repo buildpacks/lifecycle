@@ -220,12 +220,12 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 
 		// Lookup element in store.  <-- "the store" is the directory where all the buildpacks are.
 		var (
-			descriptor   buildpack.Descriptor
-			bpDescriptor *buildpack.BpDescriptor
-			err          error
+			descriptor buildpack.Descriptor
+			//bpDescriptor *buildpack.BpDescriptor
+			err error
 		)
 		if groupEl.Kind() == buildpack.KindBuildpack {
-			bpDescriptor, err = d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
+			bpDescriptor, err := d.DirStore.LookupBp(groupEl.ID, groupEl.Version)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -237,31 +237,6 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 				return d.detectOrder(order, done, group.Group[i+1:], groupEl.Optional, wg)
 			}
 
-			if d.PlatformAPI.AtLeast("0.12") {
-				targetMatch := false
-				if isWildcard(d.AnalyzeMD.RunImageTarget()) || hasWildcard(bpDescriptor.Targets) {
-					targetMatch = true
-				} else {
-					for i := range bpDescriptor.Targets {
-						d.Logger.Debugf("Checking for match against descriptor:", bpDescriptor.Targets[i])
-						if d.AnalyzeMD.RunImage.TargetMetadata.IsSatisfiedBy(&bpDescriptor.Targets[i]) {
-							targetMatch = true
-							break
-						}
-					}
-				}
-				if !targetMatch && !groupEl.Optional {
-					markDone(groupEl, bpDescriptor)
-					d.Runs.Store(
-						keyFor(groupEl),
-						buildpack.DetectOutputs{
-							Code: -1,
-							Err:  fmt.Errorf("unable to satisfy Target OS/Arch constraints; run image: %v, buildpack: %v", d.AnalyzeMD.RunImage.TargetMetadata, bpDescriptor.Targets),
-						})
-					continue
-				}
-			}
-
 			descriptor = bpDescriptor // standardize the type so below we don't have to care whether it was an extension
 		} else {
 			descriptor, err = d.DirStore.LookupExt(groupEl.ID, groupEl.Version)
@@ -270,6 +245,30 @@ func (d *Detector) detectGroup(group buildpack.Group, done []buildpack.GroupElem
 			}
 		}
 
+		if d.PlatformAPI.AtLeast("0.12") {
+			targetMatch := false
+			if isWildcard(d.AnalyzeMD.RunImageTarget()) || hasWildcard(descriptor.TargetList()) {
+				targetMatch = true
+			} else {
+				for i := range descriptor.TargetList() {
+					d.Logger.Debugf("Checking for match against descriptor:", descriptor.TargetList()[i])
+					if d.AnalyzeMD.RunImage.TargetMetadata.IsSatisfiedBy(&descriptor.TargetList()[i]) {
+						targetMatch = true
+						break
+					}
+				}
+			}
+			if !targetMatch && !groupEl.Optional {
+				markDone(groupEl, bpDescriptor)
+				d.Runs.Store(
+					keyFor(groupEl),
+					buildpack.DetectOutputs{
+						Code: -1,
+						Err:  fmt.Errorf("unable to satisfy Target OS/Arch constraints; run image: %v, buildpack: %v", d.AnalyzeMD.RunImage.TargetMetadata, bpDescriptor.Targets),
+					})
+				continue
+			}
+		}
 		markDone(groupEl, descriptor)
 
 		// Run detect if element is a component buildpack or an extension.

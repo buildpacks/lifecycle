@@ -9,8 +9,10 @@ const (
 type Descriptor interface {
 	API() string
 	Homepage() string
+	TargetList() []TargetMetadata
 }
 
+// BaseInfo is information shared by both buildpacks and extensions.
 type BaseInfo struct {
 	ClearEnv bool   `toml:"clear-env,omitempty"`
 	Homepage string `toml:"homepage,omitempty"`

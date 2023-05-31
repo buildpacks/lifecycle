@@ -9,9 +9,10 @@ import (
 )
 
 type ExtDescriptor struct {
-	WithAPI     string  `toml:"api"`
-	Extension   ExtInfo `toml:"extension"`
-	WithRootDir string  `toml:"-"`
+	WithAPI     string           `toml:"api"`
+	Extension   ExtInfo          `toml:"extension"`
+	WithRootDir string           `toml:"-"`
+	Targets     []TargetMetadata `toml:"targets"`
 }
 
 type ExtInfo struct {
@@ -29,6 +30,7 @@ func ReadExtDescriptor(path string) (*ExtDescriptor, error) {
 	if descriptor.WithRootDir, err = filepath.Abs(filepath.Dir(path)); err != nil {
 		return &ExtDescriptor{}, err
 	}
+	// TODO: infer target data if missing detect[.exe]/generate[.exe]
 	return descriptor, nil
 }
 
