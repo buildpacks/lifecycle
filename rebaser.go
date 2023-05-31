@@ -28,7 +28,7 @@ type RebaseReport struct {
 
 func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image, outputImageRef string, additionalNames []string) (RebaseReport, error) {
 	var origMetadata platform.LayersMetadataCompat
-	if err := image.DecodeLabel(workingImage, platform.LayerMetadataLabel, &origMetadata); err != nil {
+	if err := image.DecodeLabel(workingImage, platform.LifecycleMetadataLabel, &origMetadata); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "get image metadata")
 	}
 
@@ -82,7 +82,7 @@ func (r *Rebaser) Rebase(workingImage imgutil.Image, newBaseImage imgutil.Image,
 		return RebaseReport{}, errors.Wrap(err, "marshall metadata")
 	}
 
-	if err := workingImage.SetLabel(platform.LayerMetadataLabel, string(data)); err != nil {
+	if err := workingImage.SetLabel(platform.LifecycleMetadataLabel, string(data)); err != nil {
 		return RebaseReport{}, errors.Wrap(err, "set app image metadata label")
 	}
 

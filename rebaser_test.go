@@ -102,7 +102,7 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 			it("sets the top layer in the metadata", func() {
 				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
-				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
+				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LifecycleMetadataLabel, &md))
 
 				h.AssertEq(t, md.RunImage.TopLayer, "new-top-layer-sha")
 			})
@@ -110,19 +110,19 @@ func testRebaser(t *testing.T, when spec.G, it spec.S) {
 			it("sets the run image reference in the metadata", func() {
 				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
-				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
+				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LifecycleMetadataLabel, &md))
 
 				h.AssertEq(t, md.RunImage.Reference, "new-run-id")
 			})
 
 			it("preserves other existing metadata", func() {
 				h.AssertNil(t, fakeAppImage.SetLabel(
-					platform.LayerMetadataLabel,
+					platform.LifecycleMetadataLabel,
 					`{"app": [{"sha": "123456"}], "buildpacks":[{"key": "buildpack.id", "layers": {}}]}`,
 				))
 				_, err := rebaser.Rebase(fakeAppImage, fakeNewBaseImage, fakeAppImage.Name(), additionalNames)
 				h.AssertNil(t, err)
-				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LayerMetadataLabel, &md))
+				h.AssertNil(t, image.DecodeLabel(fakeAppImage, platform.LifecycleMetadataLabel, &md))
 
 				h.AssertEq(t, len(md.Buildpacks), 1)
 				h.AssertEq(t, md.Buildpacks[0].ID, "buildpack.id")

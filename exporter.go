@@ -116,9 +116,8 @@ func (e *Exporter) Export(opts ExportOptions) (platform.ExportReport, error) {
 	if e.PlatformAPI.AtLeast("0.12") {
 		meta.RunImage.Image = opts.RunImageForExport.Image
 		meta.RunImage.Mirrors = opts.RunImageForExport.Mirrors
-	} else {
-		meta.Stack = &opts.Stack
 	}
+	meta.Stack = &opts.Stack
 
 	buildMD := &platform.BuildMetadata{}
 	if err := platform.DecodeBuildMetadataTOML(launch.GetMetadataFilePath(opts.LayersDir), e.PlatformAPI, buildMD); err != nil {
@@ -494,8 +493,8 @@ func (e *Exporter) setLabels(opts ExportOptions, meta platform.LayersMetadata, b
 		return errors.Wrap(err, "marshall metadata")
 	}
 
-	e.Logger.Infof("Adding label '%s'", platform.LayerMetadataLabel)
-	if err = opts.WorkingImage.SetLabel(platform.LayerMetadataLabel, string(data)); err != nil {
+	e.Logger.Infof("Adding label '%s'", platform.LifecycleMetadataLabel)
+	if err = opts.WorkingImage.SetLabel(platform.LifecycleMetadataLabel, string(data)); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
 
