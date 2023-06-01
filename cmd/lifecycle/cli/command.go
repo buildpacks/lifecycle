@@ -63,7 +63,7 @@ func Run(c Command, withPhaseName string, asSubcommand bool) {
 		cmd.DefaultLogger.Infof("%s should be set to avoid breaking changes when upgrading the lifecycle", platform.EnvPlatformAPI)
 	}
 
-	cmd.DefaultLogger.Debugf("Parsing flags...")
+	cmd.DefaultLogger.Debugf("Parsing inputs...")
 	if err := c.Args(flagSet.NArg(), flagSet.Args()); err != nil {
 		cmd.Exit(err)
 	}
